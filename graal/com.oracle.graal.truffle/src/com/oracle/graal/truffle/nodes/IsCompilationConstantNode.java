@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,36 @@
  */
 package com.oracle.graal.truffle.nodes;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public class IsCompilationConstantNode extends MacroStateSplitNode implements Canonicalizable {
+public final class IsCompilationConstantNode extends FloatingNode implements Lowerable, Canonicalizable {
 
-    public IsCompilationConstantNode(Invoke invoke) {
-        super(invoke);
-        assert arguments.size() == 1;
+    public static final NodeClass<IsCompilationConstantNode> TYPE = NodeClass.create(IsCompilationConstantNode.class);
+
+    @Input ValueNode value;
+
+    public IsCompilationConstantNode(ValueNode value) {
+        super(TYPE, StampFactory.forKind(Kind.Boolean));
+        this.value = value;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        /* Invoke will return false. */
-        replaceWithInvoke().lower(tool);
+        graph().replaceFloating(this, ConstantNode.forBoolean(false, graph()));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode arg0 = arguments.get(0);
+        ValueNode arg0 = value;
         if (arg0 instanceof BoxNode) {
             arg0 = ((BoxNode) arg0).getValue();
         }
@@ -55,4 +60,7 @@ public class IsCompilationConstantNode extends MacroStateSplitNode implements Ca
         }
         return this;
     }
+
+    @NodeIntrinsic
+    public static native boolean check(Object value);
 }

@@ -417,8 +417,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return args;
     }
 
-    public static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
-        return new FrameWithoutBoxing(descriptor, args);
+    public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
+        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+            return new FrameWithoutBoxing(descriptor, args);
+        } else {
+            return new FrameWithBoxing(descriptor, args);
+        }
     }
 
     public List<OptimizedDirectCallNode> getCallNodes() {

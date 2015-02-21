@@ -24,34 +24,36 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.
- *
+ * <p>
  * When a block has more than one predecessor, and all predecessors end with the
- * {@linkplain #same(LIRInstruction, LIRInstruction) same} sequence of {@linkplain MoveOp move}
- * instructions, then these sequences can be replaced with a single copy of the sequence at the
- * beginning of the block.
- *
+ * {@linkplain Optimizer#same(LIRInstruction, LIRInstruction) same} sequence of {@linkplain MoveOp
+ * move} instructions, then these sequences can be replaced with a single copy of the sequence at
+ * the beginning of the block.
+ * <p>
  * Similarly, when a block has more than one successor, then same sequences of moves at the
  * beginning of the successors can be placed once at the end of the block. But because the moves
  * must be inserted before all branch instructions, this works only when there is exactly one
  * conditional branch at the end of the block (because the moves must be inserted before all
  * branches, but after all compares).
- *
+ * <p>
  * This optimization affects all kind of moves (reg-&gt;reg, reg-&gt;stack and stack-&gt;reg).
  * Because this optimization works best when a block contains only a few moves, it has a huge impact
  * on the number of blocks that are totally empty.
  */
-public final class EdgeMoveOptimizer {
+public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
-    /**
-     * Optimizes moves on block edges.
-     */
-    public static void optimize(LIR ir) {
-        EdgeMoveOptimizer optimizer = new EdgeMoveOptimizer(ir);
+    @Override
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+        LIR ir = lirGenRes.getLIR();
+        Optimizer optimizer = new Optimizer(ir);
 
         List<? extends AbstractBlock<?>> blockList = ir.linearScanOrder();
         // ignore the first block in the list (index 0 is not processed)
@@ -67,213 +69,216 @@ public final class EdgeMoveOptimizer {
         }
     }
 
-    private final List<List<LIRInstruction>> edgeInstructionSeqences;
-    private LIR ir;
+    private static final class Optimizer {
+        private final List<List<LIRInstruction>> edgeInstructionSeqences;
+        private LIR ir;
 
-    public EdgeMoveOptimizer(LIR ir) {
-        this.ir = ir;
-        edgeInstructionSeqences = new ArrayList<>(4);
-    }
-
-    /**
-     * Determines if two operations are both {@linkplain MoveOp moves} that have the same
-     * {@linkplain MoveOp#getInput() source} and {@linkplain MoveOp#getResult() destination}
-     * operands.
-     *
-     * @param op1 the first instruction to compare
-     * @param op2 the second instruction to compare
-     * @return {@code true} if {@code op1} and {@code op2} are the same by the above algorithm
-     */
-    private static boolean same(LIRInstruction op1, LIRInstruction op2) {
-        assert op1 != null;
-        assert op2 != null;
-
-        if (op1 instanceof MoveOp && op2 instanceof MoveOp) {
-            MoveOp move1 = (MoveOp) op1;
-            MoveOp move2 = (MoveOp) op2;
-            if (move1.getInput().equals(move2.getInput()) && move1.getResult().equals(move2.getResult())) {
-                // these moves are exactly equal and can be optimized
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Moves the longest {@linkplain #same common} subsequence at the end all predecessors of
-     * {@code block} to the start of {@code block}.
-     */
-    private void optimizeMovesAtBlockEnd(AbstractBlock<?> block) {
-        for (AbstractBlock<?> pred : block.getPredecessors()) {
-            if (pred == block) {
-                // currently we can't handle this correctly.
-                return;
-            }
+        public Optimizer(LIR ir) {
+            this.ir = ir;
+            edgeInstructionSeqences = new ArrayList<>(4);
         }
 
-        // clear all internal data structures
-        edgeInstructionSeqences.clear();
+        /**
+         * Determines if two operations are both {@linkplain MoveOp moves} that have the same
+         * {@linkplain MoveOp#getInput() source} and {@linkplain MoveOp#getResult() destination}
+         * operands.
+         *
+         * @param op1 the first instruction to compare
+         * @param op2 the second instruction to compare
+         * @return {@code true} if {@code op1} and {@code op2} are the same by the above algorithm
+         */
+        private static boolean same(LIRInstruction op1, LIRInstruction op2) {
+            assert op1 != null;
+            assert op2 != null;
 
-        int numPreds = block.getPredecessorCount();
-        assert numPreds > 1 : "do not call otherwise";
-
-        // setup a list with the LIR instructions of all predecessors
-        for (AbstractBlock<?> pred : block.getPredecessors()) {
-            assert pred != null;
-            assert ir.getLIRforBlock(pred) != null;
-            List<LIRInstruction> predInstructions = ir.getLIRforBlock(pred);
-
-            if (pred.getSuccessorCount() != 1) {
-                // this can happen with switch-statements where multiple edges are between
-                // the same blocks.
-                return;
+            if (op1 instanceof MoveOp && op2 instanceof MoveOp) {
+                MoveOp move1 = (MoveOp) op1;
+                MoveOp move2 = (MoveOp) op2;
+                if (move1.getInput().equals(move2.getInput()) && move1.getResult().equals(move2.getResult())) {
+                    // these moves are exactly equal and can be optimized
+                    return true;
+                }
             }
-
-            assert pred.getSuccessors().iterator().next() == block : "invalid control flow";
-            assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
-
-            if (predInstructions.get(predInstructions.size() - 1).hasState()) {
-                // can not optimize instructions that have debug info
-                return;
-            }
-
-            // ignore the unconditional branch at the end of the block
-            List<LIRInstruction> seq = predInstructions.subList(0, predInstructions.size() - 1);
-            edgeInstructionSeqences.add(seq);
+            return false;
         }
 
-        // process lir-instructions while all predecessors end with the same instruction
-        while (true) {
-            List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
-            if (seq.isEmpty()) {
-                return;
-            }
-
-            LIRInstruction op = last(seq);
-            for (int i = 1; i < numPreds; ++i) {
-                List<LIRInstruction> otherSeq = edgeInstructionSeqences.get(i);
-                if (otherSeq.isEmpty() || !same(op, last(otherSeq))) {
+        /**
+         * Moves the longest {@linkplain #same common} subsequence at the end all predecessors of
+         * {@code block} to the start of {@code block}.
+         */
+        private void optimizeMovesAtBlockEnd(AbstractBlock<?> block) {
+            for (AbstractBlock<?> pred : block.getPredecessors()) {
+                if (pred == block) {
+                    // currently we can't handle this correctly.
                     return;
                 }
             }
 
-            // insert the instruction at the beginning of the current block
-            ir.getLIRforBlock(block).add(1, op);
+            // clear all internal data structures
+            edgeInstructionSeqences.clear();
 
-            // delete the instruction at the end of all predecessors
-            for (int i = 0; i < numPreds; i++) {
-                seq = edgeInstructionSeqences.get(i);
-                removeLast(seq);
-            }
-        }
-    }
+            int numPreds = block.getPredecessorCount();
+            assert numPreds > 1 : "do not call otherwise";
 
-    /**
-     * Moves the longest {@linkplain #same common} subsequence at the start of all successors of
-     * {@code block} to the end of {@code block} just prior to the branch instruction ending
-     * {@code block}.
-     */
-    private void optimizeMovesAtBlockBegin(AbstractBlock<?> block) {
+            // setup a list with the LIR instructions of all predecessors
+            for (AbstractBlock<?> pred : block.getPredecessors()) {
+                assert pred != null;
+                assert ir.getLIRforBlock(pred) != null;
+                List<LIRInstruction> predInstructions = ir.getLIRforBlock(pred);
 
-        edgeInstructionSeqences.clear();
-        int numSux = block.getSuccessorCount();
-
-        List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-
-        assert numSux == 2 : "method should not be called otherwise";
-
-        LIRInstruction lastInstruction = instructions.get(instructions.size() - 1);
-        if (lastInstruction.hasState()) {
-            // cannot optimize instructions when debug info is needed
-            return;
-        }
-
-        LIRInstruction branch = lastInstruction;
-        if (!(branch instanceof StandardOp.BranchOp) || branch.hasOperands()) {
-            // Only blocks that end with a conditional branch are optimized.
-            // In addition, a conditional branch with operands (including state) cannot
-            // be optimized. Moving a successor instruction before such a branch may
-            // interfere with the operands of the branch. For example, a successive move
-            // instruction may redefine an input operand of the branch.
-            return;
-        }
-
-        // Now it is guaranteed that the block ends with a conditional branch.
-        // The instructions are inserted at the end of the block before the branch.
-        int insertIdx = instructions.size() - 1;
-
-        // setup a list with the lir-instructions of all successors
-        for (AbstractBlock<?> sux : block.getSuccessors()) {
-            List<LIRInstruction> suxInstructions = ir.getLIRforBlock(sux);
-
-            assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
-
-            if (sux.getPredecessorCount() != 1) {
-                // this can happen with switch-statements where multiple edges are between
-                // the same blocks.
-                return;
-            }
-            assert sux.getPredecessors().iterator().next() == block : "invalid control flow";
-
-            // ignore the label at the beginning of the block
-            List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());
-            edgeInstructionSeqences.add(seq);
-        }
-
-        // process LIR instructions while all successors begin with the same instruction
-        while (true) {
-            List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
-            if (seq.isEmpty()) {
-                return;
-            }
-
-            LIRInstruction op = first(seq);
-            for (int i = 1; i < numSux; i++) {
-                List<LIRInstruction> otherSeq = edgeInstructionSeqences.get(i);
-                if (otherSeq.isEmpty() || !same(op, first(otherSeq))) {
-                    // these instructions are different and cannot be optimized .
-                    // no further optimization possible
+                if (pred.getSuccessorCount() != 1) {
+                    // this can happen with switch-statements where multiple edges are between
+                    // the same blocks.
                     return;
                 }
+
+                assert pred.getSuccessors().iterator().next() == block : "invalid control flow";
+                assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
+
+                if (predInstructions.get(predInstructions.size() - 1).hasState()) {
+                    // can not optimize instructions that have debug info
+                    return;
+                }
+
+                // ignore the unconditional branch at the end of the block
+                List<LIRInstruction> seq = predInstructions.subList(0, predInstructions.size() - 1);
+                edgeInstructionSeqences.add(seq);
             }
 
-            // insert instruction at end of current block
-            ir.getLIRforBlock(block).add(insertIdx, op);
-            insertIdx++;
+            // process lir-instructions while all predecessors end with the same instruction
+            while (true) {
+                List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
+                if (seq.isEmpty()) {
+                    return;
+                }
 
-            // delete the instructions at the beginning of all successors
-            for (int i = 0; i < numSux; i++) {
-                seq = edgeInstructionSeqences.get(i);
-                removeFirst(seq);
+                LIRInstruction op = last(seq);
+                for (int i = 1; i < numPreds; ++i) {
+                    List<LIRInstruction> otherSeq = edgeInstructionSeqences.get(i);
+                    if (otherSeq.isEmpty() || !same(op, last(otherSeq))) {
+                        return;
+                    }
+                }
+
+                // insert the instruction at the beginning of the current block
+                ir.getLIRforBlock(block).add(1, op);
+
+                // delete the instruction at the end of all predecessors
+                for (int i = 0; i < numPreds; i++) {
+                    seq = edgeInstructionSeqences.get(i);
+                    removeLast(seq);
+                }
             }
         }
-    }
 
-    /**
-     * Gets the first element from a LIR instruction sequence.
-     */
-    private static LIRInstruction first(List<LIRInstruction> seq) {
-        return seq.get(0);
-    }
+        /**
+         * Moves the longest {@linkplain #same common} subsequence at the start of all successors of
+         * {@code block} to the end of {@code block} just prior to the branch instruction ending
+         * {@code block}.
+         */
+        private void optimizeMovesAtBlockBegin(AbstractBlock<?> block) {
 
-    /**
-     * Gets the last element from a LIR instruction sequence.
-     */
-    private static LIRInstruction last(List<LIRInstruction> seq) {
-        return seq.get(seq.size() - 1);
-    }
+            edgeInstructionSeqences.clear();
+            int numSux = block.getSuccessorCount();
 
-    /**
-     * Removes the first element from a LIR instruction sequence.
-     */
-    private static void removeFirst(List<LIRInstruction> seq) {
-        seq.remove(0);
-    }
+            List<LIRInstruction> instructions = ir.getLIRforBlock(block);
 
-    /**
-     * Removes the last element from a LIR instruction sequence.
-     */
-    private static void removeLast(List<LIRInstruction> seq) {
-        seq.remove(seq.size() - 1);
+            assert numSux == 2 : "method should not be called otherwise";
+
+            LIRInstruction lastInstruction = instructions.get(instructions.size() - 1);
+            if (lastInstruction.hasState()) {
+                // cannot optimize instructions when debug info is needed
+                return;
+            }
+
+            LIRInstruction branch = lastInstruction;
+            if (!(branch instanceof StandardOp.BranchOp) || branch.hasOperands()) {
+                // Only blocks that end with a conditional branch are optimized.
+                // In addition, a conditional branch with operands (including state) cannot
+                // be optimized. Moving a successor instruction before such a branch may
+                // interfere with the operands of the branch. For example, a successive move
+                // instruction may redefine an input operand of the branch.
+                return;
+            }
+
+            // Now it is guaranteed that the block ends with a conditional branch.
+            // The instructions are inserted at the end of the block before the branch.
+            int insertIdx = instructions.size() - 1;
+
+            // setup a list with the lir-instructions of all successors
+            for (AbstractBlock<?> sux : block.getSuccessors()) {
+                List<LIRInstruction> suxInstructions = ir.getLIRforBlock(sux);
+
+                assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
+
+                if (sux.getPredecessorCount() != 1) {
+                    // this can happen with switch-statements where multiple edges are between
+                    // the same blocks.
+                    return;
+                }
+                assert sux.getPredecessors().iterator().next() == block : "invalid control flow";
+
+                // ignore the label at the beginning of the block
+                List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());
+                edgeInstructionSeqences.add(seq);
+            }
+
+            // process LIR instructions while all successors begin with the same instruction
+            while (true) {
+                List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
+                if (seq.isEmpty()) {
+                    return;
+                }
+
+                LIRInstruction op = first(seq);
+                for (int i = 1; i < numSux; i++) {
+                    List<LIRInstruction> otherSeq = edgeInstructionSeqences.get(i);
+                    if (otherSeq.isEmpty() || !same(op, first(otherSeq))) {
+                        // these instructions are different and cannot be optimized .
+                        // no further optimization possible
+                        return;
+                    }
+                }
+
+                // insert instruction at end of current block
+                ir.getLIRforBlock(block).add(insertIdx, op);
+                insertIdx++;
+
+                // delete the instructions at the beginning of all successors
+                for (int i = 0; i < numSux; i++) {
+                    seq = edgeInstructionSeqences.get(i);
+                    removeFirst(seq);
+                }
+            }
+        }
+
+        /**
+         * Gets the first element from a LIR instruction sequence.
+         */
+        private static LIRInstruction first(List<LIRInstruction> seq) {
+            return seq.get(0);
+        }
+
+        /**
+         * Gets the last element from a LIR instruction sequence.
+         */
+        private static LIRInstruction last(List<LIRInstruction> seq) {
+            return seq.get(seq.size() - 1);
+        }
+
+        /**
+         * Removes the first element from a LIR instruction sequence.
+         */
+        private static void removeFirst(List<LIRInstruction> seq) {
+            seq.remove(0);
+        }
+
+        /**
+         * Removes the last element from a LIR instruction sequence.
+         */
+        private static void removeLast(List<LIRInstruction> seq) {
+            seq.remove(seq.size() - 1);
+        }
+
     }
 }

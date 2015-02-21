@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.graal.lir.framemap.*;
  */
 @Opcode("SAVE_REGISTER")
 public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveRegistersOp {
+    public static final LIRInstructionClass<AMD64SaveRegistersOp> TYPE = LIRInstructionClass.create(AMD64SaveRegistersOp.class);
 
     /**
      * The registers (potentially) saved by this operation.
@@ -63,6 +64,11 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
      * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
      */
     public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+        this(TYPE, savedRegisters, savedRegisterLocations, supportsRemove);
+    }
+
+    public AMD64SaveRegistersOp(LIRInstructionClass<? extends AMD64SaveRegistersOp> c, Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
+        super(c);
         assert Arrays.asList(savedRegisterLocations).stream().allMatch(ValueUtil::isVirtualStackSlot);
         this.savedRegisters = savedRegisters;
         this.slots = savedRegisterLocations;

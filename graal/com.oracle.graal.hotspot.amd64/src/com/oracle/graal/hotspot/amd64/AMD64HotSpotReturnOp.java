@@ -38,12 +38,14 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("RETURN")
 final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
 
+    public static final LIRInstructionClass<AMD64HotSpotReturnOp> TYPE = LIRInstructionClass.create(AMD64HotSpotReturnOp.class);
     @Use({REG, ILLEGAL}) protected Value value;
     private final boolean isStub;
     private final Register scratchForSafepointOnReturn;
     private final HotSpotVMConfig config;
 
     AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn, HotSpotVMConfig config) {
+        super(TYPE);
         this.value = value;
         this.isStub = isStub;
         this.scratchForSafepointOnReturn = scratchForSafepointOnReturn;

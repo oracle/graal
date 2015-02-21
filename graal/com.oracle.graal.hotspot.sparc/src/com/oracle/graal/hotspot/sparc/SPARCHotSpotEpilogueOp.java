@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
@@ -30,6 +31,11 @@ import com.oracle.graal.lir.sparc.*;
  * Superclass for operations that leave a method's frame.
  */
 abstract class SPARCHotSpotEpilogueOp extends SPARCLIRInstruction implements BlockEndOp {
+    public static final LIRInstructionClass<SPARCHotSpotEpilogueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotEpilogueOp.class);
+
+    protected SPARCHotSpotEpilogueOp(LIRInstructionClass<? extends LIRInstruction> c) {
+        super(c);
+    }
 
     protected void leaveFrame(CompilationResultBuilder crb) {
         crb.frameContext.leave(crb);

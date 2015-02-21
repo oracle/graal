@@ -28,9 +28,9 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -199,7 +199,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     public void testPhi() {
         processMethod("testPhiSnippet");
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.class).snapshot();
+        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
         assertDeepEquals(2, returnNodes.size());
         assertTrue(returnNodes.get(0).predecessor() instanceof StoreFieldNode);
         assertTrue(returnNodes.get(1).predecessor() instanceof StoreFieldNode);
@@ -239,14 +239,13 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
 
     final ReturnNode getReturn(String snippet) {
         processMethod(snippet);
-        assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
-        return graph.getNodes(ReturnNode.class).first();
+        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        return graph.getNodes(ReturnNode.TYPE).first();
     }
 
     protected void processMethod(final String snippet) {
-        graph = parseEager(snippet);
-        Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        graph = parseEager(snippet, AllowAssumptions.NO);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new PartialEscapePhase(false, true, new CanonicalizerPhase(true), null).apply(graph, context);
     }

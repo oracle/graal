@@ -28,6 +28,7 @@ import static java.util.Collections.*;
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 
@@ -528,7 +529,14 @@ public class CompilationResult implements Serializable {
 
     private ArrayList<CodeAnnotation> annotations;
 
-    private Assumptions assumptions;
+    private Assumption[] assumptions;
+
+    /**
+     * The list of the methods whose bytecodes were used as input to the compilation. If
+     * {@code null}, then the compilation did not record method dependencies. Otherwise, the first
+     * element of this array is the root method of the compilation.
+     */
+    private ResolvedJavaMethod[] methods;
 
     public CompilationResult() {
         this(null);
@@ -546,6 +554,9 @@ public class CompilationResult implements Serializable {
 
     @Override
     public String toString() {
+        if (methods != null) {
+            return getClass().getName() + "[" + methods[0].format("%H.%n(%p)%r") + "]";
+        }
         return identityHashCodeString(this);
     }
 
@@ -564,12 +575,12 @@ public class CompilationResult implements Serializable {
                 this.targetCodeSize == that.targetCodeSize &&
                 Objects.equals(this.name, that.name) &&
                 Objects.equals(this.annotations, that.annotations) &&
-                Objects.equals(this.assumptions, that.assumptions) &&
                 Objects.equals(this.dataSection, that.dataSection) &&
                 Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
                 Objects.equals(this.dataPatches, that.dataPatches) &&
                 Objects.equals(this.infopoints, that.infopoints) &&
                 Objects.equals(this.marks,  that.marks) &&
+                Arrays.equals(this.assumptions, that.assumptions) &&
                 Arrays.equals(targetCode, that.targetCode)) {
                 return true;
             }
@@ -606,12 +617,62 @@ public class CompilationResult implements Serializable {
         this.entryBCI = entryBCI;
     }
 
-    public void setAssumptions(Assumptions assumptions) {
+    /**
+     * Sets the assumptions made during compilation.
+     */
+    public void setAssumptions(Assumption[] assumptions) {
         this.assumptions = assumptions;
     }
 
-    public Assumptions getAssumptions() {
-        return assumptions;
+    /**
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions made during
+     * compilation.
+     */
+    public Collection<Assumption> getAssumptions() {
+        return assumptions == null ? Collections.emptyList() : Arrays.asList(assumptions);
+    }
+
+    /**
+     * Sets the methods whose bytecodes were used as input to the compilation.
+     *
+     * @param rootMethod the root method of the compilation
+     * @param inlinedMethods the methods inlined during compilation
+     */
+    public void setMethods(ResolvedJavaMethod rootMethod, Collection<ResolvedJavaMethod> inlinedMethods) {
+        assert rootMethod != null;
+        assert inlinedMethods != null;
+        if (inlinedMethods.contains(rootMethod)) {
+            methods = inlinedMethods.toArray(new ResolvedJavaMethod[inlinedMethods.size()]);
+            for (int i = 0; i < methods.length; i++) {
+                if (methods[i].equals(rootMethod)) {
+                    if (i != 0) {
+                        ResolvedJavaMethod tmp = methods[0];
+                        methods[0] = methods[i];
+                        methods[i] = tmp;
+                    }
+                    break;
+                }
+            }
+        } else {
+            methods = new ResolvedJavaMethod[1 + inlinedMethods.size()];
+            methods[0] = rootMethod;
+            int i = 1;
+            for (ResolvedJavaMethod m : inlinedMethods) {
+                methods[i++] = m;
+            }
+        }
+    }
+
+    /**
+     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the methods whose bytecodes
+     * were used as input to the compilation.
+     *
+     * @return {@code null} if the compilation did not record method dependencies otherwise the
+     *         methods whose bytecodes were used as input to the compilation with the first element
+     *         being the root method of the compilation
+     */
+    public Collection<ResolvedJavaMethod> getMethods() {
+        return methods == null ? null : Arrays.asList(methods);
     }
 
     public DataSection getDataSection() {

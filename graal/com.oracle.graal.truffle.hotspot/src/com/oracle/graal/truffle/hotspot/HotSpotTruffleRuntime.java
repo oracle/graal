@@ -45,7 +45,9 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -96,12 +98,23 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 }
             }
         });
-        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        int selectedProcessors = TruffleCompilerOptions.TruffleCompilerThreads.getValue();
+        if (selectedProcessors == 0) {
+            // No manual selection made, check how many processors are available.
+            int availableProcessors = Runtime.getRuntime().availableProcessors();
+            if (availableProcessors >= 4) {
+                selectedProcessors = 2;
+            } else if (availableProcessors >= 12) {
+                selectedProcessors = 4;
+            }
+        }
+        selectedProcessors = Math.max(1, selectedProcessors);
+        compileQueue = new ThreadPoolExecutor(selectedProcessors, selectedProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
     }
 
     private static void installOptimizedCallTargetCallDirect() {
-        if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+        if (TruffleCompilerOptions.TruffleFunctionInlining.getValue() && !TruffleCompilerOptions.FastPE.getValue()) {
             ((HotSpotResolvedJavaMethod) getGraalProviders().getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod())).setNotInlineable();
         }
     }
@@ -175,16 +188,16 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
         Suites suites = suitesProvider.createSuites();
+        LIRSuites lirSuites = suitesProvider.createLIRSuites();
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), new Assumptions(false), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
-                        OptimisticOptimizations.ALL).apply(graph);
+        StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName(), javaMethod);
         return compileGraph(graph, cc, javaMethod, providers, backend, providers.getCodeCache().getTarget(), null, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), null,
-                        suites, new CompilationResult(), factory);
+                        suites, lirSuites, new CompilationResult(), factory);
     }
 
     private static Providers getGraalProviders() {

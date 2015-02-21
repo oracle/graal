@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,14 +37,18 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo
-public class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
+public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
+    public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
     protected double loopFrequency;
     protected int nextEndIndex;
     protected int unswitches;
+    protected int inversionCount;
+
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
     public LoopBeginNode() {
+        super(TYPE);
         loopFrequency = 1;
     }
 
@@ -94,16 +98,12 @@ public class LoopBeginNode extends AbstractMergeNode implements IterableNodeType
      *
      * @return the set of {@code LoopEndNode} that correspond to back-edges for this loop
      */
-    public List<LoopEndNode> orderedLoopEnds() {
-        List<LoopEndNode> snapshot = loopEnds().snapshot();
-        Collections.sort(snapshot, new Comparator<LoopEndNode>() {
-
-            @Override
-            public int compare(LoopEndNode o1, LoopEndNode o2) {
-                return o1.endIndex() - o2.endIndex();
-            }
-        });
-        return snapshot;
+    public LoopEndNode[] orderedLoopEnds() {
+        LoopEndNode[] result = new LoopEndNode[this.getLoopEndCount()];
+        for (LoopEndNode end : loopEnds()) {
+            result[end.endIndex()] = end;
+        }
+        return result;
     }
 
     public AbstractEndNode forwardEnd() {
@@ -149,7 +149,7 @@ public class LoopBeginNode extends AbstractMergeNode implements IterableNodeType
                 return loopEnd.endIndex() + forwardEndCount();
             }
         } else {
-            return super.forwardEndIndex(pred);
+            return super.forwardEndIndex((EndNode) pred);
         }
         throw ValueNodeUtil.shouldNotReachHere("unknown pred : " + pred);
     }
@@ -179,12 +179,24 @@ public class LoopBeginNode extends AbstractMergeNode implements IterableNodeType
         return nextEndIndex++;
     }
 
+    public int getLoopEndCount() {
+        return nextEndIndex;
+    }
+
     public int unswitches() {
         return unswitches;
     }
 
-    public void incUnswitches() {
+    public void incrementUnswitches() {
         unswitches++;
+    }
+
+    public int getInversionCount() {
+        return inversionCount;
+    }
+
+    public void setInversionCount(int count) {
+        inversionCount = count;
     }
 
     @Override

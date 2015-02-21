@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
@@ -127,6 +128,24 @@ public final class Suites {
             throw new GraalInternalError("unknown compiler configuration: " + name);
         }
         return new Suites(config);
+    }
+
+    public static LIRSuites createDefaultLIRSuites() {
+        String selected = CompilerConfiguration.getValue();
+        if (selected.equals("")) {
+            return new LIRSuites(defaultConfiguration.createPreAllocationOptimizationStage(), defaultConfiguration.createAllocationStage(),
+                            defaultConfiguration.createPostAllocationOptimizationStage());
+        } else {
+            return createLIRSuites(selected);
+        }
+    }
+
+    public static LIRSuites createLIRSuites(String name) {
+        CompilerConfiguration config = configurations.get(name);
+        if (config == null) {
+            throw new GraalInternalError("unknown compiler configuration: " + name);
+        }
+        return new LIRSuites(config.createPreAllocationOptimizationStage(), config.createAllocationStage(), config.createPostAllocationOptimizationStage());
     }
 
 }

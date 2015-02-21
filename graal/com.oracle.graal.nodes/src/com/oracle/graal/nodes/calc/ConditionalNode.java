@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -40,6 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
+    public static final NodeClass<ConditionalNode> TYPE = NodeClass.create(ConditionalNode.class);
     @Input(InputType.Condition) LogicNode condition;
     @Input ValueNode trueValue;
     @Input ValueNode falseValue;
@@ -53,11 +55,23 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        super(trueValue.stamp().meet(falseValue.stamp()));
+        super(TYPE, trueValue.stamp().meet(falseValue.stamp()));
         assert trueValue.stamp().isCompatible(falseValue.stamp());
         this.condition = condition;
         this.trueValue = trueValue;
         this.falseValue = falseValue;
+    }
+
+    public static ValueNode create(LogicNode condition) {
+        return create(condition, ConstantNode.forInt(1, condition.graph()), ConstantNode.forInt(0, condition.graph()));
+    }
+
+    public static ValueNode create(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
+        ValueNode synonym = findSynonym(condition, trueValue, falseValue);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new ConditionalNode(condition, trueValue, falseValue);
     }
 
     @Override
@@ -75,9 +89,9 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (condition instanceof LogicNegationNode) {
-            LogicNegationNode negated = (LogicNegationNode) condition;
-            return new ConditionalNode(negated.getValue(), falseValue(), trueValue());
+        ValueNode synonym = findSynonym(condition, trueValue(), falseValue());
+        if (synonym != null) {
+            return synonym;
         }
 
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
@@ -90,14 +104,6 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                         return IntegerConvertNode.convertUnsigned(equals.getX(), stamp());
                     }
                 }
-            }
-        }
-        if (condition instanceof LogicConstantNode) {
-            LogicConstantNode c = (LogicConstantNode) condition;
-            if (c.getValue()) {
-                return trueValue();
-            } else {
-                return falseValue();
             }
         }
         if (condition instanceof CompareNode && ((CompareNode) condition).condition() == Condition.EQ) {
@@ -114,13 +120,29 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         return this;
     }
 
+    private static ValueNode findSynonym(ValueNode condition, ValueNode trueValue, ValueNode falseValue) {
+        if (condition instanceof LogicNegationNode) {
+            LogicNegationNode negated = (LogicNegationNode) condition;
+            return ConditionalNode.create(negated.getValue(), falseValue, trueValue);
+        }
+        if (condition instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition;
+            if (c.getValue()) {
+                return trueValue;
+            } else {
+                return falseValue;
+            }
+        }
+        return null;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.emitConditional(this);
     }
 
     public ConditionalNode(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
-        this(createCompareNode(graph, condition, x, y));
+        this(createCompareNode(graph, condition, x, y, null));
     }
 
     public ConditionalNode(ValueNode type, ValueNode object) {
@@ -136,5 +158,25 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     @NodeIntrinsic
     public static boolean materializeIsInstance(Class<?> mirror, Object object) {
         return mirror.isInstance(object);
+    }
+
+    /**
+     * @param thisClass
+     * @param otherClass
+     * @param dummy a marker to make this constructor unique for the
+     *            {@link #materializeIsAssignableFrom(Class, Class, int)} NodeIntrinsic
+     */
+    public ConditionalNode(ValueNode thisClass, ValueNode otherClass, int dummy) {
+        this(thisClass.graph().unique(new ClassIsAssignableFromNode(thisClass, otherClass)));
+    }
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic
+    private static boolean materializeIsAssignableFrom(Class<?> thisClass, Class<?> otherClass, @ConstantNodeParameter int dummy) {
+        return thisClass.isAssignableFrom(otherClass);
+    }
+
+    public static boolean materializeIsAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
+        return materializeIsAssignableFrom(thisClass, otherClass, 0);
     }
 }

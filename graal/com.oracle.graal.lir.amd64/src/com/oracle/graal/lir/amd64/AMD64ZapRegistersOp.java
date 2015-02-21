@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import com.oracle.graal.lir.framemap.*;
  */
 @Opcode("ZAP_REGISTER")
 public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements SaveRegistersOp {
+    public static final LIRInstructionClass<AMD64ZapRegistersOp> TYPE = LIRInstructionClass.create(AMD64ZapRegistersOp.class);
 
     /**
      * The registers that are zapped.
@@ -52,6 +53,7 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
     @Use({CONST}) protected JavaConstant[] zapValues;
 
     public AMD64ZapRegistersOp(Register[] zappedRegisters, JavaConstant[] zapValues) {
+        super(TYPE);
         this.zappedRegisters = zappedRegisters;
         this.zapValues = zapValues;
     }

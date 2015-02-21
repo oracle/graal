@@ -504,7 +504,7 @@ public class MonitorSnippets implements Snippets {
                     StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod());
                     InliningUtil.inline(invoke, inlineeGraph, false, null);
 
-                    List<ReturnNode> rets = graph.getNodes(ReturnNode.class).snapshot();
+                    List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
                         String msg = "unbalanced monitors in " + graph.method().format("%H.%n(%p)") + ", count = %d";

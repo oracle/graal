@@ -35,7 +35,9 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -77,9 +79,11 @@ public class InvokeGraal {
 
             /*
              * The graph that is compiled. We leave it empty (no nodes added yet). This means that
-             * it will be filled according to the graphBuilderSuite defined below.
+             * it will be filled according to the graphBuilderSuite defined below. We also specify
+             * that we want the compilation to make optimistic assumptions about runtime state such
+             * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph(method);
+            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.YES);
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If
@@ -92,6 +96,11 @@ public class InvokeGraal {
              * point for Graal. Add or remove phases to customize your compilation.
              */
             Suites suites = backend.getSuites().createSuites();
+
+            /*
+             * The low-level phases that are applied to the low-level representation.
+             */
+            LIRSuites lirSuites = backend.getSuites().createLIRSuites();
 
             /*
              * The calling convention for the machine code. You should have a very good reason
@@ -117,7 +126,7 @@ public class InvokeGraal {
             SpeculationLog speculationLog = null;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites,
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
                             compilationResult, factory);
 
             /*

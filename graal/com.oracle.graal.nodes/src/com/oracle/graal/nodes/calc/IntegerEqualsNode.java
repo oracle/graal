@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -33,9 +34,10 @@ import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
 public final class IntegerEqualsNode extends CompareNode {
+    public static final NodeClass<IntegerEqualsNode> TYPE = NodeClass.create(IntegerEqualsNode.class);
 
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
-        super(Condition.EQ, false, x, y);
+        super(TYPE, Condition.EQ, false, x, y);
         assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
         assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
     }
@@ -45,6 +47,24 @@ public final class IntegerEqualsNode extends CompareNode {
         if (result != null) {
             return result;
         } else {
+            if (x instanceof ConditionalNode) {
+                ConditionalNode conditionalNode = (ConditionalNode) x;
+                if (conditionalNode.trueValue() == y) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == y) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
+            } else if (y instanceof ConditionalNode) {
+                ConditionalNode conditionalNode = (ConditionalNode) y;
+                if (conditionalNode.trueValue() == x) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == x) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
+            }
+
             return new IntegerEqualsNode(x, y);
         }
     }

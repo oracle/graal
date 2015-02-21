@@ -108,7 +108,7 @@ public abstract class ScopedPostOrderNodeIterator {
     protected Deque<FixedNode> getScopes(StructuredGraph graph) {
         Deque<FixedNode> result = new ArrayDeque<>();
         result.push(graph.start());
-        for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.class)) {
+        for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
             result.push(loopBegin);
         }
         return result;

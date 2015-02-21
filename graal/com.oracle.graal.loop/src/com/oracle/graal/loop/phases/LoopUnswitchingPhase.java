@@ -34,6 +34,7 @@ public class LoopUnswitchingPhase extends Phase {
 
     private static final DebugMetric UNSWITCHED = Debug.metric("Unswitched");
     private static final DebugMetric UNSWITCH_CANDIDATES = Debug.metric("UnswitchCandidates");
+    private static final DebugMetric UNSWITCH_EARLY_REJECTS = Debug.metric("UnswitchEarlyRejects");
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -42,7 +43,7 @@ public class LoopUnswitchingPhase extends Phase {
             do {
                 unswitched = false;
                 final LoopsData dataUnswitch = new LoopsData(graph);
-                for (LoopEx loop : dataUnswitch.loops()) {
+                for (LoopEx loop : dataUnswitch.outerFirst()) {
                     if (LoopPolicies.shouldTryUnswitch(loop)) {
                         List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
                         if (controlSplits != null) {
@@ -57,6 +58,8 @@ public class LoopUnswitchingPhase extends Phase {
                                 break;
                             }
                         }
+                    } else {
+                        UNSWITCH_EARLY_REJECTS.increment();
                     }
                 }
             } while (unswitched);

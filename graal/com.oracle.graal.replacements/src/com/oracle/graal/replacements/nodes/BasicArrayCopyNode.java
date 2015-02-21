@@ -24,6 +24,7 @@ package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -31,10 +32,12 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo
-public class BasicArrayCopyNode extends MacroStateSplitNode implements Virtualizable {
+public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements Virtualizable {
 
-    public BasicArrayCopyNode(Invoke invoke) {
-        super(invoke);
+    public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
+
+    public BasicArrayCopyNode(NodeClass<? extends BasicArrayCopyNode> c, Invoke invoke) {
+        super(c, invoke);
     }
 
     protected ValueNode getSource() {

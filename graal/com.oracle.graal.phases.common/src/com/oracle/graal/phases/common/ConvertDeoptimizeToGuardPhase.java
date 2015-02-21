@@ -49,7 +49,7 @@ import com.oracle.graal.phases.*;
  *
  */
 public class ConvertDeoptimizeToGuardPhase extends Phase {
-    private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false);
+    private SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, false);
 
     private static AbstractBeginNode findBeginNode(FixedNode startNode) {
         return GraphUtil.predecessorIterable(startNode).filter(AbstractBeginNode.class).first();
@@ -58,22 +58,22 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
     @Override
     protected void run(final StructuredGraph graph) {
         assert graph.hasValueProxies() : "ConvertDeoptimizeToGuardPhase always creates proxies";
-        if (graph.getNodes(DeoptimizeNode.class).isEmpty()) {
+        if (graph.getNodes(DeoptimizeNode.TYPE).isEmpty()) {
             return;
         }
-        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
+        for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
             visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), graph);
         }
 
-        for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.class)) {
+        for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.TYPE)) {
 
             AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
             if (pred instanceof AbstractMergeNode) {
                 AbstractMergeNode merge = (AbstractMergeNode) pred;
                 if (fixedGuard.condition() instanceof CompareNode) {
                     CompareNode compare = (CompareNode) fixedGuard.condition();
-                    List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+                    List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
 
                     Constant[] xs = IfNode.constantValues(compare.getX(), merge, true);
                     if (xs == null) {

@@ -22,28 +22,46 @@
  */
 package com.oracle.graal.java;
 
-import java.util.function.*;
-
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class DefaultSuitesProvider implements SuitesProvider, Supplier<Suites> {
+public class DefaultSuitesProvider implements SuitesProvider {
 
     private final DerivedOptionValue<Suites> defaultSuites;
     private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
+    private final DerivedOptionValue<LIRSuites> defaultLIRSuites;
+
+    private class SuitesSupplier implements OptionSupplier<Suites> {
+
+        private static final long serialVersionUID = 2677805381215454728L;
+
+        public Suites get() {
+            return createSuites();
+        }
+
+    }
+
+    private class LIRSuitesSupplier implements OptionSupplier<LIRSuites> {
+
+        private static final long serialVersionUID = 312070237227476252L;
+
+        public LIRSuites get() {
+            return createLIRSuites();
+        }
+
+    }
 
     public DefaultSuitesProvider() {
         this.defaultGraphBuilderSuite = createGraphBuilderSuite();
-        this.defaultSuites = new DerivedOptionValue<>(this::createSuites);
+        this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
+        this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
     }
 
     public Suites getDefaultSuites() {
         return defaultSuites.getValue();
-    }
-
-    public Suites get() {
-        return createSuites();
     }
 
     public Suites createSuites() {
@@ -58,6 +76,14 @@ public class DefaultSuitesProvider implements SuitesProvider, Supplier<Suites> {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         suite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault()));
         return suite;
+    }
+
+    public LIRSuites getDefaultLIRSuites() {
+        return defaultLIRSuites.getValue();
+    }
+
+    public LIRSuites createLIRSuites() {
+        return Suites.createDefaultLIRSuites();
     }
 
 }

@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.type.*;
@@ -43,6 +44,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
 
+    public static final NodeClass<CheckCastNode> TYPE = NodeClass.create(CheckCastNode.class);
     @Input protected ValueNode object;
     protected final ResolvedJavaType type;
     protected final JavaTypeProfile profile;
@@ -54,12 +56,28 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     protected final boolean forStoreCheck;
 
     public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        super(StampFactory.declaredTrusted(type));
+        super(TYPE, StampFactory.declaredTrusted(type));
         assert type != null;
         this.type = type;
         this.object = object;
         this.profile = profile;
         this.forStoreCheck = forStoreCheck;
+    }
+
+    public static ValueNode create(ResolvedJavaType inputType, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck, Assumptions assumptions) {
+        ResolvedJavaType type = inputType;
+        ValueNode synonym = findSynonym(type, object);
+        if (synonym != null) {
+            return synonym;
+        }
+        if (assumptions != null) {
+            ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
+            if (uniqueConcreteType != null && !uniqueConcreteType.equals(type)) {
+                assumptions.recordConcreteSubtype(type, uniqueConcreteType);
+                type = uniqueConcreteType;
+            }
+        }
+        return new CheckCastNode(type, object, profile, forStoreCheck);
     }
 
     public boolean isForStoreCheck() {
@@ -144,27 +162,36 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ResolvedJavaType objectType = StampTool.typeOrNull(object());
-        if (objectType != null && type.isAssignableFrom(objectType)) {
-            // we don't have to check for null types here because they will also pass the
-            // checkcast.
-            return object();
+        ValueNode synonym = findSynonym(type, object());
+        if (synonym != null) {
+            return synonym;
         }
 
-        if (StampTool.isPointerAlwaysNull(object())) {
-            return object();
-        }
-
-        if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
+        Assumptions assumptions = graph().getAssumptions();
+        if (assumptions != null) {
             ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
             if (exactType != null && !exactType.equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.
-                tool.assumptions().recordConcreteSubtype(type, exactType);
+                assumptions.recordConcreteSubtype(type, exactType);
                 return new CheckCastNode(exactType, object, profile, forStoreCheck);
             }
         }
 
         return this;
+    }
+
+    private static ValueNode findSynonym(ResolvedJavaType type, ValueNode object) {
+        ResolvedJavaType objectType = StampTool.typeOrNull(object);
+        if (objectType != null && type.isAssignableFrom(objectType)) {
+            // we don't have to check for null types here because they will also pass the
+            // checkcast.
+            return object;
+        }
+
+        if (StampTool.isPointerAlwaysNull(object)) {
+            return object;
+        }
+        return null;
     }
 
     @Override

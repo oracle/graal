@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -35,8 +36,9 @@ import com.oracle.graal.nodes.type.*;
  * Loads a method from the virtual method table of a given hub.
  */
 @NodeInfo
-public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
+public final class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
 
+    public static final NodeClass<LoadMethodNode> TYPE = NodeClass.create(LoadMethodNode.class);
     @Input ValueNode hub;
     protected final ResolvedJavaMethod method;
     protected final ResolvedJavaType receiverType;
@@ -46,7 +48,7 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
     }
 
     public LoadMethodNode(@InjectedNodeParameter Stamp stamp, ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
-        super(stamp);
+        super(TYPE, stamp);
         this.receiverType = receiverType;
         this.hub = hub;
         this.method = method;
@@ -68,10 +70,11 @@ public class LoadMethodNode extends FixedWithNextNode implements Lowerable, Cano
             if (StampTool.isExactType(object)) {
                 return resolveExactMethod(tool, type);
             }
-            if (type != null && tool.assumptions().useOptimisticAssumptions()) {
+            Assumptions assumptions = graph().getAssumptions();
+            if (type != null && assumptions != null) {
                 ResolvedJavaMethod resolvedMethod = type.findUniqueConcreteMethod(method);
                 if (resolvedMethod != null && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
-                    tool.assumptions().recordConcreteMethod(method, type, resolvedMethod);
+                    assumptions.recordConcreteMethod(method, type, resolvedMethod);
                     return ConstantNode.forConstant(stamp(), resolvedMethod.getEncoding(), tool.getMetaAccess());
                 }
             }

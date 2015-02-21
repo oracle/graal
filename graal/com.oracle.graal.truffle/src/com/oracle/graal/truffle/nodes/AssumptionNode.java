@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.truffle.nodes;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -37,8 +39,10 @@ import com.oracle.graal.truffle.*;
 @NodeInfo
 public final class AssumptionNode extends MacroNode implements Simplifiable {
 
+    public static final NodeClass<AssumptionNode> TYPE = NodeClass.create(AssumptionNode.class);
+
     public AssumptionNode(Invoke invoke) {
-        super(invoke);
+        super(TYPE, invoke);
         assert super.arguments.size() == 1;
     }
 
@@ -62,14 +66,15 @@ public final class AssumptionNode extends MacroNode implements Simplifiable {
     @Override
     public void simplify(SimplifierTool tool) {
         ValueNode assumption = getAssumption();
-        if (tool.assumptions() != null && assumption.isConstant()) {
+        Assumptions assumptions = graph().getAssumptions();
+        if (assumption.isConstant()) {
             JavaConstant c = assumption.asJavaConstant();
             assert c.getKind() == Kind.Object;
             Object object = getSnippetReflection().asObject(Object.class, c);
             OptimizedAssumption assumptionObject = (OptimizedAssumption) object;
             StructuredGraph graph = graph();
             if (assumptionObject.isValid()) {
-                tool.assumptions().record(new AssumptionValidAssumption(assumptionObject));
+                assumptions.record(new AssumptionValidAssumption(assumptionObject));
                 if (super.getReturnType().getKind() == Kind.Boolean) {
                     graph.replaceFixedWithFloating(this, ConstantNode.forBoolean(true, graph()));
                 } else {

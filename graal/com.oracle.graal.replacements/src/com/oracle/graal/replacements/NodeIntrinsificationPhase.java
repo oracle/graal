@@ -64,7 +64,7 @@ public class NodeIntrinsificationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         ArrayList<Node> cleanUpReturnList = new ArrayList<>();
-        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.TYPE)) {
             tryIntrinsify(node, cleanUpReturnList);
         }
 
@@ -80,20 +80,11 @@ public class NodeIntrinsificationPhase extends Phase {
 
         NodeIntrinsic intrinsic = getIntrinsic(target);
         if (intrinsic != null) {
-            assert target.getAnnotation(Fold.class) == null;
-            assert target.isStatic() : "node intrinsic must be static: " + target;
-
-            ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
-
-            // Prepare the arguments for the reflective constructor call on the node class.
-            Object[] nodeConstructorArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
-            if (nodeConstructorArguments == null) {
+            Stamp stamp = methodCallTargetNode.invoke().asNode().stamp();
+            Node newInstance = createIntrinsicNode(methodCallTargetNode.arguments(), stamp, target, graph, intrinsic);
+            if (newInstance == null) {
                 return false;
             }
-
-            // Create the new node instance.
-            ResolvedJavaType c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(graph, c, parameterTypes, methodCallTargetNode.invoke().asNode().stamp(), intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
             newInstance = graph.addOrUnique(newInstance);
@@ -103,21 +94,10 @@ public class NodeIntrinsificationPhase extends Phase {
             cleanUpReturnList.add(newInstance);
         } else if (isFoldable(target)) {
             ResolvedJavaType[] parameterTypes = resolveJavaTypes(target.toParameterTypes(), declaringClass);
-
-            // Prepare the arguments for the reflective method call
-            JavaConstant[] arguments = (JavaConstant[]) prepareArguments(methodCallTargetNode, parameterTypes, target, true);
-            if (arguments == null) {
+            JavaConstant constant = tryFold(methodCallTargetNode.arguments(), parameterTypes, target);
+            if (constant != null && constant.equals(COULD_NOT_FOLD)) {
                 return false;
             }
-            JavaConstant receiver = null;
-            if (!methodCallTargetNode.isStatic()) {
-                receiver = arguments[0];
-                arguments = Arrays.copyOfRange(arguments, 1, arguments.length);
-                parameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
-            }
-
-            // Call the method
-            JavaConstant constant = target.invoke(receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -134,17 +114,83 @@ public class NodeIntrinsificationPhase extends Phase {
         return true;
     }
 
+    @SuppressWarnings("serial") public static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
+        @Override
+        public boolean equals(Object o) {
+            return this == o;
+        }
+    };
+
+    public JavaConstant tryFold(List<ValueNode> args, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target) {
+        JavaConstant[] reflectArgs = (JavaConstant[]) prepareArguments(args, parameterTypes, target, true);
+        if (reflectArgs == null) {
+            return COULD_NOT_FOLD;
+        }
+        JavaConstant receiver = null;
+        if (!target.isStatic()) {
+            receiver = reflectArgs[0];
+            reflectArgs = Arrays.copyOfRange(reflectArgs, 1, reflectArgs.length);
+        }
+
+        // Call the method
+        return target.invoke(receiver, reflectArgs);
+    }
+
+    private static boolean areAllConstant(List<ValueNode> arguments) {
+        for (ValueNode arg : arguments) {
+            if (!arg.isConstant()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Attempts to create a node to replace a call to a {@link NodeIntrinsic} annotated method.
+     *
+     * @param arguments the arguments of the call
+     * @param stamp the stamp to use for the returned node
+     * @param method the method annotated with {@link NodeIntrinsic}
+     * @param graph the graph into which the created node will be added
+     * @return a {@link ConstantNode} if the intrinsic could be
+     *         {@linkplain NodeIntrinsic#foldable() folded}, {@code null} if intrinsification could
+     *         not (yet) be performed, otherwise the node representing the intrinsic
+     */
+    public ValueNode createIntrinsicNode(List<ValueNode> arguments, Stamp stamp, ResolvedJavaMethod method, StructuredGraph graph, NodeIntrinsic intrinsic) {
+        assert method.getAnnotation(Fold.class) == null;
+        assert method.isStatic() : "node intrinsic must be static: " + method;
+
+        ResolvedJavaType[] parameterTypes = resolveJavaTypes(method.toParameterTypes(), method.getDeclaringClass());
+
+        if (intrinsic.foldable() && areAllConstant(arguments)) {
+            JavaConstant res = tryFold(arguments, parameterTypes, method);
+            if (!res.equals(COULD_NOT_FOLD)) {
+                return ConstantNode.forConstant(res, providers.getMetaAccess());
+            }
+        }
+
+        // Prepare the arguments for the reflective constructor call on the node class.
+        Object[] nodeConstructorArguments = prepareArguments(arguments, parameterTypes, method, false);
+        if (nodeConstructorArguments == null) {
+            return null;
+        }
+
+        // Create the new node instance.
+        ResolvedJavaType c = getNodeClass(method, intrinsic);
+        return createNodeInstance(graph, c, parameterTypes, stamp, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
+    }
+
     /**
      * Permits a subclass to override the default definition of "intrinsic".
      */
-    protected NodeIntrinsic getIntrinsic(ResolvedJavaMethod method) {
+    public NodeIntrinsic getIntrinsic(ResolvedJavaMethod method) {
         return method.getAnnotation(Node.NodeIntrinsic.class);
     }
 
     /**
      * Permits a subclass to override the default definition of "foldable".
      */
-    protected boolean isFoldable(ResolvedJavaMethod method) {
+    public boolean isFoldable(ResolvedJavaMethod method) {
         return method.getAnnotation(Fold.class) != null;
     }
 
@@ -156,12 +202,11 @@ public class NodeIntrinsificationPhase extends Phase {
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't
      */
-    private Object[] prepareArguments(MethodCallTargetNode methodCallTargetNode, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
-        NodeInputList<ValueNode> arguments = methodCallTargetNode.arguments();
+    private Object[] prepareArguments(List<ValueNode> arguments, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
         Object[] reflectionCallArguments = folding ? new JavaConstant[arguments.size()] : new Object[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
             int parameterIndex = i;
-            if (!methodCallTargetNode.isStatic()) {
+            if (!target.isStatic()) {
                 parameterIndex--;
             }
             ValueNode argument = arguments.get(i);
@@ -171,34 +216,41 @@ public class NodeIntrinsificationPhase extends Phase {
                 }
                 ConstantNode constantNode = (ConstantNode) argument;
                 Constant constant = constantNode.asConstant();
-                ResolvedJavaType type = providers.getConstantReflection().asJavaType(constant);
+                /*
+                 * For intrinsification (but not for folding) if we have a Class<?> object we want
+                 * the corresponding ResolvedJavaType.
+                 */
+                ResolvedJavaType type = folding ? null : providers.getConstantReflection().asJavaType(constant);
+                Object arg;
                 if (type != null) {
-                    reflectionCallArguments[i] = type;
+                    /* If we found such a type then it's our arg */
+                    arg = type;
                     parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ResolvedJavaType.class);
                 } else {
                     JavaConstant javaConstant = (JavaConstant) constant;
-                    if (parameterTypes[i].getKind() == Kind.Boolean) {
-                        reflectionCallArguments[i] = Boolean.valueOf(javaConstant.asInt() != 0);
-                    } else if (parameterTypes[i].getKind() == Kind.Byte) {
-                        reflectionCallArguments[i] = Byte.valueOf((byte) javaConstant.asInt());
-                    } else if (parameterTypes[i].getKind() == Kind.Short) {
-                        reflectionCallArguments[i] = Short.valueOf((short) javaConstant.asInt());
-                    } else if (parameterTypes[i].getKind() == Kind.Char) {
-                        reflectionCallArguments[i] = Character.valueOf((char) javaConstant.asInt());
-                    } else if (parameterTypes[i].getKind() == Kind.Object) {
-                        if (!folding) {
-                            reflectionCallArguments[i] = snippetReflection.asObject(parameterTypes[i], javaConstant);
-                        } else {
-                            reflectionCallArguments[i] = javaConstant;
-                        }
+                    if (folding) {
+                        /* For folding we want JavaConstants */
+                        arg = javaConstant;
                     } else {
-                        reflectionCallArguments[i] = javaConstant.asBoxedPrimitive();
+                        /* For intrinsification we want want corresponding objects */
+                        if (parameterTypes[i].getKind() == Kind.Boolean) {
+                            arg = Boolean.valueOf(javaConstant.asInt() != 0);
+                        } else if (parameterTypes[i].getKind() == Kind.Byte) {
+                            arg = Byte.valueOf((byte) javaConstant.asInt());
+                        } else if (parameterTypes[i].getKind() == Kind.Short) {
+                            arg = Short.valueOf((short) javaConstant.asInt());
+                        } else if (parameterTypes[i].getKind() == Kind.Char) {
+                            arg = Character.valueOf((char) javaConstant.asInt());
+                        } else if (parameterTypes[i].getKind() == Kind.Object) {
+                            arg = snippetReflection.asObject(parameterTypes[i], javaConstant);
+                        } else {
+                            arg = javaConstant.asBoxedPrimitive();
+                        }
                     }
                 }
-                if (folding && reflectionCallArguments[i] != constant) {
-                    assert !(reflectionCallArguments[i] instanceof JavaConstant);
-                    reflectionCallArguments[i] = snippetReflection.forObject(reflectionCallArguments[i]);
-                }
+
+                assert folding || !(arg instanceof JavaConstant);
+                reflectionCallArguments[i] = arg;
             } else {
                 reflectionCallArguments[i] = argument;
                 parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ValueNode.class);
@@ -219,7 +271,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return result;
     }
 
-    protected Node createNodeInstance(StructuredGraph graph, ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType,
+    protected ValueNode createNodeInstance(StructuredGraph graph, ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType,
                     Object[] nodeConstructorArguments) {
         ResolvedJavaMethod constructor = null;
         Object[] arguments = null;
@@ -241,7 +293,7 @@ public class NodeIntrinsificationPhase extends Phase {
         }
 
         try {
-            ValueNode intrinsicNode = (ValueNode) snippetReflection.invoke(constructor, null, arguments);
+            ValueNode intrinsicNode = (ValueNode) invokeConstructor(constructor, arguments);
 
             if (setStampFromReturnType) {
                 intrinsicNode.setStamp(invokeStamp);
@@ -250,6 +302,10 @@ public class NodeIntrinsificationPhase extends Phase {
         } catch (Exception e) {
             throw new RuntimeException(constructor + Arrays.toString(nodeConstructorArguments), e);
         }
+    }
+
+    protected Object invokeConstructor(ResolvedJavaMethod constructor, Object[] arguments) {
+        return snippetReflection.invoke(constructor, null, arguments);
     }
 
     private static String sigString(ResolvedJavaType[] types) {

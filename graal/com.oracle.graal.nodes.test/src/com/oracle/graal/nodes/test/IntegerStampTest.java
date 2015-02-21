@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 /**
  * This class tests that integer stamps are created correctly for constants.
@@ -45,7 +46,7 @@ public class IntegerStampTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph();
+        graph = new StructuredGraph(AllowAssumptions.YES);
     }
 
     @Test

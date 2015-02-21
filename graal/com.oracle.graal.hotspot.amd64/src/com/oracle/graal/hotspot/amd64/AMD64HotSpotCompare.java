@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,12 +39,14 @@ import com.oracle.graal.lir.asm.*;
 public class AMD64HotSpotCompare {
 
     @Opcode("CMP")
-    public static class HotSpotCompareConstantOp extends AMD64LIRInstruction {
+    public static final class HotSpotCompareConstantOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<HotSpotCompareConstantOp> TYPE = LIRInstructionClass.create(HotSpotCompareConstantOp.class);
 
         @Use({REG}) protected AllocatableValue x;
         protected JavaConstant y;
 
         public HotSpotCompareConstantOp(AllocatableValue x, JavaConstant y) {
+            super(TYPE);
             this.x = x;
             this.y = y;
         }
@@ -100,12 +102,13 @@ public class AMD64HotSpotCompare {
     }
 
     @Opcode("CMP")
-    public static class HotSpotCompareMemoryConstantOp extends MemOp {
+    public static final class HotSpotCompareMemoryConstantOp extends MemOp {
+        public static final LIRInstructionClass<HotSpotCompareMemoryConstantOp> TYPE = LIRInstructionClass.create(HotSpotCompareMemoryConstantOp.class);
 
         protected JavaConstant y;
 
         public HotSpotCompareMemoryConstantOp(Kind kind, AMD64AddressValue x, JavaConstant y, LIRFrameState state) {
-            super(kind, x, state);
+            super(TYPE, kind, x, state);
             this.y = y;
         }
 

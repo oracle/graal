@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
-
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.PiNode.*;
+package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.nodes.calc.*;
 
-@ClassSubstitution(Node.class)
-public class HotSpotNodeSubstitutions {
+/**
+ * Substitutions for {@link java.lang.Class} methods.
+ */
+@ClassSubstitution(java.lang.Class.class)
+public class ClassSubstitutions {
 
-    /**
-     * Gets the value of the {@code InstanceKlass::_graal_node_class} field from the InstanceKlass
-     * pointed to by {@code node}'s header.
-     */
     @MethodSubstitution(isStatic = false)
-    public static NodeClass getNodeClass(final Node node) {
-        // HotSpot creates the NodeClass for each Node subclass while initializing it
-        // so we are guaranteed to read a non-null value here. As long as NodeClass
-        // is final, the stamp of the PiNode below will automatically be exact.
-        KlassPointer klass = loadHub(node);
-        return piCastNonNull(klass.readObject(Word.signed(instanceKlassNodeClassOffset()), KLASS_NODE_CLASS), NodeClass.class);
+    public static boolean isInstance(Class<?> thisObj, Object obj) {
+        return ConditionalNode.materializeIsInstance(thisObj, obj);
+    }
+
+    @MethodSubstitution(isStatic = false)
+    public static boolean isAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
+        return ConditionalNode.materializeIsAssignableFrom(thisClass, otherClass);
     }
 }

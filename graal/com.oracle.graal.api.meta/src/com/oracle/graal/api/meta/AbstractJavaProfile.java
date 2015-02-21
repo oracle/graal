@@ -46,6 +46,15 @@ public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> 
         assert !Double.isNaN(notRecordedProbability);
         this.notRecordedProbability = notRecordedProbability;
         assert isSorted();
+        assert totalProbablility() >= 0 && totalProbablility() <= 1.0001 : totalProbablility() + " " + this;
+    }
+
+    private double totalProbablility() {
+        double total = notRecordedProbability;
+        for (T item : pitems) {
+            total += item.probability;
+        }
+        return total;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,8 @@ import com.oracle.graal.lir.gen.*;
  * Emits code which compares two arrays of the same length.
  */
 @Opcode("ARRAY_EQUALS")
-public class SPARCArrayEqualsOp extends SPARCLIRInstruction {
+public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCArrayEqualsOp> TYPE = LIRInstructionClass.create(SPARCArrayEqualsOp.class);
 
     private final Kind kind;
     private final int arrayBaseOffset;
@@ -63,6 +64,7 @@ public class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     @Temp({REG}) protected Value temp5;
 
     public SPARCArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
+        super(TYPE);
         this.kind = kind;
 
         Class<?> arrayClass = Array.newInstance(kind.toJavaClass(), 0).getClass();

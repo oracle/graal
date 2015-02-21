@@ -30,9 +30,6 @@ import com.oracle.graal.options.*;
 // @formatter:off
 public final class GraalOptions {
 
-    @Option(help = "Use experimental baseline compiler configuration.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> UseBaselineCompiler = new OptionValue<>(false);
-
     @Option(help = "Use compiler intrinsifications.", type = OptionType.Debug)
     public static final OptionValue<Boolean> Intrinsify = new OptionValue<>(true);
 
@@ -62,6 +59,9 @@ public final class GraalOptions {
 
     @Option(help = "Inlines trivial methods during parsing of the bytecodes.", type = OptionType.Expert)
     public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(false);
+
+    @Option(help = "Traces .", type = OptionType.Debug)
+    public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
 
     @Option(help = "Maximum depth when inlining during parsing.", type = OptionType.Debug)
     public static final StableOptionValue<Integer> InlineDuringParsingMaxDepth = new StableOptionValue<>(10);
@@ -119,22 +119,10 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> LoopUnswitch = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> FullUnrollMaxNodes = new OptionValue<>(300);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> ExactFullUnrollMaxNodes = new OptionValue<>(1200);
-
-    @Option(help = "", type = OptionType.Expert)
     public static final OptionValue<Float> MinimumPeelProbability = new OptionValue<>(0.35f);
 
     @Option(help = "", type = OptionType.Expert)
     public static final OptionValue<Integer> LoopMaxUnswitch = new OptionValue<>(3);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(50);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Integer> LoopUnswitchUncertaintyBoost = new OptionValue<>(5);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> UseLoopLimitChecks = new OptionValue<>(true);
@@ -319,7 +307,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptFloatingReads = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> OptTailDuplication = new OptionValue<>(true);
+    public static final OptionValue<Boolean> OptTailDuplication = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> OptEliminatePartiallyRedundantGuards = new OptionValue<>(true);
@@ -345,6 +333,9 @@ public final class GraalOptions {
 
     @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)
     public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
+
+    @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> FailedLoopExplosionIsFatal = new OptionValue<>(false);
 
     /**
      * Counts the various paths taken through snippets.

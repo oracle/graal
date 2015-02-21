@@ -242,18 +242,30 @@ public class GraphUtil {
 
             if (n instanceof StateSplit) {
                 FrameState state = ((StateSplit) n).stateAfter();
-                while (state != null) {
-                    ResolvedJavaMethod method = state.method();
-                    if (method != null) {
-                        elements.add(method.asStackTraceElement(state.bci - 1));
-                    }
-                    state = state.outerFrameState();
-                }
+                elements.addAll(Arrays.asList(approxSourceStackTraceElement(state)));
                 break;
             }
             n = n.predecessor();
         }
         return elements.toArray(new StackTraceElement[elements.size()]);
+    }
+
+    /**
+     * Gets an approximate source code location for frame state.
+     *
+     * @return the StackTraceElements if an approximate source location is found, null otherwise
+     */
+    public static StackTraceElement[] approxSourceStackTraceElement(FrameState frameState) {
+        ArrayList<StackTraceElement> elements = new ArrayList<>();
+        FrameState state = frameState;
+        while (state != null) {
+            ResolvedJavaMethod method = state.method();
+            if (method != null) {
+                elements.add(method.asStackTraceElement(state.bci - 1));
+            }
+            state = state.outerFrameState();
+        }
+        return elements.toArray(new StackTraceElement[0]);
     }
 
     /**
@@ -263,8 +275,39 @@ public class GraphUtil {
      */
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
         final StackTraceElement[] elements = approxSourceStackTraceElement(node);
+        return createBailoutException(cause == null ? "" : cause.getMessage(), cause, elements);
+    }
+
+    /**
+     * Creates a bailout exception with the given stack trace elements and message.
+     *
+     * @param message the message of the exception
+     * @param elements the stack trace elements
+     * @return the exception
+     */
+    public static BailoutException createBailoutException(String message, Throwable cause, StackTraceElement[] elements) {
         @SuppressWarnings("serial")
-        RuntimeException exception = new RuntimeException((cause == null) ? null : cause.getMessage(), cause) {
+        BailoutException exception = new BailoutException(cause, message) {
+
+            @Override
+            public final synchronized Throwable fillInStackTrace() {
+                setStackTrace(elements);
+                return this;
+            }
+        };
+        return exception;
+    }
+
+    /**
+     * Creates a runtime exception with the given stack trace elements and message.
+     *
+     * @param message the message of the exception
+     * @param elements the stack trace elements
+     * @return the exception
+     */
+    public static RuntimeException createRuntimeException(String message, Throwable cause, StackTraceElement[] elements) {
+        @SuppressWarnings("serial")
+        RuntimeException exception = new RuntimeException(message, cause) {
 
             @Override
             public final synchronized Throwable fillInStackTrace() {
@@ -473,20 +516,14 @@ public class GraphUtil {
     }
 
     private static final class DefaultSimplifierTool implements SimplifierTool {
-        private final Assumptions assumptions;
         private final MetaAccessProvider metaAccess;
         private final ConstantReflectionProvider constantReflection;
         private final boolean canonicalizeReads;
 
-        public DefaultSimplifierTool(Assumptions assumptions, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
-            this.assumptions = assumptions;
+        public DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
             this.canonicalizeReads = canonicalizeReads;
-        }
-
-        public Assumptions assumptions() {
-            return assumptions;
         }
 
         public MetaAccessProvider getMetaAccess() {
@@ -517,7 +554,7 @@ public class GraphUtil {
         }
     }
 
-    public static SimplifierTool getDefaultSimplifier(Assumptions assumptions, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
-        return new DefaultSimplifierTool(assumptions, metaAccess, constantReflection, canonicalizeReads);
+    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, boolean canonicalizeReads) {
+        return new DefaultSimplifierTool(metaAccess, constantReflection, canonicalizeReads);
     }
 }

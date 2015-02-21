@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,12 +43,14 @@ import com.oracle.graal.lir.asm.*;
 
 public class AMD64HotSpotMove {
 
-    public static class HotSpotLoadConstantOp extends AMD64LIRInstruction implements MoveOp {
+    public static final class HotSpotLoadConstantOp extends AMD64LIRInstruction implements MoveOp {
+        public static final LIRInstructionClass<HotSpotLoadConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadConstantOp.class);
 
         @Def({REG, STACK}) private AllocatableValue result;
         private final JavaConstant input;
 
         public HotSpotLoadConstantOp(AllocatableValue result, JavaConstant input) {
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -145,9 +147,10 @@ public class AMD64HotSpotMove {
     }
 
     public static class HotSpotStoreConstantOp extends StoreConstantOp {
+        public static final LIRInstructionClass<HotSpotStoreConstantOp> TYPE = LIRInstructionClass.create(HotSpotStoreConstantOp.class);
 
         public HotSpotStoreConstantOp(Kind kind, AMD64AddressValue address, JavaConstant input, LIRFrameState state) {
-            super(kind, address, input, state);
+            super(TYPE, kind, address, input, state);
         }
 
         @Override
@@ -181,7 +184,8 @@ public class AMD64HotSpotMove {
         }
     }
 
-    public static class CompressPointer extends AMD64LIRInstruction {
+    public static final class CompressPointer extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<CompressPointer> TYPE = LIRInstructionClass.create(CompressPointer.class);
 
         private final CompressEncoding encoding;
         private final boolean nonNull;
@@ -191,6 +195,7 @@ public class AMD64HotSpotMove {
         @Alive({REG, ILLEGAL}) protected AllocatableValue baseRegister;
 
         public CompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull) {
+            super(TYPE);
             this.result = result;
             this.input = input;
             this.baseRegister = baseRegister;
@@ -218,7 +223,8 @@ public class AMD64HotSpotMove {
         }
     }
 
-    public static class UncompressPointer extends AMD64LIRInstruction {
+    public static final class UncompressPointer extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<UncompressPointer> TYPE = LIRInstructionClass.create(UncompressPointer.class);
 
         private final CompressEncoding encoding;
         private final boolean nonNull;
@@ -228,6 +234,7 @@ public class AMD64HotSpotMove {
         @Alive({REG, ILLEGAL}) protected AllocatableValue baseRegister;
 
         public UncompressPointer(AllocatableValue result, AllocatableValue input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull) {
+            super(TYPE);
             this.result = result;
             this.input = input;
             this.baseRegister = baseRegister;
@@ -274,12 +281,14 @@ public class AMD64HotSpotMove {
         }
     }
 
-    public static class CompressedNullCheckOp extends AMD64LIRInstruction {
+    public static final class CompressedNullCheckOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<CompressedNullCheckOp> TYPE = LIRInstructionClass.create(CompressedNullCheckOp.class);
 
         @Use({COMPOSITE}) protected AMD64AddressValue address;
         @State protected LIRFrameState state;
 
         public CompressedNullCheckOp(AMD64AddressValue address, LIRFrameState state) {
+            super(TYPE);
             this.address = address;
             this.state = state;
         }

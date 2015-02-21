@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
 /**
@@ -35,13 +36,15 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class BeginStateSplitNode extends AbstractBeginNode implements StateSplit {
 
+    public static final NodeClass<BeginStateSplitNode> TYPE = NodeClass.create(BeginStateSplitNode.class);
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public BeginStateSplitNode() {
+    protected BeginStateSplitNode(NodeClass<? extends BeginStateSplitNode> c) {
+        super(c);
     }
 
-    protected BeginStateSplitNode(Stamp stamp) {
-        super(stamp);
+    protected BeginStateSplitNode(NodeClass<? extends BeginStateSplitNode> c, Stamp stamp) {
+        super(c, stamp);
     }
 
     public FrameState stateAfter() {

@@ -43,6 +43,7 @@ import com.oracle.graal.lir.sparc.SPARCCall.IndirectCallOp;
  */
 @Opcode("CALL_INDIRECT")
 final class SPARCIndirectCallOp extends IndirectCallOp {
+    public static final LIRInstructionClass<SPARCIndirectCallOp> TYPE = LIRInstructionClass.create(SPARCIndirectCallOp.class);
 
     /**
      * Vtable stubs expect the metaspace Method in g5.
@@ -52,7 +53,7 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
     @Use({REG}) protected Value metaspaceMethod;
 
     SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
-        super(targetMethod, result, parameters, temps, targetAddress, state);
+        super(TYPE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
     }
 

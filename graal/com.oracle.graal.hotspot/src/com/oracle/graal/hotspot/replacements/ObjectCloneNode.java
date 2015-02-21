@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,21 +26,26 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {
+public final class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {
+
+    public static final NodeClass<ObjectCloneNode> TYPE = NodeClass.create(ObjectCloneNode.class);
 
     public ObjectCloneNode(Invoke invoke) {
-        super(invoke);
+        super(TYPE, invoke);
     }
 
     @Override
@@ -68,9 +73,10 @@ public class ObjectCloneNode extends BasicObjectCloneNode implements Virtualizab
                 }
                 assert false : "unhandled array type " + type.getComponentType().getKind();
             } else {
-                type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
+                Assumptions assumptions = graph().getAssumptions();
+                type = getConcreteType(getObject().stamp(), assumptions, tool.getMetaAccess());
                 if (type != null) {
-                    StructuredGraph newGraph = new StructuredGraph();
+                    StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null));
                     ParameterNode param = newGraph.unique(new ParameterNode(0, getObject().stamp()));
                     NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);

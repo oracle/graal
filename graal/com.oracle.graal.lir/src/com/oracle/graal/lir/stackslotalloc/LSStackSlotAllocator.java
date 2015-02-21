@@ -38,6 +38,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 
 /**
@@ -50,12 +51,12 @@ import com.oracle.graal.options.*;
  * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
-public final class LSStackSlotAllocator implements StackSlotAllocator {
+public final class LSStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSStackSlotAllocation = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LIROptLSStackSlotAllocator = new OptionValue<>(true);
         // @formatter:on
     }
 
@@ -65,6 +66,11 @@ public final class LSStackSlotAllocator implements StackSlotAllocator {
     private static final DebugTimer VerifyIntervalsTimer = Debug.timer("LSStackSlotAllocator[VerifyIntervals]");
     private static final DebugTimer AllocateSlotsTimer = Debug.timer("LSStackSlotAllocator[AllocateSlots]");
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
+
+    @Override
+    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+        lirGenRes.buildFrameMap(this);
+    }
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
         try (TimerCloseable t = MainTimer.start()) {

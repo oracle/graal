@@ -485,7 +485,7 @@ public class Graph {
     }
 
     public Node findDuplicate(Node node) {
-        NodeClass nodeClass = node.getNodeClass();
+        NodeClass<?> nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
         if (nodeClass.isLeafNode()) {
             // Leaf node: look up in cache
@@ -625,7 +625,11 @@ public class Graph {
     // Fully qualified annotation name is required to satisfy javac
     @com.oracle.graal.nodeinfo.NodeInfo
     static final class PlaceHolderNode extends Node {
+
+        public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);
+
         public PlaceHolderNode() {
+            super(TYPE);
         }
 
     }
@@ -685,11 +689,10 @@ public class Graph {
      * Returns an {@link Iterable} providing all the live nodes whose type is compatible with
      * {@code type}.
      *
-     * @param type the type of node to return
+     * @param nodeClass the type of node to return
      * @return an {@link Iterable} providing all the matching nodes
      */
-    public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
-        final NodeClass nodeClass = NodeClass.get(type);
+    public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final NodeClass<T> nodeClass) {
         return new NodeIterable<T>() {
 
             @Override
@@ -705,7 +708,7 @@ public class Graph {
      * @param type the type of node that is checked for occurrence
      * @return whether there is at least one such node
      */
-    public <T extends Node & IterableNodeType> boolean hasNode(final Class<T> type) {
+    public <T extends Node & IterableNodeType> boolean hasNode(final NodeClass<T> type) {
         return getNodes(type).iterator().hasNext();
     }
 
@@ -738,7 +741,9 @@ public class Graph {
         assert !isFrozen();
         assert node.id() == Node.INITIAL_ID;
         if (nodes.length == nodesSize) {
-            nodes = Arrays.copyOf(nodes, (nodesSize * 2) + 1);
+            Node[] newNodes = new Node[(nodesSize * 2) + 1];
+            System.arraycopy(nodes, 0, newNodes, 0, nodesSize);
+            nodes = newNodes;
         }
         int id = nodesSize;
         nodes[id] = node;
@@ -761,8 +766,9 @@ public class Graph {
     }
 
     /**
-     * Rebuilds the lists used to support {@link #getNodes(Class)}. This is useful for serialization
-     * where the underlying {@linkplain NodeClass#iterableId() iterable ids} may have changed.
+     * Rebuilds the lists used to support {@link #getNodes(NodeClass)}. This is useful for
+     * serialization where the underlying {@linkplain NodeClass#iterableId() iterable ids} may have
+     * changed.
      */
     private void recomputeIterableNodeLists() {
         iterableNodesFirst.clear();

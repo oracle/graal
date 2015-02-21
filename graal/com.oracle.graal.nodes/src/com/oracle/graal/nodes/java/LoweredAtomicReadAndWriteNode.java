@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -35,13 +36,14 @@ import com.oracle.graal.nodes.spi.*;
  * {@link Unsafe#getAndSetInt(Object, long, int)} .
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
+public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
+    public static final NodeClass<LoweredAtomicReadAndWriteNode> TYPE = NodeClass.create(LoweredAtomicReadAndWriteNode.class);
     @Input ValueNode newValue;
     @OptionalInput(InputType.State) FrameState stateAfter;
 
     public LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
-        super(object, location, newValue.stamp().unrestricted(), barrierType);
+        super(TYPE, object, location, newValue.stamp().unrestricted(), barrierType);
         this.newValue = newValue;
     }
 
@@ -73,7 +75,7 @@ public class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements St
         return false;
     }
 
-    public final ValueNode getNewValue() {
+    public ValueNode getNewValue() {
         return newValue;
     }
 }

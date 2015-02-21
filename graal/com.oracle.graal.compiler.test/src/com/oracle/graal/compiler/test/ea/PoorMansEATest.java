@@ -24,12 +24,12 @@ package com.oracle.graal.compiler.test.ea;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -39,7 +39,7 @@ import com.oracle.graal.phases.tiers.*;
 
 /**
  * Tests {@link AbstractNewObjectNode#simplify(com.oracle.graal.graph.spi.SimplifierTool)}.
- * 
+ *
  */
 public class PoorMansEATest extends GraalCompilerTest {
     public static class A {
@@ -59,15 +59,14 @@ public class PoorMansEATest extends GraalCompilerTest {
 
     private void test(final String snippet) {
         try (Scope s = Debug.scope("PoorMansEATest", new DebugDumpScope(snippet))) {
-            StructuredGraph graph = parseEager(snippet);
-            Assumptions assumptions = new Assumptions(false);
-            HighTierContext highTierContext = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+            HighTierContext highTierContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
-            PhaseContext context = new PhaseContext(getProviders(), assumptions);
+            PhaseContext context = new PhaseContext(getProviders());
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
 
             // remove framestates in order to trigger the simplification.
-            cleanup: for (FrameState fs : graph.getNodes(FrameState.class).snapshot()) {
+            cleanup: for (FrameState fs : graph.getNodes(FrameState.TYPE).snapshot()) {
                 for (Node input : fs.inputs()) {
                     if (input instanceof NewInstanceNode) {
                         fs.replaceAtUsages(null);

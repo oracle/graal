@@ -239,12 +239,12 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return installedCode;
     }
 
-    public InstalledCode installMethod(HotSpotResolvedJavaMethod method, CompilationResult compResult, long ctask, boolean isDefault) {
+    public InstalledCode installMethod(HotSpotResolvedJavaMethod method, CompilationResult compResult, long graalEnv, boolean isDefault) {
         if (compResult.getId() == -1) {
             compResult.setId(method.allocateCompileId(compResult.getEntryBCI()));
         }
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, compResult.getName(), isDefault);
-        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(method, compResult, ctask), installedCode, method.getSpeculationLog());
+        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(method, compResult, graalEnv), installedCode, method.getSpeculationLog());
         return logOrDump(installedCode, compResult);
     }
 
@@ -259,8 +259,13 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, compResult.getName(), false);
             installedCode = code;
         }
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(hotspotMethod, compResult), installedCode, log);
+        HotSpotCompiledNmethod compiledCode = new HotSpotCompiledNmethod(hotspotMethod, compResult);
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(compiledCode, installedCode, log);
         if (result != CodeInstallResult.OK) {
+            String msg = compiledCode.getInstallationFailureMessage();
+            if (msg != null) {
+                throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, "Code installation failed: %s%n%s", result, msg);
+            }
             throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, "Code installation failed: %s", result);
         }
         return logOrDump(installedCode, compResult);

@@ -84,7 +84,7 @@ public class TruffleExpansionLogger {
     }
 
     private void registerParentInCalls(ExpansionTree parentTree, StructuredGraph graph) {
-        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
             callToParentTree.put(target, parentTree);
         }
     }

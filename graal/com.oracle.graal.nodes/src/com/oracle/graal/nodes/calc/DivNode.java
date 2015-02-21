@@ -25,7 +25,9 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Div;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -35,8 +37,21 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "/")
 public final class DivNode extends BinaryArithmeticNode<Div> {
 
+    public static final NodeClass<DivNode> TYPE = NodeClass.create(DivNode.class);
+
     public DivNode(ValueNode x, ValueNode y) {
-        super(ArithmeticOpTable::getDiv, x, y);
+        super(TYPE, ArithmeticOpTable::getDiv, x, y);
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y) {
+        BinaryOp<Div> op = ArithmeticOpTable.forStamp(x.stamp()).getDiv();
+        Stamp stamp = op.foldStamp(x.stamp(), y.stamp());
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp);
+        if (tryConstantFold != null) {
+            return tryConstantFold;
+        } else {
+            return new DivNode(x, y);
+        }
     }
 
     @Override

@@ -44,14 +44,15 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
-    private final CompositeValueClass valueClass;
+    private final CompositeValueClass<?> valueClass;
 
     private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
 
-    public CompositeValue(LIRKind kind) {
+    public CompositeValue(CompositeValueClass<? extends CompositeValue> c, LIRKind kind) {
         super(kind);
         COMPOSITE_VALUE_COUNT.increment();
-        valueClass = CompositeValueClass.get(getClass());
+        valueClass = c;
+        assert c.getClazz() == this.getClass();
     }
 
     final CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
@@ -81,7 +82,7 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
         return false;
     }
 
-    CompositeValueClass getValueClass() {
+    CompositeValueClass<?> getValueClass() {
         return valueClass;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Graph.Mark;
@@ -48,11 +47,12 @@ import com.oracle.graal.phases.tiers.*;
 public class LoweringPhase extends BasePhase<PhaseContext> {
 
     @NodeInfo
-    static class DummyGuardHandle extends ValueNode implements GuardedNode {
+    static final class DummyGuardHandle extends ValueNode implements GuardedNode {
+        public static final NodeClass<DummyGuardHandle> TYPE = NodeClass.create(DummyGuardHandle.class);
         @Input(InputType.Guard) GuardingNode guard;
 
         public DummyGuardHandle(GuardingNode guard) {
-            super(StampFactory.forVoid());
+            super(TYPE, StampFactory.forVoid());
             this.guard = guard;
         }
 
@@ -118,11 +118,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
             return createGuard(before, condition, deoptReason, action, false);
-        }
-
-        @Override
-        public Assumptions assumptions() {
-            return context.getAssumptions();
         }
 
         public StampProvider getStampProvider() {

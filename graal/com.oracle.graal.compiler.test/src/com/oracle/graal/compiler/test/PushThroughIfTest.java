@@ -24,9 +24,9 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -57,21 +57,21 @@ public class PushThroughIfTest extends GraalCompilerTest {
     }
 
     private void test(String snippet, String reference) {
-        StructuredGraph graph = parseEager(snippet);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
-        for (FrameState fs : graph.getNodes(FrameState.class).snapshot()) {
+        for (FrameState fs : graph.getNodes(FrameState.TYPE).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
 
-        StructuredGraph referenceGraph = parseEager(reference);
-        for (FrameState fs : referenceGraph.getNodes(FrameState.class).snapshot()) {
+        StructuredGraph referenceGraph = parseEager(reference, AllowAssumptions.YES);
+        for (FrameState fs : referenceGraph.getNodes(FrameState.TYPE).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders(), new Assumptions(false)));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
         assertEquals(referenceGraph, graph);
     }
 }

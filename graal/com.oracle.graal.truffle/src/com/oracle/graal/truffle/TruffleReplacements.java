@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.truffle.substitutions.*;
+import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 
 /**
@@ -42,19 +43,22 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
     private final Replacements graalReplacements;
 
     protected TruffleReplacements(Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(providers, snippetReflection, providers.getReplacements().getAssumptions(), providers.getCodeCache().getTarget());
+        super(providers, snippetReflection, providers.getCodeCache().getTarget());
         this.graalReplacements = providers.getReplacements();
 
         registerTruffleSubstitutions();
     }
 
     protected void registerTruffleSubstitutions() {
-        registerSubstitutions(CompilerAsserts.class, CompilerAssertsSubstitutions.class);
-        registerSubstitutions(CompilerDirectives.class, CompilerDirectivesSubstitutions.class);
-        registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
-        registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
-        registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
-        registerSubstitutions(FrameWithoutBoxing.class, FrameWithoutBoxingSubstitutions.class);
+        if (!TruffleCompilerOptions.FastPE.getValue()) {
+            registerSubstitutions(CompilerAsserts.class, CompilerAssertsSubstitutions.class);
+            registerSubstitutions(CompilerDirectives.class, CompilerDirectivesSubstitutions.class);
+            registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
+            registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
+            registerSubstitutions(OptimizedCallTarget.class, OptimizedCallTargetSubstitutions.class);
+            registerSubstitutions(FrameWithoutBoxing.class, FrameWithoutBoxingSubstitutions.class);
+            registerSubstitutions(UnsafeAccessImpl.class, UnsafeAccessSubstitutions.class);
+        }
     }
 
     @Override

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.*;
+import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -186,7 +187,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (node.isAlive()) {
                 METRIC_PROCESSED_NODES.increment();
 
-                NodeClass nodeClass = node.getNodeClass();
+                NodeClass<?> nodeClass = node.getNodeClass();
                 if (tryGlobalValueNumbering(node, nodeClass)) {
                     return;
                 }
@@ -212,7 +213,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        public static boolean tryGlobalValueNumbering(Node node, NodeClass nodeClass) {
+        public static boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
             if (nodeClass.valueNumberable() && !nodeClass.isLeafNode()) {
                 Node newNode = node.graph().findDuplicate(node);
                 if (newNode != null) {
@@ -227,7 +228,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        public boolean tryCanonicalize(final Node node, NodeClass nodeClass) {
+        public boolean tryCanonicalize(final Node node, NodeClass<?> nodeClass) {
             if (customCanonicalizer != null) {
                 Node canonical = customCanonicalizer.canonicalize(node);
                 if (performReplacement(node, canonical)) {
@@ -253,7 +254,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        public boolean baseTryCanonicalize(final Node node, NodeClass nodeClass) {
+        public boolean baseTryCanonicalize(final Node node, NodeClass<?> nodeClass) {
             if (nodeClass.isCanonicalizable()) {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("CanonicalizeNode", node)) {
@@ -392,15 +393,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             public void deleteBranch(Node branch) {
                 branch.predecessor().replaceFirstSuccessor(branch, null);
                 GraphUtil.killCFG(branch, this);
-            }
-
-            /**
-             * @return an object that can be used for recording assumptions or {@code null} if
-             *         assumptions are not allowed in the current context.
-             */
-            @Override
-            public Assumptions assumptions() {
-                return context.getAssumptions();
             }
 
             @Override

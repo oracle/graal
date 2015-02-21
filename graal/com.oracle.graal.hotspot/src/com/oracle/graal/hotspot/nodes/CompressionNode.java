@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
@@ -42,6 +43,8 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "{p#op/s}")
 public final class CompressionNode extends UnaryNode implements ConvertNode, LIRLowerable {
 
+    public static final NodeClass<CompressionNode> TYPE = NodeClass.create(CompressionNode.class);
+
     public enum CompressionOp {
         Compress,
         Uncompress
@@ -51,7 +54,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     protected final CompressEncoding encoding;
 
     public CompressionNode(CompressionOp op, ValueNode input, CompressEncoding encoding) {
-        super(mkStamp(op, input.stamp(), encoding), input);
+        super(TYPE, mkStamp(op, input.stamp(), encoding), input);
         this.op = op;
         this.encoding = encoding;
     }

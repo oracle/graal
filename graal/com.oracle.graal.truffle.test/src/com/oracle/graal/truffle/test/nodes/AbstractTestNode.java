@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,23 @@
 package com.oracle.graal.truffle.test.nodes;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 
 public abstract class AbstractTestNode extends Node {
 
     protected AbstractTestNode() {
         super(null);
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return true;
+    }
+
+    @Override
+    public WrapperNode createWrapperNode() {
+        return new WrapperTestNode(this);
     }
 
     public abstract int execute(VirtualFrame frame);

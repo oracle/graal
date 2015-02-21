@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,10 +42,12 @@ import com.oracle.graal.lir.asm.*;
 public class AMD64Move {
 
     private abstract static class AbstractMoveOp extends AMD64LIRInstruction implements MoveOp {
+        public static final LIRInstructionClass<AbstractMoveOp> TYPE = LIRInstructionClass.create(AbstractMoveOp.class);
 
         private Kind moveKind;
 
-        public AbstractMoveOp(Kind moveKind) {
+        protected AbstractMoveOp(LIRInstructionClass<? extends AbstractMoveOp> c, Kind moveKind) {
+            super(c);
             if (moveKind == Kind.Illegal) {
                 // unknown operand size, conservatively move the whole register
                 this.moveKind = Kind.Long;
@@ -61,13 +63,14 @@ public class AMD64Move {
     }
 
     @Opcode("MOVE")
-    public static class MoveToRegOp extends AbstractMoveOp {
+    public static final class MoveToRegOp extends AbstractMoveOp {
+        public static final LIRInstructionClass<MoveToRegOp> TYPE = LIRInstructionClass.create(MoveToRegOp.class);
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
         public MoveToRegOp(Kind moveKind, AllocatableValue result, Value input) {
-            super(moveKind);
+            super(TYPE, moveKind);
             this.result = result;
             this.input = input;
         }
@@ -84,13 +87,14 @@ public class AMD64Move {
     }
 
     @Opcode("MOVE")
-    public static class MoveFromRegOp extends AbstractMoveOp {
+    public static final class MoveFromRegOp extends AbstractMoveOp {
+        public static final LIRInstructionClass<MoveFromRegOp> TYPE = LIRInstructionClass.create(MoveFromRegOp.class);
 
         @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
         public MoveFromRegOp(Kind moveKind, AllocatableValue result, Value input) {
-            super(moveKind);
+            super(TYPE, moveKind);
             this.result = result;
             this.input = input;
         }
@@ -107,12 +111,14 @@ public class AMD64Move {
     }
 
     public abstract static class MemOp extends AMD64LIRInstruction implements ImplicitNullCheck {
+        public static final LIRInstructionClass<MemOp> TYPE = LIRInstructionClass.create(MemOp.class);
 
         protected final Kind kind;
         @Use({COMPOSITE}) protected AMD64AddressValue address;
         @State protected LIRFrameState state;
 
-        public MemOp(Kind kind, AMD64AddressValue address, LIRFrameState state) {
+        public MemOp(LIRInstructionClass<? extends MemOp> c, Kind kind, AMD64AddressValue address, LIRFrameState state) {
+            super(c);
             this.kind = kind;
             this.address = address;
             this.state = state;
@@ -137,12 +143,13 @@ public class AMD64Move {
         }
     }
 
-    public static class LoadOp extends MemOp {
+    public static final class LoadOp extends MemOp {
+        public static final LIRInstructionClass<LoadOp> TYPE = LIRInstructionClass.create(LoadOp.class);
 
         @Def({REG}) protected AllocatableValue result;
 
         public LoadOp(Kind kind, AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.result = result;
         }
 
@@ -182,12 +189,13 @@ public class AMD64Move {
         }
     }
 
-    public static class ZeroExtendLoadOp extends MemOp {
+    public static final class ZeroExtendLoadOp extends MemOp {
+        public static final LIRInstructionClass<ZeroExtendLoadOp> TYPE = LIRInstructionClass.create(ZeroExtendLoadOp.class);
 
         @Def({REG}) protected AllocatableValue result;
 
         public ZeroExtendLoadOp(Kind kind, AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.result = result;
         }
 
@@ -214,12 +222,13 @@ public class AMD64Move {
         }
     }
 
-    public static class StoreOp extends MemOp {
+    public static final class StoreOp extends MemOp {
+        public static final LIRInstructionClass<StoreOp> TYPE = LIRInstructionClass.create(StoreOp.class);
 
         @Use({REG}) protected AllocatableValue input;
 
         public StoreOp(Kind kind, AMD64AddressValue address, AllocatableValue input, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.input = input;
         }
 
@@ -256,12 +265,13 @@ public class AMD64Move {
         }
     }
 
-    public static class StoreConstantOp extends MemOp {
+    public abstract static class StoreConstantOp extends MemOp {
+        public static final LIRInstructionClass<StoreConstantOp> TYPE = LIRInstructionClass.create(StoreConstantOp.class);
 
         protected final JavaConstant input;
 
-        public StoreConstantOp(Kind kind, AMD64AddressValue address, JavaConstant input, LIRFrameState state) {
-            super(kind, address, state);
+        protected StoreConstantOp(LIRInstructionClass<? extends StoreConstantOp> c, Kind kind, AMD64AddressValue address, JavaConstant input, LIRFrameState state) {
+            super(c, kind, address, state);
             this.input = input;
         }
 
@@ -304,12 +314,14 @@ public class AMD64Move {
         }
     }
 
-    public static class LeaOp extends AMD64LIRInstruction {
+    public static final class LeaOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<LeaOp> TYPE = LIRInstructionClass.create(LeaOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({COMPOSITE, UNINITIALIZED}) protected AMD64AddressValue address;
 
         public LeaOp(AllocatableValue result, AMD64AddressValue address) {
+            super(TYPE);
             this.result = result;
             this.address = address;
         }
@@ -320,12 +332,14 @@ public class AMD64Move {
         }
     }
 
-    public static class LeaDataOp extends AMD64LIRInstruction {
+    public static final class LeaDataOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<LeaDataOp> TYPE = LIRInstructionClass.create(LeaDataOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         private final byte[] data;
 
         public LeaDataOp(AllocatableValue result, byte[] data) {
+            super(TYPE);
             this.result = result;
             this.data = data;
         }
@@ -336,12 +350,14 @@ public class AMD64Move {
         }
     }
 
-    public static class StackLeaOp extends AMD64LIRInstruction {
+    public static final class StackLeaOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<StackLeaOp> TYPE = LIRInstructionClass.create(StackLeaOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
 
         public StackLeaOp(AllocatableValue result, StackSlotValue slot) {
+            super(TYPE);
             assert isStackSlotValue(slot) : "Not a stack slot: " + slot;
             this.result = result;
             this.slot = slot;
@@ -353,11 +369,13 @@ public class AMD64Move {
         }
     }
 
-    public static class MembarOp extends AMD64LIRInstruction {
+    public static final class MembarOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
         private final int barriers;
 
         public MembarOp(final int barriers) {
+            super(TYPE);
             this.barriers = barriers;
         }
 
@@ -367,12 +385,14 @@ public class AMD64Move {
         }
     }
 
-    public static class NullCheckOp extends AMD64LIRInstruction implements NullCheck {
+    public static final class NullCheckOp extends AMD64LIRInstruction implements NullCheck {
+        public static final LIRInstructionClass<NullCheckOp> TYPE = LIRInstructionClass.create(NullCheckOp.class);
 
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
         public NullCheckOp(Variable input, LIRFrameState state) {
+            super(TYPE);
             this.input = input;
             this.state = state;
         }
@@ -393,7 +413,8 @@ public class AMD64Move {
     }
 
     @Opcode("CAS")
-    public static class CompareAndSwapOp extends AMD64LIRInstruction {
+    public static final class CompareAndSwapOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         private final Kind accessKind;
 
@@ -403,6 +424,7 @@ public class AMD64Move {
         @Use protected AllocatableValue newValue;
 
         public CompareAndSwapOp(Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+            super(TYPE);
             this.accessKind = accessKind;
             this.result = result;
             this.address = address;
@@ -432,7 +454,8 @@ public class AMD64Move {
     }
 
     @Opcode("ATOMIC_READ_AND_ADD")
-    public static class AtomicReadAndAddOp extends AMD64LIRInstruction {
+    public static final class AtomicReadAndAddOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<AtomicReadAndAddOp> TYPE = LIRInstructionClass.create(AtomicReadAndAddOp.class);
 
         private final Kind accessKind;
 
@@ -441,6 +464,7 @@ public class AMD64Move {
         @Use protected AllocatableValue delta;
 
         public AtomicReadAndAddOp(Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue delta) {
+            super(TYPE);
             this.accessKind = accessKind;
             this.result = result;
             this.address = address;
@@ -467,7 +491,8 @@ public class AMD64Move {
     }
 
     @Opcode("ATOMIC_READ_AND_WRITE")
-    public static class AtomicReadAndWriteOp extends AMD64LIRInstruction {
+    public static final class AtomicReadAndWriteOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<AtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AtomicReadAndWriteOp.class);
 
         private final Kind accessKind;
 
@@ -476,6 +501,7 @@ public class AMD64Move {
         @Use protected AllocatableValue newValue;
 
         public AtomicReadAndWriteOp(Kind accessKind, AllocatableValue result, AMD64AddressValue address, AllocatableValue newValue) {
+            super(TYPE);
             this.accessKind = accessKind;
             this.result = result;
             this.address = address;

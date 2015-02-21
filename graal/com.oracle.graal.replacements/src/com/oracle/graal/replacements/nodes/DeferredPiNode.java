@@ -40,6 +40,7 @@ import com.oracle.graal.replacements.*;
  */
 @NodeInfo
 public final class DeferredPiNode extends FloatingNode implements Canonicalizable {
+    public static final NodeClass<DeferredPiNode> TYPE = NodeClass.create(DeferredPiNode.class);
 
     @Input ValueNode object;
     @Input ValueNode type;
@@ -49,7 +50,7 @@ public final class DeferredPiNode extends FloatingNode implements Canonicalizabl
     }
 
     public DeferredPiNode(ValueNode type, ValueNode object) {
-        super(StampFactory.object());
+        super(TYPE, StampFactory.object());
         this.type = type;
         this.object = object;
     }

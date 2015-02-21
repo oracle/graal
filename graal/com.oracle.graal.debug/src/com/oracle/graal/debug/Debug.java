@@ -467,12 +467,22 @@ public class Debug {
         log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
     }
 
+    public static void log(String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7, Object arg8) {
+        log(DEFAULT_LOG_LEVEL, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+    }
+
     /**
      * @see #log(int, String, Object)
      */
     public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7) {
         if (ENABLED) {
             DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+        }
+    }
+
+    public static void log(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7, Object arg8) {
+        if (ENABLED) {
+            DebugScope.getInstance().log(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
         }
     }
 

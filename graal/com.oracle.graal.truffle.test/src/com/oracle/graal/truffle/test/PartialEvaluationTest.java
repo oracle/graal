@@ -24,11 +24,11 @@ package com.oracle.graal.truffle.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -53,18 +53,16 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
-        Assumptions assumptions = new Assumptions(true);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, assumptions);
-        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, getSpeculationLog(), compilable);
+        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, getSpeculationLog(), compilable);
         return compilable;
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
-        Assumptions assumptions = new Assumptions(true);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, assumptions);
-        truffleCompiler.compileMethodHelper(actual, assumptions, methodName, getSpeculationLog(), compilable);
+        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, getSpeculationLog(), compilable);
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));
@@ -76,40 +74,39 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected void assertPartialEvalNoInvokes(RootNode root, Object[] arguments) {
-        Assumptions assumptions = new Assumptions(true);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, assumptions);
+        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
         removeFrameStates(actual);
-        for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found invalid method call target node: " + node);
         }
     }
 
-    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, final Assumptions assumptions) {
+    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, AllowAssumptions allowAssumptions) {
         // Executed AST so that all classes are loaded and initialized.
         compilable.call(arguments);
         compilable.call(arguments);
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, assumptions);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, allowAssumptions);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
     }
 
     protected void removeFrameStates(StructuredGraph graph) {
-        for (FrameState frameState : graph.getNodes(FrameState.class)) {
+        for (FrameState frameState : graph.getNodes(FrameState.TYPE)) {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         new DeadCodeEliminationPhase().apply(graph);
     }
 
     protected StructuredGraph parseForComparison(final String methodName) {
         try (Scope s = Debug.scope("Truffle", new DebugDumpScope("Comparison: " + methodName))) {
-            StructuredGraph graph = parseEager(methodName);
+            StructuredGraph graph = parseEager(methodName, AllowAssumptions.YES);
             compile(graph.method(), graph);
             return graph;
         } catch (Throwable e) {

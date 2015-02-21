@@ -76,6 +76,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class Node implements Cloneable, Formattable {
 
+    public static final NodeClass<?> TYPE = null;
     public static final boolean USE_UNSAFE_TO_CLONE = Boolean.parseBoolean(System.getProperty("graal.node.useUnsafeToClone", "true"));
 
     static final int DELETED_ID_START = -1000000000;
@@ -160,6 +161,14 @@ public abstract class Node implements Cloneable, Formattable {
          * ignored and can therefore safely be {@code null}.
          */
         boolean setStampFromReturnType() default false;
+
+        /**
+         * Determines if this intrinsic can be compile-time executed. An attempt to execute a call
+         * (via reflection) to this intrinsic at compile-time will be made if all of its arguments
+         * are compile-time constant. If the execution succeeds without an exception, the result is
+         * inserted as a constant node in the graph.
+         */
+        boolean foldable() default false;
     }
 
     /**
@@ -193,14 +202,15 @@ public abstract class Node implements Cloneable, Formattable {
     int extraUsagesCount;
 
     private Node predecessor;
-    private NodeClass nodeClass;
+    private NodeClass<? extends Node> nodeClass;
 
     public static final int NODE_LIST = -2;
     public static final int NOT_ITERABLE = -1;
 
-    public Node() {
+    public Node(NodeClass<? extends Node> c) {
         init();
-        this.nodeClass = NodeClass.get(this.getClass());
+        assert c.getJavaClass() == this.getClass();
+        this.nodeClass = c;
     }
 
     final void init() {
@@ -332,7 +342,9 @@ public abstract class Node implements Cloneable, Formattable {
             if (length == 0) {
                 extraUsages = new Node[4];
             } else if (extraUsagesCount == length) {
-                extraUsages = Arrays.copyOf(extraUsages, length * 2 + 1);
+                Node[] newExtraUsages = new Node[length * 2 + 1];
+                System.arraycopy(extraUsages, 0, newExtraUsages, 0, length);
+                extraUsages = newExtraUsages;
             }
             extraUsages[extraUsagesCount++] = node;
         }
@@ -497,7 +509,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    public final NodeClass getNodeClass() {
+    public final NodeClass<? extends Node> getNodeClass() {
         return nodeClass;
     }
 
@@ -739,7 +751,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @return the copy of this node
      */
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
-        final NodeClass nodeClassTmp = getNodeClass();
+        final NodeClass<? extends Node> nodeClassTmp = getNodeClass();
         boolean useIntoLeafNodeCache = false;
         if (into != null) {
             if (nodeClassTmp.valueNumberable() && nodeClassTmp.isLeafNode()) {

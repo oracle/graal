@@ -23,7 +23,9 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -35,13 +37,34 @@ import com.oracle.graal.nodes.spi.*;
  * true.
  */
 @NodeInfo
-public class NormalizeCompareNode extends BinaryNode implements Lowerable {
+public final class NormalizeCompareNode extends BinaryNode implements Lowerable {
 
+    public static final NodeClass<NormalizeCompareNode> TYPE = NodeClass.create(NormalizeCompareNode.class);
     protected final boolean isUnorderedLess;
 
     public NormalizeCompareNode(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        super(StampFactory.forKind(Kind.Int), x, y);
+        super(TYPE, StampFactory.forKind(Kind.Int), x, y);
         this.isUnorderedLess = isUnorderedLess;
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y, boolean isUnorderedLess, ConstantReflectionProvider constantReflection) {
+        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+        if (result instanceof LogicConstantNode) {
+            LogicConstantNode logicConstantNode = (LogicConstantNode) result;
+            LogicNode resultLT = CompareNode.tryConstantFold(Condition.LT, x, y, constantReflection, isUnorderedLess);
+            if (resultLT instanceof LogicConstantNode) {
+                LogicConstantNode logicConstantNodeLT = (LogicConstantNode) resultLT;
+                if (logicConstantNodeLT.getValue()) {
+                    return ConstantNode.forInt(-1);
+                } else if (logicConstantNode.getValue()) {
+                    return ConstantNode.forInt(0);
+                } else {
+                    return ConstantNode.forInt(1);
+                }
+            }
+        }
+
+        return new NormalizeCompareNode(x, y, isUnorderedLess);
     }
 
     @Override
@@ -56,10 +79,10 @@ public class NormalizeCompareNode extends BinaryNode implements Lowerable {
         LogicNode lessComp;
         if (getX().stamp() instanceof FloatStamp) {
             equalComp = graph().unique(FloatEqualsNode.create(getX(), getY(), tool.getConstantReflection()));
-            lessComp = graph().unique(new FloatLessThanNode(getX(), getY(), isUnorderedLess));
+            lessComp = graph().unique(FloatLessThanNode.create(getX(), getY(), isUnorderedLess, tool.getConstantReflection()));
         } else {
-            equalComp = graph().unique(new IntegerEqualsNode(getX(), getY()));
-            lessComp = graph().unique(new IntegerLessThanNode(getX(), getY()));
+            equalComp = graph().unique(IntegerEqualsNode.create(getX(), getY(), tool.getConstantReflection()));
+            lessComp = graph().unique(IntegerLessThanNode.create(getX(), getY(), tool.getConstantReflection()));
         }
 
         ConditionalNode equalValue = graph().unique(new ConditionalNode(equalComp, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph())));

@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.graph.*;
@@ -58,7 +59,7 @@ public class InlineableGraph implements Inlineable {
     private FixedNodeProbabilityCache probabilites = new FixedNodeProbabilityCache();
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph original = getOriginalGraph(method, context, canonicalizer);
+        StructuredGraph original = getOriginalGraph(method, context, canonicalizer, invoke.asNode().graph());
         // TODO copying the graph is only necessary if it is modified or if it contains any invokes
         this.graph = original.copy();
         specializeGraphToArguments(invoke, context, canonicalizer);
@@ -69,7 +70,7 @@ public class InlineableGraph implements Inlineable {
      * The graph thus obtained is returned, ie the caller is responsible for cloning before
      * modification.
      */
-    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer) {
+    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
         StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
         if (result != null) {
             return result;
@@ -78,7 +79,7 @@ public class InlineableGraph implements Inlineable {
         if (result != null) {
             return result;
         }
-        return parseBytecodes(method, context, canonicalizer);
+        return parseBytecodes(method, context, canonicalizer, caller);
     }
 
     /**
@@ -142,7 +143,7 @@ public class InlineableGraph implements Inlineable {
     private ArrayList<Node> replaceParamsWithMoreInformativeArguments(final Invoke invoke, final HighTierContext context) {
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
         ArrayList<Node> parameterUsages = null;
-        List<ParameterNode> params = graph.getNodes(ParameterNode.class).snapshot();
+        List<ParameterNode> params = graph.getNodes(ParameterNode.TYPE).snapshot();
         assert params.size() <= args.size();
         /*
          * param-nodes that aren't used (eg, as a result of canonicalization) don't occur in
@@ -184,6 +185,8 @@ public class InlineableGraph implements Inlineable {
         if (context.getGraphCache() != null) {
             StructuredGraph cachedGraph = context.getGraphCache().get(method);
             if (cachedGraph != null) {
+                // TODO: check that cachedGraph.getAssumptions() are still valid
+                // instead of waiting for code installation to do it.
                 return cachedGraph;
             }
         }
@@ -195,9 +198,16 @@ public class InlineableGraph implements Inlineable {
      * Provided profiling info is mature, the resulting graph is cached. The caller is responsible
      * for cloning before modification.</p>
      */
-    private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph newGraph = new StructuredGraph(method);
+    private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
+        StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null));
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
+            if (!caller.isInlinedMethodRecordingEnabled()) {
+                // Don't record inlined methods in the callee if
+                // the caller doesn't want them. This decision is
+                // preserved in the graph cache (if used) which is
+                // ok since the graph cache is compilation local.
+                newGraph.disableInlinedMethodRecording();
+            }
             if (context.getGraphBuilderSuite() != null) {
                 context.getGraphBuilderSuite().apply(newGraph, context);
             }

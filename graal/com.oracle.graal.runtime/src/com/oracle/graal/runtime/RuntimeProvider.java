@@ -37,7 +37,7 @@ public interface RuntimeProvider {
 
     /**
      * Gets the backend for a given architecture.
-     * 
+     *
      * @param arch a specific architecture class
      */
     <T extends Architecture> Backend getBackend(Class<T> arch);

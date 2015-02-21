@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -35,6 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
 
+    public static final NodeClass<LoadHubNode> TYPE = NodeClass.create(LoadHubNode.class);
     @Input ValueNode value;
 
     public ValueNode getValue() {
@@ -51,7 +53,7 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     }
 
     public LoadHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode value, ValueNode guard) {
-        super(hubStamp(stampProvider, value), (GuardingNode) guard);
+        super(TYPE, hubStamp(stampProvider, value), (GuardingNode) guard);
         assert value != guard;
         this.value = value;
     }
@@ -73,10 +75,10 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
             ResolvedJavaType exactType;
             if (objectStamp.isExactType()) {
                 exactType = objectStamp.type();
-            } else if (objectStamp.type() != null && tool.assumptions().useOptimisticAssumptions()) {
+            } else if (objectStamp.type() != null && graph().getAssumptions() != null) {
                 exactType = objectStamp.type().findUniqueConcreteSubtype();
                 if (exactType != null) {
-                    tool.assumptions().recordConcreteSubtype(objectStamp.type(), exactType);
+                    graph().getAssumptions().recordConcreteSubtype(objectStamp.type(), exactType);
                 }
             } else {
                 exactType = null;

@@ -31,7 +31,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.frame.*;
-import com.oracle.graal.truffle.nodes.typesystem.*;
 import com.oracle.truffle.api.*;
 
 @ClassSubstitution(CompilerDirectives.class)
@@ -74,103 +73,13 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
 
-    @MacroSubstitution(macro = IsCompilationConstantNode.class, isStatic = true)
-    public static native boolean isCompilationConstant(Object value);
-
-    @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class<?> clazz, boolean condition, boolean nonNull);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
-    public static native Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity);
-
-    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
-    public static native void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity);
-
     @MethodSubstitution
-    public static boolean unsafeGetFinalBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Boolean);
-    }
-
-    @MethodSubstitution
-    public static byte unsafeGetFinalByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Byte);
-    }
-
-    @MethodSubstitution
-    public static short unsafeGetFinalShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Short);
-    }
-
-    @MethodSubstitution
-    public static int unsafeGetFinalInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Int);
-    }
-
-    @MethodSubstitution
-    public static long unsafeGetFinalLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Long);
-    }
-
-    @MethodSubstitution
-    public static float unsafeGetFinalFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Float);
-    }
-
-    @MethodSubstitution
-    public static double unsafeGetFinalDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Double);
-    }
-
-    @MethodSubstitution
-    public static Object unsafeGetFinalObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadFinalNode.load(receiver, offset, condition, locationIdentity, Kind.Object);
+    public static boolean isCompilationConstant(Object value) {
+        return IsCompilationConstantNode.check(value);
     }
 
     @MethodSubstitution
     public static void materialize(Object obj) {
         ForceMaterializeNode.force(obj);
     }
-
 }

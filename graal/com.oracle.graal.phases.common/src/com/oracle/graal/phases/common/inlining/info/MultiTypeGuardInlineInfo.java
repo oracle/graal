@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.common.calc.*;
@@ -142,11 +141,11 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public Collection<Node> inline(Providers providers, Assumptions assumptions) {
+    public Collection<Node> inline(Providers providers) {
         if (hasSingleMethod()) {
-            return inlineSingleMethod(graph(), providers.getMetaAccess(), assumptions, providers.getStampProvider());
+            return inlineSingleMethod(graph(), providers.getMetaAccess(), providers.getStampProvider());
         } else {
-            return inlineMultipleMethods(graph(), providers, assumptions);
+            return inlineMultipleMethods(graph(), providers);
         }
     }
 
@@ -167,7 +166,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return notRecordedTypeProbability > 0;
     }
 
-    private Collection<Node> inlineMultipleMethods(StructuredGraph graph, Providers providers, Assumptions assumptions) {
+    private Collection<Node> inlineMultipleMethods(StructuredGraph graph, Providers providers) {
         int numberOfMethods = concretes.size();
         FixedNode continuation = invoke.next();
 
@@ -276,7 +275,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             if (opportunities > 0) {
                 metricInliningTailDuplication.increment();
                 Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                PhaseContext phaseContext = new PhaseContext(providers, assumptions);
+                PhaseContext phaseContext = new PhaseContext(providers);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
                 TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
             }
@@ -286,7 +285,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         // do the actual inlining for every invoke
         for (int i = 0; i < numberOfMethods; i++) {
             Invoke invokeForInlining = (Invoke) successors[i].next();
-            canonicalizeNodes.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false));
+            canonicalizeNodes.addAll(inline(invokeForInlining, methodAt(i), inlineableElementAt(i), false));
         }
         if (returnValuePhi != null) {
             canonicalizeNodes.add(returnValuePhi);
@@ -327,7 +326,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return result;
     }
 
-    private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions, StampProvider stampProvider) {
+    private Collection<Node> inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, StampProvider stampProvider) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
@@ -338,7 +337,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         calleeEntryNode.setNext(invoke.asNode());
 
-        return inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
+        return inline(invoke, methodAt(0), inlineableElementAt(0), false);
     }
 
     private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess, StampProvider stampProvider) {
@@ -376,7 +375,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             FixedNode lastSucc = successors[concretes.size()];
             for (int i = concretes.size() - 1; i >= 0; --i) {
                 LoadMethodNode method = graph.add(new LoadMethodNode(stampProvider.createMethodStamp(), concretes.get(i), receiverType, hub));
-                CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
+                LogicNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i], null);
                 IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
                 method.setNext(ifNode);
                 lastSucc = method;
@@ -465,7 +464,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
         calleeEntryNode.setNext(duplicatedInvoke.asNode());
 
-        AbstractEndNode endNode = graph.add(new EndNode());
+        EndNode endNode = graph.add(new EndNode());
         duplicatedInvoke.setNext(endNode);
         returnMerge.addForwardEnd(endNode);
 
@@ -500,7 +499,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             // set new state (pop old exception object, push new one)
             newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(Kind.Object, newExceptionEdge));
 
-            AbstractEndNode endNode = graph.add(new EndNode());
+            EndNode endNode = graph.add(new EndNode());
             newExceptionEdge.setNext(endNode);
             exceptionMerge.addForwardEnd(endNode);
             exceptionObjectPhi.addInput(newExceptionEdge);
@@ -511,7 +510,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public void tryToDevirtualizeInvoke(Providers providers, Assumptions assumptions) {
+    public void tryToDevirtualizeInvoke(Providers providers) {
         if (hasSingleMethod()) {
             devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), providers.getMetaAccess(), providers.getStampProvider());
         } else {

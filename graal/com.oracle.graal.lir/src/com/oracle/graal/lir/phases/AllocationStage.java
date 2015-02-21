@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.asserts;
+package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.phases.AllocationPhase.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
-@NodeInfo
-public final class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
+    public AllocationStage() {
+        appendPhase(new LinearScanPhase());
 
-    public CompilationConstantNode(Invoke invoke) {
-        super(invoke, "The value could not be reduced to a compile time constant.");
-        assert arguments.size() == 1;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (arguments.get(0).isConstant()) {
-            return arguments.get(0);
+        // build frame map
+        if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue()) {
+            appendPhase(new LSStackSlotAllocator());
+        } else {
+            appendPhase(new SimpleStackSlotAllocator());
         }
-        return this;
+        // currently we mark locations only if we do register allocation
+        appendPhase(new LocationMarker());
     }
 }

@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
+    public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
     /** {@link Kind} of the arrays to compare. */
     protected final Kind kind;
 
@@ -51,8 +52,9 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
     @Input ValueNode length;
 
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
-        super(StampFactory.forKind(Kind.Boolean));
-        assert array1.stamp().equals(array2.stamp());
+        super(TYPE, StampFactory.forKind(Kind.Boolean));
+        // Ignore nullness in stamp equality test
+        assert array1.stamp().join(StampFactory.objectNonNull()).equals(array2.stamp().join(StampFactory.objectNonNull()));
         ObjectStamp array1Stamp = (ObjectStamp) array1.stamp();
         ResolvedJavaType componentType = array1Stamp.type().getComponentType();
         this.kind = componentType.getKind();

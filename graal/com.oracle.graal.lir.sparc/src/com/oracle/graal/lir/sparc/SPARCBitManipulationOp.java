@@ -41,7 +41,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 
-public class SPARCBitManipulationOp extends SPARCLIRInstruction {
+public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCBitManipulationOp> TYPE = LIRInstructionClass.create(SPARCBitManipulationOp.class);
 
     public enum IntrinsicOpcode {
         IPOPCNT,
@@ -57,6 +58,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
     @Temp({REG}) protected Value scratch;
 
     public SPARCBitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input, LIRGeneratorTool gen) {
+        super(TYPE);
         this.opcode = opcode;
         this.result = result;
         this.input = input;

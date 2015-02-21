@@ -294,7 +294,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeString(type.toJavaName());
             writeByte(KLASS);
         } else if (object instanceof NodeClass) {
-            NodeClass nodeClass = (NodeClass) object;
+            NodeClass<?> nodeClass = (NodeClass<?>) object;
             writeByte(POOL_NODE_CLASS);
             writeString(nodeClass.getJavaClass().getSimpleName());
             writeString(nodeClass.getNameTemplate());
@@ -330,7 +330,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    private void writeEdgesInfo(NodeClass nodeClass, Edges.Type type) throws IOException {
+    private void writeEdgesInfo(NodeClass<?> nodeClass, Edges.Type type) throws IOException {
         Edges edges = nodeClass.getEdges(type);
         writeShort((char) edges.getCount());
         for (int i = 0; i < edges.getCount(); i++) {
@@ -412,7 +412,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         writeInt(graph.getNodeCount());
 
         for (Node node : graph.getNodes()) {
-            NodeClass nodeClass = node.getNodeClass();
+            NodeClass<?> nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
             if (probabilities != null && node instanceof FixedNode) {
                 try {
@@ -439,7 +439,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void writeEdges(Node node, Edges.Type type) throws IOException {
-        NodeClass nodeClass = node.getNodeClass();
+        NodeClass<?> nodeClass = node.getNodeClass();
         Edges edges = nodeClass.getEdges(type);
         for (int i = 0; i < edges.getDirectCount(); i++) {
             writeNodeRef(edges.getNode(node, i));

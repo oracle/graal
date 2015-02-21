@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,8 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 
-public class SPARCAddressValue extends CompositeValue {
+public final class SPARCAddressValue extends CompositeValue {
+    public static final CompositeValueClass<SPARCAddressValue> TYPE = CompositeValueClass.create(SPARCAddressValue.class);
 
     private static final long serialVersionUID = -3583286416638228207L;
 
@@ -44,7 +45,7 @@ public class SPARCAddressValue extends CompositeValue {
     }
 
     public SPARCAddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index, int displacement) {
-        super(kind);
+        super(TYPE, kind);
         assert isIllegal(index) || displacement == 0;
         this.base = base;
         this.index = index;

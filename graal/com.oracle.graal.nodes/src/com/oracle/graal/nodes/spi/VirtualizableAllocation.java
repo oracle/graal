@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.spi;
 /**
  * This interface allows a node to convey information about what its effect would be if some of its
  * inputs were virtualized.
- * 
+ *
  * The difference to {@link VirtualizableRoot} is that removing {@link VirtualizableAllocation}
  * nodes is not considered progress during the escape analysis iterations.
  */

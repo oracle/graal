@@ -36,6 +36,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -190,7 +191,8 @@ public class ForeignCallStub extends Stub {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
 
-        StructuredGraph graph = new StructuredGraph(toString(), null);
+        StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO);
+        graph.disableInlinedMethodRecording();
 
         GraphKit kit = new HotSpotGraphKit(graph, providers);
         ParameterNode[] params = createParameters(kit, args);

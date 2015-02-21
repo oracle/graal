@@ -26,8 +26,8 @@ import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -35,8 +35,8 @@ import com.oracle.graal.phases.tiers.*;
 public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     private StructuredGraph getCanonicalizedGraph(String name) {
-        StructuredGraph graph = parseEager(name);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
+        StructuredGraph graph = parseEager(name, AllowAssumptions.YES);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
         return graph;
     }
 
@@ -48,13 +48,12 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     @Test
     public void testCanonicalComparison() {
-        StructuredGraph referenceGraph = parseEager("referenceCanonicalComparison");
+        StructuredGraph referenceGraph = parseEager("referenceCanonicalComparison", AllowAssumptions.NO);
         for (int i = 1; i < 4; i++) {
-            StructuredGraph graph = parseEager("canonicalCompare" + i);
+            StructuredGraph graph = parseEager("canonicalCompare" + i, AllowAssumptions.NO);
             assertEquals(referenceGraph, graph);
         }
-        Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders(), assumptions));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
         for (int i = 1; i < 4; i++) {
             StructuredGraph graph = getCanonicalizedGraph("canonicalCompare" + i);
             assertEquals(referenceGraph, graph);
@@ -132,8 +131,8 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
         result = getResult(getCanonicalizedGraph("integerTestCanonicalization2"));
         assertTrue(result.isConstant() && result.asJavaConstant().asLong() == 1);
         StructuredGraph graph = getCanonicalizedGraph("integerTestCanonicalization3");
-        assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
-        assertTrue(graph.getNodes(ReturnNode.class).first().result() instanceof ConditionalNode);
+        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        assertTrue(graph.getNodes(ReturnNode.TYPE).first().result() instanceof ConditionalNode);
     }
 
     public static int integerTestCanonicalization1(boolean b) {

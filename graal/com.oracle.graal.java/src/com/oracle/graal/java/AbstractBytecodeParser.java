@@ -24,6 +24,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.TypeCheckHints.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 
 import java.util.*;
@@ -36,6 +37,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
@@ -73,18 +75,25 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected final MetaAccessProvider metaAccess;
 
     /**
+     * Specifies if the {@linkplain #getMethod() method} being parsed implements the semantics of
+     * another method (i.e., an intrinsic) or bytecode instruction (i.e., a snippet). substitution.
+     */
+    protected final boolean parsingReplacement;
+
+    /**
      * Meters the number of actual bytecodes parsed.
      */
     public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
-    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+    public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, boolean isReplacement) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
         this.stream = new BytecodeStream(method.getCode());
-        this.profilingInfo = method.getProfilingInfo();
+        this.profilingInfo = (graphBuilderConfig.getUseProfiling() ? method.getProfilingInfo() : null);
         this.constantPool = method.getConstantPool();
         this.method = method;
+        this.parsingReplacement = isReplacement;
         assert metaAccess != null;
     }
 
@@ -109,7 +118,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         if (kind == Kind.Object) {
             value = frameState.xpop();
             // astore and astore_<n> may be used to store a returnAddress (jsr)
-            assert value.getKind() == Kind.Object || value.getKind() == Kind.Int;
+            assert parsingReplacement || (value.getKind() == Kind.Object || value.getKind() == Kind.Int) : value + ":" + value.getKind();
         } else {
             value = frameState.pop(kind);
         }
@@ -563,7 +572,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (!optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
+        if (parsingReplacement || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -604,9 +613,19 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected abstract T createNewInstance(ResolvedJavaType type, boolean fillContents);
 
+    @SuppressWarnings("unchecked")
     void genNewInstance(int cpi) {
         JavaType type = lookupType(cpi, NEW);
         if (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isInitialized()) {
+            ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
+            if (skippedExceptionTypes != null) {
+                for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
+                    if (exceptionType.isAssignableFrom((ResolvedJavaType) type)) {
+                        append((T) new DeoptimizeNode(DeoptimizationAction.None, TransferToInterpreter));
+                        return;
+                    }
+                }
+            }
             frameState.apush(append(createNewInstance((ResolvedJavaType) type, true)));
         } else {
             handleUnresolvedNewInstance(type);
@@ -688,7 +707,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         Kind kind = field.getKind();
         T receiver = frameState.apop();
         if ((field instanceof ResolvedJavaField) && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
+            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
             if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, (ValueNode) receiver, (ResolvedJavaField) field)) {
                 appendOptimizedLoadField(kind, genLoadField(receiver, (ResolvedJavaField) field));
             }
@@ -707,7 +726,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
     protected void emitExplicitExceptions(T receiver, T outOfBoundsIndex) {
         assert receiver != null;
-        if (graphBuilderConfig.omitAllExceptionEdges() ||
+        if (graphBuilderConfig.omitAllExceptionEdges() || profilingInfo == null ||
                         (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE && !GraalOptions.StressExplicitExceptionCode.getValue())) {
             return;
         }
@@ -737,7 +756,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     private void genGetStatic(JavaField field) {
         Kind kind = field.getKind();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
+            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
             if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, (ResolvedJavaField) field)) {
                 appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
             }
@@ -786,7 +805,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     protected abstract void genRet(int localIndex);
 
     private double[] switchProbability(int numberOfCases, int bci) {
-        double[] prob = profilingInfo.getSwitchProbabilities(bci);
+        double[] prob = (profilingInfo == null ? null : profilingInfo.getSwitchProbabilities(bci));
         if (prob != null) {
             assert prob.length == numberOfCases;
         } else {
@@ -831,9 +850,9 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
 
         Map<Integer, SuccessorInfo> bciToBlockSuccessorIndex = new HashMap<>();
         for (int i = 0; i < currentBlock.getSuccessorCount(); i++) {
-            assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessors().get(i).startBci);
-            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessors().get(i).startBci)) {
-                bciToBlockSuccessorIndex.put(currentBlock.getSuccessors().get(i).startBci, new SuccessorInfo(i));
+            assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci);
+            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci)) {
+                bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));
             }
         }
 
@@ -842,12 +861,13 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         int[] keySuccessors = new int[nofCases + 1];
         int deoptSuccessorIndex = -1;
         int nextSuccessorIndex = 0;
+        boolean constantValue = ((ValueNode) value).isConstant();
         for (int i = 0; i < nofCases + 1; i++) {
             if (i < nofCases) {
                 keys[i] = bs.keyAt(i);
             }
 
-            if (isNeverExecutedCode(keyProbabilities[i])) {
+            if (!constantValue && isNeverExecutedCode(keyProbabilities[i])) {
                 if (deoptSuccessorIndex < 0) {
                     deoptSuccessorIndex = nextSuccessorIndex++;
                     actualSuccessors.add(null);
@@ -858,7 +878,7 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
                 SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
                 if (info.actualIndex < 0) {
                     info.actualIndex = nextSuccessorIndex++;
-                    actualSuccessors.add(currentBlock.getSuccessors().get(info.blockIndex));
+                    actualSuccessors.add(currentBlock.getSuccessor(info.blockIndex));
                 }
                 keySuccessors[i] = info.actualIndex;
             }
@@ -890,6 +910,10 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
     }
 
     protected double branchProbability() {
+        if (profilingInfo == null) {
+            return 0.5;
+        }
+        assert assertAtIfBytecode();
         double probability = profilingInfo.getBranchTakenProbability(bci());
         if (probability < 0) {
             assert probability == -1 : "invalid probability";
@@ -905,6 +929,31 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
             }
         }
         return probability;
+    }
+
+    private boolean assertAtIfBytecode() {
+        int bytecode = stream.currentBC();
+        switch (bytecode) {
+            case IFEQ:
+            case IFNE:
+            case IFLT:
+            case IFGE:
+            case IFGT:
+            case IFLE:
+            case IF_ICMPEQ:
+            case IF_ICMPNE:
+            case IF_ICMPLT:
+            case IF_ICMPGE:
+            case IF_ICMPGT:
+            case IF_ICMPLE:
+            case IF_ACMPEQ:
+            case IF_ACMPNE:
+            case IFNULL:
+            case IFNONNULL:
+                return true;
+        }
+        assert false : String.format("%x is not an if bytecode", bytecode);
+        return true;
     }
 
     protected abstract void iterateBytecodesForBlock(BciBlock block);
@@ -1137,10 +1186,11 @@ public abstract class AbstractBytecodeParser<T extends KindProvider, F extends A
         return frameState;
     }
 
-    protected void traceInstruction(int bci, int opcode, boolean blockStart) {
+    protected boolean traceInstruction(int bci, int opcode, boolean blockStart) {
         if (Debug.isEnabled() && Options.TraceBytecodeParserLevel.getValue() >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
             traceInstructionHelper(bci, opcode, blockStart);
         }
+        return true;
     }
 
     private void traceInstructionHelper(int bci, int opcode, boolean blockStart) {

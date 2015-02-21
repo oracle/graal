@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,17 +34,18 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(nameTemplate = "MemoryPhi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
 public final class MemoryPhiNode extends PhiNode implements MemoryNode {
 
+    public static final NodeClass<MemoryPhiNode> TYPE = NodeClass.create(MemoryPhiNode.class);
     @Input(InputType.Memory) NodeInputList<ValueNode> values;
     protected final LocationIdentity locationIdentity;
 
     public MemoryPhiNode(AbstractMergeNode merge, LocationIdentity locationIdentity) {
-        super(StampFactory.forVoid(), merge);
+        super(TYPE, StampFactory.forVoid(), merge);
         this.locationIdentity = locationIdentity;
         this.values = new NodeInputList<>(this);
     }
 
     public MemoryPhiNode(AbstractMergeNode merge, LocationIdentity locationIdentity, ValueNode[] values) {
-        super(StampFactory.forVoid(), merge);
+        super(TYPE, StampFactory.forVoid(), merge);
         this.locationIdentity = locationIdentity;
         this.values = new NodeInputList<>(this, values);
     }

@@ -37,5 +37,5 @@ public interface MatchStatementSet extends Service {
     /**
      * @return the {@link MatchStatement}s available for this {@link NodeLIRBuilder} subclass.
      */
-    List<MatchStatement> statements(MatchRuleRegistry.NodeClassLookup lookup);
+    List<MatchStatement> statements();
 }

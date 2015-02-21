@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,14 +39,16 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public abstract class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 
+    public static final NodeClass<LocationNode> TYPE = NodeClass.create(LocationNode.class);
+
     /**
      * Marker interface for locations in snippets.
      */
     public interface Location {
     }
 
-    protected LocationNode(Stamp stamp) {
-        super(stamp);
+    protected LocationNode(NodeClass<? extends LocationNode> c, Stamp stamp) {
+        super(c, stamp);
     }
 
     /**

@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
@@ -45,55 +46,55 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public ObjectAccessTest() {
-        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), new Assumptions(false), getTarget());
+        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), getTarget());
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
         return installer.makeGraph(m, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test
     public void testRead1() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "1"), kind, true, ID);
+            assertRead(parseEager("read" + kind.name() + "1", AllowAssumptions.YES), kind, true, ID);
         }
     }
 
     @Test
     public void testRead2() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "2"), kind, true, ID);
+            assertRead(parseEager("read" + kind.name() + "2", AllowAssumptions.YES), kind, true, ID);
         }
     }
 
     @Test
     public void testRead3() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "3"), kind, true, LocationIdentity.ANY_LOCATION);
+            assertRead(parseEager("read" + kind.name() + "3", AllowAssumptions.YES), kind, true, LocationIdentity.ANY_LOCATION);
         }
     }
 
     @Test
     public void testWrite1() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "1"), true, ID);
+            assertWrite(parseEager("write" + kind.name() + "1", AllowAssumptions.YES), true, ID);
         }
     }
 
     @Test
     public void testWrite2() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "2"), true, ID);
+            assertWrite(parseEager("write" + kind.name() + "2", AllowAssumptions.YES), true, ID);
         }
     }
 
     @Test
     public void testWrite3() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "3"), true, LocationIdentity.ANY_LOCATION);
+            assertWrite(parseEager("write" + kind.name() + "3", AllowAssumptions.YES), true, LocationIdentity.ANY_LOCATION);
         }
     }
 

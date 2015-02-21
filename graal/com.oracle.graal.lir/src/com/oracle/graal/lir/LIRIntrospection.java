@@ -35,7 +35,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
-abstract class LIRIntrospection extends FieldIntrospection {
+abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
     private static final Class<Value> VALUE_CLASS = Value.class;
     private static final Class<JavaConstant> CONSTANT_CLASS = JavaConstant.class;
@@ -44,7 +44,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
     private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;
     private static final Class<Value[]> VALUE_ARRAY_CLASS = Value[].class;
 
-    public LIRIntrospection(Class<?> clazz) {
+    public LIRIntrospection(Class<T> clazz) {
         super(clazz);
     }
 
@@ -202,7 +202,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     protected static void forEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueProcedure proc) {
         for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstructionBase.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(inst, i);
@@ -238,7 +238,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
     protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, Values values, OperandMode mode, InstructionValueProcedure proc) {
         CompositeValue newCompValue = null;
         for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstructionBase.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(obj, i);
@@ -286,7 +286,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     protected static void forEach(LIRInstruction inst, Object obj, Values values, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
         for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstructionBase.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(obj, i);

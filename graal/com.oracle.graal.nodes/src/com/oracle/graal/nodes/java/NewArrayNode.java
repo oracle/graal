@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -40,8 +41,14 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 
+    public static final NodeClass<NewArrayNode> TYPE = NodeClass.create(NewArrayNode.class);
+
     public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        super(StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
+        super(TYPE, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
+    }
+
+    protected NewArrayNode(NodeClass<? extends NewArrayNode> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+        super(c, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
     }
 
     @NodeIntrinsic

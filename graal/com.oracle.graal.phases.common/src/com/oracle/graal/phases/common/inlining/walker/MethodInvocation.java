@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import com.oracle.graal.api.code.Assumptions;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableMacroNode;
+import java.util.*;
 
-import java.util.BitSet;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
 
 /**
  * <p>
@@ -47,7 +44,6 @@ import java.util.BitSet;
 public class MethodInvocation {
 
     private final InlineInfo callee;
-    private final Assumptions assumptions;
     private final double probability;
     private final double relevance;
 
@@ -79,9 +75,8 @@ public class MethodInvocation {
 
     private final int sizeFreshArgs;
 
-    public MethodInvocation(InlineInfo info, Assumptions assumptions, double probability, double relevance, BitSet freshlyInstantiatedArguments) {
+    public MethodInvocation(InlineInfo info, double probability, double relevance, BitSet freshlyInstantiatedArguments) {
         this.callee = info;
-        this.assumptions = assumptions;
         this.probability = probability;
         this.relevance = relevance;
         this.freshlyInstantiatedArguments = freshlyInstantiatedArguments;
@@ -104,10 +99,6 @@ public class MethodInvocation {
 
     public InlineInfo callee() {
         return callee;
-    }
-
-    public Assumptions assumptions() {
-        return assumptions;
     }
 
     public double probability() {

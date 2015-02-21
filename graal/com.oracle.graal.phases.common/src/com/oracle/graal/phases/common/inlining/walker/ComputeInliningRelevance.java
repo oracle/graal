@@ -75,7 +75,7 @@ public class ComputeInliningRelevance {
             Map<LoopBeginNode, Scope> loops = Node.newIdentityMap(EXPECTED_LOOP_COUNT);
 
             loops.put(null, new Scope(graph.start(), null));
-            for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.class)) {
+            for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
                 createLoopScope(loopBegin, loops);
             }
 

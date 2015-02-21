@@ -30,6 +30,7 @@ import org.junit.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.util.*;
@@ -51,7 +52,7 @@ public class SchedulingTest extends GraphScheduleTest {
 
     @Test
     public void testValueProxyInputs() {
-        StructuredGraph graph = parseEager("testValueProxyInputsSnippet");
+        StructuredGraph graph = parseEager("testValueProxyInputsSnippet", AllowAssumptions.YES);
         for (FrameState fs : graph.getNodes().filter(FrameState.class).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);

@@ -42,12 +42,14 @@ public enum AMD64Compare {
     FCMP,
     DCMP;
 
-    public static class CompareOp extends AMD64LIRInstruction {
+    public static final class CompareOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<CompareOp> TYPE = LIRInstructionClass.create(CompareOp.class);
         @Opcode private final AMD64Compare opcode;
         @Use({REG}) protected Value x;
         @Use({REG, STACK, CONST}) protected Value y;
 
         public CompareOp(AMD64Compare opcode, Value x, Value y) {
+            super(TYPE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;
@@ -70,7 +72,8 @@ public enum AMD64Compare {
         }
     }
 
-    public static class CompareMemoryOp extends MemOp {
+    public static final class CompareMemoryOp extends MemOp {
+        public static final LIRInstructionClass<CompareMemoryOp> TYPE = LIRInstructionClass.create(CompareMemoryOp.class);
         @Opcode private final AMD64Compare opcode;
         @Use({REG, CONST}) protected Value y;
 
@@ -78,7 +81,7 @@ public enum AMD64Compare {
          * Compare memory, constant or register, memory.
          */
         public CompareMemoryOp(AMD64Compare opcode, Kind kind, AMD64AddressValue address, Value y, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.opcode = opcode;
             this.y = y;
         }

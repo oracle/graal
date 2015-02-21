@@ -28,10 +28,10 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -69,7 +69,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
     @Test
     public void test2() {
         StructuredGraph graph = parseAndProcess("test2Snippet");
-        NodeIterable<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.class);
+        NodeIterable<MonitorExitNode> monitors = graph.getNodes(MonitorExitNode.TYPE);
         Assert.assertEquals(1, monitors.count());
         Assert.assertEquals(monitors.first().stateAfter().bci, 3);
     }
@@ -84,8 +84,8 @@ public class MonitorGraphTest extends GraalCompilerTest {
     }
 
     private StructuredGraph parseAndProcess(String snippet) {
-        StructuredGraph graph = parseEager(snippet);
-        ParameterNode param = graph.getNodes(ParameterNode.class).first();
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+        ParameterNode param = graph.getNodes(ParameterNode.TYPE).first();
         if (param != null) {
             ConstantNode constant = ConstantNode.forInt(0, graph);
             for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
@@ -96,8 +96,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
         for (Invoke invoke : graph.getInvokes()) {
             hints.put(invoke, 1000d);
         }
-        Assumptions assumptions = new Assumptions(false);
-        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(hints, new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
@@ -106,7 +105,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parseAndProcess(snippet);
-        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET);
+        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, AllowAssumptions.NO);
         assertEquals(referenceGraph, graph);
     }
 }

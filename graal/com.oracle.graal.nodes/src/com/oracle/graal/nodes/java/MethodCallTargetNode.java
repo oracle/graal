@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,10 +34,15 @@ import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
+    public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
     protected final JavaType returnType;
 
     public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
-        super(arguments, targetMethod, invokeKind);
+        this(TYPE, invokeKind, targetMethod, arguments, returnType);
+    }
+
+    protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+        super(c, arguments, targetMethod, invokeKind);
         this.returnType = returnType;
     }
 
@@ -94,7 +99,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
     }
 
-    public static ResolvedJavaMethod findSpecialCallTarget(InvokeKind invokeKind, ValueNode receiver, ResolvedJavaMethod targetMethod, Assumptions assumptions, ResolvedJavaType contextType) {
+    public static ResolvedJavaMethod findSpecialCallTarget(InvokeKind invokeKind, ValueNode receiver, ResolvedJavaMethod targetMethod, ResolvedJavaType contextType) {
         if (invokeKind.isDirect()) {
             return null;
         }
@@ -119,7 +124,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
                 return resolvedMethod;
             }
-            if (assumptions != null && assumptions.useOptimisticAssumptions()) {
+            Assumptions assumptions = receiver.graph().getAssumptions();
+            if (assumptions != null) {
                 ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
                 if (uniqueConcreteType != null) {
                     ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod, contextType);
@@ -144,7 +150,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     public void simplify(SimplifierTool tool) {
         // attempt to devirtualize the call
         ResolvedJavaType contextType = (invoke().stateAfter() == null && invoke().stateDuring() == null) ? null : invoke().getContextType();
-        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, tool.assumptions(), contextType);
+        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
         if (specialCallTarget != null) {
             this.setTargetMethod(specialCallTarget);
             setInvokeKind(InvokeKind.Special);
@@ -242,7 +248,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     public static MethodCallTargetNode find(StructuredGraph graph, ResolvedJavaMethod method) {
-        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (target.targetMethod().equals(method)) {
                 return target;
             }

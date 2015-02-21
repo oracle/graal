@@ -139,12 +139,6 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
     Value loadNonConst(Value value);
 
     /**
-     * Returns true if the redundant move elimination optimization should be done after register
-     * allocation.
-     */
-    boolean canEliminateRedundantMoves();
-
-    /**
      * Determines if only oop maps are required for the code generated from the LIR.
      */
     boolean needOnlyOopMaps();

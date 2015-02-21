@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package com.oracle.graal.truffle.unsafe;
 
-import org.junit.*;
+import sun.misc.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.test.*;
+import com.oracle.truffle.api.unsafe.*;
 
-/**
- * Tests HotSpot specific substitutions for {@link NodeClass}.
- */
-public class HotSpotNodeClassSubstitutionsTest extends MethodSubstitutionTest {
-
-    @Test
-    public void test() {
-        test("get", ValueNode.class);
-    }
-
-    public static NodeClass get(Class<?> c) {
-        return NodeClass.get(c);
+public final class UnsafeAccessFactoryImpl implements UnsafeAccessFactory {
+    public UnsafeAccess createUnsafeAccess(Unsafe unsafe) {
+        return new UnsafeAccessImpl(unsafe);
     }
 }

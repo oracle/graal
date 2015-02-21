@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,10 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -35,7 +37,9 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  */
 @NodeInfo
-public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
+public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
+
+    public static final NodeClass<SignExtendNode> TYPE = NodeClass.create(SignExtendNode.class);
 
     public SignExtendNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
@@ -43,7 +47,21 @@ public class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
     }
 
     public SignExtendNode(ValueNode input, int inputBits, int resultBits) {
-        super(ArithmeticOpTable::getSignExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
+        super(TYPE, ArithmeticOpTable::getSignExtend, ArithmeticOpTable::getNarrow, inputBits, resultBits, input);
+    }
+
+    public static ValueNode create(ValueNode input, int resultBits) {
+        return create(input, PrimitiveStamp.getBits(input.stamp()), resultBits);
+    }
+
+    public static ValueNode create(ValueNode input, int inputBits, int resultBits) {
+        IntegerConvertOp<SignExtend> signExtend = ArithmeticOpTable.forStamp(input.stamp()).getSignExtend();
+        ValueNode synonym = findSynonym(signExtend, input, inputBits, resultBits, signExtend.foldStamp(inputBits, resultBits, input.stamp()));
+        if (synonym != null) {
+            return synonym;
+        } else {
+            return new SignExtendNode(input, inputBits, resultBits);
+        }
     }
 
     @Override

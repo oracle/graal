@@ -119,6 +119,10 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
             }
+        } else if (n instanceof ClassIsAssignableFromNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+                instanceofSnippets.lower((ClassIsAssignableFromNode) n, tool);
+            }
         } else if (n instanceof NewInstanceNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((NewInstanceNode) n, registers, tool);
@@ -352,7 +356,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
             // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
             int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
-            for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
+            for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.TYPE)) {
                 int size = osrLocal.getKind().getSlotCount();
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
                 IndexedLocationNode location = graph.unique(new IndexedLocationNode(ANY_LOCATION, offset, ConstantNode.forLong(0, graph), 1));

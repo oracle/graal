@@ -25,6 +25,8 @@ package com.oracle.graal.nodes;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -80,6 +82,17 @@ public class StructuredGraph extends Graph {
         }
     }
 
+    /**
+     * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
+     */
+    public enum AllowAssumptions {
+        YES,
+        NO;
+        public static AllowAssumptions from(boolean flag) {
+            return flag ? YES : NO;
+        }
+    }
+
     public static final int INVOCATION_ENTRY_BCI = -1;
     public static final long INVALID_GRAPH_ID = -1;
 
@@ -94,40 +107,51 @@ public class StructuredGraph extends Graph {
     private boolean hasValueProxies = true;
 
     /**
+     * The assumptions made while constructing and transforming this graph.
+     */
+    private final Assumptions assumptions;
+
+    /**
+     * The methods that were inlined while constructing this graph.
+     */
+    private Set<ResolvedJavaMethod> inlinedMethods = new HashSet<>();
+
+    /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
      * start} node.
      */
-    public StructuredGraph() {
-        this(null, null);
+    public StructuredGraph(AllowAssumptions allowAssumptions) {
+        this(null, null, allowAssumptions);
     }
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
      * start} node.
      */
-    public StructuredGraph(String name, ResolvedJavaMethod method) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
+    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
+        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, allowAssumptions);
     }
 
-    public StructuredGraph(ResolvedJavaMethod method) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
+    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, allowAssumptions);
     }
 
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI);
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI, allowAssumptions);
     }
 
-    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI) {
+    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI, AllowAssumptions allowAssumptions) {
         super(name);
         this.setStart(add(new StartNode()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
+        this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
     }
 
     public Stamp getReturnStamp() {
         Stamp returnStamp = null;
-        for (ReturnNode returnNode : getNodes(ReturnNode.class)) {
+        for (ReturnNode returnNode : getNodes(ReturnNode.TYPE)) {
             ValueNode result = returnNode.result();
             if (result != null) {
                 if (returnStamp == null) {
@@ -196,7 +220,17 @@ public class StructuredGraph extends Graph {
     }
 
     public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod) {
-        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI);
+        return copy(newName, newMethod, AllowAssumptions.from(assumptions != null), isInlinedMethodRecordingEnabled());
+    }
+
+    public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod, AllowAssumptions allowAssumptions, boolean enableInlinedMethodRecording) {
+        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI, allowAssumptions);
+        if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
+            copy.assumptions.record(assumptions);
+        }
+        if (!enableInlinedMethodRecording) {
+            copy.disableInlinedMethodRecording();
+        }
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
@@ -212,7 +246,7 @@ public class StructuredGraph extends Graph {
     }
 
     public ParameterNode getParameter(int index) {
-        for (ParameterNode param : getNodes(ParameterNode.class)) {
+        for (ParameterNode param : getNodes(ParameterNode.TYPE)) {
             if (param.index() == index) {
                 return param;
             }
@@ -221,7 +255,7 @@ public class StructuredGraph extends Graph {
     }
 
     public Iterable<Invoke> getInvokes() {
-        final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.class).iterator();
+        final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.TYPE).iterator();
         return new Iterable<Invoke>() {
 
             private Invoke next;
@@ -265,7 +299,7 @@ public class StructuredGraph extends Graph {
     }
 
     public boolean hasLoops() {
-        return hasNode(LoopBeginNode.class);
+        return hasNode(LoopBeginNode.TYPE);
     }
 
     public void removeFloating(FloatingNode node) {
@@ -466,5 +500,38 @@ public class StructuredGraph extends Graph {
     public void setHasValueProxies(boolean state) {
         assert !state : "cannot 'unapply' value proxy removal on graph";
         hasValueProxies = state;
+    }
+
+    /**
+     * Gets the object for recording assumptions while constructing of this graph.
+     *
+     * @return {@code null} if assumptions cannot be made for this graph
+     */
+    public Assumptions getAssumptions() {
+        return assumptions;
+    }
+
+    /**
+     * Disables recording of methods inlined while constructing this graph. This can be done at most
+     * once and must be done before any inlined methods are recorded.
+     */
+    public void disableInlinedMethodRecording() {
+        assert inlinedMethods != null : "cannot disable inlined method recording more than once";
+        assert inlinedMethods.isEmpty() : "cannot disable inlined method recording once methods have been recorded";
+        inlinedMethods = null;
+    }
+
+    public boolean isInlinedMethodRecordingEnabled() {
+        return inlinedMethods != null;
+    }
+
+    /**
+     * Gets the methods that were inlined while constructing this graph.
+     *
+     * @return {@code null} if inlined method recording has been
+     *         {@linkplain #disableInlinedMethodRecording() disabled}
+     */
+    public Set<ResolvedJavaMethod> getInlinedMethods() {
+        return inlinedMethods;
     }
 }

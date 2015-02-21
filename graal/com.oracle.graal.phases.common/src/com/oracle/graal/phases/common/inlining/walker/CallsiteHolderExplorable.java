@@ -94,7 +94,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
             return Collections.EMPTY_SET;
         }
         Set<ParameterNode> result = Node.newSet();
-        for (ParameterNode p : graph.getNodes(ParameterNode.class)) {
+        for (ParameterNode p : graph.getNodes(ParameterNode.TYPE)) {
             if (freshlyInstantiatedArguments.get(p.index())) {
                 result.add(p);
             }
@@ -186,7 +186,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     }
 
     public boolean containsParam(ParameterNode param) {
-        for (ParameterNode p : graph.getNodes(ParameterNode.class)) {
+        for (ParameterNode p : graph.getNodes(ParameterNode.TYPE)) {
             if (p == param) {
                 return true;
             }

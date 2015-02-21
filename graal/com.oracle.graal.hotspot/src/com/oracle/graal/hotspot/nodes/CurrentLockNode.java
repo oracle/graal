@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -35,11 +36,12 @@ import com.oracle.graal.word.*;
  */
 @NodeInfo
 public final class CurrentLockNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<CurrentLockNode> TYPE = NodeClass.create(CurrentLockNode.class);
 
     protected int lockDepth;
 
     public CurrentLockNode(int lockDepth) {
-        super(null);
+        super(TYPE, null);
         this.lockDepth = lockDepth;
     }
 

@@ -26,7 +26,6 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -39,8 +38,8 @@ import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheE
 
 public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadEliminationBlockState> {
 
-    public PEReadEliminationClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
-        super(schedule, metaAccess, constantReflection, assumptions);
+    public PEReadEliminationClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        super(schedule, metaAccess, constantReflection);
     }
 
     @Override

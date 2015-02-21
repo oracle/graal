@@ -114,7 +114,15 @@ public class InliningUtil {
 
     public static void logNotInlinedMethod(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
-            String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
+            String methodString = invoke.toString();
+            if (invoke.callTarget() == null) {
+                methodString += " callTarget=null";
+            } else {
+                String targetName = invoke.callTarget().targetName();
+                if (!methodString.endsWith(targetName)) {
+                    methodString += " " + targetName;
+                }
+            }
             logInliningDecision(methodString, false, msg, new Object[0]);
         }
     }
@@ -323,7 +331,7 @@ public class InliningUtil {
             processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
             int callerLockDepth = stateAfter.nestedLockDepth();
             if (callerLockDepth != 0) {
-                for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.class)) {
+                for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.TYPE)) {
                     MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
                     monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
                 }
@@ -355,6 +363,21 @@ public class InliningUtil {
         invokeNode.replaceAtUsages(null);
         GraphUtil.killCFG(invokeNode);
 
+        // Copy assumptions from inlinee to caller
+        Assumptions assumptions = graph.getAssumptions();
+        if (assumptions != null) {
+            if (inlineGraph.getAssumptions() != null) {
+                assumptions.record(inlineGraph.getAssumptions());
+            }
+        } else {
+            assert inlineGraph.getAssumptions() == null : "cannot inline graph which makes assumptions into a graph that doesn't: " + inlineGraph + " -> " + graph;
+        }
+
+        // Copy inlined methods from inlinee to caller
+        if (inlineGraph.isInlinedMethodRecordingEnabled() && graph.isInlinedMethodRecordingEnabled()) {
+            graph.getInlinedMethods().addAll(inlineGraph.getInlinedMethods());
+        }
+
         return duplicates;
     }
 
@@ -366,11 +389,11 @@ public class InliningUtil {
     }
 
     private static void processSimpleInfopoints(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {
-        if (inlineGraph.getNodes(SimpleInfopointNode.class).isEmpty()) {
+        if (inlineGraph.getNodes(SimpleInfopointNode.TYPE).isEmpty()) {
             return;
         }
         BytecodePosition pos = new BytecodePosition(toBytecodePosition(invoke.stateAfter()), invoke.asNode().graph().method(), invoke.bci());
-        for (SimpleInfopointNode original : inlineGraph.getNodes(SimpleInfopointNode.class)) {
+        for (SimpleInfopointNode original : inlineGraph.getNodes(SimpleInfopointNode.TYPE)) {
             SimpleInfopointNode duplicate = (SimpleInfopointNode) duplicates.get(original);
             duplicate.addCaller(pos);
         }
@@ -387,7 +410,7 @@ public class InliningUtil {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
         Kind invokeReturnKind = invoke.asNode().getKind();
-        for (FrameState original : inlineGraph.getNodes(FrameState.class)) {
+        for (FrameState original : inlineGraph.getNodes(FrameState.TYPE)) {
             FrameState frameState = (FrameState) duplicates.get(original);
             if (frameState != null && frameState.isAlive()) {
                 if (frameState.bci == BytecodeFrame.AFTER_BCI) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,14 +33,15 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
  * Implements the semantics of {@link VarargsParameter}.
  */
 @NodeInfo
-public class LoadSnippetVarargParameterNode extends FixedWithNextNode implements Canonicalizable {
+public final class LoadSnippetVarargParameterNode extends FixedWithNextNode implements Canonicalizable {
 
+    public static final NodeClass<LoadSnippetVarargParameterNode> TYPE = NodeClass.create(LoadSnippetVarargParameterNode.class);
     @Input ValueNode index;
 
     @Input NodeInputList<ParameterNode> parameters;
 
     public LoadSnippetVarargParameterNode(ParameterNode[] locals, ValueNode index, Stamp stamp) {
-        super(stamp);
+        super(TYPE, stamp);
         this.index = index;
         this.parameters = new NodeInputList<>(this, locals);
     }

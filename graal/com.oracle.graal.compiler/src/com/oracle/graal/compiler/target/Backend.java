@@ -101,8 +101,6 @@ public abstract class Backend {
     public abstract CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult,
                     CompilationResultBuilderFactory factory);
 
-    public abstract boolean shouldAllocateRegisters();
-
     public abstract StackIntrospection getStackIntrospection();
 
     /**

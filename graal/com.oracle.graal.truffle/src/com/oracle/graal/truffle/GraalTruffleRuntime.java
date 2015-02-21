@@ -34,10 +34,12 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.debug.*;
+import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.unsafe.*;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -111,7 +113,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        return new FrameWithoutBoxing(frameDescriptor, arguments);
+        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+            return new FrameWithoutBoxing(frameDescriptor, arguments);
+        } else {
+            return new FrameWithBoxing(frameDescriptor, arguments);
+        }
     }
 
     @Override
@@ -181,6 +187,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public <T> T getCapability(Class<T> capability) {
+        if (capability == UnsafeAccessFactory.class) {
+            return capability.cast(new UnsafeAccessFactoryImpl());
+        }
         return null;
     }
 

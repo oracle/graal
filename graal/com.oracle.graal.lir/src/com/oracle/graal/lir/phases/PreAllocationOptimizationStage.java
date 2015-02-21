@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.lir.phases;
 
-package com.oracle.graal.baseline;
+import com.oracle.graal.lir.constopt.*;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
 
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
-
-public class BaselineLoop extends Loop<BciBlock> {
-
-    protected BaselineLoop(Loop<BciBlock> parent, int index, BciBlock header) {
-        super(parent, index, header);
+public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
+    public PreAllocationOptimizationStage() {
+        if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
+            appendPhase(new ConstantLoadOptimization());
+        }
     }
-
-    @Override
-    public long numBackedges() {
-        // currently only loops with one backedge are supported
-        return 1;
-    }
-
 }

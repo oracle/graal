@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.test;
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -90,9 +91,9 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testRedundantCompares() {
-        StructuredGraph graph = parseEager("testRedundantComparesSnippet");
+        StructuredGraph graph = parseEager("testRedundantComparesSnippet", AllowAssumptions.YES);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
-        PhaseContext context = new PhaseContext(getProviders(), null);
+        PhaseContext context = new PhaseContext(getProviders());
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
@@ -113,10 +114,10 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     @Ignore
     public void testInstanceOfCheckCastLowered() {
-        StructuredGraph graph = parseEager("testInstanceOfCheckCastSnippet");
+        StructuredGraph graph = parseEager("testInstanceOfCheckCastSnippet", AllowAssumptions.YES);
 
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
-        PhaseContext context = new PhaseContext(getProviders(), null);
+        PhaseContext context = new PhaseContext(getProviders());
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);

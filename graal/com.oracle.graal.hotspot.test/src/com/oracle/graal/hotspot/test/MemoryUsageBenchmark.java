@@ -34,6 +34,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.printer.*;
 
 /**
@@ -134,10 +135,10 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         method.reprofile();
 
         int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
-        long ctask = 0L;
+        long graalEnv = 0L;
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
-            CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id, false);
+            CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, graalEnv, id, false);
             task.runCompilation();
         }
     }
@@ -151,9 +152,9 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             method.reprofile();
 
             int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
-            long ctask = 0L;
+            long graalEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
-                CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, ctask, id, false);
+                CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, graalEnv, id, false);
                 task.runCompilation();
             }
         }
@@ -164,7 +165,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     private void compileAndTime(String methodName) {
 
         // Parse in eager mode to resolve methods/fields/classes
-        parseEager(methodName);
+        parseEager(methodName, AllowAssumptions.YES);
 
         // Warm up and initialize compiler phases used by this compilation
         for (int i = 0; i < 10; i++) {

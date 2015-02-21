@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,13 +37,14 @@ import com.oracle.graal.lir.asm.*;
 public class ValuePositionTest2 {
 
     private static class NestedCompositeValue extends CompositeValue {
+        public static final CompositeValueClass<NestedCompositeValue> TYPE = CompositeValueClass.create(NestedCompositeValue.class);
 
         private static final long serialVersionUID = -2243948303328857965L;
         @Component({REG, OperandFlag.ILLEGAL}) protected Value value1;
         @Component({REG, OperandFlag.ILLEGAL}) protected Value value2;
 
         public NestedCompositeValue(Value value1, Value value2) {
-            super(LIRKind.Illegal);
+            super(TYPE, LIRKind.Illegal);
             this.value1 = value1;
             this.value2 = value2;
         }
@@ -88,11 +89,13 @@ public class ValuePositionTest2 {
         }
     }
 
-    private static class TestOp extends LIRInstructionBase {
+    private static class TestOp extends LIRInstruction {
+        public static final LIRInstructionClass<TestOp> TYPE = LIRInstructionClass.create(TestOp.class);
 
         @Use({COMPOSITE}) protected NestedCompositeValue compValue;
 
         public TestOp(NestedCompositeValue compValue) {
+            super(TYPE);
             this.compValue = compValue;
         }
 

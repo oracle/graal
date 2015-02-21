@@ -34,6 +34,6 @@ public class CompilerToVMImplSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     public static Class<?> getJavaMirror(@SuppressWarnings("unused") CompilerToVMImpl impl, long metaspaceklass) {
-        return ClassSubstitutions.readJavaMirror(Word.unsigned(metaspaceklass));
+        return HotSpotClassSubstitutions.readJavaMirror(Word.unsigned(metaspaceklass));
     }
 }

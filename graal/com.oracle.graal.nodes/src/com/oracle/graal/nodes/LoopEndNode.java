@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,15 @@ import com.oracle.graal.nodes.spi.*;
  * {@linkplain #loopBegin() loop header}.
  */
 @NodeInfo
-public class LoopEndNode extends AbstractEndNode {
+public final class LoopEndNode extends AbstractEndNode {
 
+    public static final NodeClass<LoopEndNode> TYPE = NodeClass.create(LoopEndNode.class);
     @Input(InputType.Association) LoopBeginNode loopBegin;
     protected boolean canSafepoint;
     protected int endIndex;
 
     public LoopEndNode(LoopBeginNode begin) {
+        super(TYPE);
         int idx = begin.nextEndIndex();
         assert idx >= 0;
         this.endIndex = idx;

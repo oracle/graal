@@ -71,7 +71,7 @@ public class InstructionPrinter {
         /**
          * Prints this column's label to a given stream after padding the stream with '_' characters
          * until its {@linkplain LogStream#position() position} is equal to this column's position.
-         * 
+         *
          * @param out the print stream
          */
         public void printLabel(LogStream out) {
@@ -82,7 +82,7 @@ public class InstructionPrinter {
         /**
          * Prints space characters to a given stream until its {@linkplain LogStream#position()
          * position} is equal to this column's position.
-         * 
+         *
          * @param out the print stream
          */
         public void advance(LogStream out) {
@@ -116,7 +116,7 @@ public class InstructionPrinter {
     /**
      * Prints an instruction listing on one line. The instruction listing is composed of the columns
      * specified by {@link InstructionLineColumn}.
-     * 
+     *
      * @param instruction the instruction to print
      */
     public void printInstructionListing(ValueNode instruction) {

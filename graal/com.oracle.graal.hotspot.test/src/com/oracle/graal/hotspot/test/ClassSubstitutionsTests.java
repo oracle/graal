@@ -32,6 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public class ClassSubstitutionsTests extends GraalCompilerTest {
 
@@ -43,7 +44,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     protected StructuredGraph test(final String snippet) {
         try (Scope s = Debug.scope("ClassSubstitutionsTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
-            StructuredGraph graph = parseEager(snippet);
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             compile(graph.method(), graph);
             assertNotInGraph(graph, Invoke.class);
             Debug.dump(graph, snippet);
@@ -180,8 +181,8 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     private void testConstantReturn(String name, Object value) {
         StructuredGraph result = test(name);
-        ReturnNode ret = result.getNodes(ReturnNode.class).first();
-        assertDeepEquals(1, result.getNodes(ReturnNode.class).count());
+        ReturnNode ret = result.getNodes(ReturnNode.TYPE).first();
+        assertDeepEquals(1, result.getNodes(ReturnNode.TYPE).count());
 
         assertDeepEquals(true, ret.result().isConstant());
         assertDeepEquals(value, ret.result().asJavaConstant().asBoxedPrimitive());

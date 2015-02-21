@@ -898,7 +898,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Array<Klass*>::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayLengthOffset;
     @HotSpotVMField(name = "Array<Klass*>::_data[0]", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayBaseOffset;
 
-    @HotSpotVMField(name = "InstanceKlass::_graal_node_class", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassNodeClassOffset;
     @HotSpotVMField(name = "InstanceKlass::_source_file_name_index", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassSourceFileNameIndexOffset;
     @HotSpotVMField(name = "InstanceKlass::_init_state", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassInitStateOffset;
     @HotSpotVMField(name = "InstanceKlass::_constants", type = "ConstantPool*", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassConstantsOffset;
@@ -1082,6 +1081,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "JVM_ACC_MONITOR_MATCH") @Stable public int jvmAccMonitorMatch;
     @HotSpotVMConstant(name = "JVM_ACC_HAS_MONITOR_BYTECODES") @Stable public int jvmAccHasMonitorBytecodes;
 
+    @HotSpotVMField(name = "GraalEnv::_task", type = "CompileTask*", get = HotSpotVMField.Type.OFFSET) @Stable public int graalEnvTaskOffset;
+    @HotSpotVMField(name = "GraalEnv::_jvmti_can_hotswap_or_post_breakpoint", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int graalEnvJvmtiCanHotswapOrPostBreakpointOffset;
     @HotSpotVMField(name = "CompileTask::_num_inlined_bytecodes", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int compileTaskNumInlinedBytecodesOffset;
 
     /**
@@ -1343,6 +1344,9 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "CodeBlob::_code_offset", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable private int codeBlobCodeOffsetOffset;
     @HotSpotVMField(name = "SharedRuntime::_ic_miss_blob", type = "RuntimeStub*", get = HotSpotVMField.Type.VALUE) @Stable private long inlineCacheMissBlob;
+
+    @HotSpotVMValue(expression = "SharedRuntime::deopt_blob()->unpack()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long handleDeoptStub;
+    @HotSpotVMValue(expression = "SharedRuntime::deopt_blob()->uncommon_trap()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long uncommonTrapStub;
 
     private final long inlineCacheMissStub;
 

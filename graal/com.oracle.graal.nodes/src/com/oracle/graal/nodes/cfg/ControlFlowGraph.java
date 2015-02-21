@@ -118,48 +118,45 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return loops;
     }
 
-    public void clearNodeToBlock() {
-        nodeToBlock.clear();
-        for (Block block : reversePostOrder) {
-            identifyBlock(block);
-        }
-    }
-
     private void identifyBlock(Block block) {
-        Node cur = block.getBeginNode();
-        Node last;
+        AbstractBeginNode start = block.getBeginNode();
 
         // assign proxies of a loop exit to this block
-        if (cur instanceof AbstractBeginNode) {
-            for (Node usage : cur.usages()) {
+        if (start instanceof LoopExitNode) {
+            for (Node usage : start.usages()) {
                 if (usage instanceof ProxyNode) {
                     nodeToBlock.set(usage, block);
                 }
             }
+        } else if (start instanceof AbstractMergeNode) {
+            for (PhiNode phi : ((AbstractMergeNode) start).phis()) {
+                nodeToBlock.set(phi, block);
+            }
         }
 
-        do {
+        FixedWithNextNode cur = start;
+        while (true) {
             assert !cur.isDeleted();
-
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
-            if (cur instanceof AbstractMergeNode) {
-                for (PhiNode phi : ((AbstractMergeNode) cur).phis()) {
-                    nodeToBlock.set(phi, block);
-                }
+            FixedNode next = cur.next();
+            if (next instanceof AbstractBeginNode) {
+                block.endNode = cur;
+                return;
+            } else if (next instanceof FixedWithNextNode) {
+                cur = (FixedWithNextNode) next;
+            } else {
+                nodeToBlock.set(next, block);
+                block.endNode = next;
+                return;
             }
-
-            last = cur;
-            cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof AbstractBeginNode));
-
-        block.endNode = (FixedNode) last;
+        }
     }
 
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
-        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
+        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             Block block = new Block(begin);
             numBlocks++;
             identifyBlock(block);
@@ -203,14 +200,19 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     // Connect blocks (including loop backward edges), but ignoring dead code (blocks with id < 0).
+    // Predecessors need to be in the order expected when iterating phi inputs.
     private void connectBlocks() {
         for (Block block : reversePostOrder) {
-            List<Block> predecessors = new ArrayList<>(4);
+            List<Block> predecessors = new ArrayList<>(1);
             double probability = block.getBeginNode() instanceof StartNode ? 1D : 0D;
             for (Node predNode : block.getBeginNode().cfgPredecessors()) {
                 Block predBlock = nodeToBlock.get(predNode);
                 if (predBlock.getId() >= 0) {
                     predecessors.add(predBlock);
+                    if (predBlock.getSuccessors() == null) {
+                        predBlock.setSuccessors(new ArrayList<>(1));
+                    }
+                    predBlock.getSuccessors().add(block);
                     probability += predBlock.probability;
                 }
             }
@@ -225,6 +227,10 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     assert predBlock != null : predNode;
                     if (predBlock.getId() >= 0) {
                         predecessors.add(predBlock);
+                        if (predBlock.getSuccessors() == null) {
+                            predBlock.setSuccessors(new ArrayList<>(1));
+                        }
+                        predBlock.getSuccessors().add(block);
                     }
                 }
             }
@@ -233,19 +239,9 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             }
             block.setPredecessors(predecessors);
             block.setProbability(probability);
-
-            List<Block> successors = new ArrayList<>(4);
-            for (Node suxNode : block.getEndNode().cfgSuccessors()) {
-                Block suxBlock = nodeToBlock.get(suxNode);
-                assert suxBlock.getId() >= 0;
-                successors.add(suxBlock);
+            if (block.getSuccessors() == null) {
+                block.setSuccessors(new ArrayList<>(1));
             }
-            if (block.getEndNode() instanceof LoopEndNode) {
-                Block suxBlock = nodeToBlock.get(((LoopEndNode) block.getEndNode()).loopBegin());
-                assert suxBlock.getId() >= 0;
-                successors.add(suxBlock);
-            }
-            block.setSuccessors(successors);
         }
     }
 
@@ -269,29 +265,30 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     computeLoopBlocks(exitBlock.getFirstPredecessor(), loop);
                     loop.getExits().add(exitBlock);
                 }
-                List<Block> unexpected = new LinkedList<>();
-                for (Block b : loop.getBlocks()) {
+
+                // The following loop can add new blocks to the end of the loop's block list.
+                int size = loop.getBlocks().size();
+                for (int i = 0; i < size; ++i) {
+                    Block b = loop.getBlocks().get(i);
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
                             AbstractBeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
-                                Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
-                                unexpected.add(sux);
+                                Debug.log(3, "Unexpected loop exit with %s, including whole branch in the loop", sux);
+                                addBranchToLoop(loop, sux);
                             }
                         }
                     }
-                }
-                for (Block b : unexpected) {
-                    addBranchToLoop(loop, b);
                 }
             }
         }
     }
 
     private static void addBranchToLoop(Loop<Block> l, Block b) {
-        if (l.getBlocks().contains(b)) {
+        if (b.loop == l) {
             return;
         }
+        assert !(l.getBlocks().contains(b));
         l.getBlocks().add(b);
         b.loop = l;
         for (Block sux : b.getSuccessors()) {

@@ -32,6 +32,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -60,17 +61,26 @@ import com.oracle.graal.replacements.nodes.*;
  */
 public class InstanceOfSnippets implements Snippets {
 
+    private static final double COMPILED_VS_INTERPRETER_SPEEDUP = 50;
+    private static final double INSTANCEOF_DEOPT_SPEEDUP = 1.01; // generous 1% speedup
+
+    private static final int DEOPT_THRESHOLD_FACTOR = (int) (COMPILED_VS_INTERPRETER_SPEEDUP / (INSTANCEOF_DEOPT_SPEEDUP - 1.0));
+
     /**
      * Gets the minimum required probability of a profiled instanceof hitting one the profiled types
      * for use of the {@linkplain #instanceofWithProfile deoptimizing} snippet. The value is
-     * computed to be an order of magnitude greater than the configured compilation threshold. For
-     * example, if a method is compiled after being interpreted 10000 times, the deoptimizing
-     * snippet will only be used for an instanceof if its profile indicates that less than 1 in
-     * 100000 executions are for an object whose type is not one of the top N profiled types (where
-     * {@code N == } {@link Options#TypeCheckMaxHints}).
+     * computed to be an order of greater than the configured compilation threshold by a
+     * {@linkplain #DEOPT_THRESHOLD_FACTOR factor}.
+     *
+     * <p>
+     * This factor is such that the additional executions we get from using the deoptimizing snippet
+     * (({@linkplain #INSTANCEOF_DEOPT_SPEEDUP speedup} - 1) / probability threshold) is greater
+     * than the time lost during re-interpretation ({@linkplain #COMPILED_VS_INTERPRETER_SPEEDUP
+     * compiled code speedup} &times compilation threshold).
+     * </p>
      */
     public static double hintHitProbabilityThresholdForDeoptimizingSnippet(long compilationThreshold) {
-        return 1.0D - (1.0D / (compilationThreshold * 10));
+        return 1.0D - (1.0D / (compilationThreshold * DEOPT_THRESHOLD_FACTOR));
     }
 
     /**
@@ -194,6 +204,25 @@ public class InstanceOfSnippets implements Snippets {
         return trueValue;
     }
 
+    @Snippet
+    public static Object isAssignableFrom(Class<?> thisClass, Class<?> otherClass, Object trueValue, Object falseValue) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, otherClass == null)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
+            return false;
+        }
+        GuardingNode anchorNode = SnippetAnchorNode.anchor();
+        KlassPointer thisHub = ClassGetHubNode.readClass(thisClass, anchorNode);
+        KlassPointer otherHub = ClassGetHubNode.readClass(otherClass, anchorNode);
+        if (thisHub.isNull() || otherHub.isNull()) {
+            // primitive types, only true if equal.
+            return thisClass == otherClass ? trueValue : falseValue;
+        }
+        if (!TypeCheckSnippetUtils.checkUnknownSubType(thisHub, otherHub)) {
+            return falseValue;
+        }
+        return trueValue;
+    }
+
     static class Options {
 
         // @formatter:off
@@ -214,6 +243,7 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofPrimary = snippet(InstanceOfSnippets.class, "instanceofPrimary");
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
+        private final SnippetInfo isAssignableFrom = snippet(InstanceOfSnippets.class, "isAssignableFrom");
         private final long compilationThreshold;
 
         public Templates(HotSpotProviders providers, TargetDescription target, long compilationThreshold) {
@@ -226,7 +256,8 @@ public class InstanceOfSnippets implements Snippets {
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
                 ValueNode object = instanceOf.getValue();
-                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
+                Assumptions assumptions = instanceOf.graph().getAssumptions();
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), assumptions, TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
                 ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), instanceOf.graph());
 
@@ -263,8 +294,7 @@ public class InstanceOfSnippets implements Snippets {
                 }
                 return args;
 
-            } else {
-                assert replacer.instanceOf instanceof InstanceOfDynamicNode;
+            } else if (replacer.instanceOf instanceof InstanceOfDynamicNode) {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
                 ValueNode object = instanceOf.object();
 
@@ -274,6 +304,16 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 return args;
+            } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
+                ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
+                Arguments args = new Arguments(isAssignableFrom, isAssignable.graph().getGuardsStage(), tool.getLoweringStage());
+                args.add("thisClass", isAssignable.getThisClass());
+                args.add("otherClass", isAssignable.getOtherClass());
+                args.add("trueValue", replacer.trueValue);
+                args.add("falseValue", replacer.falseValue);
+                return args;
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
             }
         }
     }
