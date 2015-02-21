@@ -96,10 +96,10 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
     @SuppressWarnings("unused")
     private static Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {
-        CalleeSaveLayout csl = regConfig.getCalleeSaveLayout();
-        Value[] nativeABICallerSaveRegisters = new Value[csl.registers.length];
-        for (int i = 0; i < csl.registers.length; i++) {
-            nativeABICallerSaveRegisters[i] = csl.registers[i].asValue();
+        Register[] calleeSaveRegisters = regConfig.getCallerSaveRegisters();
+        Value[] nativeABICallerSaveRegisters = new Value[calleeSaveRegisters.length];
+        for (int i = 0; i < calleeSaveRegisters.length; i++) {
+            nativeABICallerSaveRegisters[i] = calleeSaveRegisters[i].asValue();
         }
         return nativeABICallerSaveRegisters;
     }
