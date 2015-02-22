@@ -133,10 +133,12 @@ public class GraphUtil {
             }
             if (usageToKill != null) {
                 for (Node usage : usageToKill) {
-                    if (usage instanceof PhiNode) {
-                        usage.replaceFirstInput(node, null);
-                    } else {
-                        propagateKill(usage);
+                    if (usage.isAlive()) {
+                        if (usage instanceof PhiNode) {
+                            usage.replaceFirstInput(node, null);
+                        } else {
+                            propagateKill(usage);
+                        }
                     }
                 }
             }
