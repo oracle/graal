@@ -642,8 +642,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return (ValueNode) currentGraph.unique((Node & ValueNumberable) x);
             }
 
-            protected ValueNode genIfNode(ValueNode condition, ValueNode falseSuccessor, ValueNode trueSuccessor, double d) {
-                return new IfNode((LogicNode) condition, (FixedNode) falseSuccessor, (FixedNode) trueSuccessor, d);
+            protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
+                return new IfNode(condition, falseSuccessor, trueSuccessor, d);
             }
 
             @Override
@@ -1367,7 +1367,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     targetNode = getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
-                    HIRFrameStateBuilder currentEntryState = target.state == state ? state.copy() : target.state;
+                    HIRFrameStateBuilder currentEntryState = target.state == state ? (isGoto ? state : state.copy()) : target.state;
                     setEntryState(block, operatingDimension, currentEntryState);
                     currentEntryState.clearNonLiveLocals(block, liveness, true);
 
@@ -1838,6 +1838,23 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     // Need to get probability based on current bci.
                     double probability = branchProbability();
 
+                    if (negate) {
+                        BciBlock tmpBlock = trueBlock;
+                        trueBlock = falseBlock;
+                        falseBlock = tmpBlock;
+                        probability = 1 - probability;
+                    }
+
+                    if (isNeverExecutedCode(probability)) {
+                        append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true));
+                        appendGoto(falseBlock);
+                        return;
+                    } else if (isNeverExecutedCode(1 - probability)) {
+                        append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false));
+                        appendGoto(trueBlock);
+                        return;
+                    }
+
                     int oldBci = stream.currentBCI();
                     int trueBlockInt = checkPositiveIntConstantPushed(trueBlock);
                     if (trueBlockInt != -1) {
@@ -1856,11 +1873,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             if (genConditional) {
                                 ConstantNode trueValue = currentGraph.unique(ConstantNode.forInt(trueBlockInt));
                                 ConstantNode falseValue = currentGraph.unique(ConstantNode.forInt(falseBlockInt));
-                                if (negate) {
-                                    ConstantNode tmp = falseValue;
-                                    falseValue = trueValue;
-                                    trueValue = tmp;
-                                }
                                 ValueNode conditionalNode = ConditionalNode.create(condition, trueValue, falseValue);
                                 if (conditionalNode.graph() == null) {
                                     conditionalNode = currentGraph.addOrUnique(conditionalNode);
@@ -1879,10 +1891,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     this.controlFlowSplit = true;
 
-                    ValueNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-                    ValueNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+                    FixedNode trueSuccessor = createTarget(trueBlock, frameState);
+                    FixedNode falseSuccessor = createTarget(falseBlock, frameState);
 
-                    ValueNode ifNode = negate ? genIfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
                     append(ifNode);
                 }
             }
