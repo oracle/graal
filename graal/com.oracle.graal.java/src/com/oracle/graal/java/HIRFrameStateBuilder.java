@@ -711,7 +711,7 @@ public final class HIRFrameStateBuilder {
         return stack[--stackSize];
     }
 
-    private ValueNode xpeek() {
+    public ValueNode xpeek() {
         return stack[stackSize - 1];
     }
 

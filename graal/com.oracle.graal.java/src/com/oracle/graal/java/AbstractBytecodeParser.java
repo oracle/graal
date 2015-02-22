@@ -223,21 +223,6 @@ public abstract class AbstractBytecodeParser {
 
     private void stackOp(int opcode) {
         switch (opcode) {
-            case POP: {
-                frameState.xpop();
-                break;
-            }
-            case POP2: {
-                frameState.xpop();
-                frameState.xpop();
-                break;
-            }
-            case DUP: {
-                ValueNode w = frameState.xpop();
-                frameState.xpush(w);
-                frameState.xpush(w);
-                break;
-            }
             case DUP_X1: {
                 ValueNode w1 = frameState.xpop();
                 ValueNode w2 = frameState.xpop();
@@ -1050,9 +1035,9 @@ public abstract class AbstractBytecodeParser {
         case BASTORE        : genStoreIndexed(Kind.Byte  ); break;
         case CASTORE        : genStoreIndexed(Kind.Char  ); break;
         case SASTORE        : genStoreIndexed(Kind.Short ); break;
-        case POP            : // fall through
-        case POP2           : // fall through
-        case DUP            : // fall through
+        case POP            : frameState.xpop(); break;
+        case POP2           : frameState.xpop(); frameState.xpop(); break;
+        case DUP            : frameState.xpush(frameState.xpeek()); break;
         case DUP_X1         : // fall through
         case DUP_X2         : // fall through
         case DUP2           : // fall through
