@@ -172,7 +172,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private int peelIteration;
         }
 
-        public class BytecodeParser extends AbstractBytecodeParser<ValueNode, HIRFrameStateBuilder> implements GraphBuilderContext {
+        public class BytecodeParser extends AbstractBytecodeParser implements GraphBuilderContext {
 
             private BciBlockMapping blockMap;
             private LocalLiveness liveness;
@@ -1228,7 +1228,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             }
                             lastLoopExit = loopExit;
                             Debug.log("Target %s Exits %s, scanning framestates...", targetBlock, loop);
-                            newState.insertLoopProxies(loopExit, (HIRFrameStateBuilder) getEntryState(loop, this.getCurrentDimension()));
+                            newState.insertLoopProxies(loopExit, getEntryState(loop, this.getCurrentDimension()));
                             loopExit.setStateAfter(newState.create(bci));
                         }
 
@@ -1239,7 +1239,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return new Target(target, state);
             }
 
-            private AbstractFrameStateBuilder<?, ?> getEntryState(BciBlock block, int dimension) {
+            private HIRFrameStateBuilder getEntryState(BciBlock block, int dimension) {
                 int id = block.id;
                 if (dimension == 0) {
                     return entryStateArray[id];
@@ -1248,9 +1248,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private AbstractFrameStateBuilder<?, ?> getEntryStateMultiDimension(int dimension, int id) {
+            private HIRFrameStateBuilder getEntryStateMultiDimension(int dimension, int id) {
                 if (entryStateMatrix != null && dimension - 1 < entryStateMatrix.length) {
-                    AbstractFrameStateBuilder<?, ?>[] entryStateArrayEntry = entryStateMatrix[dimension - 1];
+                    HIRFrameStateBuilder[] entryStateArrayEntry = entryStateMatrix[dimension - 1];
                     if (entryStateArrayEntry == null) {
                         return null;
                     }
@@ -1376,7 +1376,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 // We already saw this block before, so we have to merge states.
-                if (!((HIRFrameStateBuilder) getEntryState(block, operatingDimension)).isCompatibleWith(state)) {
+                if (!getEntryState(block, operatingDimension).isCompatibleWith(state)) {
                     throw bailout("stacks do not match; bytecodes would not verify");
                 }
 
@@ -1389,7 +1389,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(currentGraph.add(new LoopEndNode(loopBegin)), block, state);
                     FixedNode result = target.fixed;
-                    ((HIRFrameStateBuilder) getEntryState(block, operatingDimension)).merge(loopBegin, target.state);
+                    getEntryState(block, operatingDimension).merge(loopBegin, target.state);
 
                     Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
                     return result;
@@ -1430,7 +1430,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 EndNode newEnd = currentGraph.add(new EndNode());
                 Target target = checkLoopExit(newEnd, block, state);
                 FixedNode result = target.fixed;
-                ((HIRFrameStateBuilder) getEntryState(block, operatingDimension)).merge(mergeNode, target.state);
+                getEntryState(block, operatingDimension).merge(mergeNode, target.state);
                 mergeNode.addForwardEnd(newEnd);
 
                 Debug.log("createTarget %s: merging state, result: %s", block, result);
@@ -1508,7 +1508,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (Indent indent = Debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, getFirstInstruction(block, this.getCurrentDimension()), block.isLoopHeader)) {
 
                     lastInstr = getFirstInstruction(block, this.getCurrentDimension());
-                    frameState = (HIRFrameStateBuilder) getEntryState(block, this.getCurrentDimension());
+                    frameState = getEntryState(block, this.getCurrentDimension());
                     parser.setCurrentFrameState(frameState);
                     currentBlock = block;
 
