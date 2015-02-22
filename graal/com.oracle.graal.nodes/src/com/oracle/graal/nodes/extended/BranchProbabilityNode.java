@@ -104,8 +104,9 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 }
             }
             if (couldSet) {
-                replaceAndDelete(condition);
-                tool.addToWorkList(condition.usages());
+                ValueNode currentCondition = condition;
+                replaceAndDelete(currentCondition);
+                tool.addToWorkList(currentCondition.usages());
             } else {
                 if (!isSubstitutionGraph()) {
                     throw new GraalInternalError("Wrong usage of branch probability injection!");

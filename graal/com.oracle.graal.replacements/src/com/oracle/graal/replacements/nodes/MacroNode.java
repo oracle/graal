@@ -171,7 +171,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
-            if (stateAfter() == null) {
+            if (invoke.stateAfter() == null) {
                 throw new GraalInternalError("cannot lower to invoke without state: %s", this);
             }
             invoke.lower(tool);

@@ -30,10 +30,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
 
 public class GraphUtil {
 
@@ -41,7 +39,7 @@ public class GraphUtil {
 
         @Override
         public final boolean apply(Node n) {
-            return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode || n instanceof VirtualObjectNode;
+            return !(n instanceof FixedNode);
         }
     };
 
@@ -135,11 +133,9 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
         node.safeDelete();
-
-        for (Node in : floatingInputs) {
-            if (in.isAlive() && in.hasNoUsages()) {
+        for (Node in : node.inputs()) {
+            if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
                 killWithUnusedFloatingInputs(in);
             }
         }

@@ -226,8 +226,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
-        invoke.asNode().replaceAtUsages(returnValuePhi);
-        invoke.asNode().replaceAndDelete(null);
+        if (returnValuePhi != null) {
+            invoke.asNode().replaceAtUsages(returnValuePhi);
+        }
+        invoke.asNode().safeDelete();
 
         ArrayList<GuardedValueNode> replacementNodes = new ArrayList<>();
 

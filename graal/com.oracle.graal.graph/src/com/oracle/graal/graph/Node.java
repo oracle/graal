@@ -617,11 +617,11 @@ public abstract class Node implements Cloneable, Formattable {
 
     public void replaceAndDelete(Node other) {
         assert checkReplaceWith(other);
-        if (other != null) {
-            clearSuccessors();
-            replaceAtUsages(other);
-            replaceAtPredecessor(other);
-        }
+        assert other != null;
+        clearInputs();
+        clearSuccessors();
+        replaceAtUsages(other);
+        replaceAtPredecessor(other);
         safeDelete();
     }
 
