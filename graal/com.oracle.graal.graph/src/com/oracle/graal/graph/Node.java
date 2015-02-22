@@ -616,9 +616,8 @@ public abstract class Node implements Cloneable, Formattable {
         if (graph != null) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
-                // System.out.println("usage dropped to zero: " + node);
-                // listener.usagesDroppedToZero(node);
+            if (listener != null && node.isAlive()) {
+                listener.usagesDroppedToZero(node);
             }
             if (Fingerprint.ENABLED) {
                 Fingerprint.submit("%s: %s", NodeEvent.ZERO_USAGES, node);
