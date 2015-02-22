@@ -618,6 +618,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return type == Edges.Type.Inputs ? inputs : successors;
     }
 
+    public Edges getInputEdges() {
+        return inputs;
+    }
+
+    public Edges getSuccessorEdges() {
+        return successors;
+    }
+
     /**
      * Initializes a fresh allocated node for which no constructor is called yet. Needed to
      * implement node factories in svm.

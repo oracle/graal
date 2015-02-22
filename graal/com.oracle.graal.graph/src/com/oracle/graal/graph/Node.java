@@ -27,6 +27,7 @@ import static com.oracle.graal.graph.Graph.*;
 
 import java.lang.annotation.*;
 import java.util.*;
+import java.util.function.*;
 
 import sun.misc.*;
 
@@ -286,7 +287,16 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
     public NodeClassIterable inputs() {
-        return getNodeClass().getEdges(Inputs).getIterable(this);
+        return nodeClass.getInputEdges().getIterable(this);
+    }
+
+    /**
+     * Applies the given consumer to all inputs of this node.
+     *
+     * @param consumer the consumer to be applied to the inputs
+     */
+    public void acceptInputs(Consumer<Node> consumer) {
+        nodeClass.getInputEdges().accept(this, consumer);
     }
 
     /**
@@ -296,7 +306,16 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
     public NodeClassIterable successors() {
-        return getNodeClass().getEdges(Successors).getIterable(this);
+        return nodeClass.getSuccessorEdges().getIterable(this);
+    }
+
+    /**
+     * Applies the given consumer to all successors of this node.
+     *
+     * @param consumer the consumer to be applied to the inputs
+     */
+    public void acceptSuccessors(Consumer<Node> consumer) {
+        nodeClass.getSuccessorEdges().accept(this, consumer);
     }
 
     /**
@@ -528,7 +547,7 @@ public abstract class Node implements Cloneable, Formattable {
     public void replaceAtUsages(Node other) {
         assert checkReplaceWith(other);
         for (Node usage : usages()) {
-            boolean result = usage.getNodeClass().getEdges(Inputs).replaceFirst(usage, this, other);
+            boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
                 maybeNotifyInputChanged(usage);
@@ -554,7 +573,7 @@ public abstract class Node implements Cloneable, Formattable {
         while (index < this.getUsageCount()) {
             Node usage = getUsageAt(index);
             if (usagePredicate.apply(usage)) {
-                boolean result = usage.getNodeClass().getEdges(Inputs).replaceFirst(usage, this, other);
+                boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
                 if (other != null) {
                     maybeNotifyInputChanged(usage);
@@ -610,7 +629,7 @@ public abstract class Node implements Cloneable, Formattable {
     public void replaceAtPredecessor(Node other) {
         assert checkReplaceWith(other);
         if (predecessor != null) {
-            boolean result = predecessor.getNodeClass().getEdges(Successors).replaceFirst(predecessor, this, other);
+            boolean result = predecessor.getNodeClass().getSuccessorEdges().replaceFirst(predecessor, this, other);
             assert assertTrue(result, "not found in successors, predecessor: %s", predecessor);
             predecessor.updatePredecessor(this, other);
         }
@@ -627,13 +646,13 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public void replaceFirstSuccessor(Node oldSuccessor, Node newSuccessor) {
-        if (getNodeClass().getEdges(Successors).replaceFirst(this, oldSuccessor, newSuccessor)) {
+        if (nodeClass.getSuccessorEdges().replaceFirst(this, oldSuccessor, newSuccessor)) {
             updatePredecessor(oldSuccessor, newSuccessor);
         }
     }
 
     public void replaceFirstInput(Node oldInput, Node newInput) {
-        if (getNodeClass().getEdges(Inputs).replaceFirst(this, oldInput, newInput)) {
+        if (nodeClass.getInputEdges().replaceFirst(this, oldInput, newInput)) {
             updateUsages(oldInput, newInput);
         }
     }
@@ -651,7 +670,7 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
 
         unregisterInputs();
-        getNodeClass().getEdges(Inputs).clear(this);
+        getNodeClass().getInputEdges().clear(this);
     }
 
     private boolean removeThisFromUsages(Node n) {
@@ -659,17 +678,14 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void unregisterSuccessors() {
-        for (Node successor : successors()) {
-            assert assertTrue(successor.predecessor == this, "wrong predecessor in old successor (%s): %s", successor, successor.predecessor);
-            successor.predecessor = null;
-        }
+        this.acceptSuccessors(successor -> successor.predecessor = null);
     }
 
     public void clearSuccessors() {
         assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
 
         unregisterSuccessors();
-        getNodeClass().getEdges(Successors).clear(this);
+        getNodeClass().getSuccessorEdges().clear(this);
     }
 
     private boolean checkDeletion() {

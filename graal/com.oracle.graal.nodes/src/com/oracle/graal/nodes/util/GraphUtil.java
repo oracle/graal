@@ -49,7 +49,7 @@ public class GraphUtil {
             // We reached a control flow end.
             AbstractEndNode end = (AbstractEndNode) node;
             killEnd(end, tool);
-        } else {
+        } else if (node instanceof FixedNode) {
             // Normal control flow node.
             /*
              * We do not take a successor snapshot because this iterator supports concurrent
@@ -116,11 +116,11 @@ public class GraphUtil {
         if (node != null && node.isAlive()) {
             node.unsafeDelete();
 
-            for (Node in : node.inputs()) {
+            node.acceptInputs(in -> {
                 if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
                     killWithUnusedFloatingInputs(in);
                 }
-            }
+            });
 
             ArrayList<Node> usageToKill = null;
             for (Node usage : node.usages()) {

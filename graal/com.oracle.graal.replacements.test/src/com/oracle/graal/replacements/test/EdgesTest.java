@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -74,7 +73,7 @@ public class EdgesTest extends GraalCompilerTest {
         node.i1 = i1;
         node.i2 = i2;
         graph.add(node);
-        inputs = node.getNodeClass().getEdges(Type.Inputs);
+        inputs = node.getNodeClass().getInputEdges();
     }
 
     /**

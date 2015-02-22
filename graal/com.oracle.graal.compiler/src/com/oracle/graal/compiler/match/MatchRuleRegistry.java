@@ -23,8 +23,6 @@
 package com.oracle.graal.compiler.match;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.graph.Edges.Type.*;
-
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -50,7 +48,7 @@ public class MatchRuleRegistry {
     public static Position[] findPositions(NodeClass<? extends ValueNode> nodeClass, String[] names) {
         Position[] result = new Position[names.length];
         for (int i = 0; i < names.length; i++) {
-            Edges edges = nodeClass.getEdges(Inputs);
+            Edges edges = nodeClass.getInputEdges();
             for (int e = 0; e < edges.getDirectCount(); e++) {
                 if (names[i].equals(edges.getName(e))) {
                     result[i] = new Position(edges, e, Node.NOT_ITERABLE);

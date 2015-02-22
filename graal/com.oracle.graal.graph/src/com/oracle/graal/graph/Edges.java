@@ -27,6 +27,7 @@ import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.NodeClass.EdgeInfo;
@@ -492,5 +493,30 @@ public abstract class Edges extends Fields {
 
     public Type type() {
         return type;
+    }
+
+    public void accept(Node node, Consumer<Node> consumer) {
+        int index = 0;
+        int curDirectCount = this.directCount;
+        while (index < curDirectCount) {
+            Node curNode = getNode(node, index);
+            if (curNode != null) {
+                consumer.accept(curNode);
+            }
+            index++;
+        }
+        int count = getCount();
+        while (index < count) {
+            NodeList<Node> list = getNodeList(node, index);
+            if (list != null) {
+                for (int i = 0; i < list.size(); ++i) {
+                    Node curNode = list.get(i);
+                    if (curNode != null) {
+                        consumer.accept(curNode);
+                    }
+                }
+            }
+            index++;
+        }
     }
 }
