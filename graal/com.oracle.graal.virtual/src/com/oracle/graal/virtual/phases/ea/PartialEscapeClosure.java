@@ -649,6 +649,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (uniqueVirtualObject) {
                     // all inputs refer to the same object: just make the phi node an alias
                     addAndMarkAlias(objStates[0].virtual, phi);
+                    mergeEffects.deleteNode(phi);
                     return false;
                 } else {
                     // all inputs are virtual: check if they're compatible and without identity
@@ -680,6 +681,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     if (compatible) {
                         VirtualObjectNode virtual = getValueObjectVirtual(phi, getObjectState(states.get(0), phi.valueAt(0)).virtual);
                         mergeEffects.addFloatingNode(virtual, "valueObjectNode");
+                        mergeEffects.deleteNode(phi);
 
                         boolean materialized = mergeObjectStates(virtual, objStates, states);
                         addAndMarkAlias(virtual, virtual);
