@@ -93,10 +93,14 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
     @SuppressWarnings("unused")
     private static Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {
-        Register[] calleeSaveRegisters = regConfig.getCallerSaveRegisters();
-        Value[] nativeABICallerSaveRegisters = new Value[calleeSaveRegisters.length];
-        for (int i = 0; i < calleeSaveRegisters.length; i++) {
-            nativeABICallerSaveRegisters[i] = calleeSaveRegisters[i].asValue();
+        List<Register> callerSaveRegisters = new ArrayList<>();
+        Collections.addAll(callerSaveRegisters, regConfig.getCallerSaveRegisters());
+        // TODO: Saving callee saved registers as well seems unneccessary, however as of now it does
+        // not work without; needs further investigation
+        Collections.addAll(callerSaveRegisters, regConfig.getCalleeSaveLayout().registers);
+        Value[] nativeABICallerSaveRegisters = new Value[callerSaveRegisters.size()];
+        for (int i = 0; i < callerSaveRegisters.size(); i++) {
+            nativeABICallerSaveRegisters[i] = callerSaveRegisters.get(i).asValue();
         }
         return nativeABICallerSaveRegisters;
     }
