@@ -100,6 +100,10 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                             couldSet = true;
                             ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
                         }
+
+                        if (!couldSet && node.usages().filter(FixedGuardNode.class).isNotEmpty()) {
+                            couldSet = true;
+                        }
                     }
                 }
             }

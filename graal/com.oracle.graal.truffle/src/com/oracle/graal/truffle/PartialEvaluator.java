@@ -253,6 +253,9 @@ public class PartialEvaluator {
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig, TruffleCompilerImpl.Optimizations).apply(graph);
         Debug.dump(graph, "After FastPE");
 
+        // Perform deoptimize to guard conversion.
+        new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
+
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
             if (macroSubstitution != null) {
