@@ -238,10 +238,18 @@ public final class HIRFrameStateBuilder {
         assert isCompatibleWith(other);
 
         for (int i = 0; i < localsSize(); i++) {
-            storeLocal(i, merge(localAt(i), other.localAt(i), block));
+            ValueNode curLocal = localAt(i);
+            ValueNode mergedLocal = merge(curLocal, other.localAt(i), block);
+            if (curLocal != mergedLocal) {
+                storeLocal(i, mergedLocal);
+            }
         }
         for (int i = 0; i < stackSize(); i++) {
-            storeStack(i, merge(stackAt(i), other.stackAt(i), block));
+            ValueNode curStack = stackAt(i);
+            ValueNode mergedStack = merge(curStack, other.stackAt(i), block);
+            if (curStack != mergedStack) {
+                storeStack(i, mergedStack);
+            }
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             lockedObjects[i] = merge(lockedObjects[i], other.lockedObjects[i], block);
@@ -252,7 +260,6 @@ public final class HIRFrameStateBuilder {
     private ValueNode merge(ValueNode currentValue, ValueNode otherValue, AbstractMergeNode block) {
         if (currentValue == null || currentValue.isDeleted()) {
             return null;
-
         } else if (block.isPhiAtMerge(currentValue)) {
             if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
                 propagateDelete((ValuePhiNode) currentValue);
@@ -260,24 +267,25 @@ public final class HIRFrameStateBuilder {
             }
             ((PhiNode) currentValue).addInput(otherValue);
             return currentValue;
-
         } else if (currentValue != otherValue) {
             assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for changed locals and all stack slots";
             if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
                 return null;
             }
-
-            ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(currentValue.stamp().unrestricted(), block));
-            for (int i = 0; i < block.phiPredecessorCount(); i++) {
-                phi.addInput(currentValue);
-            }
-            phi.addInput(otherValue);
-            assert phi.valueCount() == block.phiPredecessorCount() + 1 : "valueCount=" + phi.valueCount() + " predSize= " + block.phiPredecessorCount();
-            return phi;
-
+            return createValuePhi(currentValue, otherValue, block);
         } else {
             return currentValue;
         }
+    }
+
+    private ValuePhiNode createValuePhi(ValueNode currentValue, ValueNode otherValue, AbstractMergeNode block) {
+        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(currentValue.stamp().unrestricted(), block));
+        for (int i = 0; i < block.phiPredecessorCount(); i++) {
+            phi.addInput(currentValue);
+        }
+        phi.addInput(otherValue);
+        assert phi.valueCount() == block.phiPredecessorCount() + 1;
+        return phi;
     }
 
     private void propagateDelete(FloatingNode node) {
