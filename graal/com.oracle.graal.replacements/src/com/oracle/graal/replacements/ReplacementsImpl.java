@@ -539,7 +539,7 @@ public class ReplacementsImpl implements Replacements {
             }
             int sideEffectCount = 0;
             assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
-            new ConvertDeoptimizeToGuardPhase().apply(graph);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, null);
             assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 
             switch (frameStateProcessing) {
