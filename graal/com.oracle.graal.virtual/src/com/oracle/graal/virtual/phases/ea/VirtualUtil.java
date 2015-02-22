@@ -62,7 +62,7 @@ public final class VirtualUtil {
         }
 
         for (Node node : obsoleteNodes) {
-            if (node instanceof FixedNode) {
+            if (node instanceof FixedNode && !node.isDeleted()) {
                 assert !flood.isMarked(node) : node;
             }
         }
@@ -87,7 +87,7 @@ public final class VirtualUtil {
         }
         boolean success = true;
         for (Node node : obsoleteNodes) {
-            if (flood.isMarked(node)) {
+            if (!node.isDeleted() && flood.isMarked(node)) {
                 TTY.println("offending node path:");
                 Node current = node;
                 TTY.print(current.toString());

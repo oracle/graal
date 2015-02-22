@@ -130,20 +130,13 @@ public class GraphEffectList extends EffectList {
      *
      * @param node The fixed node that should be deleted.
      */
-    public void deleteFixedNode(final FixedWithNextNode node) {
+    public void deleteNode(final Node node) {
         add("delete fixed node", (graph, obsoleteNodes) -> {
-            GraphUtil.unlinkFixedNode(node);
-            assert obsoleteNodes.add(node);
+            if (node instanceof FixedWithNextNode) {
+                GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+            }
+            obsoleteNodes.add(node);
         });
-    }
-
-    /**
-     * Removes the given fixed node from the control flow.
-     *
-     * @param node The fixed node that should be deleted.
-     */
-    public void unlinkFixedNode(final FixedWithNextNode node) {
-        add("unlink fixed node", graph -> GraphUtil.unlinkFixedNode(node));
     }
 
     /**
@@ -165,11 +158,9 @@ public class GraphEffectList extends EffectList {
             }
             node.replaceAtUsages(replacement);
             if (node instanceof FixedWithNextNode) {
-                FixedNode next = ((FixedWithNextNode) node).next();
-                ((FixedWithNextNode) node).setNext(null);
-                node.replaceAtPredecessor(next);
-                assert obsoleteNodes.add(node);
+                GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
             }
+            GraphUtil.killWithUnusedFloatingInputs(node);
         });
     }
 
@@ -193,14 +184,5 @@ public class GraphEffectList extends EffectList {
                 return !(node instanceof FrameState);
             }
         });
-    }
-
-    /**
-     * Performs a custom action.
-     *
-     * @param action The action that should be performed when the effects are applied.
-     */
-    public void customAction(final Runnable action) {
-        add("customAction", graph -> action.run());
     }
 }

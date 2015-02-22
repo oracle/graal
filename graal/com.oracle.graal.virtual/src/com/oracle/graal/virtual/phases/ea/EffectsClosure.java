@@ -32,6 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
@@ -111,6 +112,12 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         };
         ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
+        for (Node fixed : obsoleteNodes) {
+            if (fixed.isAlive()) {
+                fixed.replaceAtUsages(null);
+                GraphUtil.killWithUnusedFloatingInputs(fixed);
+            }
+        }
     }
 
     @Override

@@ -101,7 +101,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                     Debug.dump(graph, "after " + getName() + " iteration");
                 }
 
-                new DeadCodeEliminationPhase(Required).apply(graph);
+                new DeadCodeEliminationPhase(Optional).apply(graph);
 
                 Set<Node> changedNodes = listener.getNodes();
                 for (Node node : graph.getNodes()) {
