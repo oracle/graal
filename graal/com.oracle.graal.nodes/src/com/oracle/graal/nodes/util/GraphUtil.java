@@ -61,6 +61,7 @@ public class GraphUtil {
                 killCFG(successor, tool);
             }
         }
+        node.replaceAtPredecessor(null);
         propagateKill(node);
     }
 
@@ -113,15 +114,25 @@ public class GraphUtil {
 
     public static void propagateKill(Node node) {
         if (node != null && node.isAlive()) {
-            List<Node> usagesSnapshot = node.usages().filter(isFloatingNode()).snapshot();
+            node.unsafeDelete();
 
-            // null out remaining usages
-            node.replaceAtUsages(null);
-            node.replaceAtPredecessor(null);
-            killWithUnusedFloatingInputs(node);
+            for (Node in : node.inputs()) {
+                if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
+                    killWithUnusedFloatingInputs(in);
+                }
+            }
 
-            for (Node usage : usagesSnapshot) {
-                if (!usage.isDeleted()) {
+            ArrayList<Node> usageToKill = null;
+            for (Node usage : node.usages()) {
+                if (usage.isAlive() && !(usage instanceof FixedNode)) {
+                    if (usageToKill == null) {
+                        usageToKill = new ArrayList<>();
+                    }
+                    usageToKill.add(usage);
+                }
+            }
+            if (usageToKill != null) {
+                for (Node usage : usageToKill) {
                     if (usage instanceof PhiNode) {
                         usage.replaceFirstInput(node, null);
                     } else {

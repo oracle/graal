@@ -598,7 +598,8 @@ public abstract class Node implements Cloneable, Formattable {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
-                listener.usagesDroppedToZero(node);
+                // System.out.println("usage dropped to zero: " + node);
+                // listener.usagesDroppedToZero(node);
             }
             if (Fingerprint.ENABLED) {
                 Fingerprint.submit("%s: %s", NodeEvent.ZERO_USAGES, node);
@@ -683,6 +684,10 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void safeDelete() {
         assert checkDeletion();
+        unsafeDelete();
+    }
+
+    public void unsafeDelete() {
         unregisterInputs();
         unregisterSuccessors();
         graph.unregister(this);
