@@ -1788,30 +1788,27 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 BciBlock trueBlock = currentBlock.getSuccessor(0);
                 BciBlock falseBlock = currentBlock.getSuccessor(1);
                 if (trueBlock == falseBlock) {
+                    // The target block is the same independent of the condition.
                     appendGoto(trueBlock);
                     return;
                 }
 
-                // the mirroring and negation operations get the condition into canonical form
-                boolean mirror = cond.canonicalMirror();
-                boolean negate = cond.canonicalNegate();
+                ValueNode a = x;
+                ValueNode b = y;
 
-                ValueNode a = mirror ? y : x;
-                ValueNode b = mirror ? x : y;
-
-                LogicNode condition;
-                assert !a.getKind().isNumericFloat();
-                if (cond == Condition.EQ || cond == Condition.NE) {
-                    if (a.getKind() == Kind.Object) {
-                        condition = genObjectEquals(a, b);
-                    } else {
-                        condition = genIntegerEquals(a, b);
-                    }
-                } else {
-                    assert a.getKind() != Kind.Object && !cond.isUnsigned();
-                    condition = genIntegerLessThan(a, b);
+                // Check whether the condition needs to mirror the operands.
+                if (cond.canonicalMirror()) {
+                    a = y;
+                    b = x;
                 }
 
+                // Create the logic node for the condition.
+                LogicNode condition = createLogicNode(cond, a, b);
+
+                // Check whether the condition needs to negate the result.
+                boolean negate = cond.canonicalNegate();
+
+                // Remove a logic negation node and fold it into the negate boolean.
                 if (condition instanceof LogicNegationNode) {
                     LogicNegationNode logicNegationNode = (LogicNegationNode) condition;
                     negate = !negate;
@@ -1819,18 +1816,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (condition instanceof LogicConstantNode) {
-                    LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
-                    boolean value = constantLogicNode.getValue();
-                    if (negate) {
-                        value = !value;
-                    }
-                    BciBlock nextBlock = falseBlock;
-                    if (value) {
-                        nextBlock = trueBlock;
-                    }
-                    appendGoto(nextBlock);
+                    genConstantTargetIf(trueBlock, falseBlock, negate, condition);
                 } else {
-
                     if (condition.graph() == null) {
                         condition = currentGraph.unique(condition);
                     }
@@ -1860,43 +1847,74 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (trueBlockInt != -1) {
                         int falseBlockInt = checkPositiveIntConstantPushed(falseBlock);
                         if (falseBlockInt != -1) {
-
-                            boolean genReturn = false;
-                            boolean genConditional = false;
-                            if (gotoOrFallThroughAfterConstant(trueBlock) && gotoOrFallThroughAfterConstant(falseBlock) && trueBlock.getSuccessor(0) == falseBlock.getSuccessor(0)) {
-                                genConditional = true;
-                            } else if (this.currentDepth != 0 && returnAfterConstant(trueBlock) && returnAfterConstant(falseBlock)) {
-                                genReturn = true;
-                                genConditional = true;
-                            }
-
-                            if (genConditional) {
-                                ConstantNode trueValue = currentGraph.unique(ConstantNode.forInt(trueBlockInt));
-                                ConstantNode falseValue = currentGraph.unique(ConstantNode.forInt(falseBlockInt));
-                                ValueNode conditionalNode = ConditionalNode.create(condition, trueValue, falseValue);
-                                if (conditionalNode.graph() == null) {
-                                    conditionalNode = currentGraph.addOrUnique(conditionalNode);
-                                }
-                                if (genReturn) {
-                                    this.genReturn(conditionalNode);
-                                } else {
-                                    frameState.push(Kind.Int, conditionalNode);
-                                    appendGoto(trueBlock.getSuccessor(0));
-                                    stream.setBCI(oldBci);
-                                }
+                            if (tryGenConditionalForIf(trueBlock, falseBlock, condition, oldBci, trueBlockInt, falseBlockInt)) {
                                 return;
                             }
                         }
                     }
 
                     this.controlFlowSplit = true;
-
                     FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, false);
                     FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
-
                     ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
                     append(ifNode);
                 }
+            }
+
+            private boolean tryGenConditionalForIf(BciBlock trueBlock, BciBlock falseBlock, LogicNode condition, int oldBci, int trueBlockInt, int falseBlockInt) {
+                if (gotoOrFallThroughAfterConstant(trueBlock) && gotoOrFallThroughAfterConstant(falseBlock) && trueBlock.getSuccessor(0) == falseBlock.getSuccessor(0)) {
+                    genConditionalForIf(trueBlock, condition, oldBci, trueBlockInt, falseBlockInt, false);
+                    return true;
+                } else if (this.currentDepth != 0 && returnAfterConstant(trueBlock) && returnAfterConstant(falseBlock)) {
+                    genConditionalForIf(trueBlock, condition, oldBci, trueBlockInt, falseBlockInt, true);
+                    return true;
+                }
+                return false;
+            }
+
+            private void genConditionalForIf(BciBlock trueBlock, LogicNode condition, int oldBci, int trueBlockInt, int falseBlockInt, boolean genReturn) {
+                ConstantNode trueValue = currentGraph.unique(ConstantNode.forInt(trueBlockInt));
+                ConstantNode falseValue = currentGraph.unique(ConstantNode.forInt(falseBlockInt));
+                ValueNode conditionalNode = ConditionalNode.create(condition, trueValue, falseValue);
+                if (conditionalNode.graph() == null) {
+                    conditionalNode = currentGraph.addOrUnique(conditionalNode);
+                }
+                if (genReturn) {
+                    this.genReturn(conditionalNode);
+                } else {
+                    frameState.push(Kind.Int, conditionalNode);
+                    appendGoto(trueBlock.getSuccessor(0));
+                    stream.setBCI(oldBci);
+                }
+            }
+
+            private LogicNode createLogicNode(Condition cond, ValueNode a, ValueNode b) {
+                LogicNode condition;
+                assert !a.getKind().isNumericFloat();
+                if (cond == Condition.EQ || cond == Condition.NE) {
+                    if (a.getKind() == Kind.Object) {
+                        condition = genObjectEquals(a, b);
+                    } else {
+                        condition = genIntegerEquals(a, b);
+                    }
+                } else {
+                    assert a.getKind() != Kind.Object && !cond.isUnsigned();
+                    condition = genIntegerLessThan(a, b);
+                }
+                return condition;
+            }
+
+            private void genConstantTargetIf(BciBlock trueBlock, BciBlock falseBlock, boolean negate, LogicNode condition) {
+                LogicConstantNode constantLogicNode = (LogicConstantNode) condition;
+                boolean value = constantLogicNode.getValue();
+                if (negate) {
+                    value = !value;
+                }
+                BciBlock nextBlock = falseBlock;
+                if (value) {
+                    nextBlock = trueBlock;
+                }
+                appendGoto(nextBlock);
             }
 
             private int checkPositiveIntConstantPushed(BciBlock block) {
