@@ -1342,10 +1342,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private FixedNode createTarget(BciBlock block, HIRFrameStateBuilder state) {
-                return createTarget(block, state, false);
+                return createTarget(block, state, false, false);
             }
 
-            private FixedNode createTarget(BciBlock block, HIRFrameStateBuilder state, boolean isGoto) {
+            private FixedNode createTarget(BciBlock block, HIRFrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
                 assert block != null && state != null;
                 assert !block.isExceptionEntry || state.stackSize() == 1;
 
@@ -1358,7 +1358,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * this block again.
                      */
                     FixedNode targetNode;
-                    if (isGoto && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0) {
+                    if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0) {
                         setFirstInstruction(block, operatingDimension, lastInstr);
                         lastInstr = null;
                     } else {
@@ -1367,7 +1367,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     targetNode = getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
-                    HIRFrameStateBuilder currentEntryState = target.state == state ? (isGoto ? state : state.copy()) : target.state;
+                    HIRFrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
                     setEntryState(block, operatingDimension, currentEntryState);
                     currentEntryState.clearNonLiveLocals(block, liveness, true);
 
@@ -1636,7 +1636,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void appendGoto(BciBlock successor) {
-                FixedNode targetInstr = createTarget(successor, frameState, true);
+                FixedNode targetInstr = createTarget(successor, frameState, true, true);
                 if (lastInstr != null && lastInstr != targetInstr) {
                     lastInstr.setNext(targetInstr);
                 }
@@ -1891,8 +1891,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     this.controlFlowSplit = true;
 
-                    FixedNode trueSuccessor = createTarget(trueBlock, frameState);
-                    FixedNode falseSuccessor = createTarget(falseBlock, frameState);
+                    FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, false);
+                    FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
 
                     ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
                     append(ifNode);
