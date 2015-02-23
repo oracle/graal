@@ -355,7 +355,7 @@ public class GraalCompiler {
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
         lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
 
-        AllocationContext allocContext = new AllocationContext();
+        AllocationContext allocContext = new AllocationContext(lirGen.getSpillMoveFactory());
         lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
 
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext();

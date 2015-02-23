@@ -24,7 +24,6 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
@@ -51,14 +50,7 @@ public class LIR {
 
     private int numVariables;
 
-    private SpillMoveFactory spillMoveFactory;
-
     private final BlockMap<List<LIRInstruction>> lirInstructions;
-
-    public interface SpillMoveFactory {
-
-        LIRInstruction createMove(AllocatableValue result, Value input);
-    }
 
     private boolean hasArgInCallerFrame;
 
@@ -88,10 +80,6 @@ public class LIR {
             }
         }
         return false;
-    }
-
-    public SpillMoveFactory getSpillMoveFactory() {
-        return spillMoveFactory;
     }
 
     public List<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
@@ -203,10 +191,6 @@ public class LIR {
             }
         }
         return true;
-    }
-
-    public void setSpillMoveFactory(SpillMoveFactory spillMoveFactory) {
-        this.spillMoveFactory = spillMoveFactory;
     }
 
     public void resetLabels() {
