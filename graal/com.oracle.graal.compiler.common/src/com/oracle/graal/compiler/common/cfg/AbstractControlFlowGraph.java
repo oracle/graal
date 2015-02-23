@@ -123,12 +123,8 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
         }
 
         while (iterA != iterB) {
-            if (iterA.getId() > iterB.getId()) {
-                iterA = iterA.getDominator();
-            } else {
-                assert iterB.getId() > iterA.getId();
-                iterB = iterB.getDominator();
-            }
+            iterA = iterA.getDominator();
+            iterB = iterB.getDominator();
         }
         return iterA;
     }
