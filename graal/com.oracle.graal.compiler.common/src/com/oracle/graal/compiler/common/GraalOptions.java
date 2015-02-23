@@ -201,7 +201,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> PrintBailout = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> TraceEscapeAnalysis = new OptionValue<>(false);
+    public static final StableOptionValue<Boolean> TraceEscapeAnalysis = new StableOptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> ExitVMOnBailout = new OptionValue<>(false);
