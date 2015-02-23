@@ -671,6 +671,10 @@ public final class SchedulePhase extends Phase {
         if (earliest != null) {
             return earliest;
         }
+        return earliestBlockHelper(node, earliest);
+    }
+
+    private Block earliestBlockHelper(Node node, Block earliest) throws SchedulingError {
         /*
          * All inputs must be in a dominating block, otherwise the graph cannot be scheduled. This
          * implies that the inputs' blocks have a total ordering via their dominance relation. So in
@@ -681,31 +685,19 @@ public final class SchedulePhase extends Phase {
         if (node.predecessor() != null) {
             throw new SchedulingError();
         }
-        for (Node input : node.inputs().nonNull()) {
-            assert input instanceof ValueNode;
-            Block inputEarliest;
-            if (input instanceof InvokeWithExceptionNode) {
-                inputEarliest = cfg.getNodeToBlock().get(((InvokeWithExceptionNode) input).next());
-            } else {
-                inputEarliest = earliestBlock(input);
-            }
-            if (earliest == null) {
-                earliest = inputEarliest;
-            } else if (earliest != inputEarliest) {
-                // Find out whether earliest or inputEarliest is earlier.
-                Block a = earliest.getDominator();
-                Block b = inputEarliest;
-                while (true) {
-                    if (a == inputEarliest || b == null) {
-                        // Nothing to change, the previous earliest block is still earliest.
-                        break;
-                    } else if (b == earliest || a == null) {
-                        // New earliest is the earliest.
-                        earliest = inputEarliest;
-                        break;
-                    }
-                    a = a.getDominator();
-                    b = b.getDominator();
+        for (Node input : node.inputs()) {
+            if (input != null) {
+                assert input instanceof ValueNode;
+                Block inputEarliest;
+                if (input instanceof InvokeWithExceptionNode) {
+                    inputEarliest = cfg.getNodeToBlock().get(((InvokeWithExceptionNode) input).next());
+                } else {
+                    inputEarliest = earliestBlock(input);
+                }
+                if (earliest == null) {
+                    earliest = inputEarliest;
+                } else if (earliest != inputEarliest) {
+                    earliest = findEarlierBlock(earliest, inputEarliest);
                 }
             }
         }
@@ -714,6 +706,23 @@ public final class SchedulePhase extends Phase {
         }
         earliestCache.set(node, earliest);
         return earliest;
+    }
+
+    private static Block findEarlierBlock(Block earliest, Block inputEarliest) {
+        // Find out whether earliest or inputEarliest is earlier.
+        Block a = earliest.getDominator();
+        Block b = inputEarliest;
+        while (true) {
+            if (a == inputEarliest || b == null) {
+                // Nothing to change, the previous earliest block is still earliest.
+                return earliest;
+            } else if (b == earliest || a == null) {
+                // New earliest is the earliest.
+                return inputEarliest;
+            }
+            a = a.getDominator();
+            b = b.getDominator();
+        }
     }
 
     /**
@@ -1071,20 +1080,16 @@ public final class SchedulePhase extends Phase {
             return;
         }
 
+        addToLatestSortingHelper(i, state);
+    }
+
+    private void addToLatestSortingHelper(ValueNode i, SortState state) {
         FrameState stateAfter = null;
         if (i instanceof StateSplit) {
             stateAfter = ((StateSplit) i).stateAfter();
         }
 
-        for (Node input : i.inputs()) {
-            if (input instanceof FrameState) {
-                if (input != stateAfter) {
-                    addUnscheduledToLatestSorting((FrameState) input, state);
-                }
-            } else {
-                addToLatestSorting((ValueNode) input, state);
-            }
-        }
+        addInputsToLatestSorting(i, state, stateAfter);
 
         if (state.readsSize() != 0) {
             if (i instanceof MemoryCheckpoint.Single) {
@@ -1109,6 +1114,18 @@ public final class SchedulePhase extends Phase {
 
         if (state.readsSize() != 0 && i instanceof FloatingReadNode) {
             state.removeRead(i);
+        }
+    }
+
+    private void addInputsToLatestSorting(ValueNode i, SortState state, FrameState stateAfter) {
+        for (Node input : i.inputs()) {
+            if (input instanceof FrameState) {
+                if (input != stateAfter) {
+                    addUnscheduledToLatestSorting((FrameState) input, state);
+                }
+            } else {
+                addToLatestSorting((ValueNode) input, state);
+            }
         }
     }
 
