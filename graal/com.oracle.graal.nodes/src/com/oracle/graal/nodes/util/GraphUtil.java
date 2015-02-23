@@ -112,13 +112,16 @@ public class GraphUtil {
         return FLOATING;
     }
 
-    public static void propagateKill(Node node) {
+    private static void propagateKill(Node node) {
         if (node != null && node.isAlive()) {
-            node.unsafeDelete();
+            node.markDeleted();
 
-            node.acceptInputs(in -> {
-                if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
-                    killWithUnusedFloatingInputs(in);
+            node.acceptInputs((n, in) -> {
+                if (in.isAlive()) {
+                    in.removeUsage(n);
+                    if (in.hasNoUsages() && !(in instanceof FixedNode)) {
+                        killWithUnusedFloatingInputs(in);
+                    }
                 }
             });
 

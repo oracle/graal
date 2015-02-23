@@ -495,13 +495,13 @@ public abstract class Edges extends Fields {
         return type;
     }
 
-    public void accept(Node node, Consumer<Node> consumer) {
+    public void accept(Node node, BiConsumer<Node, Node> consumer) {
         int index = 0;
         int curDirectCount = this.directCount;
         while (index < curDirectCount) {
             Node curNode = getNode(node, index);
             if (curNode != null) {
-                consumer.accept(curNode);
+                consumer.accept(node, curNode);
             }
             index++;
         }
@@ -512,7 +512,7 @@ public abstract class Edges extends Fields {
                 for (int i = 0; i < list.size(); ++i) {
                     Node curNode = list.get(i);
                     if (curNode != null) {
-                        consumer.accept(curNode);
+                        consumer.accept(node, curNode);
                     }
                 }
             }

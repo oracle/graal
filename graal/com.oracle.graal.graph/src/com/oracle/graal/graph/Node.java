@@ -295,7 +295,7 @@ public abstract class Node implements Cloneable, Formattable {
      *
      * @param consumer the consumer to be applied to the inputs
      */
-    public void acceptInputs(Consumer<Node> consumer) {
+    public void acceptInputs(BiConsumer<Node, Node> consumer) {
         nodeClass.getInputEdges().accept(this, consumer);
     }
 
@@ -314,7 +314,7 @@ public abstract class Node implements Cloneable, Formattable {
      *
      * @param consumer the consumer to be applied to the inputs
      */
-    public void acceptSuccessors(Consumer<Node> consumer) {
+    public void acceptSuccessors(BiConsumer<Node, Node> consumer) {
         nodeClass.getSuccessorEdges().accept(this, consumer);
     }
 
@@ -402,7 +402,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @param node the node to remove
      * @return whether or not {@code usage} was in the usage list
      */
-    private boolean removeUsage(Node node) {
+    public boolean removeUsage(Node node) {
         assert node != null;
         // It is critical that this method maintains the invariant that
         // the usage list has no null element preceding a non-null element
@@ -520,12 +520,8 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);
-        for (Node input : inputs()) {
-            updateUsages(null, input);
-        }
-        for (Node successor : successors()) {
-            updatePredecessor(null, successor);
-        }
+        this.acceptInputs((n, i) -> n.updateUsages(null, i));
+        this.acceptSuccessors((n, s) -> n.updatePredecessor(null, s));
     }
 
     public final NodeClass<? extends Node> getNodeClass() {
@@ -677,7 +673,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void unregisterSuccessors() {
-        this.acceptSuccessors(successor -> successor.predecessor = null);
+        this.acceptSuccessors((n, successor) -> successor.predecessor = null);
     }
 
     public void clearSuccessors() {
@@ -699,12 +695,12 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public void safeDelete() {
         assert checkDeletion();
-        unsafeDelete();
-    }
-
-    public void unsafeDelete() {
         unregisterInputs();
         unregisterSuccessors();
+        markDeleted();
+    }
+
+    public void markDeleted() {
         graph.unregister(this);
         id = DELETED_ID_START - id;
         assert isDeleted();
