@@ -641,24 +641,6 @@ public final class SchedulePhase extends Phase {
     }
 
     /**
-     * A closure that will calculate the common dominator of all blocks passed to its
-     * {@link #apply(Block)} method.
-     */
-    private static class CommonDominatorBlockClosure implements BlockClosure {
-
-        public Block block;
-
-        public CommonDominatorBlockClosure(Block block) {
-            this.block = block;
-        }
-
-        @Override
-        public void apply(Block newBlock) {
-            this.block = commonDominatorTyped(this.block, newBlock);
-        }
-    }
-
-    /**
      * Determines the earliest block in which the given node can be scheduled.
      */
     private Block earliestBlock(Node node) {
