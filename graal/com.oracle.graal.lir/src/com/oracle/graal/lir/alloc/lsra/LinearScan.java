@@ -147,9 +147,9 @@ final class LinearScan {
     LIRInstruction[] opIdToInstructionMap;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain AbstractBlockBase
-     * block} containing the instruction. Entries should be retrieved with {@link #blockForId(int)}
-     * as the id is not simply an index into this array.
+     * Map from an instruction {@linkplain LIRInstruction#id id} to the
+     * {@linkplain AbstractBlockBase block} containing the instruction. Entries should be retrieved
+     * with {@link #blockForId(int)} as the id is not simply an index into this array.
      */
     AbstractBlockBase<?>[] opIdToBlockMap;
 
