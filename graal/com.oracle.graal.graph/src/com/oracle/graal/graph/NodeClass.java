@@ -569,16 +569,18 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     static void updateEdgesInPlace(Node node, InplaceUpdateClosure duplicationReplacement, Edges edges) {
         int index = 0;
-        while (index < edges.getDirectCount()) {
+        Type curType = edges.type();
+        int directCount = edges.getDirectCount();
+        while (index < directCount) {
             Node edge = edges.getNode(node, index);
             if (edge != null) {
-                Node newEdge = duplicationReplacement.replacement(edge, edges.type());
-                if (edges.type() == Edges.Type.Inputs) {
+                Node newEdge = duplicationReplacement.replacement(edge, curType);
+                if (curType == Edges.Type.Inputs) {
                     node.updateUsages(null, newEdge);
                 } else {
                     node.updatePredecessor(null, newEdge);
                 }
-                assert newEdge == null || edges.getType(index).isAssignableFrom(newEdge.getClass()) : "Can not assign " + newEdge.getClass() + " to " + edges.getType(index) + " in " + node;
+                assert assertUpdateValid(node, edges, index, newEdge);
                 edges.initializeNode(node, index, newEdge);
             }
             index++;
@@ -587,10 +589,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         while (index < edges.getCount()) {
             NodeList<Node> list = edges.getNodeList(node, index);
             if (list != null) {
-                edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, edges.type()));
+                edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, curType));
             }
             index++;
         }
+    }
+
+    private static boolean assertUpdateValid(Node node, Edges edges, int index, Node newEdge) {
+        assert newEdge == null || edges.getType(index).isAssignableFrom(newEdge.getClass()) : "Can not assign " + newEdge.getClass() + " to " + edges.getType(index) + " in " + node;
+        return true;
     }
 
     void updateInputSuccInPlace(Node node, InplaceUpdateClosure duplicationReplacement) {
