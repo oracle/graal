@@ -51,6 +51,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return endNode;
     }
 
+    @Override
     public Loop<Block> getLoop() {
         return loop;
     }
@@ -59,18 +60,22 @@ public final class Block extends AbstractBlockBase<Block> {
         this.loop = loop;
     }
 
+    @Override
     public int getLoopDepth() {
         return loop == null ? 0 : loop.getDepth();
     }
 
+    @Override
     public boolean isLoopHeader() {
         return getBeginNode() instanceof LoopBeginNode;
     }
 
+    @Override
     public boolean isLoopEnd() {
         return getEndNode() instanceof LoopEndNode;
     }
 
+    @Override
     public boolean isExceptionEntry() {
         Node predecessor = getBeginNode().predecessor();
         return predecessor != null && predecessor instanceof InvokeWithExceptionNode && getBeginNode() == ((InvokeWithExceptionNode) predecessor).exceptionEdge();
@@ -97,6 +102,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return b;
     }
 
+    @Override
     public Block getPostdominator() {
         return postdominator;
     }
@@ -159,6 +165,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return "B" + id;
     }
 
+    @Override
     public double probability() {
         return probability;
     }

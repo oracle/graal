@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.alloc.lsra.Interval.*;
@@ -131,10 +130,10 @@ class CFGPrinter extends CompilationPrinter {
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blocks The list of blocks to be printed.
      */
-    public void printCFG(String label, List<? extends AbstractBlock<?>> blocks, boolean printNodes) {
+    public void printCFG(String label, List<? extends AbstractBlockBase<?>> blocks, boolean printNodes) {
         if (lir == null) {
             latestScheduling = new NodeMap<>(cfg.getNodeToBlock());
-            for (AbstractBlock<?> abstractBlock : blocks) {
+            for (AbstractBlockBase<?> abstractBlock : blocks) {
                 Block block = (Block) abstractBlock;
                 Node cur = block.getBeginNode();
                 while (true) {
@@ -152,7 +151,7 @@ class CFGPrinter extends CompilationPrinter {
 
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (AbstractBlock<?> block : blocks) {
+        for (AbstractBlockBase<?> block : blocks) {
             printBlock(block, printNodes);
         }
         end("cfg");
@@ -194,7 +193,7 @@ class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    private void printBlock(AbstractBlock<?> block, boolean printNodes) {
+    private void printBlock(AbstractBlockBase<?> block, boolean printNodes) {
         printBlockProlog(block);
         if (printNodes) {
             assert block instanceof Block;
@@ -203,31 +202,24 @@ class CFGPrinter extends CompilationPrinter {
         printBlockEpilog(block);
     }
 
-    private void printBlockEpilog(AbstractBlock<?> block) {
+    private void printBlockEpilog(AbstractBlockBase<?> block) {
         printLIR(block);
         end("block");
     }
 
-    private void printBlockProlog(AbstractBlock<?> block) {
+    private void printBlockProlog(AbstractBlockBase<?> block) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
-        if (block instanceof BciBlock) {
-            out.print("from_bci ").println(((BciBlock) block).startBci);
-            out.print("to_bci ").println(((BciBlock) block).endBci);
-        } else {
-            out.println("from_bci -1");
-            out.println("to_bci -1");
-        }
 
         out.print("predecessors ");
-        for (AbstractBlock<?> pred : block.getPredecessors()) {
+        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
             out.print("\"").print(blockToString(pred)).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (AbstractBlock<?> succ : block.getSuccessors()) {
+        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
             if (!succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -235,7 +227,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (AbstractBlock<?> succ : block.getSuccessors()) {
+        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
             if (succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -437,7 +429,7 @@ class CFGPrinter extends CompilationPrinter {
      *
      * @param block the block to print
      */
-    private void printLIR(AbstractBlock<?> block) {
+    private void printLIR(AbstractBlockBase<?> block) {
         if (lir == null) {
             return;
         }
@@ -500,7 +492,7 @@ class CFGPrinter extends CompilationPrinter {
         return prefix + node.toString(Verbosity.Id);
     }
 
-    private String blockToString(AbstractBlock<?> block) {
+    private String blockToString(AbstractBlockBase<?> block) {
         if (lir == null && schedule == null && block instanceof Block) {
             // During all the front-end phases, the block schedule is built only for the debug
             // output.

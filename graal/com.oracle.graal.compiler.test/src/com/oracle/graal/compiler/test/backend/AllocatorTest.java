@@ -64,7 +64,7 @@ public class AllocatorTest extends BackendTest {
         public RegisterStats(LIR lir) {
             this.lir = lir;
 
-            for (AbstractBlock<?> block : lir.codeEmittingOrder()) {
+            for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
                 for (LIRInstruction instr : lir.getLIRforBlock(block)) {
                     collectStats(instr);
                 }

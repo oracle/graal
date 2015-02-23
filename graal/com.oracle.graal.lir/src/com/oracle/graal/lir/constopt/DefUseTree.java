@@ -35,10 +35,10 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
  */
 class DefUseTree {
     private final LIRInstruction instruction;
-    private final AbstractBlock<?> block;
+    private final AbstractBlockBase<?> block;
     private final List<UseEntry> uses;
 
-    public DefUseTree(LIRInstruction instruction, AbstractBlock<?> block) {
+    public DefUseTree(LIRInstruction instruction, AbstractBlockBase<?> block) {
         assert instruction instanceof MoveOp : "Not a MoveOp: " + instruction;
         this.instruction = instruction;
         this.block = block;
@@ -57,7 +57,7 @@ class DefUseTree {
         return instruction;
     }
 
-    public AbstractBlock<?> getBlock() {
+    public AbstractBlockBase<?> getBlock() {
         return block;
     }
 
@@ -66,7 +66,7 @@ class DefUseTree {
         return "DefUseTree [" + instruction + "|" + block + "," + uses + "]";
     }
 
-    public void addUsage(AbstractBlock<?> b, LIRInstruction inst, ValuePosition position) {
+    public void addUsage(AbstractBlockBase<?> b, LIRInstruction inst, ValuePosition position) {
         uses.add(new UseEntry(b, inst, position));
     }
 

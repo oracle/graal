@@ -192,14 +192,14 @@ public class StandardOp {
         /**
          * The block in which this instruction is located.
          */
-        final AbstractBlock<?> block;
+        final AbstractBlockBase<?> block;
 
         /**
          * The block index of this instruction.
          */
         final int index;
 
-        public NoOp(AbstractBlock<?> block, int index) {
+        public NoOp(AbstractBlockBase<?> block, int index) {
             super(TYPE);
             this.block = block;
             this.index = index;

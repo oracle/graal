@@ -32,7 +32,7 @@ import com.oracle.graal.lir.phases.*;
 public final class LinearScanPhase extends AllocationPhase {
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         new LinearScan(target, lirGenRes).allocate();
     }
 

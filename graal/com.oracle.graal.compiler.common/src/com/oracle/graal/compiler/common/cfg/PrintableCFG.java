@@ -31,7 +31,7 @@ import java.util.function.*;
  */
 public interface PrintableCFG {
 
-    List<? extends AbstractBlock<?>> getBlocks();
+    List<? extends AbstractBlockBase<?>> getBlocks();
 
     /**
      * Applies {@code action} to all extra property pairs (name, value) of {@code block}.
@@ -39,7 +39,7 @@ public interface PrintableCFG {
      * @param block a block from {@link #getBlocks()}.
      * @param action a {@link BiConsumer consumer}.
      */
-    default void forEachPropertyPair(AbstractBlock<?> block, BiConsumer<String, String> action) {
+    default void forEachPropertyPair(AbstractBlockBase<?> block, BiConsumer<String, String> action) {
         // no extra properties per default
     }
 }

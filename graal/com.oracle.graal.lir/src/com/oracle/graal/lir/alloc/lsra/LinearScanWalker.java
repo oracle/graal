@@ -63,11 +63,11 @@ class LinearScanWalker extends IntervalWalker {
         return allocator.blockCount();
     }
 
-    AbstractBlock<?> blockAt(int idx) {
+    AbstractBlockBase<?> blockAt(int idx) {
         return allocator.blockAt(idx);
     }
 
-    AbstractBlock<?> blockOfOpWithId(int opId) {
+    AbstractBlockBase<?> blockOfOpWithId(int opId) {
         return allocator.blockForId(opId);
     }
 
@@ -239,7 +239,7 @@ class LinearScanWalker extends IntervalWalker {
         // optimized away later in assignRegNums
 
         int opId = (operandId + 1) & ~1;
-        AbstractBlock<?> opBlock = allocator.blockForId(opId);
+        AbstractBlockBase<?> opBlock = allocator.blockForId(opId);
         assert opId > 0 && allocator.blockForId(opId - 2) == opBlock : "cannot insert move at block boundary";
 
         // calculate index of instruction inside instruction list of current block
@@ -263,7 +263,7 @@ class LinearScanWalker extends IntervalWalker {
         moveResolver.addMapping(srcIt, dstIt);
     }
 
-    int findOptimalSplitPos(AbstractBlock<?> minBlock, AbstractBlock<?> maxBlock, int maxSplitPos) {
+    int findOptimalSplitPos(AbstractBlockBase<?> minBlock, AbstractBlockBase<?> maxBlock, int maxSplitPos) {
         int fromBlockNr = minBlock.getLinearScanNumber();
         int toBlockNr = maxBlock.getLinearScanNumber();
 
@@ -280,7 +280,7 @@ class LinearScanWalker extends IntervalWalker {
 
         int minLoopDepth = maxBlock.getLoopDepth();
         for (int i = toBlockNr - 1; i >= fromBlockNr; i--) {
-            AbstractBlock<?> cur = blockAt(i);
+            AbstractBlockBase<?> cur = blockAt(i);
 
             if (cur.getLoopDepth() < minLoopDepth) {
                 // block with lower loop-depth found . split at the end of this block
@@ -308,13 +308,13 @@ class LinearScanWalker extends IntervalWalker {
             // beginning of a block, then minSplitPos is also a possible split position.
             // Use the block before as minBlock, because then minBlock.lastLirInstructionId() + 2 ==
             // minSplitPos
-            AbstractBlock<?> minBlock = allocator.blockForId(minSplitPos - 1);
+            AbstractBlockBase<?> minBlock = allocator.blockForId(minSplitPos - 1);
 
             // reason for using maxSplitPos - 1: otherwise there would be an assert on failure
             // when an interval ends at the end of the last block of the method
             // (in this case, maxSplitPos == allocator().maxLirOpId() + 2, and there is no
             // block at this opId)
-            AbstractBlock<?> maxBlock = allocator.blockForId(maxSplitPos - 1);
+            AbstractBlockBase<?> maxBlock = allocator.blockForId(maxSplitPos - 1);
 
             assert minBlock.getLinearScanNumber() <= maxBlock.getLinearScanNumber() : "invalid order";
             if (minBlock == maxBlock) {
@@ -352,7 +352,7 @@ class LinearScanWalker extends IntervalWalker {
                             // Desired result: uses tagged as shouldHaveRegister inside a loop cause
                             // a reloading
                             // of the interval (normally, only mustHaveRegister causes a reloading)
-                            AbstractBlock<?> loopBlock = allocator.blockForId(loopEndPos);
+                            AbstractBlockBase<?> loopBlock = allocator.blockForId(loopEndPos);
 
                             Debug.log("interval is used in loop that ends in block B%d, so trying to move maxBlock back from B%d to B%d", loopBlock.getId(), maxBlock.getId(), loopBlock.getId());
                             assert loopBlock != minBlock : "loopBlock and minBlock must be different because block boundary is needed between";

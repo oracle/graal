@@ -117,7 +117,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
         InstructionValueConsumer verifySlots = (LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) -> {
             assert !isVirtualStackSlot(value) : String.format("Instruction %s contains a virtual stack slot %s", op, value);
         };
-        for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             lir.getLIRforBlock(block).forEach(op -> {
                 op.visitEachInput(verifySlots);
                 op.visitEachAlive(verifySlots);

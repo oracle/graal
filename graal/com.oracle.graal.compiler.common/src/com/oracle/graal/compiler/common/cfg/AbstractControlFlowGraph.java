@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 
-public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
+public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
 
     int BLOCK_ID_INITIAL = -1;
     int BLOCK_ID_VISITED = -2;
@@ -48,7 +48,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     /**
      * Computes the dominators of control flow graph.
      */
-    static <T extends AbstractBlock<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
+    static <T extends AbstractBlockBase<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
         List<T> reversePostOrder = cfg.getBlocks();
         assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
         for (int i = 1; i < reversePostOrder.size(); i++) {
@@ -72,9 +72,9 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     /**
      * True if block {@code a} is dominated by block {@code b}.
      */
-    static boolean isDominatedBy(AbstractBlock<?> a, AbstractBlock<?> b) {
+    static boolean isDominatedBy(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
         assert a != null;
-        AbstractBlock<?> dominator = a;
+        AbstractBlockBase<?> dominator = a;
         int i = 0;
         while (dominator != null) {
             if (i++ == Integer.MAX_VALUE) { // For safety
@@ -91,7 +91,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     /**
      * True if block {@code a} dominates block {@code b}.
      */
-    static boolean dominates(AbstractBlock<?> a, AbstractBlock<?> b) {
+    static boolean dominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
         assert a != null;
         return isDominatedBy(b, a);
     }
@@ -104,15 +104,15 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
      * @see #getBlocks()
      * @see CFGVerifier
      */
-    static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
+    static AbstractBlockBase<?> commonDominator(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
         if (a == null) {
             return b;
         }
         if (b == null) {
             return a;
         }
-        AbstractBlock<?> iterA = a;
-        AbstractBlock<?> iterB = b;
+        AbstractBlockBase<?> iterA = a;
+        AbstractBlockBase<?> iterB = b;
         while (iterA != iterB) {
             if (iterA.getId() > iterB.getId()) {
                 iterA = iterA.getDominator();
@@ -125,10 +125,10 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     }
 
     /**
-     * @see AbstractControlFlowGraph#commonDominator(AbstractBlock, AbstractBlock)
+     * @see AbstractControlFlowGraph#commonDominator(AbstractBlockBase, AbstractBlockBase)
      */
     @SuppressWarnings("unchecked")
-    static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
+    static <T extends AbstractBlockBase<T>> T commonDominatorTyped(T a, T b) {
         return (T) commonDominator(a, b);
     }
 }

@@ -46,11 +46,11 @@ public final class LIRVerifier {
     private final BitSet[] blockLiveOut;
     private final Object[] variableDefinitions;
 
-    private BitSet liveOutFor(AbstractBlock<?> block) {
+    private BitSet liveOutFor(AbstractBlockBase<?> block) {
         return blockLiveOut[block.getId()];
     }
 
-    private void setLiveOutFor(AbstractBlock<?> block, BitSet liveOut) {
+    private void setLiveOutFor(AbstractBlockBase<?> block, BitSet liveOut) {
         blockLiveOut[block.getId()] = liveOut;
     }
 
@@ -91,7 +91,7 @@ public final class LIRVerifier {
     private BitSet curVariablesLive;
     private Value[] curRegistersLive;
 
-    private AbstractBlock<?> curBlock;
+    private AbstractBlockBase<?> curBlock;
     private Object curInstruction;
     private BitSet curRegistersDefined;
 
@@ -113,7 +113,7 @@ public final class LIRVerifier {
 
         int maxRegisterNum = maxRegisterNum();
         curRegistersDefined = new BitSet();
-        for (AbstractBlock<?> block : lir.linearScanOrder()) {
+        for (AbstractBlockBase<?> block : lir.linearScanOrder()) {
             curBlock = block;
             curVariablesLive = new BitSet();
             curRegistersLive = new Value[maxRegisterNum];

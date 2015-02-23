@@ -65,15 +65,15 @@ final class FixPointIntervalBuilder {
      * virtual stack slots.
      */
     Set<LIRInstruction> build() {
-        Deque<AbstractBlock<?>> worklist = new ArrayDeque<>();
+        Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
         for (int i = lir.getControlFlowGraph().getBlocks().size() - 1; i >= 0; i--) {
             worklist.add(lir.getControlFlowGraph().getBlocks().get(i));
         }
-        for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, new BitSet(stackSlotMap.length));
         }
         while (!worklist.isEmpty()) {
-            AbstractBlock<?> block = worklist.poll();
+            AbstractBlockBase<?> block = worklist.poll();
             processBlock(block, worklist);
         }
         return usePos;
@@ -82,7 +82,7 @@ final class FixPointIntervalBuilder {
     /**
      * Merge outSet with in-set of successors.
      */
-    private boolean updateOutBlock(AbstractBlock<?> block) {
+    private boolean updateOutBlock(AbstractBlockBase<?> block) {
         BitSet union = new BitSet(stackSlotMap.length);
         block.getSuccessors().forEach(succ -> union.or(liveInMap.get(succ)));
         BitSet outSet = liveOutMap.get(block);
@@ -94,7 +94,7 @@ final class FixPointIntervalBuilder {
         return false;
     }
 
-    private void processBlock(AbstractBlock<?> block, Deque<AbstractBlock<?>> worklist) {
+    private void processBlock(AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
         if (updateOutBlock(block)) {
             try (Indent indent = Debug.logAndIndent("handle block %s", block)) {
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);

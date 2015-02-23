@@ -24,7 +24,7 @@ package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 
-public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements AbstractBlock<T> {
+public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     protected int id;
 
@@ -113,4 +113,18 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
     public void setAlign(boolean align) {
         this.align = align;
     }
+
+    public abstract boolean isExceptionEntry();
+
+    public abstract Loop<T> getLoop();
+
+    public abstract int getLoopDepth();
+
+    public abstract boolean isLoopEnd();
+
+    public abstract boolean isLoopHeader();
+
+    public abstract T getPostdominator();
+
+    public abstract double probability();
 }

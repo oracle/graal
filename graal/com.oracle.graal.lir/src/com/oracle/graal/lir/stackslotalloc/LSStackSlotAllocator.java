@@ -68,7 +68,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         lirGenRes.buildFrameMap(this);
     }
 
@@ -84,7 +84,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
         private final StackInterval[] stackSlotMap;
         private final PriorityQueue<StackInterval> unhandled;
         private final PriorityQueue<StackInterval> active;
-        private final List<? extends AbstractBlock<?>> sortedBlocks;
+        private final List<? extends AbstractBlockBase<?>> sortedBlocks;
         private final int maxOpId;
 
         private Allocator(LIR lir, FrameMapBuilderTool frameMapBuilder) {
@@ -149,10 +149,10 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
          *
          * @return The id of the last operation.
          */
-        private static int numberInstructions(LIR lir, List<? extends AbstractBlock<?>> sortedBlocks) {
+        private static int numberInstructions(LIR lir, List<? extends AbstractBlockBase<?>> sortedBlocks) {
             int opId = 0;
             int index = 0;
-            for (AbstractBlock<?> block : sortedBlocks) {
+            for (AbstractBlockBase<?> block : sortedBlocks) {
 
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);
 

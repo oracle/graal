@@ -42,15 +42,15 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     ForeignCallsProvider getForeignCalls();
 
-    AbstractBlock<?> getCurrentBlock();
+    AbstractBlockBase<?> getCurrentBlock();
 
     LIRGenerationResult getResult();
 
-    boolean hasBlockEnd(AbstractBlock<?> block);
+    boolean hasBlockEnd(AbstractBlockBase<?> block);
 
-    void doBlockStart(AbstractBlock<?> block);
+    void doBlockStart(AbstractBlockBase<?> block);
 
-    void doBlockEnd(AbstractBlock<?> block);
+    void doBlockEnd(AbstractBlockBase<?> block);
 
     Value emitLoadConstant(LIRKind kind, Constant constant);
 
