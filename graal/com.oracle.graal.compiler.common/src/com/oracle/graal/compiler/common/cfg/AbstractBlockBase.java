@@ -27,6 +27,7 @@ import java.util.*;
 public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     protected int id;
+    protected int domDepth;
 
     protected List<T> predecessors;
     protected List<T> successors;
@@ -72,6 +73,11 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public void setDominator(T dominator) {
         this.dominator = dominator;
+        this.domDepth = dominator.domDepth + 1;
+    }
+
+    public int getDominatorDepth() {
+        return domDepth;
     }
 
     public List<T> getDominated() {
@@ -127,4 +133,6 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public abstract T getPostdominator();
 
     public abstract double probability();
+
+    public abstract T getDominator(int distance);
 }

@@ -111,8 +111,17 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
         if (b == null) {
             return a;
         }
+
         AbstractBlockBase<?> iterA = a;
         AbstractBlockBase<?> iterB = b;
+        int aDomDepth = a.getDominatorDepth();
+        int bDomDepth = b.getDominatorDepth();
+        if (aDomDepth > bDomDepth) {
+            iterA = a.getDominator(aDomDepth - bDomDepth);
+        } else {
+            iterB = b.getDominator(bDomDepth - aDomDepth);
+        }
+
         while (iterA != iterB) {
             if (iterA.getId() > iterB.getId()) {
                 iterA = iterA.getDominator();
