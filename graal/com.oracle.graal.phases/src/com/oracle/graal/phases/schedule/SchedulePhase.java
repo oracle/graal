@@ -674,13 +674,14 @@ public final class SchedulePhase extends Phase {
         return earliestBlockHelper(node, earliest);
     }
 
-    private Block earliestBlockHelper(Node node, Block earliest) throws SchedulingError {
+    private Block earliestBlockHelper(Node node, Block earliestStart) throws SchedulingError {
         /*
          * All inputs must be in a dominating block, otherwise the graph cannot be scheduled. This
          * implies that the inputs' blocks have a total ordering via their dominance relation. So in
          * order to find the earliest block placement for this node we need to find the input block
          * that is dominated by all other input blocks.
          */
+        Block earliest = earliestStart;
 
         if (node.predecessor() != null) {
             throw new SchedulingError();
