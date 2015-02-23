@@ -621,22 +621,21 @@ public final class SchedulePhase extends Phase {
      * @param earliestBlock
      */
     private Block latestBlock(ValueNode node, SchedulingStrategy strategy, Block earliestBlock) {
-        CommonDominatorBlockClosure cdbc = new CommonDominatorBlockClosure(null);
-        ensureScheduledUsages(node, strategy);
+        Block block = null;
         for (Node usage : node.usages()) {
-            blocksForUsage(node, usage, cdbc, strategy);
-            if (cdbc.block == earliestBlock) {
+            block = blocksForUsage(node, usage, block, earliestBlock, strategy);
+            if (block == earliestBlock) {
                 break;
             }
         }
 
-        assert assertLatestBlockResult(node, cdbc);
-        return cdbc.block;
+        assert assertLatestBlockResult(node, block);
+        return block;
     }
 
-    private boolean assertLatestBlockResult(ValueNode node, CommonDominatorBlockClosure cdbc) throws SchedulingError {
-        if (cdbc.block != null && !dominates(earliestBlock(node), cdbc.block)) {
-            throw new SchedulingError("failed to find correct latest schedule for %s. cdbc: %s, earliest: %s", node, cdbc.block, earliestBlock(node));
+    private boolean assertLatestBlockResult(ValueNode node, Block block) throws SchedulingError {
+        if (block != null && !dominates(earliestBlock(node), block)) {
+            throw new SchedulingError("failed to find correct latest schedule for %s. cdbc: %s, earliest: %s", node, block, earliestBlock(node));
         }
         return true;
     }
@@ -758,11 +757,11 @@ public final class SchedulePhase extends Phase {
      *
      * @param node the node that needs to be scheduled
      * @param usage the usage whose blocks need to be considered
-     * @param closure the closure that will be called for each block
+     * @param earliestBlock
      */
-    private void blocksForUsage(ValueNode node, Node usage, CommonDominatorBlockClosure closure, SchedulingStrategy strategy) {
+    private Block blocksForUsage(ValueNode node, Node usage, Block startCurrentBlock, Block earliestBlock, SchedulingStrategy strategy) {
         assert !(node instanceof PhiNode);
-
+        Block currentBlock = startCurrentBlock;
         if (usage instanceof PhiNode) {
             // An input to a PhiNode is used at the end of the predecessor block that corresponds to
             // the PhiNode input.
@@ -773,7 +772,10 @@ public final class SchedulePhase extends Phase {
             Block mergeBlock = cfg.getNodeToBlock().get(merge);
             for (int i = 0; i < phi.valueCount(); ++i) {
                 if (phi.valueAt(i) == node) {
-                    closure.apply(mergeBlock.getPredecessors().get(i));
+                    currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, mergeBlock.getPredecessors().get(i));
+                    if (currentBlock == earliestBlock) {
+                        break;
+                    }
                 }
             }
         } else if (usage instanceof VirtualState) {
@@ -783,19 +785,19 @@ public final class SchedulePhase extends Phase {
                 if (unscheduledUsage instanceof VirtualState) {
                     // If a FrameState is an outer FrameState this method behaves as if the inner
                     // FrameState was the actual usage, by recursing.
-                    blocksForUsage(node, unscheduledUsage, closure, strategy);
+                    currentBlock = blocksForUsage(node, unscheduledUsage, currentBlock, earliestBlock, strategy);
                 } else if (unscheduledUsage instanceof AbstractBeginNode) {
                     // Only FrameStates can be connected to BeginNodes.
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
                     }
                     if (unscheduledUsage instanceof StartNode) {
-                        closure.apply(cfg.getNodeToBlock().get(unscheduledUsage));
+                        currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, cfg.getNodeToBlock().get(unscheduledUsage));
                     } else {
                         // If a FrameState belongs to a BeginNode then it's inputs will be placed at
                         // the common dominator of all EndNodes.
                         for (Node pred : unscheduledUsage.cfgPredecessors()) {
-                            closure.apply(cfg.getNodeToBlock().get(pred));
+                            currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, cfg.getNodeToBlock().get(pred));
                         }
                     }
                 } else {
@@ -808,21 +810,18 @@ public final class SchedulePhase extends Phase {
                     }
                     // Otherwise: Put the input into the same block as the usage.
                     assignBlockToNode((ValueNode) unscheduledUsage, strategy);
-                    closure.apply(cfg.getNodeToBlock().get(unscheduledUsage));
+                    currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, cfg.getNodeToBlock().get(unscheduledUsage));
+                }
+                if (currentBlock == earliestBlock) {
+                    break;
                 }
             }
         } else {
             // All other types of usages: Put the input into the same block as the usage.
             assignBlockToNode((ValueNode) usage, strategy);
-            closure.apply(cfg.getNodeToBlock().get(usage));
+            currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, cfg.getNodeToBlock().get(usage));
         }
-    }
-
-    private void ensureScheduledUsages(Node node, SchedulingStrategy strategy) {
-        for (Node usage : node.usages().filter(ValueNode.class)) {
-            assignBlockToNode((ValueNode) usage, strategy);
-        }
-        // now true usages are ready
+        return currentBlock;
     }
 
     private void sortNodesWithinBlocks(StructuredGraph graph, SchedulingStrategy strategy) {
