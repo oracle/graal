@@ -825,8 +825,8 @@ public class Graph {
         return true;
     }
 
-    Node getNode(int i) {
-        return nodes[i];
+    public Node getNode(int id) {
+        return nodes[id];
     }
 
     /**

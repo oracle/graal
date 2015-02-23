@@ -60,6 +60,10 @@ public final class NodeBitMap implements NodeIterable<Node> {
     public boolean isMarked(Node node) {
         assert check(node, false);
         int id = nodeIdAccessor.getNodeId(node);
+        return isMarked(id);
+    }
+
+    public boolean isMarked(int id) {
         return (bits[id >> SHIFT] & (1L << id)) != 0;
     }
 
@@ -67,7 +71,7 @@ public final class NodeBitMap implements NodeIterable<Node> {
         assert check(node, true);
         int id = nodeIdAccessor.getNodeId(node);
         checkGrow(id);
-        return (bits[id >> SHIFT] & (1L << id)) != 0;
+        return isMarked(id);
     }
 
     public void mark(Node node) {
