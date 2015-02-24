@@ -297,7 +297,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             Debug.log("new move (%s) and inserted in block %s", move, block);
             // update usages
             for (UseEntry u : usages) {
-                u.getPosition().set(u.getInstruction(), variable);
+                u.setValue(variable);
                 Debug.log("patched instruction %s", u.getInstruction());
             }
         }

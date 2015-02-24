@@ -49,8 +49,8 @@ class UseEntry {
         return block;
     }
 
-    public ValuePosition getPosition() {
-        return position;
+    public void setValue(Value newValue) {
+        position.set(getInstruction(), newValue);
     }
 
     public Value getValue() {
@@ -61,4 +61,5 @@ class UseEntry {
     public String toString() {
         return "Use[" + getValue() + ":" + instruction + ":" + block + "]";
     }
+
 }
