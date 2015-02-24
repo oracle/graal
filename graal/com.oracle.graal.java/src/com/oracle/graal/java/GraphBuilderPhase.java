@@ -136,11 +136,22 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 parser.connectLoopEndToBegin();
 
-                // remove dead parameters
+                // Remove dead parameters.
                 for (ParameterNode param : currentGraph.getNodes(ParameterNode.TYPE)) {
                     if (param.hasNoUsages()) {
                         assert param.inputs().isEmpty();
                         param.safeDelete();
+                    }
+                }
+
+                // Remove redundant begin nodes.
+                for (BeginNode beginNode : currentGraph.getNodes(BeginNode.TYPE)) {
+                    Node predecessor = beginNode.predecessor();
+                    if (predecessor instanceof ControlSplitNode) {
+                        // The begin node is necessary.
+                    } else {
+                        GraphUtil.unlinkFixedNode(beginNode);
+                        beginNode.safeDelete();
                     }
                 }
             } finally {
@@ -1405,22 +1416,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (getFirstInstruction(block, operatingDimension) instanceof AbstractBeginNode && !(getFirstInstruction(block, operatingDimension) instanceof AbstractMergeNode)) {
                     /*
                      * This is the second time we see this block. Create the actual MergeNode and
-                     * the End Node for the already existing edge. For simplicity, we leave the
-                     * placeholder in the graph and just append the new nodes after the placeholder.
+                     * the End Node for the already existing edge.
                      */
-                    AbstractBeginNode placeholder = (AbstractBeginNode) getFirstInstruction(block, operatingDimension);
+                    AbstractBeginNode beginNode = (AbstractBeginNode) getFirstInstruction(block, operatingDimension);
 
                     // The EndNode for the already existing edge.
                     EndNode end = currentGraph.add(new EndNode());
                     // The MergeNode that replaces the placeholder.
                     AbstractMergeNode mergeNode = currentGraph.add(new MergeNode());
-                    FixedNode next = placeholder.next();
+                    FixedNode next = beginNode.next();
 
-                    if (placeholder.predecessor() instanceof ControlSplitNode) {
-                        placeholder.setNext(end);
+                    if (beginNode.predecessor() instanceof ControlSplitNode) {
+                        beginNode.setNext(end);
                     } else {
-                        placeholder.replaceAtPredecessor(end);
-                        placeholder.safeDelete();
+                        beginNode.replaceAtPredecessor(end);
+                        beginNode.safeDelete();
                     }
 
                     mergeNode.addForwardEnd(end);
