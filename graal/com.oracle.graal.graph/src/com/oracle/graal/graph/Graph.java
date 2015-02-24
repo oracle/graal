@@ -452,18 +452,17 @@ public class Graph {
         return uniqueHelper(node, true);
     }
 
-    @SuppressWarnings("unchecked")
     <T extends Node> T uniqueHelper(T node, boolean addIfMissing) {
         assert node.getNodeClass().valueNumberable();
-        Node other = this.findDuplicate(node);
+        T other = this.findDuplicate(node);
         if (other != null) {
-            return (T) other;
+            return other;
         } else {
-            Node result = addIfMissing ? addHelper(node) : node;
+            T result = addIfMissing ? addHelper(node) : node;
             if (node.getNodeClass().isLeafNode()) {
                 putNodeIntoCache(result);
             }
-            return (T) result;
+            return result;
         }
     }
 
@@ -484,32 +483,36 @@ public class Graph {
         return result;
     }
 
-    public Node findDuplicate(Node node) {
+    @SuppressWarnings("unchecked")
+    public <T extends Node> T findDuplicate(T node) {
         NodeClass<?> nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
         if (nodeClass.isLeafNode()) {
             // Leaf node: look up in cache
             Node cachedNode = findNodeInCache(node);
             if (cachedNode != null) {
-                return cachedNode;
+                return (T) cachedNode;
             } else {
                 return null;
             }
         } else {
-            // Non-leaf node: look for another usage of the node's inputs that
-            // has the same data, inputs and successors as the node. To reduce
-            // the cost of this computation, only the input with estimated highest
-            // usage count is considered.
-
+            /*
+             * Non-leaf node: look for another usage of the node's inputs that has the same data,
+             * inputs and successors as the node. To reduce the cost of this computation, only the
+             * input with lowest usage count is considered. If this node is the only user of any
+             * input then the search can terminate early. The usage count is only incremented once
+             * the Node is in the Graph, so account for that in the test.
+             */
+            final int earlyExitUsageCount = node.graph() != null ? 1 : 0;
             int minCount = Integer.MAX_VALUE;
             Node minCountNode = null;
             for (Node input : node.inputs()) {
                 if (input != null) {
-                    int estimate = input.getUsageCount();
-                    if (estimate == 0) {
+                    int usageCount = input.getUsageCount();
+                    if (usageCount == earlyExitUsageCount) {
                         return null;
-                    } else if (estimate < minCount) {
-                        minCount = estimate;
+                    } else if (usageCount < minCount) {
+                        minCount = usageCount;
                         minCountNode = input;
                     }
                 }
@@ -518,7 +521,7 @@ public class Graph {
                 for (Node usage : minCountNode.usages()) {
                     if (usage != node && nodeClass == usage.getNodeClass() && node.valueEquals(usage) && nodeClass.getInputEdges().areEqualIn(node, usage) &&
                                     nodeClass.getEdges(Successors).areEqualIn(node, usage)) {
-                        return usage;
+                        return (T) usage;
                     }
                 }
                 return null;

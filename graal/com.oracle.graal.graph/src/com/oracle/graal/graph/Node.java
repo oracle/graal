@@ -426,6 +426,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     private void clearUsages() {
         incUsageModCount();
+        maybeNotifyZeroUsages(this);
         usage0 = null;
         usage1 = null;
         extraUsages = NO_NODES;

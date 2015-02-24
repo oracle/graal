@@ -54,7 +54,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new MulNode(x, y);
+            return new MulNode(x, y).maybeCommuteInputs();
         }
     }
 
