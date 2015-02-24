@@ -94,6 +94,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return falseSuccessor;
     }
 
+    public double getTrueSuccessorProbability() {
+        return this.trueSuccessorProbability;
+    }
+
     public void setTrueSuccessor(AbstractBeginNode node) {
         updatePredecessor(trueSuccessor, node);
         trueSuccessor = node;
