@@ -510,7 +510,6 @@ public abstract class AbstractBytecodeParser {
     private void genIfSame(Kind kind, Condition cond) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
-        // assert !x.isDeleted() && !y.isDeleted();
         genIf(x, cond, y);
     }
 

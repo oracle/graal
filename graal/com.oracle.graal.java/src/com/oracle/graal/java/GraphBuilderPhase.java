@@ -308,7 +308,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         index = iterateBlock(blocks, block);
                     }
 
-                    if (Debug.isDumpEnabled() && this.beforeReturnNode != startInstruction) {
+                    if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue() && this.beforeReturnNode != startInstruction) {
                         Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
@@ -333,7 +333,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 context.peelIteration = this.getCurrentDimension();
                 context.targetPeelIteration = -1;
                 explodeLoopsContext.push(context);
-                Debug.dump(currentGraph, "before loop explosion " + context.peelIteration);
+                if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
+                    Debug.dump(currentGraph, "before loop explosion dimension " + context.peelIteration);
+                }
 
                 while (true) {
 
@@ -347,6 +349,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         // We were reaching the backedge during explosion. Explode further.
                         context.peelIteration = context.targetPeelIteration;
                         context.targetPeelIteration = -1;
+                        if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
+                            Debug.dump(currentGraph, "next loop explosion iteration " + context.peelIteration);
+                        }
                     } else {
                         // We did not reach the backedge. Exit.
                         break;

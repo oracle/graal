@@ -143,6 +143,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<String> PrintFilter = new OptionValue<>(null);
 
+    @Option(help = "", type = OptionType.Debug)
+    public static final StableOptionValue<Boolean> DumpDuringGraphBuilding = new StableOptionValue<>(false);
+
     // Debug settings:
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> BootstrapReplacements = new OptionValue<>(false);
