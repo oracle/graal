@@ -160,7 +160,7 @@ public class GraphEffectList extends EffectList {
             if (node instanceof FixedWithNextNode) {
                 GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
             }
-            GraphUtil.killWithUnusedFloatingInputs(node);
+            obsoleteNodes.add(node);
         });
     }
 
@@ -172,6 +172,7 @@ public class GraphEffectList extends EffectList {
      * @param newInput The value to replace with.
      */
     public void replaceFirstInput(final Node node, final Node oldInput, final Node newInput) {
+        assert node.isAlive() && oldInput.isAlive() && !newInput.isDeleted();
         add("replace first input", new Effect() {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {

@@ -112,10 +112,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         };
         ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
-        for (Node fixed : obsoleteNodes) {
-            if (fixed.isAlive()) {
-                fixed.replaceAtUsages(null);
-                GraphUtil.killWithUnusedFloatingInputs(fixed);
+        for (Node node : obsoleteNodes) {
+            if (node.isAlive()) {
+                node.replaceAtUsages(null);
+                GraphUtil.killWithUnusedFloatingInputs(node);
             }
         }
     }
