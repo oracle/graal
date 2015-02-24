@@ -1048,6 +1048,13 @@ public final class SchedulePhase extends Phase {
             return;
         }
 
+        if (i instanceof LoopExitNode) {
+            LoopExitNode loopExitNode = (LoopExitNode) i;
+            for (ProxyNode proxy : loopExitNode.proxies()) {
+                addToLatestSorting(proxy, state);
+            }
+        }
+
         addToLatestSortingHelper(i, state);
     }
 
