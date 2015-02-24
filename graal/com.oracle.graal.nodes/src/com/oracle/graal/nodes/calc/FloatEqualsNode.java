@@ -47,7 +47,7 @@ public final class FloatEqualsNode extends CompareNode {
         if (result != null) {
             return result;
         } else {
-            return new FloatEqualsNode(x, y);
+            return new FloatEqualsNode(x, y).maybeCommuteInputs();
         }
     }
 

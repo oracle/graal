@@ -52,7 +52,7 @@ public final class XorNode extends BinaryArithmeticNode<Xor> {
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new XorNode(x, y);
+            return new XorNode(x, y).maybeCommuteInputs();
         }
     }
 
@@ -84,7 +84,7 @@ public final class XorNode extends BinaryArithmeticNode<Xor> {
             }
             return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
-        return this;
+        return this.maybeCommuteInputs();
     }
 
     @Override
