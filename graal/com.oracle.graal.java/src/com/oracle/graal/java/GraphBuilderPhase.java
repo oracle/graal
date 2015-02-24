@@ -283,11 +283,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (startInstruction == currentGraph.start()) {
                         StartNode startNode = currentGraph.start();
                         if (method.isSynchronized()) {
-                            startNode.setStateAfter(frameState.create(BytecodeFrame.BEFORE_BCI));
+                            startNode.setStateAfter(createFrameState(BytecodeFrame.BEFORE_BCI));
                         } else {
                             frameState.clearNonLiveLocals(startBlock, liveness, true);
                             assert bci() == 0;
-                            startNode.setStateAfter(frameState.create(bci()));
+                            startNode.setStateAfter(createFrameState(bci()));
                         }
                     }
 
@@ -297,7 +297,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         MonitorEnterNode monitorEnter = genMonitorEnter(methodSynchronizedObject);
                         frameState.clearNonLiveLocals(startBlock, liveness, true);
                         assert bci() == 0;
-                        monitorEnter.setStateAfter(frameState.create(bci()));
+                        monitorEnter.setStateAfter(createFrameState(bci()));
                     }
 
                     if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
@@ -714,7 +714,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
-                exception.setStateAfter(frameState.create(bci()));
+                exception.setStateAfter(createFrameState(bci()));
                 exception.setNext(handleException(exception, bci()));
             }
 
@@ -725,7 +725,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new IfNode(currentGraph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
 
-                exception.setStateAfter(frameState.create(bci()));
+                exception.setStateAfter(createFrameState(bci()));
                 exception.setNext(handleException(exception, bci()));
             }
 
@@ -964,7 +964,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(targetMethod, currentGraph, checkTypes, () -> {
                     if (lazyFrameState[0] == null) {
-                        lazyFrameState[0] = frameState.create(bci());
+                        lazyFrameState[0] = createFrameState(bci());
                     }
                     return lazyFrameState[0];
                 });
@@ -984,15 +984,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (calleeBeforeUnwindNode != null) {
                     ValueNode calleeUnwindValue = parser.getUnwindValue();
                     assert calleeUnwindValue != null;
-                    if (calleeBeforeUnwindNode instanceof AbstractMergeNode) {
-                        AbstractMergeNode mergeNode = (AbstractMergeNode) calleeBeforeUnwindNode;
-                        HIRFrameStateBuilder dispatchState = frameState.copy();
-                        dispatchState.clearStack();
-                        dispatchState.apush(calleeUnwindValue);
-                        dispatchState.setRethrowException(true);
-                        mergeNode.setStateAfter(dispatchState.create(bci()));
-
-                    }
                     calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
                 }
 
@@ -1016,7 +1007,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 DispatchBeginNode exceptionEdge = handleException(null, bci());
                 InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
                 frameState.pushReturn(resultType, invoke);
-                invoke.setStateAfter(frameState.create(stream.nextBCI()));
+                invoke.setStateAfter(createFrameState(stream.nextBCI()));
                 return invoke;
             }
 
@@ -1573,7 +1564,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (block instanceof ExceptionDispatchBlock) {
                         bci = ((ExceptionDispatchBlock) block).deoptBci;
                     }
-                    abstractMergeNode.setStateAfter(frameState.create(bci));
+                    abstractMergeNode.setStateAfter(createFrameState(bci));
                 }
             }
 
@@ -1614,7 +1605,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (currentReturnValue != null) {
                         frameState.push(currentReturnValue.getKind(), currentReturnValue);
                     }
-                    monitorExit.setStateAfter(frameState.create(bci));
+                    monitorExit.setStateAfter(createFrameState(bci));
                     assert !frameState.rethrowException();
                 }
             }
@@ -1689,7 +1680,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     // Create phi functions for all local variables and operand stack slots.
                     frameState.insertLoopPhis(liveness, block.loopId, loopBegin);
-                    loopBegin.setStateAfter(frameState.create(block.startBci));
+                    loopBegin.setStateAfter(createFrameState(block.startBci));
 
                     /*
                      * We have seen all forward branches. All subsequent backward branches will
@@ -1735,7 +1726,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                         EntryMarkerNode x = append(new EntryMarkerNode());
                         frameState.insertProxies(x);
-                        x.setStateAfter(frameState.create(bci));
+                        x.setStateAfter(createFrameState(bci));
                     }
                     processBytecode(bci, opcode);
 
@@ -1755,7 +1746,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         } else {
                             StateSplit stateSplit = (StateSplit) lastInstr;
                             if (stateSplit.stateAfter() == null) {
-                                stateSplit.setStateAfter(frameState.create(bci));
+                                stateSplit.setStateAfter(createFrameState(bci));
                             }
                         }
                     }
@@ -1785,7 +1776,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private InfopointNode createInfoPointNode(InfopointReason reason) {
                 if (graphBuilderConfig.insertFullDebugInfo()) {
-                    return new FullInfopointNode(reason, frameState.create(bci()));
+                    return new FullInfopointNode(reason, createFrameState(bci()));
                 } else {
                     return new SimpleInfopointNode(reason, new BytecodePosition(null, method, bci()));
                 }
@@ -2022,10 +2013,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public BailoutException bailout(String string) {
-                FrameState currentFrameState = this.frameState.create(bci());
+                FrameState currentFrameState = createFrameState(bci());
                 StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(currentFrameState);
                 BailoutException bailout = new BailoutException(string);
                 throw GraphUtil.createBailoutException(string, bailout, elements);
+            }
+
+            private FrameState createFrameState(int bci) {
+                return frameState.create(bci);
             }
         }
     }
