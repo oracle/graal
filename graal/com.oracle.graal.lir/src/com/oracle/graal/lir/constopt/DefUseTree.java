@@ -67,7 +67,7 @@ class DefUseTree {
     }
 
     public void addUsage(AbstractBlockBase<?> b, LIRInstruction inst, ValuePosition position) {
-        uses.add(new UseEntry(b, inst, position));
+        uses.add(new UseEntry(b, inst, position.get(inst)));
     }
 
     public int usageCount() {
