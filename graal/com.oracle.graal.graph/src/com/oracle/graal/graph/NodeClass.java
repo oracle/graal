@@ -571,8 +571,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         int index = 0;
         Type curType = edges.type();
         int directCount = edges.getDirectCount();
+        final long[] curOffsets = edges.getOffsets();
         while (index < directCount) {
-            Node edge = edges.getNode(node, index);
+            Node edge = Edges.getNode(node, curOffsets, index);
             if (edge != null) {
                 Node newEdge = duplicationReplacement.replacement(edge, curType);
                 if (curType == Edges.Type.Inputs) {
@@ -581,15 +582,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     node.updatePredecessor(null, newEdge);
                 }
                 assert assertUpdateValid(node, edges, index, newEdge);
-                edges.initializeNode(node, index, newEdge);
+                Edges.initializeNode(node, curOffsets, index, newEdge);
             }
             index++;
         }
 
         while (index < edges.getCount()) {
-            NodeList<Node> list = edges.getNodeList(node, index);
+            NodeList<Node> list = Edges.getNodeList(node, curOffsets, index);
             if (list != null) {
-                edges.initializeList(node, index, updateEdgeListCopy(node, list, duplicationReplacement, curType));
+                Edges.initializeList(node, curOffsets, index, updateEdgeListCopy(node, list, duplicationReplacement, curType));
             }
             index++;
         }
@@ -645,9 +646,10 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private void initNullEdgeLists(Node node, Edges.Type type) {
         Edges edges = getEdges(type);
+        final long[] curOffsets = edges.getOffsets();
         for (int inputPos = edges.getDirectCount(); inputPos < edges.getCount(); inputPos++) {
-            if (edges.getNodeList(node, inputPos) == null) {
-                edges.initializeList(node, inputPos, type == Edges.Type.Inputs ? new NodeInputList<>(node) : new NodeSuccessorList<>(node));
+            if (Edges.getNodeList(node, curOffsets, inputPos) == null) {
+                Edges.initializeList(node, curOffsets, inputPos, type == Edges.Type.Inputs ? new NodeInputList<>(node) : new NodeSuccessorList<>(node));
             }
         }
     }

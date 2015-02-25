@@ -78,20 +78,20 @@ public class EdgesTest extends GraalCompilerTest {
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#getNode(Node, int)}.
+     * {@link Edges#getNode(Node, long[], int)}.
      */
     @Test
     public void test0() {
-        testMethod(getMethod("getNode", Node.class, int.class), inputs, node, 0);
+        testMethod(getMethod("getNode", Node.class, long[].class, int.class), inputs, node, 0);
     }
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#getNodeList(Node, int)}.
+     * {@link Edges#getNodeList(Node, long[], int)}.
      */
     @Test
     public void test1() {
-        testMethod(getMethod("getNodeList", Node.class, int.class), inputs, node, 2);
+        testMethod(getMethod("getNodeList", Node.class, long[].class, int.class), inputs, node, 2);
     }
 
     /**
