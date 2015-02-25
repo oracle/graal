@@ -113,6 +113,7 @@ public class DebugInfoBuilder {
         }
         objectStates.clear();
 
+        assert frame.validateFormat();
         return newLIRFrameState(exceptionEdge, frame, virtualObjectsArray);
     }
 
