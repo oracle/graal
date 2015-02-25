@@ -175,11 +175,11 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public boolean isGeneric() {
-        return getCachedValue() == GENERIC;
+        return cachedValue == GENERIC;
     }
 
     public boolean isUninitialized() {
-        return getCachedValue() == UNINITIALIZED;
+        return cachedValue == UNINITIALIZED;
     }
 
     public Object getCachedValue() {
