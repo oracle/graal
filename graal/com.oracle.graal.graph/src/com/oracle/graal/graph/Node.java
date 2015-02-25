@@ -521,8 +521,18 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);
-        this.acceptInputs((n, i) -> n.updateUsages(null, i));
-        this.acceptSuccessors((n, s) -> n.updatePredecessor(null, s));
+        this.acceptInputs((n, i) -> {
+            if (!i.isAlive()) {
+                throw new IllegalStateException(String.format("Input %s of newly created node %s is not alive.", i, n));
+            }
+            n.updateUsages(null, i);
+        });
+        this.acceptSuccessors((n, s) -> {
+            if (!s.isAlive()) {
+                throw new IllegalStateException(String.format("Successor %s of newly created node %s is not alive.", s, n));
+            }
+            n.updatePredecessor(null, s);
+        });
     }
 
     public final NodeClass<? extends Node> getNodeClass() {
