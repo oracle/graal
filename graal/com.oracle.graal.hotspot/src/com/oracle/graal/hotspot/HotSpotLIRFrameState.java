@@ -26,12 +26,11 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 /**
- * Extends {@link LIRFrameState} to handle {@link HotSpotMonitorValue}s correctly.
+ * Extends {@link LIRFrameState} to handle {@link StackLockValue}s correctly.
  */
 class HotSpotLIRFrameState extends LIRFrameState {
 
@@ -41,8 +40,8 @@ class HotSpotLIRFrameState extends LIRFrameState {
 
     @Override
     protected Value processValue(LIRInstruction inst, InstructionValueProcedure proc, Value value) {
-        if (value instanceof HotSpotMonitorValue) {
-            HotSpotMonitorValue monitor = (HotSpotMonitorValue) value;
+        if (value instanceof StackLockValue) {
+            StackLockValue monitor = (StackLockValue) value;
             if (monitor.getOwner() instanceof Value) {
                 Value owner = (Value) monitor.getOwner();
                 if (processed(owner)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.api.code;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 
 /**
  * Represents lock information in the debug information.
  */
-public final class HotSpotMonitorValue extends AbstractValue implements JavaValue {
+public final class StackLockValue extends AbstractValue implements JavaValue {
 
     private static final long serialVersionUID = 8241681800464483691L;
 
@@ -38,7 +37,7 @@ public final class HotSpotMonitorValue extends AbstractValue implements JavaValu
     private StackSlotValue slot;
     private final boolean eliminated;
 
-    public HotSpotMonitorValue(JavaValue owner, StackSlotValue slot, boolean eliminated) {
+    public StackLockValue(JavaValue owner, StackSlotValue slot, boolean eliminated) {
         super(LIRKind.Illegal);
         this.owner = owner;
         this.slot = slot;
@@ -78,8 +77,8 @@ public final class HotSpotMonitorValue extends AbstractValue implements JavaValu
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof HotSpotMonitorValue) {
-            HotSpotMonitorValue other = (HotSpotMonitorValue) obj;
+        if (obj instanceof StackLockValue) {
+            StackLockValue other = (StackLockValue) obj;
             return super.equals(obj) && eliminated == other.eliminated && owner.equals(other.owner) && slot.equals(other.slot);
         }
         return false;
