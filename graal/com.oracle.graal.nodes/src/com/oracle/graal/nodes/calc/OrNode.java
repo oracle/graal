@@ -83,7 +83,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> {
             }
             return reassociate(this, ValueNode.isConstantPredicate(), forX, forY);
         }
-        return this.maybeCommuteInputs();
+        return this;
     }
 
     @Override

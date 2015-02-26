@@ -65,6 +65,11 @@ public abstract class CompareNode extends BinaryOpLogicNode {
         return condition;
     }
 
+    @Override
+    public boolean isCommutative() {
+        return condition.isCommutative();
+    }
+
     /**
      * Checks whether unordered inputs mean true or false (only applies to float operations).
      *
@@ -124,9 +129,6 @@ public abstract class CompareNode extends BinaryOpLogicNode {
             if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
                 return duplicateModified(convertX.getValue(), convertY.getValue());
             }
-        }
-        if (condition.isCommutative()) {
-            return this.maybeCommuteInputs();
         }
         return this;
     }

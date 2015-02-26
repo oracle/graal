@@ -41,6 +41,7 @@ import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.OptionalInput;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
 
 /**
@@ -118,6 +119,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final boolean isCanonicalizable;
 
     /**
+     * Determines if this node type implements {@link BinaryCommutative}.
+     */
+    private final boolean isCommutative;
+
+    /**
      * Determines if this node type implements {@link Simplifiable}.
      */
     private final boolean isSimplifiable;
@@ -133,6 +139,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         assert NODE_CLASS.isAssignableFrom(clazz);
 
         this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
+        this.isCommutative = BinaryCommutative.class.isAssignableFrom(clazz);
         if (Canonicalizable.Unary.class.isAssignableFrom(clazz) || Canonicalizable.Binary.class.isAssignableFrom(clazz)) {
             assert Canonicalizable.Unary.class.isAssignableFrom(clazz) ^ Canonicalizable.Binary.class.isAssignableFrom(clazz) : clazz + " should implement either Unary or Binary, not both";
         }
@@ -235,6 +242,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean isCanonicalizable() {
         return isCanonicalizable;
+    }
+
+    /**
+     * Determines if this node type implements {@link BinaryCommutative}.
+     */
+    public boolean isCommutative() {
+        return isCommutative;
     }
 
     /**

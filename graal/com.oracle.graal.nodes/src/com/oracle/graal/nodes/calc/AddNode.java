@@ -103,7 +103,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         } else if (forY instanceof NegateNode) {
             return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue());
         }
-        return this.maybeCommuteInputs();
+        return this;
     }
 
     @Override

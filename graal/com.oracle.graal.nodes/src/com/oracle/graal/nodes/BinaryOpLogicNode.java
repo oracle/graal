@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Binary<ValueNode> {
+public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.BinaryCommutative<ValueNode> {
 
     public static final NodeClass<BinaryOpLogicNode> TYPE = NodeClass.create(BinaryOpLogicNode.class);
     @Input protected ValueNode x;

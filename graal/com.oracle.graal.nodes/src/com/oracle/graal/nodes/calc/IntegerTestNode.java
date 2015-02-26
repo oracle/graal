@@ -55,6 +55,11 @@ public final class IntegerTestNode extends BinaryOpLogicNode {
                 return LogicConstantNode.contradiction();
             }
         }
-        return this.maybeCommuteInputs();
+        return this;
+    }
+
+    @Override
+    public boolean isCommutative() {
+        return true;
     }
 }
