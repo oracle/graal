@@ -88,18 +88,6 @@ public abstract class SPARCAssembler extends Assembler {
     protected static final int D10LO_SHIFT = 5;
     protected static final int D10HI_SHIFT = 19;
 
-    public static class Fmt3f {
-
-        public Fmt3f(SPARCAssembler masm, int op, int op3, int rcond, int rs1, int simm10, int rd) {
-            assert op == 2 || op == 3;
-            assert op3 >= 0 && op3 < 0x40;
-            assert rs1 >= 0 && rs1 < 0x20;
-            assert rd >= 0 && rd < 0x20;
-
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | ImmedTrue | rs1 << 14 | rcond << 10 | (simm10 & 0x000003ff));
-        }
-    }
-
     public static class Fmt3n {
         private int op;
         private int op3;
@@ -156,44 +144,6 @@ public abstract class SPARCAssembler extends Assembler {
             assert rd >= 0 && rd < 0x20 : rd;
 
             masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | opf << 5 | rs2);
-        }
-    }
-
-    // @formatter:off
-    /**
-     * Instruction format for fcmp.
-     * <pre>
-     * | 10  | --- |cc1|cc0|desc |   rs1   |   opf  | rs2 |
-     * |31 30|29 27|26 |25 |24 19|18     14|13     5|4   0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt3c {
-        private int op;
-        private int cc;
-        private int desc;
-        private int opf;
-        private int rs1;
-        private int rs2;
-
-        public Fmt3c(Ops op, CC cc, int desc, Opfs opf, Register rs1, Register rs2) {
-            this.op = op.getValue();
-            this.opf = opf.getValue();
-            this.desc = desc;
-            this.rs1 = rs1.encoding();
-            this.rs2 = rs2.encoding();
-            this.cc = cc.getValue();
-        }
-
-        public void emit(SPARCAssembler masm) {
-            assert op == 2 || op == 3;
-            assert cc >= 0 && cc < 0x4;
-            assert opf >= 0 && opf < 0x200;
-            assert rs1 >= 0 && rs1 < 0x20;
-            assert rs2 >= 0 && rs2 < 0x20;
-            assert desc >= 0 && desc < 0x40;
-
-            masm.emitInt(op << 30 | cc << 25 | desc << 19 | rs1 << 14 | opf << 5 | rs2);
         }
     }
 
@@ -2833,13 +2783,34 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fcmp extends Fmt3c {
+    // @formatter:off
+    /**
+     * Instruction format for fcmp.
+     * <pre>
+     * | 10  | --- |cc1|cc0|desc |   rs1   |   opf  | rs2 |
+     * |31 30|29 27|26 |25 |24 19|18     14|13     5|4   0|
+     * </pre>
+     */
+    // @formatter:on
+    public void fcmp(CC cc, Opfs opf, Register rs1, Register rs2) {
+        int a = cc.value;
+        int b = opf.value << 5 | rs2.encoding;
+        fmt10(a, Op3s.Fcmp.value, rs1.encoding, b);
+    }
 
-        public Fcmp(CC cc, Opfs opf, Register r1, Register r2) {
-            super(Ops.ArithOp, cc, 0b110101, opf, r1, r2);
-            assert opf != Opfs.Fcmpd || (isDoubleFloatRegister(r1) && isDoubleFloatRegister(r2));
-            assert opf != Opfs.Fcmps || (isSingleFloatRegister(r1) && isSingleFloatRegister(r2));
-        }
+    // @formatter:off
+    /**
+     * Instruction format for most arithmetic stuff.
+     * <pre>
+     * |  10 | rd  | op3 | rs1 |   b   |
+     * |31 30|29 25|24 19|18 14|13    0|
+     * </pre>
+     */
+    // @formatter:on
+    protected void fmt10(int rd, int op3, int rs1, int b) {
+        assert isImm(rd, 5) && isImm(op3, 6) && isImm(b, 14) : String.format("rd: 0x%x op3: 0x%x b: 0x%x", rd, op3, b);
+        int instr = 1 << 31 | rd << 25 | op3 << 19 | rs1 << 14 | b;
+        emitInt(instr);
     }
 
     public void illtrap(int const22) {
@@ -2975,17 +2946,6 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Movcc(ConditionFlag cond, CC cca, int simm11, Register dst) {
             super(Op3s.Movcc, cond, cca, simm11, dst);
-        }
-    }
-
-    public static class Movr extends Fmt3f {
-
-        public Movr(SPARCAssembler masm, RCondition rc, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Movr.getValue(), rc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-
-        public Movr(SPARCAssembler masm, RCondition rc, Register src1, int simm10, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Movr.getValue(), rc.getValue(), src1.encoding(), simm10, dst.encoding());
         }
     }
 

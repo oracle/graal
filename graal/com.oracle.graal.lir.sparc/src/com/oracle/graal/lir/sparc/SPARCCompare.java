@@ -24,6 +24,8 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
@@ -88,10 +90,10 @@ public enum SPARCCompare {
                     new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
                     break;
                 case FCMP:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(x), asFloatReg(y)).emit(masm);
+                    masm.fcmp(Fcc0, Fcmps, asFloatReg(x), asFloatReg(y));
                     break;
                 case DCMP:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(x), asDoubleReg(y)).emit(masm);
+                    masm.fcmp(Fcc0, Fcmpd, asDoubleReg(x), asDoubleReg(y));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -115,10 +117,10 @@ public enum SPARCCompare {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
                 case FCMP:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(x), asFloatReg(y)).emit(masm);
+                    masm.fcmp(Fcc0, Fcmps, asFloatReg(x), asFloatReg(y));
                     break;
                 case DCMP:
-                    new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(x), asDoubleReg(y)).emit(masm);
+                    masm.fcmp(Fcc0, Fcmpd, asDoubleReg(x), asDoubleReg(y));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
