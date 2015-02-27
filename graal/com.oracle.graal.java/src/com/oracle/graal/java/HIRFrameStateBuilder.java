@@ -904,7 +904,7 @@ public final class HIRFrameStateBuilder {
     public boolean equals(Object otherObject) {
         if (otherObject instanceof HIRFrameStateBuilder) {
             HIRFrameStateBuilder other = (HIRFrameStateBuilder) otherObject;
-            if (other.method != method) {
+            if (!other.method.equals(method)) {
                 return false;
             }
             if (other.stackSize != stackSize) {
