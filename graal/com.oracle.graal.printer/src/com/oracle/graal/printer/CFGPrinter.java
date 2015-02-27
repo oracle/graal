@@ -211,6 +211,8 @@ class CFGPrinter extends CompilationPrinter {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
+        out.println("from_bci -1");
+        out.println("to_bci -1");
 
         out.print("predecessors ");
         for (AbstractBlockBase<?> pred : block.getPredecessors()) {
