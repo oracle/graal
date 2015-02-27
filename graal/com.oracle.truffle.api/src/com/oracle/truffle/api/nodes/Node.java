@@ -41,7 +41,6 @@ import com.oracle.truffle.api.utilities.*;
 public abstract class Node implements NodeInterface, Cloneable {
 
     @CompilationFinal private Node parent;
-
     @CompilationFinal private SourceSection sourceSection;
 
     /**
@@ -573,11 +572,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     public final void atomic(Runnable closure) {
         RootNode rootNode = getRootNode();
-        if (rootNode != null) {
-            synchronized (rootNode) {
-                closure.run();
-            }
-        } else {
+        synchronized (rootNode != null ? rootNode : GIL) {
             closure.run();
         }
     }
@@ -585,14 +580,10 @@ public abstract class Node implements NodeInterface, Cloneable {
     public final <T> T atomic(Callable<T> closure) {
         try {
             RootNode rootNode = getRootNode();
-            if (rootNode != null) {
-                synchronized (rootNode) {
-                    return closure.call();
-                }
-            } else {
+            synchronized (rootNode != null ? rootNode : GIL) {
                 return closure.call();
             }
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | Error e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -625,4 +616,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         return "";
     }
+
+    private static final Object GIL = new Object();
 }
