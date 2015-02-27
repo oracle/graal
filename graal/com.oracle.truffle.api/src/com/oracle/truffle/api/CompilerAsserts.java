@@ -64,4 +64,13 @@ public class CompilerAsserts {
             neverPartOfCompilation("Value is not compilation constant");
         }
     }
+
+    /**
+     * Assertion that the corresponding value is reduced to a constant during the initial partial
+     * evaluation phase.
+     *
+     * @param value the value that must be constant during compilation
+     */
+    public static <T> void partialEvaluationConstant(Object value) {
+    }
 }
