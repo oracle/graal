@@ -873,4 +873,61 @@ public final class HIRFrameStateBuilder {
         assert xpeek() == null;
         return true;
     }
+
+    @Override
+    public int hashCode() {
+        int result = hashCode(locals, locals.length);
+        result *= 13;
+        result += hashCode(stack, this.stackSize);
+        return result;
+    }
+
+    private static int hashCode(Object[] a, int length) {
+        int result = 1;
+        for (int i = 0; i < length; ++i) {
+            Object element = a[i];
+            result = 31 * result + (element == null ? 0 : System.identityHashCode(element));
+        }
+        return result;
+    }
+
+    private static boolean equals(ValueNode[] a, ValueNode[] b, int length) {
+        for (int i = 0; i < length; ++i) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean equals(Object otherObject) {
+        if (otherObject instanceof HIRFrameStateBuilder) {
+            HIRFrameStateBuilder other = (HIRFrameStateBuilder) otherObject;
+            if (other.method != method) {
+                return false;
+            }
+            if (other.stackSize != stackSize) {
+                return false;
+            }
+            if (other.checkTypes != checkTypes) {
+                return false;
+            }
+            if (other.rethrowException != rethrowException) {
+                return false;
+            }
+            if (other.graph != graph) {
+                return false;
+            }
+            if (other.outerFrameStateSupplier != outerFrameStateSupplier) {
+                return false;
+            }
+            if (other.locals.length != locals.length) {
+                return false;
+            }
+            return equals(other.locals, locals, locals.length) && equals(other.stack, stack, stackSize) && equals(other.lockedObjects, lockedObjects, lockedObjects.length) &&
+                            equals(other.monitorIds, monitorIds, monitorIds.length);
+        }
+        return false;
+    }
 }

@@ -204,6 +204,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private FixedWithNextNode lastInstr;                 // the last instruction added
             private final boolean explodeLoops;
             private final boolean mergeExplosions;
+            private final Map<HIRFrameStateBuilder, Integer> mergeExplosionsMap;
             private Stack<ExplodedLoopContext> explodeLoopsContext;
             private int nextPeelIteration = 1;
             private boolean controlFlowSplit;
@@ -233,12 +234,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     explodeLoops = loopExplosionPlugin.shouldExplodeLoops(method);
                     if (explodeLoops) {
                         mergeExplosions = loopExplosionPlugin.shouldMergeExplosions(method);
+                        mergeExplosionsMap = new HashMap<>();
                     } else {
                         mergeExplosions = false;
+                        mergeExplosionsMap = null;
                     }
                 } else {
                     explodeLoops = false;
                     mergeExplosions = false;
+                    mergeExplosionsMap = null;
                 }
             }
 
@@ -349,6 +353,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ExplodedLoopContext context = new ExplodedLoopContext();
                 context.header = header;
                 context.peelIteration = this.getCurrentDimension();
+                if (this.mergeExplosions) {
+                    this.addToMergeCache(getEntryState(context.header, context.peelIteration), context.peelIteration);
+                }
                 explodeLoopsContext.push(context);
                 if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
                     Debug.dump(currentGraph, "before loop explosion dimension " + context.peelIteration);
@@ -359,9 +366,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return header.loopEnd + 1;
             }
 
+            private void addToMergeCache(HIRFrameStateBuilder key, int dimension) {
+                mergeExplosionsMap.put(key, dimension);
+            }
+
             private void peelIteration(BciBlock[] blocks, BciBlock header, ExplodedLoopContext context) {
                 while (true) {
-
                     processBlock(this, header);
                     for (int j = header.getId() + 1; j <= header.loopEnd; ++j) {
                         BciBlock block = blocks[j];
@@ -1372,7 +1382,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 assert block != null && state != null;
                 assert !block.isExceptionEntry || state.stackSize() == 1;
 
-                int operatingDimension = findOperatingDimension(block);
+                int operatingDimension = findOperatingDimension(block, state);
 
                 if (getFirstInstruction(block, operatingDimension) == null) {
                     /*
@@ -1417,8 +1427,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     Debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
                     return result;
                 }
-                assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
-                assert getFirstInstruction(block, operatingDimension).next() == null : "bytecodes already parsed for block";
+                assert currentBlock == null || currentBlock.getId() < block.getId() || this.mergeExplosions : "must not be backward branch";
+                assert getFirstInstruction(block, operatingDimension).next() == null || this.mergeExplosions : "bytecodes already parsed for block";
 
                 if (getFirstInstruction(block, operatingDimension) instanceof AbstractBeginNode && !(getFirstInstruction(block, operatingDimension) instanceof AbstractMergeNode)) {
                     /*
@@ -1459,18 +1469,26 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return result;
             }
 
-            private int findOperatingDimension(BciBlock block) {
+            private int findOperatingDimension(BciBlock block, HIRFrameStateBuilder state) {
                 if (this.explodeLoops && this.explodeLoopsContext != null && !this.explodeLoopsContext.isEmpty()) {
-                    return findOperatingDimensionWithLoopExplosion(block);
+                    return findOperatingDimensionWithLoopExplosion(block, state);
                 }
                 return this.getCurrentDimension();
             }
 
-            private int findOperatingDimensionWithLoopExplosion(BciBlock block) {
+            private int findOperatingDimensionWithLoopExplosion(BciBlock block, HIRFrameStateBuilder state) {
                 int i;
                 for (i = explodeLoopsContext.size() - 1; i >= 0; --i) {
                     ExplodedLoopContext context = explodeLoopsContext.elementAt(i);
                     if (context.header == block) {
+
+                        if (this.mergeExplosions) {
+                            state.clearNonLiveLocals(block, liveness, true);
+                            Integer cachedDimension = mergeExplosionsMap.get(state);
+                            if (cachedDimension != null) {
+                                return cachedDimension;
+                            }
+                        }
 
                         // We have a hit on our current explosion context loop begin.
                         if (context.targetPeelIteration == null) {
@@ -1482,6 +1500,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         // This is the first hit => allocate a new dimension and at the same
                         // time mark the context loop begin as hit during the current
                         // iteration.
+                        if (this.mergeExplosions) {
+                            this.addToMergeCache(state.copy(), nextPeelIteration);
+                        }
                         context.targetPeelIteration[context.targetPeelIteration.length - 1] = nextPeelIteration++;
                         if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
                             String message = "too many loop explosion interations - does the explosion not terminate for method " + method + "?";
