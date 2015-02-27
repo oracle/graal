@@ -217,6 +217,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     }
 
     @Test
+    @Ignore
     public void simpleLoopProgram() {
         byte[] bytecodes = new byte[]{
         /* 0: */Bytecode.CONST,
@@ -233,8 +234,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         /* 11: */4,
         /* 12: */Bytecode.POP,
         /* 13: */Bytecode.RETURN};
-        Program program = new Program("ifAndPopProgram", bytecodes, 0, 3);
-        assertReturns42(program);
+        assertPartialEvalEqualsAndRunsCorrect(new Program("ifAndPopProgram", bytecodes, 0, 3));
     }
 
     @Test(timeout = 1000)

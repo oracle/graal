@@ -43,7 +43,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
