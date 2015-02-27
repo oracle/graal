@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.*;
  * both x and y.
  */
 @NodeInfo
-public final class IntegerTestNode extends BinaryOpLogicNode {
+public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCommutative<ValueNode> {
     public static final NodeClass<IntegerTestNode> TYPE = NodeClass.create(IntegerTestNode.class);
 
     public IntegerTestNode(ValueNode x, ValueNode y) {
@@ -56,10 +57,5 @@ public final class IntegerTestNode extends BinaryOpLogicNode {
             }
         }
         return this;
-    }
-
-    @Override
-    public boolean isCommutative() {
-        return true;
     }
 }

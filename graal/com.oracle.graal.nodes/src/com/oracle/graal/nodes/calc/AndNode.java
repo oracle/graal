@@ -25,9 +25,10 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -36,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "&")
-public final class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode {
+public final class AndNode extends BinaryArithmeticNode<And> implements NarrowableArithmeticNode, BinaryCommutative<ValueNode> {
 
     public static final NodeClass<AndNode> TYPE = NodeClass.create(AndNode.class);
 

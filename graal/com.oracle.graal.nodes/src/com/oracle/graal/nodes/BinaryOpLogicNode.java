@@ -23,12 +23,12 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.BinaryCommutative<ValueNode> {
+public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable {
 
     public static final NodeClass<BinaryOpLogicNode> TYPE = NodeClass.create(BinaryOpLogicNode.class);
     @Input protected ValueNode x;
@@ -68,6 +68,7 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
      */
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
+        assert this instanceof BinaryCommutative;
         if (x.getId() > y.getId()) {
             ValueNode tmp = x;
             x = y;
