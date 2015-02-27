@@ -30,6 +30,7 @@ import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -261,6 +262,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     Node canonical;
                     try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
                         canonical = ((Canonicalizable) node).canonical(tool);
+                        if (canonical == node && nodeClass.isCommutative()) {
+                            canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
+                        }
                     }
                     if (performReplacement(node, canonical)) {
                         return true;

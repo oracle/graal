@@ -64,10 +64,11 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
      * inputs by increasing {@link Node#id} and call {@link Graph#findDuplicate(Node)} on the node
      * if it's currently in a graph.
      *
-     * @return the original node or another node with the same input ordering
+     * @return the original node or another node with the same inputs, ignoring ordering.
      */
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
+        assert this instanceof BinaryCommutative;
         if (x.getId() > y.getId()) {
             ValueNode tmp = x;
             x = y;

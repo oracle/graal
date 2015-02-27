@@ -78,10 +78,12 @@ public abstract class LIRPhase<C> {
     }
 
     public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
-        try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getName(), this); Closeable c = memUseTracker.start()) {
-            run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-            if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
+        try (Scope s = Debug.scope(getName(), this)) {
+            try (TimerCloseable a = timer.start(); Closeable c = memUseTracker.start()) {
+                run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
+                    Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
+                }
             }
         } catch (Throwable e) {
             throw Debug.handle(e);

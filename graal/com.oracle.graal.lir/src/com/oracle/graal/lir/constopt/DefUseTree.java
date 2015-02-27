@@ -66,8 +66,8 @@ class DefUseTree {
         return "DefUseTree [" + instruction + "|" + block + "," + uses + "]";
     }
 
-    public void addUsage(AbstractBlockBase<?> b, LIRInstruction inst, ValuePosition position) {
-        uses.add(new UseEntry(b, inst, position));
+    public void addUsage(AbstractBlockBase<?> b, LIRInstruction inst, Value value) {
+        uses.add(new UseEntry(b, inst, value));
     }
 
     public int usageCount() {

@@ -251,7 +251,9 @@ public final class GraphOrder {
 
                 @Override
                 protected NodeBitMap getInitialState() {
-                    return graph.createNodeBitMap();
+                    NodeBitMap ret = graph.createNodeBitMap();
+                    ret.markAll(graph.getNodes().filter(ConstantNode.class));
+                    return ret;
                 }
 
                 @Override

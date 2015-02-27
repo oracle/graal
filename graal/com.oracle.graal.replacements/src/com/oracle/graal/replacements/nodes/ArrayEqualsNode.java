@@ -51,6 +51,8 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
     /** Length of both arrays. */
     @Input ValueNode length;
 
+    @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
+
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
         super(TYPE, StampFactory.forKind(Kind.Boolean));
         // Ignore nullness in stamp equality test
@@ -138,5 +140,14 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
 
     public LocationIdentity getLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(kind);
+    }
+
+    public MemoryNode getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    public void setLastLocationAccess(MemoryNode lla) {
+        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
+        lastLocationAccess = lla;
     }
 }
