@@ -41,12 +41,28 @@ public class LongNodeChainTest extends GraalCompilerTest {
     @Ignore
     @Test
     public void testLongAddChain() {
+        longAddChain(true);
+        longAddChain(false);
+    }
+
+    private void longAddChain(boolean reverse) {
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         StructuredGraph graph = new StructuredGraph(AllowAssumptions.NO);
         ValueNode constant = graph.unique(ConstantNode.forPrimitive(JavaConstant.INT_1));
-        ValueNode value = constant;
-        for (int i = 0; i < N; ++i) {
-            value = graph.unique(new AddNode(constant, value));
+        ValueNode value = null;
+        if (reverse) {
+            AddNode addNode = graph.unique(new AddNode(constant, constant));
+            value = addNode;
+            for (int i = 1; i < N; ++i) {
+                AddNode newAddNode = graph.addWithoutUnique(new AddNode(constant, constant));
+                addNode.setY(newAddNode);
+                addNode = newAddNode;
+            }
+        } else {
+            value = constant;
+            for (int i = 0; i < N; ++i) {
+                value = graph.unique(new AddNode(constant, value));
+            }
         }
         ReturnNode returnNode = graph.add(new ReturnNode(value));
         graph.start().setNext(returnNode);
