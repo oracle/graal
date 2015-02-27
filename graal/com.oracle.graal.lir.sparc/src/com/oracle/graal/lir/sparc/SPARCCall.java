@@ -29,7 +29,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Call;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Jmpl;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
@@ -110,7 +109,7 @@ public class SPARCCall {
             assert !emitted;
             emitCallPrefixCode(crb, masm);
             before = masm.position();
-            new Call(0).emit(masm);
+            masm.call(0);
             emitted = true;
         }
 
@@ -194,7 +193,7 @@ public class SPARCCall {
             new Sethix(0L, scratch, true).emit(masm);
             new Jmpl(scratch, 0, o7).emit(masm);
         } else {
-            new Call(0).emit(masm);
+            masm.call(0);
         }
         masm.nop();  // delay slot
         int after = masm.position();

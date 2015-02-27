@@ -88,77 +88,6 @@ public abstract class SPARCAssembler extends Assembler {
     protected static final int D10LO_SHIFT = 5;
     protected static final int D10HI_SHIFT = 19;
 
-    // @formatter:off
-    /**
-     * Instruction format for calls.
-     * <pre>
-     * | 01  |                      disp30                             |
-     * |31 30|29                                                      0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt01 {
-
-        private static final int DISP30_SHIFT = 0;
-
-        // @formatter:off
-        private static final int DISP30_MASK = 0b00111111111111111111111111111111;
-        // @formatter:on
-
-        private int disp30;
-
-        public Fmt01(int disp30) {
-            setDisp30(disp30);
-        }
-
-        /**
-         * Return the displacement in bytes.
-         */
-        public int getDisp30() {
-            return disp30 << 2;
-        }
-
-        /**
-         * The instructions requires displacements to be word-sized.
-         */
-        public void setDisp30(int disp30) {
-            this.disp30 = disp30 >> 2;
-        }
-
-        private int getInstructionBits() {
-            return Ops.CallOp.getValue() << OP_SHIFT | (disp30 & DISP30_MASK) << DISP30_SHIFT;
-        }
-
-        public static Fmt01 read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.CallOp.getValue();
-
-            // Get the instruction fields:
-            final int disp30 = (inst & DISP30_MASK) >> DISP30_SHIFT << 2;
-
-            Fmt01 fmt = new Fmt01(disp30);
-            fmt.verify();
-            return fmt;
-        }
-
-        public void write(SPARCAssembler masm, int pos) {
-            verify();
-            masm.emitInt(getInstructionBits(), pos);
-        }
-
-        public void emit(SPARCAssembler masm) {
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        public void verify() {
-            assert isDisp30(disp30) : disp30;
-        }
-    }
-
     public static class Fmt3f {
 
         public Fmt3f(SPARCAssembler masm, int op, int op3, int rcond, int rs1, int simm10, int rd) {
@@ -2055,11 +1984,20 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Call extends Fmt01 {
-
-        public Call(int disp30) {
-            super(disp30);
-        }
+    // @formatter:off
+    /**
+     * Instruction format for calls.
+     * <pre>
+     * | 01  |                      disp30                             |
+     * |31 30|29                                                      0|
+     * </pre>
+     */
+    // @formatter:on
+    public void call(int disp30) {
+        assert isImm(disp30, 30);
+        int instr = 1 << 30;
+        instr |= disp30;
+        emitInt(instr);
     }
 
     public static class CammelliaFl extends Fmt3p {
