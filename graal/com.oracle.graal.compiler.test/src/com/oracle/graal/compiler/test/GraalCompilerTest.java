@@ -303,7 +303,6 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
         SchedulePhase schedule = new SchedulePhase();
-        schedule.setScheduleConstants(true);
         schedule.apply(graph);
 
         NodeMap<Integer> canonicalId = graph.createNodeMap();
