@@ -51,25 +51,26 @@ public class PrimitiveValueProfile extends ValueProfile {
     @SuppressWarnings("unchecked")
     @Override
     public Object profile(Object value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Byte && value instanceof Byte && (byte) cachedValue == (byte) value) {
-                return cachedValue;
-            } else if (cachedValue instanceof Short && value instanceof Short && (short) cachedValue == (short) value) {
-                return cachedValue;
-            } else if (cachedValue instanceof Integer && value instanceof Integer && (int) cachedValue == (int) value) {
-                return cachedValue;
-            } else if (cachedValue instanceof Long && value instanceof Long && (long) cachedValue == (long) value) {
-                return cachedValue;
-            } else if (cachedValue instanceof Float && value instanceof Float && exactCompare((float) cachedValue, (float) value)) {
-                return cachedValue;
-            } else if (cachedValue instanceof Double && value instanceof Double && exactCompare((double) cachedValue, (double) value)) {
-                return cachedValue;
-            } else if (cachedValue instanceof Boolean && value instanceof Boolean && (boolean) cachedValue == (boolean) value) {
-                return cachedValue;
-            } else if (cachedValue instanceof Character && value instanceof Character && (char) cachedValue == (char) value) {
-                return cachedValue;
-            } else if (cachedValue == value) {
-                return cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Byte && value instanceof Byte && (byte) snapshot == (byte) value) {
+                return snapshot;
+            } else if (snapshot instanceof Short && value instanceof Short && (short) snapshot == (short) value) {
+                return snapshot;
+            } else if (snapshot instanceof Integer && value instanceof Integer && (int) snapshot == (int) value) {
+                return snapshot;
+            } else if (snapshot instanceof Long && value instanceof Long && (long) snapshot == (long) value) {
+                return snapshot;
+            } else if (snapshot instanceof Float && value instanceof Float && exactCompare((float) snapshot, (float) value)) {
+                return snapshot;
+            } else if (snapshot instanceof Double && value instanceof Double && exactCompare((double) snapshot, (double) value)) {
+                return snapshot;
+            } else if (snapshot instanceof Boolean && value instanceof Boolean && (boolean) snapshot == (boolean) value) {
+                return snapshot;
+            } else if (snapshot instanceof Character && value instanceof Character && (char) snapshot == (char) value) {
+                return snapshot;
+            } else if (snapshot == value) {
+                return snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -78,9 +79,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public byte profile(byte value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Byte && (byte) cachedValue == value) {
-                return (byte) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Byte && (byte) snapshot == value) {
+                return (byte) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -89,9 +91,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public short profile(short value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Short && (short) cachedValue == value) {
-                return (short) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Short && (short) snapshot == value) {
+                return (short) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -100,9 +103,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public int profile(int value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Integer && (int) cachedValue == value) {
-                return (int) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Integer && (int) snapshot == value) {
+                return (int) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -111,9 +115,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public long profile(long value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Long && (long) cachedValue == value) {
-                return (long) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Long && (long) snapshot == value) {
+                return (long) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -122,9 +127,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public float profile(float value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Float && exactCompare((float) cachedValue, value)) {
-                return (float) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Float && exactCompare((float) snapshot, value)) {
+                return (float) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -133,9 +139,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public double profile(double value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Double && exactCompare((double) cachedValue, value)) {
-                return (double) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Double && exactCompare((double) snapshot, value)) {
+                return (double) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -144,9 +151,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public boolean profile(boolean value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Boolean && (boolean) cachedValue == value) {
-                return (boolean) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Boolean && (boolean) snapshot == value) {
+                return (boolean) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -155,9 +163,10 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     public char profile(char value) {
-        if (cachedValue != GENERIC) {
-            if (cachedValue instanceof Character && (char) cachedValue == value) {
-                return (char) cachedValue;
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Character && (char) snapshot == value) {
+                return (char) snapshot;
             } else {
                 cacheMiss(value);
             }
@@ -183,6 +192,7 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     private void cacheMiss(Object value) {
+        // TODO should we try to handle this more atomically?
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (cachedValue == UNINITIALIZED) {
             cachedValue = value;
@@ -208,17 +218,18 @@ public class PrimitiveValueProfile extends ValueProfile {
     }
 
     private String formatValue() {
-        if (cachedValue == null) {
+        Object snapshot = this.cachedValue;
+        if (snapshot == null) {
             return "null";
-        } else if (cachedValue == UNINITIALIZED) {
+        } else if (snapshot == UNINITIALIZED) {
             return "uninitialized";
-        } else if (cachedValue == GENERIC) {
+        } else if (snapshot == GENERIC) {
             return "generic";
-        } else if (cachedValue instanceof Byte || cachedValue instanceof Short || cachedValue instanceof Integer || cachedValue instanceof Long || cachedValue instanceof Float ||
-                        cachedValue instanceof Double || cachedValue instanceof Boolean || cachedValue instanceof Character) {
-            return String.format("%s=%s", cachedValue.getClass().getSimpleName(), cachedValue);
+        } else if (snapshot instanceof Byte || snapshot instanceof Short || snapshot instanceof Integer || snapshot instanceof Long || snapshot instanceof Float || snapshot instanceof Double ||
+                        snapshot instanceof Boolean || snapshot instanceof Character) {
+            return String.format("%s=%s", snapshot.getClass().getSimpleName(), snapshot);
         } else {
-            return String.format("%s@%x", cachedValue.getClass().getSimpleName(), Objects.hash(cachedValue));
+            return String.format("%s@%x", snapshot.getClass().getSimpleName(), Objects.hash(snapshot));
         }
     }
 }
