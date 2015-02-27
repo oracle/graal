@@ -32,7 +32,6 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Call;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Jmpl;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
@@ -89,7 +88,7 @@ public class SPARCCall {
             } else {
                 int after = masm.position();
                 if (after - before == 4) {
-                    new Nop().emit(masm);
+                    masm.nop();
                 } else if (after - before == 8) {
                     // everything is fine;
                 } else {
@@ -197,7 +196,7 @@ public class SPARCCall {
         } else {
             new Call(0).emit(masm);
         }
-        new Nop().emit(masm);  // delay slot
+        masm.nop();  // delay slot
         int after = masm.position();
         crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
@@ -208,7 +207,7 @@ public class SPARCCall {
         int before = masm.position();
         new Sethix(0L, dst, true).emit(masm);
         new Jmp(new SPARCAddress(dst, 0)).emit(masm);
-        new Nop().emit(masm);  // delay slot
+        masm.nop();  // delay slot
         int after = masm.position();
         crb.recordIndirectCall(before, after, target, null);
         masm.ensureUniquePC();
@@ -217,7 +216,7 @@ public class SPARCCall {
     public static void indirectCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.position();
         new Jmpl(dst, 0, o7).emit(masm);
-        new Nop().emit(masm);  // delay slot
+        masm.nop();  // delay slot
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);

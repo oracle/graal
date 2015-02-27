@@ -31,6 +31,7 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.
@@ -65,152 +66,11 @@ public abstract class SPARCAssembler extends Assembler {
     protected static final int OP2_SHIFT = 22;
     protected static final int A_SHIFT = 29;
 
-    // @formatter:off
-    protected static final int A_MASK        = 0b0010_0000_0000_0000_0000_0000_0000_0000;
-    protected static final int OP_MASK     = 0b1100_0000_0000_0000_0000_0000_0000_0000;
-    protected static final int CBCOND_MASK = 0b0001_0000_0000_0000_0000_0000_0000_0000; // Used for distinguish CBcond and BPr instructions
-    protected static final int OP2_MASK    = 0b0000_0001_1100_0000_0000_0000_0000_0000;
-
-    // @formatter:off
-    /**
-     * Instruction format for Fmt00 instructions. This abstraction is needed as it
-     * makes the patching easier later on.
-     * <pre>
-     * | 00  |  ??    | op2 |               ??                        |
-     * |31 30|29    25|24 22|21                                      0|
-     * </pre>
-     */
-    // @formatter:on
-    public abstract static class Fmt00 implements AssemblerEmittable {
-
-        private int op2;
-
-        public Fmt00(int op2) {
-            this.op2 = op2;
-        }
-
-        public void write(SPARCAssembler masm, int pos) {
-            verify();
-            masm.emitInt(getInstructionBits(), pos);
-        }
-
-        public Op2s getOp2s() {
-            return Op2s.byValue(op2);
-        }
-
-        protected int getInstructionBits() {
-            return Ops.BranchOp.getValue() << OP_SHIFT | op2 << OP2_SHIFT;
-        }
-
-        public void verify() {
-            assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT) : Integer.toHexString(op2);
-            assert Op2s.byValue(op2) != null : op2;
-        }
-
-        /**
-         * Sets the immediate (displacement) value on this instruction.
-         *
-         * @see SPARCAssembler#patchJumpTarget(int, int)
-         * @param imm Displacement/imediate value. Can either be a 22 or 19 bit immediate (dependent
-         *            on the instruction)
-         */
-        public abstract void setImm(int imm);
-
-        public abstract void emit(SPARCAssembler masm);
-
-        public boolean hasDelaySlot() {
-            return true;
-        }
-
-        public int getA() {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-
-        public void setA(@SuppressWarnings("unused") int a) {
-            throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    // @formatter:off
-    /**
-     * Instruction format for sethi.
-     * <pre>
-     * | 00  |  rd    | op2 |               imm22                     |
-     * |31 30|29    25|24 22|21                                      0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt00a extends Fmt00 implements AssemblerEmittable {
-
-        private static final int RD_SHIFT = 25;
-        private static final int IMM22_SHIFT = 0;
-
-        // @formatter:off
-        private static final int RD_MASK    = 0b00111110000000000000000000000000;
-        private static final int IMM22_MASK = 0b00000000001111111111111111111111;
-        // @formatter:on
-
-        private int rd;
-        private int imm22;
-
-        private Fmt00a(int rd, int op2, int imm22) {
-            super(op2);
-            this.rd = rd;
-            this.imm22 = imm22;
-            verify();
-        }
-
-        public Fmt00a(Op2s op2, int imm22, Register rd) {
-            this(rd.encoding(), op2.getValue(), imm22);
-        }
-
-        @Override
-        protected int getInstructionBits() {
-            return super.getInstructionBits() | rd << RD_SHIFT | (imm22 & IMM22_MASK) << IMM22_SHIFT;
-        }
-
-        public static Fmt00a read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.BranchOp.getValue();
-
-            // Get the instruction fields:
-            final int rd = (inst & RD_MASK) >> RD_SHIFT;
-            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
-            final int imm22 = (inst & IMM22_MASK) >> IMM22_SHIFT;
-
-            return new Fmt00a(op2, imm22, rd);
-        }
-
-        @Override
-        public void emit(SPARCAssembler masm) {
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
-            assert ((imm22 << IMM22_SHIFT) & IMM22_MASK) == (imm22 << IMM22_SHIFT) : String.format("imm22: %d (%x)", imm22, imm22);
-        }
-
-        @Override
-        public void setImm(int imm) {
-            setImm22(imm);
-        }
-
-        public void setImm22(int imm22) {
-            this.imm22 = imm22;
-        }
-
-        @Override
-        public boolean hasDelaySlot() {
-            return false;
-        }
-    }
+    protected static final int A_MASK = 0b0010_0000_0000_0000_0000_0000_0000_0000;
+    protected static final int OP_MASK = 0b1100_0000_0000_0000_0000_0000_0000_0000;
+    protected static final int CBCOND_MASK = 0b0001_0000_0000_0000_0000_0000_0000_0000; // Used for
+    // distinguish CBcond and BPr instructions
+    protected static final int OP2_MASK = 0b0000_0001_1100_0000_0000_0000_0000_0000;
 
     protected static final int DISP22_SHIFT = 0;
     protected static final int DISP22_MASK = 0b00000000001111111111111111111111;
@@ -223,159 +83,10 @@ public abstract class SPARCAssembler extends Assembler {
     protected static final int D16LO_SHIFT = 0;
     protected static final int D16LO_MASK = 0b0000_0000_0000_0000_0011_1111_1111_1111;
 
-    // @formatter:off
-    /**
-     * Instruction format CBcond.
-     * <pre>
-     * |00   |chi|1 | clo | 011 |cc2|d10hi|rs1  |i |d10lo|rs2/simm5|
-     * |31 30|29 |28|27 25|24 22|21 |20 19|18 14|13|12  5|4       0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt00e extends Fmt00 {
-        protected static final int CHI_SHIFT = 29;
-        protected static final int CLO_SHIFT = 25;
-        protected static final int CC2_SHIFT = 21;
-        protected static final int D10HI_SHIFT = 19;
-        protected static final int RS1_SHIFT = 14;
-        protected static final int I_SHIFT = 13;
-        protected static final int D10LO_SHIFT = 5;
-        protected static final int RS2_SHIFT = 0;
-
-        // @formatter:off
-        protected static final int CHI_MASK      = 0b0010_0000_0000_0000_0000_0000_0000_0000;
-        protected static final int CLO_MASK      = 0b0000_1110_0000_0000_0000_0000_0000_0000;
-        protected static final int CC2_MASK      = 0b0000_0000_0010_0000_0000_0000_0000_0000;
-        protected static final int D10HI_MASK    = 0b0000_0000_0001_1000_0000_0000_0000_0000;
-        protected static final int RS1_MASK      = 0b0000_0000_0000_0111_1100_0000_0000_0000;
-        protected static final int I_MASK        = 0b0000_0000_0000_0000_0010_0000_0000_0000;
-        protected static final int D10LO_MASK    = 0b0000_0000_0000_0000_0001_1111_1110_0000;
-        protected static final int RS2_MASK      = 0b0000_0000_0000_0000_0000_0000_0001_1111;
-        // @formatter:on
-
-        private int c;
-        private int cc2;
-        private int disp10;
-        private int rs1;
-        private int i;
-        private int regOrImmediate;
-        private Label label;
-
-        public Fmt00e(int c, int cc2, int rs1, int disp10, int i, int regOrImmediate, Label label) {
-            super(Op2s.Bpr.getValue());
-            this.c = c;
-            this.cc2 = cc2;
-            this.rs1 = rs1;
-            setDisp10(disp10);
-            this.i = i;
-            this.regOrImmediate = regOrImmediate;
-            this.label = label;
-        }
-
-        @Override
-        public void setImm(int imm) {
-            setDisp10(imm);
-        }
-
-        public void setDisp10(int disp10) {
-            this.disp10 = disp10 >> 2;
-            if (!isSimm10(this.disp10)) {
-                throw GraalInternalError.shouldNotReachHere("" + this.disp10);
-            }
-            assert isSimm10(this.disp10) : this.disp10;
-        }
-
-        @Override
-        public void emit(SPARCAssembler masm) {
-            assert masm.hasFeature(CPUFeature.CBCOND);
-            if (label != null) {
-                if (label.isBound()) {
-                    final int disp = label.position() - masm.position();
-                    setDisp10(disp);
-                } else {
-                    patchUnbound(masm, label);
-                    setDisp10(0);
-                }
-            }
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        private static int patchUnbound(SPARCAssembler masm, Label label) {
-            label.addPatchAt(masm.position());
-            return 0;
-        }
-
-        @Override
-        protected int getInstructionBits() {
-            int cSplit = 0;
-            cSplit |= (c & 0b1000) << CHI_SHIFT - 3;
-            cSplit |= (c & 0b0111) << CLO_SHIFT;
-            int d10Split = 0;
-            d10Split |= (disp10 & 0b11_0000_0000) << D10HI_SHIFT - 8;
-            d10Split |= (disp10 & 0b00_1111_1111) << D10LO_SHIFT;
-            int bits = super.getInstructionBits() | 1 << 28 | cSplit | cc2 << CC2_SHIFT | d10Split | rs1 << RS1_SHIFT | i << I_SHIFT | (regOrImmediate & 0b1_1111) << RS2_SHIFT;
-            int hibits = (bits & 0xFF000000);
-            if (hibits == 0xFF000000 || hibits == 0) {
-                throw GraalInternalError.shouldNotReachHere();
-            }
-            return bits;
-        }
-
-        public static Fmt00e read(SPARCAssembler masm, int pos) {
-            assert masm.hasFeature(CPUFeature.CBCOND);
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
-            final int condFlag = (inst & CBCOND_MASK) >> CBCOND_SHIFT;
-            assert op2 == Op2s.Bpr.getValue() && op == Ops.BranchOp.getValue() && condFlag == 1 : "0x" + Integer.toHexString(inst);
-
-            // @formatter:off
-            // Get the instruction fields:
-            final int chi =            (inst & CHI_MASK)   >> CHI_SHIFT;
-            final int clo =            (inst & CLO_MASK)   >> CLO_SHIFT;
-            final int cc2 =            (inst & CC2_MASK)   >> CC2_SHIFT;
-            final int d10hi =          (inst & D10HI_MASK) >> D10HI_SHIFT;
-            final int rs1 =            (inst & RS1_MASK)   >> RS1_SHIFT;
-            final int i =              (inst & I_MASK)     >> I_SHIFT;
-            final int d10lo =          (inst & D10LO_MASK) >> D10LO_SHIFT;
-                  int regOrImmediate = (inst & RS2_MASK)   >> RS2_SHIFT;
-            // @formatter:on
-            if (i == 1) { // if immediate, we do sign extend
-                int shiftcnt = 31 - 4;
-                regOrImmediate = (regOrImmediate << shiftcnt) >> shiftcnt;
-            }
-            int c = chi << 3 | clo;
-
-            assert (d10lo & ~((1 << 8) - 1)) == 0;
-            final int d10 = ((short) (((d10hi << 8) | d10lo) << 6)) >> 4; // Times 4 and sign extend
-            Fmt00e fmt = new Fmt00e(c, cc2, rs1, d10, i, regOrImmediate, null);
-            fmt.verify();
-            return fmt;
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            assert (c & ~0b1111) == 0 : c;
-            assert (cc2 & ~1) == 0 : cc2;
-            assert isSimm(disp10, 10) : disp10;
-            assert (rs1 & ~0b1_1111) == 0 : rs1;
-            assert (i & ~1) == 0 : i;
-            if (i == 1) {
-                assert isSimm(regOrImmediate, 5) : regOrImmediate;
-            } else {
-                assert (regOrImmediate & ~0b1_1111) == 0 : regOrImmediate;
-            }
-        }
-
-        @Override
-        public boolean hasDelaySlot() {
-            return false;
-        }
-    }
+    protected static final int D10LO_MASK = 0b0000_0000_0000_0000_0001_1111_1110_0000;
+    protected static final int D10HI_MASK = 0b0000_0000_0001_1000_0000_0000_0000_0000;
+    protected static final int D10LO_SHIFT = 5;
+    protected static final int D10HI_SHIFT = 19;
 
     // @formatter:off
     /**
@@ -2410,24 +2121,35 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class CBcondw extends Fmt00e {
-        public CBcondw(ConditionFlag flag, Register src1, Register src2, Label label) {
-            super(flag.getValue(), 0, src1.encoding(), -1, 0, src2.encoding(), label);
-        }
-
-        public CBcondw(ConditionFlag flag, Register src1, int simm5, Label label) {
-            super(flag.getValue(), 0, src1.encoding(), -1, 1, simm5, label);
-        }
+    public void cbcondw(ConditionFlag cf, Register rs1, Register rs2, Label lab) {
+        cbcond(0, 0, cf, rs1, rs2.encoding, lab);
     }
 
-    public static class CBcondx extends Fmt00e {
-        public CBcondx(ConditionFlag flag, Register src1, Register src2, Label label) {
-            super(flag.getValue(), 1, src1.encoding(), -1, 0, src2.encoding(), label);
-        }
+    public void cbcondw(ConditionFlag cf, Register rs1, int rs2, Label lab) {
+        assert isSimm(rs2, 5);
+        cbcond(0, 1, cf, rs1, rs2 & ((1 << 5) - 1), lab);
+    }
 
-        public CBcondx(ConditionFlag flag, Register src1, int simm5, Label label) {
-            super(flag.getValue(), 1, src1.encoding(), -1, 1, simm5, label);
-        }
+    public void cbcondx(ConditionFlag cf, Register rs1, Register rs2, Label lab) {
+        cbcond(1, 0, cf, rs1, rs2.encoding, lab);
+    }
+
+    public void cbcondx(ConditionFlag cf, Register rs1, int rs2, Label lab) {
+        assert isSimm(rs2, 5);
+        cbcond(1, 1, cf, rs1, rs2 & ((1 << 5) - 1), lab);
+    }
+
+    private void cbcond(int cc2, int i, ConditionFlag cf, Register rs1, int rs2, Label l) {
+        int d10 = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
+        assert isSimm(d10, 10) && isImm(rs2, 5);
+        d10 &= (1 << 10) - 1;
+        final int c_lo = cf.value & 0b111;
+        final int c_hi = cf.value >> 3;
+        final int d10_lo = d10 & ((1 << 8) - 1);
+        final int d10_hi = d10 >> 8;
+        int a = c_hi << 4 | 0b1000 | c_lo;
+        int b = cc2 << 21 | d10_hi << D10HI_SHIFT | rs1.encoding << 14 | i << 13 | d10_lo << D10LO_SHIFT | rs2;
+        fmt00(a, Op2s.Bpr.value, b);
     }
 
     public static class Edge8cc extends Fmt3p {
@@ -3182,11 +2904,8 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Illtrap extends Fmt00a {
-
-        public Illtrap(int const22) {
-            super(Op2s.Illtrap, const22, g0);
-        }
+    public void illtrap(int const22) {
+        fmt00(0, Op2s.Illtrap.value, const22);
     }
 
     public static class Jmpl extends Fmt10 {
@@ -3582,11 +3301,8 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Sethi extends Fmt00a {
-
-        public Sethi(int imm22, Register dst) {
-            super(Op2s.Sethi, imm22, dst);
-        }
+    public void sethi(int imm22, Register dst) {
+        fmt00(dst.encoding, Op2s.Sethi.value, imm22);
     }
 
     public static class Sir extends Fmt10 {

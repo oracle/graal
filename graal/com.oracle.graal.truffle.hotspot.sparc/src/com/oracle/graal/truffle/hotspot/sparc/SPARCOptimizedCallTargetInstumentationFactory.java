@@ -22,26 +22,26 @@
  */
 package com.oracle.graal.truffle.hotspot.sparc;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.meta.Kind.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 
-import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
@@ -57,23 +57,23 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
                 @SuppressWarnings("hiding")
                 SPARCMacroAssembler asm = (SPARCMacroAssembler) this.asm;
                 try (SPARCScratchRegister scratch = SPARCScratchRegister.get()) {
-                    Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, Kind.Object)[0];
+                    Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object)[0];
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
                     SPARCAddress codeBlobAddress = new SPARCAddress(thisRegister, getFieldOffset("address", InstalledCode.class));
                     SPARCAddress verifiedEntryPointAddress = new SPARCAddress(spillRegister, config.nmethodEntryOffset);
 
                     new Ldx(codeBlobAddress, spillRegister).emit(asm);
-                    if (asm.hasFeature(CPUFeature.CBCOND)) {
-                        new CBcondx(ConditionFlag.Equal, spillRegister, 0, doProlog).emit(asm);
+                    if (asm.hasFeature(CBCOND)) {
+                        asm.cbcondx(Equal, spillRegister, 0, doProlog);
                     } else {
                         new Cmp(spillRegister, 0).emit(asm);
                         asm.bpcc(Equal, NOT_ANNUL, doProlog, Xcc, PREDICT_NOT_TAKEN);
-                        new Nop().emit(asm);
+                        asm.nop();
                     }
                     new Ldx(verifiedEntryPointAddress, spillRegister).emit(asm); // in delay slot
                     new Jmp(spillRegister).emit(asm);
-                    new Nop().emit(asm);
+                    asm.nop();
                     asm.bind(doProlog);
                 }
             }

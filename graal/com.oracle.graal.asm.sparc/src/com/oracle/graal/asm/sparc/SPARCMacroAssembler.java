@@ -26,6 +26,8 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
+import java.util.function.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
@@ -45,14 +47,14 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     @Override
     public void align(int modulus) {
         while (position() % modulus != 0) {
-            new Nop().emit(this);
+            nop();
         }
     }
 
     @Override
     public void jmp(Label l) {
         bicc(Always, NOT_ANNUL, l);
-        new Nop().emit(this);  // delay slot
+        nop();  // delay slot
     }
 
     @Override
@@ -84,10 +86,10 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 if (isCBcond) {
                     assert isSimm10(disp);
                     int d10Split = 0;
-                    d10Split |= (disp & 0b11_0000_0000) << Fmt00e.D10HI_SHIFT - 8;
-                    d10Split |= (disp & 0b00_1111_1111) << Fmt00e.D10LO_SHIFT;
+                    d10Split |= (disp & 0b11_0000_0000) << D10HI_SHIFT - 8;
+                    d10Split |= (disp & 0b00_1111_1111) << D10LO_SHIFT;
                     setBits = d10Split;
-                    maskBits = Fmt00e.D10LO_MASK | Fmt00e.D10HI_MASK;
+                    maskBits = D10LO_MASK | D10HI_MASK;
                 } else {
                     assert isSimm(disp, 16);
                     int d16Split = 0;
@@ -117,7 +119,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
     @Override
     public final void ensureUniquePC() {
-        new Nop().emit(this);
+        nop();
     }
 
     public static class Bclr extends Andn {
@@ -298,13 +300,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    public static class Nop extends Sethi {
-
-        public Nop() {
-            super(0, r0);
-        }
-    }
-
     public static class Not extends Xnor {
 
         public Not(Register src1, Register dst) {
@@ -353,9 +348,9 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             } else if (isSimm13(value)) {
                 new Or(g0, value, dst).emit(masm);
             } else if (value >= 0 && ((value & 0x3FFF) == 0)) {
-                new Sethi(hi22(value), dst).emit(masm);
+                masm.sethi(hi22(value), dst);
             } else {
-                new Sethi(hi22(value), dst).emit(masm);
+                masm.sethi(hi22(value), dst);
                 new Or(dst, lo10(value), dst).emit(masm);
             }
         }
@@ -372,7 +367,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         private Register dst;
         private boolean forceRelocatable;
         private boolean delayed = false;
-        private AssemblerEmittable delayedInstruction;
+        private Consumer<SPARCAssembler> delayedInstructionEmitter;
 
         public Sethix(long value, Register dst, boolean forceRelocatable, boolean delayed) {
             this(value, dst, forceRelocatable);
@@ -390,32 +385,41 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             this(value, dst, false);
         }
 
-        private void emitInstruction(AssemblerEmittable insn, SPARCMacroAssembler masm) {
+        private void emitInstruction(Consumer<SPARCAssembler> cb, SPARCMacroAssembler masm) {
             if (delayed) {
-                if (this.delayedInstruction != null) {
-                    delayedInstruction.emit(masm);
+                if (this.delayedInstructionEmitter != null) {
+                    delayedInstructionEmitter.accept(masm);
                 }
-                delayedInstruction = insn;
+                delayedInstructionEmitter = cb;
             } else {
-                insn.emit(masm);
+                cb.accept(masm);
             }
+
+        }
+
+        private void emitInstruction(final AssemblerEmittable insn, SPARCMacroAssembler masm) {
+            Consumer<SPARCAssembler> cb = eMasm -> insn.emit(eMasm);
+            emitInstruction(cb, masm);
         }
 
         public void emit(SPARCMacroAssembler masm) {
-            int hi = (int) (value >> 32);
-            int lo = (int) (value & ~0);
+            final int hi = (int) (value >> 32);
+            final int lo = (int) (value & ~0);
 
             // This is the same logic as MacroAssembler::internal_set.
             final int startPc = masm.position();
 
             if (hi == 0 && lo >= 0) {
-                emitInstruction(new Sethi(hi22(lo), dst), masm);
+                Consumer<SPARCAssembler> cb = eMasm -> eMasm.sethi(hi22(lo), dst);
+                emitInstruction(cb, masm);
             } else if (hi == -1) {
-                emitInstruction(new Sethi(hi22(~lo), dst), masm);
+                Consumer<SPARCAssembler> cb = eMasm -> eMasm.sethi(hi22(~lo), dst);
+                emitInstruction(cb, masm);
                 emitInstruction(new Xor(dst, ~lo10(~0), dst), masm);
             } else {
                 int shiftcnt = 0;
-                emitInstruction(new Sethi(hi22(hi), dst), masm);
+                Consumer<SPARCAssembler> cb = eMasm -> eMasm.sethi(hi22(hi), dst);
+                emitInstruction(cb, masm);
                 if ((hi & 0x3ff) != 0) {                                  // Any bits?
                     // msb 32-bits are now in lsb 32
                     emitInstruction(new Or(dst, hi & 0x3ff, dst), masm);
@@ -448,14 +452,15 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             // Pad out the instruction sequence so it can be patched later.
             if (forceRelocatable) {
                 while (masm.position() < (startPc + (INSTRUCTION_SIZE * 4))) {
-                    emitInstruction(new Nop(), masm);
+                    Consumer<SPARCAssembler> cb = eMasm -> eMasm.nop();
+                    emitInstruction(cb, masm);
                 }
             }
         }
 
         public void emitDelayed(SPARCMacroAssembler masm) {
-            assert delayedInstruction != null;
-            delayedInstruction.emit(masm);
+            assert delayedInstructionEmitter != null;
+            delayedInstructionEmitter.accept(masm);
         }
     }
 

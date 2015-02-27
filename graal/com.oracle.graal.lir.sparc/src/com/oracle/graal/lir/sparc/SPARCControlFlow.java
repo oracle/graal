@@ -219,7 +219,7 @@ public class SPARCControlFlow {
                     actualY = scratchValue;
                 }
                 emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
-                new Nop().emit(masm);
+                masm.nop();
             } finally {
                 if (scratch != null) {
                     // release the scratch if used
@@ -228,7 +228,7 @@ public class SPARCControlFlow {
             }
             if (needJump) {
                 masm.jmp(actualFalseTarget);
-                new Nop().emit(masm);
+                masm.nop();
             }
             return true;
         }
@@ -241,26 +241,26 @@ public class SPARCControlFlow {
                 case Int:
                     if (isConstant(actualY)) {
                         int constantY = asConstant(actualY).asInt();
-                        new CBcondw(conditionFlag, asIntReg(actualX), constantY, actualTrueTarget).emit(masm);
+                        masm.cbcondw(conditionFlag, asIntReg(actualX), constantY, actualTrueTarget);
                     } else {
-                        new CBcondw(conditionFlag, asIntReg(actualX), asIntReg(actualY), actualTrueTarget).emit(masm);
+                        masm.cbcondw(conditionFlag, asIntReg(actualX), asIntReg(actualY), actualTrueTarget);
                     }
                     break;
                 case Long:
                     if (isConstant(actualY)) {
                         int constantY = (int) asConstant(actualY).asLong();
-                        new CBcondx(conditionFlag, asLongReg(actualX), constantY, actualTrueTarget).emit(masm);
+                        masm.cbcondx(conditionFlag, asLongReg(actualX), constantY, actualTrueTarget);
                     } else {
-                        new CBcondx(conditionFlag, asLongReg(actualX), asLongReg(actualY), actualTrueTarget).emit(masm);
+                        masm.cbcondx(conditionFlag, asLongReg(actualX), asLongReg(actualY), actualTrueTarget);
                     }
                     break;
                 case Object:
                     if (isConstant(actualY)) {
                         // Object constant valid can only be null
                         assert asConstant(actualY).isNull();
-                        new CBcondx(conditionFlag, asObjectReg(actualX), 0, actualTrueTarget).emit(masm);
+                        masm.cbcondx(conditionFlag, asObjectReg(actualX), 0, actualTrueTarget);
                     } else { // this is already loaded
-                        new CBcondx(conditionFlag, asObjectReg(actualX), asObjectReg(actualY), actualTrueTarget).emit(masm);
+                        masm.cbcondx(conditionFlag, asObjectReg(actualX), asObjectReg(actualY), actualTrueTarget);
                     }
                     break;
                 default:
@@ -431,7 +431,7 @@ public class SPARCControlFlow {
                     ConditionFlag conditionFlag = ConditionFlag.fromCondtition(conditionCode, condition, false);
                     new Cmp(keyRegister, scratchRegister).emit(masm);
                     masm.bpcc(conditionFlag, NOT_ANNUL, target, conditionCode, PREDICT_TAKEN);
-                    new Nop().emit(masm);  // delay slot
+                    masm.nop();  // delay slot
                 }
             };
             strategy.run(closure);
@@ -485,7 +485,7 @@ public class SPARCControlFlow {
                 // Jump to default target if index is not within the jump table
                 if (defaultTarget != null) {
                     masm.bpcc(GreaterUnsigned, NOT_ANNUL, defaultTarget.label(), Icc, PREDICT_TAKEN);
-                    new Nop().emit(masm);  // delay slot
+                    masm.nop();  // delay slot
                 }
 
                 // Load jump table entry into scratch and jump to it
@@ -498,12 +498,12 @@ public class SPARCControlFlow {
                 new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
                 new Jmpl(scratch2, scratchReg, g0).emit(masm);
             }
-            new Nop().emit(masm);
+            masm.nop();
 
             // Emit jump table entries
             for (LabelRef target : targets) {
                 masm.bpcc(Always, NOT_ANNUL, target.label(), Xcc, PREDICT_TAKEN);
-                new Nop().emit(masm); // delay slot
+                masm.nop(); // delay slot
             }
         }
     }

@@ -35,7 +35,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Jmpl;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Lduw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Movcc;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.sparc.*;
@@ -79,6 +78,6 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
         }
 
         new Jmpl(asRegister(handlerInCallerPc), 0, g0).emit(masm);
-        new Nop().emit(masm);
+        masm.nop();
     }
 }

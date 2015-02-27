@@ -30,17 +30,65 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Addcc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.And;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Faddd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fadds;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fandd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fcmp;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fdivd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fdivs;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fdtoi;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fdtos;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fdtox;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fitod;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fitos;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmuld;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmuls;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fnegd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fnegs;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fsmuld;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fstod;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fstoi;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fstox;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fsubd;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fsubs;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fxtod;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fxtos;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Mulx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Opfs;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sdivx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sll;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sllx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sra;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Srax;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Srl;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Subcc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Udivx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Umulxhi;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Wrccr;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Xor;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Xorcc;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Neg;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Not;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Signx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
@@ -222,7 +270,7 @@ public enum SPARCArithmetic {
             new Srax(asLongReg(result), 63, asLongReg(scratch2)).emit(masm);
             new Cmp(asLongReg(scratch1), asLongReg(scratch2)).emit(masm);
             masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
-            new Nop().emit(masm);
+            masm.nop();
             new Wrccr(g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT)).emit(masm);
             masm.bind(noOverflow);
         }
@@ -366,14 +414,14 @@ public enum SPARCArithmetic {
                     Label noOverflow = new Label();
                     new Sra(asIntReg(dst), 0, tmp).emit(masm);
                     new Xorcc(SPARC.g0, SPARC.g0, SPARC.g0).emit(masm);
-                    if (masm.hasFeature(CPUFeature.CBCOND)) {
-                        new CBcondx(ConditionFlag.Equal, tmp, asIntReg(dst), noOverflow).emit(masm);
+                    if (masm.hasFeature(CBCOND)) {
+                        masm.cbcondx(Equal, tmp, asIntReg(dst), noOverflow);
                         // Is necessary, otherwise we will have a penalty of 5 cycles in S3
-                        new Nop().emit(masm);
+                        masm.nop();
                     } else {
                         new Cmp(tmp, asIntReg(dst)).emit(masm);
                         masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
-                        new Nop().emit(masm);
+                        masm.nop();
                     }
                     new Wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT)).emit(masm);
                     masm.bind(noOverflow);
