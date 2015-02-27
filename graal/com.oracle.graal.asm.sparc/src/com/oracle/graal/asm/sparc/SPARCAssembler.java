@@ -88,35 +88,6 @@ public abstract class SPARCAssembler extends Assembler {
     protected static final int D10LO_SHIFT = 5;
     protected static final int D10HI_SHIFT = 19;
 
-    public static class Fmt3n {
-        private int op;
-        private int op3;
-        private int opf;
-        private int rs2;
-        private int rd;
-
-        public Fmt3n(int op, int op3, int opf, int rs2, int rd) {
-            this.op = op;
-            this.op3 = op3;
-            this.opf = opf;
-            this.rs2 = rs2;
-            this.rd = rd;
-        }
-
-        public void emit(SPARCAssembler masm) {
-            verify();
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | opf << 5 | rs2);
-        }
-
-        public void verify() {
-            assert op == 2 || op == 3;
-            assert op3 >= 0 && op3 < 0x40;
-            assert opf >= 0 && opf < 0x200;
-            assert rs2 >= 0 && rs2 < 0x20;
-            assert rd >= 0 && rd < 0x20;
-        }
-    }
-
     public static class Fmt3p {
 
         private int op;
@@ -1980,27 +1951,6 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Cmask8 extends Fmt3n {
-
-        public Cmask8(Register src2) {
-            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Cmask8.getValue(), src2.encoding(), 0);
-        }
-    }
-
-    public static class Cmask16 extends Fmt3n {
-
-        public Cmask16(Register src2) {
-            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Cmask16.getValue(), src2.encoding(), 0);
-        }
-    }
-
-    public static class Cmask32 extends Fmt3n {
-
-        public Cmask32(Register src2) {
-            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Cmask32.getValue(), src2.encoding(), 0);
-        }
-    }
-
     public static class Crc32c extends Fmt3p {
 
         public Crc32c(Register src1, Register src2, Register dst) {
@@ -2343,22 +2293,17 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fnegs extends Fmt3n {
-
-        public Fnegs(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegs.getValue(), src2.encoding(), dst.encoding());
-            assert isSingleFloatRegister(src2);
-            assert isSingleFloatRegister(dst);
-        }
+    public void fnegs(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fnegs, null, rs2, rd);
     }
 
-    public static class Fnegd extends Fmt3n {
+    public void fnegd(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fnegd, null, rs2, rd);
+    }
 
-        public Fnegd(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegd.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(src2);
-            assert isDoubleFloatRegister(dst);
-        }
+    private void op3(Op3s op3, Opfs opf, Register rs1, Register rs2, Register rd) {
+        int b = opf.value << 5 | (rs2 == null ? 0 : rs2.encoding);
+        fmt10(rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b);
     }
 
     public static class Fnhadds extends Fmt3p {
@@ -2460,88 +2405,48 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public static class Fstoi extends Fmt3n {
-
-        public Fstoi(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fstoi.getValue(), src2.encoding(), dst.encoding());
-            assert isSingleFloatRegister(dst);
-            assert isSingleFloatRegister(src2);
-        }
+    public void fstoi(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fstoi, null, rs2, rd);
     }
 
-    public static class Fstox extends Fmt3n {
-
-        public Fstox(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fstox.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(dst);
-            assert isSingleFloatRegister(src2);
-        }
+    public void fstox(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fstox, null, rs2, rd);
     }
 
-    public static class Fdtox extends Fmt3n {
-
-        public Fdtox(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdtox.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(src2);
-            assert isDoubleFloatRegister(dst);
-        }
+    public void fdtox(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fdtox, null, rs2, rd);
     }
 
-    public static class Fstod extends Fmt3n {
-
-        public Fstod(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fstod.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(dst);
-            assert isSingleFloatRegister(src2);
-        }
+    public void fstod(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fstod, null, rs2, rd);
     }
 
-    /**
-     * Convert Double to 32-bit Integer.
-     */
-    public static class Fdtoi extends Fmt3n {
-
-        public Fdtoi(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdtoi.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(src2);
-            assert isSingleFloatRegister(dst);
-        }
+    public void fdtoi(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fdtoi, null, rs2, rd);
     }
 
-    public static class Fitos extends Fmt3n {
-
-        public Fitos(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fitos.getValue(), src2.encoding(), dst.encoding());
-            assert isSingleFloatRegister(src2);
-            assert isSingleFloatRegister(dst);
-        }
+    public void fitos(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fitos, null, rs2, rd);
     }
 
-    public static class Fitod extends Fmt3n {
-
-        public Fitod(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fitod.getValue(), src2.encoding(), dst.encoding());
-            assert isSingleFloatRegister(src2);
-            assert isDoubleFloatRegister(dst);
-        }
+    public void fitod(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fitod, null, rs2, rd);
     }
 
-    public static class Fxtos extends Fmt3n {
-
-        public Fxtos(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fxtos.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(src2);
-            assert isSingleFloatRegister(dst);
-        }
+    public void fxtos(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fxtos, null, rs2, rd);
     }
 
-    public static class Fxtod extends Fmt3n {
+    public void fxtod(Register rs2, Register rd) {
+        op3(Op3s.Fpop1, Opfs.Fxtod, null, rs2, rd);
+    }
 
-        public Fxtod(Register src2, Register dst) {
-            super(Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fxtod.getValue(), src2.encoding(), dst.encoding());
-            assert isDoubleFloatRegister(src2);
-            assert isDoubleFloatRegister(dst);
-        }
+    public void fzeros(Register rd) {
+        op3(Op3s.Impdep1, Opfs.Fzeros, null, null, rd);
+    }
+
+    public void fzerod(Register rd) {
+        op3(Op3s.Impdep1, Opfs.Fzerod, null, null, rd);
     }
 
     /**
@@ -2762,24 +2667,6 @@ public abstract class SPARCAssembler extends Assembler {
 
         public Fsubq(Register src1, Register src2, Register dst) {
             super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsubq, src1, src2, dst);
-        }
-    }
-
-    public static class Fzeros extends Fmt3n {
-
-        public Fzeros(Register dst) {
-            /* VIS1 only */
-            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fzeros.getValue(), 0, dst.encoding());
-            assert isSingleFloatRegister(dst);
-        }
-    }
-
-    public static class Fzerod extends Fmt3n {
-
-        public Fzerod(Register dst) {
-            /* VIS1 only */
-            super(Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fzerod.getValue(), 0, dst.encoding());
-            assert isDoubleFloatRegister(dst);
         }
     }
 

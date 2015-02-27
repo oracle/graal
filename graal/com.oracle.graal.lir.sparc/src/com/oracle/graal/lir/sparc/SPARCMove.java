@@ -34,8 +34,6 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovd;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fzerod;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fzeros;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
@@ -795,7 +793,7 @@ public class SPARCMove {
                     int constantBits = java.lang.Float.floatToIntBits(constant);
                     if (constantBits == 0) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Fzeros(asFloatReg(result)).emit(masm);
+                        masm.fzeros(asFloatReg(result));
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
@@ -822,7 +820,7 @@ public class SPARCMove {
                     long constantBits = java.lang.Double.doubleToLongBits(constant);
                     if (constantBits == 0) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Fzerod(asDoubleReg(result)).emit(masm);
+                        masm.fzerod(asDoubleReg(result));
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
