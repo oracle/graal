@@ -153,4 +153,55 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         /* 8: */Bytecode.RETURN};
         assertPartialEvalEquals("constant42", new Program(bytecodes, 0, 3));
     }
+
+    @Test
+    public void simpleProgramWithManyIfs() {
+        byte[] bytecodes = new byte[]{
+        /* 0: */Bytecode.CONST,
+        /* 1: */40,
+        /* 2: */Bytecode.CONST,
+        /* 3: */1,
+        /* 4: */Bytecode.IFZERO,
+        /* 5: */8,
+        /* 6: */Bytecode.CONST,
+        /* 7: */1,
+        /* 8: */Bytecode.IFZERO,
+        /* 9: */12,
+        /* 10: */Bytecode.CONST,
+        /* 11: */1,
+        /* 12: */Bytecode.IFZERO,
+        /* 13: */16,
+        /* 14: */Bytecode.CONST,
+        /* 15: */1,
+        /* 16: */Bytecode.IFZERO,
+        /* 17: */20,
+        /* 18: */Bytecode.CONST,
+        /* 19: */1,
+        /* 20: */Bytecode.IFZERO,
+        /* 21: */24,
+        /* 22: */Bytecode.CONST,
+        /* 23: */1,
+        /* 24: */Bytecode.IFZERO,
+        /* 25: */28,
+        /* 26: */Bytecode.CONST,
+        /* 27: */1,
+        /* 28: */Bytecode.IFZERO,
+        /* 29: */32,
+        /* 30: */Bytecode.CONST,
+        /* 31: */1,
+        /* 32: */Bytecode.IFZERO,
+        /* 33: */36,
+        /* 34: */Bytecode.CONST,
+        /* 35: */1,
+        /* 36: */Bytecode.IFZERO,
+        /* 37: */40,
+        /* 38: */Bytecode.CONST,
+        /* 39: */1,
+        /* 40: */Bytecode.IFZERO,
+        /* 41: */44,
+        /* 42: */Bytecode.CONST,
+        /* 43: */42,
+        /* 44: */Bytecode.RETURN};
+        assertPartialEvalEquals("constant42", new Program(bytecodes, 0, 3));
+    }
 }
