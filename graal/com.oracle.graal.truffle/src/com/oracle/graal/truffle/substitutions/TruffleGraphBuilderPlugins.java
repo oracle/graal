@@ -190,6 +190,22 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+
+        r = new Registration(plugins, metaAccess, CompilerAsserts.class);
+        r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                ValueNode curValue = value;
+                if (curValue instanceof BoxNode) {
+                    BoxNode boxNode = (BoxNode) curValue;
+                    curValue = boxNode.getValue();
+                }
+                if (curValue.isConstant()) {
+                    return true;
+                } else {
+                    throw builder.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + curValue);
+                }
+            }
+        });
     }
 
     public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
