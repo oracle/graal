@@ -60,6 +60,17 @@ public abstract class SPARCAssembler extends Assembler {
     public static final int CCR_Z_SHIFT = 2;
     public static final int CCR_N_SHIFT = 3;
 
+    protected static final int OP_SHIFT = 30;
+    protected static final int CBCOND_SHIFT = 28;
+    protected static final int OP2_SHIFT = 22;
+    protected static final int A_SHIFT = 29;
+
+    // @formatter:off
+    protected static final int A_MASK        = 0b0010_0000_0000_0000_0000_0000_0000_0000;
+    protected static final int OP_MASK     = 0b1100_0000_0000_0000_0000_0000_0000_0000;
+    protected static final int CBCOND_MASK = 0b0001_0000_0000_0000_0000_0000_0000_0000; // Used for distinguish CBcond and BPr instructions
+    protected static final int OP2_MASK    = 0b0000_0001_1100_0000_0000_0000_0000_0000;
+
     // @formatter:off
     /**
      * Instruction format for Fmt00 instructions. This abstraction is needed as it
@@ -72,46 +83,10 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     public abstract static class Fmt00 implements AssemblerEmittable {
 
-        protected static final int OP_SHIFT = 30;
-        protected static final int CBCOND_SHIFT = 28;
-        protected static final int OP2_SHIFT = 22;
-        protected static final int A_SHIFT = 29;
-
-        // @formatter:off
-        protected static final int A_MASK        = 0b0010_0000_0000_0000_0000_0000_0000_0000;
-        protected static final int OP_MASK     = 0b1100_0000_0000_0000_0000_0000_0000_0000;
-        protected static final int CBCOND_MASK = 0b0001_0000_0000_0000_0000_0000_0000_0000; // Used for distinguish CBcond and BPr instructions
-        protected static final int OP2_MASK    = 0b0000_0001_1100_0000_0000_0000_0000_0000;
-        // @formatter:off
-
         private int op2;
 
         public Fmt00(int op2) {
             this.op2 = op2;
-        }
-
-        public static Fmt00 read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-            Op2s op2 = Op2s.byValue((inst & OP2_MASK) >> OP2_SHIFT);
-            switch(op2) {
-                case Br:
-                case Fb:
-                    return Fmt00b.read(masm, op2, pos);
-                case Sethi:
-                case Illtrap:
-                    return Fmt00a.read(masm, pos);
-                case Bp:
-                    return Fmt00c.read(masm, pos);
-                case Bpr:
-                    boolean isCBcond = (inst & CBCOND_MASK) != 0;
-                    if (isCBcond) {
-                        return Fmt00e.read(masm, pos);
-                    } else {
-                        return Fmt00d.read(masm, pos);
-                    }
-                default:
-                    throw GraalInternalError.shouldNotReachHere("Unknown op2 " + op2);
-            }
         }
 
         public void write(SPARCAssembler masm, int pos) {
@@ -131,11 +106,13 @@ public abstract class SPARCAssembler extends Assembler {
             assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT) : Integer.toHexString(op2);
             assert Op2s.byValue(op2) != null : op2;
         }
+
         /**
          * Sets the immediate (displacement) value on this instruction.
          *
          * @see SPARCAssembler#patchJumpTarget(int, int)
-         * @param imm Displacement/imediate value. Can either be a 22 or 19 bit immediate (dependent on the instruction)
+         * @param imm Displacement/imediate value. Can either be a 22 or 19 bit immediate (dependent
+         *            on the instruction)
          */
         public abstract void setImm(int imm);
 
@@ -148,6 +125,7 @@ public abstract class SPARCAssembler extends Assembler {
         public int getA() {
             throw GraalInternalError.shouldNotReachHere();
         }
+
         public void setA(@SuppressWarnings("unused") int a) {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -234,415 +212,16 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    // @formatter:off
-    /**
-     * Instruction format for branches.
-     * <pre>
-     * | 00  |a | cond | op2 |             disp22                      |
-     * |31 30|29|28  25|24 22|21                                      0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt00b extends Fmt00 {
-        private int a;
-        private int cond;
-        private int disp22;
-        private Label label;
-
-        private static final int COND_SHIFT = 25;
-        private static final int DISP22_SHIFT = 0;
-
-        // @formatter:off
-        private static final int COND_MASK   = 0b00011110000000000000000000000000;
-        private static final int DISP22_MASK = 0b00000000001111111111111111111111;
-        // @formatter:on
-
-        public Fmt00b(boolean annul, ConditionFlag cond, Op2s op2, Label label) {
-            this(annul ? 1 : 0, cond.getValue(), op2.getValue(), 0, label);
-        }
-
-        public Fmt00b(boolean annul, FCond cond, Op2s op2, Label label) {
-            this(annul ? 1 : 0, cond.getValue(), op2.getValue(), 0, label);
-        }
-
-        public Fmt00b(int annul, int cond, int op2, Label label) {
-            this(annul, cond, op2, 0, label);
-        }
-
-        public Fmt00b(boolean annul, FCond cond, Op2s op2, int disp22) {
-            this(annul ? 1 : 0, cond.getValue(), op2.getValue(), disp22, null);
-        }
-
-        public Fmt00b(int annul, int cond, int op2, int disp22) {
-            this(annul, cond, op2, disp22, null);
-        }
-
-        public Fmt00b(int a, int cond, int op2, int disp22, Label label) {
-            super(op2);
-            setA(a);
-            setCond(cond);
-            setDisp22(disp22);
-            setLabel(label);
-        }
-
-        @Override
-        public void emit(SPARCAssembler masm) {
-            if (label != null) {
-                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
-                final int disp = pos - masm.position();
-                setDisp22(disp);
-            }
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        private static int patchUnbound(SPARCAssembler masm, Label label) {
-            label.addPatchAt(masm.position());
-            return 0;
-        }
-
-        @Override
-        protected int getInstructionBits() {
-            int inst = super.getInstructionBits() | a << A_SHIFT | cond << COND_SHIFT | (disp22 & DISP22_MASK) << DISP22_SHIFT;
-            return inst;
-        }
-
-        protected static Fmt00b read(SPARCAssembler masm, Op2s op2, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.BranchOp.getValue();
-            final int op2Read = (inst & OP2_MASK) >> OP2_SHIFT;
-            assert op2Read == op2.getValue() : "Op2 value read: " + op2Read + " Required op2: " + op2;
-
-            // Get the instruction fields:
-            final int a = (inst & A_MASK) >> A_SHIFT;
-            final int cond = (inst & COND_MASK) >> COND_SHIFT;
-            final int disp22 = (inst & DISP22_MASK) >> DISP22_SHIFT << 2;
-
-            Fmt00b fmt = new Fmt00b(a, cond, op2.getValue(), disp22);
-            fmt.verify();
-            return fmt;
-        }
-
-        @Override
-        public int getA() {
-            return a;
-        }
-
-        @Override
-        public void setA(int a) {
-            this.a = a;
-        }
-
-        public int getCond() {
-            return cond;
-        }
-
-        public void setCond(int cond) {
-            this.cond = cond;
-        }
-
-        public int getDisp22() {
-            return disp22 << 2;
-        }
-
-        @Override
-        public void setImm(int imm) {
-            setDisp22(imm);
-        }
-
-        public void setDisp22(int disp22) {
-            this.disp22 = disp22 >> 2;
-        }
-
-        public Label getLabel() {
-            return label;
-        }
-
-        public void setLabel(Label label) {
-            this.label = label;
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            assert (getA() << A_SHIFT & ~A_MASK) == 0 : getA();
-            assert (getCond() << COND_SHIFT & ~COND_MASK) == 0 : getCond();
-        }
-    }
-
-    // @formatter:off
-    /**
-     * Instruction format for conditional branches.
-     * <pre>
-     * | 00  |a | cond | op2 |cc1|cc0|p |             disp19           |
-     * |31 30|29|28  25|24 22|21 |20 |19|                             0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt00c extends Fmt00 {
-
-        private static final int COND_SHIFT = 25;
-        private static final int CC_SHIFT = 20;
-        private static final int P_SHIFT = 19;
-        private static final int DISP19_SHIFT = 0;
-
-        // @formatter:off
-        private static final int COND_MASK   = 0b00011110000000000000000000000000;
-        private static final int CC_MASK     = 0b00000000001100000000000000000000;
-        private static final int P_MASK      = 0b00000000000010000000000000000000;
-        private static final int DISP19_MASK = 0b00000000000001111111111111111111;
-        // @formatter:on
-
-        private int a;
-        private int cond;
-        private int cc;
-        private int p;
-        private int disp19;
-        private Label label;
-
-        private Fmt00c(int a, int cond, int op2, int cc, int p, int disp19) {
-            super(op2);
-            setA(a);
-            setCond(cond);
-            setCc(cc);
-            setP(p);
-            setDisp19(disp19);
-            verify();
-        }
-
-        public Fmt00c(int a, ConditionFlag cond, Op2s op2, CC cc, int p, int disp19) {
-            this(a, cond.getValue(), op2.getValue(), cc.getValue(), p, disp19);
-        }
-
-        public Fmt00c(int a, ConditionFlag cond, Op2s op2, CC cc, int p, Label label) {
-            this(a, cond.getValue(), op2.getValue(), cc.getValue(), p, 0);
-            this.label = label;
-        }
-
-        @Override
-        public int getA() {
-            return a;
-        }
-
-        @Override
-        public void setA(int a) {
-            this.a = a;
-        }
-
-        public int getCond() {
-            return cond;
-        }
-
-        public void setCond(int cond) {
-            this.cond = cond;
-        }
-
-        public int getCc() {
-            return cc;
-        }
-
-        public void setCc(int cc) {
-            this.cc = cc;
-        }
-
-        public int getP() {
-            return p;
-        }
-
-        public void setP(int p) {
-            this.p = p;
-        }
-
-        /**
-         * Return the displacement in bytes.
-         */
-        public int getDisp19() {
-            return disp19 << 2;
-        }
-
-        /**
-         * The instructions requires displacements to be word-sized.
-         */
-        public void setDisp19(int disp19) {
-            this.disp19 = disp19 >> 2;
-        }
-
-        @Override
-        public void setImm(int imm) {
-            setDisp19(imm);
-        }
-
-        @Override
-        protected int getInstructionBits() {
-            return super.getInstructionBits() | a << A_SHIFT | cond << COND_SHIFT | cc << CC_SHIFT | p << P_SHIFT | (disp19 & DISP19_MASK) << DISP19_SHIFT;
-        }
-
-        public static Fmt00c read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.BranchOp.getValue();
-
-            // Get the instruction fields:
-            final int a = (inst & A_MASK) >> A_SHIFT;
-            final int cond = (inst & COND_MASK) >> COND_SHIFT;
-            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
-            final int cc = (inst & CC_MASK) >> CC_SHIFT;
-            final int p = (inst & P_MASK) >> P_SHIFT;
-            final int disp19 = (inst & DISP19_MASK) >> DISP19_SHIFT << 2;
-
-            Fmt00c fmt = new Fmt00c(a, cond, op2, cc, p, disp19);
-            fmt.verify();
-            return fmt;
-        }
-
-        @Override
-        public void emit(SPARCAssembler masm) {
-            if (label != null) {
-                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
-                final int disp = pos - masm.position();
-                setDisp19(disp);
-            }
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        private static int patchUnbound(SPARCAssembler masm, Label label) {
-            label.addPatchAt(masm.position());
-            return 0;
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            assert p < 2;
-            assert cond < 0x10;
-        }
-
-        @Override
-        public String toString() {
-            return "Fmt00c [a=" + a + ", cond=" + cond + ", cc=" + cc + ", p=" + p + ", disp19=" + disp19 + ", label=" + label + "]";
-        }
-    }
-
-    // @formatter:off
-    /**
-     * Instruction format for Branch on Integer Register with Prediction.
-     * <pre>
-     * |00   |a |- |rcond | 011 |d16hi|p | rs1 |          d16lo           |
-     * |31 30|29|28|27  25|24 22|21 20|19|18 14|                         0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt00d extends Fmt00 {
-
-        private static final int RCOND_SHIFT = 25;
-        private static final int D16HI_SHIFT = 20;
-        private static final int P_SHIFT = 19;
-        private static final int RS1_SHIFT = 14;
-        private static final int D16LO_SHIFT = 0;
-
-        // @formatter:off
-        private static final int RCOND_MASK    = 0b0000_1110_0000_0000_0000_0000_0000_0000;
-        private static final int D16HI_MASK    = 0b0000_0000_0011_0000_0000_0000_0000_0000;
-        private static final int P_MASK        = 0b0000_0000_0000_1000_0000_0000_0000_0000;
-        private static final int RS1_MASK      = 0b0000_0000_0000_0111_1100_0000_0000_0000;
-        private static final int D16LO_MASK    = 0b0000_0000_0000_0000_0011_1111_1111_1111;
-        // @formatter:on
-
-        private int annul;
-        private int rCondition;
-        private int disp16;
-        private int predictTaken;
-        private int rs1;
-        private Label label;
-
-        public Fmt00d(int op2, int rCondition, int predictTaken, int annul, int d16, int rs1, Label label) {
-            super(op2);
-            this.annul = annul;
-            this.rCondition = rCondition;
-            setDisp16(d16);
-            this.predictTaken = predictTaken;
-            this.rs1 = rs1;
-            this.label = label;
-        }
-
-        @Override
-        public void setImm(int imm) {
-            setDisp16(imm);
-        }
-
-        public void setDisp16(int disp16) {
-            this.disp16 = disp16 >> 2;
-        }
-
-        @Override
-        public int getA() {
-            return annul;
-        }
-
-        @Override
-        public void emit(SPARCAssembler masm) {
-            if (label != null) {
-                final int pos = label.isBound() ? label.position() : patchUnbound(masm, label);
-                final int disp = pos - masm.position();
-                setDisp16(disp);
-            }
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        private static int patchUnbound(SPARCAssembler masm, Label label) {
-            label.addPatchAt(masm.position());
-            return 0;
-        }
-
-        @Override
-        protected int getInstructionBits() {
-            int d16Split = 0;
-            d16Split |= (disp16 & 0b1100_0000_0000_0000) << D16HI_SHIFT - 14;
-            d16Split |= (disp16 & 0b0011_1111_1111_1111) << D16LO_SHIFT;
-            return super.getInstructionBits() | annul << A_SHIFT | rCondition << RCOND_SHIFT | d16Split | predictTaken << P_SHIFT | rs1 << RS1_SHIFT;
-        }
-
-        public static Fmt00d read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
-            final int condFlag = (inst & CBCOND_MASK) >> CBCOND_SHIFT;
-            assert op2 == Op2s.Bpr.getValue() && op == Ops.BranchOp.getValue() && condFlag == 0 : "0x" + Integer.toHexString(inst);
-
-            // Get the instruction fields:
-            final int a = (inst & A_MASK) >> A_SHIFT;
-            final int cond = (inst & RCOND_MASK) >> RCOND_SHIFT;
-            final int p = (inst & P_MASK) >> P_SHIFT;
-            final int rs1 = (inst & RS1_MASK) >> RS1_SHIFT;
-            final int d16hi = (inst & D16HI_MASK) >> D16HI_SHIFT;
-            assert (d16hi & ~0b11) == 0;
-            final int d16lo = (inst & D16LO_MASK) >> D16LO_SHIFT;
-            assert (d16lo & ~((1 << 14) - 1)) == 0;
-            final int d16 = (short) (((d16hi << 14) | d16lo) << 2); // times 4 and sign extend
-            Fmt00d fmt = new Fmt00d(op2, cond, p, a, d16, rs1, null);
-            fmt.verify();
-            return fmt;
-        }
-
-        @Override
-        public void verify() {
-            super.verify();
-            assert (annul & ~1) == 0 : annul;
-            assert (rCondition & ~0b111) == 0 : rCondition;
-            assert isSimm(disp16, 16) : disp16;
-            assert (predictTaken & ~1) == 0 : predictTaken;
-            assert (rs1 & ~((1 << 5) - 1)) == 0 : rs1;
-        }
-    }
+    protected static final int DISP22_SHIFT = 0;
+    protected static final int DISP22_MASK = 0b00000000001111111111111111111111;
+
+    protected static final int DISP19_SHIFT = 0;
+    protected static final int DISP19_MASK = 0b00000000000001111111111111111111;
+
+    protected static final int D16HI_SHIFT = 20;
+    protected static final int D16HI_MASK = 0b0000_0000_0011_0000_0000_0000_0000_0000;
+    protected static final int D16LO_SHIFT = 0;
+    protected static final int D16LO_MASK = 0b0000_0000_0000_0000_0011_1111_1111_1111;
 
     // @formatter:off
     /**
@@ -654,24 +233,24 @@ public abstract class SPARCAssembler extends Assembler {
      */
     // @formatter:on
     public static class Fmt00e extends Fmt00 {
-        private static final int CHI_SHIFT = 29;
-        private static final int CLO_SHIFT = 25;
-        private static final int CC2_SHIFT = 21;
-        private static final int D10HI_SHIFT = 19;
-        private static final int RS1_SHIFT = 14;
-        private static final int I_SHIFT = 13;
-        private static final int D10LO_SHIFT = 5;
-        private static final int RS2_SHIFT = 0;
+        protected static final int CHI_SHIFT = 29;
+        protected static final int CLO_SHIFT = 25;
+        protected static final int CC2_SHIFT = 21;
+        protected static final int D10HI_SHIFT = 19;
+        protected static final int RS1_SHIFT = 14;
+        protected static final int I_SHIFT = 13;
+        protected static final int D10LO_SHIFT = 5;
+        protected static final int RS2_SHIFT = 0;
 
         // @formatter:off
-        private static final int CHI_MASK      = 0b0010_0000_0000_0000_0000_0000_0000_0000;
-        private static final int CLO_MASK      = 0b0000_1110_0000_0000_0000_0000_0000_0000;
-        private static final int CC2_MASK      = 0b0000_0000_0010_0000_0000_0000_0000_0000;
-        private static final int D10HI_MASK    = 0b0000_0000_0001_1000_0000_0000_0000_0000;
-        private static final int RS1_MASK      = 0b0000_0000_0000_0111_1100_0000_0000_0000;
-        private static final int I_MASK        = 0b0000_0000_0000_0000_0010_0000_0000_0000;
-        private static final int D10LO_MASK    = 0b0000_0000_0000_0000_0001_1111_1110_0000;
-        private static final int RS2_MASK      = 0b0000_0000_0000_0000_0000_0000_0001_1111;
+        protected static final int CHI_MASK      = 0b0010_0000_0000_0000_0000_0000_0000_0000;
+        protected static final int CLO_MASK      = 0b0000_1110_0000_0000_0000_0000_0000_0000;
+        protected static final int CC2_MASK      = 0b0000_0000_0010_0000_0000_0000_0000_0000;
+        protected static final int D10HI_MASK    = 0b0000_0000_0001_1000_0000_0000_0000_0000;
+        protected static final int RS1_MASK      = 0b0000_0000_0000_0111_1100_0000_0000_0000;
+        protected static final int I_MASK        = 0b0000_0000_0000_0000_0010_0000_0000_0000;
+        protected static final int D10LO_MASK    = 0b0000_0000_0000_0000_0001_1111_1110_0000;
+        protected static final int RS2_MASK      = 0b0000_0000_0000_0000_0000_0000_0001_1111;
         // @formatter:on
 
         private int c;
@@ -809,11 +388,9 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     public static class Fmt01 {
 
-        private static final int OP_SHIFT = 30;
         private static final int DISP30_SHIFT = 0;
 
         // @formatter:off
-        private static final int OP_MASK     = 0b11000000000000000000000000000000;
         private static final int DISP30_MASK = 0b00111111111111111111111111111111;
         // @formatter:on
 
@@ -995,7 +572,6 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     public static class Fmt10 implements AssemblerEmittable {
 
-        private static final int OP_SHIFT = 30;
         private static final int RD_SHIFT = 25;
         private static final int OP3_SHIFT = 19;
         private static final int RS1_SHIFT = 14;
@@ -1006,7 +582,6 @@ public abstract class SPARCAssembler extends Assembler {
         private static final int SIMM13_SHIFT = 0;
 
         // @formatter:off
-        private static final int OP_MASK      = 0b11000000000000000000000000000000;
         private static final int RD_MASK      = 0b00111110000000000000000000000000;
         private static final int OP3_MASK     = 0b00000001111110000000000000000000;
         private static final int RS1_MASK     = 0b00000000000001111100000000000000;
@@ -1147,7 +722,6 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     public static class Fmt11 {
 
-        private static final int OP_SHIFT = 30;
         private static final int RD_SHIFT = 25;
         private static final int OP3_SHIFT = 19;
         private static final int RS1_SHIFT = 14;
@@ -1157,7 +731,6 @@ public abstract class SPARCAssembler extends Assembler {
         private static final int SIMM13_SHIFT = 0;
 
         // @formatter:off
-        private static final int OP_MASK      = 0b11000000000000000000000000000000;
         private static final int RD_MASK      = 0b00111110000000000000000000000000;
         private static final int OP3_MASK     = 0b00000001111110000000000000000000;
         private static final int RS1_MASK     = 0b00000000000001111100000000000000;
@@ -1292,7 +865,6 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     public static class Fmt10c {
 
-        private static final int OP_SHIFT = 30;
         private static final int RD_SHIFT = 25;
         private static final int OP3_SHIFT = 19;
         private static final int CC2_SHIFT = 18;
@@ -1304,7 +876,6 @@ public abstract class SPARCAssembler extends Assembler {
         private static final int SIMM11_SHIFT = 0;
 
         // @formatter:off
-        private static final int OP_MASK     = 0b11000000000000000000000000000000;
         private static final int RD_MASK     = 0b00111110000000000000000000000000;
         private static final int OP3_MASK    = 0b00000001111110000000000000000000;
         private static final int CC2_MASK    = 0b00000000000001000000000000000000;
@@ -1417,7 +988,6 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     public static class Fmt10d implements AssemblerEmittable {
 
-        private static final int OP_SHIFT = 30;
         private static final int RD_SHIFT = 25;
         private static final int OP3_SHIFT = 19;
         private static final int COND_SHIFT = 14;
@@ -1895,6 +1465,26 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    public enum Annul {
+        ANNUL(1),
+        NOT_ANNUL(0);
+        public final int flag;
+
+        Annul(int flag) {
+            this.flag = flag;
+        }
+    }
+
+    public enum BranchPredict {
+        PREDICT_TAKEN(1),
+        PREDICT_NOT_TAKEN(0);
+        public final int flag;
+
+        BranchPredict(int flag) {
+            this.flag = flag;
+        }
+    }
+
     public enum MembarMask {
         // @formatter:off
 
@@ -1961,40 +1551,21 @@ public abstract class SPARCAssembler extends Assembler {
         public String getOperator() {
             return operator;
         }
-    }
 
-    public enum FCond {
-        Fba(0x8, "fba"),
-        Fbn(0x0, "fbn"),
-        Fbu(0x7, "fbu"),
-        Fbg(0x6, "fbg"),
-        Fbug(0x5, "fbug"),
-        Fbl(0x4, "fbl"),
-        Fbul(0x3, "fbul"),
-        Fblg(0x2, "fblg"),
-        Fbne(0x1, "fbne"),
-        Fbe(0x9, "fbe"),
-        Fbue(0xA, "fbue"),
-        Fbge(0xB, "fbge"),
-        Fbuge(0xC, "fbuge"),
-        Fble(0xD, "fble"),
-        Fbule(0xE, "fbule"),
-        Fbo(0xF, "fbo");
-        private final int value;
-        private final String operator;
-
-        private FCond(int value, String op) {
-            assert value >= 0 && value < 1 << 5 : value; // 4 bits
-            this.value = value;
-            this.operator = op;
-        }
-
-        public int getValue() {
-            return value;
-        }
-
-        public String getOperator() {
-            return operator;
+        public static CC forKind(Kind kind) {
+            boolean isInt = kind == Kind.Boolean || kind == Kind.Byte || kind == Kind.Char || kind == Kind.Short || kind == Kind.Int;
+            boolean isFloat = kind == Kind.Float || kind == Kind.Double;
+            boolean isLong = kind == Kind.Long || kind == Kind.Object;
+            assert isInt || isFloat || isLong;
+            if (isLong) {
+                return Xcc;
+            } else if (isInt) {
+                return Icc;
+            } else if (isFloat) {
+                return Fcc0;
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 
@@ -2115,31 +1686,56 @@ public abstract class SPARCAssembler extends Assembler {
             return null;
         }
 
+        public ConditionFlag mirror() {
+            switch (this) {
+            //@formatter:off
+                case F_Less                   : return F_Greater;
+                case F_Greater                : return F_Less;
+                case F_LessOrEqual            : return F_GreaterOrEqual;
+                case F_UnorderedGreaterOrEqual: return F_UnorderedOrLessOrEqual;
+                case F_UnorderedOrGreater     : return F_UnorderedOrLess;
+                case F_UnorderedOrLessOrEqual : return F_UnorderedGreaterOrEqual;
+                case F_GreaterOrEqual         : return F_LessOrEqual;
+                case F_UnorderedOrLess        : return F_UnorderedOrGreater;
+                case LessEqual                : return GreaterEqual;
+                case Greater                  : return Less;
+                case Less                     : return Greater;
+                case GreaterEqual             : return LessEqual;
+                case LessEqualUnsigned        : return GreaterEqualUnsigned;
+                case GreaterUnsigned          : return LessUnsigned;
+                case LessUnsigned             : return GreaterUnsigned;
+                case GreaterEqualUnsigned     : return LessEqualUnsigned;
+                default:
+                    return this;
+                //@formatter:on
+            }
+        }
+
         public static ConditionFlag fromCondtition(CC conditionFlagsRegister, Condition cond, boolean unorderedIsTrue) {
             switch (conditionFlagsRegister) {
                 case Xcc:
                 case Icc:
                     switch (cond) {
                         case EQ:
-                            return ConditionFlag.Equal;
+                            return Equal;
                         case NE:
-                            return ConditionFlag.NotEqual;
+                            return NotEqual;
                         case BT:
-                            return ConditionFlag.LessUnsigned;
+                            return LessUnsigned;
                         case LT:
-                            return ConditionFlag.Less;
+                            return Less;
                         case BE:
-                            return ConditionFlag.LessEqualUnsigned;
+                            return LessEqualUnsigned;
                         case LE:
-                            return ConditionFlag.LessEqual;
+                            return LessEqual;
                         case AE:
-                            return ConditionFlag.GreaterEqualUnsigned;
+                            return GreaterEqualUnsigned;
                         case GE:
-                            return ConditionFlag.GreaterEqual;
+                            return GreaterEqual;
                         case AT:
-                            return ConditionFlag.GreaterUnsigned;
+                            return GreaterUnsigned;
                         case GT:
-                            return ConditionFlag.Greater;
+                            return Greater;
                     }
                     throw GraalInternalError.shouldNotReachHere("Unimplemented for: " + cond);
                 case Fcc0:
@@ -2148,17 +1744,17 @@ public abstract class SPARCAssembler extends Assembler {
                 case Fcc3:
                     switch (cond) {
                         case EQ:
-                            return unorderedIsTrue ? ConditionFlag.F_UnorderedOrEqual : ConditionFlag.F_Equal;
+                            return unorderedIsTrue ? F_UnorderedOrEqual : F_Equal;
                         case NE:
                             return ConditionFlag.F_NotEqual;
                         case LT:
-                            return unorderedIsTrue ? ConditionFlag.F_UnorderedOrLess : ConditionFlag.F_Less;
+                            return unorderedIsTrue ? F_UnorderedOrLess : F_Less;
                         case LE:
-                            return unorderedIsTrue ? ConditionFlag.F_UnorderedOrLessOrEqual : ConditionFlag.F_LessOrEqual;
+                            return unorderedIsTrue ? F_UnorderedOrLessOrEqual : F_LessOrEqual;
                         case GE:
-                            return unorderedIsTrue ? ConditionFlag.F_UnorderedGreaterOrEqual : ConditionFlag.F_GreaterOrEqual;
+                            return unorderedIsTrue ? F_UnorderedGreaterOrEqual : F_GreaterOrEqual;
                         case GT:
-                            return unorderedIsTrue ? ConditionFlag.F_UnorderedOrGreater : ConditionFlag.F_Greater;
+                            return unorderedIsTrue ? F_UnorderedOrGreater : F_Greater;
                     }
                     throw GraalInternalError.shouldNotReachHere("Unkown condition: " + cond);
             }
@@ -2256,6 +1852,11 @@ public abstract class SPARCAssembler extends Assembler {
         return x & ((1 << nbits) - 1);
     }
 
+    public static final boolean isImm(int x, int nbits) {
+        // assert_signed_range(x, nbits);
+        return simm(x, nbits) == x;
+    }
+
     /**
      * Minimum value for signed immediate ranges.
      */
@@ -2315,6 +1916,149 @@ public abstract class SPARCAssembler extends Assembler {
 
     public static final int lo10(int x) {
         return x & ((1 << 10) - 1);
+    }
+
+    // @formatter:off
+    /**
+     * Instruction format for Fmt00 instructions. This abstraction is needed as it
+     * makes the patching easier later on.
+     * <pre>
+     * | 00  |    a   | op2 |               b                         |
+     * |31 30|29    25|24 22|21                                      0|
+     * </pre>
+     */
+    // @formatter:on
+    protected void fmt00(int a, int op2, int b) {
+        assert isImm(a, 5) && isImm(op2, 3) && isImm(b, 22) : String.format("a: 0x%x op2: 0x%x b: 0x%x", a, op2, b);
+        this.emitInt(a << 25 | op2 << 22 | b);
+    }
+
+    // @formatter:off
+    /**
+     * Branch on Integer Condition Codes.
+     * <pre>
+     * | 00  |annul| cond| 010 |               disp22                 |
+     * |31 30|29   |28 25|24 22|21                                   0|
+     * </pre>
+     */
+    // @formatter:on
+    public void bicc(ConditionFlag cond, Annul annul, Label l) {
+        bcc(Op2s.Br, cond, annul, l);
+    }
+
+    // @formatter:off
+    /**
+     * Branch on Floating-Point Condition Codes.
+     * <pre>
+     * | 00  |annul| cond| 110 |               disp22                 |
+     * |31 30|29   |28 25|24 22|21                                   0|
+     * </pre>
+     */
+    // @formatter:on
+    public void fbcc(ConditionFlag cond, Annul annul, Label l) {
+        bcc(Op2s.Fb, cond, annul, l);
+    }
+
+    // @formatter:off
+    /**
+     * Branch on (Integer|Floatingpoint) Condition Codes
+     * <pre>
+     * | 00  |annul| cond| op2 |               disp22                 |
+     * |31 30|29   |28 25|24 22|21                                   0|
+     * </pre>
+     */
+    // @formatter:on
+    private void bcc(Op2s op2, ConditionFlag cond, Annul annul, Label l) {
+        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
+        final int disp = 22;
+        assert isSimm(pos, disp);
+        pos &= (1 << disp) - 1;
+        int a = (annul.flag << 4) | cond.getValue();
+        fmt00(a, op2.getValue(), pos);
+    }
+
+    // @formatter:off
+    /**
+     * Branch on Integer Condition Codes with Prediction.
+     * <pre>
+     * | 00  |an|cond | 001 |cc1 2|p |           disp19               |
+     * |31 30|29|28 25|24 22|21 20|19|                               0|
+     * </pre>
+     */
+    // @formatter:on
+    public void bpcc(ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
+        bpcc(Op2s.Bp, cond, annul, l, cc, predictTaken);
+    }
+
+    // @formatter:off
+    /**
+     * Branch on Integer Condition Codes with Prediction.
+     * <pre>
+     * | 00  |an|cond | 101 |cc1 2|p |           disp19               |
+     * |31 30|29|28 25|24 22|21 20|19|                               0|
+     * </pre>
+     */
+    // @formatter:on
+    public void fbpcc(ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
+        bpcc(Op2s.Fbp, cond, annul, l, cc, predictTaken);
+    }
+
+    // @formatter:off
+    /**
+     * Used for fbpcc (Float) and bpcc (Integer)
+     * <pre>
+     * | 00  |an|cond | op2 |cc1 2|p |           disp19               |
+     * |31 30|29|28 25|24 22|21 20|19|                               0|
+     * </pre>
+     */
+    // @formatter:on
+    private void bpcc(Op2s op2, ConditionFlag cond, Annul annul, Label l, CC cc, BranchPredict predictTaken) {
+        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
+        final int disp = 19;
+        assert isSimm(pos, disp);
+        pos &= (1 << disp) - 1;
+        int a = (annul.flag << 4) | cond.getValue();
+        int b = (cc.getValue() << 20) | ((predictTaken.flag) << 19) | pos;
+        fmt00(a, op2.getValue(), b);
+    }
+
+    // @formatter:off
+    /**
+     * Branch on Integer Register with Prediction.
+     * <pre>
+     * | 00  |an| 0|rcond | 011 |d16hi|p | rs1 |    d16lo             |
+     * |31 30|29|28|27 25 |24 22|21 20|19|18 14|                     0|
+     * </pre>
+     */
+    // @formatter:on
+    public void bpr(RCondition cond, Annul annul, Label l, BranchPredict predictTaken, Register rs1) {
+        int pos = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
+        final int disp = 16;
+        assert isSimm(pos, disp);
+        pos &= (1 << disp) - 1;
+        int a = (annul.flag << 4) | cond.getValue();
+        int d16hi = (pos >> 13) << 13;
+        int d16lo = d16hi ^ pos;
+        int b = (d16hi << 20) | (predictTaken.flag << 19) | (rs1.encoding() << 14) | d16lo;
+        fmt00(a, Op2s.Bpr.getValue(), b);
+    }
+
+    // @formatter:off
+    /**
+     * NOP.
+     * <pre>
+     * | 00  |00000| 100 |                0                    |
+     * |31 30|29 25|24 22|21                                  0|
+     * </pre>
+     */
+    // @formatter:on
+    public void nop() {
+        emitInt(1 << 24);
+    }
+
+    private int patchUnbound(Label label) {
+        label.addPatchAt(position());
+        return 0;
     }
 
     public static class Add extends Fmt10 {
@@ -2589,232 +2333,6 @@ public abstract class SPARCAssembler extends Assembler {
             super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fdtos, g0, src, dst);
             assert isSingleFloatRegister(dst);
             assert isDoubleFloatRegister(src);
-        }
-    }
-
-    public static class Bpr extends Fmt00d {
-        public Bpr(RCondition rcond, boolean annul, boolean predictTaken, Register rs1, Label label) {
-            super(Op2s.Bpr.getValue(), rcond.getValue(), predictTaken ? 1 : 0, annul ? 1 : 0, 0, rs1.encoding(), label);
-        }
-    }
-
-    public static class Bpa extends Fmt00c {
-
-        public Bpa(int simm19) {
-            super(0, ConditionFlag.Always, Op2s.Bp, CC.Icc, 1, simm19);
-        }
-
-        public Bpa(Label label) {
-            super(0, ConditionFlag.Always, Op2s.Bp, CC.Icc, 1, label);
-        }
-    }
-
-    public static class Bpcc extends Fmt00c {
-
-        public Bpcc(CC cc, int simm19) {
-            super(0, ConditionFlag.CarryClear, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpcc(CC cc, Label label) {
-            super(0, ConditionFlag.CarryClear, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpcc(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.CarryClear, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpcs extends Fmt00c {
-
-        public Bpcs(CC cc, int simm19) {
-            super(0, ConditionFlag.CarrySet, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpcs(CC cc, Label label) {
-            super(0, ConditionFlag.CarrySet, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpcs(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.CarrySet, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpe extends Fmt00c {
-
-        public Bpe(CC cc, int simm19) {
-            super(0, ConditionFlag.Equal, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpe(CC cc, Label label, boolean predictTaken) {
-            super(0, ConditionFlag.Equal, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-
-        public Bpe(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.Equal, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-
-        public Bpe(CC cc, Label label) {
-            super(0, ConditionFlag.Equal, Op2s.Bp, cc, 1, label);
-        }
-    }
-
-    public static class Bpg extends Fmt00c {
-
-        public Bpg(CC cc, int simm19) {
-            super(0, ConditionFlag.Greater, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpg(CC cc, Label label) {
-            super(0, ConditionFlag.Greater, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpg(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.Greater, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpge extends Fmt00c {
-
-        public Bpge(CC cc, int simm19) {
-            super(0, ConditionFlag.GreaterEqual, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpge(CC cc, Label label) {
-            super(0, ConditionFlag.GreaterEqual, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpge(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.GreaterEqual, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpgu extends Fmt00c {
-
-        public Bpgu(CC cc, int simm19) {
-            super(0, ConditionFlag.GreaterUnsigned, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpgu(CC cc, Label label) {
-            super(0, ConditionFlag.GreaterUnsigned, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpgu(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.GreaterUnsigned, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpl extends Fmt00c {
-
-        public Bpl(CC cc, int simm19) {
-            super(0, ConditionFlag.Less, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpl(CC cc, Label label) {
-            super(0, ConditionFlag.Less, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpl(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.Less, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bple extends Fmt00c {
-
-        public Bple(CC cc, int simm19) {
-            super(0, ConditionFlag.LessEqual, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bple(CC cc, Label label) {
-            super(0, ConditionFlag.LessEqual, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bple(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.LessEqual, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpleu extends Fmt00c {
-
-        public Bpleu(CC cc, int simm19) {
-            super(0, ConditionFlag.LessEqualUnsigned, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpleu(CC cc, Label label) {
-            super(0, ConditionFlag.LessEqualUnsigned, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpleu(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.LessEqualUnsigned, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpn extends Fmt00c {
-
-        public Bpn(CC cc, int simm19) {
-            super(0, ConditionFlag.Never, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpn(CC cc, Label label) {
-            super(0, ConditionFlag.Never, Op2s.Bp, cc, 1, label);
-        }
-    }
-
-    public static class Bpne extends Fmt00c {
-
-        public Bpne(CC cc, int simm19) {
-            super(0, ConditionFlag.NotZero, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpne(CC cc, Label label) {
-            super(0, ConditionFlag.NotZero, Op2s.Bp, cc, 1, label);
-        }
-
-        public Bpne(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(annul ? 1 : 0, ConditionFlag.NotZero, Op2s.Bp, cc, predictTaken ? 1 : 0, label);
-        }
-    }
-
-    public static class Bpneg extends Fmt00c {
-
-        public Bpneg(CC cc, int simm19) {
-            super(0, ConditionFlag.Negative, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpneg(CC cc, Label label) {
-            super(0, ConditionFlag.Negative, Op2s.Bp, cc, 1, label);
-        }
-    }
-
-    public static class Bppos extends Fmt00c {
-
-        public Bppos(CC cc, int simm19) {
-            super(0, ConditionFlag.Positive, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bppos(CC cc, Label label) {
-            super(0, ConditionFlag.Positive, Op2s.Bp, cc, 1, label);
-        }
-    }
-
-    public static class Bpvc extends Fmt00c {
-
-        public Bpvc(CC cc, int simm19) {
-            super(0, ConditionFlag.OverflowClear, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpvc(CC cc, Label label) {
-            super(0, ConditionFlag.OverflowClear, Op2s.Bp, cc, 1, label);
-        }
-    }
-
-    public static class Bpvs extends Fmt00c {
-
-        public Bpvs(CC cc, int simm19) {
-            super(0, ConditionFlag.OverflowSet, Op2s.Bp, cc, 1, simm19);
-        }
-
-        public Bpvs(CC cc, Label label) {
-            super(0, ConditionFlag.OverflowSet, Op2s.Bp, cc, 1, label);
         }
     }
 
@@ -3661,166 +3179,6 @@ public abstract class SPARCAssembler extends Assembler {
             super(Ops.ArithOp, cc, 0b110101, opf, r1, r2);
             assert opf != Opfs.Fcmpd || (isDoubleFloatRegister(r1) && isDoubleFloatRegister(r2));
             assert opf != Opfs.Fcmps || (isSingleFloatRegister(r1) && isSingleFloatRegister(r2));
-        }
-    }
-
-    public static class Fba extends Fmt00b {
-        public Fba(boolean annul, Label label) {
-            super(annul, FCond.Fba, Op2s.Fb, label);
-        }
-
-        public Fba(boolean annul, int disp) {
-            super(annul, FCond.Fba, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbn extends Fmt00b {
-        public Fbn(boolean annul, Label label) {
-            super(annul, FCond.Fbn, Op2s.Fb, label);
-        }
-
-        public Fbn(boolean annul, int disp) {
-            super(annul, FCond.Fbn, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbu extends Fmt00b {
-        public Fbu(boolean annul, Label label) {
-            super(annul, FCond.Fbu, Op2s.Fb, label);
-        }
-
-        public Fbu(boolean annul, int disp) {
-            super(annul, FCond.Fbu, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbg extends Fmt00b {
-        public Fbg(boolean annul, Label label) {
-            super(annul, FCond.Fbg, Op2s.Fb, label);
-        }
-
-        public Fbg(boolean annul, int disp) {
-            super(annul, FCond.Fbg, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbug extends Fmt00b {
-        public Fbug(boolean annul, Label label) {
-            super(annul, FCond.Fbug, Op2s.Fb, label);
-        }
-
-        public Fbug(boolean annul, int disp) {
-            super(annul, FCond.Fbug, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbl extends Fmt00b {
-        public Fbl(boolean annul, Label label) {
-            super(annul, FCond.Fbl, Op2s.Fb, label);
-        }
-
-        public Fbl(boolean annul, int disp) {
-            super(annul, FCond.Fbl, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbul extends Fmt00b {
-        public Fbul(boolean annul, Label label) {
-            super(annul, FCond.Fbul, Op2s.Fb, label);
-        }
-
-        public Fbul(boolean annul, int disp) {
-            super(annul, FCond.Fbul, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fblg extends Fmt00b {
-        public Fblg(boolean annul, Label label) {
-            super(annul, FCond.Fblg, Op2s.Fb, label);
-        }
-
-        public Fblg(boolean annul, int disp) {
-            super(annul, FCond.Fblg, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbne extends Fmt00b {
-        public Fbne(boolean annul, Label label) {
-            super(annul, FCond.Fbne, Op2s.Fb, label);
-        }
-
-        public Fbne(boolean annul, int disp) {
-            super(annul, FCond.Fbne, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbe extends Fmt00b {
-        public Fbe(boolean annul, Label label) {
-            super(annul, FCond.Fbe, Op2s.Fb, label);
-        }
-
-        public Fbe(boolean annul, int disp) {
-            super(annul, FCond.Fbe, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbue extends Fmt00b {
-        public Fbue(boolean annul, Label label) {
-            super(annul, FCond.Fbue, Op2s.Fb, label);
-        }
-
-        public Fbue(boolean annul, int disp) {
-            super(annul, FCond.Fbue, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbge extends Fmt00b {
-        public Fbge(boolean annul, Label label) {
-            super(annul, FCond.Fbge, Op2s.Fb, label);
-        }
-
-        public Fbge(boolean annul, int disp) {
-            super(annul, FCond.Fbge, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbuge extends Fmt00b {
-        public Fbuge(boolean annul, Label label) {
-            super(annul, FCond.Fbuge, Op2s.Fb, label);
-        }
-
-        public Fbuge(boolean annul, int disp) {
-            super(annul, FCond.Fbuge, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fble extends Fmt00b {
-        public Fble(boolean annul, Label label) {
-            super(annul, FCond.Fble, Op2s.Fb, label);
-        }
-
-        public Fble(boolean annul, int disp) {
-            super(annul, FCond.Fble, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbule extends Fmt00b {
-        public Fbule(boolean annul, Label label) {
-            super(annul, FCond.Fbule, Op2s.Fb, label);
-        }
-
-        public Fbule(boolean annul, int disp) {
-            super(annul, FCond.Fbule, Op2s.Fb, disp);
-        }
-    }
-
-    public static class Fbo extends Fmt00b {
-        public Fbo(boolean annul, Label label) {
-            super(annul, FCond.Fbo, Op2s.Fb, label);
-        }
-
-        public Fbo(boolean annul, int disp) {
-            super(annul, FCond.Fbo, Op2s.Fb, disp);
         }
     }
 

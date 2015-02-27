@@ -24,7 +24,12 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -216,9 +221,9 @@ public enum SPARCArithmetic {
             // Now construct the lower half and compare
             new Srax(asLongReg(result), 63, asLongReg(scratch2)).emit(masm);
             new Cmp(asLongReg(scratch1), asLongReg(scratch2)).emit(masm);
-            new Bpe(CC.Xcc, false, true, noOverflow).emit(masm);
+            masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
             new Nop().emit(masm);
-            new Wrccr(SPARC.g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT)).emit(masm);
+            new Wrccr(g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT)).emit(masm);
             masm.bind(noOverflow);
         }
     }
@@ -367,7 +372,7 @@ public enum SPARCArithmetic {
                         new Nop().emit(masm);
                     } else {
                         new Cmp(tmp, asIntReg(dst)).emit(masm);
-                        new Bpe(CC.Xcc, noOverflow).emit(masm);
+                        masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
                         new Nop().emit(masm);
                     }
                     new Wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT)).emit(masm);
@@ -704,14 +709,14 @@ public enum SPARCArithmetic {
                 break;
             case F2L:
                 new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                new Fbo(true, notOrdered).emit(masm);
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
                 new Fstox(asFloatReg(src), asDoubleReg(dst)).emit(masm);
                 new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                 masm.bind(notOrdered);
                 break;
             case F2I:
                 new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                new Fbo(true, notOrdered).emit(masm);
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
                 new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
                 new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
                 new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
@@ -719,7 +724,7 @@ public enum SPARCArithmetic {
                 break;
             case D2L:
                 new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                new Fbo(false, notOrdered).emit(masm);
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
                 new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
                 new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
                 new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
@@ -727,7 +732,7 @@ public enum SPARCArithmetic {
                 break;
             case D2I:
                 new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                new Fbo(true, notOrdered).emit(masm);
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
                 new Fdtoi(asDoubleReg(src), asFloatReg(dst)).emit(masm);
                 new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
                 new Fstoi(asFloatReg(dst), asFloatReg(dst)).emit(masm);

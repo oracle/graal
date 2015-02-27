@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.truffle.hotspot.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpe;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CBcondx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
@@ -67,7 +68,7 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
                         new CBcondx(ConditionFlag.Equal, spillRegister, 0, doProlog).emit(asm);
                     } else {
                         new Cmp(spillRegister, 0).emit(asm);
-                        new Bpe(CC.Xcc, doProlog).emit(asm);
+                        asm.bpcc(Equal, NOT_ANNUL, doProlog, Xcc, PREDICT_NOT_TAKEN);
                         new Nop().emit(asm);
                     }
                     new Ldx(verifiedEntryPointAddress, spillRegister).emit(asm); // in delay slot

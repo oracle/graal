@@ -24,6 +24,10 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.sparc.SPARC.*;
@@ -34,11 +38,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpne;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Save;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.RestoreWindow;
@@ -239,7 +239,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     new Ldx(src, scratch).emit(masm);
                     new Cmp(scratch, inlineCacheKlass).emit(masm);
                 }
-                new Bpne(CC.Xcc, unverifiedStub).emit(masm);
+                masm.bpcc(NotEqual, NOT_ANNUL, unverifiedStub, Xcc, PREDICT_NOT_TAKEN);
                 new Nop().emit(masm);  // delay slot
             }
 

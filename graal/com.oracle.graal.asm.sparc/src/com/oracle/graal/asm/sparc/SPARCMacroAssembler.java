@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.asm.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.*;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -48,16 +51,58 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
     @Override
     public void jmp(Label l) {
-        new Bpa(l).emit(this);
+        bicc(Always, NOT_ANNUL, l);
         new Nop().emit(this);  // delay slot
     }
 
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
-        final int disp = branchTarget - branch;
-        Fmt00 fmt = Fmt00.read(this, branch);
-        fmt.setImm(disp);
-        fmt.write(this, branch);
+        final int disp = (branchTarget - branch) / 4;
+        final int inst = getInt(branch);
+        Op2s op2 = Op2s.byValue((inst & OP2_MASK) >> OP2_SHIFT);
+        int maskBits;
+        int setBits;
+        switch (op2) {
+            case Br:
+            case Fb:
+            case Sethi:
+            case Illtrap:
+                // Disp 22 in the lower 22 bits
+                assert isSimm(disp, 22);
+                setBits = disp << DISP22_SHIFT;
+                maskBits = DISP22_MASK;
+                break;
+            case Fbp:
+            case Bp:
+                // Disp 19 in the lower 19 bits
+                assert isSimm(disp, 19);
+                setBits = disp << DISP19_SHIFT;
+                maskBits = DISP19_MASK;
+                break;
+            case Bpr:
+                boolean isCBcond = (inst & CBCOND_MASK) != 0;
+                if (isCBcond) {
+                    assert isSimm10(disp);
+                    int d10Split = 0;
+                    d10Split |= (disp & 0b11_0000_0000) << Fmt00e.D10HI_SHIFT - 8;
+                    d10Split |= (disp & 0b00_1111_1111) << Fmt00e.D10LO_SHIFT;
+                    setBits = d10Split;
+                    maskBits = Fmt00e.D10LO_MASK | Fmt00e.D10HI_MASK;
+                } else {
+                    assert isSimm(disp, 16);
+                    int d16Split = 0;
+                    d16Split |= (disp & 0b1100_0000_0000_0000) << D16HI_SHIFT - 14;
+                    d16Split |= (disp & 0b0011_1111_1111_1111) << D16LO_SHIFT;
+                    setBits = d16Split;
+                    maskBits = D16HI_MASK | D16LO_MASK;
+                }
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("Unknown op2 " + op2);
+        }
+        int newInst = ~maskBits & inst;
+        newInst |= setBits;
+        emitInt(newInst, branch);
     }
 
     @Override
@@ -83,36 +128,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
         public Bclr(int simm13, Register dst) {
             super(dst, simm13, dst);
-        }
-    }
-
-    public static class Bpgeu extends Bpcc {
-
-        public Bpgeu(CC cc, int simm19) {
-            super(cc, simm19);
-        }
-
-        public Bpgeu(CC cc, Label label) {
-            super(cc, label);
-        }
-
-        public Bpgeu(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(cc, annul, predictTaken, label);
-        }
-    }
-
-    public static class Bplu extends Bpcs {
-
-        public Bplu(CC cc, int simm19) {
-            super(cc, simm19);
-        }
-
-        public Bplu(CC cc, Label label) {
-            super(cc, label);
-        }
-
-        public Bplu(CC cc, boolean annul, boolean predictTaken, Label label) {
-            super(cc, annul, predictTaken, label);
         }
     }
 
