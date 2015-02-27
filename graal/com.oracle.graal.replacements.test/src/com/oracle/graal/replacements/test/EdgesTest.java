@@ -82,7 +82,7 @@ public class EdgesTest extends GraalCompilerTest {
      */
     @Test
     public void test0() {
-        testMethod(getMethod("getNode", Node.class, long[].class, int.class), inputs, node, 0);
+        testMethod(getMethod("getNode", Node.class, long[].class, int.class), null, node, inputs.getOffsets(), 0);
     }
 
     /**
@@ -91,7 +91,7 @@ public class EdgesTest extends GraalCompilerTest {
      */
     @Test
     public void test1() {
-        testMethod(getMethod("getNodeList", Node.class, long[].class, int.class), inputs, node, 2);
+        testMethod(getMethod("getNodeList", Node.class, long[].class, int.class), null, node, inputs.getOffsets(), 2);
     }
 
     /**
