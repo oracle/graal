@@ -175,13 +175,13 @@ public class LoopEx {
                 negated = true;
             }
             LogicNode ifTest = ifNode.condition();
-            if (!(ifTest instanceof IntegerLessThanNode)) {
+            if (!(ifTest instanceof IntegerLessThanNode) && !(ifTest instanceof IntegerEqualsNode)) {
                 if (ifTest instanceof IntegerBelowNode) {
                     Debug.log("Ignored potential Counted loop at %s with |<|", loopBegin);
                 }
                 return false;
             }
-            IntegerLessThanNode lessThan = (IntegerLessThanNode) ifTest;
+            CompareNode lessThan = (CompareNode) ifTest;
             Condition condition = null;
             InductionVariable iv = null;
             ValueNode limit = null;
@@ -198,6 +198,9 @@ public class LoopEx {
                     limit = lessThan.getY();
                 }
             }
+            if (iv != null && iv.constantStride() != 1 && !(ifTest instanceof IntegerLessThanNode)) {
+                return false;
+            }
             if (condition == null) {
                 return false;
             }
@@ -206,6 +209,24 @@ public class LoopEx {
             }
             boolean oneOff = false;
             switch (condition) {
+                case EQ:
+                    return false;
+                case NE: {
+                    IntegerStamp initStamp = (IntegerStamp) iv.initNode().stamp();
+                    IntegerStamp limitStamp = (IntegerStamp) limit.stamp();
+                    if (iv.direction() == Direction.Up) {
+                        if (initStamp.upperBound() > limitStamp.lowerBound()) {
+                            return false;
+                        }
+                    } else {
+                        assert iv.direction() == Direction.Down;
+                        if (initStamp.lowerBound() < limitStamp.upperBound()) {
+                            return false;
+                        }
+                    }
+                    oneOff = true;
+                    break;
+                }
                 case LE:
                     oneOff = true; // fall through
                 case LT:
