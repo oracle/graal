@@ -34,6 +34,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     public static class Bytecode {
         public static final byte CONST = 0;
         public static final byte RETURN = 1;
+        public static final byte ADD = 2;
     }
 
     public static class Program extends RootNode {
@@ -64,20 +65,27 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         public Object execute(VirtualFrame frame) {
             int topOfStack = -1;
             int bci = 0;
-
-            while (true) {
-                byte bc = bytecodes[bci];
-                byte value = 0;
-                switch (bc) {
-                    case Bytecode.CONST:
-                        value = bytecodes[bci + 1];
-                        topOfStack = topOfStack + 1;
-                        frame.setInt(stack[topOfStack], value);
-                        bci = bci + 2;
-                        break;
-                    case Bytecode.RETURN:
-                        return frame.getValue(stack[topOfStack]);
+            try {
+                while (true) {
+                    byte bc = bytecodes[bci];
+                    byte value = 0;
+                    switch (bc) {
+                        case Bytecode.CONST:
+                            value = bytecodes[bci + 1];
+                            topOfStack = topOfStack + 1;
+                            frame.setInt(stack[topOfStack], value);
+                            bci = bci + 2;
+                            break;
+                        case Bytecode.RETURN:
+                            return frame.getInt(stack[topOfStack]);
+                        case Bytecode.ADD:
+                            frame.setInt(stack[topOfStack - 1], frame.getInt(stack[topOfStack]) + frame.getInt(stack[topOfStack - 1]));
+                            bci = bci + 1;
+                            break;
+                    }
                 }
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException("Program is invalid at bytecode index " + bci);
             }
         }
     }
@@ -88,8 +96,13 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     @Test
     public void simpleProgram() {
-        FrameDescriptor fd = new FrameDescriptor();
         byte[] bytecodes = new byte[]{Bytecode.CONST, 42, Bytecode.RETURN};
+        assertPartialEvalEquals("constant42", new Program(bytecodes, 0, 2));
+    }
+
+    @Test
+    public void simpleProgramWithAdd() {
+        byte[] bytecodes = new byte[]{Bytecode.CONST, 40, Bytecode.CONST, 2, Bytecode.ADD, Bytecode.RETURN};
         assertPartialEvalEquals("constant42", new Program(bytecodes, 0, 2));
     }
 }
