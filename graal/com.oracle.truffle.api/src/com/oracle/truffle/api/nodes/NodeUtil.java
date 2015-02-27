@@ -696,6 +696,42 @@ public final class NodeUtil {
         return false;
     }
 
+    /**
+     * Executes a closure for every non-null child of the parent node.
+     *
+     * @return {@code true} if all children were visited, {@code false} otherwise
+     */
+    public static boolean forEachChild(Node parent, NodeVisitor visitor) {
+        Objects.requireNonNull(visitor);
+        NodeClass parentNodeClass = NodeClass.get(parent.getClass());
+
+        for (NodeField field : parentNodeClass.getChildFields()) {
+            Object child = field.getObject(parent);
+            if (child != null) {
+                if (!visitor.visit((Node) child)) {
+                    return false;
+                }
+            }
+        }
+
+        for (NodeField field : parentNodeClass.getChildrenFields()) {
+            Object arrayObject = field.getObject(parent);
+            if (arrayObject != null) {
+                Object[] array = (Object[]) arrayObject;
+                for (int i = 0; i < array.length; i++) {
+                    Object child = array[i];
+                    if (child != null) {
+                        if (!visitor.visit((Node) child)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     /** Returns all declared fields in the class hierarchy. */
     private static Field[] getAllFields(Class<? extends Object> clazz) {
         Field[] declaredFields = clazz.getDeclaredFields();
