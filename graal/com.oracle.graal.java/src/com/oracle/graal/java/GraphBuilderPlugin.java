@@ -73,6 +73,8 @@ public interface GraphBuilderPlugin {
 
     public interface LoopExplosionPlugin extends GraphBuilderPlugin {
         boolean shouldExplodeLoops(ResolvedJavaMethod method);
+
+        boolean shouldMergeExplosions(ResolvedJavaMethod method);
     }
 
     public interface ParameterPlugin extends GraphBuilderPlugin {

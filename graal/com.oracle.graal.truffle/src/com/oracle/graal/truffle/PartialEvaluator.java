@@ -238,6 +238,14 @@ public class PartialEvaluator {
             return method.getAnnotation(ExplodeLoop.class) != null;
         }
 
+        public boolean shouldMergeExplosions(ResolvedJavaMethod method) {
+            ExplodeLoop explodeLoop = method.getAnnotation(ExplodeLoop.class);
+            if (explodeLoop != null) {
+                return explodeLoop.merge();
+            }
+            return false;
+        }
+
     }
 
     @SuppressWarnings("unused")

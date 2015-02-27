@@ -41,15 +41,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     public static class Program extends RootNode {
         @CompilationFinal final byte[] bytecodes;
-        private final int maxStack;
-        private final int maxLocals;
         @CompilationFinal private final FrameSlot[] locals;
         @CompilationFinal private final FrameSlot[] stack;
 
         public Program(byte[] bytecodes, int maxLocals, int maxStack) {
             this.bytecodes = bytecodes;
-            this.maxLocals = maxLocals;
-            this.maxStack = maxStack;
             locals = new FrameSlot[maxLocals];
             stack = new FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
@@ -80,7 +76,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         @Override
-        @ExplodeLoop
+        @ExplodeLoop(merge = true)
         public Object execute(VirtualFrame frame) {
             int topOfStack = -1;
             int bci = 0;
