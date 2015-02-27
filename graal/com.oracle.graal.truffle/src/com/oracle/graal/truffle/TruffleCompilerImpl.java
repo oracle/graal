@@ -140,13 +140,6 @@ public class TruffleCompilerImpl {
                 return;
             }
 
-            if (!TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary.getValue()) {
-                // Do not inline across Truffle boundaries.
-                for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                    mct.invoke().setUseForInlining(false);
-                }
-            }
-
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
             CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable.getSpeculationLog(), compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);

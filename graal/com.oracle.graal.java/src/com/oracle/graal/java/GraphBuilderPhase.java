@@ -179,7 +179,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private static class ExplodedLoopContext {
             private BciBlock header;
-            private int targetPeelIteration;
+            private int[] targetPeelIteration;
             private int peelIteration;
         }
 
@@ -342,12 +342,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ExplodedLoopContext context = new ExplodedLoopContext();
                 context.header = header;
                 context.peelIteration = this.getCurrentDimension();
-                context.targetPeelIteration = -1;
                 explodeLoopsContext.push(context);
                 if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
                     Debug.dump(currentGraph, "before loop explosion dimension " + context.peelIteration);
                 }
 
+                peelIteration(blocks, header, context);
+                explodeLoopsContext.pop();
+                return header.loopEnd + 1;
+            }
+
+            private void peelIteration(BciBlock[] blocks, BciBlock header, ExplodedLoopContext context) {
                 while (true) {
 
                     processBlock(this, header);
@@ -356,20 +361,24 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         iterateBlock(blocks, block);
                     }
 
-                    if (context.targetPeelIteration != -1) {
+                    int[] targets = context.targetPeelIteration;
+                    if (targets != null) {
                         // We were reaching the backedge during explosion. Explode further.
-                        context.peelIteration = context.targetPeelIteration;
-                        context.targetPeelIteration = -1;
-                        if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
-                            Debug.dump(currentGraph, "next loop explosion iteration " + context.peelIteration);
+                        for (int i = 0; i < targets.length; ++i) {
+                            context.peelIteration = targets[i];
+                            context.targetPeelIteration = null;
+                            if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
+                                Debug.dump(currentGraph, "next loop explosion iteration " + context.peelIteration);
+                            }
+                            if (i < targets.length - 1) {
+                                peelIteration(blocks, header, context);
+                            }
                         }
                     } else {
                         // We did not reach the backedge. Exit.
                         break;
                     }
                 }
-                explodeLoopsContext.pop();
-                return header.loopEnd + 1;
             }
 
             /**
@@ -1457,23 +1466,27 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (context.header == block) {
 
                         // We have a hit on our current explosion context loop begin.
-                        if (context.targetPeelIteration == -1) {
-                            // This is the first hit => allocate a new dimension and at the same
-                            // time mark the context loop begin as hit during the current
-                            // iteration.
-                            context.targetPeelIteration = nextPeelIteration++;
-                            if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
-                                String message = "too many loop explosion interations - does the explosion not terminate for method " + method + "?";
-                                if (FailedLoopExplosionIsFatal.getValue()) {
-                                    throw new RuntimeException(message);
-                                } else {
-                                    throw bailout(message);
-                                }
+                        if (context.targetPeelIteration == null) {
+                            context.targetPeelIteration = new int[1];
+                        } else {
+                            context.targetPeelIteration = Arrays.copyOf(context.targetPeelIteration, context.targetPeelIteration.length + 1);
+                        }
+
+                        // This is the first hit => allocate a new dimension and at the same
+                        // time mark the context loop begin as hit during the current
+                        // iteration.
+                        context.targetPeelIteration[context.targetPeelIteration.length - 1] = nextPeelIteration++;
+                        if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
+                            String message = "too many loop explosion interations - does the explosion not terminate for method " + method + "?";
+                            if (FailedLoopExplosionIsFatal.getValue()) {
+                                throw new RuntimeException(message);
+                            } else {
+                                throw bailout(message);
                             }
                         }
 
                         // Operate on the target dimension.
-                        return context.targetPeelIteration;
+                        return context.targetPeelIteration[context.targetPeelIteration.length - 1];
                     } else if (block.getId() > context.header.getId() && block.getId() <= context.header.loopEnd) {
                         // We hit the range of this context.
                         return context.peelIteration;

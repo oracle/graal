@@ -211,7 +211,7 @@ public class InlineableGraph implements Inlineable {
             if (context.getGraphBuilderSuite() != null) {
                 context.getGraphBuilderSuite().apply(newGraph, context);
             }
-            assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite";
+            assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
 
             new DeadCodeEliminationPhase(Optional).apply(newGraph);
 
