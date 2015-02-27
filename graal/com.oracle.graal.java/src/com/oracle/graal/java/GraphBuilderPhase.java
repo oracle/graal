@@ -330,9 +330,156 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         index = iterateBlock(blocks, block);
                     }
 
+                    if (this.mergeExplosions) {
+                        detectLoops(startInstruction);
+                    }
+
                     if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue() && this.beforeReturnNode != startInstruction) {
                         Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
+                }
+            }
+
+            private void detectLoops(FixedNode startInstruction) {
+                NodeBitMap visited = currentGraph.createNodeBitMap();
+                NodeBitMap active = currentGraph.createNodeBitMap();
+                Stack<Node> stack = new Stack<>();
+                stack.add(startInstruction);
+                visited.mark(startInstruction);
+                while (!stack.isEmpty()) {
+                    Node next = stack.peek();
+                    assert next.isDeleted() || visited.isMarked(next);
+                    if (next.isDeleted() || active.isMarked(next)) {
+                        stack.pop();
+                        if (!next.isDeleted()) {
+                            active.clear(next);
+                        }
+                    } else {
+                        active.mark(next);
+                        for (Node n : next.cfgSuccessors()) {
+                            if (active.contains(n)) {
+                                // Detected cycle.
+                                assert n instanceof MergeNode;
+                                assert next instanceof EndNode;
+                                MergeNode merge = (MergeNode) n;
+                                EndNode endNode = (EndNode) next;
+                                merge.removeEnd(endNode);
+                                FixedNode afterMerge = merge.next();
+                                if (!(afterMerge instanceof EndNode) || !(((EndNode) afterMerge).merge() instanceof LoopBeginNode)) {
+                                    merge.setNext(null);
+                                    LoopBeginNode newLoopBegin = this.appendLoopBegin(merge);
+                                    newLoopBegin.setNext(afterMerge);
+                                }
+                                LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
+                                LoopEndNode loopEnd = currentGraph.add(new LoopEndNode(loopBegin));
+                                endNode.replaceAndDelete(loopEnd);
+                                System.out.println("Cycle detected! root node: " + n);
+                            } else if (visited.contains(n)) {
+                                // Normal merge into a branch we are already exploring.
+                            } else {
+                                visited.mark(n);
+                                stack.push(n);
+                            }
+                        }
+                    }
+                }
+
+                insertLoopEnds(startInstruction);
+            }
+
+            private void insertLoopEnds(FixedNode startInstruction) {
+                NodeBitMap visited = currentGraph.createNodeBitMap();
+                Stack<Node> stack = new Stack<>();
+                stack.add(startInstruction);
+                visited.mark(startInstruction);
+                List<LoopBeginNode> loopBegins = new ArrayList<>();
+                while (!stack.isEmpty()) {
+                    Node next = stack.pop();
+                    assert visited.isMarked(next);
+                    if (next instanceof LoopBeginNode) {
+                        loopBegins.add((LoopBeginNode) next);
+                    }
+                    for (Node n : next.cfgSuccessors()) {
+                        if (visited.contains(n)) {
+                            // Nothing to do.
+                        } else {
+                            visited.mark(n);
+                            stack.push(n);
+                        }
+                    }
+                }
+
+                IdentityHashMap<LoopBeginNode, List<LoopBeginNode>> innerLoopsMap = new IdentityHashMap<>();
+                for (int i = loopBegins.size() - 1; i >= 0; --i) {
+                    LoopBeginNode loopBegin = loopBegins.get(i);
+                    insertLoopExits(loopBegin, innerLoopsMap);
+                }
+            }
+
+            private void insertLoopExits(LoopBeginNode loopBegin, IdentityHashMap<LoopBeginNode, List<LoopBeginNode>> innerLoopsMap) {
+                NodeBitMap visited = currentGraph.createNodeBitMap();
+                Stack<Node> stack = new Stack<>();
+                for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
+                    stack.push(loopEnd);
+                    visited.mark(loopEnd);
+                }
+
+                List<ControlSplitNode> controlSplits = new ArrayList<>();
+                List<LoopBeginNode> innerLoopBegins = new ArrayList<>();
+
+                while (!stack.isEmpty()) {
+                    Node current = stack.pop();
+                    for (Node pred : current.cfgPredecessors()) {
+                        if (pred instanceof LoopExitNode) {
+                            // Inner loop
+                            LoopExitNode loopExitNode = (LoopExitNode) pred;
+                            LoopBeginNode innerLoopBegin = loopExitNode.loopBegin();
+                            if (!visited.isMarked(innerLoopBegin)) {
+                                stack.push(innerLoopBegin);
+                                visited.mark(innerLoopBegin);
+                                innerLoopBegins.add(innerLoopBegin);
+                            }
+                        } else if (!visited.isMarked(pred)) {
+                            if (pred instanceof ControlSplitNode) {
+                                ControlSplitNode controlSplitNode = (ControlSplitNode) pred;
+                                controlSplits.add(controlSplitNode);
+                            }
+                            stack.push(pred);
+                            visited.mark(pred);
+                        }
+                    }
+                }
+
+                for (ControlSplitNode controlSplit : controlSplits) {
+                    for (Node succ : controlSplit.cfgSuccessors()) {
+                        if (!visited.isMarked(succ)) {
+                            LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                            FixedNode next = ((FixedWithNextNode) succ).next();
+                            next.replaceAtPredecessor(loopExit);
+                            loopExit.setNext(next);
+                        }
+                    }
+                }
+
+                for (LoopBeginNode inner : innerLoopBegins) {
+                    addLoopExits(loopBegin, inner, innerLoopsMap, visited);
+                }
+
+                innerLoopsMap.put(loopBegin, innerLoopBegins);
+            }
+
+            private void addLoopExits(LoopBeginNode loopBegin, LoopBeginNode inner, IdentityHashMap<LoopBeginNode, List<LoopBeginNode>> innerLoopsMap, NodeBitMap visited) {
+                for (LoopExitNode exit : inner.loopExits()) {
+                    if (!visited.isMarked(exit)) {
+                        LoopExitNode newLoopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                        FixedNode next = exit.next();
+                        next.replaceAtPredecessor(newLoopExit);
+                        newLoopExit.setNext(next);
+                    }
+                }
+
+                for (LoopBeginNode innerInner : innerLoopsMap.get(inner)) {
+                    addLoopExits(loopBegin, innerInner, innerLoopsMap, visited);
                 }
             }
 
@@ -1712,11 +1859,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     // Create the loop header block, which later will merge the backward branches of
                     // the loop.
                     controlFlowSplit = true;
-                    EndNode preLoopEnd = currentGraph.add(new EndNode());
-                    LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
-                    lastInstr.setNext(preLoopEnd);
-                    // Add the single non-loop predecessor of the loop header.
-                    loopBegin.addForwardEnd(preLoopEnd);
+                    LoopBeginNode loopBegin = appendLoopBegin(this.lastInstr);
                     lastInstr = loopBegin;
 
                     // Create phi functions for all local variables and operand stack slots.
@@ -1802,6 +1945,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 }
+            }
+
+            private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext) {
+                EndNode preLoopEnd = currentGraph.add(new EndNode());
+                LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
+                fixedWithNext.setNext(preLoopEnd);
+                // Add the single non-loop predecessor of the loop header.
+                loopBegin.addForwardEnd(preLoopEnd);
+                return loopBegin;
             }
 
             /**
