@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.InvocationPlugins.Registration;
@@ -198,7 +199,18 @@ public class TruffleGraphBuilderPlugins {
                 if (curValue.isConstant()) {
                     return true;
                 } else {
-                    throw builder.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + curValue);
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(curValue);
+                    if (curValue instanceof ValuePhiNode) {
+                        ValuePhiNode valuePhi = (ValuePhiNode) curValue;
+                        sb.append(" (");
+                        for (Node n : valuePhi.inputs()) {
+                            sb.append(n);
+                            sb.append("; ");
+                        }
+                        sb.append(")");
+                    }
+                    throw builder.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb.toString());
                 }
             }
         });
