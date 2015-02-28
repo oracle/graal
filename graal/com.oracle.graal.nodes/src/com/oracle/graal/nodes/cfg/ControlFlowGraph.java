@@ -173,6 +173,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 // First time we see this block: push all successors.
                 for (Node suxNode : block.getEndNode().cfgSuccessors()) {
                     Block suxBlock = blockFor(suxNode);
+                    assert suxBlock != null : suxNode;
                     if (suxBlock.getId() == BLOCK_ID_INITIAL) {
                         stack.add(suxBlock);
                     }
