@@ -1082,9 +1082,8 @@ public final class SchedulePhase extends Phase {
         addUnscheduledToLatestSorting(stateAfter, state);
 
         // Now predecessors and inputs are scheduled => we can add this node.
-        if (!state.containsInstruction(i)) {
-            state.addInstruction(i);
-        }
+        assert !state.containsInstruction(i);
+        state.addInstruction(i);
 
         if (state.readsSize() != 0 && i instanceof FloatingReadNode) {
             state.removeRead(i);
