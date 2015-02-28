@@ -32,7 +32,7 @@ import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * An {@link InstrumentationTool} that builds a map of every {@Probe} attached to some AST,
+ * An {@link InstrumentationTool} that builds a map of every {@link Probe} attached to some AST,
  * indexed by {@link Source} and line number.
  */
 public final class LineToProbesMap extends InstrumentationTool {
