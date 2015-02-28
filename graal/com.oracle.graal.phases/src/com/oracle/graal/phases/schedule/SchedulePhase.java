@@ -326,7 +326,7 @@ public final class SchedulePhase extends Phase {
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
-        if (selectedStrategy != SchedulingStrategy.EARLIEST) {
+        if (selectedStrategy != SchedulingStrategy.EARLIEST && graph.isAfterFloatingReadPhase()) {
             blockToKillSet = new BlockMap<>(cfg);
         }
 
