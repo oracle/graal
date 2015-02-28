@@ -331,6 +331,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     if (this.mergeExplosions) {
+                        Debug.dump(currentGraph, "Before loop detection");
                         detectLoops(startInstruction);
                     }
 
@@ -373,7 +374,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
                                 LoopEndNode loopEnd = currentGraph.add(new LoopEndNode(loopBegin));
                                 endNode.replaceAndDelete(loopEnd);
-                                System.out.println("Cycle detected! root node: " + n);
                             } else if (visited.contains(n)) {
                                 // Normal merge into a branch we are already exploring.
                             } else {
@@ -384,6 +384,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
 
+                Debug.dump(currentGraph, "After loops detected");
                 insertLoopEnds(startInstruction);
             }
 
@@ -413,6 +414,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 for (int i = loopBegins.size() - 1; i >= 0; --i) {
                     LoopBeginNode loopBegin = loopBegins.get(i);
                     insertLoopExits(loopBegin, innerLoopsMap);
+                    if (GraalOptions.DumpDuringGraphBuilding.getValue()) {
+                        Debug.dump(currentGraph, "After building loop exits for %s.", loopBegin);
+                    }
+                }
+
+                // Remove degenerated merges with only one predecessor.
+                for (LoopBeginNode loopBegin : loopBegins) {
+                    Node pred = loopBegin.forwardEnd().predecessor();
+                    if (pred instanceof MergeNode) {
+                        MergeNode.removeMergeIfDegenerated((MergeNode) pred);
+                    }
                 }
             }
 
@@ -429,23 +441,28 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 while (!stack.isEmpty()) {
                     Node current = stack.pop();
+                    if (current == loopBegin) {
+                        continue;
+                    }
                     for (Node pred : current.cfgPredecessors()) {
-                        if (pred instanceof LoopExitNode) {
-                            // Inner loop
-                            LoopExitNode loopExitNode = (LoopExitNode) pred;
-                            LoopBeginNode innerLoopBegin = loopExitNode.loopBegin();
-                            if (!visited.isMarked(innerLoopBegin)) {
-                                stack.push(innerLoopBegin);
-                                visited.mark(innerLoopBegin);
-                                innerLoopBegins.add(innerLoopBegin);
-                            }
-                        } else if (!visited.isMarked(pred)) {
-                            if (pred instanceof ControlSplitNode) {
-                                ControlSplitNode controlSplitNode = (ControlSplitNode) pred;
-                                controlSplits.add(controlSplitNode);
-                            }
-                            stack.push(pred);
+                        if (!visited.isMarked(pred)) {
                             visited.mark(pred);
+                            if (pred instanceof LoopExitNode) {
+                                // Inner loop
+                                LoopExitNode loopExitNode = (LoopExitNode) pred;
+                                LoopBeginNode innerLoopBegin = loopExitNode.loopBegin();
+                                if (!visited.isMarked(innerLoopBegin)) {
+                                    stack.push(innerLoopBegin);
+                                    visited.mark(innerLoopBegin);
+                                    innerLoopBegins.add(innerLoopBegin);
+                                }
+                            } else {
+                                if (pred instanceof ControlSplitNode) {
+                                    ControlSplitNode controlSplitNode = (ControlSplitNode) pred;
+                                    controlSplits.add(controlSplitNode);
+                                }
+                                stack.push(pred);
+                            }
                         }
                     }
                 }
@@ -463,6 +480,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 for (LoopBeginNode inner : innerLoopBegins) {
                     addLoopExits(loopBegin, inner, innerLoopsMap, visited);
+                    if (GraalOptions.DumpDuringGraphBuilding.getValue()) {
+                        Debug.dump(currentGraph, "After adding loop exits for %s.", inner);
+                    }
                 }
 
                 innerLoopsMap.put(loopBegin, innerLoopBegins);
@@ -1648,7 +1668,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         // time mark the context loop begin as hit during the current
                         // iteration.
                         if (this.mergeExplosions) {
-                            this.addToMergeCache(state.copy(), nextPeelIteration);
+                            this.addToMergeCache(state, nextPeelIteration);
                         }
                         context.targetPeelIteration[context.targetPeelIteration.length - 1] = nextPeelIteration++;
                         if (nextPeelIteration > MaximumLoopExplosionCount.getValue()) {
@@ -1879,6 +1899,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     setEntryState(block, this.getCurrentDimension(), frameState.copy());
 
                     Debug.log("  created loop header %s", loopBegin);
+                } else if (block.isLoopHeader && explodeLoops && this.mergeExplosions) {
+                    frameState = frameState.copy();
                 }
                 assert lastInstr.next() == null : "instructions already appended at block " + block;
                 Debug.log("  frameState: %s", frameState);
