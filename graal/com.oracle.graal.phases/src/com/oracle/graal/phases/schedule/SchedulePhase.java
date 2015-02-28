@@ -322,7 +322,7 @@ public final class SchedulePhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         assert GraphOrder.assertNonCyclicGraph(graph);
-        cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+        cfg = ControlFlowGraph.compute(graph, true, true, true, false);
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
@@ -359,7 +359,6 @@ public final class SchedulePhase extends Phase {
         for (Block b : getCFG().getBlocks()) {
             buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
             buf.format("dom: %s. ", b.getDominator());
-            buf.format("post-dom: %s. ", b.getPostdominator());
             buf.format("preds: %s. ", b.getPredecessors());
             buf.format("succs: %s ====%n", b.getSuccessors());
             BlockMap<LocationSet> killSets = blockToKillSet;
