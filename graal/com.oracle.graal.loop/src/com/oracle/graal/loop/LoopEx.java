@@ -198,7 +198,7 @@ public class LoopEx {
                     limit = lessThan.getY();
                 }
             }
-            if (iv != null && iv.strideNode() != null && iv.constantStride() != 1 && !(ifTest instanceof IntegerLessThanNode)) {
+            if (iv != null && iv.isConstantStride() && iv.constantStride() != 1 && !(ifTest instanceof IntegerLessThanNode)) {
                 return false;
             }
             if (condition == null) {
