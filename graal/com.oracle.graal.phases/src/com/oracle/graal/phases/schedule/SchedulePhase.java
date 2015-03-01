@@ -982,25 +982,8 @@ public final class SchedulePhase extends Phase {
         List<ValueNode> sortedInstructions = state.getSortedInstructions();
         Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
         if (lastSorted != b.getEndNode()) {
-            int idx = sortedInstructions.indexOf(b.getEndNode());
-            boolean canNotMove = false;
-            for (int i = idx + 1; i < sortedInstructions.size(); i++) {
-                if (sortedInstructions.get(i).inputs().contains(b.getEndNode())) {
-                    canNotMove = true;
-                    break;
-                }
-            }
-            if (canNotMove) {
-                if (b.getEndNode() instanceof ControlSplitNode) {
-                    throw new GraalGraphInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").addContext(lastSorted).addContext(
-                                    b.getEndNode());
-                }
-
-                // b.setLastNode(lastSorted);
-            } else {
-                sortedInstructions.remove(b.getEndNode());
-                sortedInstructions.add(b.getEndNode());
-            }
+            sortedInstructions.remove(b.getEndNode());
+            sortedInstructions.add(b.getEndNode());
         }
         return sortedInstructions;
     }
