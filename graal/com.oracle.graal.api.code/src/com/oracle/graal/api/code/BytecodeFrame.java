@@ -85,7 +85,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
 
     /**
      * True if this is a position inside an exception handler before the exception object has been
-     * consumed. In this case, {@link #numStack == 1} and {@link #getStackValue(int)
+     * consumed. In this case, {@link #numStack} {@code == 1} and {@link #getStackValue(int)
      * getStackValue(0)} is the location of the exception object. If deoptimization happens at this
      * position, the interpreter will rethrow the exception instead of executing the bytecode
      * instruction at this position.
