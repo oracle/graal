@@ -22,18 +22,17 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 /**
  * Emits code that enters a stack frame which is tailored to call the C++ method
@@ -82,10 +81,10 @@ final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstructio
 
         // Set up last Java values.
         masm.add(sp, STACK_BIAS, scratchRegister);
-        new Stx(scratchRegister, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
+        masm.stx(scratchRegister, new SPARCAddress(thread, threadLastJavaSpOffset));
 
         // Clear last Java PC.
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset)).emit(masm);
+        masm.stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset));
 
         /*
          * Safe thread register manually since we are not using LEAF_SP for {@link

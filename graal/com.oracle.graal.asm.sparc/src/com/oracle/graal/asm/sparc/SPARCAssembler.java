@@ -24,6 +24,7 @@ package com.oracle.graal.asm.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Op.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
@@ -88,149 +89,6 @@ public abstract class SPARCAssembler extends Assembler {
     protected static final int D10LO_SHIFT = 5;
     protected static final int D10HI_SHIFT = 19;
 
-    // @formatter:off
-    /**
-     * Instruction format for Loads, Stores and Misc.
-     * <pre>
-     * | 11  |   rd   |   op3   |   rs1   | i|   imm_asi   |   rs2   |
-     * | 11  |   rd   |   op3   |   rs1   | i|        simm13         |
-     * |31 30|29    25|24     19|18     14|13|12          5|4       0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt11 {
-
-        private static final int RD_SHIFT = 25;
-        private static final int OP3_SHIFT = 19;
-        private static final int RS1_SHIFT = 14;
-        private static final int I_SHIFT = 13;
-        private static final int IMM_ASI_SHIFT = 5;
-        private static final int RS2_SHIFT = 0;
-        private static final int SIMM13_SHIFT = 0;
-
-        // @formatter:off
-        private static final int RD_MASK      = 0b00111110000000000000000000000000;
-        private static final int OP3_MASK     = 0b00000001111110000000000000000000;
-        private static final int RS1_MASK     = 0b00000000000001111100000000000000;
-        private static final int I_MASK       = 0b00000000000000000010000000000000;
-        private static final int IMM_ASI_MASK = 0b00000000000000000001111111100000;
-        private static final int RS2_MASK     = 0b00000000000000000000000000011111;
-        private static final int SIMM13_MASK  = 0b00000000000000000001111111111111;
-        // @formatter:on
-
-        private int rd;
-        private int op3;
-        private int rs1;
-        private int i;
-        private int immAsi;
-        private int rs2;
-        private int simm13;
-
-        private Fmt11(int rd, int op3, int rs1, int i, int immAsi, int rs2, int simm13) {
-            this.rd = rd;
-            this.op3 = op3;
-            this.rs1 = rs1;
-            this.i = i;
-            this.immAsi = immAsi;
-            this.rs2 = rs2;
-            this.simm13 = simm13;
-            verify();
-        }
-
-        public Fmt11(Op3s op3, Register rs1, Register rs2, Register rd) {
-            this(rd.encoding(), op3.getValue(), rs1.encoding(), 0, 0, rs2.encoding(), 0);
-        }
-
-        public Fmt11(Op3s op3, Register rs1, int simm13, Register rd) {
-            this(rd.encoding(), op3.getValue(), rs1.encoding(), 1, 0, 0, simm13);
-        }
-
-        public Fmt11(Op3s op3, Register rs1, Register rd) {
-            this(rd.encoding(), op3.getValue(), rs1.encoding(), 0, 0, 0, 0);
-        }
-
-        /**
-         * Special constructor for {@link Casa} and {@link Casxa}.
-         */
-        public Fmt11(Op3s op3, Register rs1, Register rs2, Register rd, Asi asi) {
-            this(rd.encoding(), op3.getValue(), rs1.encoding(), asi.isValid() ? 0 : 1, asi.isValid() ? asi.getValue() : 0, rs2.encoding(), 0);
-            assert asi.isValid() : "default asi is not supported yet";
-        }
-
-        /**
-         * Special constructor for loads and stores.
-         */
-        public Fmt11(Op3s op3, SPARCAddress addr, Register rd) {
-            this(rd.encoding(), op3.getValue(), addr.getBase().encoding(), 0, 0, 0, 0);
-            decodeAddress(addr);
-        }
-
-        /**
-         * Special constructor for {@link Prefetch} and Prefetcha.
-         */
-        public Fmt11(Op3s op3, SPARCAddress addr, Prefetch.Fcn fcn) {
-            this(fcn.getValue(), op3.getValue(), addr.getBase().encoding(), 0, 0, 0, 0);
-            decodeAddress(addr);
-        }
-
-        private void decodeAddress(SPARCAddress addr) {
-            if (!addr.getIndex().equals(Register.None)) {
-                this.rs2 = addr.getIndex().encoding();
-            } else {
-                this.simm13 = addr.getDisplacement();
-                this.i = 1;
-            }
-            verify();
-        }
-
-        private int getInstructionBits() {
-            if (i == 0) {
-                return Ops.LdstOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | rs1 << RS1_SHIFT | i << I_SHIFT | immAsi << IMM_ASI_SHIFT | rs2 << RS2_SHIFT;
-            } else {
-                return Ops.LdstOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | rs1 << RS1_SHIFT | i << I_SHIFT | ((simm13 << SIMM13_SHIFT) & SIMM13_MASK);
-            }
-        }
-
-        public static Fmt11 read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.LdstOp.getValue();
-
-            // Get the instruction fields:
-            final int rd = (inst & RD_MASK) >> RD_SHIFT;
-            final int op3 = (inst & OP3_MASK) >> OP3_SHIFT;
-            final int rs1 = (inst & RS1_MASK) >> RS1_SHIFT;
-            final int i = (inst & I_MASK) >> I_SHIFT;
-            final int immAsi = (inst & IMM_ASI_MASK) >> IMM_ASI_SHIFT;
-            final int rs2 = (inst & RS2_MASK) >> RS2_SHIFT;
-            final int simm13 = (inst & SIMM13_MASK) >> SIMM13_SHIFT;
-
-            return new Fmt11(rd, op3, rs1, i, immAsi, rs2, simm13);
-        }
-
-        public void write(SPARCAssembler masm, int pos) {
-            verify();
-            masm.emitInt(getInstructionBits(), pos);
-        }
-
-        public void emit(SPARCAssembler masm) {
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        public void verify() {
-            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT) : rd;
-            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT) : op3;
-            assert ((rs1 << RS1_SHIFT) & RS1_MASK) == (rs1 << RS1_SHIFT) : rs1;
-            assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT);
-            assert ((immAsi << IMM_ASI_SHIFT) & IMM_ASI_MASK) == (immAsi << IMM_ASI_SHIFT);
-            assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT);
-            assert isSimm13(simm13) : String.format("simm13: %d (%x)", simm13, simm13);
-        }
-    }
-
     public enum Ops {
         // @formatter:off
 
@@ -254,6 +112,18 @@ public abstract class SPARCAssembler extends Assembler {
         public boolean appliesTo(int instructionWord) {
             int opShift = 30;
             return (instructionWord >>> opShift) == value;
+        }
+    }
+
+    public enum Op {
+        Op00(0b00),
+        Op01(0b01),
+        Op10(0b10),
+        Op11(0b11);
+        int op;
+
+        Op(int op) {
+            this.op = op;
         }
     }
 
@@ -295,117 +165,114 @@ public abstract class SPARCAssembler extends Assembler {
     public enum Op3s {
         // @formatter:off
 
-        Add(0x00, "add"),
-        And(0x01, "and"),
-        Or(0x02, "or"),
-        Xor(0x03, "xor"),
-        Sub(0x04, "sub"),
-        Andn(0x05, "andn"),
-        Orn(0x06, "orn"),
-        Xnor(0x07, "xnor"),
-        Addc(0x08, "addc"),
-        Mulx(0x09, "mulx"),
-        Umul(0x0A, "umul"),
-        Smul(0x0B, "smul"),
-        Subc(0x0C, "subc"),
-        Udivx(0x0D, "udivx"),
-        Udiv(0x0E, "udiv"),
-        Sdiv(0x0F, "sdiv"),
+        Add(0x00, "add", Op10),
+        And(0x01, "and", Op10),
+        Or(0x02, "or", Op10),
+        Xor(0x03, "xor", Op10),
+        Sub(0x04, "sub", Op10),
+        Andn(0x05, "andn", Op10),
+        Orn(0x06, "orn", Op10),
+        Xnor(0x07, "xnor", Op10),
+        Addc(0x08, "addc", Op10),
+        Mulx(0x09, "mulx", Op10),
+        Umul(0x0A, "umul", Op10),
+        Smul(0x0B, "smul", Op10),
+        Subc(0x0C, "subc", Op10),
+        Udivx(0x0D, "udivx", Op10),
+        Udiv(0x0E, "udiv", Op10),
+        Sdiv(0x0F, "sdiv", Op10),
 
-        Addcc(0x10, "addcc"),
-        Andcc(0x11, "andcc"),
-        Orcc(0x12, "orcc"),
-        Xorcc(0x13, "xorcc"),
-        Subcc(0x14, "subcc"),
-        Andncc(0x15, "andncc"),
-        Orncc(0x16, "orncc"),
-        Xnorcc(0x17, "xnorcc"),
-        Addccc(0x18, "addccc"),
-        // dos not exist
-        // Mulxcc(0x19, "mulxcc"),
-        Umulcc(0x1A, "umulcc"),
-        Smulcc(0x1B, "smulcc"),
-        Subccc(0x1C, "subccc"),
-        Udivcc(0x1E, "udivcc"),
-        Sdivcc(0x1F, "sdivcc"),
+        Addcc(0x10, "addcc", Op10),
+        Andcc(0x11, "andcc", Op10),
+        Orcc(0x12, "orcc", Op10),
+        Xorcc(0x13, "xorcc", Op10),
+        Subcc(0x14, "subcc", Op10),
+        Andncc(0x15, "andncc", Op10),
+        Orncc(0x16, "orncc", Op10),
+        Xnorcc(0x17, "xnorcc", Op10),
+        Addccc(0x18, "addccc", Op10),
 
-        Taddcc(0x20, "taddcc"),
-        Tsubcc(0x21, "tsubcc"),
-        Taddcctv(0x22, "taddcctv"),
-        Tsubcctv(0x23, "tsubcctv"),
-        Mulscc(0x24, "mulscc"),
-        Sll(0x25, "sll"),
-        Sllx(0x25, "sllx"),
-        Srl(0x26, "srl"),
-        Srlx(0x26, "srlx"),
-        Sra(0x27, "srax"),
-        Srax(0x27, "srax"),
-        Rdreg(0x28, "rdreg"),
-        Membar(0x28, "membar"),
+        Umulcc(0x1A, "umulcc", Op10),
+        Smulcc(0x1B, "smulcc", Op10),
+        Subccc(0x1C, "subccc", Op10),
+        Udivcc(0x1E, "udivcc", Op10),
+        Sdivcc(0x1F, "sdivcc", Op10),
 
-        Flushw(0x2B, "flushw"),
-        Movcc(0x2C, "movcc"),
-        Sdivx(0x2D, "sdivx"),
-        Popc(0x2E, "popc"),
-        Movr(0x2F, "movr"),
+        Taddcc(0x20, "taddcc", Op10),
+        Tsubcc(0x21, "tsubcc", Op10),
+        Taddcctv(0x22, "taddcctv", Op10),
+        Tsubcctv(0x23, "tsubcctv", Op10),
+        Mulscc(0x24, "mulscc", Op10),
+        Sll(0x25, "sll", Op10),
+        Sllx(0x25, "sllx", Op10),
+        Srl(0x26, "srl", Op10),
+        Srlx(0x26, "srlx", Op10),
+        Sra(0x27, "srax", Op10),
+        Srax(0x27, "srax", Op10),
+        Membar(0x28, "membar", Op10),
 
-        Sir(0x30, "sir"),
-        Wrreg(0x30, "wrreg"),
-        Saved(0x31, "saved"),
+        Flushw(0x2B, "flushw", Op10),
+        Movcc(0x2C, "movcc", Op10),
+        Sdivx(0x2D, "sdivx", Op10),
+        Popc(0x2E, "popc", Op10),
+        Movr(0x2F, "movr", Op10),
 
-        Fpop1(0b11_0100, "fpop1"),
-        Fpop2(0b11_0101, "fpop2"),
-        Impdep1(0b11_0110, "impdep1"),
-        Impdep2(0b11_0111, "impdep2"),
-        Jmpl(0x38, "jmpl"),
-        Rett(0x39, "rett"),
-        Trap(0x3a, "trap"),
-        Flush(0x3b, "flush"),
-        Save(0x3c, "save"),
-        Restore(0x3d, "restore"),
-        Done(0x3e, "done"),
-        Retry(0x3e, "retry"),
-        Casa(0b111100, "casa"),
-        Casxa(0b111110, "casxa"),
-        Prefetch(0b101101, "prefetch"),
-        Prefetcha(0b111101, "prefetcha"),
+        Fpop1(0b11_0100, "fpop1", Op10),
+        Fpop2(0b11_0101, "fpop2", Op10),
+        Impdep1(0b11_0110, "impdep1", Op10),
+        Impdep2(0b11_0111, "impdep2", Op10),
+        Jmpl(0x38, "jmpl", Op10),
+        Rett(0x39, "rett", Op10),
+        Trap(0x3a, "trap", Op10),
+        Flush(0x3b, "flush", Op10),
+        Save(0x3c, "save", Op10),
+        Restore(0x3d, "restore", Op10),
+        Retry(0x3e, "retry", Op10),
 
-        Lduw  (0b00_0000, "lduw"),
-        Ldub  (0b00_0001, "ldub"),
-        Lduh  (0b00_0010, "lduh"),
-        Stw   (0b00_0100, "stw"),
-        Stb   (0b00_0101, "stb"),
-        Sth   (0b00_0110, "sth"),
-        Ldsw  (0b00_1000, "ldsw"),
-        Ldsb  (0b00_1001, "ldsb"),
-        Ldsh  (0b00_1010, "ldsh"),
-        Ldx   (0b00_1011, "ldx"),
-        Stx   (0b00_1110, "stx"),
 
-        Ldf   (0b10_0000, "ldf"),
-        Ldfsr (0b10_0001, "ldfsr"),
-        Ldaf  (0b10_0010, "ldaf"),
-        Lddf  (0b10_0011, "lddf"),
-        Stf   (0b10_0100, "stf"),
-        Stfsr (0b10_0101, "stfsr"),
-        Staf  (0x10_0110, "staf"),
-        Rd    (0b10_1000, "rd"),
-        Stdf  (0b10_0111, "stdf"),
+        Casa(0b111100, "casa", Op11),
+        Casxa(0b111110, "casxa", Op11),
+        Prefetch(0b101101, "prefetch", Op11),
+        Prefetcha(0b111101, "prefetcha", Op11),
 
-        Wr    (0b11_0000, "wr"),
-        Fcmp  (0b11_0101, "fcmp"),
+        Lduw  (0b00_0000, "lduw", Op11),
+        Ldub  (0b00_0001, "ldub", Op11),
+        Lduh  (0b00_0010, "lduh", Op11),
+        Stw   (0b00_0100, "stw", Op11),
+        Stb   (0b00_0101, "stb", Op11),
+        Sth   (0b00_0110, "sth", Op11),
+        Ldsw  (0b00_1000, "ldsw", Op11),
+        Ldsb  (0b00_1001, "ldsb", Op11),
+        Ldsh  (0b00_1010, "ldsh", Op11),
+        Ldx   (0b00_1011, "ldx", Op11),
+        Stx   (0b00_1110, "stx", Op11),
 
-        Ldxa  (0b01_1011, "ldxa"),
-        Lduwa (0b01_0000, "lduwa");
+        Ldf   (0b10_0000, "ldf", Op11),
+        Ldfsr (0b10_0001, "ldfsr", Op11),
+        Ldaf  (0b10_0010, "ldaf", Op11),
+        Lddf  (0b10_0011, "lddf", Op11),
+        Stf   (0b10_0100, "stf", Op11),
+        Stfsr (0b10_0101, "stfsr", Op11),
+        Staf  (0x10_0110, "staf", Op11),
+        Stdf  (0b10_0111, "stdf", Op11),
+
+        Rd    (0b10_1000, "rd", Op10),
+        Wr    (0b11_0000, "wr", Op10),
+        Fcmp  (0b11_0101, "fcmp", Op10),
+
+        Ldxa  (0b01_1011, "ldxa", Op11),
+        Lduwa (0b01_0000, "lduwa", Op11);
 
         // @formatter:on
 
         private final int value;
         private final String operator;
+        private final Op op;
 
-        private Op3s(int value, String op) {
+        private Op3s(int value, String name, Op op) {
             this.value = value;
-            this.operator = op;
+            this.operator = name;
+            this.op = op;
         }
 
         public int getValue() {
@@ -1340,18 +1207,12 @@ public abstract class SPARCAssembler extends Assembler {
         emitInt(instr);
     }
 
-    public static class Casa extends Fmt11 {
-
-        public Casa(Register src1, Register src2, Register dst, Asi asi) {
-            super(Casa, src1, src2, dst, asi);
-        }
+    public void casa(Register rs1, Register rs2, Register rd, Asi asi) {
+        ld(Casa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
-    public static class Casxa extends Fmt11 {
-
-        public Casxa(Register src1, Register src2, Register dst, Asi asi) {
-            super(Casxa, src1, src2, dst, asi);
-        }
+    public void casxa(Register rs1, Register rs2, Register rd, Asi asi) {
+        ld(Casxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
     public void cbcondw(ConditionFlag cf, Register rs1, Register rs2, Label lab) {
@@ -1435,20 +1296,45 @@ public abstract class SPARCAssembler extends Assembler {
 
     private void op3(Op3s op3, Opfs opf, Register rs1, Register rs2, Register rd) {
         int b = opf.value << 5 | (rs2 == null ? 0 : rs2.encoding);
-        fmt10(rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b);
+        fmt(op3.op.op, rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b);
+    }
+
+    protected void ld(Op3s op3, SPARCAddress addr, Register rd, Asi asi) {
+        Register rs1 = addr.getBase();
+        if (!addr.getIndex().equals(Register.None)) {
+            Register rs2 = addr.getIndex();
+            if (asi != null) {
+                int b = rs2.encoding;
+                b |= asi.value << 5;
+                fmt(op3.op.op, rd.encoding, op3.value, rs1.encoding, b);
+            } else {
+                op3(op3, rs1, rs2, rd);
+            }
+        } else {
+            int imm = addr.getDisplacement();
+            op3(op3, rs1, imm, rd);
+        }
+    }
+
+    protected void ld(Op3s op3, SPARCAddress addr, Register rd) {
+        ld(op3, addr, rd, null);
+    }
+
+    protected void st(Op3s op3, Register rs1, SPARCAddress dest) {
+        ld(op3, dest, rs1);
     }
 
     protected void op3(Op3s op3, Register rs1, Register rs2, Register rd) {
         int b = rs2 == null ? 0 : rs2.encoding;
         int xBit = getXBit(op3);
-        fmt10(rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b | xBit);
+        fmt(op3.op.op, rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b | xBit);
     }
 
     protected void op3(Op3s op3, Register rs1, int simm13, Register rd) {
         assert isSimm13(simm13);
         int i = 1 << 13;
         int simm13WithX = simm13 | getXBit(op3);
-        fmt10(rd.encoding, op3.value, rs1.encoding, i | simm13WithX & ((1 << 13) - 1));
+        fmt(op3.op.op, rd.encoding, op3.value, rs1.encoding, i | simm13WithX & ((1 << 13) - 1));
     }
 
     /**
@@ -1562,8 +1448,21 @@ public abstract class SPARCAssembler extends Assembler {
      */
     // @formatter:on
     protected void fmt10(int rd, int op3, int rs1, int b) {
+        fmt(0b10, rd, op3, rs1, b);
+    }
+
+    // @formatter:off
+    /**
+     * Instruction format for most arithmetic stuff.
+     * <pre>
+     * |  op | rd  | op3 | rs1 |   b   |
+     * |31 30|29 25|24 19|18 14|13    0|
+     * </pre>
+     */
+    // @formatter:on
+    protected void fmt(int op, int rd, int op3, int rs1, int b) {
         assert isImm(rd, 5) && isImm(op3, 6) && isImm(b, 14) : String.format("rd: 0x%x op3: 0x%x b: 0x%x", rd, op3, b);
-        int instr = 1 << 31 | rd << 25 | op3 << 19 | rs1 << 14 | b;
+        int instr = op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | b;
         emitInt(instr);
     }
 
@@ -1579,93 +1478,48 @@ public abstract class SPARCAssembler extends Assembler {
         op3(Jmpl, rs1, simm13, rd);
     }
 
-    public static class Lddf extends Fmt11 {
-
-        public Lddf(SPARCAddress src, Register dst) {
-            super(Lddf, src, dst);
-            assert dst == f0 || dst == f2 || dst == f4 || dst == f6 || isDoubleFloatRegister(dst);
-        }
-
-        public Lddf(Register src, Register dst) {
-            super(Lddf, src, dst);
-            assert dst == f0 || dst == f2 || dst == f4 || dst == f6 || isDoubleFloatRegister(dst);
-        }
+    public void lddf(SPARCAddress src, Register dst) {
+        ld(Lddf, src, dst);
     }
 
-    public static class Ldf extends Fmt11 {
-
-        public Ldf(SPARCAddress src, Register dst) {
-            super(Ldf, src, dst);
-            assert isSingleFloatRegister(dst);
-        }
-
-        public Ldf(Register src, Register dst) {
-            super(Ldf, src, dst);
-            assert isSingleFloatRegister(dst);
-        }
+    public void ldf(SPARCAddress src, Register dst) {
+        ld(Ldf, src, dst);
     }
 
-    public static class Ldsb extends Fmt11 {
-
-        public Ldsb(SPARCAddress src, Register dst) {
-            super(Ldsb, src, dst);
-        }
+    public void lduh(SPARCAddress src, Register dst) {
+        ld(Lduh, src, dst);
     }
 
-    public static class Ldsh extends Fmt11 {
-
-        public Ldsh(SPARCAddress src, Register dst) {
-            super(Ldsh, src, dst);
-        }
+    public void ldsh(SPARCAddress src, Register dst) {
+        ld(Ldsh, src, dst);
     }
 
-    public static class Lduh extends Fmt11 {
-
-        public Lduh(SPARCAddress src, Register dst) {
-            super(Lduh, src, dst);
-        }
+    public void ldub(SPARCAddress src, Register dst) {
+        ld(Ldub, src, dst);
     }
 
-    public static class Ldub extends Fmt11 {
-
-        public Ldub(SPARCAddress src, Register dst) {
-            super(Ldub, src, dst);
-        }
+    public void ldsb(SPARCAddress src, Register dst) {
+        ld(Ldsb, src, dst);
     }
 
-    public static class Ldsw extends Fmt11 {
-
-        public Ldsw(SPARCAddress src, Register dst) {
-            super(Ldsw, src, dst);
-        }
+    public void lduw(SPARCAddress src, Register dst) {
+        ld(Lduw, src, dst);
     }
 
-    public static class Lduw extends Fmt11 {
-
-        public Lduw(SPARCAddress src, Register dst) {
-            super(Lduw, src, dst);
-        }
+    public void ldsw(SPARCAddress src, Register dst) {
+        ld(Ldsw, src, dst);
     }
 
-    public static class Ldx extends Fmt11 {
-
-        public Ldx(SPARCAddress src, Register dst) {
-            super(Ldx, src, dst);
-        }
+    public void ldx(SPARCAddress src, Register dst) {
+        ld(Ldx, src, dst);
     }
 
-    public static class Ldxa extends Fmt11 {
-
-        public Ldxa(Register src1, Register src2, Register dst, Asi asi) {
-            super(Ldxa, src1, src2, dst, asi);
-        }
+    public void ldxa(Register rs1, Register rs2, Register rd, Asi asi) {
+        ld(Ldxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
-    public static class Lduwa extends Fmt11 {
-
-        public Lduwa(Register src1, Register src2, Register dst, Asi asi) {
-            super(Lduwa, src1, src2, dst, asi);
-        }
+    public void lduwa(Register rs1, Register rs2, Register rd, Asi asi) {
+        ld(Lduwa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
     public void membar(int barriers) {
@@ -1727,40 +1581,45 @@ public abstract class SPARCAssembler extends Assembler {
         op3(Popc, g0, simm13, rd);
     }
 
-    public static class Prefetch extends Fmt11 {
+    public void prefetch(SPARCAddress addr, Fcn fcn) {
+        Register rs1 = addr.getBase();
+        if (addr.getIndex().equals(Register.None)) {
+            int dis = addr.getDisplacement();
+            assert isSimm13(dis);
+            fmt(Prefetch.op.op, fcn.value, Prefetch.value, rs1.encoding, 1 << 13 | dis & ((1 << 13) - 1));
+        } else {
+            Register rs2 = addr.getIndex();
+            fmt(Prefetch.op.op, fcn.value, Prefetch.value, rs1.encoding, rs2.encoding);
+        }
+    }
 
-        public enum Fcn {
-            SeveralWritesAndPossiblyReads(2),
-            SeveralReadsWeak(0),
-            OneRead(1),
-            OneWrite(3),
-            Page(4),
-            NearestUnifiedCache(17),
-            SeveralReadsStrong(20),
-            OneReadStrong(21),
-            SeveralWritesAndPossiblyReadsStrong(22),
-            OneWriteStrong(23);
+    public enum Fcn {
+        SeveralWritesAndPossiblyReads(2),
+        SeveralReadsWeak(0),
+        OneRead(1),
+        OneWrite(3),
+        Page(4),
+        NearestUnifiedCache(17),
+        SeveralReadsStrong(20),
+        OneReadStrong(21),
+        SeveralWritesAndPossiblyReadsStrong(22),
+        OneWriteStrong(23);
 
-            private final int value;
+        private final int value;
 
-            private Fcn(int value) {
-                this.value = value;
-            }
-
-            public int getValue() {
-                return value;
-            }
+        private Fcn(int value) {
+            this.value = value;
         }
 
-        public Prefetch(SPARCAddress addr, Prefetch.Fcn fcn) {
-            super(Prefetch, addr, fcn);
+        public int getValue() {
+            return value;
         }
     }
 
     // A.44 Read State Register
 
     public void rdpc(Register rd) {
-        op3(Rdreg, r5, g0, rd);
+        op3(Rd, r5, g0, rd);
     }
 
     public void restore(Register rs1, Register rs2, Register rd) {
@@ -1845,46 +1704,28 @@ public abstract class SPARCAssembler extends Assembler {
         op3(Impdep1, Fandd, rs1, rs2, rd);
     }
 
-    public static class Stb extends Fmt11 {
-
-        public Stb(Register dst, SPARCAddress addr) {
-            super(Stb, addr, dst);
-        }
+    public void stdf(Register rd, SPARCAddress addr) {
+        st(Stdf, rd, addr);
     }
 
-    public static class Stdf extends Fmt11 {
-
-        public Stdf(Register dst, SPARCAddress src) {
-            super(Stdf, src, dst);
-        }
+    public void stf(Register rd, SPARCAddress addr) {
+        st(Stf, rd, addr);
     }
 
-    public static class Stf extends Fmt11 {
-
-        public Stf(Register dst, SPARCAddress src) {
-            super(Stf, src, dst);
-        }
+    public void stb(Register rd, SPARCAddress addr) {
+        st(Stb, rd, addr);
     }
 
-    public static class Sth extends Fmt11 {
-
-        public Sth(Register dst, SPARCAddress addr) {
-            super(Sth, addr, dst);
-        }
+    public void sth(Register rd, SPARCAddress addr) {
+        st(Sth, rd, addr);
     }
 
-    public static class Stw extends Fmt11 {
-
-        public Stw(Register dst, SPARCAddress addr) {
-            super(Stw, addr, dst);
-        }
+    public void stw(Register rd, SPARCAddress addr) {
+        st(Stw, rd, addr);
     }
 
-    public static class Stx extends Fmt11 {
-
-        public Stx(Register dst, SPARCAddress addr) {
-            super(Stx, addr, dst);
-        }
+    public void stx(Register rd, SPARCAddress addr) {
+        st(Stx, rd, addr);
     }
 
     public void sub(Register rs1, Register rs2, Register rd) {
@@ -1939,11 +1780,11 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void wrccr(Register rs1, Register rs2) {
-        op3(Wrreg, rs1, rs2, r2);
+        op3(Wr, rs1, rs2, r2);
     }
 
     public void wrccr(Register rs1, int simm13) {
-        op3(Wrreg, rs1, simm13, r2);
+        op3(Wr, rs1, simm13, r2);
     }
 
     public void xor(Register rs1, Register rs2, Register rd) {

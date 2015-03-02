@@ -122,43 +122,28 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         nop();
     }
 
-    public static class Cas extends Casa {
-
-        public Cas(Register src1, Register src2, Register dst) {
-            super(src1, src2, dst, Asi.ASI_PRIMARY);
-        }
+    public void cas(Register rs1, Register rs2, Register rd) {
+        casa(rs1, rs2, rd, Asi.ASI_PRIMARY);
     }
 
-    public static class Casx extends Casxa {
-
-        public Casx(Register src1, Register src2, Register dst) {
-            super(src1, src2, dst, Asi.ASI_PRIMARY);
-        }
+    public void casx(Register rs1, Register rs2, Register rd) {
+        casxa(rs1, rs2, rd, Asi.ASI_PRIMARY);
     }
 
     public void clr(Register dst) {
         or(g0, g0, dst);
     }
 
-    public static class Clrb extends Stb {
-
-        public Clrb(SPARCAddress addr) {
-            super(g0, addr);
-        }
+    public void clrb(SPARCAddress addr) {
+        stb(g0, addr);
     }
 
-    public static class Clrh extends Sth {
-
-        public Clrh(SPARCAddress addr) {
-            super(g0, addr);
-        }
+    public void clrh(SPARCAddress addr) {
+        sth(g0, addr);
     }
 
-    public static class Clrx extends Stx {
-
-        public Clrx(SPARCAddress addr) {
-            super(g0, addr);
-        }
+    public void clrx(SPARCAddress addr) {
+        stx(g0, addr);
     }
 
     public void cmp(Register rs1, Register rs2) {

@@ -26,10 +26,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stdf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -65,12 +61,12 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
         SPARCAddress lastJavaPc = new SPARCAddress(thread, threadLastJavaPcOffset);
 
         // We borrow the threads lastJavaPC to transfer the value from float to i0
-        new Stdf(SPARCSaveRegistersOp.RETURN_REGISTER_STORAGE, lastJavaPc).emit(masm);
-        new Ldx(lastJavaPc, i0).emit(masm);
+        masm.stdf(SPARCSaveRegistersOp.RETURN_REGISTER_STORAGE, lastJavaPc);
+        masm.ldx(lastJavaPc, i0);
 
         // Clear last Java frame values.
-        new Stx(g0, lastJavaPc).emit(masm);
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
-        new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
+        masm.stx(g0, lastJavaPc);
+        masm.stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset));
+        masm.stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset));
     }
 }
