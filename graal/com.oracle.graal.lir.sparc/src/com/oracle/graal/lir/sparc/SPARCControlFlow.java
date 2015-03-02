@@ -23,25 +23,33 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.Assembler.LabelHint;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovdcc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovscc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movcc;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.graal.sparc.*;
 
 public class SPARCControlFlow {
@@ -60,7 +68,7 @@ public class SPARCControlFlow {
         }
 
         public static void emitCodeHelper(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            new Ret().emit(masm);
+            masm.ret();
             // On SPARC we always leave the frame (in the delay slot).
             crb.frameContext.leave(crb);
         }
@@ -429,7 +437,7 @@ public class SPARCControlFlow {
                             throw new GraalInternalError("switch only supported for int, long and object");
                     }
                     ConditionFlag conditionFlag = ConditionFlag.fromCondtition(conditionCode, condition, false);
-                    new Cmp(keyRegister, scratchRegister).emit(masm);
+                    masm.cmp(keyRegister, scratchRegister);
                     masm.bpcc(conditionFlag, NOT_ANNUL, target, conditionCode, PREDICT_TAKEN);
                     masm.nop();  // delay slot
                 }
@@ -464,22 +472,22 @@ public class SPARCControlFlow {
 
             // subtract the low value from the switch value
             if (isSimm13(lowKey)) {
-                new Sub(value, lowKey, scratchReg).emit(masm);
+                masm.sub(value, lowKey, scratchReg);
             } else {
                 try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                     Register scratch2 = sc.getRegister();
                     new Setx(lowKey, scratch2).emit(masm);
-                    new Sub(value, scratch2, scratchReg).emit(masm);
+                    masm.sub(value, scratch2, scratchReg);
                 }
             }
             int upperLimit = highKey - lowKey;
             try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                 Register scratch2 = sc.getRegister();
                 if (isSimm13(upperLimit)) {
-                    new Cmp(scratchReg, upperLimit).emit(masm);
+                    masm.cmp(scratchReg, upperLimit);
                 } else {
                     new Setx(upperLimit, scratch2).emit(masm);
-                    new Cmp(scratchReg, upperLimit).emit(masm);
+                    masm.cmp(scratchReg, upperLimit);
                 }
 
                 // Jump to default target if index is not within the jump table
@@ -489,14 +497,14 @@ public class SPARCControlFlow {
                 }
 
                 // Load jump table entry into scratch and jump to it
-                new Sll(scratchReg, 3, scratchReg).emit(masm); // Multiply by 8
+                masm.sll(scratchReg, 3, scratchReg); // Multiply by 8
                 // Zero the left bits sll with shcnt>0 does not mask upper 32 bits
-                new Srl(scratchReg, 0, scratchReg).emit(masm);
-                new Rdpc(scratch2).emit(masm);
+                masm.srl(scratchReg, 0, scratchReg);
+                masm.rdpc(scratch2);
 
                 // The jump table follows four instructions after rdpc
-                new Add(scratchReg, 4 * 4, scratchReg).emit(masm);
-                new Jmpl(scratch2, scratchReg, g0).emit(masm);
+                masm.add(scratchReg, 4 * 4, scratchReg);
+                masm.jmpl(scratch2, scratchReg, g0);
             }
             masm.nop();
 

@@ -30,7 +30,6 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -81,13 +80,13 @@ public enum SPARCCompare {
         if (isRegister(y)) {
             switch (opcode) {
                 case ICMP:
-                    new Cmp(asIntReg(x), asIntReg(y)).emit(masm);
+                    masm.cmp(asIntReg(x), asIntReg(y));
                     break;
                 case LCMP:
-                    new Cmp(asLongReg(x), asLongReg(y)).emit(masm);
+                    masm.cmp(asLongReg(x), asLongReg(y));
                     break;
                 case ACMP:
-                    new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
+                    masm.cmp(asObjectReg(x), asObjectReg(y));
                     break;
                 case FCMP:
                     masm.fcmp(Fcc0, Fcmps, asFloatReg(x), asFloatReg(y));
@@ -103,15 +102,15 @@ public enum SPARCCompare {
             switch (opcode) {
                 case LCMP:
                     assert isSimm13(crb.asLongConst(y));
-                    new Cmp(asLongReg(x), (int) crb.asLongConst(y)).emit(masm);
+                    masm.cmp(asLongReg(x), (int) crb.asLongConst(y));
                     break;
                 case ICMP:
                     assert isSimm13(crb.asIntConst(y));
-                    new Cmp(asIntReg(x), crb.asIntConst(y)).emit(masm);
+                    masm.cmp(asIntReg(x), crb.asIntConst(y));
                     break;
                 case ACMP:
                     if (((JavaConstant) y).isNull()) {
-                        new Cmp(asObjectReg(x), 0).emit(masm);
+                        masm.cmp(asObjectReg(x), 0);
                         break;
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");

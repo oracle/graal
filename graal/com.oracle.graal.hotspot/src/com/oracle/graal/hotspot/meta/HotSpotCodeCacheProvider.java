@@ -169,14 +169,14 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         }
 
         public static String tryDisassemble(String hcfEmbeddedString) {
-            if (processMethod != null) {
-                try {
-                    return (String) processMethod.invoke(null, hcfEmbeddedString);
-                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                    // If the tool is available, for now let's be noisy when it fails
-                    throw new GraalInternalError(e);
-                }
-            }
+// if (processMethod != null) {
+// try {
+// return (String) processMethod.invoke(null, hcfEmbeddedString);
+// } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+// // If the tool is available, for now let's be noisy when it fails
+// throw new GraalInternalError(e);
+// }
+// }
             return hcfEmbeddedString;
         }
     }

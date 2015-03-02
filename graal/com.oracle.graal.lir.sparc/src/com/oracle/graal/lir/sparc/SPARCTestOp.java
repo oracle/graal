@@ -24,7 +24,6 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.meta.*;
@@ -51,10 +50,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                 case Char:
                 case Boolean:
                 case Int:
-                    new Andcc(asIntReg(x), asIntReg(y), g0).emit(masm);
+                    masm.andcc(asIntReg(x), asIntReg(y), g0);
                     break;
                 case Long:
-                    new Andcc(asLongReg(x), asLongReg(y), g0).emit(masm);
+                    masm.andcc(asLongReg(x), asLongReg(y), g0);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -66,10 +65,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                 case Char:
                 case Boolean:
                 case Int:
-                    new Andcc(asIntReg(x), crb.asIntConst(y), g0).emit(masm);
+                    masm.andcc(asIntReg(x), crb.asIntConst(y), g0);
                     break;
                 case Long:
-                    new Andcc(asLongReg(x), crb.asIntConst(y), g0).emit(masm);
+                    masm.andcc(asLongReg(x), crb.asIntConst(y), g0);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

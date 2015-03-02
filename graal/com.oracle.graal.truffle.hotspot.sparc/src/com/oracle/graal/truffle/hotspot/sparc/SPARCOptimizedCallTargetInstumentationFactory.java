@@ -36,8 +36,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Jmp;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
@@ -67,12 +65,12 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
                     if (asm.hasFeature(CBCOND)) {
                         asm.cbcondx(Equal, spillRegister, 0, doProlog);
                     } else {
-                        new Cmp(spillRegister, 0).emit(asm);
+                        asm.cmp(spillRegister, 0);
                         asm.bpcc(Equal, NOT_ANNUL, doProlog, Xcc, PREDICT_NOT_TAKEN);
                         asm.nop();
                     }
                     new Ldx(verifiedEntryPointAddress, spillRegister).emit(asm); // in delay slot
-                    new Jmp(spillRegister).emit(asm);
+                    asm.jmp(spillRegister);
                     asm.nop();
                     asm.bind(doProlog);
                 }

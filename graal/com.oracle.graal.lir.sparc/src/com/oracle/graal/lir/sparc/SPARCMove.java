@@ -31,7 +31,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
@@ -39,8 +38,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsh;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Lduh;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stdf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stf;
@@ -49,8 +46,6 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cas;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Casx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
@@ -394,7 +389,7 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            new Membar(barriers).emit(masm);
+            masm.membar(barriers);
         }
     }
 
@@ -467,17 +462,17 @@ public class SPARCMove {
         if (address.getIndex().equals(Register.None)) {
             if (isSimm13(address.getDisplacement())) {
                 delaySlotHolder.emitControlTransfer(crb, masm);
-                new Add(address.getBase(), address.getDisplacement(), result).emit(masm);
+                masm.add(address.getBase(), address.getDisplacement(), result);
             } else {
                 assert result.encoding() != address.getBase().encoding();
                 new Setx(address.getDisplacement(), result).emit(masm);
                 // No relocation, therefore, the add can be delayed as well
                 delaySlotHolder.emitControlTransfer(crb, masm);
-                new Add(address.getBase(), result, result).emit(masm);
+                masm.add(address.getBase(), result, result);
             }
         } else {
             delaySlotHolder.emitControlTransfer(crb, masm);
-            new Add(address.getBase(), address.getIndex(), result).emit(masm);
+            masm.add(address.getBase(), address.getIndex(), result);
         }
     }
 
@@ -605,7 +600,7 @@ public class SPARCMove {
                         Register scratch = sc.getRegister();
                         long value = constant.asLong();
                         if (isSimm13(value)) {
-                            new Or(g0, (int) value, scratch).emit(masm);
+                            masm.or(g0, (int) value, scratch);
                         } else {
                             new Setx(value, scratch).emit(masm);
                         }
@@ -635,7 +630,7 @@ public class SPARCMove {
             case Long:
             case Object:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Mov(src, dst).emit(masm);
+                masm.mov(src, dst);
                 break;
             case Float:
                 if (result.getPlatformKind() == Kind.Float) {
@@ -756,10 +751,10 @@ public class SPARCMove {
                 case Int:
                     if (input.isDefaultForKind()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Clr(asIntReg(result)).emit(masm);
+                        masm.clr(asIntReg(result));
                     } else if (isSimm13(input.asLong())) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Or(g0, input.asInt(), asIntReg(result)).emit(masm);
+                        masm.or(g0, input.asInt(), asIntReg(result));
                     } else {
                         Setx set = new Setx(input.asLong(), asIntReg(result), false, true);
                         set.emitFirstPartOfDelayed(masm);
@@ -770,10 +765,10 @@ public class SPARCMove {
                 case Long:
                     if (input.isDefaultForKind()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Clr(asLongReg(result)).emit(masm);
+                        masm.clr(asLongReg(result));
                     } else if (isSimm13(input.asLong())) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Or(g0, (int) input.asLong(), asLongReg(result)).emit(masm);
+                        masm.or(g0, (int) input.asLong(), asLongReg(result));
                     } else {
                         Setx setx = new Setx(input.asLong(), asLongReg(result), false, true);
                         setx.emitFirstPartOfDelayed(masm);
@@ -790,7 +785,7 @@ public class SPARCMove {
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
-                                new Or(g0, constantBits, scratch).emit(masm);
+                                masm.or(g0, constantBits, scratch);
                             } else {
                                 new Setx(constantBits, scratch, false).emit(masm);
                             }
@@ -817,7 +812,7 @@ public class SPARCMove {
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
-                                new Or(g0, (int) constantBits, scratch).emit(masm);
+                                masm.or(g0, (int) constantBits, scratch);
                             } else {
                                 new Setx(constantBits, scratch, false).emit(masm);
                             }
@@ -838,7 +833,7 @@ public class SPARCMove {
                 case Object:
                     if (input.isNull()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Clr(asRegister(result)).emit(masm);
+                        masm.clr(asRegister(result));
                     } else if (crb.target.inlineObjects) {
                         crb.recordInlineDataInCode(input); // relocatable cannot be delayed
                         new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
