@@ -23,12 +23,14 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
 public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable, LIRLowerable {
+    public static final int DEFAULT_DEBUG_ID = 0;
 
     public static final NodeClass<DeoptimizeNode> TYPE = NodeClass.create(DeoptimizeNode.class);
     protected final DeoptimizationAction action;
@@ -37,7 +39,7 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     protected final JavaConstant speculation;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
-        this(action, reason, 0, JavaConstant.NULL_POINTER, null);
+        this(action, reason, DEFAULT_DEBUG_ID, JavaConstant.NULL_POINTER, null);
     }
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, JavaConstant speculation, FrameState stateBefore) {
@@ -64,14 +66,23 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
         tool.getLowerer().lower(this, tool);
     }
 
+    @SuppressWarnings("deprecation")
+    public int getDebugId() {
+        int deoptDebugId = debugId;
+        if (deoptDebugId == DEFAULT_DEBUG_ID && (Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod())) {
+            deoptDebugId = this.getId();
+        }
+        return deoptDebugId;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitDeoptimize(gen.getLIRGeneratorTool().getMetaAccess().encodeDeoptActionAndReason(action, reason, debugId), speculation, gen.state(this));
+        gen.getLIRGeneratorTool().emitDeoptimize(gen.getLIRGeneratorTool().getMetaAccess().encodeDeoptActionAndReason(action, reason, getDebugId()), speculation, gen.state(this));
     }
 
     @Override
     public ValueNode getActionAndReason(MetaAccessProvider metaAccess) {
-        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason, debugId), metaAccess, graph());
+        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason, getDebugId()), metaAccess, graph());
     }
 
     @Override
