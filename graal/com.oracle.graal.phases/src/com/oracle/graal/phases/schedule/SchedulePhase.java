@@ -42,7 +42,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
-import com.oracle.graal.phases.util.*;
 
 public final class SchedulePhase extends Phase {
 
@@ -321,7 +320,7 @@ public final class SchedulePhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert GraphOrder.assertNonCyclicGraph(graph);
+        // assert GraphOrder.assertNonCyclicGraph(graph);
         cfg = ControlFlowGraph.compute(graph, true, true, true, false);
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);

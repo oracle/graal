@@ -32,11 +32,15 @@ import com.oracle.graal.nodes.spi.*;
 public final class OpaqueNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
-    @Input ValueNode value;
+    @Input protected ValueNode value;
 
     public OpaqueNode(ValueNode value) {
         super(TYPE, value.stamp().unrestricted());
         this.value = value;
+    }
+
+    public ValueNode getValue() {
+        return value;
     }
 
     @Override
