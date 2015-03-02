@@ -25,54 +25,54 @@ package com.oracle.graal.lir.phases;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.LIRHighTierPhase.LIRHighTierContext;
-import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
-import com.oracle.graal.lir.phases.LIRMidTierPhase.LIRMidTierContext;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 
 public class LIRSuites {
 
-    private final LIRPhaseSuite<LIRHighTierContext> highTier;
-    private final LIRPhaseSuite<LIRMidTierContext> midTier;
-    private final LIRPhaseSuite<LIRLowTierContext> lowTier;
+    private final LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage;
+    private final LIRPhaseSuite<AllocationContext> allocStage;
+    private final LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage;
 
-    public LIRSuites(LIRPhaseSuite<LIRHighTierContext> highTier, LIRPhaseSuite<LIRMidTierContext> midTier, LIRPhaseSuite<LIRLowTierContext> lowTier) {
-        this.highTier = highTier;
-        this.midTier = midTier;
-        this.lowTier = lowTier;
+    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage) {
+        this.preAllocOptStage = preAllocOptStage;
+        this.allocStage = allocStage;
+        this.postAllocStage = postAllocStage;
     }
 
     /**
-     * {@link LIRHighTierPhase}s are executed between {@link LIR} generation and register
-     * allocation.
+     * {@link PreAllocationOptimizationPhase}s are executed between {@link LIR} generation and
+     * register allocation.
      * <p>
-     * {@link LIRHighTierPhase Implementers} can create new {@link LIRGeneratorTool#newVariable
-     * variables}, {@link LIRGenerationResult#getFrameMap stack slots} and
-     * {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
+     * {@link PreAllocationOptimizationPhase Implementers} can create new
+     * {@link LIRGeneratorTool#newVariable variables}, {@link LIRGenerationResult#getFrameMap stack
+     * slots} and {@link LIRGenerationResult#getFrameMapBuilder virtual stack slots}.
      */
-    public LIRPhaseSuite<LIRHighTierContext> getHighTier() {
-        return highTier;
+    public LIRPhaseSuite<PreAllocationOptimizationContext> getPreAllocationOptimizationStage() {
+        return preAllocOptStage;
     }
 
     /**
-     * {@link LIRMidTierPhase}s are responsible for register allocation and translating
+     * {@link AllocationPhase}s are responsible for register allocation and translating
      * {@link VirtualStackSlot}s into {@link StackSlot}s.
      * <p>
-     * After the {@link LIRMidTier} there should be no more {@link Variable}s and
+     * After the {@link AllocationStage} there should be no more {@link Variable}s and
      * {@link VirtualStackSlot}s.
      */
-    public LIRPhaseSuite<LIRMidTierContext> getMidTier() {
-        return midTier;
+    public LIRPhaseSuite<AllocationContext> getAllocationStage() {
+        return allocStage;
     }
 
     /**
-     * {@link LIRLowTierPhase}s are executed after register allocation and before machine code
-     * generation.
+     * {@link PostAllocationOptimizationPhase}s are executed after register allocation and before
+     * machine code generation.
      * <p>
-     * A {@link LIRLowTierPhase} must not introduce new {@link Variable}s, {@link VirtualStackSlot}s
-     * or {@link StackSlot}s.
+     * A {@link PostAllocationOptimizationPhase} must not introduce new {@link Variable}s,
+     * {@link VirtualStackSlot}s or {@link StackSlot}s.
      */
-    public LIRPhaseSuite<LIRLowTierContext> getLowTier() {
-        return lowTier;
+    public LIRPhaseSuite<PostAllocationOptimizationContext> getPostAllocationOptimizationStage() {
+        return postAllocStage;
     }
 
 }

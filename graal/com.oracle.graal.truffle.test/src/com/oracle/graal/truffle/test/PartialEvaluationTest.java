@@ -77,7 +77,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
         removeFrameStates(actual);
-        for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found invalid method call target node: " + node);
         }
     }
@@ -89,14 +89,14 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, allowAssumptions, null);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, allowAssumptions);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
     }
 
     protected void removeFrameStates(StructuredGraph graph) {
-        for (FrameState frameState : graph.getNodes(FrameState.class)) {
+        for (FrameState frameState : graph.getNodes(FrameState.TYPE)) {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }

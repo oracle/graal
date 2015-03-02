@@ -47,7 +47,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.VerifyPhase.VerificationError;
-import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
@@ -199,7 +198,6 @@ public class CheckGraalInvariants extends GraalTest {
      * Checks the invariants for a single graph.
      */
     private static void checkGraph(HighTierContext context, StructuredGraph graph, boolean verifyEquals) {
-        InferStamps.inferStamps(graph);
         if (verifyEquals) {
             new VerifyUsageWithEquals(Value.class).apply(graph, context);
             new VerifyUsageWithEquals(Register.class).apply(graph, context);

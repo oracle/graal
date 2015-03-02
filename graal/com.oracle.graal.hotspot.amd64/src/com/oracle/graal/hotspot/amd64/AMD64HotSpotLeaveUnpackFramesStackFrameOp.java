@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.graal.lir.framemap.*;
  */
 @Opcode("LEAVE_UNPACK_FRAMES_STACK_FRAME")
 final class AMD64HotSpotLeaveUnpackFramesStackFrameOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64HotSpotLeaveUnpackFramesStackFrameOp> TYPE = LIRInstructionClass.create(AMD64HotSpotLeaveUnpackFramesStackFrameOp.class);
 
     private final Register threadRegister;
     private final int threadLastJavaSpOffset;
@@ -47,6 +48,7 @@ final class AMD64HotSpotLeaveUnpackFramesStackFrameOp extends AMD64LIRInstructio
     private final SaveRegistersOp saveRegisterOp;
 
     AMD64HotSpotLeaveUnpackFramesStackFrameOp(Register threadRegister, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadLastJavaFpOffset, SaveRegistersOp saveRegisterOp) {
+        super(TYPE);
         this.threadRegister = threadRegister;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;

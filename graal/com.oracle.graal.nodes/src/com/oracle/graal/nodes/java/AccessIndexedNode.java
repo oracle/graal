@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,6 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AccessIndexedNode extends AccessArrayNode implements Lowerable {
 
+    public static final NodeClass<AccessIndexedNode> TYPE = NodeClass.create(AccessIndexedNode.class);
     @Input protected ValueNode index;
     protected final Kind elementKind;
 
@@ -50,8 +52,8 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
      * @param index the instruction producing the index
      * @param elementKind the kind of the elements of the array
      */
-    protected AccessIndexedNode(Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
-        super(stamp, array);
+    protected AccessIndexedNode(NodeClass<? extends AccessIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+        super(c, stamp, array);
         this.index = index;
         this.elementKind = elementKind;
     }

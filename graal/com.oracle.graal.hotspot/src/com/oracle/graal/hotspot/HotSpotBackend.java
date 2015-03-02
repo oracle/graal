@@ -42,6 +42,7 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.word.*;
 
@@ -49,6 +50,13 @@ import com.oracle.graal.word.*;
  * HotSpot specific backend.
  */
 public abstract class HotSpotBackend extends Backend {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Use Graal stubs instead of HotSpot stubs where possible")
+        public static final OptionValue<Boolean> PreferGraalStubs = new OptionValue<>(false);
+        // @formatter:on
+    }
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
@@ -164,7 +172,7 @@ public abstract class HotSpotBackend extends Backend {
                 }
             }
         };
-        for (AbstractBlock<?> block : lir.codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition

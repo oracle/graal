@@ -33,7 +33,7 @@ import com.oracle.truffle.api.frame.*;
 public class OptimizedCallTargetSubstitutions {
 
     @MethodSubstitution
-    private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, Object[] args) {
+    private static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
         return NewFrameNode.allocate(FrameWithoutBoxing.class, descriptor, args);
     }
 

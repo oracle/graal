@@ -23,17 +23,20 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
 public final class BeginNode extends AbstractBeginNode {
 
+    public static final NodeClass<BeginNode> TYPE = NodeClass.create(BeginNode.class);
+
     public BeginNode() {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
     }
 
     public BeginNode(Stamp stamp) {
-        super(stamp);
+        super(TYPE, stamp);
     }
 
     public static AbstractBeginNode begin(FixedNode with) {

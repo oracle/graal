@@ -66,7 +66,7 @@ public class PoorMansEATest extends GraalCompilerTest {
             new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
 
             // remove framestates in order to trigger the simplification.
-            cleanup: for (FrameState fs : graph.getNodes(FrameState.class).snapshot()) {
+            cleanup: for (FrameState fs : graph.getNodes(FrameState.TYPE).snapshot()) {
                 for (Node input : fs.inputs()) {
                     if (input instanceof NewInstanceNode) {
                         fs.replaceAtUsages(null);

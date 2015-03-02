@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public class DynamicNewArrayNode extends AbstractNewArrayNode {
+    public static final NodeClass<DynamicNewArrayNode> TYPE = NodeClass.create(DynamicNewArrayNode.class);
 
     @Input ValueNode elementType;
 
@@ -49,11 +50,15 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     protected final Kind knownElementKind;
 
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
-        this(elementType, length, true, null);
+        this(TYPE, elementType, length, true, null);
     }
 
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
-        super(StampFactory.objectNonNull(), length, fillContents);
+        this(TYPE, elementType, length, fillContents, knownElementKind);
+    }
+
+    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
+        super(c, StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
     }

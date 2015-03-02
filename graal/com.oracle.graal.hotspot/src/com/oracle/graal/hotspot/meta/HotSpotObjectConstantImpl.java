@@ -28,7 +28,6 @@ import java.lang.invoke.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 
@@ -157,13 +156,6 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
         return System.identityHashCode(object);
     }
 
-    public JavaConstant getNodeClass() {
-        if (object instanceof Class) {
-            return HotSpotObjectConstantImpl.forObject(NodeClass.get((Class<?>) object));
-        }
-        return null;
-    }
-
     public JavaConstant getComponentType() {
         if (object instanceof Class) {
             return HotSpotObjectConstantImpl.forObject(((Class<?>) object).getComponentType());
@@ -198,7 +190,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
         if (object instanceof Class) {
             Class<? extends CompositeValue> c = (Class<? extends CompositeValue>) object;
             assert CompositeValue.class.isAssignableFrom(c) : c;
-            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get(c));
+            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.create(c));
         }
         return null;
     }

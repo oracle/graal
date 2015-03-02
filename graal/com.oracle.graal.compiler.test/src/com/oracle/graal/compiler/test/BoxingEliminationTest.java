@@ -300,8 +300,8 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
     final ValueNode getResult(String snippet) {
         processMethod(snippet);
-        assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
-        return graph.getNodes(ReturnNode.class).first().result();
+        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        return graph.getNodes(ReturnNode.TYPE).first().result();
     }
 
     private void processMethod(final String snippet) {

@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 
-public abstract class Loop<T extends AbstractBlock<T>> {
+public abstract class Loop<T extends AbstractBlockBase<T>> {
 
     private final Loop<T> parent;
     private final List<Loop<T>> children;

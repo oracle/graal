@@ -54,7 +54,7 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
 
     /**
      * Performs the actual verification.
-     * 
+     *
      * @throws VerificationError if the verification fails
      */
     protected abstract boolean verify(StructuredGraph graph, C context);

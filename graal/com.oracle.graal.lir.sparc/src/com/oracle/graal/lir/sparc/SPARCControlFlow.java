@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,11 +51,13 @@ import com.oracle.graal.sparc.*;
 
 public class SPARCControlFlow {
 
-    public static class ReturnOp extends SPARCLIRInstruction implements BlockEndOp {
+    public static final class ReturnOp extends SPARCLIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
 
         @Use({REG, ILLEGAL}) protected Value x;
 
         public ReturnOp(Value x) {
+            super(TYPE);
             this.x = x;
         }
 
@@ -71,7 +73,8 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, SPARCDelayedControlTransfer {
+    public static final class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, SPARCDelayedControlTransfer {
+        public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
 
         private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
@@ -92,6 +95,7 @@ public class SPARCControlFlow {
 
         public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
                         double trueDestinationProbability) {
+            super(TYPE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;
@@ -325,7 +329,8 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
+    public static final class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
+        public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);
         protected final ConditionFlag conditionFlag;
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
@@ -333,6 +338,7 @@ public class SPARCControlFlow {
         protected final double trueDestinationProbability;
 
         public BranchOp(ConditionFlag conditionFlag, LabelRef trueDestination, LabelRef falseDestination, Kind kind, double trueDestinationProbability) {
+            super(TYPE);
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
             this.kind = kind;
@@ -383,7 +389,8 @@ public class SPARCControlFlow {
         return true;
     }
 
-    public static class StrategySwitchOp extends SPARCLIRInstruction implements BlockEndOp {
+    public static final class StrategySwitchOp extends SPARCLIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
         @Use({CONST}) protected JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
@@ -392,6 +399,7 @@ public class SPARCControlFlow {
         private final SwitchStrategy strategy;
 
         public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+            super(TYPE);
             this.strategy = strategy;
             this.keyConstants = strategy.keyConstants;
             this.keyTargets = keyTargets;
@@ -443,7 +451,8 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class TableSwitchOp extends SPARCLIRInstruction implements BlockEndOp {
+    public static final class TableSwitchOp extends SPARCLIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
 
         private final int lowKey;
         private final LabelRef defaultTarget;
@@ -452,6 +461,7 @@ public class SPARCControlFlow {
         @Temp protected Value scratch;
 
         public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
+            super(TYPE);
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -514,7 +524,8 @@ public class SPARCControlFlow {
     }
 
     @Opcode("CMOVE")
-    public static class CondMoveOp extends SPARCLIRInstruction {
+    public static final class CondMoveOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
 
         private final Kind kind;
 
@@ -526,6 +537,7 @@ public class SPARCControlFlow {
         private final CC cc;
 
         public CondMoveOp(Kind kind, Variable result, CC cc, ConditionFlag condition, Value trueValue, Value falseValue) {
+            super(TYPE);
             this.kind = kind;
             this.result = result;
             this.condition = condition;

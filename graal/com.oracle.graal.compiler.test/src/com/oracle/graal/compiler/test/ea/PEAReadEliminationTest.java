@@ -199,7 +199,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     public void testPhi() {
         processMethod("testPhiSnippet");
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.class).snapshot();
+        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
         assertDeepEquals(2, returnNodes.size());
         assertTrue(returnNodes.get(0).predecessor() instanceof StoreFieldNode);
         assertTrue(returnNodes.get(1).predecessor() instanceof StoreFieldNode);
@@ -239,8 +239,8 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
 
     final ReturnNode getReturn(String snippet) {
         processMethod(snippet);
-        assertDeepEquals(1, graph.getNodes(ReturnNode.class).count());
-        return graph.getNodes(ReturnNode.class).first();
+        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        return graph.getNodes(ReturnNode.TYPE).first();
     }
 
     protected void processMethod(final String snippet) {

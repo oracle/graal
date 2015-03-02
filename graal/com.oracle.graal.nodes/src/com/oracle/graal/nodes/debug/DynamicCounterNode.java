@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.debug;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -38,6 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
+    public static final NodeClass<DynamicCounterNode> TYPE = NodeClass.create(DynamicCounterNode.class);
     @Input ValueNode increment;
 
     protected final String name;
@@ -45,7 +47,11 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
     protected final boolean withContext;
 
     public DynamicCounterNode(String name, String group, ValueNode increment, boolean withContext) {
-        super(StampFactory.forVoid());
+        this(TYPE, name, group, increment, withContext);
+    }
+
+    protected DynamicCounterNode(NodeClass<? extends DynamicCounterNode> c, String name, String group, ValueNode increment, boolean withContext) {
+        super(c, StampFactory.forVoid());
         this.name = name;
         this.group = group;
         this.increment = increment;

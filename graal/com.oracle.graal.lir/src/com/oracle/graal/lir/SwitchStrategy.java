@@ -31,7 +31,7 @@ import com.oracle.graal.lir.asm.*;
 
 /**
  * This class encapsulates different strategies on how to generate code for switch instructions.
- * 
+ *
  * The {@link #getBestStrategy(double[], JavaConstant[], LabelRef[])} method can be used to get
  * strategy with the smallest average effort (average number of comparisons until a decision is
  * reached). The strategy returned by this method will have its averageEffort set, while a strategy
@@ -43,7 +43,7 @@ public abstract class SwitchStrategy {
         /**
          * Generates a conditional or unconditional jump. The jump will be unconditional if
          * condition is null. If defaultTarget is true, then the jump will go the the default.
-         * 
+         *
          * @param index Index of the value and the jump target (only used if defaultTarget == false)
          * @param condition The condition on which to jump (can be null)
          * @param defaultTarget true if the jump should go to the default target, false if index
@@ -54,7 +54,7 @@ public abstract class SwitchStrategy {
         /**
          * Generates a conditional jump to the target with the specified index. The fall through
          * should go to the default target.
-         * 
+         *
          * @param index Index of the value and the jump target
          * @param condition The condition on which to jump
          * @param canFallThrough true if this is the last instruction in the switch statement, to
@@ -64,7 +64,7 @@ public abstract class SwitchStrategy {
 
         /**
          * Create a new label and generate a conditional jump to it.
-         * 
+         *
          * @param index Index of the value and the jump target
          * @param condition The condition on which to jump
          * @return a new Label

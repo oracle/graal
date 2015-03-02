@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,8 @@ import com.oracle.graal.nodes.spi.*;
  * Emits a safepoint poll.
  */
 @Opcode("SAFEPOINT")
-public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
+public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64HotSpotSafepointOp> TYPE = LIRInstructionClass.create(AMD64HotSpotSafepointOp.class);
 
     @State protected LIRFrameState state;
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue temp;
@@ -48,6 +49,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     private final HotSpotVMConfig config;
 
     public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, NodeLIRBuilderTool tool) {
+        super(TYPE);
         this.state = state;
         this.config = config;
         if (isPollingPageFar(config) || ImmutableCode.getValue()) {

@@ -34,6 +34,7 @@ import com.oracle.graal.lir.sparc.*;
 
 @Opcode("CRUNTIME_CALL_PROLOGUE")
 final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotCRuntimeCallPrologueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotCRuntimeCallPrologueOp.class);
 
     private final int threadLastJavaSpOffset;
     private final Register thread;
@@ -41,6 +42,7 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction imple
     @Def({REG, STACK}) protected Value threadTemp;
 
     public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer, Value threadTemp) {
+        super(TYPE);
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.thread = thread;
         this.stackPointer = stackPointer;

@@ -170,7 +170,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
                 Kind kind = values[i].getKind();
                 if (kind.needsTwoSlots()) {
                     assert values.length > i + 1 : String.format("missing second word %s", this);
-                    assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal;
+                    assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal : this;
                 }
             }
         }

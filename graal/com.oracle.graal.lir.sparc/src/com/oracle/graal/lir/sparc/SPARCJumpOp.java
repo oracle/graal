@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,13 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.asm.*;
 
-public class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
+public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
+    public static final LIRInstructionClass<SPARCJumpOp> TYPE = LIRInstructionClass.create(SPARCJumpOp.class);
     private boolean emitDone = false;
     private int delaySlotPosition = -1;
 
     public SPARCJumpOp(LabelRef destination) {
-        super(destination);
+        super(TYPE, destination);
     }
 
     public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {

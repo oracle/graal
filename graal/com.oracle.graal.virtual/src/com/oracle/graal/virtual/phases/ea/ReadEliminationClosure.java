@@ -75,7 +75,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     StoreFieldNode store = (StoreFieldNode) node;
                     ValueNode value = getScalarAlias(store.value());
                     if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                        effects.deleteFixedNode(store);
+                        effects.deleteNode(store);
                         deleted = true;
                     }
                     state.killReadCache(store.field());
@@ -108,7 +108,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
                 ValueNode value = getScalarAlias(write.value());
                 if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                    effects.deleteFixedNode(write);
+                    effects.deleteNode(write);
                     deleted = true;
                 }
                 processIdentity(state, write.location().getLocationIdentity());
@@ -141,7 +141,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
                     ValueNode value = getScalarAlias(write.value());
                     if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                        effects.deleteFixedNode(write);
+                        effects.deleteNode(write);
                         deleted = true;
                     }
                     processIdentity(state, write.getLocationIdentity());

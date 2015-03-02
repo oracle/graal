@@ -26,6 +26,11 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.java.GraphBuilderPlugin.AnnotatedInvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodes.*;
 
 public class GraphBuilderConfiguration {
@@ -36,10 +41,13 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
-    private GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin;
-    private GraphBuilderPlugins.ParameterPlugin parameterPlugin;
-    private GraphBuilderPlugins.InlineInvokePlugin inlineInvokePlugin;
-    private GraphBuilderPlugins.LoopExplosionPlugin loopExplosionPlugin;
+    private InvocationPlugins invocationPlugins = new InvocationPlugins();
+    private LoadFieldPlugin loadFieldPlugin;
+    private ParameterPlugin parameterPlugin;
+    private InlineInvokePlugin inlineInvokePlugin;
+    private AnnotatedInvocationPlugin annotatedInvocationPlugin;
+    private LoopExplosionPlugin loopExplosionPlugin;
+    private boolean useProfiling;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -71,12 +79,22 @@ public class GraphBuilderConfiguration {
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.doLivenessAnalysis = doLivenessAnalysis;
+        this.useProfiling = true;
     }
 
     public GraphBuilderConfiguration copy() {
         GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
-        result.loadFieldPlugin = loadFieldPlugin;
+        result.useProfiling = useProfiling;
+        result.copyPluginsFrom(this);
         return result;
+    }
+
+    public boolean getUseProfiling() {
+        return useProfiling;
+    }
+
+    public void setUseProfiling(boolean b) {
+        this.useProfiling = b;
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
@@ -96,12 +114,24 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis);
     }
 
-    public GraphBuilderPlugins.LoadFieldPlugin getLoadFieldPlugin() {
+    public InvocationPlugins getInvocationPlugins() {
+        return invocationPlugins;
+    }
+
+    public AnnotatedInvocationPlugin getAnnotatedInvocationPlugin() {
+        return annotatedInvocationPlugin;
+    }
+
+    public void setAnnotatedInvocationPlugin(AnnotatedInvocationPlugin plugin) {
+        this.annotatedInvocationPlugin = plugin;
+    }
+
+    public LoadFieldPlugin getLoadFieldPlugin() {
         return loadFieldPlugin;
     }
 
-    public void setLoadFieldPlugin(GraphBuilderPlugins.LoadFieldPlugin loadFieldPlugin) {
-        this.loadFieldPlugin = loadFieldPlugin;
+    public void setLoadFieldPlugin(LoadFieldPlugin plugin) {
+        this.loadFieldPlugin = plugin;
     }
 
     public ResolvedJavaType[] getSkippedExceptionTypes() {
@@ -153,27 +183,37 @@ public class GraphBuilderConfiguration {
         return eagerResolving;
     }
 
-    public GraphBuilderPlugins.ParameterPlugin getParameterPlugin() {
+    public ParameterPlugin getParameterPlugin() {
         return parameterPlugin;
     }
 
-    public void setParameterPlugin(GraphBuilderPlugins.ParameterPlugin parameterPlugin) {
-        this.parameterPlugin = parameterPlugin;
+    public void setParameterPlugin(ParameterPlugin plugin) {
+        this.parameterPlugin = plugin;
     }
 
-    public GraphBuilderPlugins.InlineInvokePlugin getInlineInvokePlugin() {
+    public InlineInvokePlugin getInlineInvokePlugin() {
         return inlineInvokePlugin;
     }
 
-    public void setInlineInvokePlugin(GraphBuilderPlugins.InlineInvokePlugin inlineInvokePlugin) {
-        this.inlineInvokePlugin = inlineInvokePlugin;
+    public void setInlineInvokePlugin(InlineInvokePlugin plugin) {
+        this.inlineInvokePlugin = plugin;
     }
 
-    public GraphBuilderPlugins.LoopExplosionPlugin getLoopExplosionPlugin() {
+    public LoopExplosionPlugin getLoopExplosionPlugin() {
         return loopExplosionPlugin;
     }
 
-    public void setLoopExplosionPlugin(GraphBuilderPlugins.LoopExplosionPlugin loopExplosionPlugin) {
-        this.loopExplosionPlugin = loopExplosionPlugin;
+    public void setLoopExplosionPlugin(LoopExplosionPlugin plugin) {
+        this.loopExplosionPlugin = plugin;
+    }
+
+    public GraphBuilderConfiguration copyPluginsFrom(GraphBuilderConfiguration other) {
+        this.invocationPlugins.updateFrom(other.getInvocationPlugins());
+        this.parameterPlugin = other.parameterPlugin;
+        this.loadFieldPlugin = other.loadFieldPlugin;
+        this.inlineInvokePlugin = other.inlineInvokePlugin;
+        this.loopExplosionPlugin = other.loopExplosionPlugin;
+        this.annotatedInvocationPlugin = other.annotatedInvocationPlugin;
+        return this;
     }
 }

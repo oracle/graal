@@ -98,12 +98,23 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 }
             }
         });
-        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        int selectedProcessors = TruffleCompilerOptions.TruffleCompilerThreads.getValue();
+        if (selectedProcessors == 0) {
+            // No manual selection made, check how many processors are available.
+            int availableProcessors = Runtime.getRuntime().availableProcessors();
+            if (availableProcessors >= 4) {
+                selectedProcessors = 2;
+            } else if (availableProcessors >= 12) {
+                selectedProcessors = 4;
+            }
+        }
+        selectedProcessors = Math.max(1, selectedProcessors);
+        compileQueue = new ThreadPoolExecutor(selectedProcessors, selectedProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
     }
 
     private static void installOptimizedCallTargetCallDirect() {
-        if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+        if (TruffleCompilerOptions.TruffleFunctionInlining.getValue() && !TruffleCompilerOptions.FastPE.getValue()) {
             ((HotSpotResolvedJavaMethod) getGraalProviders().getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod())).setNotInlineable();
         }
     }

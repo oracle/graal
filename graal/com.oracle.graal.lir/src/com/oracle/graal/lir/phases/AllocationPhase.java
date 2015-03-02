@@ -22,13 +22,29 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.LIRHighTierPhase.*;
+import java.util.*;
 
-public class LIRHighTier extends LIRPhaseSuite<LIRHighTierContext> {
-    public LIRHighTier() {
-        if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
-            appendPhase(new ConstantLoadOptimization());
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
+
+public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
+
+    public static final class AllocationContext {
+        private final SpillMoveFactory spillMoveFactory;
+
+        public AllocationContext(SpillMoveFactory spillMoveFactory) {
+            this.spillMoveFactory = spillMoveFactory;
         }
     }
+
+    @Override
+    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.spillMoveFactory);
+    }
+
+    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    SpillMoveFactory spillMoveFactory);
+
 }

@@ -73,6 +73,13 @@ public interface Replacements {
     StructuredGraph getMethodSubstitution(ResolvedJavaMethod method);
 
     /**
+     * Gets the method that is a substitution for a given method.
+     *
+     * @return the method, if any, that is a substitution for {@code method}
+     */
+    ResolvedJavaMethod getMethodSubstitutionMethod(ResolvedJavaMethod method);
+
+    /**
      * Gets the node class with which a method invocation should be replaced.
      *
      * @param method target of an invocation

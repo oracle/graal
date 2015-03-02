@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,8 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 
 @Opcode("BSWAP")
-public class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final LIRInstructionClass<SPARCByteSwapOp> TYPE = LIRInstructionClass.create(SPARCByteSwapOp.class);
 
     @Def({REG, HINT}) protected Value result;
     @Use({REG}) protected Value input;
@@ -43,6 +44,7 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDel
     @Use({STACK}) protected StackSlotValue tmpSlot;
 
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
+        super(TYPE);
         this.result = result;
         this.input = input;
         this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long));

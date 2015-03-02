@@ -34,7 +34,7 @@ public class BytecodeLookupSwitch extends BytecodeSwitch {
 
     /**
      * Constructor for a {@link BytecodeStream}.
-     * 
+     *
      * @param stream the {@code BytecodeStream} containing the switch instruction
      * @param bci the index in the stream of the switch instruction
      */

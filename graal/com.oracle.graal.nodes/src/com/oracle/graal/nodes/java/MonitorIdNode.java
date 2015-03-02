@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,10 +36,15 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Association})
 public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLowerable {
 
+    public static final NodeClass<MonitorIdNode> TYPE = NodeClass.create(MonitorIdNode.class);
     protected int lockDepth;
 
     public MonitorIdNode(int lockDepth) {
-        super(StampFactory.forVoid());
+        this(TYPE, lockDepth);
+    }
+
+    protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth) {
+        super(c, StampFactory.forVoid());
         this.lockDepth = lockDepth;
     }
 

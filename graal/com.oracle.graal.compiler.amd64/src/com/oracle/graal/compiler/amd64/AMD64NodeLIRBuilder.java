@@ -61,7 +61,21 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         if ((valueNode instanceof IntegerDivNode) || (valueNode instanceof IntegerRemNode)) {
             FixedBinaryNode divRem = (FixedBinaryNode) valueNode;
             FixedNode node = divRem.next();
-            while (node instanceof FixedWithNextNode) {
+            while (true) {
+                if (node instanceof IfNode) {
+                    IfNode ifNode = (IfNode) node;
+                    double probability = ifNode.getTrueSuccessorProbability();
+                    if (probability == 1.0) {
+                        node = ifNode.trueSuccessor();
+                    } else if (probability == 0.0) {
+                        node = ifNode.falseSuccessor();
+                    } else {
+                        break;
+                    }
+                } else if (!(node instanceof FixedWithNextNode)) {
+                    break;
+                }
+
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
                 if (((fixedWithNextNode instanceof IntegerDivNode) || (fixedWithNextNode instanceof IntegerRemNode)) && fixedWithNextNode.getClass() != divRem.getClass()) {
                     FixedBinaryNode otherDivRem = (FixedBinaryNode) fixedWithNextNode;

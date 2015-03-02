@@ -22,18 +22,20 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public class OpaqueNode extends FloatingNode implements LIRLowerable {
+public final class OpaqueNode extends FloatingNode implements LIRLowerable {
 
+    public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
     @Input ValueNode value;
 
     public OpaqueNode(ValueNode value) {
-        super(value.stamp().unrestricted());
+        super(TYPE, value.stamp().unrestricted());
         this.value = value;
     }
 

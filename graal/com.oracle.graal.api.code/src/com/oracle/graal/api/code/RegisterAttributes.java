@@ -47,7 +47,7 @@ public class RegisterAttributes {
      * Creates a map from register {@linkplain Register#number numbers} to register
      * {@linkplain RegisterAttributes attributes} for a given register configuration and set of
      * registers.
-     * 
+     *
      * @param registerConfig a register configuration
      * @param registers a set of registers
      * @return an array whose length is the max register number in {@code registers} plus 1. An

@@ -31,34 +31,44 @@ import com.oracle.graal.lir.*;
  */
 class UseEntry {
 
-    private final AbstractBlock<?> block;
+    private final AbstractBlockBase<?> block;
     private final LIRInstruction instruction;
-    private final ValuePosition position;
+    private final Value value;
 
-    public UseEntry(AbstractBlock<?> block, LIRInstruction instruction, ValuePosition position) {
+    public UseEntry(AbstractBlockBase<?> block, LIRInstruction instruction, Value value) {
         this.block = block;
         this.instruction = instruction;
-        this.position = position;
+        this.value = value;
     }
 
     public LIRInstruction getInstruction() {
         return instruction;
     }
 
-    public AbstractBlock<?> getBlock() {
+    public AbstractBlockBase<?> getBlock() {
         return block;
     }
 
-    public ValuePosition getPosition() {
-        return position;
+    public void setValue(Value newValue) {
+        replaceValue(instruction, value, newValue);
+    }
+
+    private static void replaceValue(LIRInstruction op, Value oldValue, Value newValue) {
+        ValueProcedure proc = (value, mode, flags) -> value.identityEquals(oldValue) ? newValue : value;
+        op.forEachAlive(proc);
+        op.forEachInput(proc);
+        op.forEachOutput(proc);
+        op.forEachTemp(proc);
+        op.forEachState(proc);
     }
 
     public Value getValue() {
-        return position.get(instruction);
+        return value;
     }
 
     @Override
     public String toString() {
         return "Use[" + getValue() + ":" + instruction + ":" + block + "]";
     }
+
 }

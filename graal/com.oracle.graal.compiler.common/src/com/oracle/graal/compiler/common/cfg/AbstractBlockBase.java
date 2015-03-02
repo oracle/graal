@@ -24,9 +24,10 @@ package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 
-public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements AbstractBlock<T> {
+public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     protected int id;
+    protected int domDepth;
 
     protected List<T> predecessors;
     protected List<T> successors;
@@ -72,6 +73,11 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
 
     public void setDominator(T dominator) {
         this.dominator = dominator;
+        this.domDepth = dominator.domDepth + 1;
+    }
+
+    public int getDominatorDepth() {
+        return domDepth;
     }
 
     public List<T> getDominated() {
@@ -113,4 +119,20 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
     public void setAlign(boolean align) {
         this.align = align;
     }
+
+    public abstract boolean isExceptionEntry();
+
+    public abstract Loop<T> getLoop();
+
+    public abstract int getLoopDepth();
+
+    public abstract boolean isLoopEnd();
+
+    public abstract boolean isLoopHeader();
+
+    public abstract T getPostdominator();
+
+    public abstract double probability();
+
+    public abstract T getDominator(int distance);
 }

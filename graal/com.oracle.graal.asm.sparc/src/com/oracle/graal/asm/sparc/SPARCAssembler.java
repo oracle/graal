@@ -999,7 +999,7 @@ public abstract class SPARCAssembler extends Assembler {
 
     // @formatter:off
     /**
-     * Branch on (Integer|Floatingpoint) Condition Codes
+     * Branch on (Integer|Floatingpoint) Condition Codes.
      * <pre>
      * | 00  |annul| cond| op2 |               disp22                 |
      * |31 30|29   |28 25|24 22|21                                   0|
@@ -1043,7 +1043,7 @@ public abstract class SPARCAssembler extends Assembler {
 
     // @formatter:off
     /**
-     * Used for fbpcc (Float) and bpcc (Integer)
+     * Used for fbpcc (Float) and bpcc (Integer).
      * <pre>
      * | 00  |an|cond | op2 |cc1 2|p |           disp19               |
      * |31 30|29|28 25|24 22|21 20|19|                               0|
@@ -1237,12 +1237,12 @@ public abstract class SPARCAssembler extends Assembler {
         int d10 = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
         assert isSimm(d10, 10) && isImm(rs2, 5);
         d10 &= (1 << 10) - 1;
-        final int c_lo = cf.value & 0b111;
-        final int c_hi = cf.value >> 3;
-        final int d10_lo = d10 & ((1 << 8) - 1);
-        final int d10_hi = d10 >> 8;
-        int a = c_hi << 4 | 0b1000 | c_lo;
-        int b = cc2 << 21 | d10_hi << D10HI_SHIFT | rs1.encoding << 14 | i << 13 | d10_lo << D10LO_SHIFT | rs2;
+        final int cLo = cf.value & 0b111;
+        final int cHi = cf.value >> 3;
+        final int d10Lo = d10 & ((1 << 8) - 1);
+        final int d10Hi = d10 >> 8;
+        int a = cHi << 4 | 0b1000 | cLo;
+        int b = cc2 << 21 | d10Hi << D10HI_SHIFT | rs1.encoding << 14 | i << 13 | d10Lo << D10LO_SHIFT | rs2;
         fmt00(a, Op2s.Bpr.value, b);
     }
 

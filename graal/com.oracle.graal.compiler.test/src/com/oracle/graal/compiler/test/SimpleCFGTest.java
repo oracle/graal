@@ -43,8 +43,8 @@ public class SimpleCFGTest extends GraalCompilerTest {
     public void testImplies() {
         StructuredGraph graph = new StructuredGraph(AllowAssumptions.YES);
 
-        AbstractEndNode trueEnd = graph.add(new EndNode());
-        AbstractEndNode falseEnd = graph.add(new EndNode());
+        EndNode trueEnd = graph.add(new EndNode());
+        EndNode falseEnd = graph.add(new EndNode());
 
         AbstractBeginNode trueBegin = graph.add(new BeginNode());
         trueBegin.setNext(trueEnd);

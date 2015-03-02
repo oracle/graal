@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,18 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
-public class SPARCPrefetchOp extends SPARCLIRInstruction {
+public final class SPARCPrefetchOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCPrefetchOp> TYPE = LIRInstructionClass.create(SPARCPrefetchOp.class);
 
     private final int instr;  // AllocatePrefetchInstr
     @Alive({COMPOSITE}) protected SPARCAddressValue address;
 
     public SPARCPrefetchOp(SPARCAddressValue address, int instr) {
+        super(TYPE);
         this.address = address;
         this.instr = instr;
     }

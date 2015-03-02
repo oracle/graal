@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
@@ -31,9 +32,10 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public final class CardTableShiftNode extends FloatingNode implements LIRLowerable {
+    public static final NodeClass<CardTableShiftNode> TYPE = NodeClass.create(CardTableShiftNode.class);
 
     public CardTableShiftNode() {
-        super(StampFactory.intValue());
+        super(TYPE, StampFactory.intValue());
     }
 
     @Override

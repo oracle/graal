@@ -61,17 +61,26 @@ import com.oracle.graal.replacements.nodes.*;
  */
 public class InstanceOfSnippets implements Snippets {
 
+    private static final double COMPILED_VS_INTERPRETER_SPEEDUP = 50;
+    private static final double INSTANCEOF_DEOPT_SPEEDUP = 1.01; // generous 1% speedup
+
+    private static final int DEOPT_THRESHOLD_FACTOR = (int) (COMPILED_VS_INTERPRETER_SPEEDUP / (INSTANCEOF_DEOPT_SPEEDUP - 1.0));
+
     /**
      * Gets the minimum required probability of a profiled instanceof hitting one the profiled types
      * for use of the {@linkplain #instanceofWithProfile deoptimizing} snippet. The value is
-     * computed to be an order of magnitude greater than the configured compilation threshold. For
-     * example, if a method is compiled after being interpreted 10000 times, the deoptimizing
-     * snippet will only be used for an instanceof if its profile indicates that less than 1 in
-     * 100000 executions are for an object whose type is not one of the top N profiled types (where
-     * {@code N == } {@link Options#TypeCheckMaxHints}).
+     * computed to be an order of greater than the configured compilation threshold by a
+     * {@linkplain #DEOPT_THRESHOLD_FACTOR factor}.
+     *
+     * <p>
+     * This factor is such that the additional executions we get from using the deoptimizing snippet
+     * (({@linkplain #INSTANCEOF_DEOPT_SPEEDUP speedup} - 1) / probability threshold) is greater
+     * than the time lost during re-interpretation ({@linkplain #COMPILED_VS_INTERPRETER_SPEEDUP
+     * compiled code speedup} &times compilation threshold).
+     * </p>
      */
     public static double hintHitProbabilityThresholdForDeoptimizingSnippet(long compilationThreshold) {
-        return 1.0D - (1.0D / (compilationThreshold * 10));
+        return 1.0D - (1.0D / (compilationThreshold * DEOPT_THRESHOLD_FACTOR));
     }
 
     /**

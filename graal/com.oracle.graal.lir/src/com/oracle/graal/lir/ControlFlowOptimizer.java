@@ -35,18 +35,18 @@ import com.oracle.graal.lir.phases.*;
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.
  */
-public final class ControlFlowOptimizer extends LIRLowTierPhase {
+public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase {
 
     /**
      * Performs control flow optimizations on the given LIR graph.
      */
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         LIR lir = lirGenRes.getLIR();
         new Optimizer<B>(lir).deleteEmptyBlocks(codeEmittingOrder);
     }
 
-    private static final class Optimizer<B extends AbstractBlock<B>> {
+    private static final class Optimizer<B extends AbstractBlockBase<B>> {
 
         private final LIR lir;
 
@@ -97,7 +97,7 @@ public final class ControlFlowOptimizer extends LIRLowTierPhase {
                 if (canDeleteBlock(block)) {
                     // adjust successor and predecessor lists
                     B other = block.getSuccessors().iterator().next();
-                    for (AbstractBlock<B> pred : block.getPredecessors()) {
+                    for (AbstractBlockBase<B> pred : block.getPredecessors()) {
                         Collections.replaceAll(pred.getSuccessors(), block, other);
                     }
                     for (int i = 0; i < other.getPredecessorCount(); i++) {

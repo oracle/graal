@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,8 +57,9 @@ import com.oracle.graal.replacements.*;
  * </ul>
  */
 @NodeInfo
-public class MacroNode extends FixedWithNextNode implements Lowerable {
+public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
 
+    public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
 
     protected final int bci;
@@ -66,8 +67,8 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
     protected final JavaType returnType;
     protected final InvokeKind invokeKind;
 
-    public MacroNode(Invoke invoke) {
-        super(StampFactory.forKind(((MethodCallTargetNode) invoke.callTarget()).targetMethod().getSignature().getReturnKind()));
+    protected MacroNode(NodeClass<? extends MacroNode> c, Invoke invoke) {
+        super(c, StampFactory.forKind(((MethodCallTargetNode) invoke.callTarget()).targetMethod().getSignature().getReturnKind()));
         MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
         this.arguments = new NodeInputList<>(this, methodCallTarget.arguments());
         this.bci = invoke.bci();
@@ -170,7 +171,7 @@ public class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
-            if (stateAfter() == null) {
+            if (invoke.stateAfter() == null) {
                 throw new GraalInternalError("cannot lower to invoke without state: %s", this);
             }
             invoke.lower(tool);

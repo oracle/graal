@@ -26,113 +26,20 @@ import static java.lang.String.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 
 /**
- * Interface for managing a set of graph builder {@link GraphBuilderPlugin}s.
+ * Manages a set of {@link InvocationPlugin}s.
  */
-public interface GraphBuilderPlugins {
-
-    public interface LoadFieldPlugin extends GraphBuilderPlugin {
-        @SuppressWarnings("unused")
-        default boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
-            return false;
-        }
-
-        @SuppressWarnings("unused")
-        default boolean apply(GraphBuilderContext graphBuilderContext, ResolvedJavaField staticField) {
-            return false;
-        }
-    }
-
-    public interface ParameterPlugin extends GraphBuilderPlugin {
-        FloatingNode interceptParameter(int index);
-    }
-
-    public interface InlineInvokePlugin extends GraphBuilderPlugin {
-        boolean shouldInlineInvoke(ResolvedJavaMethod method, int depth);
-    }
-
-    public interface LoopExplosionPlugin extends GraphBuilderPlugin {
-        boolean shouldExplodeLoops(ResolvedJavaMethod method);
-    }
-
+public class InvocationPlugins {
     /**
-     * Plugin for handling a method invocation.
-     */
-    public interface InvocationPlugin extends GraphBuilderPlugin {
-        /**
-         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
-         */
-        default boolean apply(GraphBuilderContext builder) {
-            throw invalidHandler(builder);
-        }
-
-        /**
-         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
-         */
-        default boolean apply(GraphBuilderContext builder, ValueNode arg) {
-            throw invalidHandler(builder, arg);
-        }
-
-        /**
-         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
-         */
-        default boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
-            throw invalidHandler(builder, arg1, arg2);
-        }
-
-        /**
-         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
-         */
-        default boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
-            throw invalidHandler(builder, arg1, arg2, arg3);
-        }
-
-        /**
-         * @see #execute(GraphBuilderContext, InvocationPlugin, ValueNode[])
-         */
-        default boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4) {
-            throw invalidHandler(builder, arg1, arg2, arg3, arg4);
-        }
-
-        /**
-         * Executes a given plugin against a set of invocation arguments by dispatching to the
-         * plugin's {@code apply(...)} method that matches the number of arguments.
-         *
-         * @return {@code true} if the plugin handled the invocation, {@code false} if the graph
-         *         builder should process the invoke further (e.g., by inlining it or creating an
-         *         {@link Invoke} node). A plugin that does not handle an invocation must not modify
-         *         the graph being constructed.
-         */
-        static boolean execute(GraphBuilderContext builder, InvocationPlugin plugin, ValueNode[] args) {
-            if (args.length == 0) {
-                return plugin.apply(builder);
-            } else if (args.length == 1) {
-                return plugin.apply(builder, args[0]);
-            } else if (args.length == 2) {
-                return plugin.apply(builder, args[0], args[1]);
-            } else if (args.length == 3) {
-                return plugin.apply(builder, args[0], args[1], args[2]);
-            } else if (args.length == 4) {
-                return plugin.apply(builder, args[0], args[1], args[2], args[3]);
-            } else {
-                throw plugin.invalidHandler(builder, args);
-            }
-        }
-
-        default Error invalidHandler(@SuppressWarnings("unused") GraphBuilderContext builder, ValueNode... args) {
-            return new GraalInternalError("Invocation plugin %s does not handle invocations with %d arguments", getClass().getSimpleName(), args.length);
-        }
-    }
-
-    /**
-     * Utility for {@linkplain GraphBuilderPlugins#register(ResolvedJavaMethod, InvocationPlugin)
-     * registration} of plugins.
+     * Utility for {@linkplain InvocationPlugins#register(ResolvedJavaMethod, InvocationPlugin)
+     * registration} of invocation plugins.
      */
     public static class Registration {
 
@@ -147,19 +54,20 @@ public interface GraphBuilderPlugins {
             }
         }
 
-        private final GraphBuilderPlugins plugins;
+        private final InvocationPlugins plugins;
         private final MetaAccessProvider metaAccess;
         private final Class<?> declaringClass;
 
         /**
-         * Creates an object for registering plugins for methods declared by a given class.
+         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
+         * given class.
          *
          * @param plugins where to register the plugins
          * @param metaAccess used to resolve classes and methods
          * @param declaringClass the class declaring the methods for which plugins will be
          *            registered via this object
          */
-        public Registration(GraphBuilderPlugins plugins, MetaAccessProvider metaAccess, Class<?> declaringClass) {
+        public Registration(InvocationPlugins plugins, MetaAccessProvider metaAccess, Class<?> declaringClass) {
             this.plugins = plugins;
             this.metaAccess = metaAccess;
             this.declaringClass = declaringClass;
@@ -231,7 +139,64 @@ public interface GraphBuilderPlugins {
         }
     }
 
-    public static class InvocationPluginChecker {
+    private final Map<ResolvedJavaMethod, InvocationPlugin> plugins = new HashMap<>();
+
+    /**
+     * The invocation plugins deferred to if a plugin is not found in this object.
+     */
+    private InvocationPlugins defaults;
+
+    /**
+     * Registers an invocation plugin for a given method. There must be no plugin currently
+     * registered for {@code method}.
+     */
+    public void register(ResolvedJavaMethod method, InvocationPlugin plugin) {
+        assert Checker.check(method, plugin);
+        GraphBuilderPlugin oldValue = plugins.put(method, plugin);
+        // System.out.println("registered: " + plugin);
+        assert oldValue == null;
+    }
+
+    /**
+     * Gets the plugin for a given method.
+     *
+     * @param method the method to lookup
+     * @return the plugin associated with {@code method} or {@code null} if none exists
+     */
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
+        InvocationPlugin res = plugins.get(method);
+        if (res == null && defaults != null) {
+            return defaults.lookupInvocation(method);
+        }
+        return res;
+    }
+
+    /**
+     * Sets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} if a
+     * plugin is not found in this object.
+     */
+    public InvocationPlugins setDefaults(InvocationPlugins defaults) {
+        InvocationPlugins old = this.defaults;
+        this.defaults = defaults;
+        return old;
+    }
+
+    /**
+     * Adds all the plugins from {@code other} to this object.
+     */
+    public void updateFrom(InvocationPlugins other) {
+        this.plugins.putAll(other.plugins);
+        if (other.defaults != null) {
+            updateFrom(other.defaults);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return plugins.keySet().stream().map(m -> m.format("%H.%n(%p)")).collect(Collectors.joining(", ")) + " / defaults: " + this.defaults;
+    }
+
+    private static class Checker {
         /**
          * The set of all {@link InvocationPlugin#apply} method signatures.
          */
@@ -257,45 +222,15 @@ public interface GraphBuilderPlugins {
         public static boolean check(ResolvedJavaMethod method, InvocationPlugin plugin) {
             int arguments = method.getSignature().getParameterCount(!method.isStatic());
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, method.format("%H.%n(%p)"));
-            Method expected = null;
             for (Method m : plugin.getClass().getDeclaredMethods()) {
                 if (m.getName().equals("apply")) {
                     Class<?>[] parameterTypes = m.getParameterTypes();
-                    assert Arrays.equals(SIGS[arguments], parameterTypes) : format("graph builder plugin for %s has wrong signature%nexpected: (%s)%n  actual: (%s)", method.format("%H.%n(%p)"),
-                                    sigString(SIGS[arguments]), sigString(m.getParameterTypes()));
-                    expected = m;
+                    if (Arrays.equals(SIGS[arguments], parameterTypes)) {
+                        return true;
+                    }
                 }
             }
-            assert expected != null : format("graph builder plugin %s must define exactly one \"apply\" method, none found", plugin);
-            return true;
+            throw new AssertionError(format("graph builder plugin for %s not found", method.format("%H.%n(%p)")));
         }
-
-        protected static String sigString(Class<?>... sig) {
-            StringBuilder sb = new StringBuilder();
-            for (Class<?> t : sig) {
-                if (sb.length() != 0) {
-                    sb.append(", ");
-                }
-                sb.append(t.getSimpleName());
-            }
-            return sb.toString();
-        }
-
     }
-
-    /**
-     * Registers an {@link InvocationPlugin} for a given method. There must be no plugin currently
-     * registered for {@code method}.
-     */
-    void register(ResolvedJavaMethod method, InvocationPlugin plugin);
-
-    /**
-     * Gets the {@link InvocationPlugin} for a given method.
-     *
-     * @param method the method to lookup
-     * @return the plugin associated with {@code method} or {@code null} if none exists
-     */
-    InvocationPlugin lookupInvocation(ResolvedJavaMethod method);
-
-    DefaultGraphBuilderPlugins copy();
 }

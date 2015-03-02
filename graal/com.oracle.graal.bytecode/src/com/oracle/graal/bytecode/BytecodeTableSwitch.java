@@ -34,7 +34,7 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
 
     /**
      * Constructor for a {@link BytecodeStream}.
-     * 
+     *
      * @param stream the {@code BytecodeStream} containing the switch instruction
      * @param bci the index in the stream of the switch instruction
      */
@@ -44,7 +44,7 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
 
     /**
      * Gets the low key of the table switch.
-     * 
+     *
      * @return the low key
      */
     public int lowKey() {
@@ -53,7 +53,7 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
 
     /**
      * Gets the high key of the table switch.
-     * 
+     *
      * @return the high key
      */
     public int highKey() {

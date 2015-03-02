@@ -32,6 +32,7 @@ import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
@@ -154,11 +155,12 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 
     @NodeInfo
     private static final class LoadThroughPatchNode extends FixedWithNextNode implements LIRLowerable {
+        public static final NodeClass<LoadThroughPatchNode> TYPE = NodeClass.create(LoadThroughPatchNode.class);
 
         @Input protected ValueNode input;
 
         public LoadThroughPatchNode(ValueNode input) {
-            super(input.stamp());
+            super(TYPE, input.stamp());
             this.input = input;
         }
 
@@ -176,13 +178,15 @@ public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
         public static native Object load(Object obj);
     }
 
-    private static class LoadThroughPatchOp extends LIRInstructionBase {
+    private static final class LoadThroughPatchOp extends LIRInstruction {
+        public static final LIRInstructionClass<LoadThroughPatchOp> TYPE = LIRInstructionClass.create(LoadThroughPatchOp.class);
 
         final Constant c;
         final boolean compressed;
         @Def({REG}) AllocatableValue result;
 
         LoadThroughPatchOp(Constant c, boolean compressed, AllocatableValue result) {
+            super(TYPE);
             this.c = c;
             this.compressed = compressed;
             this.result = result;

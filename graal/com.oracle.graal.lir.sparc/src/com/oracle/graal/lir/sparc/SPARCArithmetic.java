@@ -62,13 +62,15 @@ public enum SPARCArithmetic {
     /**
      * Unary operation with separate source and destination operand.
      */
-    public static class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<Unary2Op> TYPE = LIRInstructionClass.create(Unary2Op.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -84,7 +86,8 @@ public enum SPARCArithmetic {
      * Binary operation with two operands. The first source operand is combined with the
      * destination. The second source operand must be a register.
      */
-    public static class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<BinaryRegReg> TYPE = LIRInstructionClass.create(BinaryRegReg.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected Value result;
@@ -97,6 +100,7 @@ public enum SPARCArithmetic {
         }
 
         public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -119,7 +123,8 @@ public enum SPARCArithmetic {
     /**
      * Binary operation with single source/destination operand and one constant.
      */
-    public static class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<BinaryRegConst> TYPE = LIRInstructionClass.create(BinaryRegConst.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -132,6 +137,7 @@ public enum SPARCArithmetic {
         }
 
         public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, JavaConstant y, LIRFrameState state) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -154,7 +160,8 @@ public enum SPARCArithmetic {
     /**
      * Special LIR instruction as it requires a bunch of scratch registers.
      */
-    public static class RemOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class RemOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<RemOp> TYPE = LIRInstructionClass.create(RemOp.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected Value result;
@@ -165,6 +172,7 @@ public enum SPARCArithmetic {
         @State protected LIRFrameState state;
 
         public RemOp(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state, LIRGeneratorTool gen) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -189,7 +197,8 @@ public enum SPARCArithmetic {
     /**
      * Calculates the product and condition code for long multiplication of long values.
      */
-    public static class SPARCLMulccOp extends SPARCLIRInstruction {
+    public static final class SPARCLMulccOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<SPARCLMulccOp> TYPE = LIRInstructionClass.create(SPARCLMulccOp.class);
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value x;
         @Alive({REG}) protected Value y;
@@ -197,6 +206,7 @@ public enum SPARCArithmetic {
         @Temp({REG}) protected Value scratch2;
 
         public SPARCLMulccOp(Value result, Value x, Value y, LIRGeneratorTool gen) {
+            super(TYPE);
             this.result = result;
             this.x = x;
             this.y = y;
@@ -841,7 +851,8 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static class MulHighOp extends SPARCLIRInstruction {
+    public static final class MulHighOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<MulHighOp> TYPE = LIRInstructionClass.create(MulHighOp.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) public AllocatableValue result;
@@ -850,6 +861,7 @@ public enum SPARCArithmetic {
         @Temp({REG}) public AllocatableValue scratch;
 
         public MulHighOp(SPARCArithmetic opcode, AllocatableValue x, AllocatableValue y, AllocatableValue result, AllocatableValue scratch) {
+            super(TYPE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;

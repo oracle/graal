@@ -44,23 +44,24 @@ public class StandardOp {
      * A block delimiter. Every well formed block must contain exactly one such operation and it
      * must be the last operation in the block.
      */
-    public interface BlockEndOp extends LIRInstruction {
+    public interface BlockEndOp {
     }
 
-    public interface NullCheck extends LIRInstruction {
+    public interface NullCheck {
         Value getCheckedValue();
 
         LIRFrameState getState();
     }
 
-    public interface ImplicitNullCheck extends LIRInstruction {
+    public interface ImplicitNullCheck {
         boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit);
     }
 
     /**
      * LIR operation that defines the position of a label.
      */
-    public static class LabelOp extends LIRInstructionBase {
+    public static final class LabelOp extends LIRInstruction {
+        public static final LIRInstructionClass<LabelOp> TYPE = LIRInstructionClass.create(LabelOp.class);
 
         private static final Value[] NO_VALUES = new Value[0];
 
@@ -78,6 +79,7 @@ public class StandardOp {
         private final boolean align;
 
         public LabelOp(Label label, boolean align) {
+            super(TYPE);
             this.label = label;
             this.align = align;
             this.incomingValues = NO_VALUES;
@@ -104,11 +106,17 @@ public class StandardOp {
     /**
      * LIR operation that is an unconditional jump to a {@link #destination()}.
      */
-    public static class JumpOp extends LIRInstructionBase implements BlockEndOp {
+    public static class JumpOp extends LIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
 
         private final LabelRef destination;
 
         public JumpOp(LabelRef destination) {
+            this(TYPE, destination);
+        }
+
+        protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
+            super(c);
             this.destination = destination;
         }
 
@@ -134,7 +142,7 @@ public class StandardOp {
      * Marker interface for a LIR operation that moves a value from {@link #getInput()} to
      * {@link #getResult()}.
      */
-    public interface MoveOp extends LIRInstruction {
+    public interface MoveOp {
 
         Value getInput();
 
@@ -146,7 +154,7 @@ public class StandardOp {
      * {@linkplain #remove(Set) pruned} and a mapping from registers to the frame slots in which
      * they are saved can be {@linkplain #getMap(FrameMap) retrieved}.
      */
-    public interface SaveRegistersOp extends LIRInstruction {
+    public interface SaveRegistersOp {
 
         /**
          * Determines if the {@link #remove(Set)} operation is supported for this object.
@@ -178,19 +186,21 @@ public class StandardOp {
      * A LIR operation that does nothing. If the operation records its position, it can be
      * subsequently {@linkplain #replace(LIR, LIRInstruction) replaced}.
      */
-    public static class NoOp extends LIRInstructionBase {
+    public static final class NoOp extends LIRInstruction {
+        public static final LIRInstructionClass<NoOp> TYPE = LIRInstructionClass.create(NoOp.class);
 
         /**
          * The block in which this instruction is located.
          */
-        final AbstractBlock<?> block;
+        final AbstractBlockBase<?> block;
 
         /**
          * The block index of this instruction.
          */
         final int index;
 
-        public NoOp(AbstractBlock<?> block, int index) {
+        public NoOp(AbstractBlockBase<?> block, int index) {
+            super(TYPE);
             this.block = block;
             this.index = index;
         }
@@ -208,11 +218,13 @@ public class StandardOp {
     }
 
     @Opcode("BLACKHOLE")
-    public static class BlackholeOp extends LIRInstructionBase {
+    public static final class BlackholeOp extends LIRInstruction {
+        public static final LIRInstructionClass<BlackholeOp> TYPE = LIRInstructionClass.create(BlackholeOp.class);
 
         @Use({REG, STACK}) private Value value;
 
         public BlackholeOp(Value value) {
+            super(TYPE);
             this.value = value;
         }
 

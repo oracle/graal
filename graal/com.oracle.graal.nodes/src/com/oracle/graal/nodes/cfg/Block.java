@@ -30,6 +30,7 @@ import com.oracle.graal.nodes.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 
+    public static final int DISTANCED_DOMINATOR_CACHE = 5;
     protected final AbstractBeginNode beginNode;
 
     protected FixedNode endNode;
@@ -38,6 +39,7 @@ public final class Block extends AbstractBlockBase<Block> {
     protected Loop<Block> loop;
 
     protected Block postdominator;
+    protected Block distancedDominatorCache;
 
     protected Block(AbstractBeginNode node) {
         this.beginNode = node;
@@ -51,6 +53,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return endNode;
     }
 
+    @Override
     public Loop<Block> getLoop() {
         return loop;
     }
@@ -59,18 +62,22 @@ public final class Block extends AbstractBlockBase<Block> {
         this.loop = loop;
     }
 
+    @Override
     public int getLoopDepth() {
         return loop == null ? 0 : loop.getDepth();
     }
 
+    @Override
     public boolean isLoopHeader() {
         return getBeginNode() instanceof LoopBeginNode;
     }
 
+    @Override
     public boolean isLoopEnd() {
         return getEndNode() instanceof LoopEndNode;
     }
 
+    @Override
     public boolean isExceptionEntry() {
         Node predecessor = getBeginNode().predecessor();
         return predecessor != null && predecessor instanceof InvokeWithExceptionNode && getBeginNode() == ((InvokeWithExceptionNode) predecessor).exceptionEdge();
@@ -97,6 +104,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return b;
     }
 
+    @Override
     public Block getPostdominator() {
         return postdominator;
     }
@@ -159,6 +167,7 @@ public final class Block extends AbstractBlockBase<Block> {
         return "B" + id;
     }
 
+    @Override
     public double probability() {
         return probability;
     }
@@ -166,5 +175,32 @@ public final class Block extends AbstractBlockBase<Block> {
     public void setProbability(double probability) {
         assert probability >= 0 && Double.isFinite(probability);
         this.probability = probability;
+    }
+
+    public Block getDistancedDominatorCache() {
+        Block result = this.distancedDominatorCache;
+        if (result == null) {
+            Block current = this;
+            for (int i = 0; i < DISTANCED_DOMINATOR_CACHE; ++i) {
+                current = current.getDominator();
+            }
+            distancedDominatorCache = current;
+            return current;
+        } else {
+            return result;
+        }
+    }
+
+    @Override
+    public Block getDominator(int distance) {
+        Block result = this;
+        int i = 0;
+        for (; i < distance - (DISTANCED_DOMINATOR_CACHE - 1); i += DISTANCED_DOMINATOR_CACHE) {
+            result = result.getDistancedDominatorCache();
+        }
+        for (; i < distance; ++i) {
+            result = result.getDominator();
+        }
+        return result;
     }
 }

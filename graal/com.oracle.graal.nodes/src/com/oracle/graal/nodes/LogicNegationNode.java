@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 
@@ -29,12 +30,32 @@ import com.oracle.graal.nodeinfo.*;
  * Logic node that negates its argument.
  */
 @NodeInfo
-public class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
+public final class LogicNegationNode extends LogicNode implements Canonicalizable.Unary<LogicNode> {
 
+    public static final NodeClass<LogicNegationNode> TYPE = NodeClass.create(LogicNegationNode.class);
     @Input(InputType.Condition) LogicNode value;
 
     public LogicNegationNode(LogicNode value) {
+        super(TYPE);
         this.value = value;
+    }
+
+    public static LogicNode create(LogicNode value) {
+        LogicNode synonym = findSynonym(value);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new LogicNegationNode(value);
+    }
+
+    private static LogicNode findSynonym(LogicNode value) {
+        if (value instanceof LogicConstantNode) {
+            LogicConstantNode logicConstantNode = (LogicConstantNode) value;
+            return LogicConstantNode.forBoolean(!logicConstantNode.getValue());
+        } else if (value instanceof LogicNegationNode) {
+            return ((LogicNegationNode) value).getValue();
+        }
+        return null;
     }
 
     public LogicNode getValue() {
@@ -43,11 +64,11 @@ public class LogicNegationNode extends LogicNode implements Canonicalizable.Unar
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool, LogicNode forValue) {
-        if (forValue instanceof LogicNegationNode) {
-            return ((LogicNegationNode) forValue).getValue();
-        } else {
-            return this;
+        LogicNode synonym = findSynonym(forValue);
+        if (synonym != null) {
+            return synonym;
         }
+        return this;
     }
 
 }

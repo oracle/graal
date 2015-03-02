@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,18 +27,20 @@ import java.nio.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(nameTemplate = "VirtualArray {p#componentType/s}[{p#length}]")
-public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthProvider {
+public final class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthProvider {
 
+    public static final NodeClass<VirtualArrayNode> TYPE = NodeClass.create(VirtualArrayNode.class);
     protected final ResolvedJavaType componentType;
     protected final int length;
 
     public VirtualArrayNode(ResolvedJavaType componentType, int length) {
-        super(componentType.getArrayClass(), true);
+        super(TYPE, componentType.getArrayClass(), true);
         this.componentType = componentType;
         this.length = length;
     }

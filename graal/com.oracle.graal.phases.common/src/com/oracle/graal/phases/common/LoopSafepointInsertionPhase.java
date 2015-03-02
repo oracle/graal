@@ -35,7 +35,7 @@ public class LoopSafepointInsertionPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (GenLoopSafepoints.getValue()) {
-            for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.class)) {
+            for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.TYPE)) {
                 if (loopEndNode.canSafepoint()) {
                     SafepointNode safepointNode = graph.add(new SafepointNode());
                     graph.addBeforeFixed(loopEndNode, safepointNode);

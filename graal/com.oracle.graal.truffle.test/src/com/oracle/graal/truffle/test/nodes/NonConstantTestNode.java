@@ -20,26 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.asserts;
+package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.truffle.api.frame.*;
 
-@NodeInfo
-public final class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public class NonConstantTestNode extends AbstractTestNode {
 
-    public CompilationConstantNode(Invoke invoke) {
-        super(invoke, "The value could not be reduced to a compile time constant.");
-        assert arguments.size() == 1;
+    private int value;
+
+    public NonConstantTestNode(int value) {
+        this.value = value;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (arguments.get(0).isConstant()) {
-            return arguments.get(0);
-        }
-        return this;
+    public int execute(VirtualFrame frame) {
+        return value;
     }
 }

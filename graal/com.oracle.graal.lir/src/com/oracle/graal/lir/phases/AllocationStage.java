@@ -22,22 +22,21 @@
  */
 package com.oracle.graal.lir.phases;
 
-import java.util.*;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.phases.AllocationPhase.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.gen.*;
+public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
+    public AllocationStage() {
+        appendPhase(new LinearScanPhase());
 
-public abstract class LIRLowTierPhase extends LIRPhase<LIRLowTierPhase.LIRLowTierContext> {
-
-    public static final class LIRLowTierContext {
+        // build frame map
+        if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue()) {
+            appendPhase(new LSStackSlotAllocator());
+        } else {
+            appendPhase(new SimpleStackSlotAllocator());
+        }
+        // currently we mark locations only if we do register allocation
+        appendPhase(new LocationMarker());
     }
-
-    @Override
-    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRLowTierContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
-    }
-
-    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
-
 }

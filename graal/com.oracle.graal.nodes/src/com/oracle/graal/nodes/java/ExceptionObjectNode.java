@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -35,9 +36,10 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class ExceptionObjectNode extends DispatchBeginNode implements Lowerable, MemoryCheckpoint.Single {
+    public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
-        super(StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
+        super(TYPE, StampFactory.declaredNonNull(metaAccess.lookupJavaType(Throwable.class)));
     }
 
     @Override

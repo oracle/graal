@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,34 @@
  */
 package com.oracle.graal.truffle.nodes.asserts;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public class NeverPartOfCompilationNode extends MacroStateSplitNode implements IterableNodeType {
+public final class NeverPartOfCompilationNode extends FixedWithNextNode implements IterableNodeType {
 
+    public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.create(NeverPartOfCompilationNode.class);
     protected final String message;
 
-    public NeverPartOfCompilationNode(Invoke invoke) {
-        this(invoke, "This code path should never be part of a compilation.");
-    }
-
-    public NeverPartOfCompilationNode(Invoke invoke, String message) {
-        super(invoke);
+    public NeverPartOfCompilationNode(String message) {
+        super(TYPE, StampFactory.forVoid());
         this.message = message;
     }
 
-    public final String getMessage() {
-        return message + " " + arguments.toString();
+    public String getMessage() {
+        return message;
     }
 
     public static void verifyNotFoundIn(final StructuredGraph graph) {
-        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
+        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
             Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
             throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
         }
     }
+
+    @NodeIntrinsic
+    public static native void apply(@ConstantNodeParameter String message);
 }

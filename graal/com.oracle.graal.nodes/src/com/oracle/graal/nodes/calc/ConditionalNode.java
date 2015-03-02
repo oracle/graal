@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -40,6 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
+    public static final NodeClass<ConditionalNode> TYPE = NodeClass.create(ConditionalNode.class);
     @Input(InputType.Condition) LogicNode condition;
     @Input ValueNode trueValue;
     @Input ValueNode falseValue;
@@ -53,7 +55,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        super(trueValue.stamp().meet(falseValue.stamp()));
+        super(TYPE, trueValue.stamp().meet(falseValue.stamp()));
         assert trueValue.stamp().isCompatible(falseValue.stamp());
         this.condition = condition;
         this.trueValue = trueValue;

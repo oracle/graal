@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import static com.oracle.graal.graph.Edges.Type.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -33,10 +31,11 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "/")
-public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
+public final class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
+    public static final NodeClass<IntegerDivNode> TYPE = NodeClass.create(IntegerDivNode.class);
 
     public IntegerDivNode(ValueNode x, ValueNode y) {
-        super(IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);
+        super(TYPE, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);
     }
 
     @Override
@@ -94,8 +93,8 @@ public class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLow
         }
 
         if (next() instanceof IntegerDivNode) {
-            NodeClass nodeClass = getNodeClass();
-            if (next().getClass() == this.getClass() && nodeClass.getEdges(Inputs).areEqualIn(this, next()) && valueEquals(next())) {
+            NodeClass<?> nodeClass = getNodeClass();
+            if (next().getClass() == this.getClass() && nodeClass.getInputEdges().areEqualIn(this, next()) && valueEquals(next())) {
                 return next();
             }
         }

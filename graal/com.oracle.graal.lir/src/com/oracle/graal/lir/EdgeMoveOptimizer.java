@@ -48,17 +48,17 @@ import com.oracle.graal.lir.phases.*;
  * Because this optimization works best when a block contains only a few moves, it has a huge impact
  * on the number of blocks that are totally empty.
  */
-public final class EdgeMoveOptimizer extends LIRLowTierPhase {
+public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         LIR ir = lirGenRes.getLIR();
         Optimizer optimizer = new Optimizer(ir);
 
-        List<? extends AbstractBlock<?>> blockList = ir.linearScanOrder();
+        List<? extends AbstractBlockBase<?>> blockList = ir.linearScanOrder();
         // ignore the first block in the list (index 0 is not processed)
         for (int i = blockList.size() - 1; i >= 1; i--) {
-            AbstractBlock<?> block = blockList.get(i);
+            AbstractBlockBase<?> block = blockList.get(i);
 
             if (block.getPredecessorCount() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);
@@ -106,8 +106,8 @@ public final class EdgeMoveOptimizer extends LIRLowTierPhase {
          * Moves the longest {@linkplain #same common} subsequence at the end all predecessors of
          * {@code block} to the start of {@code block}.
          */
-        private void optimizeMovesAtBlockEnd(AbstractBlock<?> block) {
-            for (AbstractBlock<?> pred : block.getPredecessors()) {
+        private void optimizeMovesAtBlockEnd(AbstractBlockBase<?> block) {
+            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 if (pred == block) {
                     // currently we can't handle this correctly.
                     return;
@@ -121,7 +121,7 @@ public final class EdgeMoveOptimizer extends LIRLowTierPhase {
             assert numPreds > 1 : "do not call otherwise";
 
             // setup a list with the LIR instructions of all predecessors
-            for (AbstractBlock<?> pred : block.getPredecessors()) {
+            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 assert pred != null;
                 assert ir.getLIRforBlock(pred) != null;
                 List<LIRInstruction> predInstructions = ir.getLIRforBlock(pred);
@@ -176,7 +176,7 @@ public final class EdgeMoveOptimizer extends LIRLowTierPhase {
          * {@code block} to the end of {@code block} just prior to the branch instruction ending
          * {@code block}.
          */
-        private void optimizeMovesAtBlockBegin(AbstractBlock<?> block) {
+        private void optimizeMovesAtBlockBegin(AbstractBlockBase<?> block) {
 
             edgeInstructionSeqences.clear();
             int numSux = block.getSuccessorCount();
@@ -206,7 +206,7 @@ public final class EdgeMoveOptimizer extends LIRLowTierPhase {
             int insertIdx = instructions.size() - 1;
 
             // setup a list with the lir-instructions of all successors
-            for (AbstractBlock<?> sux : block.getSuccessors()) {
+            for (AbstractBlockBase<?> sux : block.getSuccessors()) {
                 List<LIRInstruction> suxInstructions = ir.getLIRforBlock(sux);
 
                 assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";

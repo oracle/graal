@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,10 +39,12 @@ import com.oracle.graal.lir.sparc.*;
  */
 @Opcode("UNWIND")
 final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
+    public static final LIRInstructionClass<SPARCHotSpotUnwindOp> TYPE = LIRInstructionClass.create(SPARCHotSpotUnwindOp.class);
 
     @Use({REG}) protected RegisterValue exception;
 
     SPARCHotSpotUnwindOp(RegisterValue exception) {
+        super(TYPE);
         this.exception = exception;
     }
 

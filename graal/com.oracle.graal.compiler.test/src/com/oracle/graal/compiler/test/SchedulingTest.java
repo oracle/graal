@@ -66,7 +66,7 @@ public class SchedulingTest extends GraphScheduleTest {
         for (BinaryArithmeticNode<?> node : graph.getNodes().filter(BinaryArithmeticNode.class)) {
             if (!(node instanceof AddNode)) {
                 assertTrue(nodeToBlock.get(node) == nodeToBlock.get(loopExit));
-                assertTrue(list.indexOf(node) < list.indexOf(loopExit));
+                assertTrue(list.indexOf(node) + " < " + list.indexOf(loopExit) + ", " + node + ", " + loopExit, list.indexOf(node) < list.indexOf(loopExit));
             }
         }
     }

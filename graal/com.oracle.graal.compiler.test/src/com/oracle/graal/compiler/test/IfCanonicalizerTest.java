@@ -194,7 +194,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
 
     private void test(String snippet) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        ParameterNode param = graph.getNodes(ParameterNode.class).iterator().next();
+        ParameterNode param = graph.getNodes(ParameterNode.TYPE).iterator().next();
         ConstantNode constant = ConstantNode.forInt(0, graph);
         for (Node n : param.usages().filter(isNotA(FrameState.class)).snapshot()) {
             n.replaceFirstInput(param, constant);

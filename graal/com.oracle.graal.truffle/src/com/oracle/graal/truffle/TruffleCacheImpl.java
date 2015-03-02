@@ -136,7 +136,7 @@ public class TruffleCacheImpl implements TruffleCache {
             lastUsed.put(key, counter++);
             cache.put(key, markerGraph);
 
-            for (ParameterNode param : graph.getNodes(ParameterNode.class)) {
+            for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 if (param.getKind() == Kind.Object) {
                     ValueNode actualArgument = arguments.get(param.index());
                     param.setStamp(param.stamp().join(actualArgument.stamp()));
@@ -147,7 +147,7 @@ public class TruffleCacheImpl implements TruffleCache {
             new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
 
             // Convert deopt to guards.
-            new ConvertDeoptimizeToGuardPhase().apply(graph);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, phaseContext);
 
             PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizer);
 
@@ -164,7 +164,7 @@ public class TruffleCacheImpl implements TruffleCache {
                 canonicalizer.apply(graph, phaseContext);
 
                 boolean inliningProgress = false;
-                for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
+                for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     if (!graph.getMark().equals(mark)) {
                         mark = lookupProcessMacroSubstitutions(graph, mark);
                     }
@@ -175,7 +175,7 @@ public class TruffleCacheImpl implements TruffleCache {
                 }
 
                 // Convert deopt to guards.
-                new ConvertDeoptimizeToGuardPhase().apply(graph);
+                new ConvertDeoptimizeToGuardPhase().apply(graph, phaseContext);
 
                 new EarlyReadEliminationPhase(canonicalizer).apply(graph, phaseContext);
 

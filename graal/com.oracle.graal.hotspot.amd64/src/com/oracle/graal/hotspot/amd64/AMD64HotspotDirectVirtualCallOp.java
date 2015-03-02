@@ -28,7 +28,7 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
+import com.oracle.graal.lir.amd64.AMD64Call.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
@@ -38,12 +38,13 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
  */
 @Opcode("CALL_DIRECT")
 final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
+    public static final LIRInstructionClass<AMD64HotspotDirectVirtualCallOp> TYPE = LIRInstructionClass.create(AMD64HotspotDirectVirtualCallOp.class);
 
     private final InvokeKind invokeKind;
     private final HotSpotVMConfig config;
 
     AMD64HotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
-        super(target, result, parameters, temps, state);
+        super(TYPE, target, result, parameters, temps, state);
         this.invokeKind = invokeKind;
         this.config = config;
         assert invokeKind.isIndirect();

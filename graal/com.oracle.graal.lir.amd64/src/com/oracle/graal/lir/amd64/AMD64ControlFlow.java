@@ -38,14 +38,17 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
+import com.oracle.graal.lir.amd64.AMD64Call.CallOp;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64ControlFlow {
 
-    public static class ReturnOp extends AMD64LIRInstruction implements BlockEndOp {
+    public static final class ReturnOp extends AMD64LIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<CallOp> TYPE = LIRInstructionClass.create(CallOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
 
         public ReturnOp(Value x) {
+            super(TYPE);
             this.x = x;
         }
 
@@ -57,6 +60,7 @@ public class AMD64ControlFlow {
     }
 
     public static class BranchOp extends AMD64LIRInstruction implements StandardOp.BranchOp {
+        public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);
         protected final ConditionFlag condition;
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
@@ -68,6 +72,11 @@ public class AMD64ControlFlow {
         }
 
         public BranchOp(ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            this(TYPE, condition, trueDestination, falseDestination, trueDestinationProbability);
+        }
+
+        protected BranchOp(LIRInstructionClass<? extends BranchOp> c, ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            super(c);
             this.condition = condition;
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
@@ -102,11 +111,12 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static class FloatBranchOp extends BranchOp {
+    public static final class FloatBranchOp extends BranchOp {
+        public static final LIRInstructionClass<FloatBranchOp> TYPE = LIRInstructionClass.create(FloatBranchOp.class);
         protected boolean unorderedIsTrue;
 
         public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
-            super(floatCond(condition), trueDestination, falseDestination, trueDestinationProbability);
+            super(TYPE, floatCond(condition), trueDestination, falseDestination, trueDestinationProbability);
             this.unorderedIsTrue = unorderedIsTrue;
         }
 
@@ -116,7 +126,8 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static class StrategySwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+    public static final class StrategySwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
         @Use({CONST}) protected JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
@@ -125,6 +136,7 @@ public class AMD64ControlFlow {
         private final SwitchStrategy strategy;
 
         public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+            super(TYPE);
             this.strategy = strategy;
             this.keyConstants = strategy.keyConstants;
             this.keyTargets = keyTargets;
@@ -170,7 +182,8 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static class TableSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+    public static final class TableSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
@@ -179,6 +192,7 @@ public class AMD64ControlFlow {
         @Temp protected Value scratch;
 
         public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
+            super(TYPE);
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -254,13 +268,15 @@ public class AMD64ControlFlow {
     }
 
     @Opcode("CMOVE")
-    public static class CondMoveOp extends AMD64LIRInstruction {
+    public static final class CondMoveOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
         @Def({REG, HINT}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Use({REG, STACK, CONST}) protected Value falseValue;
         private final ConditionFlag condition;
 
         public CondMoveOp(Variable result, Condition condition, AllocatableValue trueValue, Value falseValue) {
+            super(TYPE);
             this.result = result;
             this.condition = intCond(condition);
             this.trueValue = trueValue;
@@ -274,7 +290,8 @@ public class AMD64ControlFlow {
     }
 
     @Opcode("CMOVE")
-    public static class FloatCondMoveOp extends AMD64LIRInstruction {
+    public static final class FloatCondMoveOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<FloatCondMoveOp> TYPE = LIRInstructionClass.create(FloatCondMoveOp.class);
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Alive({REG}) protected Value falseValue;
@@ -282,6 +299,7 @@ public class AMD64ControlFlow {
         private final boolean unorderedIsTrue;
 
         public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
+            super(TYPE);
             this.result = result;
             this.condition = floatCond(condition);
             this.unorderedIsTrue = unorderedIsTrue;

@@ -104,6 +104,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(true);
 
+    @Option(help = "Manually set the number of compiler threads", type = OptionType.Expert)
+    public static final StableOptionValue<Integer> TruffleCompilerThreads = new StableOptionValue<>(0);
+
     @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
     public static final OptionValue<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionValue<>(false);
 
@@ -118,6 +121,9 @@ public class TruffleCompilerOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleArgumentTypeSpeculation = new StableOptionValue<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final StableOptionValue<Boolean> TruffleUseFrameWithoutBoxing = new StableOptionValue<>(true);
 
     // tracing
     @Option(help = "Print potential performance problems", type = OptionType.Debug)
@@ -181,6 +187,6 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleCompilationStatisticDetails = new OptionValue<>(false);
 
     @Option(help = "Experimental new version of the partial evaluator.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> FastPE = new OptionValue<>(false);
+    public static final OptionValue<Boolean> FastPE = new OptionValue<>(true);
     // @formatter:on
 }

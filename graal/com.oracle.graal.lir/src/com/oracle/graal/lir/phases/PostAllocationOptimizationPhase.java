@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package com.oracle.graal.lir.phases;
 
-import org.junit.*;
+import java.util.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.test.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.gen.*;
 
-/**
- * Tests HotSpot specific substitutions for {@link NodeClass}.
- */
-public class HotSpotNodeClassSubstitutionsTest extends MethodSubstitutionTest {
+public abstract class PostAllocationOptimizationPhase extends LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext> {
 
-    @Test
-    public void test() {
-        test("get", ValueNode.class);
+    public static final class PostAllocationOptimizationContext {
     }
 
-    public static NodeClass get(Class<?> c) {
-        return NodeClass.get(c);
+    @Override
+    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    PostAllocationOptimizationContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
     }
+
+    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
+
 }

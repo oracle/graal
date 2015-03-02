@@ -71,14 +71,14 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     @Override
     void walk() {
         try (Scope s = Debug.scope("OptimizingLinearScanWalker")) {
-            for (AbstractBlock<?> block : allocator.sortedBlocks) {
+            for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
                 optimizeBlock(block);
             }
         }
         super.walk();
     }
 
-    private void optimizeBlock(AbstractBlock<?> block) {
+    private void optimizeBlock(AbstractBlockBase<?> block) {
         if (block.getPredecessorCount() == 1) {
             int nextBlock = allocator.getFirstLirInstructionId(block);
             try (Scope s1 = Debug.scope("LSRAOptimization")) {
@@ -114,7 +114,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         }
     }
 
-    private boolean optimize(int currentPos, AbstractBlock<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
+    private boolean optimize(int currentPos, AbstractBlockBase<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
         // BEGIN initialize and sanity checks
         assert currentBlock != null : "block must not be null";
         assert currentInterval != null : "interval must not be null";
@@ -136,7 +136,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         assert currentLocation != null : "active intervals must have a location assigned!";
 
         // get predecessor stuff
-        AbstractBlock<?> predecessorBlock = currentBlock.getPredecessors().get(0);
+        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessors().get(0);
         int predEndId = allocator.getLastLirInstructionId(predecessorBlock);
         Interval predecessorInterval = currentInterval.getIntervalCoveringOpId(predEndId);
         assert predecessorInterval != null : "variable not live at the end of the only predecessor! " + predecessorBlock + " -> " + currentBlock + " interval: " + currentInterval;

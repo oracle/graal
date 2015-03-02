@@ -251,7 +251,7 @@ public class NewObjectSnippets implements Snippets {
 
     /**
      * Computes the size of the memory chunk allocated for an array. This size accounts for the
-     * array header size, boy size and any padding after the last element to satisfy object
+     * array header size, body size and any padding after the last element to satisfy object
      * alignment requirements.
      *
      * @param length the number of elements in the array

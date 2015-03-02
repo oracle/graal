@@ -33,6 +33,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 
 public final class AMD64AddressValue extends CompositeValue {
+    public static final CompositeValueClass<AMD64AddressValue> TYPE = CompositeValueClass.create(AMD64AddressValue.class);
 
     private static final long serialVersionUID = -4444600052487578694L;
 
@@ -46,7 +47,7 @@ public final class AMD64AddressValue extends CompositeValue {
     }
 
     public AMD64AddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
-        super(kind);
+        super(TYPE, kind);
         this.base = base;
         this.index = index;
         this.scale = scale;

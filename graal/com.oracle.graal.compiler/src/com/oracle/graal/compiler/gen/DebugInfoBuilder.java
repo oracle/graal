@@ -98,7 +98,9 @@ public class DebugInfoBuilder {
                                 }
                             }
                             if (pos != vobj.entryCount()) {
-                                values = Arrays.copyOf(values, pos);
+                                JavaValue[] newValues = new JavaValue[pos];
+                                System.arraycopy(values, 0, newValues, 0, pos);
+                                values = newValues;
                             }
                         }
                         entry.getValue().setValues(values);
@@ -111,6 +113,7 @@ public class DebugInfoBuilder {
         }
         objectStates.clear();
 
+        assert frame.validateFormat();
         return newLIRFrameState(exceptionEdge, frame, virtualObjectsArray);
     }
 

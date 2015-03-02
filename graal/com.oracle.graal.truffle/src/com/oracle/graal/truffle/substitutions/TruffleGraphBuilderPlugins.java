@@ -26,15 +26,15 @@ import static java.lang.Character.*;
 
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugins.InvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration;
-import com.oracle.graal.java.GraphBuilderPlugins.Registration.Receiver;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.java.InvocationPlugins.Registration;
+import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -47,12 +47,26 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
- * Provider of {@link GraphBuilderPlugin}s for Truffle classes.
+ * Provides {@link InvocationPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-    public static void registerPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
 
-        // OptimizedAssumption.class
+        registerOptimizedAssumptionPlugins(metaAccess, plugins);
+        registerExactMathPlugins(metaAccess, plugins);
+        registerCompilerDirectivesPlugins(metaAccess, plugins);
+        registerOptimizedCallTargetPlugins(metaAccess, plugins);
+        registerUnsafeAccessImplPlugins(metaAccess, plugins);
+
+        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+            registerFrameWithoutBoxingPlugins(metaAccess, plugins);
+        } else {
+            registerFrameWithBoxingPlugins(metaAccess, plugins);
+        }
+
+    }
+
+    public static void registerOptimizedAssumptionPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, OptimizedAssumption.class);
         r.register1("isValid", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode arg) {
@@ -60,25 +74,55 @@ public class TruffleGraphBuilderPlugins {
                     Constant constant = arg.asConstant();
                     OptimizedAssumption assumption = builder.getSnippetReflection().asObject(OptimizedAssumption.class, (JavaConstant) constant);
                     builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(assumption.isValid())));
-                    builder.getAssumptions().record(new AssumptionValidAssumption(assumption));
+                    if (assumption.isValid()) {
+                        builder.getAssumptions().record(new AssumptionValidAssumption(assumption));
+                    }
                 } else {
-                    throw new BailoutException("assumption could not be reduced to a constant");
+                    throw builder.bailout("assumption could not be reduced to a constant");
                 }
                 return true;
             }
         });
+    }
 
-        // ExactMath.class
-        r = new Registration(plugins, metaAccess, ExactMath.class);
-        r.register2("addExact", Integer.TYPE, Integer.TYPE, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
-                builder.push(Kind.Int.getStackKind(), builder.append(new IntegerAddExactNode(x, y)));
-                return true;
-            }
-        });
+    public static void registerExactMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, ExactMath.class);
+        for (Kind kind : new Kind[]{Kind.Int, Kind.Long}) {
+            r.register2("addExact", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                    builder.push(kind.getStackKind(), builder.append(new IntegerAddExactNode(x, y)));
+                    return true;
+                }
+            });
+            r.register2("subtractExact", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                    builder.push(kind.getStackKind(), builder.append(new IntegerSubExactNode(x, y)));
+                    return true;
+                }
+            });
+            r.register2("multiplyExact", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                    builder.push(kind.getStackKind(), builder.append(new IntegerMulExactNode(x, y)));
+                    return true;
+                }
+            });
+            r.register2("multiplyHigh", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                    builder.push(kind.getStackKind(), builder.append(new IntegerMulHighNode(x, y)));
+                    return true;
+                }
+            });
+            r.register2("multiplyHighUnsigned", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext builder, ValueNode x, ValueNode y) {
+                    builder.push(kind.getStackKind(), builder.append(new UnsignedMulHighNode(x, y)));
+                    return true;
+                }
+            });
+        }
+    }
 
-        // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+    public static void registerCompilerDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
                 builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(false)));
@@ -122,18 +166,19 @@ public class TruffleGraphBuilderPlugins {
         r.register1("bailout", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode message) {
                 if (message.isConstant()) {
-                    throw new BailoutException(message.asConstant().toValueString());
+                    throw builder.bailout(message.asConstant().toValueString());
                 }
-                throw new BailoutException("bailout (message is not compile-time constant, so no additional information is available)");
+                throw builder.bailout("bailout (message is not compile-time constant, so no additional information is available)");
             }
         });
         r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
                     builder.push(Kind.Boolean.getStackKind(), builder.append(ConstantNode.forBoolean(true)));
-                    return true;
+                } else {
+                    builder.push(Kind.Boolean.getStackKind(), builder.append(new IsCompilationConstantNode(value)));
                 }
-                return false;
+                return true;
             }
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {
@@ -143,23 +188,74 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        // OptimizedCallTarget.class
-        r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
+        r = new Registration(plugins, metaAccess, CompilerAsserts.class);
+        r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode value) {
+                ValueNode curValue = value;
+                if (curValue instanceof BoxNode) {
+                    BoxNode boxNode = (BoxNode) curValue;
+                    curValue = boxNode.getValue();
+                }
+                if (curValue.isConstant()) {
+                    return true;
+                } else {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(curValue);
+                    if (curValue instanceof ValuePhiNode) {
+                        ValuePhiNode valuePhi = (ValuePhiNode) curValue;
+                        sb.append(" (");
+                        for (Node n : valuePhi.inputs()) {
+                            sb.append(n);
+                            sb.append("; ");
+                        }
+                        sb.append(")");
+                    }
+                    throw builder.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb.toString());
+                }
+            }
+        });
+    }
+
+    public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode arg1, ValueNode arg2) {
-                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(FrameWithoutBoxing.class)), arg1, arg2)));
+                Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
+                builder.push(Kind.Object, builder.append(new NewFrameNode(StampFactory.exactNonNull(metaAccess.lookupJavaType(frameClass)), arg1, arg2)));
                 return true;
             }
         });
+    }
 
-        // FrameWithoutBoxing.class
-        r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+    public static void registerFrameWithoutBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+        registerMaterialize(r);
+        registerUnsafeCast(r);
+        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    public static void registerFrameWithBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
+        registerMaterialize(r);
+        registerUnsafeCast(r);
+    }
+
+    public static void registerUnsafeAccessImplPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
+        registerUnsafeCast(r);
+        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
+    }
+
+    private static void registerMaterialize(Registration r) {
         r.register1("materialize", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode frame) {
-                builder.append(new MaterializeFrameNode(frame));
+                builder.push(Kind.Object, builder.append(new MaterializeFrameNode(frame)));
                 return true;
             }
         });
+    }
+
+    private static void registerUnsafeCast(Registration r) {
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
                 if (clazz.isConstant() && nonNull.isConstant()) {
@@ -168,7 +264,16 @@ public class TruffleGraphBuilderPlugins {
                     if (javaType == null) {
                         builder.push(Kind.Object, object);
                     } else {
-                        Stamp piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        Stamp piStamp = null;
+                        if (javaType.isArray()) {
+                            if (nonNull.asJavaConstant().asInt() != 0) {
+                                piStamp = StampFactory.exactNonNull(javaType);
+                            } else {
+                                piStamp = StampFactory.exact(javaType);
+                            }
+                        } else {
+                            piStamp = StampFactory.declaredTrusted(javaType, nonNull.asJavaConstant().asInt() != 0);
+                        }
                         LogicNode compareNode = CompareNode.createCompareNode(object.graph(), Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), constantReflection);
                         boolean skipAnchor = false;
                         if (compareNode instanceof LogicConstantNode) {
@@ -189,12 +294,6 @@ public class TruffleGraphBuilderPlugins {
                 throw GraalInternalError.shouldNotReachHere("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
             }
         });
-
-        registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
-
-        // CompilerDirectives.class
-        r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
-        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
     protected static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {

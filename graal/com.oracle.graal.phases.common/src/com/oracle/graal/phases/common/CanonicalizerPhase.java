@@ -30,6 +30,7 @@ import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -187,7 +188,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (node.isAlive()) {
                 METRIC_PROCESSED_NODES.increment();
 
-                NodeClass nodeClass = node.getNodeClass();
+                NodeClass<?> nodeClass = node.getNodeClass();
                 if (tryGlobalValueNumbering(node, nodeClass)) {
                     return;
                 }
@@ -213,7 +214,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        public static boolean tryGlobalValueNumbering(Node node, NodeClass nodeClass) {
+        public static boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
             if (nodeClass.valueNumberable() && !nodeClass.isLeafNode()) {
                 Node newNode = node.graph().findDuplicate(node);
                 if (newNode != null) {
@@ -228,7 +229,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        public boolean tryCanonicalize(final Node node, NodeClass nodeClass) {
+        public boolean tryCanonicalize(final Node node, NodeClass<?> nodeClass) {
             if (customCanonicalizer != null) {
                 Node canonical = customCanonicalizer.canonicalize(node);
                 if (performReplacement(node, canonical)) {
@@ -254,13 +255,16 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        public boolean baseTryCanonicalize(final Node node, NodeClass nodeClass) {
+        public boolean baseTryCanonicalize(final Node node, NodeClass<?> nodeClass) {
             if (nodeClass.isCanonicalizable()) {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("CanonicalizeNode", node)) {
                     Node canonical;
                     try (AutoCloseable verify = getCanonicalizeableContractAssertion(node)) {
                         canonical = ((Canonicalizable) node).canonical(tool);
+                        if (canonical == node && nodeClass.isCommutative()) {
+                            canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
+                        }
                     }
                     if (performReplacement(node, canonical)) {
                         return true;
@@ -311,9 +315,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 if (canonical != null && !canonical.isAlive()) {
                     assert !canonical.isDeleted();
                     canonical = graph.addOrUniqueWithInputs(canonical);
-                    if (canonical == node) {
-                        graph.addOrUniqueWithInputs(newCanonical);
-                    }
                 }
                 if (node instanceof FloatingNode) {
                     if (canonical == null) {

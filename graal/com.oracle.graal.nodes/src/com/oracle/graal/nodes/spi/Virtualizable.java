@@ -60,7 +60,7 @@ public interface Virtualizable {
      * tool, and not directly on the node, because by the time this method is called the
      * virtualized/non-virtualized state is still speculative and might not hold because of loops,
      * etc.
-     * 
+     *
      * @param tool the tool used to describe the effects of this node
      */
     void virtualize(VirtualizerTool tool);

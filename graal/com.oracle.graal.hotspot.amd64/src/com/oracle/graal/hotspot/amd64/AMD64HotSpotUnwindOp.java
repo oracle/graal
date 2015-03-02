@@ -40,10 +40,12 @@ import com.oracle.graal.lir.asm.*;
  */
 @Opcode("UNWIND")
 final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+    public static final LIRInstructionClass<AMD64HotSpotUnwindOp> TYPE = LIRInstructionClass.create(AMD64HotSpotUnwindOp.class);
 
     @Use({REG}) protected RegisterValue exception;
 
     AMD64HotSpotUnwindOp(RegisterValue exception) {
+        super(TYPE);
         this.exception = exception;
     }
 

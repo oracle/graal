@@ -34,7 +34,7 @@ public class PushThroughPiPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (PiNode pi : graph.getNodes(PiNode.class)) {
+        for (PiNode pi : graph.getNodes(PiNode.TYPE)) {
             for (Node n : pi.usages().snapshot()) {
                 if (n instanceof PiPushable) {
                     PiPushable pip = (PiPushable) n;

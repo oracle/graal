@@ -31,17 +31,17 @@ import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
-public final class NullCheckOptimizer extends LIRLowTierPhase {
+public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
         LIR ir = lirGenRes.getLIR();
-        List<? extends AbstractBlock<?>> blocks = ir.codeEmittingOrder();
+        List<? extends AbstractBlockBase<?>> blocks = ir.codeEmittingOrder();
         NullCheckOptimizer.foldNullChecks(ir, blocks, target.implicitNullCheckLimit);
     }
 
-    private static void foldNullChecks(LIR ir, List<? extends AbstractBlock<?>> blocks, int implicitNullCheckLimit) {
-        for (AbstractBlock<?> block : blocks) {
+    private static void foldNullChecks(LIR ir, List<? extends AbstractBlockBase<?>> blocks, int implicitNullCheckLimit) {
+        for (AbstractBlockBase<?> block : blocks) {
             List<LIRInstruction> list = ir.getLIRforBlock(block);
 
             if (!list.isEmpty()) {

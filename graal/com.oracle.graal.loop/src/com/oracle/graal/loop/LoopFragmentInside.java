@@ -293,14 +293,14 @@ public class LoopFragmentInside extends LoopFragment {
 
     private AbstractBeginNode mergeEnds() {
         assert isDuplicate();
-        List<AbstractEndNode> endsToMerge = new LinkedList<>();
+        List<EndNode> endsToMerge = new LinkedList<>();
         // map peel exits to the corresponding loop exits
         Map<AbstractEndNode, LoopEndNode> reverseEnds = CollectionsFactory.newMap();
         LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
             AbstractEndNode duplicate = getDuplicatedNode(le);
             if (duplicate != null) {
-                endsToMerge.add(duplicate);
+                endsToMerge.add((EndNode) duplicate);
                 reverseEnds.put(duplicate, le);
             }
         }
@@ -323,7 +323,7 @@ public class LoopFragmentInside extends LoopFragment {
                 duplicateState = state.duplicateWithVirtualState();
                 newExitMerge.setStateAfter(duplicateState);
             }
-            for (AbstractEndNode end : endsToMerge) {
+            for (EndNode end : endsToMerge) {
                 newExitMerge.addForwardEnd(end);
             }
 

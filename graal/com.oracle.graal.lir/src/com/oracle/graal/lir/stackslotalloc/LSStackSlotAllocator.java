@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.stackslotalloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.*;
 import java.util.function.*;
@@ -38,6 +39,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 
@@ -51,12 +53,12 @@ import com.oracle.graal.options.*;
  * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
-public final class LSStackSlotAllocator extends LIRMidTierPhase implements StackSlotAllocator {
+public final class LSStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSStackSlotAllocator = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptLSStackSlotAllocator = new NestedBooleanOptionValue(LIROptimization, true);
         // @formatter:on
     }
 
@@ -68,7 +70,7 @@ public final class LSStackSlotAllocator extends LIRMidTierPhase implements Stack
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
         lirGenRes.buildFrameMap(this);
     }
 
@@ -84,7 +86,7 @@ public final class LSStackSlotAllocator extends LIRMidTierPhase implements Stack
         private final StackInterval[] stackSlotMap;
         private final PriorityQueue<StackInterval> unhandled;
         private final PriorityQueue<StackInterval> active;
-        private final List<? extends AbstractBlock<?>> sortedBlocks;
+        private final List<? extends AbstractBlockBase<?>> sortedBlocks;
         private final int maxOpId;
 
         private Allocator(LIR lir, FrameMapBuilderTool frameMapBuilder) {
@@ -149,10 +151,10 @@ public final class LSStackSlotAllocator extends LIRMidTierPhase implements Stack
          *
          * @return The id of the last operation.
          */
-        private static int numberInstructions(LIR lir, List<? extends AbstractBlock<?>> sortedBlocks) {
+        private static int numberInstructions(LIR lir, List<? extends AbstractBlockBase<?>> sortedBlocks) {
             int opId = 0;
             int index = 0;
-            for (AbstractBlock<?> block : sortedBlocks) {
+            for (AbstractBlockBase<?> block : sortedBlocks) {
 
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);
 

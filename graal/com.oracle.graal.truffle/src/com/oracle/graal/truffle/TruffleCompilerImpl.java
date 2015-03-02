@@ -43,7 +43,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -81,14 +80,24 @@ public class TruffleCompilerImpl {
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = runtime.getHostBackend();
         Replacements truffleReplacements = graalTruffleRuntime.getReplacements();
-        ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backend.getProviders().getConstantReflection(), backend.getProviders().getMetaAccess());
-        this.providers = backend.getProviders().copyWith(truffleReplacements).copyWith(constantReflection);
+        Providers backendProviders = backend.getProviders();
+        ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backendProviders.getConstantReflection(), backendProviders.getMetaAccess());
+        if (!TruffleCompilerOptions.FastPE.getValue()) {
+            backendProviders = backendProviders.copyWith(truffleReplacements);
+        }
+        this.providers = backendProviders.copyWith(constantReflection);
         this.suites = backend.getSuites().getDefaultSuites();
         this.lirSuites = backend.getSuites().getDefaultLIRSuites();
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
         GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault().withSkippedExceptionTypes(skippedExceptionTypes);
+
         this.config = GraphBuilderConfiguration.getDefault().withSkippedExceptionTypes(skippedExceptionTypes);
+        if (TruffleCompilerOptions.FastPE.getValue()) {
+            GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
+            this.config.getInvocationPlugins().setDefaults(phase.getGraphBuilderConfig().getInvocationPlugins());
+        }
+
         this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, TruffleCompilerImpl.Optimizations);
 
         this.partialEvaluator = new PartialEvaluator(providers, config, truffleCache, Graal.getRequiredCapability(SnippetReflectionProvider.class));
@@ -120,27 +129,21 @@ public class TruffleCompilerImpl {
         compilationNotify.notifyCompilationStarted(compilable);
 
         try {
-            GraphBuilderSuiteInfo info = createGraphBuilderSuite();
+            PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
 
             try (TimerCloseable a = PartialEvaluationTime.start(); Closeable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, AllowAssumptions.YES, info.plugins);
+                graph = partialEvaluator.createGraph(compilable, AllowAssumptions.YES);
             }
 
             if (Thread.currentThread().isInterrupted()) {
                 return;
             }
 
-            if (!TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary.getValue()) {
-                // Do not inline across Truffle boundaries.
-                for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.class)) {
-                    mct.invoke().setUseForInlining(false);
-                }
-            }
-
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
-            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), info.suite, compilable.getSpeculationLog(), compilable);
+            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable.getSpeculationLog(), compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
+            System.out.println("compilation failed!?");
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
             throw t;
         }
@@ -158,8 +161,8 @@ public class TruffleCompilerImpl {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, graphBuilderSuite == null ? createGraphBuilderSuite().suite : graphBuilderSuite,
-                            Optimizations, getProfilingInfo(graph), speculationLog, suites, lirSuites, compilationResult, CompilationResultBuilderFactory.Default);
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, graphBuilderSuite, Optimizations, getProfilingInfo(graph), speculationLog, suites,
+                            lirSuites, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -203,24 +206,12 @@ public class TruffleCompilerImpl {
         return result;
     }
 
-    static class GraphBuilderSuiteInfo {
-        final PhaseSuite<HighTierContext> suite;
-        final GraphBuilderPlugins plugins;
-
-        public GraphBuilderSuiteInfo(PhaseSuite<HighTierContext> suite, GraphBuilderPlugins plugins) {
-            this.suite = suite;
-            this.plugins = plugins;
-        }
-    }
-
-    private GraphBuilderSuiteInfo createGraphBuilderSuite() {
+    private PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
-        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
         iterator.remove();
-        GraphBuilderPlugins plugins = graphBuilderPhase.getGraphBuilderPlugins();
-        iterator.add(new GraphBuilderPhase(config, plugins));
-        return new GraphBuilderSuiteInfo(suite, plugins);
+        iterator.add(new GraphBuilderPhase(config));
+        return suite;
     }
 
     public void processAssumption(Set<Assumption> newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {

@@ -33,12 +33,20 @@ import com.oracle.graal.debug.DebugMemUseTracker.Closeable;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.options.*;
 
 /**
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be
  * one global instance for each phase that is shared for all compilations.
  */
 public abstract class LIRPhase<C> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Enable LIR level optimiztations.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LIROptimization = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     private static final int PHASE_DUMP_LEVEL = 2;
 
@@ -73,22 +81,24 @@ public abstract class LIRPhase<C> {
         memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", getClass());
     }
 
-    public final <B extends AbstractBlock<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
+    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {
         apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, true);
     }
 
-    public final <B extends AbstractBlock<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
-        try (TimerCloseable a = timer.start(); Scope s = Debug.scope(getName(), this); Closeable c = memUseTracker.start()) {
-            run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-            if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
+    public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
+        try (Scope s = Debug.scope(getName(), this)) {
+            try (TimerCloseable a = timer.start(); Closeable c = memUseTracker.start()) {
+                run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
+                    Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
+                }
             }
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
     }
 
-    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
+    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context);
 
     protected CharSequence createName() {
         String className = LIRPhase.this.getClass().getName();

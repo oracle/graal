@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -56,6 +57,13 @@ public interface GraphBuilderContext {
 
     void push(Kind kind, ValueNode value);
 
+    StructuredGraph getGraph();
+
+    /**
+     * Determines if the graph builder is parsing a snippet or method substitution.
+     */
+    boolean parsingReplacement();
+
     /**
      * @see GuardingPiNode#nullCheckedValue(ValueNode)
      */
@@ -66,4 +74,8 @@ public interface GraphBuilderContext {
         }
         return nonNullValue;
     }
+
+    GuardingNode getCurrentBlockGuard();
+
+    BailoutException bailout(String string);
 }

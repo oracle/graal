@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,15 +35,16 @@ import com.oracle.graal.word.*;
  * A call to the runtime code implementing the uncommon trap logic.
  */
 @NodeInfo
-public class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLowerable {
+public final class PushInterpreterFrameNode extends FixedWithNextNode implements LIRLowerable {
 
+    public static final NodeClass<PushInterpreterFrameNode> TYPE = NodeClass.create(PushInterpreterFrameNode.class);
     @Input ValueNode framePc;
     @Input ValueNode frameSize;
     @Input ValueNode senderSp;
     @Input ValueNode initialInfo;
 
     public PushInterpreterFrameNode(ValueNode frameSize, ValueNode framePc, ValueNode senderSp, ValueNode initialInfo) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.frameSize = frameSize;
         this.framePc = framePc;
         this.senderSp = senderSp;

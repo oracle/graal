@@ -26,7 +26,7 @@ import java.util.*;
 
 public class CFGVerifier {
 
-    public static <T extends AbstractBlock<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
+    public static <T extends AbstractBlockBase<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
         for (T block : cfg.getBlocks()) {
             assert block.getId() >= 0;
             assert cfg.getBlocks().get(block.getId()) == block;

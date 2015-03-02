@@ -253,12 +253,12 @@ public class BitOpNodesTest extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
         new InliningPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
-        Assert.assertEquals(1, graph.getNodes(ReturnNode.class).count());
+        Assert.assertEquals(1, graph.getNodes(ReturnNode.TYPE).count());
         if (expectedClass != null) {
             if (graph.getNodes().filter(expectedClass).count() == 0) {
                 return null;
             }
         }
-        return graph.getNodes(ReturnNode.class).first().result();
+        return graph.getNodes(ReturnNode.TYPE).first().result();
     }
 }

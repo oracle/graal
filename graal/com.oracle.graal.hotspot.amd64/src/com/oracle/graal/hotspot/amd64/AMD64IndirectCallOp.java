@@ -43,6 +43,7 @@ import com.oracle.graal.lir.asm.*;
  */
 @Opcode("CALL_INDIRECT")
 final class AMD64IndirectCallOp extends IndirectCallOp {
+    public static final LIRInstructionClass<AMD64IndirectCallOp> TYPE = LIRInstructionClass.create(AMD64IndirectCallOp.class);
 
     /**
      * Vtable stubs expect the metaspace Method in RBX.
@@ -52,7 +53,7 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     @Use({REG}) protected Value metaspaceMethod;
 
     AMD64IndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
-        super(targetMethod, result, parameters, temps, targetAddress, state);
+        super(TYPE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
     }
 

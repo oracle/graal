@@ -62,7 +62,7 @@ public final class VirtualUtil {
         }
 
         for (Node node : obsoleteNodes) {
-            if (node instanceof FixedNode) {
+            if (node instanceof FixedNode && !node.isDeleted()) {
                 assert !flood.isMarked(node) : node;
             }
         }
@@ -87,7 +87,7 @@ public final class VirtualUtil {
         }
         boolean success = true;
         for (Node node : obsoleteNodes) {
-            if (flood.isMarked(node)) {
+            if (!node.isDeleted() && flood.isMarked(node)) {
                 TTY.println("offending node path:");
                 Node current = node;
                 TTY.print(current.toString());
@@ -109,9 +109,21 @@ public final class VirtualUtil {
         return success;
     }
 
-    public static void trace(String format, Object... obj) {
-        if (TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+    public static void trace(String format, Object obj) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
             Debug.logv(format, obj);
+        }
+    }
+
+    public static void trace(String format, Object obj, Object obj2) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+            Debug.logv(format, obj, obj2);
+        }
+    }
+
+    public static void trace(String format, Object obj, Object obj2, Object obj3) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+            Debug.logv(format, obj, obj2, obj3);
         }
     }
 

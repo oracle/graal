@@ -661,13 +661,6 @@ public class HotSpotReplacementsUtil {
         return config().arrayKlassOffset;
     }
 
-    public static final LocationIdentity KLASS_NODE_CLASS = NamedLocationIdentity.immutable("KlassNodeClass");
-
-    @Fold
-    public static int instanceKlassNodeClassOffset() {
-        return config().instanceKlassNodeClassOffset;
-    }
-
     public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror");
 
     @Fold

@@ -24,15 +24,14 @@ package com.oracle.graal.nodes.util;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.virtual.*;
 
 public class GraphUtil {
 
@@ -40,7 +39,7 @@ public class GraphUtil {
 
         @Override
         public final boolean apply(Node n) {
-            return n instanceof FloatingNode || n instanceof VirtualState || n instanceof CallTargetNode || n instanceof VirtualObjectNode;
+            return !(n instanceof FixedNode);
         }
     };
 
@@ -50,7 +49,7 @@ public class GraphUtil {
             // We reached a control flow end.
             AbstractEndNode end = (AbstractEndNode) node;
             killEnd(end, tool);
-        } else {
+        } else if (node instanceof FixedNode) {
             // Normal control flow node.
             /*
              * We do not take a successor snapshot because this iterator supports concurrent
@@ -62,6 +61,7 @@ public class GraphUtil {
                 killCFG(successor, tool);
             }
         }
+        node.replaceAtPredecessor(null);
         propagateKill(node);
     }
 
@@ -112,21 +112,36 @@ public class GraphUtil {
         return FLOATING;
     }
 
-    public static void propagateKill(Node node) {
+    private static void propagateKill(Node node) {
         if (node != null && node.isAlive()) {
-            List<Node> usagesSnapshot = node.usages().filter(isFloatingNode()).snapshot();
+            node.markDeleted();
 
-            // null out remaining usages
-            node.replaceAtUsages(null);
-            node.replaceAtPredecessor(null);
-            killWithUnusedFloatingInputs(node);
+            node.acceptInputs((n, in) -> {
+                if (in.isAlive()) {
+                    in.removeUsage(n);
+                    if (in.hasNoUsages() && !(in instanceof FixedNode)) {
+                        killWithUnusedFloatingInputs(in);
+                    }
+                }
+            });
 
-            for (Node usage : usagesSnapshot) {
-                if (!usage.isDeleted()) {
-                    if (usage instanceof PhiNode) {
-                        usage.replaceFirstInput(node, null);
-                    } else {
-                        propagateKill(usage);
+            ArrayList<Node> usageToKill = null;
+            for (Node usage : node.usages()) {
+                if (usage.isAlive() && !(usage instanceof FixedNode)) {
+                    if (usageToKill == null) {
+                        usageToKill = new ArrayList<>();
+                    }
+                    usageToKill.add(usage);
+                }
+            }
+            if (usageToKill != null) {
+                for (Node usage : usageToKill) {
+                    if (usage.isAlive()) {
+                        if (usage instanceof PhiNode) {
+                            usage.replaceFirstInput(node, null);
+                        } else {
+                            propagateKill(usage);
+                        }
                     }
                 }
             }
@@ -134,11 +149,9 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
         node.safeDelete();
-
-        for (Node in : floatingInputs) {
-            if (in.isAlive() && in.hasNoUsages()) {
+        for (Node in : node.inputs()) {
+            if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
                 killWithUnusedFloatingInputs(in);
             }
         }
@@ -241,18 +254,30 @@ public class GraphUtil {
 
             if (n instanceof StateSplit) {
                 FrameState state = ((StateSplit) n).stateAfter();
-                while (state != null) {
-                    ResolvedJavaMethod method = state.method();
-                    if (method != null) {
-                        elements.add(method.asStackTraceElement(state.bci - 1));
-                    }
-                    state = state.outerFrameState();
-                }
+                elements.addAll(Arrays.asList(approxSourceStackTraceElement(state)));
                 break;
             }
             n = n.predecessor();
         }
         return elements.toArray(new StackTraceElement[elements.size()]);
+    }
+
+    /**
+     * Gets an approximate source code location for frame state.
+     *
+     * @return the StackTraceElements if an approximate source location is found, null otherwise
+     */
+    public static StackTraceElement[] approxSourceStackTraceElement(FrameState frameState) {
+        ArrayList<StackTraceElement> elements = new ArrayList<>();
+        FrameState state = frameState;
+        while (state != null) {
+            ResolvedJavaMethod method = state.method();
+            if (method != null) {
+                elements.add(method.asStackTraceElement(state.bci - 1));
+            }
+            state = state.outerFrameState();
+        }
+        return elements.toArray(new StackTraceElement[0]);
     }
 
     /**
@@ -262,8 +287,39 @@ public class GraphUtil {
      */
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
         final StackTraceElement[] elements = approxSourceStackTraceElement(node);
+        return createBailoutException(cause == null ? "" : cause.getMessage(), cause, elements);
+    }
+
+    /**
+     * Creates a bailout exception with the given stack trace elements and message.
+     *
+     * @param message the message of the exception
+     * @param elements the stack trace elements
+     * @return the exception
+     */
+    public static BailoutException createBailoutException(String message, Throwable cause, StackTraceElement[] elements) {
         @SuppressWarnings("serial")
-        RuntimeException exception = new RuntimeException((cause == null) ? null : cause.getMessage(), cause) {
+        BailoutException exception = new BailoutException(cause, message) {
+
+            @Override
+            public final synchronized Throwable fillInStackTrace() {
+                setStackTrace(elements);
+                return this;
+            }
+        };
+        return exception;
+    }
+
+    /**
+     * Creates a runtime exception with the given stack trace elements and message.
+     *
+     * @param message the message of the exception
+     * @param elements the stack trace elements
+     * @return the exception
+     */
+    public static RuntimeException createRuntimeException(String message, Throwable cause, StackTraceElement[] elements) {
+        @SuppressWarnings("serial")
+        RuntimeException exception = new RuntimeException(message, cause) {
 
             @Override
             public final synchronized Throwable fillInStackTrace() {

@@ -43,7 +43,7 @@ public class ReplaceIntrinsicsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
+        for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (methodCallTarget.isAlive()) {
                 InvokeKind invokeKind = methodCallTarget.invokeKind();
                 if (invokeKind.isDirect()) {

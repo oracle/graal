@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Extension})
 public final class MemoryMapNode extends FloatingNode implements MemoryMap, LIRLowerable {
 
+    public static final NodeClass<MemoryMapNode> TYPE = NodeClass.create(MemoryMapNode.class);
     protected final List<LocationIdentity> locationIdentities;
     @Input(InputType.Memory) NodeInputList<ValueNode> nodes;
 
@@ -51,7 +52,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, LIRL
     }
 
     public MemoryMapNode(Map<LocationIdentity, MemoryNode> mmap) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         locationIdentities = new ArrayList<>(mmap.keySet());
         nodes = new NodeInputList<>(this, mmap.values());
         assert checkOrder(mmap);

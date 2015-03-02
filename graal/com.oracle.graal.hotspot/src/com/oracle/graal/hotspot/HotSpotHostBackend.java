@@ -33,6 +33,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * Common functionality of HotSpot host backends.
@@ -40,12 +41,16 @@ import com.oracle.graal.nodes.spi.*;
 public abstract class HotSpotHostBackend extends HotSpotBackend {
 
     /**
-     * Descriptor for {@link DeoptimizationStub#deoptimizationHandler}.
+     * Descriptor for {@code SharedRuntime::deopt_blob()->unpack()} or
+     * {@link DeoptimizationStub#deoptimizationHandler} depending on
+     * {@link HotSpotBackend.Options#PreferGraalStubs}.
      */
-    public static final ForeignCallDescriptor DEOPTIMIZATION_HANDLER = new ForeignCallDescriptor("deoptimizationHandler", void.class);
+    public static final ForeignCallDescriptor DEOPTIMIZATION_HANDLER = new ForeignCallDescriptor("deoptHandler", void.class);
 
     /**
-     * Descriptor for {@link UncommonTrapStub#uncommonTrapHandler}.
+     * Descriptor for {@code SharedRuntime::deopt_blob()->uncommon_trap()} or
+     * {@link UncommonTrapStub#uncommonTrapHandler} depending on
+     * {@link HotSpotBackend.Options#PreferGraalStubs}.
      */
     public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
 
@@ -68,8 +73,8 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
 
         try (InitTimer st = timer("graphBuilderPlugins.initialize")) {
             GraphBuilderPhase phase = (GraphBuilderPhase) providers.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
-            GraphBuilderPlugins plugins = phase.getGraphBuilderPlugins();
-            registerGraphBuilderPlugins(providers.getMetaAccess(), plugins);
+            InvocationPlugins plugins = phase.getGraphBuilderConfig().getInvocationPlugins();
+            registerInvocationPlugins(providers, plugins);
         }
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
@@ -101,8 +106,8 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         }
     }
 
-    protected void registerGraphBuilderPlugins(MetaAccessProvider metaAccess, GraphBuilderPlugins plugins) {
-        StandardGraphBuilderPlugins.registerPlugins(metaAccess, plugins);
-        HotSpotGraphBuilderPlugins.registerPlugins(metaAccess, plugins);
+    protected void registerInvocationPlugins(HotSpotProviders providers, InvocationPlugins plugins) {
+        StandardGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), plugins);
+        HotSpotGraphBuilderPlugins.registerInvocationPlugins(providers, plugins);
     }
 }

@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -33,8 +34,10 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
 
+    public static final NodeClass<ObjectEqualsNode> TYPE = NodeClass.create(ObjectEqualsNode.class);
+
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
-        super(x, y);
+        super(TYPE, x, y);
         assert x.stamp() instanceof AbstractObjectStamp;
         assert y.stamp() instanceof AbstractObjectStamp;
     }
@@ -89,7 +92,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 * 
+                 *
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */

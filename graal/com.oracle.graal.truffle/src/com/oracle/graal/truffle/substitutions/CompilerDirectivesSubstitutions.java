@@ -73,8 +73,10 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
 
-    @MacroSubstitution(macro = IsCompilationConstantNode.class, isStatic = true)
-    public static native boolean isCompilationConstant(Object value);
+    @MethodSubstitution
+    public static boolean isCompilationConstant(Object value) {
+        return IsCompilationConstantNode.check(value);
+    }
 
     @MethodSubstitution
     public static void materialize(Object obj) {

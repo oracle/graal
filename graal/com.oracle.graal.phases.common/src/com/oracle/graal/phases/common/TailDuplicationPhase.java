@@ -62,9 +62,11 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
     private final CanonicalizerPhase canonicalizer;
 
     @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
-    static class DummyAnchorNode extends FixedWithNextNode implements GuardingNode, AnchoringNode {
+    static final class DummyAnchorNode extends FixedWithNextNode implements GuardingNode, AnchoringNode {
+        public static final NodeClass<DummyAnchorNode> TYPE = NodeClass.create(DummyAnchorNode.class);
+
         public DummyAnchorNode() {
-            super(StampFactory.forVoid());
+            super(TYPE, StampFactory.forVoid());
         }
 
     }
@@ -156,12 +158,12 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext phaseContext) {
-        if (graph.hasNode(AbstractMergeNode.class)) {
+        if (graph.hasNode(AbstractMergeNode.TYPE)) {
             ToDoubleFunction<FixedNode> nodeProbabilities = new FixedNodeProbabilityCache();
 
             // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
             // duplication.
-            for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.class).snapshot()) {
+            for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.TYPE).snapshot()) {
                 if (!(merge instanceof LoopBeginNode) && nodeProbabilities.applyAsDouble(merge) >= TailDuplicationProbability.getValue()) {
                     tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext, canonicalizer);
                 }
@@ -278,11 +280,11 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             mergeAfter.clearEnds();
             expandDuplicated(duplicatedNodes, mergeAfter);
 
-            List<AbstractEndNode> endSnapshot = merge.forwardEnds().snapshot();
+            List<EndNode> endSnapshot = merge.forwardEnds().snapshot();
             List<PhiNode> phiSnapshot = merge.phis().snapshot();
 
             int endIndex = 0;
-            for (final AbstractEndNode forwardEnd : merge.forwardEnds()) {
+            for (final EndNode forwardEnd : merge.forwardEnds()) {
                 Map<Node, Node> duplicates;
                 if (replacements == null || replacements.get(endIndex) == null) {
                     duplicates = graph.addDuplicates(duplicatedNodes, graph, duplicatedNodes.size(), (DuplicationReplacement) null);
@@ -294,7 +296,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 for (Map.Entry<ValueNode, PhiNode> phi : bottomPhis.entrySet()) {
                     phi.getValue().initializeValueAt(merge.forwardEndIndex(forwardEnd), (ValueNode) duplicates.get(phi.getKey()));
                 }
-                mergeAfter.addForwardEnd((AbstractEndNode) duplicates.get(endAfter));
+                mergeAfter.addForwardEnd((EndNode) duplicates.get(endAfter));
 
                 // re-wire the duplicated ValueAnchorNode to the predecessor of the corresponding
                 // EndNode
@@ -450,8 +452,8 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * @return The newly created end node.
          */
         private AbstractEndNode createNewMerge(FixedNode successor, FrameState stateAfterMerge) {
-            AbstractMergeNode newBottomMerge = graph.add(new MergeNode());
-            AbstractEndNode newBottomEnd = graph.add(new EndNode());
+            MergeNode newBottomMerge = graph.add(new MergeNode());
+            EndNode newBottomEnd = graph.add(new EndNode());
             newBottomMerge.addForwardEnd(newBottomEnd);
             newBottomMerge.setStateAfter(stateAfterMerge);
             ((FixedWithNextNode) successor.predecessor()).setNext(newBottomEnd);

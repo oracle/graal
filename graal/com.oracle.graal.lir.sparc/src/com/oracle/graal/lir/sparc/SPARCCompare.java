@@ -41,13 +41,15 @@ public enum SPARCCompare {
     FCMP,
     DCMP;
 
-    public static class CompareOp extends SPARCLIRInstruction {
+    public static final class CompareOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<CompareOp> TYPE = LIRInstructionClass.create(CompareOp.class);
 
         @Opcode private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
         @Use({REG, CONST}) protected Value y;
 
         public CompareOp(SPARCCompare opcode, Value x, Value y) {
+            super(TYPE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;

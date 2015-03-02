@@ -44,9 +44,9 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.phases.LIRHighTierPhase.LIRHighTierContext;
-import com.oracle.graal.lir.phases.LIRLowTierPhase.LIRLowTierContext;
-import com.oracle.graal.lir.phases.LIRMidTierPhase.LIRMidTierContext;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -340,7 +340,7 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
 
-            try (Scope s = Debug.scope("LIRTier", nodeLirGen)) {
+            try (Scope s = Debug.scope("LIRStages", nodeLirGen)) {
                 return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -350,16 +350,16 @@ public class GraalCompiler {
         }
     }
 
-    public static <T extends AbstractBlock<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
+    public static <T extends AbstractBlockBase<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
                     LIRGeneratorTool lirGen, LIRSuites lirSuites) {
-        LIRHighTierContext highTierContext = new LIRHighTierContext(lirGen);
-        lirSuites.getHighTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, highTierContext);
+        PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
+        lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
 
-        LIRMidTierContext midTierContext = new LIRMidTierContext();
-        lirSuites.getMidTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, midTierContext);
+        AllocationContext allocContext = new AllocationContext(lirGen.getSpillMoveFactory());
+        lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
 
-        LIRLowTierContext lowTierContext = new LIRLowTierContext();
-        lirSuites.getLowTier().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, lowTierContext);
+        PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext();
+        lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, postAllocOptContext);
 
         return lirGenRes;
     }

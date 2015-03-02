@@ -36,13 +36,15 @@ import com.oracle.graal.lir.asm.*;
 public class AMD64Call {
 
     public abstract static class CallOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<CallOp> TYPE = LIRInstructionClass.create(CallOp.class);
 
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        public CallOp(Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        protected CallOp(LIRInstructionClass<? extends CallOp> c, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c);
             this.result = result;
             this.parameters = parameters;
             this.state = state;
@@ -57,21 +59,23 @@ public class AMD64Call {
     }
 
     public abstract static class MethodCallOp extends CallOp {
+        public static final LIRInstructionClass<MethodCallOp> TYPE = LIRInstructionClass.create(MethodCallOp.class);
 
         protected final ResolvedJavaMethod callTarget;
 
-        public MethodCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(result, parameters, temps, state);
+        protected MethodCallOp(LIRInstructionClass<? extends MethodCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, result, parameters, temps, state);
             this.callTarget = callTarget;
         }
 
     }
 
     @Opcode("CALL_DIRECT")
-    public static class DirectCallOp extends MethodCallOp {
+    public abstract static class DirectCallOp extends MethodCallOp {
+        public static final LIRInstructionClass<DirectCallOp> TYPE = LIRInstructionClass.create(DirectCallOp.class);
 
-        public DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(callTarget, result, parameters, temps, state);
+        protected DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, callTarget, result, parameters, temps, state);
         }
 
         @Override
@@ -82,11 +86,17 @@ public class AMD64Call {
 
     @Opcode("CALL_INDIRECT")
     public static class IndirectCallOp extends MethodCallOp {
+        public static final LIRInstructionClass<IndirectCallOp> TYPE = LIRInstructionClass.create(IndirectCallOp.class);
 
         @Use({REG}) protected Value targetAddress;
 
         public IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress, LIRFrameState state) {
-            super(callTarget, result, parameters, temps, state);
+            this(TYPE, callTarget, result, parameters, temps, targetAddress, state);
+        }
+
+        protected IndirectCallOp(LIRInstructionClass<? extends IndirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
+                        LIRFrameState state) {
+            super(c, callTarget, result, parameters, temps, state);
             this.targetAddress = targetAddress;
         }
 
@@ -103,11 +113,12 @@ public class AMD64Call {
     }
 
     public abstract static class ForeignCallOp extends CallOp {
+        public static final LIRInstructionClass<ForeignCallOp> TYPE = LIRInstructionClass.create(ForeignCallOp.class);
 
         protected final ForeignCallLinkage callTarget;
 
-        public ForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(result, parameters, temps, state);
+        public ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, result, parameters, temps, state);
             this.callTarget = callTarget;
         }
 
@@ -118,10 +129,11 @@ public class AMD64Call {
     }
 
     @Opcode("NEAR_FOREIGN_CALL")
-    public static class DirectNearForeignCallOp extends ForeignCallOp {
+    public static final class DirectNearForeignCallOp extends ForeignCallOp {
+        public static final LIRInstructionClass<DirectNearForeignCallOp> TYPE = LIRInstructionClass.create(DirectNearForeignCallOp.class);
 
         public DirectNearForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(linkage, result, parameters, temps, state);
+            super(TYPE, linkage, result, parameters, temps, state);
         }
 
         @Override
@@ -131,12 +143,13 @@ public class AMD64Call {
     }
 
     @Opcode("FAR_FOREIGN_CALL")
-    public static class DirectFarForeignCallOp extends ForeignCallOp {
+    public static final class DirectFarForeignCallOp extends ForeignCallOp {
+        public static final LIRInstructionClass<DirectFarForeignCallOp> TYPE = LIRInstructionClass.create(DirectFarForeignCallOp.class);
 
         @Temp({REG}) protected AllocatableValue callTemp;
 
         public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(callTarget, result, parameters, temps, state);
+            super(TYPE, callTarget, result, parameters, temps, state);
             /*
              * The register allocator does not support virtual registers that are used at the call
              * site, so use a fixed register.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,17 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
-public class AMD64TestOp extends AMD64LIRInstruction {
+public final class AMD64TestOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64TestOp> TYPE = LIRInstructionClass.create(AMD64TestOp.class);
 
     @Use({REG}) protected Value x;
     @Use({REG, STACK, CONST}) protected Value y;
 
     public AMD64TestOp(Value x, Value y) {
+        super(TYPE);
         this.x = x;
         this.y = y;
     }

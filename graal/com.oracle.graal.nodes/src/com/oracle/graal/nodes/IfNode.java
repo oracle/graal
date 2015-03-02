@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.graph.Edges.Type.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -47,7 +45,8 @@ import com.oracle.graal.nodes.util.*;
  * of a comparison.
  */
 @NodeInfo
-public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+    public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
     private static final DebugMetric CORRECTED_PROBABILITIES = Debug.metric("CorrectedProbabilities");
 
@@ -70,7 +69,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
     }
 
     public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, double trueSuccessorProbability) {
-        super(StampFactory.forVoid());
+        super(TYPE, StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
         this.trueSuccessor = trueSuccessor;
@@ -93,6 +92,10 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      */
     public AbstractBeginNode falseSuccessor() {
         return falseSuccessor;
+    }
+
+    public double getTrueSuccessorProbability() {
+        return this.trueSuccessorProbability;
     }
 
     public void setTrueSuccessor(AbstractBeginNode node) {
@@ -234,16 +237,16 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             if (trueSucc instanceof BeginNode && falseSucc instanceof BeginNode && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
                 FixedWithNextNode trueNext = (FixedWithNextNode) trueSucc.next();
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
-                NodeClass nodeClass = trueNext.getNodeClass();
+                NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.getEdges(Inputs).areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
+                    if (nodeClass.getInputEdges().areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);
                         graph().addBeforeFixed(this, trueNext);
                         for (Node usage : trueNext.usages().snapshot()) {
                             if (usage.isAlive()) {
-                                NodeClass usageNodeClass = usage.getNodeClass();
+                                NodeClass<?> usageNodeClass = usage.getNodeClass();
                                 if (usageNodeClass.valueNumberable() && !usageNodeClass.isLeafNode()) {
                                     Node newNode = graph().findDuplicate(usage);
                                     if (newNode != null) {
@@ -365,6 +368,16 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         return false;
     }
 
+    private static final class MutableProfiledType {
+        final ResolvedJavaType type;
+        double probability;
+
+        public MutableProfiledType(ResolvedJavaType type, double probability) {
+            this.type = type;
+            this.probability = probability;
+        }
+    }
+
     private static boolean prepareForSwap(ConstantReflectionProvider constantReflection, LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
         if (a instanceof InstanceOfNode) {
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
@@ -382,44 +395,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                 if (instanceOfA.getValue() == instanceOfB.getValue() && !instanceOfA.type().isInterface() && !instanceOfB.type().isInterface() &&
                                 !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
                     // Two instanceof on the same value with mutually exclusive types.
-                    JavaTypeProfile profileA = instanceOfA.profile();
-                    JavaTypeProfile profileB = instanceOfB.profile();
-
                     Debug.log("Can swap instanceof for types %s and %s", instanceOfA.type(), instanceOfB.type());
-                    JavaTypeProfile newProfile = null;
-                    if (profileA != null && profileB != null) {
-                        double remainder = 1.0;
-                        ArrayList<ProfiledType> profiledTypes = new ArrayList<>();
-                        for (ProfiledType type : profileB.getTypes()) {
-                            if (instanceOfB.type().isAssignableFrom(type.getType())) {
-                                // Do not add to profile.
-                            } else {
-                                ProfiledType newType = new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() * (1.0 - probabilityA) / (1.0 - probabilityB)));
-                                profiledTypes.add(newType);
-                                remainder -= newType.getProbability();
-                            }
-                        }
-
-                        for (ProfiledType type : profileA.getTypes()) {
-                            if (instanceOfA.type().isAssignableFrom(type.getType())) {
-                                ProfiledType newType = new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() / (1.0 - probabilityB)));
-                                profiledTypes.add(newType);
-                                remainder -= newType.getProbability();
-                            }
-                        }
-                        Collections.sort(profiledTypes);
-
-                        if (remainder < 0.0) {
-                            // Can happen due to round-off errors.
-                            remainder = 0.0;
-                        }
-                        newProfile = new JavaTypeProfile(profileB.getNullSeen(), remainder, profiledTypes.toArray(new ProfiledType[profiledTypes.size()]));
-                        Debug.log("First profile: %s", profileA);
-                        Debug.log("Original second profile: %s", profileB);
-                        Debug.log("New second profile: %s", newProfile);
-                    }
-                    instanceOfB.setProfile(profileA);
-                    instanceOfA.setProfile(newProfile);
+                    swapInstanceOfProfiles(probabilityA, probabilityB, instanceOfA, instanceOfB);
                     return true;
                 }
             }
@@ -476,6 +453,116 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         return false;
     }
 
+    /**
+     * Arbitrary fraction of not recorded types that we'll guess are sub-types of B.
+     *
+     * This is is used because we can not check if the unrecorded types are sub-types of B or not.
+     */
+    private static final double NOT_RECORDED_SUBTYPE_B = 0.5;
+
+    /**
+     * If the not-recorded fraction of types for the new profile of <code>instanceOfA</code> is
+     * above this threshold, no profile is used for this <code>instanceof</code> after the swap.
+     *
+     * The idea is that the reconstructed profile would contain too much unknowns to be of any use.
+     */
+    private static final double NOT_RECORDED_CUTOFF = 0.4;
+
+    /**
+     * Tries to reconstruct profiles for the swapped <code>instanceof</code> checks.
+     *
+     * The tested types must be mutually exclusive.
+     */
+    private static void swapInstanceOfProfiles(double probabilityA, double probabilityB, InstanceOfNode instanceOfA, InstanceOfNode instanceOfB) {
+        JavaTypeProfile profileA = instanceOfA.profile();
+        JavaTypeProfile profileB = instanceOfB.profile();
+
+        JavaTypeProfile newProfileA = null;
+        JavaTypeProfile newProfileB = null;
+        if (profileA != null || profileB != null) {
+            List<MutableProfiledType> newProfiledTypesA = new ArrayList<>();
+            List<MutableProfiledType> newProfiledTypesB = new ArrayList<>();
+            double totalProbabilityA = 0.0;
+            double totalProbabilityB = 0.0;
+            double newNotRecordedA = 0.0;
+            double newNotRecordedB = 0.0;
+            TriState nullSeen = TriState.UNKNOWN;
+            if (profileA != null) {
+                for (ProfiledType profiledType : profileA.getTypes()) {
+                    newProfiledTypesB.add(new MutableProfiledType(profiledType.getType(), profiledType.getProbability()));
+                    totalProbabilityB += profiledType.getProbability();
+                    if (!instanceOfB.type().isAssignableFrom(profiledType.getType())) {
+                        double typeProbabilityA = profiledType.getProbability() / (1 - probabilityB);
+                        newProfiledTypesA.add(new MutableProfiledType(profiledType.getType(), typeProbabilityA));
+                        totalProbabilityA += typeProbabilityA;
+                    }
+                }
+                newNotRecordedB += profileA.getNotRecordedProbability();
+                newNotRecordedA += NOT_RECORDED_SUBTYPE_B * profileA.getNotRecordedProbability() / (1 - probabilityB);
+                nullSeen = profileA.getNullSeen();
+            }
+            int searchA = newProfiledTypesA.size();
+            int searchB = newProfiledTypesB.size();
+            if (profileB != null) {
+                for (ProfiledType profiledType : profileB.getTypes()) {
+                    double typeProbabilityB = profiledType.getProbability() * (1 - probabilityA);
+                    appendOrMerge(profiledType.getType(), typeProbabilityB, searchB, newProfiledTypesB);
+                    totalProbabilityB += typeProbabilityB;
+                    if (!instanceOfB.type().isAssignableFrom(profiledType.getType())) {
+                        double typeProbabilityA = typeProbabilityB / (1 - probabilityB);
+                        appendOrMerge(profiledType.getType(), typeProbabilityA, searchA, newProfiledTypesA);
+                        totalProbabilityA += typeProbabilityA;
+                    }
+                }
+                newNotRecordedB += profileB.getNotRecordedProbability() * (1 - probabilityA);
+                newNotRecordedA += NOT_RECORDED_SUBTYPE_B * profileB.getNotRecordedProbability() * (1 - probabilityA) / (1 - probabilityB);
+                nullSeen = TriState.merge(nullSeen, profileB.getNullSeen());
+            }
+            totalProbabilityA += newNotRecordedA;
+            totalProbabilityB += newNotRecordedB;
+
+            if (newNotRecordedA / NOT_RECORDED_SUBTYPE_B > NOT_RECORDED_CUTOFF) {
+                // too much unknown
+                newProfileA = null;
+            } else {
+                newProfileA = makeProfile(totalProbabilityA, newNotRecordedA, newProfiledTypesA, nullSeen);
+            }
+            newProfileB = makeProfile(totalProbabilityB, newNotRecordedB, newProfiledTypesB, nullSeen);
+        }
+
+        instanceOfB.setProfile(newProfileB);
+        instanceOfA.setProfile(newProfileA);
+    }
+
+    private static JavaTypeProfile makeProfile(double totalProbability, double notRecorded, List<MutableProfiledType> profiledTypes, TriState nullSeen) {
+        // protect against NaNs and empty profiles
+        if (totalProbability > 0.0) {
+            // normalize
+            ProfiledType[] profiledTypesArray = new ProfiledType[profiledTypes.size()];
+            int i = 0;
+            for (MutableProfiledType profiledType : profiledTypes) {
+                profiledTypesArray[i++] = new ProfiledType(profiledType.type, profiledType.probability / totalProbability);
+            }
+
+            // sort
+            Arrays.sort(profiledTypesArray);
+
+            return new JavaTypeProfile(nullSeen, notRecorded / totalProbability, profiledTypesArray);
+        }
+        return null;
+    }
+
+    private static void appendOrMerge(ResolvedJavaType type, double probability, int searchUntil, List<MutableProfiledType> list) {
+        for (int i = 0; i < searchUntil; i++) {
+            MutableProfiledType profiledType = list.get(i);
+            if (profiledType.type.equals(type)) {
+                profiledType.probability += probability;
+                return;
+            }
+        }
+        list.add(new MutableProfiledType(type, probability));
+    }
+
     private static boolean valuesDistinct(ConstantReflectionProvider constantReflection, ValueNode a, ValueNode b) {
         if (a.isConstant() && b.isConstant()) {
             Boolean equal = constantReflection.constantEquals(a.asConstant(), b.asConstant());
@@ -516,7 +603,6 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                      * Multiple phis but merging same values for true and false, so simply delete
                      * the path
                      */
-                    tool.addToWorkList(condition());
                     removeThroughFalseBranch(tool);
                     return true;
                 } else if (distinct == 1) {
@@ -559,6 +645,9 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         AbstractBeginNode trueBegin = trueSuccessor();
         graph().removeSplitPropagate(this, trueBegin, tool);
         tool.addToWorkList(trueBegin);
+        if (condition().isAlive() && condition().hasNoUsages()) {
+            GraphUtil.killWithUnusedFloatingInputs(condition());
+        }
     }
 
     private ConditionalNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
@@ -663,7 +752,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         MergeNode falseMerge = null;
         assert merge.stateAfter() == null;
 
-        for (AbstractEndNode end : merge.forwardEnds().snapshot()) {
+        for (EndNode end : merge.forwardEnds().snapshot()) {
             Node value = phi.valueAt(end);
             Node result = null;
             if (condition() instanceof Canonicalizable.Binary<?>) {
@@ -819,7 +908,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             }
         }
 
-        List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+        List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         assert phi.valueCount() == merge.forwardEndCount();
 
         Constant[] xs = constantValues(compare.getX(), merge, false);
@@ -833,8 +922,8 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
             return false;
         }
 
-        List<AbstractEndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
-        List<AbstractEndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
+        List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
+        List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         Map<AbstractEndNode, ValueNode> phiValues = CollectionsFactory.newMap(mergePredecessors.size());
 
         AbstractBeginNode oldFalseSuccessor = falseSuccessor();
@@ -843,9 +932,9 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
         setFalseSuccessor(null);
         setTrueSuccessor(null);
 
-        Iterator<AbstractEndNode> ends = mergePredecessors.iterator();
+        Iterator<EndNode> ends = mergePredecessors.iterator();
         for (int i = 0; i < xs.length; i++) {
-            AbstractEndNode end = ends.next();
+            EndNode end = ends.next();
             phiValues.put(end, phi.valueAt(end));
             if (compare.condition().foldCondition(xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue())) {
                 trueEnds.add(end);
@@ -975,7 +1064,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
-    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
+    private void connectEnds(List<EndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
         if (!ends.isEmpty()) {
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
@@ -989,7 +1078,7 @@ public class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerab
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(), newMerge));
 
-                for (AbstractEndNode end : ends) {
+                for (EndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));
                     newMerge.addForwardEnd(end);
                 }

@@ -62,10 +62,11 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
         Map<LoopExitNode, Double> exitStates = ReentrantNodeIterator.processLoop(this, loop, 1D).exitStates;
 
         double exitProbability = exitStates.values().stream().mapToDouble(d -> d).sum();
-        assert exitProbability <= 1D && exitProbability >= 0D;
+        exitProbability = Math.min(1D, exitProbability);
         if (exitProbability < MIN_PROBABILITY) {
             exitProbability = MIN_PROBABILITY;
         }
+        assert exitProbability <= 1D && exitProbability >= 0D;
         double loopFrequency = 1D / exitProbability;
         loop.setLoopFrequency(loopFrequency);
 

@@ -68,6 +68,8 @@ public abstract class LoopTransformations {
         LoopFragmentWhole originalLoop = loop.whole();
         StructuredGraph graph = firstNode.graph();
 
+        loop.loopBegin().incrementUnswitches();
+
         // create new control split out of loop
         ControlSplitNode newControlSplit = (ControlSplitNode) firstNode.copyWithInputs();
         originalLoop.entryPoint().replaceAtPredecessor(newControlSplit);

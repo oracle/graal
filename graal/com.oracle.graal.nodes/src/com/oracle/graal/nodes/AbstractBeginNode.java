@@ -33,17 +33,18 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Guard, InputType.Anchor})
 public abstract class AbstractBeginNode extends FixedWithNextNode implements LIRLowerable, Simplifiable, GuardingNode, AnchoringNode, IterableNodeType {
 
-    public AbstractBeginNode() {
-        super(StampFactory.forVoid());
+    public static final NodeClass<AbstractBeginNode> TYPE = NodeClass.create(AbstractBeginNode.class);
+
+    protected AbstractBeginNode(NodeClass<? extends AbstractBeginNode> c) {
+        this(c, StampFactory.forVoid());
     }
 
-    public AbstractBeginNode(Stamp stamp) {
-        super(stamp);
+    protected AbstractBeginNode(NodeClass<? extends AbstractBeginNode> c, Stamp stamp) {
+        super(c, stamp);
     }
 
     @Override
@@ -62,8 +63,13 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
     }
 
     public static AbstractBeginNode prevBegin(FixedNode from) {
-        for (AbstractBeginNode begin : GraphUtil.predecessorIterable(from).filter(AbstractBeginNode.class)) {
-            return begin;
+        Node next = from;
+        while (next != null) {
+            if (next instanceof AbstractBeginNode) {
+                AbstractBeginNode begin = (AbstractBeginNode) next;
+                return begin;
+            }
+            next = next.predecessor();
         }
         return null;
     }
