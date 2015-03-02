@@ -348,8 +348,8 @@ public final class SchedulePhase extends Phase {
         // Add begin nodes as the first entry and set the block for phi nodes.
         for (Block b : cfg.getBlocks()) {
             AbstractBeginNode beginNode = b.getBeginNode();
-            nodeToBlock.set(beginNode, b);
             ArrayList<ValueNode> nodes = new ArrayList<>();
+            nodeToBlock.set(beginNode, b);
             nodes.add(beginNode);
             blockToNodes.put(b, nodes);
 
@@ -399,10 +399,18 @@ public final class SchedulePhase extends Phase {
 
         // Add end nodes as the last nodes in each block.
         for (Block b : cfg.getBlocks()) {
-            blockToNodes.get(b).add(b.getEndNode());
+            FixedNode endNode = b.getEndNode();
+            if (endNode != b.getBeginNode()) {
+                addNode(blockToNodes, b, endNode);
+            }
         }
 
         this.blockToNodesMap = blockToNodes;
+    }
+
+    private static void addNode(BlockMap<List<ValueNode>> blockToNodes, Block b, ValueNode endNode) {
+        assert !blockToNodes.get(b).contains(endNode) : endNode;
+        blockToNodes.get(b).add(endNode);
     }
 
     private void processStack(BlockMap<List<ValueNode>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, Stack<Node> stack) {
@@ -439,36 +447,35 @@ public final class SchedulePhase extends Phase {
 
                 if (nodeToBlock.get(current) == null) {
                     Node predecessor = current.predecessor();
-                    if (nodeToBlock.get(current) == null) {
-                        Block curBlock;
-                        if (predecessor != null) {
-                            // Predecessor determines block.
-                            curBlock = nodeToBlock.get(predecessor);
-                        } else {
-                            Block earliest = startBlock;
-                            for (Node input : current.inputs()) {
-                                if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                                    // ignore
+                    Block curBlock;
+                    if (predecessor != null) {
+                        // Predecessor determines block.
+                        curBlock = nodeToBlock.get(predecessor);
+                    } else {
+                        Block earliest = startBlock;
+                        for (Node input : current.inputs()) {
+                            if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                                // ignore
+                            } else {
+                                Block inputEarliest;
+                                if (input instanceof ControlSplitNode) {
+                                    inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
                                 } else {
-                                    Block inputEarliest;
-                                    if (input instanceof ControlSplitNode) {
-                                        inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
-                                    } else {
-                                        inputEarliest = nodeToBlock.get(input);
-                                    }
-                                    assert inputEarliest != null : current + " / " + input;
-                                    if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
-                                        earliest = inputEarliest;
-                                    }
+                                    inputEarliest = nodeToBlock.get(input);
+                                }
+                                assert inputEarliest != null : current + " / " + input;
+                                if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
+                                    earliest = inputEarliest;
                                 }
                             }
-                            curBlock = earliest;
                         }
-                        if (current instanceof ValueNode) {
-                            blockToNodes.get(curBlock).add((ValueNode) current);
-                        }
-                        nodeToBlock.set(current, curBlock);
+                        curBlock = earliest;
                     }
+                    assert curBlock != null;
+                    if (current instanceof ValueNode) {
+                        addNode(blockToNodes, curBlock, (ValueNode) current);
+                    }
+                    nodeToBlock.set(current, curBlock);
                 }
             }
         }
