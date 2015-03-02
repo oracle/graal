@@ -112,25 +112,13 @@ public class LIRFrameState {
     }
 
     /**
-     * Called by the register allocator before {@link #markLocation} to initialize the frame state.
+     * Called by the register allocator before {@link #updateUnion} to initialize the frame state.
      *
      * @param frameMap The frame map.
      * @param canHaveRegisters True if there can be any register map entries.
      */
     public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
         debugInfo = new DebugInfo(topFrame, frameMap.initReferenceMap(canHaveRegisters));
-    }
-
-    /**
-     * Called by the register allocator to mark the specified location as a reference in the
-     * reference map of the debug information. The tracked location can be a {@link RegisterValue}
-     * or a {@link StackSlot}. Note that a {@link JavaConstant} is automatically tracked.
-     *
-     * @param location The location to be added to the reference map.
-     * @param frameMap The frame map.
-     */
-    public void markLocation(Value location, FrameMap frameMap) {
-        frameMap.setReference(location, debugInfo.getReferenceMap());
     }
 
     /**
