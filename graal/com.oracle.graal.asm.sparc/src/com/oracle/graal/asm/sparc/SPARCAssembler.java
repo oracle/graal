@@ -231,215 +231,6 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    // @formatter:off
-    /**
-     * Instruction format for Movcc.
-     * <pre>
-     * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|      -      |   rs2   |
-     * | 10  |   rd   |   op3   |cc2|   cond  | i|cc1|cc0|        simm11         |
-     * |31 30|29    25|24     19| 18|17     14|13| 12| 11|10          5|4       0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt10c {
-
-        private static final int RD_SHIFT = 25;
-        private static final int OP3_SHIFT = 19;
-        private static final int CC2_SHIFT = 18;
-        private static final int COND_SHIFT = 14;
-        private static final int I_SHIFT = 13;
-        private static final int CC1_SHIFT = 12;
-        private static final int CC0_SHIFT = 11;
-        private static final int RS2_SHIFT = 0;
-        private static final int SIMM11_SHIFT = 0;
-
-        // @formatter:off
-        private static final int RD_MASK     = 0b00111110000000000000000000000000;
-        private static final int OP3_MASK    = 0b00000001111110000000000000000000;
-        private static final int CC2_MASK    = 0b00000000000001000000000000000000;
-        private static final int COND_MASK   = 0b00000000000000111100000000000000;
-        private static final int I_MASK      = 0b00000000000000000010000000000000;
-        private static final int CC1_MASK    = 0b00000000000000000001000000000000;
-        private static final int CC0_MASK    = 0b00000000000000000000100000000000;
-        private static final int RS2_MASK    = 0b00000000000000000000000000011111;
-        private static final int SIMM11_MASK = 0b00000000000000000000011111111111;
-        // @formatter:on
-
-        private int rd;
-        private int op3;
-        private int cond;
-        private int i;
-        private int cc;
-        private int rs2;
-        private int simm11;
-
-        private Fmt10c(int rd, int op3, int cond, int i, int cc, int rs2, int simm11) {
-            this.rd = rd;
-            this.op3 = op3;
-            this.cond = cond;
-            this.i = i;
-            this.cc = cc;
-            this.rs2 = rs2;
-            this.simm11 = simm11;
-            verify();
-        }
-
-        public Fmt10c(Op3s op3, ConditionFlag cond, CC cc, Register rs2, Register rd) {
-            this(rd.encoding(), op3.getValue(), cond.getValue(), 0, getCC(cc), rs2.encoding(), 0);
-        }
-
-        public Fmt10c(Op3s op3, ConditionFlag cond, CC cc, int simm11, Register rd) {
-            this(rd.encoding(), op3.getValue(), cond.getValue(), 1, getCC(cc), 0, simm11);
-        }
-
-        /**
-         * Converts regular CC codes to CC codes used by Movcc instructions.
-         */
-        public static int getCC(CC cc) {
-            switch (cc) {
-                case Icc:
-                case Xcc:
-                    return 0b100 + cc.getValue();
-                default:
-                    return cc.getValue();
-            }
-        }
-
-        private int getInstructionBits() {
-            if (i == 0) {
-                return Ops.ArithOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | ((cc << (CC2_SHIFT - 2)) & CC2_MASK) | cond << COND_SHIFT | i << I_SHIFT |
-                                ((cc << (CC1_SHIFT - 1)) & CC1_MASK) | ((cc << CC0_SHIFT) & CC0_MASK) | rs2 << RS2_SHIFT;
-            } else {
-                return Ops.ArithOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | ((cc << (CC2_SHIFT - 2)) & CC2_MASK) | cond << COND_SHIFT | i << I_SHIFT |
-                                ((cc << (CC1_SHIFT - 1)) & CC1_MASK) | ((cc << CC0_SHIFT) & CC0_MASK) | ((simm11 << SIMM11_SHIFT) & SIMM11_MASK);
-            }
-        }
-
-        public static Fmt10c read(SPARCAssembler masm, int pos) {
-            final int inst = masm.getInt(pos);
-
-            // Make sure it's the right instruction:
-            final int op = (inst & OP_MASK) >> OP_SHIFT;
-            assert op == Ops.ArithOp.getValue();
-
-            // Get the instruction fields:
-            final int rd = (inst & RD_MASK) >> RD_SHIFT;
-            final int op3 = (inst & OP3_MASK) >> OP3_SHIFT;
-            final int cond = (inst & COND_MASK) >> COND_SHIFT;
-            final int i = (inst & I_MASK) >> I_SHIFT;
-            final int cc = (inst & CC2_MASK) >> CC2_SHIFT | (inst & CC1_MASK) >> CC1_SHIFT | (inst & CC0_MASK) >> CC0_SHIFT;
-            final int rs2 = (inst & RS2_MASK) >> RS2_SHIFT;
-            final int simm11 = (inst & SIMM11_MASK) >> SIMM11_SHIFT;
-
-            return new Fmt10c(rd, op3, cond, i, cc, rs2, simm11);
-        }
-
-        public void write(SPARCAssembler masm, int pos) {
-            verify();
-            masm.emitInt(getInstructionBits(), pos);
-        }
-
-        public void emit(SPARCAssembler masm) {
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        public void verify() {
-            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
-            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT);
-            assert ((cond << COND_SHIFT) & COND_MASK) == (cond << COND_SHIFT);
-            assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT);
-            // assert cc >= 0 && cc < 0x8;
-            assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT);
-            assert isSimm11(simm11);
-        }
-    }
-
-    // @formatter:off
-    /**
-     * Instruction format for Fmovcc.
-     * <pre>
-     * | 10  |   rd   |   op3   | -|   cond  | opfcc | opf_low |   rs2   |
-     * |31 30|29    25|24     19|18|17     14|13   11|10      5|4       0|
-     * </pre>
-     */
-    // @formatter:on
-    public static class Fmt10d {
-
-        private static final int RD_SHIFT = 25;
-        private static final int OP3_SHIFT = 19;
-        private static final int COND_SHIFT = 14;
-        private static final int OPFCC_SHIFT = 12;
-        private static final int OPF_LOW_SHIFT = 11;
-        private static final int RS2_SHIFT = 0;
-
-        // @formatter:off
-        private static final int RD_MASK      = 0b0011_1110_0000_0000_0000_0000_0000_0000;
-        private static final int OP3_MASK     = 0b0000_0001_1111_1000_0000_0000_0000_0000;
-        private static final int COND_MASK    = 0b0000_0000_0000_0011_1100_0000_0000_0000;
-        private static final int OPFCC_MASK   = 0b0000_0000_0000_0000_0011_1000_0000_0000;
-        private static final int OPF_LOW_MASK = 0b0000_0000_0000_0000_0000_0111_1110_0000;
-        private static final int RS2_MASK     = 0b0000_0000_0000_0000_0000_0000_0001_1111;
-        // @formatter:on
-
-        private int rd;
-        private int op3;
-        private int cond;
-        private int opfcc;
-        private int opfLow;
-        private int rs2;
-
-        public Fmt10d(Op3s op3, Opfs opf, ConditionFlag cond, CC cc, Register rs2, Register rd) {
-            this(rd.encoding(), op3.getValue(), cond.getValue(), Fmt10c.getCC(cc), opf.getValue(), rs2.encoding());
-        }
-
-        public Fmt10d(int rd, int op3, int cond, int opfcc, int opfLow, int rs2) {
-            super();
-            this.rd = rd;
-            this.op3 = op3;
-            this.cond = cond;
-            this.opfcc = opfcc;
-            this.opfLow = opfLow;
-            this.rs2 = rs2;
-        }
-
-        public void emit(SPARCAssembler masm) {
-            verify();
-            masm.emitInt(getInstructionBits());
-        }
-
-        private int getInstructionBits() {
-            return Ops.ArithOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | cond << COND_SHIFT | opfcc << OPFCC_SHIFT | opfLow << OPF_LOW_SHIFT | rs2 << RS2_SHIFT;
-
-        }
-
-        public void verify() {
-            assert ((RD_MASK >> RD_SHIFT) & rd) == rd;
-            assert ((OP3_MASK >> OP3_SHIFT) & op3) == op3;
-            assert ((COND_MASK >> COND_SHIFT) & cond) == cond;
-            assert ((OPFCC_MASK >> OPFCC_SHIFT) & opfcc) == opfcc;
-            assert ((OPF_LOW_MASK >> OPF_LOW_SHIFT) & opfLow) == opfLow;
-            assert ((RS2_MASK >> RS2_SHIFT) & rs2) == rs2;
-        }
-    }
-
-    public static class Fmt5a {
-
-        public Fmt5a(SPARCAssembler masm, int op, int op3, int op5, int rs1, int rs2, int rs3, int rd) {
-            assert op == 2;
-            assert op3 >= 0 && op3 < 0x40;
-            assert op5 >= 0 && op5 < 0x10;
-            assert rs1 >= 0 && rs1 < 0x20;
-            assert rs2 >= 0 && rs2 < 0x20;
-            assert rs3 >= 0 && rs3 < 0x20;
-            assert rd >= 0 && rd < 0x20;
-
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | rs3 << 9 | op5 << 5 | rs2);
-        }
-    }
-
-    public static final int ImmedTrue = 0x00002000;
-
     public enum Ops {
         // @formatter:off
 
@@ -901,25 +692,27 @@ public abstract class SPARCAssembler extends Assembler {
         /**
          * Condition is considered as 32bit operation condition.
          */
-        Icc(0b00, "icc"),
+        Icc(0b00, "icc", false),
         /**
          * Condition is considered as 64bit operation condition.
          */
-        Xcc(0b10, "xcc"),
-        Ptrcc(getHostWordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc"),
-        Fcc0(0b00, "fcc0"),
-        Fcc1(0b01, "fcc1"),
-        Fcc2(0b10, "fcc2"),
-        Fcc3(0b11, "fcc3");
+        Xcc(0b10, "xcc", false),
+        Ptrcc(getHostWordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc", false),
+        Fcc0(0b00, "fcc0", true),
+        Fcc1(0b01, "fcc1", true),
+        Fcc2(0b10, "fcc2", true),
+        Fcc3(0b11, "fcc3", true);
 
         // @formatter:on
 
         private final int value;
         private final String operator;
+        private boolean isFloat;
 
-        private CC(int value, String op) {
+        private CC(int value, String op, boolean isFloat) {
             this.value = value;
             this.operator = op;
+            this.isFloat = isFloat;
         }
 
         public int getValue() {
@@ -1879,29 +1672,35 @@ public abstract class SPARCAssembler extends Assembler {
         op3(Membar, r15, barriers, g0);
     }
 
-    public static class Fmovscc extends Fmt10d {
-
-        public Fmovscc(ConditionFlag cond, CC cca, Register src2, Register dst) {
-            super(Fpop2, Fmovscc, cond, cca, src2, dst);
-        }
+    public void fmovdcc(ConditionFlag cond, CC cc, Register rs2, Register rd) {
+        fmovcc(cond, cc, rs2, rd, Fmovdcc.value);
     }
 
-    public static class Fmovdcc extends Fmt10d {
-
-        public Fmovdcc(ConditionFlag cond, CC cca, Register src2, Register dst) {
-            super(Fpop2, Fmovdcc, cond, cca, src2, dst);
-        }
+    public void fmovscc(ConditionFlag cond, CC cc, Register rs2, Register rd) {
+        fmovcc(cond, cc, rs2, rd, Fmovscc.value);
     }
 
-    public static class Movcc extends Fmt10c {
+    private void fmovcc(ConditionFlag cond, CC cc, Register rs2, Register rd, int opfLow) {
+        int opfCC = cc.value;
+        int a = opfCC << 11 | opfLow << 5 | rs2.encoding;
+        fmt10(rd.encoding, Fpop2.value, cond.value, a);
+    }
 
-        public Movcc(ConditionFlag cond, CC cca, Register src2, Register dst) {
-            super(Movcc, cond, cca, src2, dst);
-        }
+    public void movcc(ConditionFlag conditionFlag, CC cc, Register rs2, Register rd) {
+        movcc(conditionFlag, cc, 0, rs2.encoding, rd);
+    }
 
-        public Movcc(ConditionFlag cond, CC cca, int simm11, Register dst) {
-            super(Movcc, cond, cca, simm11, dst);
-        }
+    public void movcc(ConditionFlag conditionFlag, CC cc, int simm11, Register rd) {
+        assert isSimm11(simm11);
+        movcc(conditionFlag, cc, 1, simm11 & ((1 << 11) - 1), rd);
+    }
+
+    private void movcc(ConditionFlag conditionFlag, CC cc, int i, int imm, Register rd) {
+        int cc01 = 0b11 & cc.value;
+        int cc2 = cc.isFloat ? 0 : 1;
+        int a = cc2 << 4 | conditionFlag.value;
+        int b = cc01 << 11 | i << 13 | imm;
+        fmt10(rd.encoding, Movcc.value, a, b);
     }
 
     public void mulx(Register rs1, Register rs2, Register rd) {

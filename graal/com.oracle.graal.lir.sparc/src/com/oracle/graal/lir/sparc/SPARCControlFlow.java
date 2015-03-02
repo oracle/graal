@@ -39,9 +39,6 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovdcc;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovscc;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movcc;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -568,9 +565,9 @@ public class SPARCControlFlow {
                     } else {
                         constant = asConstant(other).asInt();
                     }
-                    new Movcc(cond, cc, constant, asRegister(result)).emit(masm);
+                    masm.movcc(cond, cc, constant, asRegister(result));
                 } else {
-                    new Movcc(cond, cc, asRegister(other), asRegister(result)).emit(masm);
+                    masm.movcc(cond, cc, asRegister(other), asRegister(result));
                 }
                 break;
             case Long:
@@ -582,17 +579,16 @@ public class SPARCControlFlow {
                     } else {
                         constant = asConstant(other).asLong();
                     }
-                    assert isSimm11(constant);
-                    new Movcc(cond, cc, (int) constant, asRegister(result)).emit(masm);
+                    masm.movcc(cond, cc, (int) constant, asRegister(result));
                 } else {
-                    new Movcc(cond, cc, asRegister(other), asRegister(result)).emit(masm);
+                    masm.movcc(cond, cc, asRegister(other), asRegister(result));
                 }
                 break;
             case Float:
-                new Fmovscc(cond, cc, asFloatReg(other), asFloatReg(result)).emit(masm);
+                masm.fmovscc(cond, cc, asFloatReg(other), asFloatReg(result));
                 break;
             case Double:
-                new Fmovdcc(cond, cc, asDoubleReg(other), asDoubleReg(result)).emit(masm);
+                masm.fmovdcc(cond, cc, asDoubleReg(other), asDoubleReg(result));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
