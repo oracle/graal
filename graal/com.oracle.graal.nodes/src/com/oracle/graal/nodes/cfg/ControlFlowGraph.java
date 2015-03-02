@@ -78,6 +78,10 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return reversePostOrder.get(0);
     }
 
+    public Iterable<Block> reversePostOrder() {
+        return reversePostOrder;
+    }
+
     public Iterable<Block> postOrder() {
         return new Iterable<Block>() {
 

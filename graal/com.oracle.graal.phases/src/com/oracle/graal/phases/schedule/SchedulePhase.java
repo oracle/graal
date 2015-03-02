@@ -330,11 +330,149 @@ public final class SchedulePhase extends Phase {
             blockToKillSet = new BlockMap<>(cfg);
         }
 
+        if (selectedStrategy == SchedulingStrategy.EARLIEST) {
+            scheduleEarliestIterative(blockToNodesMap, graph);
+            return;
+        }
+
         assignBlockToNodes(graph, selectedStrategy);
         printSchedule("after assign nodes to blocks");
 
         sortNodesWithinBlocks(graph, selectedStrategy);
         printSchedule("after sorting nodes within blocks");
+    }
+
+    private void scheduleEarliestIterative(BlockMap<List<ValueNode>> blockToNodes, StructuredGraph graph) {
+        NodeMap<Block> nodeToBlock = graph.createNodeMap();
+        NodeBitMap visited = graph.createNodeBitMap();
+
+        // Add begin nodes as the first entry and set the block for phi nodes.
+        for (Block b : cfg.getBlocks()) {
+            AbstractBeginNode beginNode = b.getBeginNode();
+            nodeToBlock.set(beginNode, b);
+            ArrayList<ValueNode> nodes = new ArrayList<>();
+            nodes.add(beginNode);
+            blockToNodes.put(b, nodes);
+
+            if (beginNode instanceof AbstractMergeNode) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
+                for (PhiNode phi : mergeNode.phis()) {
+                    nodeToBlock.set(phi, b);
+                }
+            }
+        }
+
+        Stack<Node> stack = new Stack<>();
+
+        // Start analysis with control flow ends.
+        for (Block b : cfg.postOrder()) {
+            FixedNode endNode = b.getEndNode();
+            stack.push(endNode);
+            nodeToBlock.set(endNode, b);
+        }
+
+        processStack(blockToNodes, nodeToBlock, visited, stack);
+
+        // Visit back input edges of loop phis.
+        for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
+            for (PhiNode phi : loopBegin.phis()) {
+                if (visited.isMarked(phi)) {
+                    for (int i = 0; i < loopBegin.getLoopEndCount(); ++i) {
+                        Node node = phi.valueAt(i + loopBegin.forwardEndCount());
+                        if (!visited.isMarked(node)) {
+                            stack.push(node);
+                            processStack(blockToNodes, nodeToBlock, visited, stack);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check for dead nodes.
+        if (visited.getCounter() < graph.getNodeCount()) {
+            for (Node n : graph.getNodes()) {
+                if (!visited.isMarked(n)) {
+                    n.clearInputs();
+                    n.markDeleted();
+                }
+            }
+        }
+
+        // Add end nodes as the last nodes in each block.
+        for (Block b : cfg.getBlocks()) {
+            blockToNodes.get(b).add(b.getEndNode());
+        }
+
+        this.blockToNodesMap = blockToNodes;
+    }
+
+    private void processStack(BlockMap<List<ValueNode>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, Stack<Node> stack) {
+        Block startBlock = cfg.getStartBlock();
+        while (!stack.isEmpty()) {
+            Node current = stack.peek();
+            if (visited.checkAndMarkInc(current)) {
+
+                // Push inputs and predecessor.
+                Node predecessor = current.predecessor();
+                if (predecessor != null) {
+                    stack.push(predecessor);
+                }
+
+                if (current instanceof PhiNode) {
+                    PhiNode phiNode = (PhiNode) current;
+                    AbstractMergeNode merge = phiNode.merge();
+                    for (int i = 0; i < merge.forwardEndCount(); ++i) {
+                        Node input = phiNode.valueAt(i);
+                        stack.push(input);
+                    }
+                } else {
+                    for (Node input : current.inputs()) {
+                        if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                            // Ignore the cycle.
+                        } else {
+                            stack.push(input);
+                        }
+                    }
+                }
+            } else {
+
+                stack.pop();
+
+                if (nodeToBlock.get(current) == null) {
+                    Node predecessor = current.predecessor();
+                    if (nodeToBlock.get(current) == null) {
+                        Block curBlock;
+                        if (predecessor != null) {
+                            // Predecessor determines block.
+                            curBlock = nodeToBlock.get(predecessor);
+                        } else {
+                            Block earliest = startBlock;
+                            for (Node input : current.inputs()) {
+                                if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                                    // ignore
+                                } else {
+                                    Block inputEarliest;
+                                    if (input instanceof ControlSplitNode) {
+                                        inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
+                                    } else {
+                                        inputEarliest = nodeToBlock.get(input);
+                                    }
+                                    assert inputEarliest != null : current + " / " + input;
+                                    if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
+                                        earliest = inputEarliest;
+                                    }
+                                }
+                            }
+                            curBlock = earliest;
+                        }
+                        if (current instanceof ValueNode) {
+                            blockToNodes.get(curBlock).add((ValueNode) current);
+                        }
+                        nodeToBlock.set(current, curBlock);
+                    }
+                }
+            }
+        }
     }
 
     private Block blockForMemoryNode(MemoryNode memory) {
