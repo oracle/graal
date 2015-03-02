@@ -33,12 +33,20 @@ import com.oracle.graal.debug.DebugMemUseTracker.Closeable;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.options.*;
 
 /**
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be
  * one global instance for each phase that is shared for all compilations.
  */
 public abstract class LIRPhase<C> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Enable LIR level optimiztations.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LIROptimization = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     private static final int PHASE_DUMP_LEVEL = 2;
 

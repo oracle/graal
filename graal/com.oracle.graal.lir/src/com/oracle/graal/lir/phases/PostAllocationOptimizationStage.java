@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.phases;
 
+import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
+
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
 import com.oracle.graal.options.*;
@@ -30,13 +32,13 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
     public static class Options {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptEdgeMoveOptimizer = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptEdgeMoveOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptControlFlowOptmizer = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptControlFlowOptmizer = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptRedundantMoveElimination = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptRedundantMoveElimination = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptNullCheckOptimizer = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptNullCheckOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
         // @formatter:on
     }
 

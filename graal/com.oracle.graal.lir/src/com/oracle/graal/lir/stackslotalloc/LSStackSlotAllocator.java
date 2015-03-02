@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.stackslotalloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.*;
 import java.util.function.*;
@@ -57,7 +58,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSStackSlotAllocator = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptLSStackSlotAllocator = new NestedBooleanOptionValue(LIROptimization, true);
         // @formatter:on
     }
 
