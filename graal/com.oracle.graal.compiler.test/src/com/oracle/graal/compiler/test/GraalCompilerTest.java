@@ -60,6 +60,7 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.schedule.SchedulePhase.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
@@ -302,7 +303,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
-        SchedulePhase schedule = new SchedulePhase();
+        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
+        schedule.setScheduleConstants(true);
         schedule.apply(graph);
 
         NodeMap<Integer> canonicalId = graph.createNodeMap();
