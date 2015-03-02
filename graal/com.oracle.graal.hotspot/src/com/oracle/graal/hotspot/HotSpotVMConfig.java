@@ -739,7 +739,6 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "VerifyOops") @Stable public boolean verifyOops;
     @HotSpotVMFlag(name = "CITime") @Stable public boolean ciTime;
     @HotSpotVMFlag(name = "CITimeEach") @Stable public boolean ciTimeEach;
-    @HotSpotVMFlag(name = "CompileThreshold") @Stable public long compileThreshold;
     @HotSpotVMFlag(name = "CompileTheWorldStartAt", optional = true) @Stable public int compileTheWorldStartAt;
     @HotSpotVMFlag(name = "CompileTheWorldStopAt", optional = true) @Stable public int compileTheWorldStopAt;
     @HotSpotVMFlag(name = "DontCompileHugeMethods") @Stable public boolean dontCompileHugeMethods;
