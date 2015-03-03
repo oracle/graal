@@ -692,8 +692,6 @@ public class SnippetTemplate {
             throw Debug.handle(e);
         }
 
-        // Remove all frame states from snippet graph. Snippets must be atomic (i.e. free
-        // of side-effects that prevent deoptimizing to a point before the snippet).
         ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
         ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
         ArrayList<ValueNode> curStampNodes = new ArrayList<>();
