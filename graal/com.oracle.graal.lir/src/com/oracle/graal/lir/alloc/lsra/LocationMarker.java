@@ -84,15 +84,6 @@ public final class LocationMarker extends AllocationPhase {
                 AbstractBlockBase<?> block = worklist.poll();
                 processBlock(block, worklist);
             }
-            // finish states
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-                for (int i = instructions.size() - 1; i >= 0; i--) {
-                    LIRInstruction inst = instructions.get(i);
-                    inst.forEachState((op, info) -> info.finish(op, frameMap));
-                }
-
-            }
         }
 
         /**
