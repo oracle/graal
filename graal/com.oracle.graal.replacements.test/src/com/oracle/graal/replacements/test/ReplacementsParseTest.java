@@ -63,7 +63,6 @@ public class ReplacementsParseTest extends GraalCompilerTest {
         @MethodSubstitution(isStatic = true)
         static double nextAfter(double x, double d) {
             double xx = (x == -0.0 ? 0.0 : x);
-            assert !Double.isNaN(xx);
             return Math.nextAfter(xx, d);
         }
     }
