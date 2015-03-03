@@ -26,7 +26,6 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.phases.common.*;
@@ -74,8 +73,8 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
                 r.run();
             }
             // compile
-            ResolvedJavaMethod m = getResolvedJavaMethod(c, "run");
-            getCode(m);
+            ResolvedJavaMethod method = getResolvedJavaMethod(c, "run");
+            getCode(method);
             ct = 0;
             r.run();
         } catch (Throwable e) {
