@@ -95,6 +95,9 @@ public class GraalCompiler {
         @Option(help = "Pattern for method(s) to which intrinsification will not be applied. " +
                        "See MethodFilter class for pattern syntax.", type = OptionType.Debug)
         public static final OptionValue<String> IntrinsificationsDisabled = new OptionValue<>(null);
+
+        @Option(help = "Repeatedly run the LIR code generation pass to improve statistical profiling results.", type = OptionType.Debug)
+        public static final OptionValue<Integer> EmitLIRRepeatCount = new OptionValue<>(0);
         // @formatter:on
 
     }
@@ -279,6 +282,14 @@ public class GraalCompiler {
     public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Backend backend,
                     TargetDescription target, T compilationResult, CompilationResultBuilderFactory factory, SchedulePhase schedule, RegisterConfig registerConfig, LIRSuites lirSuites) {
         try (Scope s = Debug.scope("BackEnd"); TimerCloseable a = BackEnd.start()) {
+            // Repeatedly run the LIR code generation pass to improve statistical profiling results.
+            for (int i = 0; i < EmitLIRRepeatCount.getValue(); i++) {
+                SchedulePhase dummySchedule = new SchedulePhase();
+                dummySchedule.setScheduleConstants(true);
+                dummySchedule.apply(graph);
+                emitLIR(backend, target, dummySchedule, graph, stub, cc, registerConfig, lirSuites);
+            }
+
             LIRGenerationResult lirGen = null;
             lirGen = emitLIR(backend, target, schedule, graph, stub, cc, registerConfig, lirSuites);
             try (Scope s2 = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
