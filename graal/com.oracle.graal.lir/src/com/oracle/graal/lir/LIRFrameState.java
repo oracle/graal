@@ -140,15 +140,6 @@ public class LIRFrameState {
         debugInfo.getReferenceMap().updateUnion(refMap);
     }
 
-    /**
-     * Called by the register allocator after all locations are marked.
-     *
-     * @param op The instruction to which this frame state belongs.
-     * @param frameMap The frame map.
-     */
-    public void finish(LIRInstruction op, FrameMap frameMap) {
-    }
-
     @Override
     public String toString() {
         return debugInfo != null ? debugInfo.toString() : topFrame != null ? topFrame.toString() : "<empty>";

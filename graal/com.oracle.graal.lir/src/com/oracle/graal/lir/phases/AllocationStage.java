@@ -38,7 +38,5 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
         }
         // currently we mark locations only if we do register allocation
         appendPhase(new LocationMarker());
-        // finish states
-        this.findPhase(LocationMarker.class).add(new FinishFrameStatePhase());
     }
 }
