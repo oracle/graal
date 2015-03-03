@@ -80,34 +80,46 @@ public class LIRFrameState {
      */
     protected static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
-    protected void processValues(LIRInstruction inst, JavaValue[] values, InstructionValueProcedure proc) {
+    protected void processValues(LIRInstruction inst, Value[] values, InstructionValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
-            if (values[i] instanceof Value) {
-                Value value = (Value) values[i];
-                values[i] = (JavaValue) processValue(inst, proc, value);
-            }
+            Value value = values[i];
+            values[i] = processValue(inst, proc, value);
         }
     }
 
     protected Value processValue(LIRInstruction inst, InstructionValueProcedure proc, Value value) {
-        if (processed(value)) {
-            return proc.doValue(inst, value, OperandMode.ALIVE, STATE_FLAGS);
+        if (value instanceof StackLockValue) {
+            StackLockValue monitor = (StackLockValue) value;
+            Value owner = monitor.getOwner();
+            if (owner instanceof AllocatableValue) {
+                monitor.setOwner(proc.doValue(inst, owner, OperandMode.ALIVE, STATE_FLAGS));
+            }
+            Value slot = monitor.getSlot();
+            if (isVirtualStackSlot(slot)) {
+                monitor.setSlot(asStackSlotValue(proc.doValue(inst, slot, OperandMode.ALIVE, STATE_FLAGS)));
+            }
+        } else {
+            if (!isIllegal(value) && value instanceof AllocatableValue) {
+                return proc.doValue(inst, value, OperandMode.ALIVE, STATE_FLAGS);
+            } else {
+                assert unprocessed(value);
+            }
         }
         return value;
     }
 
-    protected boolean processed(Value value) {
+    private boolean unprocessed(Value value) {
         if (isIllegal(value)) {
             // Ignore dead local variables.
-            return false;
+            return true;
         } else if (isConstant(value)) {
             // Ignore constants, the register allocator does not need to see them.
-            return false;
+            return true;
         } else if (isVirtualObject(value)) {
             assert Arrays.asList(virtualObjects).contains(value);
-            return false;
-        } else {
             return true;
+        } else {
+            return false;
         }
     }
 

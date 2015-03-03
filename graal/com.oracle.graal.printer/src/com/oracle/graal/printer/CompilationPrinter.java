@@ -182,7 +182,7 @@ public class CompilationPrinter implements Closeable {
         return sb.toString();
     }
 
-    protected String valueToString(JavaValue value, List<VirtualObject> virtualObjects) {
+    protected String valueToString(Value value, List<VirtualObject> virtualObjects) {
         if (value == null) {
             return "-";
         }

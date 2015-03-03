@@ -26,7 +26,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -46,22 +45,17 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     }
 
     @Override
-    protected JavaValue computeLockValue(FrameState state, int lockIndex) {
+    protected Value computeLockValue(FrameState state, int lockIndex) {
         int lockDepth = lockIndex;
         if (state.outerFrameState() != null) {
             lockDepth += state.outerFrameState().nestedLockDepth();
         }
         StackSlotValue slot = lockStack.makeLockSlot(lockDepth);
         ValueNode lock = state.lockAt(lockIndex);
-        JavaValue object = toValue(lock);
+        Value object = toValue(lock);
         boolean eliminated = object instanceof VirtualObject && state.monitorIdAt(lockIndex) != null;
         assert state.monitorIdAt(lockIndex) == null || state.monitorIdAt(lockIndex).getLockDepth() == lockDepth;
         return new StackLockValue(object, slot, eliminated);
-    }
-
-    @Override
-    protected LIRFrameState newLIRFrameState(LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
-        return new HotSpotLIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
 
     @Override

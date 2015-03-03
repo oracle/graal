@@ -33,22 +33,22 @@ public final class StackLockValue extends AbstractValue implements JavaValue {
 
     private static final long serialVersionUID = 8241681800464483691L;
 
-    private JavaValue owner;
+    private Value owner;
     private StackSlotValue slot;
     private final boolean eliminated;
 
-    public StackLockValue(JavaValue owner, StackSlotValue slot, boolean eliminated) {
+    public StackLockValue(Value object, StackSlotValue slot, boolean eliminated) {
         super(LIRKind.Illegal);
-        this.owner = owner;
+        this.owner = object;
         this.slot = slot;
         this.eliminated = eliminated;
     }
 
-    public JavaValue getOwner() {
+    public Value getOwner() {
         return owner;
     }
 
-    public void setOwner(JavaValue newOwner) {
+    public void setOwner(Value newOwner) {
         this.owner = newOwner;
     }
 
