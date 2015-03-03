@@ -232,4 +232,9 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
+
+    @Override
+    public AbstractBeginNode getPrimarySuccessor() {
+        return this.next();
+    }
 }

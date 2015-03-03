@@ -42,7 +42,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
-import com.oracle.graal.phases.util.*;
 
 public final class SchedulePhase extends Phase {
 
@@ -321,7 +320,7 @@ public final class SchedulePhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert GraphOrder.assertNonCyclicGraph(graph);
+        // assert GraphOrder.assertNonCyclicGraph(graph);
         cfg = ControlFlowGraph.compute(graph, true, true, true, false);
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
@@ -330,11 +329,156 @@ public final class SchedulePhase extends Phase {
             blockToKillSet = new BlockMap<>(cfg);
         }
 
+        if (selectedStrategy == SchedulingStrategy.EARLIEST) {
+            scheduleEarliestIterative(blockToNodesMap, graph);
+            return;
+        }
+
         assignBlockToNodes(graph, selectedStrategy);
         printSchedule("after assign nodes to blocks");
 
         sortNodesWithinBlocks(graph, selectedStrategy);
         printSchedule("after sorting nodes within blocks");
+    }
+
+    private void scheduleEarliestIterative(BlockMap<List<ValueNode>> blockToNodes, StructuredGraph graph) {
+        NodeMap<Block> nodeToBlock = graph.createNodeMap();
+        NodeBitMap visited = graph.createNodeBitMap();
+
+        // Add begin nodes as the first entry and set the block for phi nodes.
+        for (Block b : cfg.getBlocks()) {
+            AbstractBeginNode beginNode = b.getBeginNode();
+            ArrayList<ValueNode> nodes = new ArrayList<>();
+            nodeToBlock.set(beginNode, b);
+            nodes.add(beginNode);
+            blockToNodes.put(b, nodes);
+
+            if (beginNode instanceof AbstractMergeNode) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
+                for (PhiNode phi : mergeNode.phis()) {
+                    nodeToBlock.set(phi, b);
+                }
+            }
+        }
+
+        Stack<Node> stack = new Stack<>();
+
+        // Start analysis with control flow ends.
+        for (Block b : cfg.postOrder()) {
+            FixedNode endNode = b.getEndNode();
+            stack.push(endNode);
+            nodeToBlock.set(endNode, b);
+        }
+
+        processStack(blockToNodes, nodeToBlock, visited, stack);
+
+        // Visit back input edges of loop phis.
+        for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
+            for (PhiNode phi : loopBegin.phis()) {
+                if (visited.isMarked(phi)) {
+                    for (int i = 0; i < loopBegin.getLoopEndCount(); ++i) {
+                        Node node = phi.valueAt(i + loopBegin.forwardEndCount());
+                        if (!visited.isMarked(node)) {
+                            stack.push(node);
+                            processStack(blockToNodes, nodeToBlock, visited, stack);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check for dead nodes.
+        if (visited.getCounter() < graph.getNodeCount()) {
+            for (Node n : graph.getNodes()) {
+                if (!visited.isMarked(n)) {
+                    n.clearInputs();
+                    n.markDeleted();
+                }
+            }
+        }
+
+        // Add end nodes as the last nodes in each block.
+        for (Block b : cfg.getBlocks()) {
+            FixedNode endNode = b.getEndNode();
+            if (endNode != b.getBeginNode()) {
+                addNode(blockToNodes, b, endNode);
+            }
+        }
+
+        this.blockToNodesMap = blockToNodes;
+    }
+
+    private static void addNode(BlockMap<List<ValueNode>> blockToNodes, Block b, ValueNode endNode) {
+        assert !blockToNodes.get(b).contains(endNode) : endNode;
+        blockToNodes.get(b).add(endNode);
+    }
+
+    private void processStack(BlockMap<List<ValueNode>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, Stack<Node> stack) {
+        Block startBlock = cfg.getStartBlock();
+        while (!stack.isEmpty()) {
+            Node current = stack.peek();
+            if (visited.checkAndMarkInc(current)) {
+
+                // Push inputs and predecessor.
+                Node predecessor = current.predecessor();
+                if (predecessor != null) {
+                    stack.push(predecessor);
+                }
+
+                if (current instanceof PhiNode) {
+                    PhiNode phiNode = (PhiNode) current;
+                    AbstractMergeNode merge = phiNode.merge();
+                    for (int i = 0; i < merge.forwardEndCount(); ++i) {
+                        Node input = phiNode.valueAt(i);
+                        stack.push(input);
+                    }
+                } else {
+                    for (Node input : current.inputs()) {
+                        if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                            // Ignore the cycle.
+                        } else {
+                            stack.push(input);
+                        }
+                    }
+                }
+            } else {
+
+                stack.pop();
+
+                if (nodeToBlock.get(current) == null) {
+                    Node predecessor = current.predecessor();
+                    Block curBlock;
+                    if (predecessor != null) {
+                        // Predecessor determines block.
+                        curBlock = nodeToBlock.get(predecessor);
+                    } else {
+                        Block earliest = startBlock;
+                        for (Node input : current.inputs()) {
+                            if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                                // ignore
+                            } else {
+                                Block inputEarliest;
+                                if (input instanceof ControlSplitNode) {
+                                    inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
+                                } else {
+                                    inputEarliest = nodeToBlock.get(input);
+                                }
+                                assert inputEarliest != null : current + " / " + input;
+                                if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
+                                    earliest = inputEarliest;
+                                }
+                            }
+                        }
+                        curBlock = earliest;
+                    }
+                    assert curBlock != null;
+                    if (current instanceof ValueNode) {
+                        addNode(blockToNodes, curBlock, (ValueNode) current);
+                    }
+                    nodeToBlock.set(current, curBlock);
+                }
+            }
+        }
     }
 
     private Block blockForMemoryNode(MemoryNode memory) {
@@ -982,25 +1126,8 @@ public final class SchedulePhase extends Phase {
         List<ValueNode> sortedInstructions = state.getSortedInstructions();
         Node lastSorted = sortedInstructions.get(sortedInstructions.size() - 1);
         if (lastSorted != b.getEndNode()) {
-            int idx = sortedInstructions.indexOf(b.getEndNode());
-            boolean canNotMove = false;
-            for (int i = idx + 1; i < sortedInstructions.size(); i++) {
-                if (sortedInstructions.get(i).inputs().contains(b.getEndNode())) {
-                    canNotMove = true;
-                    break;
-                }
-            }
-            if (canNotMove) {
-                if (b.getEndNode() instanceof ControlSplitNode) {
-                    throw new GraalGraphInternalError("Schedule is not possible : needs to move a node after the last node of the block which can not be move").addContext(lastSorted).addContext(
-                                    b.getEndNode());
-                }
-
-                // b.setLastNode(lastSorted);
-            } else {
-                sortedInstructions.remove(b.getEndNode());
-                sortedInstructions.add(b.getEndNode());
-            }
+            sortedInstructions.remove(b.getEndNode());
+            sortedInstructions.add(b.getEndNode());
         }
         return sortedInstructions;
     }

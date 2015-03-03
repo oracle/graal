@@ -159,4 +159,9 @@ public abstract class SwitchNode extends ControlSplitNode {
         }
         return successors.get(defaultSuccessorIndex());
     }
+
+    @Override
+    public AbstractBeginNode getPrimarySuccessor() {
+        return this.defaultSuccessor();
+    }
 }

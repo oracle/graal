@@ -34,6 +34,8 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     private T dominator;
     private List<T> dominated;
+    private int domNumber;
+    private int maxChildDomNumber;
 
     private boolean align;
     private int linearScanNumber;
@@ -41,6 +43,19 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     protected AbstractBlockBase() {
         this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
         this.linearScanNumber = -1;
+    }
+
+    public void setDominatorNumbers(int domNumber, int maxChildDomNumber) {
+        this.domNumber = domNumber;
+        this.maxChildDomNumber = maxChildDomNumber;
+    }
+
+    public int getDominatorNumber() {
+        return domNumber;
+    }
+
+    public int getMaxChildDominatorNumber() {
+        return this.maxChildDomNumber;
     }
 
     public int getId() {

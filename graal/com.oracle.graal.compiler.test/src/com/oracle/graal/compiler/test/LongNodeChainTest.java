@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
@@ -36,9 +37,10 @@ import com.oracle.graal.phases.tiers.*;
 
 public class LongNodeChainTest extends GraalCompilerTest {
 
-    public static final int N = 100000;
+    public static final int N = 10000;
 
-    @Ignore
+    private static final SchedulingStrategy[] Strategies = new SchedulingStrategy[]{SchedulingStrategy.EARLIEST};
+
     @Test
     public void testLongAddChain() {
         longAddChain(true);
@@ -51,6 +53,9 @@ public class LongNodeChainTest extends GraalCompilerTest {
         ValueNode constant = graph.unique(ConstantNode.forPrimitive(JavaConstant.INT_1));
         ValueNode value = null;
         if (reverse) {
+            // Make sure the constant's stamp is not used to infer the add node's stamp.
+            OpaqueNode opaque = graph.unique(new OpaqueNode(constant));
+            constant = opaque;
             AddNode addNode = graph.unique(new AddNode(constant, constant));
             value = addNode;
             for (int i = 1; i < N; ++i) {
@@ -58,6 +63,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
                 addNode.setY(newAddNode);
                 addNode = newAddNode;
             }
+            opaque.replaceAndDelete(opaque.getValue());
         } else {
             value = constant;
             for (int i = 0; i < N; ++i) {
@@ -67,7 +73,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
         ReturnNode returnNode = graph.add(new ReturnNode(value));
         graph.start().setNext(returnNode);
 
-        for (SchedulingStrategy s : SchedulingStrategy.values()) {
+        for (SchedulingStrategy s : Strategies) {
             new SchedulePhase(s).apply(graph);
         }
 
