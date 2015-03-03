@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
@@ -301,20 +302,6 @@ public class GraalCompiler {
         }
     }
 
-    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ValueNode>> blockMap) {
-        if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
-            for (Block pred : b.getPredecessors()) {
-                if (!b.isLoopHeader() || !pred.isLoopEnd()) {
-                    emitBlock(nodeLirGen, lirGenRes, pred, graph, blockMap);
-                }
-            }
-            nodeLirGen.doBlock(b, graph, blockMap);
-        }
-    }
-
-    private static final DebugTimer lirGenTimeTracker = Debug.timer("LIRGenTime");
-    private static final DebugMemUseTracker lirGenMemUseTracker = Debug.memUseTracker("LIRGenMemUse");
-
     public static LIRGenerationResult emitLIR(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc,
                     RegisterConfig registerConfig, LIRSuites lirSuites) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
@@ -340,16 +327,9 @@ public class GraalCompiler {
             LIRGeneratorTool lirGen = backend.newLIRGenerator(cc, lirGenRes);
             NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
 
-            try (Scope s = Debug.scope("LIRGen", lir, lirGen); AutoCloseable c = lirGenMemUseTracker.start(); AutoCloseable t = lirGenTimeTracker.start()) {
-                for (Block b : linearScanOrder) {
-                    emitBlock(nodeLirGen, lirGenRes, b, graph, schedule.getBlockToNodesMap());
-                }
-                lirGen.beforeRegisterAllocation();
-
-                Debug.dump(lir, "After LIR generation");
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
+            // LIR generation
+            LIRGenerationContext context = new LIRGenerationContext(lirGen, nodeLirGen, graph, schedule);
+            new LIRGenerationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen)) {
                 return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites);
