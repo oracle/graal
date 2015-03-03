@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
@@ -64,7 +63,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
 
     private static <T extends Annotation> T getAnnotationTimed(AnnotatedElement e, Class<T> annotationClass) {
-        try (TimerCloseable s = Init_AnnotationParsing.start()) {
+        try (DebugCloseable s = Init_AnnotationParsing.start()) {
             return e.getAnnotation(annotationClass);
         }
     }
@@ -147,15 +146,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass);
-        try (TimerCloseable t = Init_FieldScanning.start()) {
+        try (DebugCloseable t = Init_FieldScanning.start()) {
             fs.scan(clazz, clazz.getSuperclass(), false);
         }
 
-        try (TimerCloseable t1 = Init_Edges.start()) {
+        try (DebugCloseable t1 = Init_Edges.start()) {
             successors = new SuccessorEdges(fs.directSuccessors, fs.successors);
             inputs = new InputEdges(fs.directInputs, fs.inputs);
         }
-        try (TimerCloseable t1 = Init_Data.start()) {
+        try (DebugCloseable t1 = Init_Data.start()) {
             data = new Fields(fs.data);
         }
 
@@ -168,7 +167,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         assert info != null : "Missing NodeInfo annotation on " + clazz;
         this.nameTemplate = info.nameTemplate();
 
-        try (TimerCloseable t1 = Init_AllowedUsages.start()) {
+        try (DebugCloseable t1 = Init_AllowedUsages.start()) {
             allowedUsageTypes = superNodeClass == null ? EnumSet.noneOf(InputType.class) : superNodeClass.allowedUsageTypes.clone();
             allowedUsageTypes.addAll(Arrays.asList(info.allowedUsageTypes()));
         }
@@ -178,7 +177,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             this.iterableId = presetIterableId;
         } else if (IterableNodeType.class.isAssignableFrom(clazz)) {
             ITERABLE_NODE_TYPES.increment();
-            try (TimerCloseable t1 = Init_IterableIds.start()) {
+            try (DebugCloseable t1 = Init_IterableIds.start()) {
                 this.iterableId = nextIterableId.getAndIncrement();
 
                 NodeClass<?> snc = superNodeClass;
@@ -335,7 +334,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             Input inputAnnotation = getAnnotationTimed(field, Node.Input.class);
             OptionalInput optionalInputAnnotation = getAnnotationTimed(field, Node.OptionalInput.class);
             Successor successorAnnotation = getAnnotationTimed(field, Successor.class);
-            try (TimerCloseable s = Init_FieldScanningInner.start()) {
+            try (DebugCloseable s = Init_FieldScanningInner.start()) {
                 Class<?> type = field.getType();
                 int modifiers = field.getModifiers();
 

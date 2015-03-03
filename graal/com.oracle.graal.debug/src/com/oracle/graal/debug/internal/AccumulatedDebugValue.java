@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package com.oracle.graal.debug.internal;
 
-import com.sun.management.*;
+public abstract class AccumulatedDebugValue extends DebugValue {
+    protected final DebugValue flat;
 
-/**
- * Tracks memory usage within a scope using {@link ThreadMXBean}. This facility should be employed
- * using the try-with-resources pattern:
- *
- * <pre>
- * try (DebugMemUseTracker.Closeable a = memUseTracker.start()) {
- *     // the code to measure
- * }
- * </pre>
- */
-public interface DebugMemUseTracker {
-
-    /**
-     * Creates a point from which memory usage will be recorded if memory use tracking is
-     * {@linkplain Debug#isMemUseTrackingEnabled() enabled}.
-     *
-     * @return an object that must be closed once the activity has completed to add the memory used
-     *         since this call to the total for this tracker
-     */
-    DebugCloseable start();
-
-    /**
-     * Gets the current value of this tracker.
-     */
-    long getCurrentValue();
+    public AccumulatedDebugValue(String name, boolean conditional, DebugValue flat) {
+        super(name + "_Accm", conditional);
+        this.flat = flat;
+    }
 }

@@ -1131,8 +1131,8 @@ public class Debug {
 
     private static final DebugMemUseTracker VOID_MEM_USE_TRACKER = new DebugMemUseTracker() {
 
-        public Closeable start() {
-            return MemUseTrackerImpl.VOID_CLOSEABLE;
+        public DebugCloseable start() {
+            return DebugCloseable.VOID_CLOSEABLE;
         }
 
         public long getCurrentValue() {
@@ -1319,8 +1319,8 @@ public class Debug {
 
     private static final DebugTimer VOID_TIMER = new DebugTimer() {
 
-        public TimerCloseable start() {
-            return TimerImpl.VOID_CLOSEABLE;
+        public DebugCloseable start() {
+            return DebugCloseable.VOID_CLOSEABLE;
         }
 
         public void setConditional(boolean flag) {

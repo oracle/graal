@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,15 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
-
-import com.oracle.graal.debug.*;
+package com.oracle.graal.debug;
 
 /**
  * An object returned by {@link DebugTimer#start()} that when closed, stops the associated timer and
  * adds the elapsed time since {@code start()} to the total for the timer.
  */
-public interface TimerCloseable extends AutoCloseable {
+public interface DebugCloseable extends AutoCloseable {
+
+    DebugCloseable VOID_CLOSEABLE = new DebugCloseable() {
+
+        @Override
+        public void close() {
+        }
+    };
 
     void close();
 }
