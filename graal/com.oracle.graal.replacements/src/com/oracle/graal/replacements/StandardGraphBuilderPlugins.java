@@ -52,7 +52,7 @@ public class StandardGraphBuilderPlugins {
         registerGraalDirectivesPlugins(metaAccess, plugins);
     }
 
-    public static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, Unsafe.class);
         for (Kind kind : Kind.values()) {
             if ((kind.isPrimitive() && kind != Kind.Void) || kind == Kind.Object) {
@@ -72,7 +72,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    public static void registerMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, Math.class);
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode value) {
@@ -101,7 +101,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    public static void registerObjectPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerObjectPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("<init>", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder, ValueNode object) {
@@ -208,7 +208,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    public static void registerGraalDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerGraalDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, metaAccess, GraalDirectives.class);
         r.register0("deoptimize", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext builder) {
