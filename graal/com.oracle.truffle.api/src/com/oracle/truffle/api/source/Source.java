@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,6 +119,35 @@ public abstract class Source {
      */
     public static Source fromFileName(String fileName) throws IOException {
         return fromFileName(fileName, false);
+    }
+
+    /**
+     * Gets the canonical representation of a source file, whose contents have already been read and
+     * need not be read again. It is confirmed that the file resolves to a file name, so it can be
+     * indexed by canonical path, but it is not confirmed to be readable.
+     *
+     * @param chars textual source code already read from the file
+     * @param fileName
+     * @return canonical representation of the file's contents.
+     * @throws IOException if the file cannot be found
+     * @throws IllegalArgumentException if there is already a Source indexed under this file name
+     */
+    public static Source fromFileName(CharSequence chars, String fileName) throws IOException, IllegalArgumentException {
+        final WeakReference<Source> nameRef = filePathToSource.get(fileName);
+        Source source = nameRef == null ? null : nameRef.get();
+        if (source == null) {
+            final File file = new File(fileName);
+            // We are going to trust that the fileName is readable.
+            final String path = file.getCanonicalPath();
+            final WeakReference<Source> pathRef = filePathToSource.get(path);
+            source = pathRef == null ? null : pathRef.get();
+            if (source == null) {
+                source = new FileSource(file, fileName, path, chars);
+                filePathToSource.put(path, new WeakReference<>(source));
+                return source;
+            }
+        }
+        throw new IOException("Source already exists for file:" + fileName);
     }
 
     /**
@@ -275,10 +304,13 @@ public abstract class Source {
     }
 
     /**
-     * Return the complete text of the code.
+     * Returns the complete text of the code.
      */
     public abstract String getCode();
 
+    /**
+     * Returns a subsection of the code test.
+     */
     public String getCode(int charIndex, int charLength) {
         return getCode().substring(charIndex, charIndex + charLength);
     }
@@ -542,9 +574,16 @@ public abstract class Source {
         private long timeStamp;      // timestamp of the cache in the file system
 
         public FileSource(File file, String name, String path) {
+            this(file, name, path, null);
+        }
+
+        public FileSource(File file, String name, String path, CharSequence chars) {
             this.file = file.getAbsoluteFile();
             this.name = name;
             this.path = path;
+            if (chars != null) {
+                this.code = chars.toString();
+            }
         }
 
         @Override
