@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,6 +64,20 @@ public interface SourceSection {
      * @return the starting column number
      */
     int getStartColumn();
+
+    /**
+     * Returns 1-based line number of the last character in this section (inclusive).
+     *
+     * @return the starting line number
+     */
+    int getEndLine();
+
+    /**
+     * Returns the 1-based column number of the last character in this section (inclusive).
+     *
+     * @return the starting column number
+     */
+    int getEndColumn();
 
     /**
      * Returns the 0-based index of the first character in this section.

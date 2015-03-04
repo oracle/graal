@@ -851,6 +851,14 @@ public abstract class Source {
             return startColumn;
         }
 
+        public int getEndLine() {
+            return source.getLineNumber(charIndex + charLength - 1);
+        }
+
+        public int getEndColumn() {
+            return source.getColumnNumber(charIndex + charLength - 1);
+        }
+
         @Override
         public int getCharIndex() {
             return charIndex;
@@ -939,7 +947,6 @@ public abstract class Source {
             }
             return true;
         }
-
     }
 
     private static final class LineLocationImpl implements LineLocation {

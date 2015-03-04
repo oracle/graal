@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,14 @@ public class NullSourceSection implements SourceSection {
         throw new UnsupportedOperationException(this.toString());
     }
 
+    public int getEndLine() {
+        throw new UnsupportedOperationException(this.toString());
+    }
+
+    public int getEndColumn() {
+        throw new UnsupportedOperationException(this.toString());
+    }
+
     public final int getCharIndex() {
         throw new UnsupportedOperationException(this.toString());
     }
@@ -101,5 +109,4 @@ public class NullSourceSection implements SourceSection {
     public String toString() {
         return getShortDescription();
     }
-
 }
