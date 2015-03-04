@@ -34,6 +34,11 @@ public interface Value extends KindProvider, TrustedInterface {
         public String toString() {
             return "-";
         }
+
+        @Override
+        public boolean equals(Object other) {
+            return this == other;
+        }
     };
 
     LIRKind getLIRKind();
