@@ -1811,8 +1811,8 @@ final class LinearScan {
         }
     }
 
-    private DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
-    private DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
+    private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
+    private static final DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
 
     private void optimizeSpillPosition() {
         LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[ir.linearScanOrder().size()];
