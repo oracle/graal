@@ -124,15 +124,16 @@ public abstract class Source {
     /**
      * Gets the canonical representation of a source file, whose contents have already been read and
      * need not be read again. It is confirmed that the file resolves to a file name, so it can be
-     * indexed by canonical path, but it is not confirmed to be readable.
+     * indexed by canonical path. It is not confirmed that the text supplied agrees with the file's
+     * contents or even whether the file is readable.
      *
      * @param chars textual source code already read from the file
      * @param fileName
      * @return canonical representation of the file's contents.
      * @throws IOException if the file cannot be found
-     * @throws IllegalArgumentException if there is already a Source indexed under this file name
      */
-    public static Source fromFileName(CharSequence chars, String fileName) throws IOException, IllegalArgumentException {
+    public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
+
         final WeakReference<Source> nameRef = filePathToSource.get(fileName);
         Source source = nameRef == null ? null : nameRef.get();
         if (source == null) {
@@ -144,10 +145,9 @@ public abstract class Source {
             if (source == null) {
                 source = new FileSource(file, fileName, path, chars);
                 filePathToSource.put(path, new WeakReference<>(source));
-                return source;
             }
         }
-        throw new IOException("Source already exists for file:" + fileName);
+        return source;
     }
 
     /**
@@ -301,6 +301,13 @@ public abstract class Source {
      */
     public final InputStream getInputStream() {
         return new ByteArrayInputStream(getCode().getBytes());
+    }
+
+    /**
+     * Gets the number of characters in the source.
+     */
+    public final int getLength() {
+        return checkTextMap().length();
     }
 
     /**
@@ -1133,6 +1140,13 @@ public abstract class Source {
          */
         public int offsetToCol(int offset) throws IllegalArgumentException {
             return 1 + offset - nlOffsets[offsetToLine(offset) - 1];
+        }
+
+        /**
+         * The number of characters in the mapped text.
+         */
+        public int length() {
+            return textLength;
         }
 
         /**
