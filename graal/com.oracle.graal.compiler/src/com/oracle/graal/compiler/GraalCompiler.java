@@ -331,7 +331,7 @@ public class GraalCompiler {
             LIRGenerationContext context = new LIRGenerationContext(lirGen, nodeLirGen, graph, schedule);
             new LIRGenerationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
-            try (Scope s = Debug.scope("LIRStages", nodeLirGen)) {
+            try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
                 return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
