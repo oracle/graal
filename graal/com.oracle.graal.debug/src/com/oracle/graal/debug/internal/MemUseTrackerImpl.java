@@ -49,7 +49,7 @@ public final class MemUseTrackerImpl extends AccumulatedDebugValue implements De
     private static final ThreadLocal<CloseableCounterImpl> currentTracker = new ThreadLocal<>();
 
     public MemUseTrackerImpl(String name) {
-        super(name, false, new DebugValue(name + "_Flat", true) {
+        super(name, true, new DebugValue(name + "_Flat", true) {
 
             @Override
             public String toString(long value) {
