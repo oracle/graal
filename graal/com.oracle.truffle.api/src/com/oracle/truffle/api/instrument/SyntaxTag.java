@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,6 @@ package com.oracle.truffle.api.instrument;
  * and should not be visible to guest language programmers. Nodes may also have more than one tag,
  * for example a variable assignment that is also a statement. Finally, the assignment of tags to
  * nodes could depending on the use-case of whatever tool is using them.
- * <p>
- * <strong>Disclaimer:</strong> experimental interface under development.
  *
  * @see Probe
  * @see StandardSyntaxTag

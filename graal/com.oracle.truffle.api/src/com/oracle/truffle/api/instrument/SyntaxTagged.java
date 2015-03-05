@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import java.util.*;
 /**
  * Information about a guest language program element in a Truffle AST that can be marked as
  * belonging to 0 or more {@linkplain SyntaxTag tags}.
- * <p>
- * <strong>Disclaimer:</strong> experimental interface under development.
  */
 public interface SyntaxTagged {
 

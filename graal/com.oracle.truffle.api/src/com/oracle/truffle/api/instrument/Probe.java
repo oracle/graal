@@ -69,6 +69,7 @@ import com.oracle.truffle.api.utilities.*;
  * @see Instrument
  * @see ASTProber
  * @see ProbeListener
+ * @see SyntaxTag
  */
 public final class Probe implements SyntaxTagged {
 

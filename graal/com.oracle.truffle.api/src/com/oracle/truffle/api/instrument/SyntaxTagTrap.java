@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * A trap that can be set to interrupt execution at probed nodes carrying a specific tag.
+ *
+ * @see Probe
  */
 public abstract class SyntaxTagTrap {
 
