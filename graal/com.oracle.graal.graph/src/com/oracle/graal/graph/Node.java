@@ -345,6 +345,17 @@ public abstract class Node implements Cloneable, Formattable {
         return this.usage0 == null;
     }
 
+    void reverseUsageOrder() {
+        List<Node> snapshot = this.usages().snapshot();
+        for (Node n : snapshot) {
+            this.removeUsage(n);
+        }
+        Collections.reverse(snapshot);
+        for (Node n : snapshot) {
+            this.addUsage(n);
+        }
+    }
+
     /**
      * Adds a given node to this node's {@linkplain #usages() usages}.
      *
