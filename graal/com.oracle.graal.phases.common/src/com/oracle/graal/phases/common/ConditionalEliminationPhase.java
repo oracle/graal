@@ -785,6 +785,7 @@ public class ConditionalEliminationPhase extends Phase {
                 if (replacementAnchor == null) {
                     replacementAnchor = AbstractBeginNode.prevBegin(checkCast);
                 }
+                assert !(replacementAnchor instanceof FloatingNode) : "unsafe to mix unlowered Checkcast with floating guards";
                 PiNode piNode;
                 if (isNull) {
                     ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);
