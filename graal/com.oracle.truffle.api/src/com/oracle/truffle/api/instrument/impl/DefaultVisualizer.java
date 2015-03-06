@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,12 +70,34 @@ public class DefaultVisualizer implements Visualizer {
         return callTarget.toString();
     }
 
-    public String displayValue(ExecutionContext context, Object value) {
-        return value.toString();
+    public String displayValue(ExecutionContext context, Object value, int trim) {
+        return trim(value.toString(), trim);
     }
 
     public String displayIdentifier(FrameSlot slot) {
         return slot.getIdentifier().toString();
     }
 
+    /**
+     * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first line
+     * of test. Identity if {@code trim <= 0}.
+     */
+    protected String trim(String text, int trim) {
+        if (trim == 0) {
+            return text;
+        }
+        final String[] lines = text.split("\n");
+        String result = lines[0];
+        if (lines.length == 1) {
+            if (result.length() <= trim) {
+                return result;
+            }
+            if (trim <= 3) {
+                return result.substring(0, Math.min(result.length() - 1, trim - 1));
+            } else {
+                return result.substring(0, trim - 4) + "...";
+            }
+        }
+        return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
+    }
 }

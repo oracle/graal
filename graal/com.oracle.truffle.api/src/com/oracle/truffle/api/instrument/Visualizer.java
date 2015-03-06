@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,9 +60,12 @@ public interface Visualizer {
     String displayCallTargetName(CallTarget callTarget);
 
     /**
-     * Converts a value in the guest language to a display string.
+     * Converts a value in the guest language to a display string. If
+     *
+     * @param trim if {@code > 0}, them limit size of String to either the value of trim or the
+     *            number of characters in the first line, whichever is lower.
      */
-    String displayValue(ExecutionContext context, Object value);
+    String displayValue(ExecutionContext context, Object value, int trim);
 
     /**
      * Converts a slot identifier in the guest language to a display string.
