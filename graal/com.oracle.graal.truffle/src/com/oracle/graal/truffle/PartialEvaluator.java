@@ -85,7 +85,7 @@ public class PartialEvaluator {
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, TruffleCache truffleCache, SnippetReflectionProvider snippetReflection) {
         this.providers = providers;
-        this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
+        this.canonicalizer = new CanonicalizerPhase();
         this.snippetReflection = snippetReflection;
         this.truffleCache = truffleCache;
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());

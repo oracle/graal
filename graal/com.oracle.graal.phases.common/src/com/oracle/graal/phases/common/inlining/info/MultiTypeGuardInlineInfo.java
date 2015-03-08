@@ -278,7 +278,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                 metricInliningTailDuplication.increment();
                 Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
                 PhaseContext phaseContext = new PhaseContext(providers);
-                CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
+                CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+                if (ImmutableCode.getValue()) {
+                    canonicalizer.disableReadCanonicalization();
+                }
                 TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
             }
         }

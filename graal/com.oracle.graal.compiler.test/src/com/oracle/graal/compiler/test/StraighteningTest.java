@@ -89,7 +89,7 @@ public class StraighteningTest extends GraalCompilerTest {
         // No debug scope to reduce console noise for @Test(expected = ...) tests
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, AllowAssumptions.YES);
         assertEquals(referenceGraph, graph);
     }

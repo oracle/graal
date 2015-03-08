@@ -246,7 +246,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     protected void processMethod(final String snippet) {
         graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-        new PartialEscapePhase(false, true, new CanonicalizerPhase(true), null).apply(graph, context);
+        new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
+        new PartialEscapePhase(false, true, new CanonicalizerPhase(), null).apply(graph, context);
     }
 }

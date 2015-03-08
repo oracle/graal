@@ -72,4 +72,19 @@ public final class FloatLessThanNode extends CompareNode {
         }
         throw GraalInternalError.shouldNotReachHere();
     }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        return null;
+    }
 }

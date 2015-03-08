@@ -239,4 +239,17 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public ValueNode getOriginalNode() {
         return object;
     }
+
+    public Boolean tryFold(Stamp testStamp) {
+        if (testStamp instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) testStamp;
+            ResolvedJavaType objectType = objectStamp.type();
+            if (objectType != null && type.isAssignableFrom(objectType)) {
+                return true;
+            } else if (objectStamp.alwaysNull()) {
+                return true;
+            }
+        }
+        return null;
+    }
 }

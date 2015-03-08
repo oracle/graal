@@ -97,8 +97,8 @@ public class MonitorGraphTest extends GraalCompilerTest {
             hints.put(invoke, 1000d);
         }
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(hints, new CanonicalizerPhase(true)).apply(graph, context);
-        new CanonicalizerPhase(true).apply(graph, context);
+        new InliningPhase(hints, new CanonicalizerPhase()).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
         return graph;
     }

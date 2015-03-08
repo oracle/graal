@@ -154,4 +154,34 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         }
         return super.canonicalizeSymmetricConstant(tool, constant, nonConstant, mirrored);
     }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        if (!negated) {
+            return getX().stamp().join(getY().stamp());
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        if (!negated) {
+            return getX().stamp().join(getY().stamp());
+        }
+        return null;
+    }
+
+    @Override
+    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof IntegerStamp && yStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
+            if (xStamp.alwaysDistinct(yStamp)) {
+                return false;
+            } else if (xStamp.neverDistinct(yStamp)) {
+                return true;
+            }
+        }
+        return null;
+    }
 }

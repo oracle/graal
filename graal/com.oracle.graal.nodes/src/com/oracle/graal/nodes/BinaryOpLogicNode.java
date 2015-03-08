@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -83,4 +84,10 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
         }
         return this;
     }
+
+    public abstract Stamp getSucceedingStampForX(boolean negated);
+
+    public abstract Stamp getSucceedingStampForY(boolean negated);
+
+    public abstract Boolean tryFold(Stamp xStamp, Stamp yStamp);
 }

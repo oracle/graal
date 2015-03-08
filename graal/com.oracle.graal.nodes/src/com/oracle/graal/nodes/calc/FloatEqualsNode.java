@@ -58,9 +58,11 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
         if (result != this) {
             return result;
         }
-        if (forX.stamp() instanceof FloatStamp && forY.stamp() instanceof FloatStamp) {
-            FloatStamp xStamp = (FloatStamp) forX.stamp();
-            FloatStamp yStamp = (FloatStamp) forY.stamp();
+        Stamp xStampGeneric = forX.stamp();
+        Stamp yStampGeneric = forY.stamp();
+        if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
+            FloatStamp xStamp = (FloatStamp) xStampGeneric;
+            FloatStamp yStamp = (FloatStamp) yStampGeneric;
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && xStamp.isNonNaN() && yStamp.isNonNaN()) {
                 return LogicConstantNode.tautology();
             } else if (xStamp.alwaysDistinct(yStamp)) {
@@ -78,5 +80,35 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
             return new IntegerEqualsNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
+    }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        if (!negated) {
+            return getX().stamp().join(getY().stamp());
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        if (!negated) {
+            return getX().stamp().join(getY().stamp());
+        }
+        return null;
+    }
+
+    @Override
+    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
+            FloatStamp xStamp = (FloatStamp) xStampGeneric;
+            FloatStamp yStamp = (FloatStamp) yStampGeneric;
+            if (xStamp.alwaysDistinct(yStamp)) {
+                return false;
+            } else if (xStamp.neverDistinct(yStamp)) {
+                return true;
+            }
+        }
+        return null;
     }
 }

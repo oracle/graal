@@ -318,7 +318,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private void computePostdominators() {
+    public void computePostdominators() {
         outer: for (Block block : postOrder()) {
             if (block.isLoopEnd()) {
                 // We do not want the loop header registered as the postdominator of the loop end.

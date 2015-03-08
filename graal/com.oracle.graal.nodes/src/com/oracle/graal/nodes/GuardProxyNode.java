@@ -43,6 +43,11 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode, Pro
     public void generate(NodeLIRBuilderTool generator) {
     }
 
+    public void setValue(GuardingNode newValue) {
+        this.updateUsages(value.asNode(), newValue.asNode());
+        this.value = newValue;
+    }
+
     @Override
     public ValueNode value() {
         return value.asNode();

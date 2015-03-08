@@ -287,7 +287,7 @@ public class ReplacementsImpl implements Replacements {
         // Do deferred intrinsification of node intrinsics
 
         nodeIntrinsificationPhase.apply(specializedSnippet);
-        new CanonicalizerPhase(true).apply(specializedSnippet, new PhaseContext(providers));
+        new CanonicalizerPhase().apply(specializedSnippet, new PhaseContext(providers));
         NodeIntrinsificationVerificationPhase.verify(specializedSnippet);
     }
 
@@ -627,7 +627,7 @@ public class ReplacementsImpl implements Replacements {
                 afterParsing(graph);
 
                 if (OptCanonicalizer.getValue()) {
-                    new CanonicalizerPhase(true).apply(graph, new PhaseContext(replacements.providers));
+                    new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -659,7 +659,7 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void afterInline(StructuredGraph caller, StructuredGraph callee, Object beforeInlineData) {
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(caller, new PhaseContext(replacements.providers));
+                new CanonicalizerPhase().apply(caller, new PhaseContext(replacements.providers));
             }
         }
 
@@ -670,7 +670,7 @@ public class ReplacementsImpl implements Replacements {
             replacements.nodeIntrinsificationPhase.apply(graph);
             new DeadCodeEliminationPhase(Optional).apply(graph);
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(graph, new PhaseContext(replacements.providers));
+                new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
             }
         }
 

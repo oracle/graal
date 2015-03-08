@@ -670,8 +670,8 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase(true));
-                    new CanonicalizerPhase(true).applyIncremental(snippetCopy, phaseContext, mark);
+                    LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase());
+                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
@@ -686,7 +686,7 @@ public class SnippetTemplate {
         }
         snippetCopy.setGuardsStage(guardsStage);
         try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-            new LoweringPhase(new CanonicalizerPhase(true), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
+            new LoweringPhase(new CanonicalizerPhase(), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

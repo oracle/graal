@@ -77,7 +77,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
             new SchedulePhase(s).apply(graph);
         }
 
-        new CanonicalizerPhase(false).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         JavaConstant asConstant = (JavaConstant) returnNode.result().asConstant();
         Assert.assertEquals(N + 1, asConstant.asInt());
     }

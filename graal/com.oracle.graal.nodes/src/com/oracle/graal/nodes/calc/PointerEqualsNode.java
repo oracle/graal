@@ -73,4 +73,42 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         return new PointerEqualsNode(newX, newY);
     }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        if (!negated) {
+            Stamp xStamp = getX().stamp();
+            Stamp newStamp = xStamp.join(getY().stamp());
+            if (!newStamp.equals(xStamp)) {
+                return newStamp;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        if (!negated) {
+            Stamp yStamp = getY().stamp();
+            Stamp newStamp = yStamp.join(getX().stamp());
+            if (!newStamp.equals(yStamp)) {
+                return newStamp;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof ObjectStamp && yStampGeneric instanceof ObjectStamp) {
+            ObjectStamp xStamp = (ObjectStamp) xStampGeneric;
+            ObjectStamp yStamp = (ObjectStamp) yStampGeneric;
+            if (xStamp.alwaysDistinct(yStamp)) {
+                return false;
+            } else if (xStamp.neverDistinct(yStamp)) {
+                return true;
+            }
+        }
+        return null;
+    }
 }

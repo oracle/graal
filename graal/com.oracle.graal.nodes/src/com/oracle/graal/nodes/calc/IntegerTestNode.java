@@ -58,4 +58,19 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
         }
         return this;
     }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        return null;
+    }
+
+    @Override
+    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        return null;
+    }
 }

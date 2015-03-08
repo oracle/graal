@@ -60,7 +60,7 @@ public class FloatingReadTest extends GraphScheduleTest {
 
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             PhaseContext context = new PhaseContext(getProviders());
-            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
 
             ReturnNode returnNode = null;

@@ -778,6 +778,8 @@ public class ConditionalEliminationPhase extends Phase {
             ResolvedJavaType type = state.getNodeType(object);
             if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
                 boolean nonNull = state.isNonNull(object);
+                // if (true)
+                // throw new RuntimeException(checkCast.toString());
                 GuardingNode replacementAnchor = null;
                 if (nonNull) {
                     replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);

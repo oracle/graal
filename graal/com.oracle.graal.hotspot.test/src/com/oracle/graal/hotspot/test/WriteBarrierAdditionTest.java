@@ -248,10 +248,11 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
             HighTierContext highContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
             new NodeIntrinsificationPhase(getProviders(), getSnippetReflection()).apply(graph);
-            new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
-            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);
+            new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase()).apply(graph, highContext);
+            new CanonicalizerPhase().apply(graph, highContext);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);
             new GuardLoweringPhase().apply(graph, midContext);
-            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
             new WriteBarrierAdditionPhase(config).apply(graph);
             Debug.dump(graph, "After Write Barrier Addition");
 

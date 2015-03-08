@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -113,5 +114,86 @@ public final class IntegerLessThanNode extends CompareNode {
             return new IntegerLessThanNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
+    }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        Stamp xStampGeneric = getX().stamp();
+        Stamp yStampGeneric = getY().stamp();
+        if (xStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            int bits = xStamp.getBits();
+            if (yStampGeneric instanceof IntegerStamp) {
+                IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
+                assert yStamp.getBits() == bits;
+                if (negated) {
+                    // x >= y
+                    long xLowerBound = xStamp.lowerBound();
+                    long yLowerBound = yStamp.lowerBound();
+                    if (yLowerBound > xLowerBound) {
+                        return new IntegerStamp(bits, yLowerBound, xStamp.upperBound(), xStamp.downMask(), xStamp.upMask());
+                    }
+                } else {
+                    // x < y
+                    long xUpperBound = xStamp.upperBound();
+                    long yUpperBound = yStamp.upperBound();
+                    if (yUpperBound <= xUpperBound) {
+                        if (yUpperBound != CodeUtil.minValue(bits)) {
+                            yUpperBound--;
+                        }
+                        return new IntegerStamp(bits, xStamp.lowerBound(), yUpperBound, xStamp.downMask(), xStamp.upMask());
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        Stamp xStampGeneric = getX().stamp();
+        Stamp yStampGeneric = getY().stamp();
+        if (xStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            int bits = xStamp.getBits();
+            if (yStampGeneric instanceof IntegerStamp) {
+                IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
+                assert yStamp.getBits() == bits;
+                if (negated) {
+                    // y <= x
+                    long xUpperBound = xStamp.upperBound();
+                    long yUpperBound = yStamp.upperBound();
+                    if (xUpperBound < yUpperBound) {
+                        return new IntegerStamp(bits, yStamp.lowerBound(), xUpperBound, yStamp.downMask(), yStamp.upMask());
+                    }
+                } else {
+                    // y > x
+                    long xLowerBound = xStamp.lowerBound();
+                    long yLowerBound = yStamp.lowerBound();
+                    if (xLowerBound >= yLowerBound) {
+                        if (xLowerBound != CodeUtil.maxValue(bits)) {
+                            xLowerBound++;
+                        }
+                        return new IntegerStamp(bits, xLowerBound, yStamp.upperBound(), yStamp.downMask(), yStamp.upMask());
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof IntegerStamp && yStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
+            if (xStamp.upperBound() < yStamp.lowerBound()) {
+                return true;
+            }
+            if (xStamp.lowerBound() >= yStamp.upperBound()) {
+                return false;
+            }
+        }
+        return null;
     }
 }

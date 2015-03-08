@@ -160,4 +160,43 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
             tool.replaceWithValue(LogicConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }
     }
+
+    @Override
+    public Stamp getSucceedingStampForValue(boolean negated) {
+        if (negated) {
+            return StampFactory.object();
+        } else {
+            return StampFactory.declaredTrustedNonNull(type);
+        }
+    }
+
+    @Override
+    public Boolean tryFold(Stamp valueStamp) {
+        if (valueStamp instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) valueStamp;
+            if (objectStamp.alwaysNull()) {
+                return false;
+            }
+
+            ResolvedJavaType objectType = objectStamp.type();
+            if (objectType != null) {
+                ResolvedJavaType instanceofType = type;
+                if (instanceofType.isAssignableFrom(objectType)) {
+                    if (objectStamp.nonNull()) {
+                        return true;
+                    }
+                } else {
+                    if (objectStamp.isExactType()) {
+                        return false;
+                    } else {
+                        boolean superType = objectType.isAssignableFrom(instanceofType);
+                        if (!superType && !objectType.isInterface() && !instanceofType.isInterface()) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
 }

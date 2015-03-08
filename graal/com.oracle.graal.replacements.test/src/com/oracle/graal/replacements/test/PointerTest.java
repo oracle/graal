@@ -403,7 +403,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         HighTierContext context = new HighTierContext(getProviders(), null, null, OptimisticOptimizations.ALL);
 
         StructuredGraph graph = parseEager(snippetName, AllowAssumptions.YES);
-        new CanonicalizerPhase(false).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         Assert.assertEquals(expectedWordCasts, graph.getNodes().filter(WordCastNode.class).count());
     }
 

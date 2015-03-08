@@ -26,7 +26,6 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.jtt.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -41,7 +40,7 @@ public class NestedLoop_EA extends JTTTest {
     protected Suites createSuites() {
         Suites suites = super.createSuites();
         ListIterator<BasePhase<? super HighTierContext>> position = suites.getHighTier().findPhase(PartialEscapePhase.class);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!GraalOptions.ImmutableCode.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         // incremental canonicalizer of PEA is missing some important canonicalization (TODO?)
         position.add(canonicalizer);
         position.add(new PartialEscapePhase(true, canonicalizer));

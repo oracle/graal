@@ -43,7 +43,10 @@ public class LowTier extends PhaseSuite<LowTierContext> {
     }
 
     public LowTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        if (ImmutableCode.getValue()) {
+            canonicalizer.disableReadCanonicalization();
+        }
 
         if (Options.ProfileCompiledMethods.getValue()) {
             appendPhase(new ProfileCompiledMethodsPhase());

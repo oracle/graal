@@ -61,9 +61,9 @@ public class PoorMansEATest extends GraalCompilerTest {
         try (Scope s = Debug.scope("PoorMansEATest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
             HighTierContext highTierContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
+            new InliningPhase(new CanonicalizerPhase()).apply(graph, highTierContext);
             PhaseContext context = new PhaseContext(getProviders());
-            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
 
             // remove framestates in order to trigger the simplification.
             cleanup: for (FrameState fs : graph.getNodes(FrameState.TYPE).snapshot()) {
@@ -75,7 +75,7 @@ public class PoorMansEATest extends GraalCompilerTest {
                     }
                 }
             }
-            new CanonicalizerPhase(true).apply(graph, context);
+            new CanonicalizerPhase().apply(graph, context);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

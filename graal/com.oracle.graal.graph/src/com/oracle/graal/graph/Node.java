@@ -435,15 +435,6 @@ public abstract class Node implements Cloneable, Formattable {
         return false;
     }
 
-    private void clearUsages() {
-        incUsageModCount();
-        maybeNotifyZeroUsages(this);
-        usage0 = null;
-        usage1 = null;
-        extraUsages = NO_NODES;
-        extraUsagesCount = 0;
-    }
-
     public final Node predecessor() {
         return predecessor;
     }
@@ -562,17 +553,27 @@ public abstract class Node implements Cloneable, Formattable {
         return true;
     }
 
-    public void replaceAtUsages(Node other) {
+    public final void replaceAtUsages(Node other) {
+        replaceAtUsages(other, null);
+    }
+
+    public final void replaceAtUsages(Node other, Predicate<Node> filter) {
         assert checkReplaceWith(other);
-        for (Node usage : usages()) {
-            boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
-            assert assertTrue(result, "not found in inputs, usage: %s", usage);
-            if (other != null) {
-                maybeNotifyInputChanged(usage);
-                other.addUsage(usage);
+        int i = 0;
+        while (i < this.getUsageCount()) {
+            Node usage = this.getUsageAt(i);
+            if (filter == null || filter.test(usage)) {
+                boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
+                assert assertTrue(result, "not found in inputs, usage: %s", usage);
+                if (other != null) {
+                    maybeNotifyInputChanged(usage);
+                    other.addUsage(usage);
+                }
+                this.movUsageFromEndTo(i);
+            } else {
+                ++i;
             }
         }
-        clearUsages();
     }
 
     public Node getUsageAt(int index) {

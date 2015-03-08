@@ -58,8 +58,8 @@ public class MergeCanonicalizerTest extends GraalCompilerTest {
 
     private void testReturnCount(String snippet, int returnCount) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         Debug.dump(graph, "Graph");
         assertDeepEquals(returnCount, graph.getNodes(ReturnNode.TYPE).count());
     }

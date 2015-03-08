@@ -78,7 +78,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         StructuredGraph graph = parseEager("testMethod", AllowAssumptions.YES);
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(false);
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         Debug.dump(graph, "after parsing");
 

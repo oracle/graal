@@ -100,7 +100,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         new DeadCodeEliminationPhase().apply(graph);
     }
 

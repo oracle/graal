@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.extended.*;
+import org.junit.*;
 
 /**
- * Guard {@link PhiNode}s merge guard dependencies at control flow merges.
+ * Collection of tests for
+ * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} including those that
+ * triggered bugs in this phase.
  */
-@NodeInfo(nameTemplate = "GuardPhi({i#values})", allowedUsageTypes = {InputType.Guard})
-public final class GuardPhiNode extends PhiNode implements GuardingNode {
+public class ConditionalEliminationTest8 extends ConditionalEliminationTestBase {
 
-    public static final NodeClass<GuardPhiNode> TYPE = NodeClass.create(GuardPhiNode.class);
-    @OptionalInput(InputType.Guard) NodeInputList<ValueNode> values;
+    private static double value;
 
-    public GuardPhiNode(AbstractMergeNode merge) {
-        super(TYPE, StampFactory.forVoid(), merge);
-        this.values = new NodeInputList<>(this);
+    @SuppressWarnings("all")
+    public static int test1Snippet(int a, Object b) {
+        double sum = 0;
+        if (!(b instanceof String)) {
+            return 42;
+        }
+        for (int j = 0; j < a; ++j) {
+            sum += value;
+        }
+        return ((String) b).length();
     }
 
-    @Override
-    public NodeInputList<ValueNode> values() {
-        return values;
+    @Test
+    public void test1() {
+        // One loop exit.
+        testProxies("test1Snippet", 1);
     }
 }

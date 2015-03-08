@@ -37,6 +37,8 @@ public class StampFactory {
     private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true);
     private static final Stamp nodeIntrinsicStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp positiveInt = forInteger(Kind.Int, 0, Integer.MAX_VALUE, 0, Integer.MAX_VALUE);
+    private static final Stamp booleanTrue = forInteger(Kind.Boolean, -1, -1, 1, 1);
+    private static final Stamp booleanFalse = forInteger(Kind.Boolean, 0, 0, 0, 0);
 
     private static void setCache(Kind kind, Stamp stamp) {
         stampCache[kind.ordinal()] = stamp;
@@ -78,6 +80,14 @@ public class StampFactory {
                 illegalStampCache[k.ordinal()] = IllegalStamp.getInstance();
             }
         }
+    }
+
+    public static Stamp tautology() {
+        return booleanTrue;
+    }
+
+    public static Stamp contradiction() {
+        return booleanFalse;
     }
 
     /**

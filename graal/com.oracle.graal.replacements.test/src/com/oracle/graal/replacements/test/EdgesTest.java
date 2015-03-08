@@ -116,8 +116,8 @@ public class EdgesTest extends GraalCompilerTest {
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         StructuredGraph g = parseProfiled(javaMethod, AllowAssumptions.NO);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase(true)).apply(g, context);
-        new CanonicalizerPhase(false).apply(g, context);
+        new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase()).apply(g, context);
+        new CanonicalizerPhase().apply(g, context);
         Assert.assertTrue(g.getNodes().filter(CheckCastNode.class).isEmpty());
     }
 

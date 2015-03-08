@@ -135,4 +135,13 @@ public abstract class Stamp {
         }
         return newStamp;
     }
+
+    public boolean neverDistinct(Stamp other) {
+        Constant constant = this.asConstant();
+        if (constant != null) {
+            Constant otherConstant = other.asConstant();
+            return otherConstant != null && constant.equals(otherConstant);
+        }
+        return false;
+    }
 }

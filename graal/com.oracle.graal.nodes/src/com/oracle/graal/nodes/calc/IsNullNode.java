@@ -86,4 +86,22 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     @NodeIntrinsic
     public static native IsNullNode isNull(Object object);
+
+    @Override
+    public Stamp getSucceedingStampForValue(boolean negated) {
+        return negated ? StampFactory.objectNonNull() : StampFactory.alwaysNull();
+    }
+
+    @Override
+    public Boolean tryFold(Stamp valueStamp) {
+        if (valueStamp instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) valueStamp;
+            if (objectStamp.alwaysNull()) {
+                return true;
+            } else if (objectStamp.nonNull()) {
+                return false;
+            }
+        }
+        return null;
+    }
 }
