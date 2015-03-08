@@ -867,18 +867,27 @@ public class NodeGenFactory {
             locals.addReferencesTo(executeBuilder);
             executeBuilder.end();
 
+            boolean hasExecutedUnexpected = executedType != null && !executedType.isGeneric() && !executedType.isVoid();
+
             CodeTreeBuilder contentBuilder = builder.create();
             contentBuilder.startReturn();
-            contentBuilder.tree(TypeSystemCodeGenerator.expect(executedType, returnType, executeBuilder.build()));
+            if (!hasExecutedUnexpected) {
+                if (executedType == null || executedType.needsCastTo(returnType)) {
+                    contentBuilder.cast(returnType.getPrimitiveType(), executeBuilder.build());
+                } else {
+                    contentBuilder.tree(executeBuilder.build());
+                }
+            } else {
+                contentBuilder.tree(TypeSystemCodeGenerator.expect(executedType, returnType, executeBuilder.build()));
+            }
             contentBuilder.end();
             // try catch assert if unexpected value is not expected
             CodeTree content = contentBuilder.build();
-            if (!execType.hasUnexpectedValue(context) && !returnType.isGeneric() && !returnType.isVoid()) {
+            if (!execType.hasUnexpectedValue(context) && hasExecutedUnexpected) {
                 content = wrapTryCatchUnexpected(content);
             }
             builder.tree(content);
         }
-
         return method;
     }
 
