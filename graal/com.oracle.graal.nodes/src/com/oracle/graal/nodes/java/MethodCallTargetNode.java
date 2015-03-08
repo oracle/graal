@@ -190,7 +190,6 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
             ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
             if (singleImplementorMethod != null) {
-                assert graph().getGuardsStage().allowsFloatingGuards() : "Graph already fixed!";
                 /**
                  * We have an invoke on an interface with a single implementor. We can replace this
                  * with an invoke virtual.
@@ -203,9 +202,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
                 LogicNode condition = graph().unique(new InstanceOfNode(singleImplementor, receiver, getProfile()));
-                GuardNode guard = graph().unique(
-                                new GuardNode(condition, AbstractBeginNode.prevBegin(invoke().asNode()), DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile,
-                                                false, JavaConstant.NULL_POINTER));
+                FixedGuardNode guard = graph().add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
+                graph().addBeforeFixed(invoke().asNode(), guard);
                 PiNode piNode = graph().unique(new PiNode(receiver, StampFactory.declaredNonNull(singleImplementor), guard));
                 arguments().set(0, piNode);
                 setInvokeKind(InvokeKind.Virtual);

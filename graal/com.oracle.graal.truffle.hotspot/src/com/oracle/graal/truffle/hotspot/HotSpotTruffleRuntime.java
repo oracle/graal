@@ -137,6 +137,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             compilationPolicy = new InterpreterOnlyCompilationPolicy();
         }
         OptimizedCallTarget target = new OptimizedCallTarget(source, rootNode, this, compilationPolicy, new HotSpotSpeculationLog());
+        rootNode.setCallTarget(target);
         callTargets.put(target, null);
 
         return target;
