@@ -115,7 +115,7 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
                 Infopoint info = (Infopoint) site;
                 if (info.debugInfo != null) {
                     BytecodeFrame frame = info.debugInfo.frame();
-                    assert frame == null || frame.validateFormat();
+                    assert frame == null || frame.validateFormat(false);
                 }
             }
         }

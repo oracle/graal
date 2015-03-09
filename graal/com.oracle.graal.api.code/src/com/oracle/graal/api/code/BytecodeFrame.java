@@ -161,9 +161,9 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * slot following a double word item. This should really be checked in FrameState itself but
      * because of Word type rewriting and alternative backends that can't be done.
      */
-    public boolean validateFormat() {
+    public boolean validateFormat(boolean derivedOk) {
         if (caller() != null) {
-            caller().validateFormat();
+            caller().validateFormat(derivedOk);
         }
         for (int i = 0; i < numLocals + numStack; i++) {
             if (values[i] != null) {
@@ -172,6 +172,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
                     assert values.length > i + 1 : String.format("missing second word %s", this);
                     assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal : this;
                 }
+                assert derivedOk || ValueUtil.isIllegal(values[i]) || !values[i].getLIRKind().isDerivedReference() : "Unexpected derived value: " + values[i];
             }
         }
         return true;
