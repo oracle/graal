@@ -44,14 +44,17 @@ public class CRC32Substitutions {
 
     public static class Guard implements SubstitutionGuard {
 
-        private HotSpotVMConfig config;
+        @SuppressWarnings("unused") private HotSpotVMConfig config;
 
         public Guard(HotSpotVMConfig config) {
             this.config = config;
         }
 
         public boolean execute() {
-            return config.useCRC32Intrinsics;
+            /*
+             * Disabled until MethodSubstitutions are compiled like snipppets.
+             */
+            return false; // return config.useCRC32Intrinsics;
         }
     }
 
