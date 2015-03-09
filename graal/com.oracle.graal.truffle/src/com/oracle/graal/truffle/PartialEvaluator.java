@@ -276,13 +276,14 @@ public class PartialEvaluator {
             }
         }
 
-        // Perform dead code elimination. Dead nodes mainly come from parse time canonicalizations.
-        new DeadCodeEliminationPhase().apply(graph);
+        // Perform conditional elimination.
+        new DominatorConditionalEliminationPhase(false).apply(graph);
+
+        canonicalizer.apply(graph, tierContext);
 
         // Do single partial escape and canonicalization pass.
         try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
             new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
-            new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
         } catch (Throwable t) {
             Debug.handle(t);
         }
