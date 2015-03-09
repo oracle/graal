@@ -298,36 +298,7 @@ public class GraphUtil {
      * @return the exception
      */
     public static BailoutException createBailoutException(String message, Throwable cause, StackTraceElement[] elements) {
-        @SuppressWarnings("serial")
-        BailoutException exception = new BailoutException(cause, message) {
-
-            @Override
-            public final synchronized Throwable fillInStackTrace() {
-                setStackTrace(elements);
-                return this;
-            }
-        };
-        return exception;
-    }
-
-    /**
-     * Creates a runtime exception with the given stack trace elements and message.
-     *
-     * @param message the message of the exception
-     * @param elements the stack trace elements
-     * @return the exception
-     */
-    public static RuntimeException createRuntimeException(String message, Throwable cause, StackTraceElement[] elements) {
-        @SuppressWarnings("serial")
-        RuntimeException exception = new RuntimeException(message, cause) {
-
-            @Override
-            public final synchronized Throwable fillInStackTrace() {
-                setStackTrace(elements);
-                return this;
-            }
-        };
-        return exception;
+        return SourceStackTrace.create(cause, message, elements);
     }
 
     /**

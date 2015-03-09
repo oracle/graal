@@ -24,6 +24,7 @@ package com.oracle.graal.truffle.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -48,10 +49,29 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void neverPartOfCompilationTest() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode firstTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 2);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "neverPartOfCompilationTest", firstTree));
+
+        AbstractTestNode secondTree = new NeverPartOfCompilationTestNode(new ConstantTestNode(1), 1);
+        try {
+            assertPartialEvalEquals("constant42", new RootTestNode(fd, "neverPartOfCompilationTest", secondTree));
+            Assert.fail("Expected verification error!");
+        } catch (SourceStackTrace t) {
+            // Expected verification error occurred.
+            StackTraceElement[] trace = t.getStackTrace();
+            Assert.assertEquals("com.oracle.truffle.api.nodes.RootNode.getFrameDescriptor(RootNode.java)", trace[0].toString());
+            String secondString = trace[1].toString();
+            Assert.assertEquals("com.oracle.graal.truffle.OptimizedCallTarget.callRoot(OptimizedCallTarget.java:" /* "259)" */, secondString.substring(0, secondString.length() - 4));
+        }
+    }
+
+    @Test
     public void nestedLoopExplosion() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new AddTestNode(new NestedExplodedLoopTestNode(5), new ConstantTestNode(17));
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "addConstants", result));
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "nestedLoopExplosion", result));
     }
 
     @Test

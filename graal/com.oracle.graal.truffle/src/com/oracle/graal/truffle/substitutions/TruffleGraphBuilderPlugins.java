@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.arithmetic.*;
+import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
@@ -212,6 +213,16 @@ public class TruffleGraphBuilderPlugins {
                     }
                     throw builder.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb.toString());
                 }
+            }
+        });
+        r.register1("neverPartOfCompilation", String.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext builder, ValueNode message) {
+                if (message.isConstant()) {
+                    String messageString = message.asConstant().toValueString();
+                    builder.append(new NeverPartOfCompilationNode(messageString));
+                    return true;
+                }
+                throw builder.bailout("message for never part of compilation is non-constant");
             }
         });
     }
