@@ -39,6 +39,17 @@ public final class BeginNode extends AbstractBeginNode {
         super(TYPE, stamp);
     }
 
+    public void trySimplify() {
+        FixedNode prev = (FixedNode) this.predecessor();
+        if (prev instanceof ControlSplitNode) {
+            // This begin node is necessary.
+        } else {
+            // This begin node can be removed and all guards moved up to the preceding begin node.
+            prepareDelete();
+            graph().removeFixed(this);
+        }
+    }
+
     public static AbstractBeginNode begin(FixedNode with) {
         if (with instanceof AbstractBeginNode) {
             return (AbstractBeginNode) with;

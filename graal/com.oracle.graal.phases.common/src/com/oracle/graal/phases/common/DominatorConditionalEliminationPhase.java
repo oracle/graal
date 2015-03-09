@@ -221,6 +221,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
+                if (survivingSuccessor instanceof BeginNode) {
+                    ((BeginNode) survivingSuccessor).trySimplify();
+                }
             });
         }
 
