@@ -124,10 +124,15 @@ public final class Block extends AbstractBlockBase<Block> {
         @Override
         public FixedNode next() {
             FixedNode result = cur;
-            if (cur == getEndNode()) {
-                cur = null;
+            if (result instanceof FixedWithNextNode) {
+                FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) result;
+                FixedNode next = fixedWithNextNode.next();
+                if (next instanceof AbstractBeginNode) {
+                    next = null;
+                }
+                cur = next;
             } else {
-                cur = ((FixedWithNextNode) cur).next();
+                cur = null;
             }
             assert !(cur instanceof AbstractBeginNode);
             return result;

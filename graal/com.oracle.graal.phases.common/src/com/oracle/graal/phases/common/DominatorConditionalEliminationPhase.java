@@ -44,8 +44,10 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
     private static final DebugMetric metricStampsRegistered = Debug.metric("StampsRegistered");
     private static final DebugMetric metricStampsFound = Debug.metric("StampsFound");
+    private final boolean fullSchedule;
 
-    public DominatorConditionalEliminationPhase() {
+    public DominatorConditionalEliminationPhase(boolean fullSchedule) {
+        this.fullSchedule = fullSchedule;
     }
 
     private static final class InfoElement {
@@ -88,12 +90,29 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
-        schedule.apply(graph);
-        ControlFlowGraph cfg = schedule.getCFG();
-        cfg.computePostdominators();
-        Instance instance = new Instance(graph, b -> schedule.getBlockToNodesMap().get(b), n -> schedule.getNodeToBlockMap().get(n));
-        instance.processBlock(cfg.getStartBlock());
+
+        Function<Block, Iterable<? extends Node>> blockToNodes;
+        Function<Node, Block> nodeToBlock;
+        Block startBlock;
+
+        if (fullSchedule) {
+            SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
+            schedule.apply(graph);
+            ControlFlowGraph cfg = schedule.getCFG();
+            cfg.computePostdominators();
+            blockToNodes = b -> schedule.getBlockToNodesMap().get(b);
+            nodeToBlock = n -> schedule.getNodeToBlockMap().get(n);
+            startBlock = cfg.getStartBlock();
+        } else {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
+            cfg.computePostdominators();
+            blockToNodes = b -> b.getNodes();
+            nodeToBlock = n -> cfg.blockFor(n);
+            startBlock = cfg.getStartBlock();
+        }
+
+        Instance instance = new Instance(graph, blockToNodes, nodeToBlock);
+        instance.processBlock(startBlock);
     }
 
     private static class Instance {

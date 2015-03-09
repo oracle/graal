@@ -38,9 +38,11 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
     private static final int MAX_ITERATIONS = 256;
 
     private final CanonicalizerPhase canonicalizer;
+    private final boolean fullSchedule;
 
-    public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer) {
+    public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule) {
         this.canonicalizer = canonicalizer;
+        this.fullSchedule = fullSchedule;
     }
 
     @Override
@@ -49,7 +51,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
         int count = 0;
         while (true) {
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                new DominatorConditionalEliminationPhase().apply(graph);
+                new DominatorConditionalEliminationPhase(fullSchedule).apply(graph);
             }
             if (listener.getNodes().isEmpty()) {
                 break;

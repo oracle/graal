@@ -48,7 +48,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         canonicalizer1.apply(graph, context);
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        new DominatorConditionalEliminationPhase().apply(graph, context);
+        new DominatorConditionalEliminationPhase(true).apply(graph, context);
         canonicalizer.apply(graph, context);
         canonicalizer.apply(graph, context);
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
@@ -67,7 +67,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
 
         int baseProxyCount = graph.getNodes().filter(ProxyNode.class).count();
-        new DominatorConditionalEliminationPhase().apply(graph, context);
+        new DominatorConditionalEliminationPhase(true).apply(graph, context);
         canonicalizer.apply(graph, context);
         new SchedulePhase().apply(graph, context);
         int actualProxiesCreated = graph.getNodes().filter(ProxyNode.class).count() - baseProxyCount;

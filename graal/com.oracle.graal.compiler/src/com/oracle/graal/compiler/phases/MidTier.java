@@ -67,7 +67,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer));
+            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {

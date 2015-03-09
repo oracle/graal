@@ -64,7 +64,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
 
                 if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
                     appendPhase(canonicalizer);
-                    appendPhase(new IterativeConditionalEliminationPhase(canonicalizer));
+                    appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
                 }
             }
         }
