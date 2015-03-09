@@ -539,9 +539,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void peelIteration(BciBlock[] blocks, BciBlock header, ExplodedLoopContext context) {
                 while (true) {
                     processBlock(this, header);
-                    for (int j = header.getId() + 1; j <= header.loopEnd; ++j) {
+                    int j = header.getId() + 1;
+                    while (j <= header.loopEnd) {
                         BciBlock block = blocks[j];
-                        iterateBlock(blocks, block);
+                        j = iterateBlock(blocks, block);
                     }
 
                     int[] targets = context.targetPeelIteration;

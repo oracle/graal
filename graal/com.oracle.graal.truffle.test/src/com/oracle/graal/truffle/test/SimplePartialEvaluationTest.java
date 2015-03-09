@@ -48,6 +48,13 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void nestedLoopExplosion() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new AddTestNode(new NestedExplodedLoopTestNode(5), new ConstantTestNode(17));
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "addConstants", result));
+    }
+
+    @Test
     public void sequenceConstants() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new ConstantTestNode(40), new ConstantTestNode(42)});
