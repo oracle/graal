@@ -55,23 +55,40 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotRegistersProvider registers = createRegisters();
         HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(runtime);
         RegisterConfig regConfig = new SPARCHotSpotRegisterConfig(target, runtime.getConfig());
-        HotSpotCodeCacheProvider codeCache = new HotSpotCodeCacheProvider(runtime, target, regConfig);
+        HotSpotCodeCacheProvider codeCache = createCodeCache(runtime, target, regConfig);
         HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        LoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
+        LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, new HotSpotStampProvider());
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), target);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
-        HotSpotSuitesProvider suites = new HotSpotSuitesProvider(runtime, metaAccess, constantReflection, replacements);
+        HotSpotSuitesProvider suites = createSuites(runtime, metaAccess, constantReflection, replacements);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
 
+        return createBackend(runtime, providers);
+    }
+
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
+        return new HotSpotSuitesProvider(runtime, metaAccess, constantReflection, replacements);
+    }
+
+    protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
+        return new HotSpotCodeCacheProvider(runtime, target, regConfig);
+    }
+
+    protected SPARCHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         return new SPARCHotSpotBackend(runtime, providers);
     }
 
-    protected Set<CPUFeature> computeFeatures(HotSpotVMConfig config) {
-        Set<CPUFeature> features = EnumSet.noneOf(CPUFeature.class);
+    protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,
+                    HotSpotRegistersProvider registers, TargetDescription target) {
+        return new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, target);
+    }
+
+    protected EnumSet<CPUFeature> computeFeatures(HotSpotVMConfig config) {
+        EnumSet<CPUFeature> features = EnumSet.noneOf(CPUFeature.class);
         if ((config.sparcFeatures & config.vis1Instructions) != 0) {
             features.add(CPUFeature.VIS1);
         }
