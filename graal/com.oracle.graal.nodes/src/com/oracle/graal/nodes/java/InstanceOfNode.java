@@ -197,6 +197,6 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
                 }
             }
         }
-        return null;
+        return TriState.UNKNOWN;
     }
 }

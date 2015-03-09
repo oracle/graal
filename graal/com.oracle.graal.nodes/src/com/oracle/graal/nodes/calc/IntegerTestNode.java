@@ -72,6 +72,7 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
 
     @Override
     public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        System.out.println("try fold with " + xStampGeneric + " and " + yStampGeneric);
         return TriState.UNKNOWN;
     }
 }
