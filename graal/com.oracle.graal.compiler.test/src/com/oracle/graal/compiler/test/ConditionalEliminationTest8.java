@@ -47,7 +47,7 @@ public class ConditionalEliminationTest8 extends ConditionalEliminationTestBase 
 
     @Test
     public void test1() {
-        // One loop exit.
-        testProxies("test1Snippet", 1);
+        // One loop exit is skipped, because the condition dominates also the loop begin.
+        testProxies("test1Snippet", 0);
     }
 }
