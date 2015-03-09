@@ -99,16 +99,16 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
     }
 
     @Override
-    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
         if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
             FloatStamp xStamp = (FloatStamp) xStampGeneric;
             FloatStamp yStamp = (FloatStamp) yStampGeneric;
             if (xStamp.alwaysDistinct(yStamp)) {
-                return false;
+                return TriState.FALSE;
             } else if (xStamp.neverDistinct(yStamp)) {
-                return true;
+                return TriState.TRUE;
             }
         }
-        return null;
+        return TriState.UNKNOWN;
     }
 }

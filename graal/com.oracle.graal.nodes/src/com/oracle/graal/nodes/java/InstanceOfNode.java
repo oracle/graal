@@ -171,11 +171,11 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
     }
 
     @Override
-    public Boolean tryFold(Stamp valueStamp) {
+    public TriState tryFold(Stamp valueStamp) {
         if (valueStamp instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) valueStamp;
             if (objectStamp.alwaysNull()) {
-                return false;
+                return TriState.FALSE;
             }
 
             ResolvedJavaType objectType = objectStamp.type();
@@ -183,15 +183,15 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
                 ResolvedJavaType instanceofType = type;
                 if (instanceofType.isAssignableFrom(objectType)) {
                     if (objectStamp.nonNull()) {
-                        return true;
+                        return TriState.TRUE;
                     }
                 } else {
                     if (objectStamp.isExactType()) {
-                        return false;
+                        return TriState.FALSE;
                     } else {
                         boolean superType = objectType.isAssignableFrom(instanceofType);
                         if (!superType && !objectType.isInterface() && !instanceofType.isInterface()) {
-                            return false;
+                            return TriState.FALSE;
                         }
                     }
                 }

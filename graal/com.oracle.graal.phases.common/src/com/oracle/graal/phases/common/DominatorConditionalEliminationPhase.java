@@ -28,6 +28,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import java.util.*;
 import java.util.function.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
@@ -295,9 +296,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 ValueNode value = unaryLogicNode.getValue();
                 for (InfoElement infoElement : getInfoElements(value)) {
                     Stamp stamp = infoElement.getStamp();
-                    Boolean result = unaryLogicNode.tryFold(stamp);
-                    if (result != null) {
-                        return rewireGuards(infoElement.getGuard(), result, rewireGuardFunction);
+                    TriState result = unaryLogicNode.tryFold(stamp);
+                    if (result.isKnown()) {
+                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
             } else if (node instanceof BinaryOpLogicNode) {
@@ -313,24 +314,24 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 ValueNode x = binaryOpLogicNode.getX();
                 ValueNode y = binaryOpLogicNode.getY();
                 for (InfoElement infoElement : getInfoElements(x)) {
-                    Boolean result = binaryOpLogicNode.tryFold(infoElement.getStamp(), y.stamp());
-                    if (result != null) {
-                        return rewireGuards(infoElement.getGuard(), result, rewireGuardFunction);
+                    TriState result = binaryOpLogicNode.tryFold(infoElement.getStamp(), y.stamp());
+                    if (result.isKnown()) {
+                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
 
                 for (InfoElement infoElement : getInfoElements(y)) {
-                    Boolean result = binaryOpLogicNode.tryFold(x.stamp(), infoElement.getStamp());
-                    if (result != null) {
-                        return rewireGuards(infoElement.getGuard(), result, rewireGuardFunction);
+                    TriState result = binaryOpLogicNode.tryFold(x.stamp(), infoElement.getStamp());
+                    if (result.isKnown()) {
+                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
             } else if (node instanceof CheckCastNode) {
                 CheckCastNode checkCastNode = (CheckCastNode) node;
                 for (InfoElement infoElement : getInfoElements(checkCastNode.object())) {
-                    Boolean result = checkCastNode.tryFold(infoElement.getStamp());
-                    if (result != null) {
-                        return rewireGuards(infoElement.getGuard(), result, rewireGuardFunction);
+                    TriState result = checkCastNode.tryFold(infoElement.getStamp());
+                    if (result.isKnown()) {
+                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
                 }
             } else if (node instanceof ShortCircuitOrNode) {

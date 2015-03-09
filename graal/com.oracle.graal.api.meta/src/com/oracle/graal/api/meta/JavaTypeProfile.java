@@ -25,7 +25,6 @@ package com.oracle.graal.api.meta;
 import java.util.*;
 
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 
 /**
  * This profile object represents the type profile at a specific BCI. The precision of the supplied

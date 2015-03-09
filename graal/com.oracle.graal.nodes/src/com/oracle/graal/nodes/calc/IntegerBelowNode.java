@@ -170,20 +170,20 @@ public final class IntegerBelowNode extends CompareNode {
     }
 
     @Override
-    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
         if (xStampGeneric instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             if (yStampGeneric instanceof IntegerStamp) {
                 IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
                 if (yStamp.isPositive()) {
                     if (xStamp.isPositive() && xStamp.upperBound() < yStamp.lowerBound()) {
-                        return true;
+                        return TriState.TRUE;
                     } else if (xStamp.isStrictlyNegative() || xStamp.lowerBound() >= yStamp.upperBound()) {
-                        return false;
+                        return TriState.FALSE;
                     }
                 }
             }
         }
-        return null;
+        return TriState.UNKNOWN;
     }
 }

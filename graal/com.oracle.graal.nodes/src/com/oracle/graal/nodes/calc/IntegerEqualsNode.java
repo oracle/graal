@@ -172,14 +172,14 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
     }
 
     @Override
-    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
         if (xStampGeneric instanceof IntegerStamp && yStampGeneric instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
             if (xStamp.alwaysDistinct(yStamp)) {
-                return false;
+                return TriState.FALSE;
             } else if (xStamp.neverDistinct(yStamp)) {
-                return true;
+                return TriState.TRUE;
             }
         }
         return null;

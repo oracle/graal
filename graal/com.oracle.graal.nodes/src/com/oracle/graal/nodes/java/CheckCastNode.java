@@ -28,7 +28,6 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -240,16 +239,16 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         return object;
     }
 
-    public Boolean tryFold(Stamp testStamp) {
+    public TriState tryFold(Stamp testStamp) {
         if (testStamp instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) testStamp;
             ResolvedJavaType objectType = objectStamp.type();
             if (objectType != null && type.isAssignableFrom(objectType)) {
-                return true;
+                return TriState.TRUE;
             } else if (objectStamp.alwaysNull()) {
-                return true;
+                return TriState.TRUE;
             }
         }
-        return null;
+        return TriState.UNKNOWN;
     }
 }

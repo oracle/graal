@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -93,15 +94,15 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
     }
 
     @Override
-    public Boolean tryFold(Stamp valueStamp) {
+    public TriState tryFold(Stamp valueStamp) {
         if (valueStamp instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) valueStamp;
             if (objectStamp.alwaysNull()) {
-                return true;
+                return TriState.TRUE;
             } else if (objectStamp.nonNull()) {
-                return false;
+                return TriState.FALSE;
             }
         }
-        return null;
+        return TriState.UNKNOWN;
     }
 }

@@ -32,6 +32,8 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
+import edu.umd.cs.findbugs.annotations.*;
+
 @NodeInfo(shortName = "<")
 public final class FloatLessThanNode extends CompareNode {
     public static final NodeClass<FloatLessThanNode> TYPE = NodeClass.create(FloatLessThanNode.class);
@@ -84,7 +86,8 @@ public final class FloatLessThanNode extends CompareNode {
     }
 
     @Override
-    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+    @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "null indicates no folding possible")
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
         return null;
     }
 }

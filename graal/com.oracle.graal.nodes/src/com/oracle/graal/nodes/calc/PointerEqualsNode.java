@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -99,16 +100,16 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     }
 
     @Override
-    public Boolean tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
         if (xStampGeneric instanceof ObjectStamp && yStampGeneric instanceof ObjectStamp) {
             ObjectStamp xStamp = (ObjectStamp) xStampGeneric;
             ObjectStamp yStamp = (ObjectStamp) yStampGeneric;
             if (xStamp.alwaysDistinct(yStamp)) {
-                return false;
+                return TriState.FALSE;
             } else if (xStamp.neverDistinct(yStamp)) {
-                return true;
+                return TriState.TRUE;
             }
         }
-        return null;
+        return TriState.UNKNOWN;
     }
 }

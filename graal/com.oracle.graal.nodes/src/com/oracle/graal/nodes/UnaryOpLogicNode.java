@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -50,5 +51,5 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
 
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 
-    public abstract Boolean tryFold(Stamp valueStamp);
+    public abstract TriState tryFold(Stamp valueStamp);
 }
