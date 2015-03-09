@@ -357,6 +357,11 @@ public final class SchedulePhase extends Phase {
                 for (PhiNode phi : mergeNode.phis()) {
                     nodeToBlock.set(phi, b);
                 }
+            } else if (beginNode instanceof LoopExitNode) {
+                LoopExitNode loopExitNode = (LoopExitNode) beginNode;
+                for (ProxyNode proxy : loopExitNode.proxies()) {
+                    nodeToBlock.set(proxy, b);
+                }
             }
         }
 
