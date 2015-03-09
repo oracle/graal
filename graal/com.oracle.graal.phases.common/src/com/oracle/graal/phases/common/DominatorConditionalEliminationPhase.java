@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.api.meta.DeoptimizationAction.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+
 import java.util.*;
 import java.util.function.*;
 
@@ -182,6 +185,10 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     node.replaceAtUsages(piNode);
                     GraphUtil.unlinkFixedNode(node);
                     node.safeDelete();
+                } else {
+                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    node.replaceAtPredecessor(deopt);
+                    GraphUtil.killCFG(node);
                 }
             });
         }
@@ -246,33 +253,29 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 while (proxiedGuard instanceof GuardProxyNode) {
                     proxiedGuard = ((GuardProxyNode) proxiedGuard).value();
                 }
-                ValueNode initialProxiedGuard = proxiedGuard;
                 Block guardBlock = nodeToBlock.apply(proxiedGuard);
                 assert guardBlock != null;
                 Block curBlock = block;
                 if (guardBlock != curBlock) {
-                    int loopExitIndex = loopExits.size() - 1;
-                    GuardProxyNode lastProxy = null;
+                    int loopExitIndex = loopExits.size();
                     do {
-                        LoopExitNode loopExitNode = loopExits.get(loopExitIndex);
+                        LoopExitNode loopExitNode = loopExits.get(loopExitIndex - 1);
                         Block loopExitBlock = nodeToBlock.apply(loopExitNode);
                         assert loopExitBlock != null;
                         if (loopExitBlock == curBlock) {
                             assert curBlock != guardBlock;
-                            GuardProxyNode guardProxy = proxiedGuard.graph().unique(new GuardProxyNode((GuardingNode) initialProxiedGuard, loopExitNode));
-                            if (lastProxy == null) {
-                                proxiedGuard = guardProxy;
-                            } else {
-                                lastProxy.setValue(guardProxy);
-                            }
-                            lastProxy = guardProxy;
                             loopExitIndex--;
-                            if (loopExitIndex < 0) {
+                            if (loopExitIndex <= 0) {
                                 break;
                             }
                         }
                         curBlock = curBlock.getDominator();
                     } while (guardBlock != curBlock);
+
+                    for (int i = loopExitIndex; i < loopExits.size(); ++i) {
+                        LoopExitNode loopExitNode = loopExits.get(i);
+                        proxiedGuard = proxiedGuard.graph().unique(new GuardProxyNode((GuardingNode) proxiedGuard, loopExitNode));
+                    }
                 }
             }
             return proxiedGuard;
@@ -324,17 +327,19 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 }
             } else if (node instanceof ShortCircuitOrNode) {
                 final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
-                tryProofCondition(shortCircuitOrNode.getX(), block, (guard, result) -> {
-                    if (result == !shortCircuitOrNode.isXNegated()) {
-                        rewireGuards(guard, result, block, rewireGuardFunction);
-                    } else {
-                        tryProofCondition(shortCircuitOrNode.getY(), block, (innerGuard, innerResult) -> {
-                            if (innerGuard == guard) {
-                                rewireGuards(guard, shortCircuitOrNode.isYNegated() ? !innerResult : innerResult, block, rewireGuardFunction);
-                            }
-                        });
-                    }
-                });
+                if (this.loopExits.isEmpty()) {
+                    tryProofCondition(shortCircuitOrNode.getX(), block, (guard, result) -> {
+                        if (result == !shortCircuitOrNode.isXNegated()) {
+                            rewireGuards(guard, result, block, rewireGuardFunction);
+                        } else {
+                            tryProofCondition(shortCircuitOrNode.getY(), block, (innerGuard, innerResult) -> {
+                                if (innerGuard == guard) {
+                                    rewireGuards(guard, shortCircuitOrNode.isYNegated() ? !innerResult : innerResult, block, rewireGuardFunction);
+                                }
+                            });
+                        }
+                    });
+                }
             }
 
             return false;
@@ -361,6 +366,10 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     node.replaceAtUsages(guard);
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
+                } else {
+                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode(null));
+                    node.replaceAtUsages(valueAnchor);
+                    node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
             });
         }
@@ -369,6 +378,11 @@ public class DominatorConditionalEliminationPhase extends Phase {
             if (!tryProofCondition(node.condition(), block, (guard, result) -> {
                 if (result != node.isNegated()) {
                     node.replaceAndDelete(guard);
+                } else {
+                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.action(), node.reason()));
+                    FixedNode next = block.getBeginNode().next();
+                    block.getBeginNode().setNext(deopt);
+                    GraphUtil.killCFG(next);
                 }
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node, undoOperations);

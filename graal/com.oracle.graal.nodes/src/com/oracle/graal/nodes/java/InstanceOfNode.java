@@ -164,7 +164,7 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
     @Override
     public Stamp getSucceedingStampForValue(boolean negated) {
         if (negated) {
-            return StampFactory.object();
+            return null;
         } else {
             return StampFactory.declaredTrustedNonNull(type);
         }
