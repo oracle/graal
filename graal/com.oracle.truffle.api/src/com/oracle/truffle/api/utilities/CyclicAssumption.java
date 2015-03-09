@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import java.util.concurrent.atomic.*;
+
 import com.oracle.truffle.api.*;
 
 /**
@@ -36,23 +38,21 @@ import com.oracle.truffle.api.*;
 public class CyclicAssumption {
 
     private final String name;
-    private Assumption assumption;
+    private final AtomicReference<Assumption> assumption;
 
     public CyclicAssumption(String name) {
         this.name = name;
-        invalidate();
+        this.assumption = new AtomicReference<>(Truffle.getRuntime().createAssumption(name));
     }
 
     public void invalidate() {
-        if (assumption != null) {
-            assumption.invalidate();
-        }
-
-        assumption = Truffle.getRuntime().createAssumption(name);
+        Assumption newAssumption = Truffle.getRuntime().createAssumption(name);
+        Assumption oldAssumption = assumption.getAndSet(newAssumption);
+        oldAssumption.invalidate();
     }
 
     public Assumption getAssumption() {
-        return assumption;
+        return assumption.get();
     }
 
 }
