@@ -345,6 +345,13 @@ public abstract class Node implements Cloneable, Formattable {
         return this.usage0 == null;
     }
 
+    /**
+     * Checks whether this node has usages.
+     */
+    public final boolean hasUsages() {
+        return this.usage0 != null;
+    }
+
     void reverseUsageOrder() {
         List<Node> snapshot = this.usages().snapshot();
         for (Node n : snapshot) {
