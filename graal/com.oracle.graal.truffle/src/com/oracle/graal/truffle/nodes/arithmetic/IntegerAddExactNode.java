@@ -53,35 +53,49 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode result = findSynonym(forX, forY);
+        if (result == null) {
+            return this;
+        } else {
+            return result;
+        }
+    }
+
+    private static ValueNode findSynonym(ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
             return new IntegerAddExactNode(forY, forX);
         }
         if (forX.isConstant()) {
-            return canonicalXconstant(forX, forY);
+            ConstantNode constantNode = canonicalXconstant(forX, forY);
+            if (constantNode != null) {
+                return constantNode;
+            }
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
             if (c == 0) {
                 return forX;
             }
         }
-        return this;
+        return null;
     }
 
-    private ValueNode canonicalXconstant(ValueNode forX, ValueNode forY) {
+    private static ConstantNode canonicalXconstant(ValueNode forX, ValueNode forY) {
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
-        assert xConst.getKind() == yConst.getKind();
-        try {
-            if (xConst.getKind() == Kind.Int) {
-                return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()));
-            } else {
-                assert xConst.getKind() == Kind.Long;
-                return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()));
+        if (xConst != null && yConst != null) {
+            assert xConst.getKind() == yConst.getKind();
+            try {
+                if (xConst.getKind() == Kind.Int) {
+                    return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()));
+                } else {
+                    assert xConst.getKind() == Kind.Long;
+                    return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()));
+                }
+            } catch (ArithmeticException ex) {
+                // The operation will result in an overflow exception, so do not canonicalize.
             }
-        } catch (ArithmeticException ex) {
-            // The operation will result in an overflow exception, so do not canonicalize.
         }
-        return this;
+        return null;
     }
 
     @Override
