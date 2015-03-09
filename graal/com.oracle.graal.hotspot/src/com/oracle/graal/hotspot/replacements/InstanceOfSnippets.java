@@ -60,33 +60,9 @@ import com.oracle.graal.replacements.nodes.*;
  */
 public class InstanceOfSnippets implements Snippets {
 
-    private static final double COMPILED_VS_INTERPRETER_SPEEDUP = 50;
-    private static final double INSTANCEOF_DEOPT_SPEEDUP = 1.01; // generous 1% speedup
-
-    private static final int DEOPT_THRESHOLD_FACTOR = (int) (COMPILED_VS_INTERPRETER_SPEEDUP / (INSTANCEOF_DEOPT_SPEEDUP - 1.0));
-
     /**
-     * Gets the minimum required probability of a profiled instanceof hitting one the profiled types
-     * for use of the {@linkplain #instanceofWithProfile deoptimizing} snippet. The value is
-     * computed to be an order of greater than the configured compilation threshold by a
-     * {@linkplain #DEOPT_THRESHOLD_FACTOR factor}.
-     *
-     * <p>
-     * This factor is such that the additional executions we get from using the deoptimizing snippet
-     * (({@linkplain #INSTANCEOF_DEOPT_SPEEDUP speedup} - 1) / probability threshold) is greater
-     * than the time lost during re-interpretation ({@linkplain #COMPILED_VS_INTERPRETER_SPEEDUP
-     * compiled code speedup} &times compilation threshold).
-     * </p>
-     */
-    public static double hintHitProbabilityThresholdForDeoptimizingSnippet(long compilationThreshold) {
-        return 1.0D - (1.0D / (compilationThreshold * DEOPT_THRESHOLD_FACTOR));
-    }
-
-    /**
-     * A test against a set of hints derived from a profile with very close to 100% precise coverage
-     * of seen types. This snippet deoptimizes on hint miss paths.
-     *
-     * @see #hintHitProbabilityThresholdForDeoptimizingSnippet(long)
+     * A test against a set of hints derived from a profile with 100% precise coverage of seen
+     * types. This snippet deoptimizes on hint miss paths.
      */
     @Snippet
     public static Object instanceofWithProfile(Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
@@ -243,11 +219,9 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
         private final SnippetInfo isAssignableFrom = snippet(InstanceOfSnippets.class, "isAssignableFrom");
-        private final long compilationThreshold;
 
-        public Templates(HotSpotProviders providers, TargetDescription target, long compilationThreshold) {
+        public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
-            this.compilationThreshold = compilationThreshold;
         }
 
         @Override
@@ -263,7 +237,7 @@ public class InstanceOfSnippets implements Snippets {
                 Arguments args;
 
                 StructuredGraph graph = instanceOf.graph();
-                if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet(compilationThreshold) && hintInfo.exact == null) {
+                if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
@@ -288,7 +262,7 @@ public class InstanceOfSnippets implements Snippets {
                 }
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet(compilationThreshold) && hintInfo.exact == null) {
+                if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
                     args.addConst("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
                 }
                 return args;

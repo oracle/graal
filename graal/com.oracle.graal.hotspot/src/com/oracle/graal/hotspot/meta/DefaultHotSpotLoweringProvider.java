@@ -83,7 +83,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
         assert target == providers.getCodeCache().getTarget();
         checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(providers, target);
-        instanceofSnippets = new InstanceOfSnippets.Templates(providers, target, config.compileThreshold);
+        instanceofSnippets = new InstanceOfSnippets.Templates(providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(providers, target);
         monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target, config.useCompressedOops ? config.getOopEncoding() : null);

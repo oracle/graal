@@ -534,4 +534,12 @@ public class StructuredGraph extends Graph {
     public Set<ResolvedJavaMethod> getInlinedMethods() {
         return inlinedMethods;
     }
+
+    /**
+     *
+     * @return true if the graph contains only a {@link StartNode} and {@link ReturnNode}
+     */
+    public boolean isTrivial() {
+        return !(start.next() instanceof ReturnNode);
+    }
 }
