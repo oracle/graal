@@ -72,6 +72,15 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
 
     @Override
     public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof IntegerStamp && yStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
+            if ((xStamp.upMask() & yStamp.upMask()) == 0) {
+                return TriState.TRUE;
+            } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
+                return TriState.FALSE;
+            }
+        }
         return TriState.UNKNOWN;
     }
 }
