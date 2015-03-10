@@ -597,6 +597,11 @@ public final class NodeUtil {
         return nodes;
     }
 
+    public static <T extends Node> T nonAtomicReplace(Node oldNode, T newNode, CharSequence reason) {
+        oldNode.replaceHelper(newNode, reason);
+        return newNode;
+    }
+
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
         NodeClass nodeClass = NodeClass.get(parent.getClass());
 

@@ -267,7 +267,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         return replace(newNode, "");
     }
 
-    private void replaceHelper(Node newNode, CharSequence reason) {
+    final void replaceHelper(Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");

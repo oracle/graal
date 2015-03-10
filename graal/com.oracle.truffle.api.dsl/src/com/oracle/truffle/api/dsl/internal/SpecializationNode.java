@@ -301,7 +301,7 @@ public abstract class SpecializationNode extends Node {
         SpecializationNode current = start;
         while (current != null) {
             if (current.isSame(toRemove)) {
-                current.replace(current.next, reason);
+                NodeUtil.nonAtomicReplace(current, current.next, reason);
                 if (current == start) {
                     start = start.next;
                 }
@@ -532,9 +532,10 @@ public abstract class SpecializationNode extends Node {
         }
     }
 
-    static <T> SpecializationNode insertAt(SpecializationNode node, SpecializationNode insertBefore, CharSequence message) {
+    static <T> SpecializationNode insertAt(SpecializationNode node, SpecializationNode insertBefore, CharSequence reason) {
         insertBefore.next = node;
-        return node.replace(insertBefore, message);
+        // always guaranteed to be executed inside of an atomic block
+        return NodeUtil.nonAtomicReplace(node, insertBefore, reason);
     }
 
     @Override
