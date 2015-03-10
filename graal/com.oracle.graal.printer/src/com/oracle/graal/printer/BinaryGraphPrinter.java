@@ -441,11 +441,12 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private void writeEdges(Node node, Edges.Type type) throws IOException {
         NodeClass<?> nodeClass = node.getNodeClass();
         Edges edges = nodeClass.getEdges(type);
+        final long[] curOffsets = edges.getOffsets();
         for (int i = 0; i < edges.getDirectCount(); i++) {
-            writeNodeRef(edges.getNode(node, i));
+            writeNodeRef(Edges.getNode(node, curOffsets, i));
         }
         for (int i = edges.getDirectCount(); i < edges.getCount(); i++) {
-            NodeList<Node> list = edges.getNodeList(node, i);
+            NodeList<Node> list = Edges.getNodeList(node, curOffsets, i);
             if (list == null) {
                 writeShort((char) 0);
             } else {

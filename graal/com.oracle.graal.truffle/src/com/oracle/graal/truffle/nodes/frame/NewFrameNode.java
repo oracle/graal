@@ -48,7 +48,7 @@ import com.oracle.truffle.api.frame.*;
 @NodeInfo
 public final class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
-    public static final NodeClass<NewFrameNode> TYPE = NodeClass.get(NewFrameNode.class);
+    public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
     @Input ValueNode descriptor;
     @Input ValueNode arguments;
 
@@ -99,7 +99,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     @NodeInfo
     public static final class VirtualOnlyInstanceNode extends VirtualInstanceNode {
 
-        public static final NodeClass<VirtualOnlyInstanceNode> TYPE = NodeClass.get(VirtualOnlyInstanceNode.class);
+        public static final NodeClass<VirtualOnlyInstanceNode> TYPE = NodeClass.create(VirtualOnlyInstanceNode.class);
         protected boolean allowMaterialization;
 
         public VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {

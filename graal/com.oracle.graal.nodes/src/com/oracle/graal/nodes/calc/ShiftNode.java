@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticLIRLowerable {
 
-    @SuppressWarnings("rawtypes") public static final NodeClass<ShiftNode> TYPE = NodeClass.get(ShiftNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<ShiftNode> TYPE = NodeClass.create(ShiftNode.class);
 
     protected interface SerializableShiftFunction<T> extends Function<ArithmeticOpTable, ShiftOp<T>>, Serializable {
     }

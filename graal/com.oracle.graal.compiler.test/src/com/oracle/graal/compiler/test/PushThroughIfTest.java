@@ -63,15 +63,15 @@ public class PushThroughIfTest extends GraalCompilerTest {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
 
         StructuredGraph referenceGraph = parseEager(reference, AllowAssumptions.YES);
         for (FrameState fs : referenceGraph.getNodes(FrameState.TYPE).snapshot()) {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(referenceGraph, new PhaseContext(getProviders()));
         assertEquals(referenceGraph, graph);
     }
 }

@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
 
-    public static final NodeClass<LoadHubNode> TYPE = NodeClass.get(LoadHubNode.class);
+    public static final NodeClass<LoadHubNode> TYPE = NodeClass.create(LoadHubNode.class);
     @Input ValueNode value;
 
     public ValueNode getValue() {

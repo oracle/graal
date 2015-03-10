@@ -40,22 +40,8 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
  */
 public class CompositeValueClass<T> extends LIRIntrospection<T> {
 
-    @SuppressWarnings("unchecked")
-    public static final <T extends CompositeValue> CompositeValueClass<T> get(Class<T> c) {
-        CompositeValueClass<T> clazz = (CompositeValueClass<T>) allClasses.get(c);
-        if (clazz != null) {
-            return clazz;
-        }
-
-        // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
-        // However, only one will be put into the map, and this is the one returned by all threads.
-        clazz = new CompositeValueClass<>(c);
-        CompositeValueClass<T> oldClazz = (CompositeValueClass<T>) allClasses.putIfAbsent(c, clazz);
-        if (oldClazz != null) {
-            return oldClazz;
-        } else {
-            return clazz;
-        }
+    public static final <T extends CompositeValue> CompositeValueClass<T> create(Class<T> c) {
+        return new CompositeValueClass<>(c);
     }
 
     public CompositeValueClass(Class<T> clazz) {

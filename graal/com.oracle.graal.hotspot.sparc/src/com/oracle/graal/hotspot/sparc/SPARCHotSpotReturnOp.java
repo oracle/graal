@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,12 +37,14 @@ import com.oracle.graal.sparc.*;
  */
 @Opcode("RETURN")
 final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
+    public static final LIRInstructionClass<SPARCHotSpotReturnOp> TYPE = LIRInstructionClass.create(SPARCHotSpotReturnOp.class);
 
     @Use({REG, ILLEGAL}) protected Value value;
     private final boolean isStub;
     private final HotSpotVMConfig config;
 
     SPARCHotSpotReturnOp(Value value, boolean isStub, HotSpotVMConfig config) {
+        super(TYPE);
         this.value = value;
         this.isStub = isStub;
         this.config = config;

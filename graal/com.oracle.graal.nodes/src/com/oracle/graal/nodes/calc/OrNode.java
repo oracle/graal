@@ -25,9 +25,10 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.*;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -36,9 +37,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "|")
-public final class OrNode extends BinaryArithmeticNode<Or> {
+public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryCommutative<ValueNode> {
 
-    public static final NodeClass<OrNode> TYPE = NodeClass.get(OrNode.class);
+    public static final NodeClass<OrNode> TYPE = NodeClass.create(OrNode.class);
 
     public OrNode(ValueNode x, ValueNode y) {
         super(TYPE, ArithmeticOpTable::getOr, x, y);
@@ -51,7 +52,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> {
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new OrNode(x, y);
+            return new OrNode(x, y).maybeCommuteInputs();
         }
     }
 

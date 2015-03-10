@@ -24,7 +24,6 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
@@ -40,32 +39,25 @@ public class LIR {
     /**
      * The linear-scan ordered list of blocks.
      */
-    private final List<? extends AbstractBlock<?>> linearScanOrder;
+    private final List<? extends AbstractBlockBase<?>> linearScanOrder;
 
     /**
      * The order in which the code is emitted.
      */
-    private final List<? extends AbstractBlock<?>> codeEmittingOrder;
+    private final List<? extends AbstractBlockBase<?>> codeEmittingOrder;
 
     private int firstVariableNumber;
 
     private int numVariables;
 
-    private SpillMoveFactory spillMoveFactory;
-
     private final BlockMap<List<LIRInstruction>> lirInstructions;
-
-    public interface SpillMoveFactory {
-
-        LIRInstruction createMove(AllocatableValue result, Value input);
-    }
 
     private boolean hasArgInCallerFrame;
 
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(AbstractControlFlowGraph<?> cfg, List<? extends AbstractBlock<?>> linearScanOrder, List<? extends AbstractBlock<?>> codeEmittingOrder) {
+    public LIR(AbstractControlFlowGraph<?> cfg, List<? extends AbstractBlockBase<?>> linearScanOrder, List<? extends AbstractBlockBase<?>> codeEmittingOrder) {
         this.cfg = cfg;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
@@ -80,7 +72,7 @@ public class LIR {
      * Determines if any instruction in the LIR has debug info associated with it.
      */
     public boolean hasDebugInfo() {
-        for (AbstractBlock<?> b : linearScanOrder()) {
+        for (AbstractBlockBase<?> b : linearScanOrder()) {
             for (LIRInstruction op : getLIRforBlock(b)) {
                 if (op.hasState()) {
                     return true;
@@ -90,15 +82,11 @@ public class LIR {
         return false;
     }
 
-    public SpillMoveFactory getSpillMoveFactory() {
-        return spillMoveFactory;
-    }
-
-    public List<LIRInstruction> getLIRforBlock(AbstractBlock<?> block) {
+    public List<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
         return lirInstructions.get(block);
     }
 
-    public void setLIRforBlock(AbstractBlock<?> block, List<LIRInstruction> list) {
+    public void setLIRforBlock(AbstractBlockBase<?> block, List<LIRInstruction> list) {
         assert getLIRforBlock(block) == null : "lir instruction list should only be initialized once";
         lirInstructions.put(block, list);
     }
@@ -108,11 +96,11 @@ public class LIR {
      *
      * @return the blocks in linear scan order
      */
-    public List<? extends AbstractBlock<?>> linearScanOrder() {
+    public List<? extends AbstractBlockBase<?>> linearScanOrder() {
         return linearScanOrder;
     }
 
-    public List<? extends AbstractBlock<?>> codeEmittingOrder() {
+    public List<? extends AbstractBlockBase<?>> codeEmittingOrder() {
         return codeEmittingOrder;
     }
 
@@ -166,7 +154,7 @@ public class LIR {
      */
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
-    public static boolean verifyBlock(LIR lir, AbstractBlock<?> block) {
+    public static boolean verifyBlock(LIR lir, AbstractBlockBase<?> block) {
         List<LIRInstruction> ops = lir.getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
@@ -190,12 +178,12 @@ public class LIR {
         return true;
     }
 
-    public static boolean verifyBlocks(LIR lir, List<? extends AbstractBlock<?>> blocks) {
-        for (AbstractBlock<?> block : blocks) {
-            for (AbstractBlock<?> sux : block.getSuccessors()) {
+    public static boolean verifyBlocks(LIR lir, List<? extends AbstractBlockBase<?>> blocks) {
+        for (AbstractBlockBase<?> block : blocks) {
+            for (AbstractBlockBase<?> sux : block.getSuccessors()) {
                 assert blocks.contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
-            for (AbstractBlock<?> pred : block.getPredecessors()) {
+            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 assert blocks.contains(pred) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {
@@ -205,13 +193,9 @@ public class LIR {
         return true;
     }
 
-    public void setSpillMoveFactory(SpillMoveFactory spillMoveFactory) {
-        this.spillMoveFactory = spillMoveFactory;
-    }
-
     public void resetLabels() {
 
-        for (AbstractBlock<?> block : codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : codeEmittingOrder()) {
             for (LIRInstruction inst : lirInstructions.get(block)) {
                 if (inst instanceof LabelOp) {
                     ((LabelOp) inst).getLabel().reset();

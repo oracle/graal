@@ -35,6 +35,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 
@@ -52,7 +53,7 @@ public final class LocationMarker extends AllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
         new Marker(lirGenRes.getLIR(), lirGenRes.getFrameMap()).build();
     }
 
@@ -72,32 +73,23 @@ public final class LocationMarker extends AllocationPhase {
         }
 
         private void build() {
-            Deque<AbstractBlock<?>> worklist = new ArrayDeque<>();
+            Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
             for (int i = lir.getControlFlowGraph().getBlocks().size() - 1; i >= 0; i--) {
                 worklist.add(lir.getControlFlowGraph().getBlocks().get(i));
             }
-            for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
                 liveInMap.put(block, frameMap.initReferenceMap(true));
             }
             while (!worklist.isEmpty()) {
-                AbstractBlock<?> block = worklist.poll();
+                AbstractBlockBase<?> block = worklist.poll();
                 processBlock(block, worklist);
-            }
-            // finish states
-            for (AbstractBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-                for (int i = instructions.size() - 1; i >= 0; i--) {
-                    LIRInstruction inst = instructions.get(i);
-                    inst.forEachState((op, info) -> info.finish(op, frameMap));
-                }
-
             }
         }
 
         /**
          * Merge outSet with in-set of successors.
          */
-        private boolean updateOutBlock(AbstractBlock<?> block) {
+        private boolean updateOutBlock(AbstractBlockBase<?> block) {
             ReferenceMap union = frameMap.initReferenceMap(true);
             block.getSuccessors().forEach(succ -> union.updateUnion(liveInMap.get(succ)));
             ReferenceMap outSet = liveOutMap.get(block);
@@ -109,7 +101,7 @@ public final class LocationMarker extends AllocationPhase {
             return false;
         }
 
-        private void processBlock(AbstractBlock<?> block, Deque<AbstractBlock<?>> worklist) {
+        private void processBlock(AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
             if (updateOutBlock(block)) {
                 try (Indent indent = Debug.logAndIndent("handle block %s", block)) {
                     BlockClosure closure = new BlockClosure(liveOutMap.get(block).clone());

@@ -308,8 +308,8 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testFullyUnrolledLoop() {
         prepareGraph("testFullyUnrolledLoopSnippet", false);
-        new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(graph, context);
-        new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
+        new LoopFullUnrollPhase(new CanonicalizerPhase()).apply(graph, context);
+        new PartialEscapePhase(false, new CanonicalizerPhase()).apply(graph, context);
         Assert.assertEquals(1, returnNodes.size());
         Assert.assertTrue(returnNodes.get(0).result() instanceof AllocatedObjectNode);
         CommitAllocationNode commit = ((AllocatedObjectNode) returnNodes.get(0).result()).getCommit();

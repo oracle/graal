@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,22 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCTestOp> TYPE = LIRInstructionClass.create(SPARCTestOp.class);
 
     @Use({REG}) protected Value x;
     @Use({REG, CONST}) protected Value y;
 
     public SPARCTestOp(Value x, Value y) {
+        super(TYPE);
         this.x = x;
         this.y = y;
     }
@@ -51,10 +53,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                 case Char:
                 case Boolean:
                 case Int:
-                    new Andcc(asIntReg(x), asIntReg(y), g0).emit(masm);
+                    masm.andcc(asIntReg(x), asIntReg(y), g0);
                     break;
                 case Long:
-                    new Andcc(asLongReg(x), asLongReg(y), g0).emit(masm);
+                    masm.andcc(asLongReg(x), asLongReg(y), g0);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -66,10 +68,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                 case Char:
                 case Boolean:
                 case Int:
-                    new Andcc(asIntReg(x), crb.asIntConst(y), g0).emit(masm);
+                    masm.andcc(asIntReg(x), crb.asIntConst(y), g0);
                     break;
                 case Long:
-                    new Andcc(asLongReg(x), crb.asIntConst(y), g0).emit(masm);
+                    masm.andcc(asLongReg(x), crb.asIntConst(y), g0);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

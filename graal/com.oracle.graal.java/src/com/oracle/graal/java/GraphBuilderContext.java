@@ -86,4 +86,6 @@ public interface GraphBuilderContext {
     }
 
     GuardingNode getCurrentBlockGuard();
+
+    BailoutException bailout(String string);
 }

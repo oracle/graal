@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.calc.*;
 @NodeInfo
 public abstract class AbstractLocalNode extends FloatingNode {
 
-    public static final NodeClass<AbstractLocalNode> TYPE = NodeClass.get(AbstractLocalNode.class);
+    public static final NodeClass<AbstractLocalNode> TYPE = NodeClass.create(AbstractLocalNode.class);
     protected final int index;
 
     protected AbstractLocalNode(NodeClass<? extends AbstractLocalNode> c, int index, Stamp stamp) {

@@ -31,15 +31,15 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.truffle.nodes.asserts.*;
+import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Macro node for method CompilerDirectives#unsafeCast.
  */
 @NodeInfo
-public final class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Simplifiable {
+public final class UnsafeTypeCastMacroNode extends MacroStateSplitNode implements Simplifiable {
 
-    public static final NodeClass<UnsafeTypeCastMacroNode> TYPE = NodeClass.get(UnsafeTypeCastMacroNode.class);
+    public static final NodeClass<UnsafeTypeCastMacroNode> TYPE = NodeClass.create(UnsafeTypeCastMacroNode.class);
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int CLASS_ARGUMENT_INDEX = 1;
     private static final int CONDITION_ARGUMENT_INDEX = 2;
@@ -47,7 +47,7 @@ public final class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode im
     private static final int ARGUMENT_COUNT = 4;
 
     public UnsafeTypeCastMacroNode(Invoke invoke) {
-        super(TYPE, invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
+        super(TYPE, invoke);
         assert arguments.size() == ARGUMENT_COUNT;
     }
 

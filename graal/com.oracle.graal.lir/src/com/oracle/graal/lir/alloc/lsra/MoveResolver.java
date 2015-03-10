@@ -203,7 +203,7 @@ final class MoveResolver {
         AllocatableValue fromOpr = fromInterval.operand;
         AllocatableValue toOpr = toInterval.operand;
 
-        insertionBuffer.append(insertIdx, allocator.ir.getSpillMoveFactory().createMove(toOpr, fromOpr));
+        insertionBuffer.append(insertIdx, allocator.getSpillMoveFactory().createMove(toOpr, fromOpr));
 
         Debug.log("insert move from %s to %s at %d", fromInterval, toInterval, insertIdx);
     }
@@ -213,7 +213,7 @@ final class MoveResolver {
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
-        insertionBuffer.append(insertIdx, allocator.ir.getSpillMoveFactory().createMove(toOpr, fromOpr));
+        insertionBuffer.append(insertIdx, allocator.getSpillMoveFactory().createMove(toOpr, fromOpr));
 
         Debug.log("insert move from value %s to %s at %d", fromOpr, toInterval, insertIdx);
     }

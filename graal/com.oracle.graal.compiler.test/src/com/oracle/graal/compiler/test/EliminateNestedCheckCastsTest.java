@@ -110,7 +110,7 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
         try (Scope s = Debug.scope("NestedCheckCastsTest", graph)) {
             Debug.dump(graph, "After parsing: " + snippet);
             Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
-            new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+            new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
             Assert.assertEquals(afterCanon, graph.getNodes().filter(CheckCastNode.class).count());
             return graph;
         } catch (Throwable e) {

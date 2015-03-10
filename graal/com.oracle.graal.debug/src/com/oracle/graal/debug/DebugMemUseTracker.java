@@ -36,10 +36,6 @@ import com.sun.management.*;
  */
 public interface DebugMemUseTracker {
 
-    public interface Closeable extends AutoCloseable {
-        void close();
-    }
-
     /**
      * Creates a point from which memory usage will be recorded if memory use tracking is
      * {@linkplain Debug#isMemUseTrackingEnabled() enabled}.
@@ -47,7 +43,7 @@ public interface DebugMemUseTracker {
      * @return an object that must be closed once the activity has completed to add the memory used
      *         since this call to the total for this tracker
      */
-    Closeable start();
+    DebugCloseable start();
 
     /**
      * Gets the current value of this tracker.

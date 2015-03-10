@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public final class MathPowNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {
 
-    public static final NodeClass<MathPowNode> TYPE = NodeClass.get(MathPowNode.class);
+    public static final NodeClass<MathPowNode> TYPE = NodeClass.create(MathPowNode.class);
 
     public MathPowNode(Invoke i) {
         super(TYPE, i);

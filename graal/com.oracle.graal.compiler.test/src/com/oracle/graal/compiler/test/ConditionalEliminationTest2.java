@@ -31,10 +31,11 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**
- * Collection of tests for {@link com.oracle.graal.phases.common.ConditionalEliminationPhase}
- * including those that triggered bugs in this phase.
+ * Collection of tests for
+ * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} including those that
+ * triggered bugs in this phase.
  */
-public class ConditionalEliminationTest extends GraalCompilerTest {
+public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase {
 
     public static Object field;
 
@@ -92,13 +93,13 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     public void testRedundantCompares() {
         StructuredGraph graph = parseEager("testRedundantComparesSnippet", AllowAssumptions.YES);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         PhaseContext context = new PhaseContext(getProviders());
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
         new FloatingReadPhase().apply(graph);
-        new ConditionalEliminationPhase().apply(graph, context);
+        new DominatorConditionalEliminationPhase(true).apply(graph, context);
         canonicalizer.apply(graph, context);
 
         assertDeepEquals(1, graph.getNodes().filter(GuardNode.class).count());
@@ -112,16 +113,15 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore
     public void testInstanceOfCheckCastLowered() {
         StructuredGraph graph = parseEager("testInstanceOfCheckCastSnippet", AllowAssumptions.YES);
 
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         PhaseContext context = new PhaseContext(getProviders());
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new ConditionalEliminationPhase().apply(graph, context);
+        new DominatorConditionalEliminationPhase(true).apply(graph, context);
         canonicalizer.apply(graph, context);
 
         assertDeepEquals(0, graph.getNodes().filter(GuardNode.class).count());

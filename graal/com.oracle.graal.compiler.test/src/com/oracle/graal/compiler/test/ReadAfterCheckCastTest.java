@@ -83,7 +83,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             // structure changes significantly
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             PhaseContext context = new PhaseContext(getProviders());
-            CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
             new OptimizeGuardAnchorsPhase().apply(graph);

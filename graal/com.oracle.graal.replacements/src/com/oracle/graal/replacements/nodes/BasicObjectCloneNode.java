@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {
 
-    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.get(BasicObjectCloneNode.class);
+    public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
 
     protected BasicObjectCloneNode(NodeClass<? extends BasicObjectCloneNode> c, Invoke invoke) {
         super(c, invoke);
@@ -64,7 +64,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     * 
+     *
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     protected static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {

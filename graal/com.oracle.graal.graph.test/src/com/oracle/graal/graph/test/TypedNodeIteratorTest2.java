@@ -34,7 +34,7 @@ public class TypedNodeIteratorTest2 {
     @NodeInfo
     static class NodeA extends Node implements TestNodeInterface {
 
-        public static final NodeClass<NodeA> TYPE = NodeClass.get(NodeA.class);
+        public static final NodeClass<NodeA> TYPE = NodeClass.create(NodeA.class);
         protected final String name;
 
         public NodeA(String name) {
@@ -53,7 +53,7 @@ public class TypedNodeIteratorTest2 {
 
     @NodeInfo
     static class NodeB extends NodeA implements IterableNodeType {
-        public static final NodeClass<NodeB> TYPE = NodeClass.get(NodeB.class);
+        public static final NodeClass<NodeB> TYPE = NodeClass.create(NodeB.class);
 
         public NodeB(String name) {
             this(TYPE, name);
@@ -67,7 +67,7 @@ public class TypedNodeIteratorTest2 {
 
     @NodeInfo
     static class NodeC extends NodeB {
-        public static final NodeClass<NodeC> TYPE = NodeClass.get(NodeC.class);
+        public static final NodeClass<NodeC> TYPE = NodeClass.create(NodeC.class);
 
         public NodeC(String name) {
             this(TYPE, name);
@@ -81,7 +81,7 @@ public class TypedNodeIteratorTest2 {
 
     @NodeInfo
     static final class NodeD extends NodeC {
-        public static final NodeClass<NodeD> TYPE = NodeClass.get(NodeD.class);
+        public static final NodeClass<NodeD> TYPE = NodeClass.create(NodeD.class);
 
         public NodeD(String name) {
             super(TYPE, name);

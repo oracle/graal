@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class IsCompilationConstantNode extends FloatingNode implements Lowerable, Canonicalizable {
 
-    public static final NodeClass<IsCompilationConstantNode> TYPE = NodeClass.get(IsCompilationConstantNode.class);
+    public static final NodeClass<IsCompilationConstantNode> TYPE = NodeClass.create(IsCompilationConstantNode.class);
 
     @Input ValueNode value;
 

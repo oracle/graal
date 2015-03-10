@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access {
-    public static final NodeClass<FixedAccessNode> TYPE = NodeClass.get(FixedAccessNode.class);
+    public static final NodeClass<FixedAccessNode> TYPE = NodeClass.create(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
     @Input protected ValueNode object;

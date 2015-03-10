@@ -226,8 +226,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
-        invoke.asNode().replaceAtUsages(returnValuePhi);
-        invoke.asNode().replaceAndDelete(null);
+        if (returnValuePhi != null) {
+            invoke.asNode().replaceAtUsages(returnValuePhi);
+        }
+        invoke.asNode().safeDelete();
 
         ArrayList<GuardedValueNode> replacementNodes = new ArrayList<>();
 
@@ -276,7 +278,10 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                 metricInliningTailDuplication.increment();
                 Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
                 PhaseContext phaseContext = new PhaseContext(providers);
-                CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
+                CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+                if (ImmutableCode.getValue()) {
+                    canonicalizer.disableReadCanonicalization();
+                }
                 TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
             }
         }
@@ -464,7 +469,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
         calleeEntryNode.setNext(duplicatedInvoke.asNode());
 
-        AbstractEndNode endNode = graph.add(new EndNode());
+        EndNode endNode = graph.add(new EndNode());
         duplicatedInvoke.setNext(endNode);
         returnMerge.addForwardEnd(endNode);
 
@@ -499,7 +504,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             // set new state (pop old exception object, push new one)
             newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(Kind.Object, newExceptionEdge));
 
-            AbstractEndNode endNode = graph.add(new EndNode());
+            EndNode endNode = graph.add(new EndNode());
             newExceptionEdge.setNext(endNode);
             exceptionMerge.addForwardEnd(endNode);
             exceptionObjectPhi.addInput(newExceptionEdge);

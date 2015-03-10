@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class BitScanReverseNode extends UnaryNode implements LIRLowerable {
 
-    public static final NodeClass<BitScanReverseNode> TYPE = NodeClass.get(BitScanReverseNode.class);
+    public static final NodeClass<BitScanReverseNode> TYPE = NodeClass.create(BitScanReverseNode.class);
 
     public BitScanReverseNode(ValueNode value) {
         super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);

@@ -24,8 +24,6 @@ package com.oracle.graal.debug;
 
 import java.util.concurrent.*;
 
-import com.oracle.graal.debug.internal.*;
-
 /**
  * A timer for some activity of interest. A timer should be deployed using the try-with-resources
  * pattern:
@@ -45,7 +43,7 @@ public interface DebugTimer {
      * @return an object that must be closed once the activity has completed to add the elapsed time
      *         since this call to the total for this timer
      */
-    TimerCloseable start();
+    DebugCloseable start();
 
     /**
      * Sets a flag determining if this timer is only enabled if timing is

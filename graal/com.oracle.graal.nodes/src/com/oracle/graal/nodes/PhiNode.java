@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.calc.*;
 @NodeInfo
 public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
-    public static final NodeClass<PhiNode> TYPE = NodeClass.get(PhiNode.class);
+    public static final NodeClass<PhiNode> TYPE = NodeClass.create(PhiNode.class);
     @Input(InputType.Association) protected AbstractMergeNode merge;
 
     protected PhiNode(NodeClass<? extends PhiNode> c, Stamp stamp, AbstractMergeNode merge) {
@@ -145,7 +145,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
     @NodeInfo
     static final class MultipleValuesNode extends ValueNode {
 
-        public static final NodeClass<MultipleValuesNode> TYPE = NodeClass.get(MultipleValuesNode.class);
+        public static final NodeClass<MultipleValuesNode> TYPE = NodeClass.create(MultipleValuesNode.class);
 
         public MultipleValuesNode() {
             super(TYPE, null);

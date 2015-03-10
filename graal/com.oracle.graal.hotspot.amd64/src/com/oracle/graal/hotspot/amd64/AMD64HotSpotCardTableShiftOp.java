@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,18 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.hotspot.HotSpotGraalRuntime;
 
-public class AMD64HotSpotCardTableShiftOp extends AMD64LIRInstruction {
+public final class AMD64HotSpotCardTableShiftOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64HotSpotCardTableShiftOp> TYPE = LIRInstructionClass.create(AMD64HotSpotCardTableShiftOp.class);
 
     @Def({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue result;
 
     public AMD64HotSpotCardTableShiftOp(AllocatableValue result) {
+        super(TYPE);
         this.result = result;
     }
 

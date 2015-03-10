@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,14 @@ import com.oracle.graal.lir.asm.*;
  * {@link InstalledCode} instance.
  */
 @Opcode("TAILCALL")
-public class AMD64TailcallOp extends AMD64LIRInstruction {
+public final class AMD64TailcallOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64TailcallOp> TYPE = LIRInstructionClass.create(AMD64TailcallOp.class);
 
     @Use protected Value target;
     @Alive protected Value[] parameters;
 
     public AMD64TailcallOp(Value[] parameters, Value target) {
+        super(TYPE);
         this.target = target;
         this.parameters = parameters;
     }

@@ -27,17 +27,24 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 
 public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
 
     public static final class AllocationContext {
+        private final SpillMoveFactory spillMoveFactory;
+
+        public AllocationContext(SpillMoveFactory spillMoveFactory) {
+            this.spillMoveFactory = spillMoveFactory;
+        }
     }
 
     @Override
-    protected final <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
-        run(target, lirGenRes, codeEmittingOrder, linearScanOrder);
+    protected final <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, AllocationContext context) {
+        run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context.spillMoveFactory);
     }
 
-    protected abstract <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder);
+    protected abstract <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    SpillMoveFactory spillMoveFactory);
 
 }

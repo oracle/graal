@@ -41,7 +41,6 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
@@ -264,7 +263,7 @@ public class ReplacementsImpl implements Replacements {
 
         StructuredGraph graph = UseSnippetGraphCache ? graphs.get(method) : null;
         if (graph == null) {
-            try (TimerCloseable a = SnippetPreparationTime.start()) {
+            try (DebugCloseable a = SnippetPreparationTime.start()) {
                 FrameStateProcessing frameStateProcessing = method.getAnnotation(Snippet.class).removeAllFrameStates() ? FrameStateProcessing.Removal
                                 : FrameStateProcessing.CollapseFrameForSingleSideEffect;
                 StructuredGraph newGraph = makeGraph(method, recursiveEntry, inliningPolicy(method), frameStateProcessing);
@@ -290,7 +289,7 @@ public class ReplacementsImpl implements Replacements {
         // Do deferred intrinsification of node intrinsics
 
         nodeIntrinsificationPhase.apply(specializedSnippet);
-        new CanonicalizerPhase(true).apply(specializedSnippet, new PhaseContext(providers));
+        new CanonicalizerPhase().apply(specializedSnippet, new PhaseContext(providers));
         NodeIntrinsificationVerificationPhase.verify(specializedSnippet);
     }
 
@@ -541,7 +540,7 @@ public class ReplacementsImpl implements Replacements {
             }
             int sideEffectCount = 0;
             assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
-            new ConvertDeoptimizeToGuardPhase().apply(graph);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, null);
             assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 
             switch (frameStateProcessing) {
@@ -630,7 +629,7 @@ public class ReplacementsImpl implements Replacements {
                 afterParsing(graph);
 
                 if (OptCanonicalizer.getValue()) {
-                    new CanonicalizerPhase(true).apply(graph, new PhaseContext(replacements.providers));
+                    new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -662,7 +661,7 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void afterInline(StructuredGraph caller, StructuredGraph callee, Object beforeInlineData) {
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(caller, new PhaseContext(replacements.providers));
+                new CanonicalizerPhase().apply(caller, new PhaseContext(replacements.providers));
             }
         }
 
@@ -673,7 +672,7 @@ public class ReplacementsImpl implements Replacements {
             replacements.nodeIntrinsificationPhase.apply(graph);
             new DeadCodeEliminationPhase(Optional).apply(graph);
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(graph, new PhaseContext(replacements.providers));
+                new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
             }
         }
 

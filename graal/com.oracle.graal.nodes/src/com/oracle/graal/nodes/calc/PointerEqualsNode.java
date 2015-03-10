@@ -22,18 +22,20 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
-public class PointerEqualsNode extends CompareNode {
+public class PointerEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {
 
-    public static final NodeClass<PointerEqualsNode> TYPE = NodeClass.get(PointerEqualsNode.class);
+    public static final NodeClass<PointerEqualsNode> TYPE = NodeClass.create(PointerEqualsNode.class);
 
     public PointerEqualsNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
@@ -71,5 +73,43 @@ public class PointerEqualsNode extends CompareNode {
     @Override
     protected CompareNode duplicateModified(ValueNode newX, ValueNode newY) {
         return new PointerEqualsNode(newX, newY);
+    }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        if (!negated) {
+            Stamp xStamp = getX().stamp();
+            Stamp newStamp = xStamp.join(getY().stamp());
+            if (!newStamp.equals(xStamp)) {
+                return newStamp;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        if (!negated) {
+            Stamp yStamp = getY().stamp();
+            Stamp newStamp = yStamp.join(getX().stamp());
+            if (!newStamp.equals(yStamp)) {
+                return newStamp;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof ObjectStamp && yStampGeneric instanceof ObjectStamp) {
+            ObjectStamp xStamp = (ObjectStamp) xStampGeneric;
+            ObjectStamp yStamp = (ObjectStamp) yStampGeneric;
+            if (xStamp.alwaysDistinct(yStamp)) {
+                return TriState.FALSE;
+            } else if (xStamp.neverDistinct(yStamp)) {
+                return TriState.TRUE;
+            }
+        }
+        return TriState.UNKNOWN;
     }
 }

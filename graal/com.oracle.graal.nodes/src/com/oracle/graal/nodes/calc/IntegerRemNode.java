@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "%")
 public final class IntegerRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
-    public static final NodeClass<IntegerRemNode> TYPE = NodeClass.get(IntegerRemNode.class);
+    public static final NodeClass<IntegerRemNode> TYPE = NodeClass.create(IntegerRemNode.class);
 
     public IntegerRemNode(ValueNode x, ValueNode y) {
         super(TYPE, IntegerStamp.OPS.getRem().foldStamp(x.stamp(), y.stamp()), x, y);

@@ -38,7 +38,7 @@ import com.oracle.truffle.api.*;
 @NodeInfo(shortName = "|*H|")
 public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {
 
-    public static final NodeClass<UnsignedMulHighNode> TYPE = NodeClass.get(UnsignedMulHighNode.class);
+    public static final NodeClass<UnsignedMulHighNode> TYPE = NodeClass.create(UnsignedMulHighNode.class);
 
     public UnsignedMulHighNode(ValueNode x, ValueNode y) {
         this((IntegerStamp) x.stamp().unrestricted(), x, y);

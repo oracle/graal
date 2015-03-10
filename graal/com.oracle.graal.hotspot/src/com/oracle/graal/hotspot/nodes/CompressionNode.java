@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "{p#op/s}")
 public final class CompressionNode extends UnaryNode implements ConvertNode, LIRLowerable {
 
-    public static final NodeClass<CompressionNode> TYPE = NodeClass.get(CompressionNode.class);
+    public static final NodeClass<CompressionNode> TYPE = NodeClass.create(CompressionNode.class);
 
     public enum CompressionOp {
         Compress,

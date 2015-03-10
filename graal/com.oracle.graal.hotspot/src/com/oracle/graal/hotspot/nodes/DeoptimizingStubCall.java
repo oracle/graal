@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class DeoptimizingStubCall extends DeoptimizingFixedWithNextNode {
 
-    public static final NodeClass<DeoptimizingStubCall> TYPE = NodeClass.get(DeoptimizingStubCall.class);
+    public static final NodeClass<DeoptimizingStubCall> TYPE = NodeClass.create(DeoptimizingStubCall.class);
 
     public DeoptimizingStubCall(NodeClass<? extends DeoptimizingStubCall> c, Stamp stamp) {
         super(c, stamp);

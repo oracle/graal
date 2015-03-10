@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,8 +36,8 @@ import com.oracle.graal.nodes.*;
  * both x and y.
  */
 @NodeInfo
-public final class IntegerTestNode extends BinaryOpLogicNode {
-    public static final NodeClass<IntegerTestNode> TYPE = NodeClass.get(IntegerTestNode.class);
+public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCommutative<ValueNode> {
+    public static final NodeClass<IntegerTestNode> TYPE = NodeClass.create(IntegerTestNode.class);
 
     public IntegerTestNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
@@ -56,5 +58,54 @@ public final class IntegerTestNode extends BinaryOpLogicNode {
             }
         }
         return this;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        Stamp xStampGeneric = this.getX().stamp();
+        Stamp yStampGeneric = this.getY().stamp();
+        return getSucceedingStamp(negated, xStampGeneric, yStampGeneric);
+    }
+
+    private static Stamp getSucceedingStamp(boolean negated, Stamp xStampGeneric, Stamp otherStampGeneric) {
+        if (xStampGeneric instanceof IntegerStamp && otherStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            IntegerStamp otherStamp = (IntegerStamp) otherStampGeneric;
+            if (negated) {
+                if (Long.bitCount(otherStamp.upMask()) == 1) {
+                    long newDownMask = xStamp.downMask() | otherStamp.upMask();
+                    if (xStamp.downMask() != newDownMask) {
+                        return IntegerStamp.stampForMask(xStamp.getBits(), newDownMask, xStamp.upMask()).join(xStamp);
+                    }
+                }
+            } else {
+                long restrictedUpMask = ((~otherStamp.downMask()) & xStamp.upMask());
+                if (xStamp.upMask() != restrictedUpMask) {
+                    return IntegerStamp.stampForMask(xStamp.getBits(), xStamp.downMask(), restrictedUpMask).join(xStamp);
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        Stamp xStampGeneric = this.getX().stamp();
+        Stamp yStampGeneric = this.getY().stamp();
+        return getSucceedingStamp(negated, yStampGeneric, xStampGeneric);
+    }
+
+    @Override
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof IntegerStamp && yStampGeneric instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
+            IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
+            if ((xStamp.upMask() & yStamp.upMask()) == 0) {
+                return TriState.TRUE;
+            } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
+                return TriState.FALSE;
+            }
+        }
+        return TriState.UNKNOWN;
     }
 }

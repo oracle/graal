@@ -27,6 +27,7 @@ import static com.oracle.graal.graph.Graph.*;
 
 import java.lang.annotation.*;
 import java.util.*;
+import java.util.function.*;
 
 import sun.misc.*;
 
@@ -286,7 +287,16 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null input edges.
      */
     public NodeClassIterable inputs() {
-        return getNodeClass().getEdges(Inputs).getIterable(this);
+        return nodeClass.getInputEdges().getIterable(this);
+    }
+
+    /**
+     * Applies the given consumer to all inputs of this node.
+     *
+     * @param consumer the consumer to be applied to the inputs
+     */
+    public void acceptInputs(BiConsumer<Node, Node> consumer) {
+        nodeClass.getInputEdges().accept(this, consumer);
     }
 
     /**
@@ -296,7 +306,16 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeClassIterable iterable} for all non-null successor edges.
      */
     public NodeClassIterable successors() {
-        return getNodeClass().getEdges(Successors).getIterable(this);
+        return nodeClass.getSuccessorEdges().getIterable(this);
+    }
+
+    /**
+     * Applies the given consumer to all successors of this node.
+     *
+     * @param consumer the consumer to be applied to the inputs
+     */
+    public void acceptSuccessors(BiConsumer<Node, Node> consumer) {
+        nodeClass.getSuccessorEdges().accept(this, consumer);
     }
 
     /**
@@ -327,6 +346,24 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Checks whether this node has usages.
+     */
+    public final boolean hasUsages() {
+        return this.usage0 != null;
+    }
+
+    void reverseUsageOrder() {
+        List<Node> snapshot = this.usages().snapshot();
+        for (Node n : snapshot) {
+            this.removeUsage(n);
+        }
+        Collections.reverse(snapshot);
+        for (Node n : snapshot) {
+            this.addUsage(n);
+        }
+    }
+
+    /**
      * Adds a given node to this node's {@linkplain #usages() usages}.
      *
      * @param node the node to add
@@ -342,7 +379,9 @@ public abstract class Node implements Cloneable, Formattable {
             if (length == 0) {
                 extraUsages = new Node[4];
             } else if (extraUsagesCount == length) {
-                extraUsages = Arrays.copyOf(extraUsages, length * 2 + 1);
+                Node[] newExtraUsages = new Node[length * 2 + 1];
+                System.arraycopy(extraUsages, 0, newExtraUsages, 0, length);
+                extraUsages = newExtraUsages;
             }
             extraUsages[extraUsagesCount++] = node;
         }
@@ -381,7 +420,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @param node the node to remove
      * @return whether or not {@code usage} was in the usage list
      */
-    private boolean removeUsage(Node node) {
+    public boolean removeUsage(Node node) {
         assert node != null;
         // It is critical that this method maintains the invariant that
         // the usage list has no null element preceding a non-null element
@@ -401,14 +440,6 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
         return false;
-    }
-
-    private void clearUsages() {
-        incUsageModCount();
-        usage0 = null;
-        usage1 = null;
-        extraUsages = NO_NODES;
-        extraUsagesCount = 0;
     }
 
     public final Node predecessor() {
@@ -499,12 +530,18 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);
-        for (Node input : inputs()) {
-            updateUsages(null, input);
-        }
-        for (Node successor : successors()) {
-            updatePredecessor(null, successor);
-        }
+        this.acceptInputs((n, i) -> {
+            if (!i.isAlive()) {
+                throw new IllegalStateException(String.format("Input %s of newly created node %s is not alive.", i, n));
+            }
+            n.updateUsages(null, i);
+        });
+        this.acceptSuccessors((n, s) -> {
+            if (!s.isAlive()) {
+                throw new IllegalStateException(String.format("Successor %s of newly created node %s is not alive.", s, n));
+            }
+            n.updatePredecessor(null, s);
+        });
     }
 
     public final NodeClass<? extends Node> getNodeClass() {
@@ -523,17 +560,27 @@ public abstract class Node implements Cloneable, Formattable {
         return true;
     }
 
-    public void replaceAtUsages(Node other) {
+    public final void replaceAtUsages(Node other) {
+        replaceAtUsages(other, null);
+    }
+
+    public final void replaceAtUsages(Node other, Predicate<Node> filter) {
         assert checkReplaceWith(other);
-        for (Node usage : usages()) {
-            boolean result = usage.getNodeClass().getEdges(Inputs).replaceFirst(usage, this, other);
-            assert assertTrue(result, "not found in inputs, usage: %s", usage);
-            if (other != null) {
-                maybeNotifyInputChanged(usage);
-                other.addUsage(usage);
+        int i = 0;
+        while (i < this.getUsageCount()) {
+            Node usage = this.getUsageAt(i);
+            if (filter == null || filter.test(usage)) {
+                boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
+                assert assertTrue(result, "not found in inputs, usage: %s", usage);
+                if (other != null) {
+                    maybeNotifyInputChanged(usage);
+                    other.addUsage(usage);
+                }
+                this.movUsageFromEndTo(i);
+            } else {
+                ++i;
             }
         }
-        clearUsages();
     }
 
     public Node getUsageAt(int index) {
@@ -552,7 +599,7 @@ public abstract class Node implements Cloneable, Formattable {
         while (index < this.getUsageCount()) {
             Node usage = getUsageAt(index);
             if (usagePredicate.apply(usage)) {
-                boolean result = usage.getNodeClass().getEdges(Inputs).replaceFirst(usage, this, other);
+                boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
                 if (other != null) {
                     maybeNotifyInputChanged(usage);
@@ -595,7 +642,7 @@ public abstract class Node implements Cloneable, Formattable {
         if (graph != null) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
+            if (listener != null && node.isAlive()) {
                 listener.usagesDroppedToZero(node);
             }
             if (Fingerprint.ENABLED) {
@@ -607,7 +654,7 @@ public abstract class Node implements Cloneable, Formattable {
     public void replaceAtPredecessor(Node other) {
         assert checkReplaceWith(other);
         if (predecessor != null) {
-            boolean result = predecessor.getNodeClass().getEdges(Successors).replaceFirst(predecessor, this, other);
+            boolean result = predecessor.getNodeClass().getSuccessorEdges().replaceFirst(predecessor, this, other);
             assert assertTrue(result, "not found in successors, predecessor: %s", predecessor);
             predecessor.updatePredecessor(this, other);
         }
@@ -615,22 +662,22 @@ public abstract class Node implements Cloneable, Formattable {
 
     public void replaceAndDelete(Node other) {
         assert checkReplaceWith(other);
-        if (other != null) {
-            clearSuccessors();
-            replaceAtUsages(other);
-            replaceAtPredecessor(other);
-        }
+        assert other != null;
+        clearInputs();
+        clearSuccessors();
+        replaceAtUsages(other);
+        replaceAtPredecessor(other);
         safeDelete();
     }
 
     public void replaceFirstSuccessor(Node oldSuccessor, Node newSuccessor) {
-        if (getNodeClass().getEdges(Successors).replaceFirst(this, oldSuccessor, newSuccessor)) {
+        if (nodeClass.getSuccessorEdges().replaceFirst(this, oldSuccessor, newSuccessor)) {
             updatePredecessor(oldSuccessor, newSuccessor);
         }
     }
 
     public void replaceFirstInput(Node oldInput, Node newInput) {
-        if (getNodeClass().getEdges(Inputs).replaceFirst(this, oldInput, newInput)) {
+        if (nodeClass.getInputEdges().replaceFirst(this, oldInput, newInput)) {
             updateUsages(oldInput, newInput);
         }
     }
@@ -648,7 +695,7 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
 
         unregisterInputs();
-        getNodeClass().getEdges(Inputs).clear(this);
+        getNodeClass().getInputEdges().clear(this);
     }
 
     private boolean removeThisFromUsages(Node n) {
@@ -656,17 +703,14 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void unregisterSuccessors() {
-        for (Node successor : successors()) {
-            assert assertTrue(successor.predecessor == this, "wrong predecessor in old successor (%s): %s", successor, successor.predecessor);
-            successor.predecessor = null;
-        }
+        this.acceptSuccessors((n, successor) -> successor.predecessor = null);
     }
 
     public void clearSuccessors() {
         assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
 
         unregisterSuccessors();
-        getNodeClass().getEdges(Successors).clear(this);
+        getNodeClass().getSuccessorEdges().clear(this);
     }
 
     private boolean checkDeletion() {
@@ -683,6 +727,10 @@ public abstract class Node implements Cloneable, Formattable {
         assert checkDeletion();
         unregisterInputs();
         unregisterSuccessors();
+        markDeleted();
+    }
+
+    public void markDeleted() {
         graph.unregister(this);
         id = DELETED_ID_START - id;
         assert isDeleted();

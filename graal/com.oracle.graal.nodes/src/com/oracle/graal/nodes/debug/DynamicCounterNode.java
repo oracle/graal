@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<DynamicCounterNode> TYPE = NodeClass.get(DynamicCounterNode.class);
+    public static final NodeClass<DynamicCounterNode> TYPE = NodeClass.create(DynamicCounterNode.class);
     @Input ValueNode increment;
 
     protected final String name;

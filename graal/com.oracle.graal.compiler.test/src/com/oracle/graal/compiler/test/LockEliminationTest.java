@@ -62,7 +62,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedSnippet", new A(), new A());
 
         StructuredGraph graph = getGraph("testSynchronizedSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         new LockEliminationPhase().apply(graph);
         assertDeepEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertDeepEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -80,7 +80,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedMethodSnippet", new A());
 
         StructuredGraph graph = getGraph("testSynchronizedMethodSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders()));
+        new CanonicalizerPhase().apply(graph, new PhaseContext(getProviders()));
         new LockEliminationPhase().apply(graph);
         assertDeepEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertDeepEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -90,11 +90,11 @@ public class LockEliminationTest extends GraalCompilerTest {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new CanonicalizerPhase(true).apply(graph, context);
-        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-        new CanonicalizerPhase(true).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
+        new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
-        new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         new ValueAnchorCleanupPhase().apply(graph);
         new LockEliminationPhase().apply(graph);
         return graph;

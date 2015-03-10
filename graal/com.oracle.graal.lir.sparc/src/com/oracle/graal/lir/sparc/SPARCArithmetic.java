@@ -24,18 +24,24 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.graal.sparc.*;
 
 public enum SPARCArithmetic {
@@ -56,13 +62,15 @@ public enum SPARCArithmetic {
     /**
      * Unary operation with separate source and destination operand.
      */
-    public static class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<Unary2Op> TYPE = LIRInstructionClass.create(Unary2Op.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -78,7 +86,8 @@ public enum SPARCArithmetic {
      * Binary operation with two operands. The first source operand is combined with the
      * destination. The second source operand must be a register.
      */
-    public static class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<BinaryRegReg> TYPE = LIRInstructionClass.create(BinaryRegReg.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected Value result;
@@ -91,6 +100,7 @@ public enum SPARCArithmetic {
         }
 
         public BinaryRegReg(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -113,7 +123,8 @@ public enum SPARCArithmetic {
     /**
      * Binary operation with single source/destination operand and one constant.
      */
-    public static class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<BinaryRegConst> TYPE = LIRInstructionClass.create(BinaryRegConst.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -126,6 +137,7 @@ public enum SPARCArithmetic {
         }
 
         public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, JavaConstant y, LIRFrameState state) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -148,7 +160,8 @@ public enum SPARCArithmetic {
     /**
      * Special LIR instruction as it requires a bunch of scratch registers.
      */
-    public static class RemOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class RemOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<RemOp> TYPE = LIRInstructionClass.create(RemOp.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected Value result;
@@ -159,6 +172,7 @@ public enum SPARCArithmetic {
         @State protected LIRFrameState state;
 
         public RemOp(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state, LIRGeneratorTool gen) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -183,7 +197,8 @@ public enum SPARCArithmetic {
     /**
      * Calculates the product and condition code for long multiplication of long values.
      */
-    public static class SPARCLMulccOp extends SPARCLIRInstruction {
+    public static final class SPARCLMulccOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<SPARCLMulccOp> TYPE = LIRInstructionClass.create(SPARCLMulccOp.class);
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value x;
         @Alive({REG}) protected Value y;
@@ -191,6 +206,7 @@ public enum SPARCArithmetic {
         @Temp({REG}) protected Value scratch2;
 
         public SPARCLMulccOp(Value result, Value x, Value y, LIRGeneratorTool gen) {
+            super(TYPE);
             this.result = result;
             this.x = x;
             this.y = y;
@@ -201,24 +217,24 @@ public enum SPARCArithmetic {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             Label noOverflow = new Label();
-            new Mulx(asLongReg(x), asLongReg(y), asLongReg(result)).emit(masm);
+            masm.mulx(asLongReg(x), asLongReg(y), asLongReg(result));
 
             // Calculate the upper 64 bit signed := (umulxhi product - (x{63}&y + y{63}&x))
-            new Umulxhi(asLongReg(x), asLongReg(y), asLongReg(scratch1)).emit(masm);
-            new Srax(asLongReg(x), 63, asLongReg(scratch2)).emit(masm);
-            new And(asLongReg(scratch2), asLongReg(y), asLongReg(scratch2)).emit(masm);
-            new Sub(asLongReg(scratch1), asLongReg(scratch2), asLongReg(scratch1)).emit(masm);
+            masm.umulxhi(asLongReg(x), asLongReg(y), asLongReg(scratch1));
+            masm.srax(asLongReg(x), 63, asLongReg(scratch2));
+            masm.and(asLongReg(scratch2), asLongReg(y), asLongReg(scratch2));
+            masm.sub(asLongReg(scratch1), asLongReg(scratch2), asLongReg(scratch1));
 
-            new Srax(asLongReg(y), 63, asLongReg(scratch2)).emit(masm);
-            new And(asLongReg(scratch2), asLongReg(x), asLongReg(scratch2)).emit(masm);
-            new Sub(asLongReg(scratch1), asLongReg(scratch2), asLongReg(scratch1)).emit(masm);
+            masm.srax(asLongReg(y), 63, asLongReg(scratch2));
+            masm.and(asLongReg(scratch2), asLongReg(x), asLongReg(scratch2));
+            masm.sub(asLongReg(scratch1), asLongReg(scratch2), asLongReg(scratch1));
 
             // Now construct the lower half and compare
-            new Srax(asLongReg(result), 63, asLongReg(scratch2)).emit(masm);
-            new Cmp(asLongReg(scratch1), asLongReg(scratch2)).emit(masm);
-            new Bpe(CC.Xcc, false, true, noOverflow).emit(masm);
-            new Nop().emit(masm);
-            new Wrccr(SPARC.g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT)).emit(masm);
+            masm.srax(asLongReg(result), 63, asLongReg(scratch2));
+            masm.cmp(asLongReg(scratch1), asLongReg(scratch2));
+            masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
+            masm.nop();
+            masm.wrccr(g0, 1 << (CCR_XCC_SHIFT + CCR_V_SHIFT));
             masm.bind(noOverflow);
         }
     }
@@ -231,86 +247,86 @@ public enum SPARCArithmetic {
         delaySlotLir.emitControlTransfer(crb, masm);
         switch (opcode) {
             case IADD:
-                new Add(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.add(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IADDCC:
-                new Addcc(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.addcc(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case ISUB:
-                new Sub(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.sub(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case ISUBCC:
-                new Subcc(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.subcc(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IMUL:
-                new Mulx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.mulx(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IMULCC:
                 throw GraalInternalError.unimplemented();
             case IDIV:
-                new Sdivx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.sdivx(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IUDIV:
-                new Udivx(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.udivx(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IAND:
-                new And(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.and(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case ISHL:
-                new Sll(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.sll(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case ISHR:
-                new Sra(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.sra(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IUSHR:
-                new Srl(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.srl(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IOR:
-                new Or(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.or(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IXOR:
-                new Xor(asIntReg(src1), constant, asIntReg(dst)).emit(masm);
+                masm.xor(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case LADD:
-                new Add(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.add(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LADDCC:
-                new Addcc(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.addcc(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LSUB:
-                new Sub(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.sub(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LSUBCC:
-                new Subcc(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.subcc(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LMUL:
-                new Mulx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.mulx(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LDIV:
                 exceptionOffset = masm.position();
-                new Sdivx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.sdivx(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LUDIV:
                 exceptionOffset = masm.position();
-                new Udivx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.udivx(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LAND:
-                new And(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.and(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LOR:
-                new Or(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.or(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LXOR:
-                new Xor(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.xor(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LSHL:
-                new Sllx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.sllx(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LSHR:
-                new Srax(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.srax(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case LUSHR:
-                new Srlx(asLongReg(src1), constant, asLongReg(dst)).emit(masm);
+                masm.srlx(asLongReg(src1), constant, asLongReg(dst));
                 break;
             case DAND: // Has no constant implementation in SPARC
             case FADD:
@@ -336,185 +352,185 @@ public enum SPARCArithmetic {
         switch (opcode) {
             case IADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Add(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.add(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IADDCC:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Addcc(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.addcc(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case ISUB:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sub(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.sub(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case ISUBCC:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Subcc(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.subcc(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IMUL:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IMULCC:
                 try (SPARCScratchRegister tmpScratch = SPARCScratchRegister.get()) {
                     Register tmp = tmpScratch.getRegister();
-                    new Mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                    masm.mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                     Label noOverflow = new Label();
-                    new Sra(asIntReg(dst), 0, tmp).emit(masm);
-                    new Xorcc(SPARC.g0, SPARC.g0, SPARC.g0).emit(masm);
-                    if (masm.hasFeature(CPUFeature.CBCOND)) {
-                        new CBcondx(ConditionFlag.Equal, tmp, asIntReg(dst), noOverflow).emit(masm);
+                    masm.sra(asIntReg(dst), 0, tmp);
+                    masm.xorcc(SPARC.g0, SPARC.g0, SPARC.g0);
+                    if (masm.hasFeature(CBCOND)) {
+                        masm.cbcondx(Equal, tmp, asIntReg(dst), noOverflow);
                         // Is necessary, otherwise we will have a penalty of 5 cycles in S3
-                        new Nop().emit(masm);
+                        masm.nop();
                     } else {
-                        new Cmp(tmp, asIntReg(dst)).emit(masm);
-                        new Bpe(CC.Xcc, noOverflow).emit(masm);
-                        new Nop().emit(masm);
+                        masm.cmp(tmp, asIntReg(dst));
+                        masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
+                        masm.nop();
                     }
-                    new Wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT)).emit(masm);
+                    masm.wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT));
                     masm.bind(noOverflow);
                 }
                 break;
             case IDIV:
-                new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
-                new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
+                masm.signx(asIntReg(src1), asIntReg(src1));
+                masm.signx(asIntReg(src2), asIntReg(src2));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
-                new Sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IUDIV:
-                new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
-                new Signx(asIntReg(src2), asIntReg(src2)).emit(masm);
+                masm.signx(asIntReg(src1), asIntReg(src1));
+                masm.signx(asIntReg(src2), asIntReg(src2));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
-                new Udivx(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.udivx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IAND:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new And(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.and(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IOR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Or(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.or(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IXOR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Xor(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.xor(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case ISHL:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sll(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.sll(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case ISHR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sra(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.sra(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IUSHR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srl(asIntReg(src1), asIntReg(src2), asIntReg(dst)).emit(masm);
+                masm.srl(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IREM:
                 throw GraalInternalError.unimplemented();
             case LADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Add(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.add(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LADDCC:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Addcc(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.addcc(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LSUB:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sub(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.sub(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LSUBCC:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Subcc(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.subcc(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LMUL:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LMULCC:
                 throw GraalInternalError.unimplemented();
             case LDIV:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
-                new Sdivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.sdivx(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LUDIV:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
-                new Udivx(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.udivx(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LAND:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new And(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.and(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LOR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Or(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.or(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LXOR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Xor(asLongReg(src1), asLongReg(src2), asLongReg(dst)).emit(masm);
+                masm.xor(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LSHL:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sllx(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
+                masm.sllx(asLongReg(src1), asIntReg(src2), asLongReg(dst));
                 break;
             case LSHR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srax(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
+                masm.srax(asLongReg(src1), asIntReg(src2), asLongReg(dst));
                 break;
             case LUSHR:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Srlx(asLongReg(src1), asIntReg(src2), asLongReg(dst)).emit(masm);
+                masm.srlx(asLongReg(src1), asIntReg(src2), asLongReg(dst));
                 break;
             case FADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fadds(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                masm.fadds(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst));
                 break;
             case FSUB:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fsubs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                masm.fsubs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst));
                 break;
             case FMUL:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 if (dst.getPlatformKind() == Kind.Double) {
-                    new Fsmuld(asFloatReg(src1), asFloatReg(src2), asDoubleReg(dst)).emit(masm);
+                    masm.fsmuld(asFloatReg(src1), asFloatReg(src2), asDoubleReg(dst));
                 } else if (dst.getPlatformKind() == Kind.Float) {
-                    new Fmuls(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                    masm.fmuls(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst));
                 }
                 break;
             case FDIV:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
-                new Fdivs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst)).emit(masm);
+                masm.fdivs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst));
                 break;
             case FREM:
                 throw GraalInternalError.unimplemented();
             case DADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Faddd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                masm.faddd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             case DSUB:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fsubd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                masm.fsubd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             case DMUL:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fmuld(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                masm.fmuld(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             case DDIV:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
-                new Fdivd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                masm.fdivd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             case DREM:
                 throw GraalInternalError.unimplemented();
             case DAND:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fandd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst)).emit(masm);
+                masm.fandd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -535,26 +551,26 @@ public enum SPARCArithmetic {
             assert !src2.equals(scratch1);
             switch (opcode) {
                 case IREM:
-                    new Sra(asIntReg(src1), 0, asIntReg(dst)).emit(masm);
+                    masm.sra(asIntReg(src1), 0, asIntReg(dst));
                     exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(dst), crb.asIntConst(src2), asIntReg(scratch1)).emit(masm);
-                    new Mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2)).emit(masm);
+                    masm.sdivx(asIntReg(dst), crb.asIntConst(src2), asIntReg(scratch1));
+                    masm.mulx(asIntReg(scratch1), crb.asIntConst(src2), asIntReg(scratch2));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asIntReg(dst), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    masm.sub(asIntReg(dst), asIntReg(scratch2), asIntReg(dst));
                     break;
                 case LREM:
                     exceptionOffset = masm.position();
-                    new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
-                    new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
+                    masm.sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1));
+                    masm.mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
+                    masm.sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst));
                     break;
                 case LUREM:
                     exceptionOffset = masm.position();
-                    new Udivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
-                    new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
+                    masm.udivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1));
+                    masm.mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
+                    masm.sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst));
                     break;
                 case IUREM:
                     GraalInternalError.unimplemented();
@@ -574,10 +590,10 @@ public enum SPARCArithmetic {
                     assert !asLongReg(src2).equals(asLongReg(scratch1));
                     // But src2 can be scratch2
                     exceptionOffset = masm.position();
-                    new Sdivx(asLongReg(srcLeft), asLongReg(src2), asLongReg(scratch1)).emit(masm);
-                    new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
+                    masm.sdivx(asLongReg(srcLeft), asLongReg(src2), asLongReg(scratch1));
+                    masm.mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch1));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst)).emit(masm);
+                    masm.sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst));
                     break;
                 case LUREM:
                     if (isConstant(src1)) {
@@ -587,10 +603,10 @@ public enum SPARCArithmetic {
                     assert !asLongReg(srcLeft).equals(asLongReg(scratch1));
                     assert !asLongReg(src2).equals(asLongReg(scratch1));
                     exceptionOffset = masm.position();
-                    new Udivx(asLongReg(srcLeft), asLongReg(src2), asLongReg(scratch1)).emit(masm);
-                    new Mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch1)).emit(masm);
+                    masm.udivx(asLongReg(srcLeft), asLongReg(src2), asLongReg(scratch1));
+                    masm.mulx(asLongReg(scratch1), asLongReg(src2), asLongReg(scratch1));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst)).emit(masm);
+                    masm.sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst));
                     break;
                 case IREM:
                     if (isConstant(src1)) {
@@ -599,24 +615,24 @@ public enum SPARCArithmetic {
                     }
                     assert !asIntReg(srcLeft).equals(asIntReg(scratch1));
                     assert !asIntReg(src2).equals(asIntReg(scratch1));
-                    new Sra(asIntReg(src1), 0, asIntReg(scratch1)).emit(masm);
-                    new Sra(asIntReg(src2), 0, asIntReg(scratch2)).emit(masm);
+                    masm.sra(asIntReg(src1), 0, asIntReg(scratch1));
+                    masm.sra(asIntReg(src2), 0, asIntReg(scratch2));
                     exceptionOffset = masm.position();
-                    new Sdivx(asIntReg(scratch1), asIntReg(scratch2), asIntReg(dst)).emit(masm);
-                    new Mulx(asIntReg(dst), asIntReg(scratch2), asIntReg(dst)).emit(masm);
+                    masm.sdivx(asIntReg(scratch1), asIntReg(scratch2), asIntReg(dst));
+                    masm.mulx(asIntReg(dst), asIntReg(scratch2), asIntReg(dst));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst)).emit(masm);
+                    masm.sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst));
                     break;
                 case IUREM:
                     assert !asIntReg(dst).equals(asIntReg(scratch1));
                     assert !asIntReg(dst).equals(asIntReg(scratch2));
-                    new Srl(asIntReg(src1), 0, asIntReg(scratch1)).emit(masm);
-                    new Srl(asIntReg(src2), 0, asIntReg(dst)).emit(masm);
+                    masm.srl(asIntReg(src1), 0, asIntReg(scratch1));
+                    masm.srl(asIntReg(src2), 0, asIntReg(dst));
                     exceptionOffset = masm.position();
-                    new Udivx(asIntReg(scratch1), asIntReg(dst), asIntReg(scratch2)).emit(masm);
-                    new Mulx(asIntReg(scratch2), asIntReg(dst), asIntReg(dst)).emit(masm);
+                    masm.udivx(asIntReg(scratch1), asIntReg(dst), asIntReg(scratch2));
+                    masm.mulx(asIntReg(scratch2), asIntReg(dst), asIntReg(dst));
                     delaySlotLir.emitControlTransfer(crb, masm);
-                    new Sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst)).emit(masm);
+                    masm.sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -636,110 +652,110 @@ public enum SPARCArithmetic {
         switch (opcode) {
             case INEG:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
+                masm.neg(asIntReg(src), asIntReg(dst));
                 break;
             case LNEG:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Neg(asLongReg(src), asLongReg(dst)).emit(masm);
+                masm.neg(asLongReg(src), asLongReg(dst));
                 break;
             case INOT:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Not(asIntReg(src), asIntReg(dst)).emit(masm);
+                masm.not(asIntReg(src), asIntReg(dst));
                 break;
             case LNOT:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Not(asLongReg(src), asLongReg(dst)).emit(masm);
+                masm.not(asLongReg(src), asLongReg(dst));
                 break;
             case D2F:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fdtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                masm.fdtos(asDoubleReg(src), asFloatReg(dst));
                 break;
             case L2D:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fxtod(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                masm.fxtod(asDoubleReg(src), asDoubleReg(dst));
                 break;
             case L2F:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fxtos(asDoubleReg(src), asFloatReg(dst)).emit(masm);
+                masm.fxtos(asDoubleReg(src), asFloatReg(dst));
                 break;
             case I2D:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fitod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
+                masm.fitod(asFloatReg(src), asDoubleReg(dst));
                 break;
             case I2L:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Signx(asIntReg(src), asLongReg(dst)).emit(masm);
+                masm.signx(asIntReg(src), asLongReg(dst));
                 break;
             case L2I:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Signx(asLongReg(src), asIntReg(dst)).emit(masm);
+                masm.signx(asLongReg(src), asIntReg(dst));
                 break;
             case B2L:
-                new Sll(asIntReg(src), 24, asLongReg(dst)).emit(masm);
+                masm.sll(asIntReg(src), 24, asLongReg(dst));
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sra(asLongReg(dst), 24, asLongReg(dst)).emit(masm);
+                masm.sra(asLongReg(dst), 24, asLongReg(dst));
                 break;
             case B2I:
-                new Sll(asIntReg(src), 24, asIntReg(dst)).emit(masm);
+                masm.sll(asIntReg(src), 24, asIntReg(dst));
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sra(asIntReg(dst), 24, asIntReg(dst)).emit(masm);
+                masm.sra(asIntReg(dst), 24, asIntReg(dst));
                 break;
             case S2L:
-                new Sll(asIntReg(src), 16, asLongReg(dst)).emit(masm);
+                masm.sll(asIntReg(src), 16, asLongReg(dst));
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sra(asLongReg(dst), 16, asLongReg(dst)).emit(masm);
+                masm.sra(asLongReg(dst), 16, asLongReg(dst));
                 break;
             case S2I:
-                new Sll(asIntReg(src), 16, asIntReg(dst)).emit(masm);
+                masm.sll(asIntReg(src), 16, asIntReg(dst));
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Sra(asIntReg(dst), 16, asIntReg(dst)).emit(masm);
+                masm.sra(asIntReg(dst), 16, asIntReg(dst));
                 break;
             case I2F:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fitos(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                masm.fitos(asFloatReg(src), asFloatReg(dst));
                 break;
             case F2D:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fstod(asFloatReg(src), asDoubleReg(dst)).emit(masm);
+                masm.fstod(asFloatReg(src), asDoubleReg(dst));
                 break;
             case F2L:
-                new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                new Fbo(true, notOrdered).emit(masm);
-                new Fstox(asFloatReg(src), asDoubleReg(dst)).emit(masm);
-                new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                masm.fcmp(Fcc0, Fcmps, asFloatReg(src), asFloatReg(src));
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                masm.fstox(asFloatReg(src), asDoubleReg(dst));
+                masm.fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst));
                 masm.bind(notOrdered);
                 break;
             case F2I:
-                new Fcmp(CC.Fcc0, Opfs.Fcmps, asFloatReg(src), asFloatReg(src)).emit(masm);
-                new Fbo(true, notOrdered).emit(masm);
-                new Fstoi(asFloatReg(src), asFloatReg(dst)).emit(masm);
-                new Fitos(asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                masm.fcmp(Fcc0, Fcmps, asFloatReg(src), asFloatReg(src));
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                masm.fstoi(asFloatReg(src), asFloatReg(dst));
+                masm.fitos(asFloatReg(dst), asFloatReg(dst));
+                masm.fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst));
                 masm.bind(notOrdered);
                 break;
             case D2L:
-                new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                new Fbo(false, notOrdered).emit(masm);
-                new Fdtox(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
-                new Fxtod(asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
-                new Fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst)).emit(masm);
+                masm.fcmp(Fcc0, Fcmpd, asDoubleReg(src), asDoubleReg(src));
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                masm.fdtox(asDoubleReg(src), asDoubleReg(dst));
+                masm.fxtod(asDoubleReg(dst), asDoubleReg(dst));
+                masm.fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst));
                 masm.bind(notOrdered);
                 break;
             case D2I:
-                new Fcmp(CC.Fcc0, Opfs.Fcmpd, asDoubleReg(src), asDoubleReg(src)).emit(masm);
-                new Fbo(true, notOrdered).emit(masm);
-                new Fdtoi(asDoubleReg(src), asFloatReg(dst)).emit(masm);
-                new Fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst)).emit(masm);
-                new Fstoi(asFloatReg(dst), asFloatReg(dst)).emit(masm);
+                masm.fcmp(Fcc0, Fcmpd, asDoubleReg(src), asDoubleReg(src));
+                masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
+                masm.fdtoi(asDoubleReg(src), asFloatReg(dst));
+                masm.fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst));
+                masm.fstoi(asFloatReg(dst), asFloatReg(dst));
                 masm.bind(notOrdered);
                 break;
             case FNEG:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fnegs(asFloatReg(src), asFloatReg(dst)).emit(masm);
+                masm.fnegs(asFloatReg(src), asFloatReg(dst));
                 break;
             case DNEG:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Fnegd(asDoubleReg(src), asDoubleReg(dst)).emit(masm);
+                masm.fnegd(asDoubleReg(src), asDoubleReg(dst));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
@@ -835,7 +851,8 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static class MulHighOp extends SPARCLIRInstruction {
+    public static final class MulHighOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<MulHighOp> TYPE = LIRInstructionClass.create(MulHighOp.class);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) public AllocatableValue result;
@@ -844,6 +861,7 @@ public enum SPARCArithmetic {
         @Temp({REG}) public AllocatableValue scratch;
 
         public MulHighOp(SPARCArithmetic opcode, AllocatableValue x, AllocatableValue y, AllocatableValue result, AllocatableValue scratch) {
+            super(TYPE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;
@@ -856,30 +874,30 @@ public enum SPARCArithmetic {
             assert isRegister(x) && isRegister(y) && isRegister(result) && isRegister(scratch);
             switch (opcode) {
                 case IMUL:
-                    new Mulx(asIntReg(x), asIntReg(y), asIntReg(result)).emit(masm);
-                    new Srax(asIntReg(result), 32, asIntReg(result)).emit(masm);
+                    masm.mulx(asIntReg(x), asIntReg(y), asIntReg(result));
+                    masm.srax(asIntReg(result), 32, asIntReg(result));
                     break;
                 case IUMUL:
                     assert !asIntReg(scratch).equals(asIntReg(result));
-                    new Srl(asIntReg(x), 0, asIntReg(scratch)).emit(masm);
-                    new Srl(asIntReg(y), 0, asIntReg(result)).emit(masm);
-                    new Mulx(asIntReg(result), asIntReg(scratch), asIntReg(result)).emit(masm);
-                    new Srlx(asIntReg(result), 32, asIntReg(result)).emit(masm);
+                    masm.srl(asIntReg(x), 0, asIntReg(scratch));
+                    masm.srl(asIntReg(y), 0, asIntReg(result));
+                    masm.mulx(asIntReg(result), asIntReg(scratch), asIntReg(result));
+                    masm.srlx(asIntReg(result), 32, asIntReg(result));
                     break;
                 case LMUL:
                     assert !asLongReg(scratch).equals(asLongReg(result));
-                    new Umulxhi(asLongReg(x), asLongReg(y), asLongReg(result)).emit(masm);
+                    masm.umulxhi(asLongReg(x), asLongReg(y), asLongReg(result));
 
-                    new Srlx(asLongReg(x), 63, asLongReg(scratch)).emit(masm);
-                    new Mulx(asLongReg(scratch), asLongReg(y), asLongReg(scratch)).emit(masm);
-                    new Sub(asLongReg(result), asLongReg(scratch), asLongReg(result)).emit(masm);
+                    masm.srlx(asLongReg(x), 63, asLongReg(scratch));
+                    masm.mulx(asLongReg(scratch), asLongReg(y), asLongReg(scratch));
+                    masm.sub(asLongReg(result), asLongReg(scratch), asLongReg(result));
 
-                    new Srlx(asLongReg(y), 63, asLongReg(scratch)).emit(masm);
-                    new Mulx(asLongReg(scratch), asLongReg(x), asLongReg(scratch)).emit(masm);
-                    new Sub(asLongReg(result), asLongReg(scratch), asLongReg(result)).emit(masm);
+                    masm.srlx(asLongReg(y), 63, asLongReg(scratch));
+                    masm.mulx(asLongReg(scratch), asLongReg(x), asLongReg(scratch));
+                    masm.sub(asLongReg(result), asLongReg(scratch), asLongReg(result));
                     break;
                 case LUMUL:
-                    new Umulxhi(asLongReg(x), asLongReg(y), asLongReg(result)).emit(masm);
+                    masm.umulxhi(asLongReg(x), asLongReg(y), asLongReg(result));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

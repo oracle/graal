@@ -39,7 +39,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public final class ClassGetComponentTypeNode extends MacroNode implements Canonicalizable {
 
-    public static final NodeClass<ClassGetComponentTypeNode> TYPE = NodeClass.get(ClassGetComponentTypeNode.class);
+    public static final NodeClass<ClassGetComponentTypeNode> TYPE = NodeClass.create(ClassGetComponentTypeNode.class);
 
     public ClassGetComponentTypeNode(Invoke invoke) {
         super(TYPE, invoke);

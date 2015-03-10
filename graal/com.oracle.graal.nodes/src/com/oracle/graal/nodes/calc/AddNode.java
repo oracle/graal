@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -34,9 +35,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "+")
-public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArithmeticNode {
+public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArithmeticNode, BinaryCommutative<ValueNode> {
 
-    public static final NodeClass<AddNode> TYPE = NodeClass.get(AddNode.class);
+    public static final NodeClass<AddNode> TYPE = NodeClass.create(AddNode.class);
 
     public AddNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
@@ -53,7 +54,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new AddNode(x, y);
+            return new AddNode(x, y).maybeCommuteInputs();
         }
     }
 

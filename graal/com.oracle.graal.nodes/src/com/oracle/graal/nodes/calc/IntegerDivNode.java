@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import static com.oracle.graal.graph.Edges.Type.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -34,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "/")
 public final class IntegerDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
-    public static final NodeClass<IntegerDivNode> TYPE = NodeClass.get(IntegerDivNode.class);
+    public static final NodeClass<IntegerDivNode> TYPE = NodeClass.create(IntegerDivNode.class);
 
     public IntegerDivNode(ValueNode x, ValueNode y) {
         super(TYPE, IntegerStamp.OPS.getDiv().foldStamp(x.stamp(), y.stamp()), x, y);
@@ -96,7 +94,7 @@ public final class IntegerDivNode extends FixedBinaryNode implements Lowerable, 
 
         if (next() instanceof IntegerDivNode) {
             NodeClass<?> nodeClass = getNodeClass();
-            if (next().getClass() == this.getClass() && nodeClass.getEdges(Inputs).areEqualIn(this, next()) && valueEquals(next())) {
+            if (next().getClass() == this.getClass() && nodeClass.getInputEdges().areEqualIn(this, next()) && valueEquals(next())) {
                 return next();
             }
         }

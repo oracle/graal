@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public final class CheckCastDynamicNode extends FixedWithNextNode implements Canonicalizable.Binary<ValueNode>, Lowerable {
 
-    public static final NodeClass<CheckCastDynamicNode> TYPE = NodeClass.get(CheckCastDynamicNode.class);
+    public static final NodeClass<CheckCastDynamicNode> TYPE = NodeClass.create(CheckCastDynamicNode.class);
     @Input ValueNode object;
     @Input ValueNode hub;
 

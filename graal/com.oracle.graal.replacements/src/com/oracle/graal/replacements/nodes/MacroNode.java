@@ -59,7 +59,7 @@ import com.oracle.graal.replacements.*;
 @NodeInfo
 public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<MacroNode> TYPE = NodeClass.get(MacroNode.class);
+    public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
 
     protected final int bci;
@@ -142,7 +142,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
             }
         }
         try (Scope s = Debug.scope("LoweringSnippetTemplate", replacementGraph)) {
-            new LoweringPhase(new CanonicalizerPhase(true), tool.getLoweringStage()).apply(replacementGraph, c);
+            new LoweringPhase(new CanonicalizerPhase(), tool.getLoweringStage()).apply(replacementGraph, c);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -171,7 +171,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
-            if (stateAfter() == null) {
+            if (invoke.stateAfter() == null) {
                 throw new GraalInternalError("cannot lower to invoke without state: %s", this);
             }
             invoke.lower(tool);

@@ -65,7 +65,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
 
                 Map<Invoke, Double> hints = PEAInliningHints.getValue() ? PartialEscapePhase.getHints(graph) : null;
 
-                InliningPhase inlining = new InliningPhase(hints, new CanonicalizerPhase(true));
+                InliningPhase inlining = new InliningPhase(hints, new CanonicalizerPhase());
                 inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);
                 inlining.apply(graph, context);
                 progress |= inlining.getInliningCount() > 0;
@@ -74,7 +74,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
 
                 if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
                     canonicalizer.apply(graph, context);
-                    new IterativeConditionalEliminationPhase(canonicalizer).apply(graph, context);
+                    new IterativeConditionalEliminationPhase(canonicalizer, false).apply(graph, context);
                 }
                 if (!progress) {
                     break;

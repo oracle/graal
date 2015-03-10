@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class WeakCounterNode extends DynamicCounterNode implements Simplifiable, Virtualizable {
 
-    public static final NodeClass<WeakCounterNode> TYPE = NodeClass.get(WeakCounterNode.class);
+    public static final NodeClass<WeakCounterNode> TYPE = NodeClass.create(WeakCounterNode.class);
     @Input ValueNode checkedValue;
 
     public WeakCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {

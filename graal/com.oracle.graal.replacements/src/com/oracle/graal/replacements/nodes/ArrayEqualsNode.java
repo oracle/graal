@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
-    public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.get(ArrayEqualsNode.class);
+    public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
     /** {@link Kind} of the arrays to compare. */
     protected final Kind kind;
 
@@ -50,6 +50,8 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
 
     /** Length of both arrays. */
     @Input ValueNode length;
+
+    @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length) {
         super(TYPE, StampFactory.forKind(Kind.Boolean));
@@ -138,5 +140,14 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
 
     public LocationIdentity getLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(kind);
+    }
+
+    public MemoryNode getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    public void setLastLocationAccess(MemoryNode lla) {
+        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
+        lastLocationAccess = lla;
     }
 }

@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.stackslotalloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
 
 import java.util.*;
 import java.util.function.*;
@@ -32,12 +33,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 
@@ -56,7 +57,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSStackSlotAllocator = new OptionValue<>(true);
+        public static final NestedBooleanOptionValue LIROptLSStackSlotAllocator = new NestedBooleanOptionValue(LIROptimization, true);
         // @formatter:on
     }
 
@@ -68,12 +69,12 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
         lirGenRes.buildFrameMap(this);
     }
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
-        try (TimerCloseable t = MainTimer.start()) {
+        try (DebugCloseable t = MainTimer.start()) {
             new Allocator(res.getLIR(), builder).allocate();
         }
     }
@@ -84,7 +85,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
         private final StackInterval[] stackSlotMap;
         private final PriorityQueue<StackInterval> unhandled;
         private final PriorityQueue<StackInterval> active;
-        private final List<? extends AbstractBlock<?>> sortedBlocks;
+        private final List<? extends AbstractBlockBase<?>> sortedBlocks;
         private final int maxOpId;
 
         private Allocator(LIR lir, FrameMapBuilderTool frameMapBuilder) {
@@ -98,7 +99,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
             // insert by to
             this.active = new PriorityQueue<>((a, b) -> a.to() - b.to());
 
-            try (TimerCloseable t = NumInstTimer.start()) {
+            try (DebugCloseable t = NumInstTimer.start()) {
                 // step 1: number instructions
                 this.maxOpId = numberInstructions(lir, sortedBlocks);
             }
@@ -110,12 +111,12 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
             long currentFrameSize = Debug.isMeterEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
             Set<LIRInstruction> usePos;
             // step 2: build intervals
-            try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals"); TimerCloseable t = BuildIntervalsTimer.start()) {
+            try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals"); DebugCloseable t = BuildIntervalsTimer.start()) {
                 usePos = buildIntervals();
             }
             // step 3: verify intervals
             if (Debug.isEnabled()) {
-                try (TimerCloseable t = VerifyIntervalsTimer.start()) {
+                try (DebugCloseable t = VerifyIntervalsTimer.start()) {
                     verifyIntervals();
                 }
             }
@@ -123,7 +124,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
                 dumpIntervals("Before stack slot allocation");
             }
             // step 4: allocate stack slots
-            try (TimerCloseable t = AllocateSlotsTimer.start()) {
+            try (DebugCloseable t = AllocateSlotsTimer.start()) {
                 allocateStackSlots();
             }
             if (Debug.isDumpEnabled()) {
@@ -131,7 +132,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
             }
 
             // step 5: assign stack slots
-            try (TimerCloseable t = AssignSlotsTimer.start()) {
+            try (DebugCloseable t = AssignSlotsTimer.start()) {
                 assignStackSlots(usePos);
             }
             Debug.dump(lir, "After StackSlot assignment");
@@ -149,10 +150,10 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
          *
          * @return The id of the last operation.
          */
-        private static int numberInstructions(LIR lir, List<? extends AbstractBlock<?>> sortedBlocks) {
+        private static int numberInstructions(LIR lir, List<? extends AbstractBlockBase<?>> sortedBlocks) {
             int opId = 0;
             int index = 0;
-            for (AbstractBlock<?> block : sortedBlocks) {
+            for (AbstractBlockBase<?> block : sortedBlocks) {
 
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);
 

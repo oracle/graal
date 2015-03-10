@@ -85,7 +85,7 @@ public class PartialEvaluator {
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, TruffleCache truffleCache, SnippetReflectionProvider snippetReflection) {
         this.providers = providers;
-        this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
+        this.canonicalizer = new CanonicalizerPhase();
         this.snippetReflection = snippetReflection;
         this.truffleCache = truffleCache;
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
@@ -238,6 +238,14 @@ public class PartialEvaluator {
             return method.getAnnotation(ExplodeLoop.class) != null;
         }
 
+        public boolean shouldMergeExplosions(ResolvedJavaMethod method) {
+            ExplodeLoop explodeLoop = method.getAnnotation(ExplodeLoop.class);
+            if (explodeLoop != null) {
+                return explodeLoop.merge();
+            }
+            return false;
+        }
+
     }
 
     @SuppressWarnings("unused")
@@ -254,6 +262,9 @@ public class PartialEvaluator {
                         TruffleCompilerImpl.Optimizations, false).apply(graph);
         Debug.dump(graph, "After FastPE");
 
+        // Perform deoptimize to guard conversion.
+        new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
+
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
             if (macroSubstitution != null) {
@@ -266,13 +277,14 @@ public class PartialEvaluator {
             }
         }
 
-        // Perform dead code elimination. Dead nodes mainly come from parse time canonicalizations.
-        new DeadCodeEliminationPhase().apply(graph);
+        // Perform conditional elimination.
+        new DominatorConditionalEliminationPhase(false).apply(graph);
+
+        canonicalizer.apply(graph, tierContext);
 
         // Do single partial escape and canonicalization pass.
         try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
             new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
-            new IncrementalCanonicalizerPhase<>(canonicalizer, new ConditionalEliminationPhase()).apply(graph, tierContext);
         } catch (Throwable t) {
             Debug.handle(t);
         }
@@ -347,6 +359,13 @@ public class PartialEvaluator {
                 if (type.getAnnotation(CompilerDirectives.ValueType.class) != null) {
                     virtualInstanceNode.setIdentity(false);
                 }
+            }
+        }
+
+        if (!TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary.getValue()) {
+            // Do not inline across Truffle boundaries.
+            for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                mct.invoke().setUseForInlining(false);
             }
         }
     }

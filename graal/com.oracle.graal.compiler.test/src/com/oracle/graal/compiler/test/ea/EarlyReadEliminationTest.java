@@ -42,7 +42,7 @@ public class EarlyReadEliminationTest extends PEAReadEliminationTest {
     protected void processMethod(final String snippet) {
         graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.NO);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-        new EarlyReadEliminationPhase(new CanonicalizerPhase(true)).apply(graph, context);
+        new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
+        new EarlyReadEliminationPhase(new CanonicalizerPhase()).apply(graph, context);
     }
 }

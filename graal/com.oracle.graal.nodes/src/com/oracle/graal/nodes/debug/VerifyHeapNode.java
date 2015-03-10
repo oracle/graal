@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class VerifyHeapNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<VerifyHeapNode> TYPE = NodeClass.get(VerifyHeapNode.class);
+    public static final NodeClass<VerifyHeapNode> TYPE = NodeClass.create(VerifyHeapNode.class);
 
     public VerifyHeapNode() {
         super(TYPE, StampFactory.forVoid());

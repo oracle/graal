@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class BranchProbabilityNode extends FloatingNode implements Simplifiable, Lowerable {
 
-    public static final NodeClass<BranchProbabilityNode> TYPE = NodeClass.get(BranchProbabilityNode.class);
+    public static final NodeClass<BranchProbabilityNode> TYPE = NodeClass.create(BranchProbabilityNode.class);
     public static final double LIKELY_PROBABILITY = 0.6;
     public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
 
@@ -100,12 +100,17 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                             couldSet = true;
                             ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
                         }
+
+                        if (!couldSet && node.usages().filter(FixedGuardNode.class).isNotEmpty()) {
+                            couldSet = true;
+                        }
                     }
                 }
             }
             if (couldSet) {
-                replaceAndDelete(condition);
-                tool.addToWorkList(condition.usages());
+                ValueNode currentCondition = condition;
+                replaceAndDelete(currentCondition);
+                tool.addToWorkList(currentCondition.usages());
             } else {
                 if (!isSubstitutionGraph()) {
                     throw new GraalInternalError("Wrong usage of branch probability injection!");

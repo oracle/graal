@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.asserts;
+package com.oracle.graal.compiler.test;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
+import org.junit.*;
 
-@NodeInfo
-public final class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
+/**
+ * Collection of tests for
+ * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} including those that
+ * triggered bugs in this phase.
+ */
+public class ConditionalEliminationTest8 extends ConditionalEliminationTestBase {
 
-    public static final NodeClass<CompilationConstantNode> TYPE = NodeClass.get(CompilationConstantNode.class);
+    private static double value;
 
-    public CompilationConstantNode(Invoke invoke) {
-        super(TYPE, invoke, "The value could not be reduced to a compile time constant.");
-        assert arguments.size() == 1;
+    @SuppressWarnings("all")
+    public static int test1Snippet(int a, Object b) {
+        double sum = 0;
+        if (!(b instanceof String)) {
+            return 42;
+        }
+        for (int j = 0; j < a; ++j) {
+            sum += value;
+        }
+        return ((String) b).length();
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (arguments.get(0).isConstant()) {
-            return arguments.get(0);
-        }
-        return this;
+    @Test
+    public void test1() {
+        // One loop exit is skipped, because the condition dominates also the loop begin.
+        testProxies("test1Snippet", 0);
     }
 }

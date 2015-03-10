@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
@@ -43,6 +42,7 @@ import edu.umd.cs.findbugs.annotations.*;
  */
 @Opcode("SAFEPOINT")
 public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotSafepointOp> TYPE = LIRInstructionClass.create(SPARCHotSpotSafepointOp.class);
 
     @State protected LIRFrameState state;
     @SuppressFBWarnings(value = "BC_IMPOSSIBLE_CAST", justification = "changed by the register allocator") @Temp({OperandFlag.REG}) private AllocatableValue temp;
@@ -50,9 +50,10 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     private final HotSpotVMConfig config;
 
     public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
+        super(TYPE);
         this.state = state;
         this.config = config;
-        temp = tool.newVariable(LIRKind.value(tool.target().wordKind));
+        this.temp = tool.newVariable(LIRKind.value(tool.target().wordKind));
     }
 
     @Override
@@ -65,7 +66,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
         new Setx(config.safepointPollingAddress, scratch).emit(masm);
         MarkId.recordMark(crb, atReturn ? MarkId.POLL_RETURN_FAR : MarkId.POLL_FAR);
         final int pos = masm.position();
-        new Ldx(new SPARCAddress(scratch, 0), g0).emit(masm);
+        masm.ldx(new SPARCAddress(scratch, 0), g0);
         if (state != null) {
             crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
         }

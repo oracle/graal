@@ -38,7 +38,7 @@ import com.oracle.graal.word.*;
  */
 @NodeInfo
 public final class EnterUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<EnterUnpackFramesStackFrameNode> TYPE = NodeClass.get(EnterUnpackFramesStackFrameNode.class);
+    public static final NodeClass<EnterUnpackFramesStackFrameNode> TYPE = NodeClass.create(EnterUnpackFramesStackFrameNode.class);
 
     @Input ValueNode framePc;
     @Input ValueNode senderSp;

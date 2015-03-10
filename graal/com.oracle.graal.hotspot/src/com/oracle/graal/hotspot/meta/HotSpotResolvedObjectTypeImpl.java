@@ -868,10 +868,8 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
         return "HotSpotType<" + getName() + ", resolved>";
     }
 
-    private static final HotSpotResolvedObjectTypeImpl trustedInterfaceType = fromObjectClass(TrustedInterface.class);
-
     @Override
     public boolean isTrustedInterfaceType() {
-        return trustedInterfaceType.isAssignableFrom(this);
+        return TrustedInterface.class.isAssignableFrom(mirror());
     }
 }

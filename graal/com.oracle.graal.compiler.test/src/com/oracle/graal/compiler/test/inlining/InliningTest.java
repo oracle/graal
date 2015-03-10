@@ -236,10 +236,10 @@ public class InliningTest extends GraalCompilerTest {
             PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode ? getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()) : getDefaultGraphBuilderSuite();
             HighTierContext context = new HighTierContext(getProviders(), null, graphBuilderSuite, OptimisticOptimizations.ALL);
             Debug.dump(graph, "Graph");
-            new CanonicalizerPhase(true).apply(graph, context);
-            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new CanonicalizerPhase().apply(graph, context);
+            new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
             Debug.dump(graph, "Graph");
-            new CanonicalizerPhase(true).apply(graph, context);
+            new CanonicalizerPhase().apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             return graph;
         } catch (Throwable e) {

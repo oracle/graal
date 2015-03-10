@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,35 +31,6 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmovs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fzerod;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fzeros;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsh;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Lduh;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movdtox;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movstosw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movstouw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movwtos;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Movxtod;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stdf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stf;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sth;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cas;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Casx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Clr;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
@@ -74,11 +45,13 @@ public class SPARCMove {
 
     @Opcode("MOVE_TOREG")
     public static class MoveToRegOp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveToRegOp> TYPE = LIRInstructionClass.create(MoveToRegOp.class);
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
         public MoveToRegOp(AllocatableValue result, Value input) {
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -100,12 +73,14 @@ public class SPARCMove {
     }
 
     @Opcode("MOVE_FROMREG")
-    public static class MoveFromRegOp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFromRegOp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveFromRegOp> TYPE = LIRInstructionClass.create(MoveFromRegOp.class);
 
         @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
         public MoveFromRegOp(AllocatableValue result, Value input) {
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -130,14 +105,15 @@ public class SPARCMove {
      * Move between floating-point and general purpose register domain (WITHOUT VIS3).
      */
     @Opcode("MOVE")
-    public static class MoveFpGp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFpGp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveFpGp> TYPE = LIRInstructionClass.create(MoveFpGp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
         @Use({STACK}) protected StackSlotValue temp;
 
         public MoveFpGp(AllocatableValue result, AllocatableValue input, StackSlotValue temp) {
-            super();
+            super(TYPE);
             this.result = result;
             this.input = input;
             this.temp = temp;
@@ -163,11 +139,11 @@ public class SPARCMove {
                 switch (inputKind) {
                     case Float:
                         assert resultKindSize == 4;
-                        new Stf(asFloatReg(input), tempAddress).emit(masm);
+                        masm.stf(asFloatReg(input), tempAddress);
                         break;
                     case Double:
                         assert resultKindSize == 8;
-                        new Stdf(asDoubleReg(input), tempAddress).emit(masm);
+                        masm.stdf(asDoubleReg(input), tempAddress);
                         break;
                     case Long:
                     case Int:
@@ -175,13 +151,13 @@ public class SPARCMove {
                     case Char:
                     case Byte:
                         if (resultKindSize == 8) {
-                            new Stx(asLongReg(input), tempAddress).emit(masm);
+                            masm.stx(asLongReg(input), tempAddress);
                         } else if (resultKindSize == 4) {
-                            new Stw(asIntReg(input), tempAddress).emit(masm);
+                            masm.stw(asIntReg(input), tempAddress);
                         } else if (resultKindSize == 2) {
-                            new Sth(asIntReg(input), tempAddress).emit(masm);
+                            masm.sth(asIntReg(input), tempAddress);
                         } else if (resultKindSize == 1) {
-                            new Stb(asIntReg(input), tempAddress).emit(masm);
+                            masm.stb(asIntReg(input), tempAddress);
                         } else {
                             throw GraalInternalError.shouldNotReachHere();
                         }
@@ -192,25 +168,25 @@ public class SPARCMove {
                 delayedControlTransfer.emitControlTransfer(crb, masm);
                 switch (resultKind) {
                     case Long:
-                        new Ldx(tempAddress, asLongReg(result)).emit(masm);
+                        masm.ldx(tempAddress, asLongReg(result));
                         break;
                     case Int:
-                        new Ldsw(tempAddress, asIntReg(result)).emit(masm);
+                        masm.ldsw(tempAddress, asIntReg(result));
                         break;
                     case Short:
-                        new Ldsh(tempAddress, asIntReg(input)).emit(masm);
+                        masm.ldsh(tempAddress, asIntReg(input));
                         break;
                     case Char:
-                        new Lduh(tempAddress, asIntReg(input)).emit(masm);
+                        masm.lduh(tempAddress, asIntReg(input));
                         break;
                     case Byte:
-                        new Ldsb(tempAddress, asIntReg(input)).emit(masm);
+                        masm.ldsb(tempAddress, asIntReg(input));
                         break;
                     case Float:
-                        new Ldf(tempAddress, asFloatReg(result)).emit(masm);
+                        masm.ldf(tempAddress, asFloatReg(result));
                         break;
                     case Double:
-                        new Lddf(tempAddress, asDoubleReg(result)).emit(masm);
+                        masm.lddf(tempAddress, asDoubleReg(result));
                         break;
                     default:
                         GraalInternalError.shouldNotReachHere();
@@ -224,13 +200,14 @@ public class SPARCMove {
      * Move between floating-point and general purpose register domain (WITH VIS3).
      */
     @Opcode("MOVE")
-    public static class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFpGpVIS3 extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<MoveFpGpVIS3> TYPE = LIRInstructionClass.create(MoveFpGpVIS3.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue input;
 
         public MoveFpGpVIS3(AllocatableValue result, AllocatableValue input) {
-            super();
+            super(TYPE);
             this.result = result;
             this.input = input;
         }
@@ -250,25 +227,25 @@ public class SPARCMove {
             delayedControlTransfer.emitControlTransfer(crb, masm);
             if (resultKind == Float) {
                 if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
-                    new Movwtos(asIntReg(input), asFloatReg(result)).emit(masm);
+                    masm.movwtos(asIntReg(input), asFloatReg(result));
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
             } else if (resultKind == Double) {
                 if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
-                    new Movxtod(asIntReg(input), asDoubleReg(result)).emit(masm);
+                    masm.movxtod(asIntReg(input), asDoubleReg(result));
                 } else {
-                    new Movxtod(asLongReg(input), asDoubleReg(result)).emit(masm);
+                    masm.movxtod(asLongReg(input), asDoubleReg(result));
                 }
             } else if (inputKind == Float) {
                 if (resultKind == Int || resultKind == Short || resultKind == Byte) {
-                    new Movstosw(asFloatReg(input), asIntReg(result)).emit(masm);
+                    masm.movstosw(asFloatReg(input), asIntReg(result));
                 } else {
-                    new Movstouw(asFloatReg(input), asIntReg(result)).emit(masm);
+                    masm.movstouw(asFloatReg(input), asIntReg(result));
                 }
             } else if (inputKind == Double) {
                 if (resultKind == Long) {
-                    new Movdtox(asDoubleReg(input), asLongReg(result)).emit(masm);
+                    masm.movdtox(asDoubleReg(input), asLongReg(result));
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
@@ -277,12 +254,14 @@ public class SPARCMove {
     }
 
     public abstract static class MemOp extends SPARCLIRInstruction implements ImplicitNullCheck {
+        public static final LIRInstructionClass<MemOp> TYPE = LIRInstructionClass.create(MemOp.class);
 
         protected final Kind kind;
         @Use({COMPOSITE}) protected SPARCAddressValue address;
         @State protected LIRFrameState state;
 
-        public MemOp(Kind kind, SPARCAddressValue address, LIRFrameState state) {
+        public MemOp(LIRInstructionClass<? extends MemOp> c, Kind kind, SPARCAddressValue address, LIRFrameState state) {
+            super(c);
             this.kind = kind;
             this.address = address;
             this.state = state;
@@ -304,12 +283,13 @@ public class SPARCMove {
         }
     }
 
-    public static class LoadOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+    public static final class LoadOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<LoadOp> TYPE = LIRInstructionClass.create(LoadOp.class);
 
         @Def({REG}) protected AllocatableValue result;
 
         public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.result = result;
         }
 
@@ -326,28 +306,28 @@ public class SPARCMove {
                 switch (kind) {
                     case Boolean:
                     case Byte:
-                        new Ldsb(addr, dst).emit(masm);
+                        masm.ldsb(addr, dst);
                         break;
                     case Short:
-                        new Ldsh(addr, dst).emit(masm);
+                        masm.ldsh(addr, dst);
                         break;
                     case Char:
-                        new Lduh(addr, dst).emit(masm);
+                        masm.lduh(addr, dst);
                         break;
                     case Int:
-                        new Ldsw(addr, dst).emit(masm);
+                        masm.ldsw(addr, dst);
                         break;
                     case Long:
-                        new Ldx(addr, dst).emit(masm);
+                        masm.ldx(addr, dst);
                         break;
                     case Float:
-                        new Ldf(addr, dst).emit(masm);
+                        masm.ldf(addr, dst);
                         break;
                     case Double:
-                        new Lddf(addr, dst).emit(masm);
+                        masm.lddf(addr, dst);
                         break;
                     case Object:
-                        new Ldx(addr, dst).emit(masm);
+                        masm.ldx(addr, dst);
                         break;
                     default:
                         throw GraalInternalError.shouldNotReachHere();
@@ -356,12 +336,14 @@ public class SPARCMove {
         }
     }
 
-    public static class LoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class LoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<LoadAddressOp> TYPE = LIRInstructionClass.create(LoadAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({COMPOSITE, UNINITIALIZED}) protected SPARCAddressValue addressValue;
 
         public LoadAddressOp(AllocatableValue result, SPARCAddressValue address) {
+            super(TYPE);
             this.result = result;
             this.addressValue = address;
         }
@@ -373,12 +355,14 @@ public class SPARCMove {
         }
     }
 
-    public static class LoadDataAddressOp extends SPARCLIRInstruction {
+    public static final class LoadDataAddressOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<LoadDataAddressOp> TYPE = LIRInstructionClass.create(LoadDataAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         private final byte[] data;
 
         public LoadDataAddressOp(AllocatableValue result, byte[] data) {
+            super(TYPE);
             this.result = result;
             this.data = data;
         }
@@ -393,26 +377,30 @@ public class SPARCMove {
         }
     }
 
-    public static class MembarOp extends SPARCLIRInstruction {
+    public static final class MembarOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
         private final int barriers;
 
         public MembarOp(final int barriers) {
+            super(TYPE);
             this.barriers = barriers;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            new Membar(barriers).emit(masm);
+            masm.membar(barriers);
         }
     }
 
-    public static class NullCheckOp extends SPARCLIRInstruction implements NullCheck, SPARCTailDelayedLIRInstruction {
+    public static final class NullCheckOp extends SPARCLIRInstruction implements NullCheck, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<NullCheckOp> TYPE = LIRInstructionClass.create(NullCheckOp.class);
 
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
         public NullCheckOp(Variable input, LIRFrameState state) {
+            super(TYPE);
             this.input = input;
             this.state = state;
         }
@@ -421,7 +409,7 @@ public class SPARCMove {
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             delayedControlTransfer.emitControlTransfer(crb, masm);
             crb.recordImplicitException(masm.position(), state);
-            new Ldx(new SPARCAddress(asRegister(input), 0), r0).emit(masm);
+            masm.ldx(new SPARCAddress(asRegister(input), 0), g0);
         }
 
         public Value getCheckedValue() {
@@ -434,7 +422,8 @@ public class SPARCMove {
     }
 
     @Opcode("CAS")
-    public static class CompareAndSwapOp extends SPARCLIRInstruction {
+    public static final class CompareAndSwapOp extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
         @Def({REG, HINT}) protected AllocatableValue result;
         @Alive({REG}) protected AllocatableValue address;
@@ -442,6 +431,7 @@ public class SPARCMove {
         @Use({REG}) protected AllocatableValue newValue;
 
         public CompareAndSwapOp(AllocatableValue result, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+            super(TYPE);
             this.result = result;
             this.address = address;
             this.cmpValue = cmpValue;
@@ -455,12 +445,14 @@ public class SPARCMove {
         }
     }
 
-    public static class StackLoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final class StackLoadAddressOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<StackLoadAddressOp> TYPE = LIRInstructionClass.create(StackLoadAddressOp.class);
 
         @Def({REG}) protected AllocatableValue result;
         @Use({STACK, UNINITIALIZED}) protected StackSlotValue slot;
 
         public StackLoadAddressOp(AllocatableValue result, StackSlotValue address) {
+            super(TYPE);
             this.result = result;
             this.slot = address;
         }
@@ -476,26 +468,27 @@ public class SPARCMove {
         if (address.getIndex().equals(Register.None)) {
             if (isSimm13(address.getDisplacement())) {
                 delaySlotHolder.emitControlTransfer(crb, masm);
-                new Add(address.getBase(), address.getDisplacement(), result).emit(masm);
+                masm.add(address.getBase(), address.getDisplacement(), result);
             } else {
                 assert result.encoding() != address.getBase().encoding();
                 new Setx(address.getDisplacement(), result).emit(masm);
                 // No relocation, therefore, the add can be delayed as well
                 delaySlotHolder.emitControlTransfer(crb, masm);
-                new Add(address.getBase(), result, result).emit(masm);
+                masm.add(address.getBase(), result, result);
             }
         } else {
             delaySlotHolder.emitControlTransfer(crb, masm);
-            new Add(address.getBase(), address.getIndex(), result).emit(masm);
+            masm.add(address.getBase(), address.getIndex(), result);
         }
     }
 
     public static class StoreOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<StoreOp> TYPE = LIRInstructionClass.create(StoreOp.class);
 
         @Use({REG}) protected AllocatableValue input;
 
         public StoreOp(Kind kind, SPARCAddressValue address, AllocatableValue input, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.input = input;
         }
 
@@ -512,26 +505,26 @@ public class SPARCMove {
                 switch (kind) {
                     case Boolean:
                     case Byte:
-                        new Stb(asRegister(input), addr).emit(masm);
+                        masm.stb(asRegister(input), addr);
                         break;
                     case Short:
                     case Char:
-                        new Sth(asRegister(input), addr).emit(masm);
+                        masm.sth(asRegister(input), addr);
                         break;
                     case Int:
-                        new Stw(asRegister(input), addr).emit(masm);
+                        masm.stw(asRegister(input), addr);
                         break;
                     case Long:
-                        new Stx(asRegister(input), addr).emit(masm);
+                        masm.stx(asRegister(input), addr);
                         break;
                     case Object:
-                        new Stx(asRegister(input), addr).emit(masm);
+                        masm.stx(asRegister(input), addr);
                         break;
                     case Float:
-                        new Stf(asRegister(input), addr).emit(masm);
+                        masm.stf(asRegister(input), addr);
                         break;
                     case Double:
-                        new Stdf(asRegister(input), addr).emit(masm);
+                        masm.stdf(asRegister(input), addr);
                         break;
                     default:
                         throw GraalInternalError.shouldNotReachHere("missing: " + kind);
@@ -540,12 +533,13 @@ public class SPARCMove {
         }
     }
 
-    public static class StoreConstantOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+    public static final class StoreConstantOp extends MemOp implements SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<StoreConstantOp> TYPE = LIRInstructionClass.create(StoreConstantOp.class);
 
         protected final JavaConstant input;
 
         public StoreConstantOp(Kind kind, SPARCAddressValue address, JavaConstant input, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.input = input;
             if (!input.isDefaultForKind()) {
                 throw GraalInternalError.shouldNotReachHere("Can only store null constants to memory");
@@ -564,18 +558,18 @@ public class SPARCMove {
                 switch (kind) {
                     case Boolean:
                     case Byte:
-                        new Stb(g0, addr).emit(masm);
+                        masm.stb(g0, addr);
                         break;
                     case Short:
                     case Char:
-                        new Sth(g0, addr).emit(masm);
+                        masm.sth(g0, addr);
                         break;
                     case Int:
-                        new Stw(g0, addr).emit(masm);
+                        masm.stw(g0, addr);
                         break;
                     case Long:
                     case Object:
-                        new Stx(g0, addr).emit(masm);
+                        masm.stx(g0, addr);
                         break;
                     case Float:
                     case Double:
@@ -614,7 +608,7 @@ public class SPARCMove {
                         Register scratch = sc.getRegister();
                         long value = constant.asLong();
                         if (isSimm13(value)) {
-                            new Or(g0, (int) value, scratch).emit(masm);
+                            masm.or(g0, (int) value, scratch);
                         } else {
                             new Setx(value, scratch).emit(masm);
                         }
@@ -644,18 +638,18 @@ public class SPARCMove {
             case Long:
             case Object:
                 delaySlotLir.emitControlTransfer(crb, masm);
-                new Mov(src, dst).emit(masm);
+                masm.mov(src, dst);
                 break;
             case Float:
                 if (result.getPlatformKind() == Kind.Float) {
-                    new Fmovs(src, dst).emit(masm);
+                    masm.fmovs(src, dst);
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
                 break;
             case Double:
                 if (result.getPlatformKind() == Kind.Double) {
-                    new Fmovd(src, dst).emit(masm);
+                    masm.fmovd(src, dst);
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
@@ -695,24 +689,24 @@ public class SPARCMove {
             switch (input.getKind()) {
                 case Byte:
                 case Boolean:
-                    new Stb(src, dst).emit(masm);
+                    masm.stb(src, dst);
                     break;
                 case Char:
                 case Short:
-                    new Sth(src, dst).emit(masm);
+                    masm.sth(src, dst);
                     break;
                 case Int:
-                    new Stw(src, dst).emit(masm);
+                    masm.stw(src, dst);
                     break;
                 case Long:
                 case Object:
-                    new Stx(src, dst).emit(masm);
+                    masm.stx(src, dst);
                     break;
                 case Float:
-                    new Stf(src, dst).emit(masm);
+                    masm.stf(src, dst);
                     break;
                 case Double:
-                    new Stdf(src, dst).emit(masm);
+                    masm.stdf(src, dst);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind() + "(" + input + ")");
@@ -730,26 +724,26 @@ public class SPARCMove {
             switch (input.getKind()) {
                 case Boolean:
                 case Byte:
-                    new Ldsb(src, dst).emit(masm);
+                    masm.ldsb(src, dst);
                     break;
                 case Short:
-                    new Ldsh(src, dst).emit(masm);
+                    masm.ldsh(src, dst);
                     break;
                 case Char:
-                    new Lduh(src, dst).emit(masm);
+                    masm.lduh(src, dst);
                     break;
                 case Int:
-                    new Ldsw(src, dst).emit(masm);
+                    masm.ldsw(src, dst);
                     break;
                 case Long:
                 case Object:
-                    new Ldx(src, dst).emit(masm);
+                    masm.ldx(src, dst);
                     break;
                 case Float:
-                    new Ldf(src, dst).emit(masm);
+                    masm.ldf(src, dst);
                     break;
                 case Double:
-                    new Lddf(src, dst).emit(masm);
+                    masm.lddf(src, dst);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
@@ -765,10 +759,10 @@ public class SPARCMove {
                 case Int:
                     if (input.isDefaultForKind()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Clr(asIntReg(result)).emit(masm);
+                        masm.clr(asIntReg(result));
                     } else if (isSimm13(input.asLong())) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Or(g0, input.asInt(), asIntReg(result)).emit(masm);
+                        masm.or(g0, input.asInt(), asIntReg(result));
                     } else {
                         Setx set = new Setx(input.asLong(), asIntReg(result), false, true);
                         set.emitFirstPartOfDelayed(masm);
@@ -779,10 +773,10 @@ public class SPARCMove {
                 case Long:
                     if (input.isDefaultForKind()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Clr(asLongReg(result)).emit(masm);
+                        masm.clr(asLongReg(result));
                     } else if (isSimm13(input.asLong())) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Or(g0, (int) input.asLong(), asLongReg(result)).emit(masm);
+                        masm.or(g0, (int) input.asLong(), asLongReg(result));
                     } else {
                         Setx setx = new Setx(input.asLong(), asLongReg(result), false, true);
                         setx.emitFirstPartOfDelayed(masm);
@@ -795,24 +789,24 @@ public class SPARCMove {
                     int constantBits = java.lang.Float.floatToIntBits(constant);
                     if (constantBits == 0) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Fzeros(asFloatReg(result)).emit(masm);
+                        masm.fzeros(asFloatReg(result));
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
-                                new Or(g0, constantBits, scratch).emit(masm);
+                                masm.or(g0, constantBits, scratch);
                             } else {
                                 new Setx(constantBits, scratch, false).emit(masm);
                             }
                             delaySlotLir.emitControlTransfer(crb, masm);
                             // Now load the float value
-                            new Movwtos(scratch, asFloatReg(result)).emit(masm);
+                            masm.movwtos(scratch, asFloatReg(result));
                         } else {
                             crb.asFloatConstRef(input);
                             // First load the address into the scratch register
                             new Setx(0, scratch, true).emit(masm);
                             // Now load the float value
                             delaySlotLir.emitControlTransfer(crb, masm);
-                            new Ldf(scratch, asFloatReg(result)).emit(masm);
+                            masm.ldf(new SPARCAddress(scratch, 0), asFloatReg(result));
                         }
                     }
                     break;
@@ -822,24 +816,24 @@ public class SPARCMove {
                     long constantBits = java.lang.Double.doubleToLongBits(constant);
                     if (constantBits == 0) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Fzerod(asDoubleReg(result)).emit(masm);
+                        masm.fzerod(asDoubleReg(result));
                     } else {
                         if (hasVIS3) {
                             if (isSimm13(constantBits)) {
-                                new Or(g0, (int) constantBits, scratch).emit(masm);
+                                masm.or(g0, (int) constantBits, scratch);
                             } else {
                                 new Setx(constantBits, scratch, false).emit(masm);
                             }
                             delaySlotLir.emitControlTransfer(crb, masm);
                             // Now load the float value
-                            new Movxtod(scratch, asDoubleReg(result)).emit(masm);
+                            masm.movxtod(scratch, asDoubleReg(result));
                         } else {
                             crb.asDoubleConstRef(input);
                             // First load the address into the scratch register
                             new Setx(0, scratch, true).emit(masm);
                             delaySlotLir.emitControlTransfer(crb, masm);
                             // Now load the float value
-                            new Lddf(scratch, asDoubleReg(result)).emit(masm);
+                            masm.lddf(new SPARCAddress(scratch, 0), asDoubleReg(result));
                         }
                     }
                     break;
@@ -847,7 +841,7 @@ public class SPARCMove {
                 case Object:
                     if (input.isNull()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
-                        new Clr(asRegister(result)).emit(masm);
+                        masm.clr(asRegister(result));
                     } else if (crb.target.inlineObjects) {
                         crb.recordInlineDataInCode(input); // relocatable cannot be delayed
                         new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
@@ -864,11 +858,11 @@ public class SPARCMove {
     protected static void compareAndSwap(SPARCMacroAssembler masm, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
         switch (cmpValue.getKind()) {
             case Int:
-                new Cas(asRegister(address), asRegister(cmpValue), asRegister(newValue)).emit(masm);
+                masm.cas(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;
             case Long:
             case Object:
-                new Casx(asRegister(address), asRegister(cmpValue), asRegister(newValue)).emit(masm);
+                masm.casx(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();

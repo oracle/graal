@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,11 +36,12 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
  */
 @Opcode("CALL_DIRECT")
 final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
+    public static final LIRInstructionClass<SPARCHotspotDirectStaticCallOp> TYPE = LIRInstructionClass.create(SPARCHotspotDirectStaticCallOp.class);
 
     private final InvokeKind invokeKind;
 
     SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
-        super(target, result, parameters, temps, state);
+        super(TYPE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;
     }

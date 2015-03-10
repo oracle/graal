@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public final class TypeProfileProxyNode extends UnaryNode implements IterableNodeType, ValueProxy {
 
-    public static final NodeClass<TypeProfileProxyNode> TYPE = NodeClass.get(TypeProfileProxyNode.class);
+    public static final NodeClass<TypeProfileProxyNode> TYPE = NodeClass.create(TypeProfileProxyNode.class);
     protected final JavaTypeProfile profile;
     protected transient ResolvedJavaType lastCheckedType;
     protected transient JavaTypeProfile lastCheckedProfile;

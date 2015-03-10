@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<AtomicReadAndAddNode> TYPE = NodeClass.get(AtomicReadAndAddNode.class);
+    public static final NodeClass<AtomicReadAndAddNode> TYPE = NodeClass.create(AtomicReadAndAddNode.class);
     @Input ValueNode object;
     @Input ValueNode offset;
     @Input ValueNode delta;

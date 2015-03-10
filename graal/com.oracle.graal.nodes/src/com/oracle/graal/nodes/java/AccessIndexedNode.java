@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AccessIndexedNode extends AccessArrayNode implements Lowerable {
 
-    public static final NodeClass<AccessIndexedNode> TYPE = NodeClass.get(AccessIndexedNode.class);
+    public static final NodeClass<AccessIndexedNode> TYPE = NodeClass.create(AccessIndexedNode.class);
     @Input protected ValueNode index;
     protected final Kind elementKind;
 

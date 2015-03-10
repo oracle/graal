@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,14 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 @Opcode("BSWAP")
-public class AMD64ByteSwapOp extends AMD64LIRInstruction {
+public final class AMD64ByteSwapOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64ByteSwapOp> TYPE = LIRInstructionClass.create(AMD64ByteSwapOp.class);
 
     @Def({OperandFlag.REG, OperandFlag.HINT}) protected Value result;
     @Use protected Value input;
 
     public AMD64ByteSwapOp(Value result, Value input) {
+        super(TYPE);
         this.result = result;
         this.input = input;
     }

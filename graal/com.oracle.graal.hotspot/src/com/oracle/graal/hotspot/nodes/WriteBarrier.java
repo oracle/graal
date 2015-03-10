@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<WriteBarrier> TYPE = NodeClass.get(WriteBarrier.class);
+    public static final NodeClass<WriteBarrier> TYPE = NodeClass.create(WriteBarrier.class);
     @Input protected ValueNode object;
     @OptionalInput protected ValueNode value;
     @OptionalInput(InputType.Association) protected LocationNode location;

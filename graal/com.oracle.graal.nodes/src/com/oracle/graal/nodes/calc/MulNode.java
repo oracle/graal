@@ -26,8 +26,9 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Mul;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
@@ -35,9 +36,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "*")
-public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArithmeticNode {
+public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArithmeticNode, BinaryCommutative<ValueNode> {
 
-    public static final NodeClass<MulNode> TYPE = NodeClass.get(MulNode.class);
+    public static final NodeClass<MulNode> TYPE = NodeClass.create(MulNode.class);
 
     public MulNode(ValueNode x, ValueNode y) {
         this(TYPE, x, y);
@@ -54,7 +55,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         if (tryConstantFold != null) {
             return tryConstantFold;
         } else {
-            return new MulNode(x, y);
+            return new MulNode(x, y).maybeCommuteInputs();
         }
     }
 
@@ -77,33 +78,8 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
 
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
                 long i = ((PrimitiveConstant) c).asLong();
-                boolean signFlip = false;
-                if (i < 0) {
-                    i = -i;
-                    signFlip = true;
-                }
-                if (i > 0) {
-                    ValueNode mulResult = null;
-                    long bit1 = i & -i;
-                    long bit2 = i - bit1;
-                    bit2 = bit2 & -bit2;    // Extract 2nd bit
-                    if (CodeUtil.isPowerOf2(i)) { //
-                        mulResult = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
-                    } else if (bit2 + bit1 == i) { // We can work with two shifts and add
-                        ValueNode shift1 = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(bit1)));
-                        ValueNode shift2 = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(bit2)));
-                        mulResult = new AddNode(shift1, shift2);
-                    } else if (CodeUtil.isPowerOf2(i + 1)) { // shift and subtract
-                        ValueNode shift1 = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i + 1)));
-                        mulResult = new SubNode(shift1, forX);
-                    }
-                    if (mulResult != null) {
-                        if (signFlip) {
-                            return new NegateNode(mulResult);
-                        } else {
-                            return mulResult;
-                        }
-                    }
+                if (i > 0 && CodeUtil.isPowerOf2(i)) {
+                    return new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(i)));
                 }
             }
 

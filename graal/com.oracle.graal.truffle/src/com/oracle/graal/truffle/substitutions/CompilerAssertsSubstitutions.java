@@ -23,43 +23,15 @@
 package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 @ClassSubstitution(CompilerAsserts.class)
 public class CompilerAssertsSubstitutions {
 
-    @MacroSubstitution(macro = NeverPartOfCompilationNode.class, isStatic = true)
-    public static native void neverPartOfCompilation();
+    @MethodSubstitution
+    public static void neverPartOfCompilation(@SuppressWarnings("unused") String message) {
+        NeverPartOfCompilationNode.apply("Never part of compilation");
+    }
 
-    @MacroSubstitution(macro = NeverPartOfCompilationNode.class, isStatic = true)
-    public static native void neverPartOfCompilation(String message);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native boolean compilationConstant(boolean value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native byte compilationConstant(byte value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native char compilationConstant(char value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native short compilationConstant(short value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native int compilationConstant(int value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native long compilationConstant(long value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native float compilationConstant(float value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native double compilationConstant(double value);
-
-    @MacroSubstitution(macro = CompilationConstantNode.class, isStatic = true)
-    public static native Object compilationConstant(Object value);
 }

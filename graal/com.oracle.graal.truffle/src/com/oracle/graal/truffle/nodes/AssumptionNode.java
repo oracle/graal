@@ -39,7 +39,7 @@ import com.oracle.graal.truffle.*;
 @NodeInfo
 public final class AssumptionNode extends MacroNode implements Simplifiable {
 
-    public static final NodeClass<AssumptionNode> TYPE = NodeClass.get(AssumptionNode.class);
+    public static final NodeClass<AssumptionNode> TYPE = NodeClass.create(AssumptionNode.class);
 
     public AssumptionNode(Invoke invoke) {
         super(TYPE, invoke);

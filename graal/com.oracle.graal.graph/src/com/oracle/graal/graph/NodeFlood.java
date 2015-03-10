@@ -24,10 +24,11 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
-public class NodeFlood implements Iterable<Node> {
+public final class NodeFlood implements Iterable<Node> {
 
     private final NodeBitMap visited;
     private final Queue<Node> worklist;
+    private int totalMarkedCount;
 
     public NodeFlood(Graph graph) {
         visited = graph.createNodeBitMap();
@@ -38,13 +39,22 @@ public class NodeFlood implements Iterable<Node> {
         if (node != null && !visited.isMarked(node)) {
             visited.mark(node);
             worklist.add(node);
+            totalMarkedCount++;
         }
+    }
+
+    public int getTotalMarkedCount() {
+        return totalMarkedCount;
     }
 
     public void addAll(Iterable<? extends Node> nodes) {
         for (Node node : nodes) {
             this.add(node);
         }
+    }
+
+    public NodeBitMap getVisited() {
+        return visited;
     }
 
     public boolean isMarked(Node node) {

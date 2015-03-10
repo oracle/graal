@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -45,7 +44,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     @NodeInfo
     static final class TestNode extends Node {
-        public static final NodeClass<TestNode> TYPE = NodeClass.get(TestNode.class);
+        public static final NodeClass<TestNode> TYPE = NodeClass.create(TestNode.class);
         @Input NodeInputList<ValueNode> itail;
         @Input ConstantNode i1;
         @Input FloatingNode i2;
@@ -74,25 +73,25 @@ public class EdgesTest extends GraalCompilerTest {
         node.i1 = i1;
         node.i2 = i2;
         graph.add(node);
-        inputs = node.getNodeClass().getEdges(Type.Inputs);
+        inputs = node.getNodeClass().getInputEdges();
     }
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#getNode(Node, int)}.
+     * {@link Edges#getNode(Node, long[], int)}.
      */
     @Test
     public void test0() {
-        testMethod(getMethod("getNode", Node.class, int.class), inputs, node, 0);
+        testMethod(getMethod("getNode", Node.class, long[].class, int.class), null, node, inputs.getOffsets(), 0);
     }
 
     /**
      * Checks that there are no checkcasts in the compiled version of
-     * {@link Edges#getNodeList(Node, int)}.
+     * {@link Edges#getNodeList(Node, long[], int)}.
      */
     @Test
     public void test1() {
-        testMethod(getMethod("getNodeList", Node.class, int.class), inputs, node, 2);
+        testMethod(getMethod("getNodeList", Node.class, long[].class, int.class), null, node, inputs.getOffsets(), 2);
     }
 
     /**
@@ -117,8 +116,8 @@ public class EdgesTest extends GraalCompilerTest {
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         StructuredGraph g = parseProfiled(javaMethod, AllowAssumptions.NO);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase(true)).apply(g, context);
-        new CanonicalizerPhase(false).apply(g, context);
+        new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase()).apply(g, context);
+        new CanonicalizerPhase().apply(g, context);
         Assert.assertTrue(g.getNodes().filter(CheckCastNode.class).isEmpty());
     }
 

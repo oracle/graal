@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
@@ -39,16 +38,18 @@ import com.oracle.graal.lir.sparc.*;
  */
 @Opcode("PATCH_RETURN")
 final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotPatchReturnAddressOp> TYPE = LIRInstructionClass.create(SPARCHotSpotPatchReturnAddressOp.class);
 
     @Use(REG) AllocatableValue address;
 
     SPARCHotSpotPatchReturnAddressOp(AllocatableValue address) {
+        super(TYPE);
         this.address = address;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         Register addrRegister = asLongReg(address);
-        new Sub(addrRegister, Return.PC_RETURN_OFFSET, i7).emit(masm);
+        masm.sub(addrRegister, SPARCAssembler.PC_RETURN_OFFSET, i7);
     }
 }

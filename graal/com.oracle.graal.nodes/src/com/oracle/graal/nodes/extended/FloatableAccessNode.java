@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public abstract class FloatableAccessNode extends FixedAccessNode {
-    public static final NodeClass<FloatableAccessNode> TYPE = NodeClass.get(FloatableAccessNode.class);
+    public static final NodeClass<FloatableAccessNode> TYPE = NodeClass.create(FloatableAccessNode.class);
 
     protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, ValueNode object, ValueNode location, Stamp stamp) {
         super(c, object, location, stamp);

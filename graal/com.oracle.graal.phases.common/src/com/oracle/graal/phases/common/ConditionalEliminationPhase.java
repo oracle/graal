@@ -778,6 +778,8 @@ public class ConditionalEliminationPhase extends Phase {
             ResolvedJavaType type = state.getNodeType(object);
             if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
                 boolean nonNull = state.isNonNull(object);
+                // if (true)
+                // throw new RuntimeException(checkCast.toString());
                 GuardingNode replacementAnchor = null;
                 if (nonNull) {
                     replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
@@ -785,6 +787,7 @@ public class ConditionalEliminationPhase extends Phase {
                 if (replacementAnchor == null) {
                     replacementAnchor = AbstractBeginNode.prevBegin(checkCast);
                 }
+                assert !(replacementAnchor instanceof FloatingNode) : "unsafe to mix unlowered Checkcast with floating guards";
                 PiNode piNode;
                 if (isNull) {
                     ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);

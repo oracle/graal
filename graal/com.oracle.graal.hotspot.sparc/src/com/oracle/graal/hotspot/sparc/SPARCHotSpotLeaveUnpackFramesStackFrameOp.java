@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,14 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 /**
  * Emits code that leaves a stack frame which is tailored to call the C++ method
@@ -38,6 +37,7 @@ import com.oracle.graal.lir.asm.*;
  */
 @Opcode("LEAVE_UNPACK_FRAMES_STACK_FRAME")
 final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotLeaveUnpackFramesStackFrameOp> TYPE = LIRInstructionClass.create(SPARCHotSpotLeaveUnpackFramesStackFrameOp.class);
 
     private final Register thread;
     private final int threadLastJavaSpOffset;
@@ -45,6 +45,7 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
     private final int threadJavaFrameAnchorFlagsOffset;
 
     SPARCHotSpotLeaveUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset) {
+        super(TYPE);
         this.thread = thread;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
@@ -57,17 +58,17 @@ final class SPARCHotSpotLeaveUnpackFramesStackFrameOp extends SPARCLIRInstructio
          * Safe thread register manually since we are not using LEAF_SP for {@link
          * DeoptimizationStub#UNPACK_FRAMES}.
          */
-        new Mov(l7, thread).emit(masm);
+        masm.mov(l7, thread);
 
         SPARCAddress lastJavaPc = new SPARCAddress(thread, threadLastJavaPcOffset);
 
         // We borrow the threads lastJavaPC to transfer the value from float to i0
-        new Stdf(SPARCSaveRegistersOp.RETURN_REGISTER_STORAGE, lastJavaPc).emit(masm);
-        new Ldx(lastJavaPc, i0).emit(masm);
+        masm.stdf(SPARCSaveRegistersOp.RETURN_REGISTER_STORAGE, lastJavaPc);
+        masm.ldx(lastJavaPc, i0);
 
         // Clear last Java frame values.
-        new Stx(g0, lastJavaPc).emit(masm);
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
-        new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
+        masm.stx(g0, lastJavaPc);
+        masm.stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset));
+        masm.stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset));
     }
 }

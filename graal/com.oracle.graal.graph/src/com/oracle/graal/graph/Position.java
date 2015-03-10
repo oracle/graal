@@ -53,9 +53,9 @@ public final class Position {
 
     public Node get(Node node) {
         if (index < edges.getDirectCount()) {
-            return edges.getNode(node, index);
+            return Edges.getNode(node, edges.getOffsets(), index);
         } else {
-            return edges.getNodeList(node, index).get(subIndex);
+            return Edges.getNodeList(node, edges.getOffsets(), index).get(subIndex);
         }
     }
 
@@ -75,15 +75,15 @@ public final class Position {
         if (index < edges.getDirectCount()) {
             edges.setNode(node, index, value);
         } else {
-            edges.getNodeList(node, index).set(subIndex, value);
+            Edges.getNodeList(node, edges.getOffsets(), index).set(subIndex, value);
         }
     }
 
     public void initialize(Node node, Node value) {
         if (index < edges.getDirectCount()) {
-            edges.initializeNode(node, index, value);
+            Edges.initializeNode(node, edges.getOffsets(), index, value);
         } else {
-            edges.getNodeList(node, index).initialize(subIndex, value);
+            Edges.getNodeList(node, edges.getOffsets(), index).initialize(subIndex, value);
         }
     }
 

@@ -181,7 +181,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
             merge.setStateAfter(null);
         }
         new DeadCodeEliminationPhase().apply(graph);
-        new CanonicalizerPhase(true).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         try {
             Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", graph.getNodes().filter(NewInstanceNode.class).isEmpty());
             Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", graph.getNodes().filter(NewArrayNode.class).isEmpty());

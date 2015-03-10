@@ -78,8 +78,8 @@ public class InvokeHintsTest extends GraalCompilerTest {
         }
 
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-        new InliningPhase(hints, new CanonicalizerPhase(true)).apply(graph, context);
-        new CanonicalizerPhase(true).apply(graph, context);
+        new InliningPhase(hints, new CanonicalizerPhase()).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
         StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, AllowAssumptions.NO);
         assertEquals(referenceGraph, graph);

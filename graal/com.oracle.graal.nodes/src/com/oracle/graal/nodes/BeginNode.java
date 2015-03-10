@@ -29,7 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public final class BeginNode extends AbstractBeginNode {
 
-    public static final NodeClass<BeginNode> TYPE = NodeClass.get(BeginNode.class);
+    public static final NodeClass<BeginNode> TYPE = NodeClass.create(BeginNode.class);
 
     public BeginNode() {
         super(TYPE, StampFactory.forVoid());
@@ -37,6 +37,17 @@ public final class BeginNode extends AbstractBeginNode {
 
     public BeginNode(Stamp stamp) {
         super(TYPE, stamp);
+    }
+
+    public void trySimplify() {
+        FixedNode prev = (FixedNode) this.predecessor();
+        if (prev instanceof ControlSplitNode) {
+            // This begin node is necessary.
+        } else {
+            // This begin node can be removed and all guards moved up to the preceding begin node.
+            prepareDelete();
+            graph().removeFixed(this);
+        }
     }
 
     public static AbstractBeginNode begin(FixedNode with) {

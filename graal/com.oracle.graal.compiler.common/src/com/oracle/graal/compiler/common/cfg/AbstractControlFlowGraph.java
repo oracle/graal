@@ -24,9 +24,7 @@ package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
-
-public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
+public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
 
     int BLOCK_ID_INITIAL = -1;
     int BLOCK_ID_VISITED = -2;
@@ -48,7 +46,8 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
     /**
      * Computes the dominators of control flow graph.
      */
-    static <T extends AbstractBlock<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
+    @SuppressWarnings("unchecked")
+    static <T extends AbstractBlockBase<T>> void computeDominators(AbstractControlFlowGraph<T> cfg) {
         List<T> reversePostOrder = cfg.getBlocks();
         assert reversePostOrder.get(0).getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
         for (int i = 1; i < reversePostOrder.size(); i++) {
@@ -57,7 +56,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
             T dominator = null;
             for (T pred : block.getPredecessors()) {
                 if (!pred.isLoopEnd()) {
-                    dominator = commonDominatorTyped(dominator, pred);
+                    dominator = (T) ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
                 }
             }
             // set dominator
@@ -67,32 +66,33 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
             }
             dominator.getDominated().add(block);
         }
+        calcDominatorRanges(cfg.getStartBlock(), 0);
+    }
+
+    static <T extends AbstractBlockBase<T>> int calcDominatorRanges(T block, int next) {
+        int myNumber = next;
+        int maxNumber = myNumber;
+        for (T dominated : block.getDominated()) {
+            maxNumber = calcDominatorRanges(dominated, maxNumber + 1);
+        }
+        block.setDominatorNumbers(myNumber, maxNumber);
+        return maxNumber;
     }
 
     /**
      * True if block {@code a} is dominated by block {@code b}.
      */
-    static boolean isDominatedBy(AbstractBlock<?> a, AbstractBlock<?> b) {
-        assert a != null;
-        AbstractBlock<?> dominator = a;
-        int i = 0;
-        while (dominator != null) {
-            if (i++ == Integer.MAX_VALUE) { // For safety
-                throw GraalInternalError.shouldNotReachHere();
-            }
-            if (dominator == b) {
-                return true;
-            }
-            dominator = dominator.getDominator();
-        }
-        return false;
+    static boolean isDominatedBy(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        int domNumberA = a.getDominatorNumber();
+        int domNumberB = b.getDominatorNumber();
+        return domNumberA >= domNumberB && domNumberA <= b.getMaxChildDominatorNumber();
     }
 
     /**
      * True if block {@code a} dominates block {@code b}.
      */
-    static boolean dominates(AbstractBlock<?> a, AbstractBlock<?> b) {
-        assert a != null;
+    static boolean dominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        assert a != null && b != null;
         return isDominatedBy(b, a);
     }
 
@@ -104,31 +104,64 @@ public interface AbstractControlFlowGraph<T extends AbstractBlock<T>> {
      * @see #getBlocks()
      * @see CFGVerifier
      */
-    static AbstractBlock<?> commonDominator(AbstractBlock<?> a, AbstractBlock<?> b) {
+    static AbstractBlockBase<?> commonDominator(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
         if (a == null) {
             return b;
-        }
-        if (b == null) {
+        } else if (b == null) {
             return a;
-        }
-        AbstractBlock<?> iterA = a;
-        AbstractBlock<?> iterB = b;
-        while (iterA != iterB) {
-            if (iterA.getId() > iterB.getId()) {
-                iterA = iterA.getDominator();
+        } else {
+            int aDomDepth = a.getDominatorDepth();
+            int bDomDepth = b.getDominatorDepth();
+            AbstractBlockBase<?> aTemp;
+            AbstractBlockBase<?> bTemp;
+            if (aDomDepth > bDomDepth) {
+                aTemp = a;
+                bTemp = b;
             } else {
-                assert iterB.getId() > iterA.getId();
-                iterB = iterB.getDominator();
+                aTemp = b;
+                bTemp = a;
             }
+            return commonDominatorHelper(aTemp, bTemp);
+        }
+    }
+
+    static AbstractBlockBase<?> commonDominatorHelper(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        int domNumberA = a.getDominatorNumber();
+        AbstractBlockBase<?> result = b;
+        while (domNumberA < result.getDominatorNumber()) {
+            result = result.getDominator();
+        }
+        while (domNumberA > result.getMaxChildDominatorNumber()) {
+            result = result.getDominator();
+        }
+        return result;
+    }
+
+    static AbstractBlockBase<?> commonDominatorRaw(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        int aDomDepth = a.getDominatorDepth();
+        int bDomDepth = b.getDominatorDepth();
+        if (aDomDepth > bDomDepth) {
+            return commonDominatorRawSameDepth(a.getDominator(aDomDepth - bDomDepth), b);
+        } else {
+            return commonDominatorRawSameDepth(a, b.getDominator(bDomDepth - aDomDepth));
+        }
+    }
+
+    static AbstractBlockBase<?> commonDominatorRawSameDepth(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        AbstractBlockBase<?> iterA = a;
+        AbstractBlockBase<?> iterB = b;
+        while (iterA != iterB) {
+            iterA = iterA.getDominator();
+            iterB = iterB.getDominator();
         }
         return iterA;
     }
 
     /**
-     * @see AbstractControlFlowGraph#commonDominator(AbstractBlock, AbstractBlock)
+     * @see AbstractControlFlowGraph#commonDominator(AbstractBlockBase, AbstractBlockBase)
      */
     @SuppressWarnings("unchecked")
-    static <T extends AbstractBlock<T>> T commonDominatorTyped(T a, T b) {
+    static <T extends AbstractBlockBase<T>> T commonDominatorTyped(T a, T b) {
         return (T) commonDominator(a, b);
     }
 }

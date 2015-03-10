@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,8 @@ import com.oracle.graal.lir.gen.*;
  * instructions specialized code is emitted to leverage these instructions.
  */
 @Opcode("ARRAY_EQUALS")
-public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
+public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AMD64ArrayEqualsOp.class);
 
     private final Kind kind;
     private final int arrayBaseOffset;
@@ -63,6 +64,7 @@ public class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value vectorTemp2;
 
     public AMD64ArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
+        super(TYPE);
         this.kind = kind;
 
         Class<?> arrayClass = Array.newInstance(kind.toJavaClass(), 0).getClass();

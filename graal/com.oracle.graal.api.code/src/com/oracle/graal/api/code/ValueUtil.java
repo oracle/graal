@@ -33,7 +33,7 @@ public final class ValueUtil {
 
     public static boolean isIllegal(Value value) {
         assert value != null;
-        return value.equals(Value.ILLEGAL);
+        return Value.ILLEGAL.equals(value);
     }
 
     public static boolean isLegal(Value value) {

@@ -104,63 +104,65 @@ public class IntervalWalker {
     private void walkTo(State state, int from) {
         assert state == State.Active || state == State.Inactive : "wrong state";
         for (RegisterBinding binding : RegisterBinding.VALUES) {
-            Interval prevprev = null;
-            Interval prev = (state == State.Active) ? activeLists.get(binding) : inactiveLists.get(binding);
-            Interval next = prev;
-            while (next.currentFrom() <= from) {
-                Interval cur = next;
-                next = cur.next;
+            walkTo(state, from, binding);
+        }
+    }
 
-                boolean rangeHasChanged = false;
-                while (cur.currentTo() <= from) {
-                    cur.nextRange();
-                    rangeHasChanged = true;
-                }
+    private void walkTo(State state, int from, RegisterBinding binding) {
+        Interval prevprev = null;
+        Interval prev = (state == State.Active) ? activeLists.get(binding) : inactiveLists.get(binding);
+        Interval next = prev;
+        while (next.currentFrom() <= from) {
+            Interval cur = next;
+            next = cur.next;
 
-                // also handle move from inactive list to active list
-                rangeHasChanged = rangeHasChanged || (state == State.Inactive && cur.currentFrom() <= from);
+            boolean rangeHasChanged = false;
+            while (cur.currentTo() <= from) {
+                cur.nextRange();
+                rangeHasChanged = true;
+            }
 
-                if (rangeHasChanged) {
-                    // remove cur from list
-                    if (prevprev == null) {
-                        if (state == State.Active) {
-                            activeLists.set(binding, next);
-                        } else {
-                            inactiveLists.set(binding, next);
-                        }
+            // also handle move from inactive list to active list
+            rangeHasChanged = rangeHasChanged || (state == State.Inactive && cur.currentFrom() <= from);
+
+            if (rangeHasChanged) {
+                // remove cur from list
+                if (prevprev == null) {
+                    if (state == State.Active) {
+                        activeLists.set(binding, next);
                     } else {
-                        prevprev.next = next;
+                        inactiveLists.set(binding, next);
                     }
-                    prev = next;
-                    if (cur.currentAtEnd()) {
-                        // move to handled state (not maintained as a list)
-                        cur.state = State.Handled;
-                        intervalMoved(cur, state, State.Handled);
-                    } else if (cur.currentFrom() <= from) {
+                } else {
+                    prevprev.next = next;
+                }
+                prev = next;
+                Interval.State newState;
+                if (cur.currentAtEnd()) {
+                    // move to handled state (not maintained as a list)
+                    newState = State.Handled;
+                    cur.state = newState;
+                } else {
+                    if (cur.currentFrom() <= from) {
                         // sort into active list
                         activeLists.addToListSortedByCurrentFromPositions(binding, cur);
-                        cur.state = State.Active;
-                        if (prev == cur) {
-                            assert state == State.Active : "check";
-                            prevprev = prev;
-                            prev = cur.next;
-                        }
-                        intervalMoved(cur, state, State.Active);
+                        newState = State.Active;
                     } else {
                         // sort into inactive list
                         inactiveLists.addToListSortedByCurrentFromPositions(binding, cur);
-                        cur.state = State.Inactive;
-                        if (prev == cur) {
-                            assert state == State.Inactive : "check";
-                            prevprev = prev;
-                            prev = cur.next;
-                        }
-                        intervalMoved(cur, state, State.Inactive);
+                        newState = State.Inactive;
                     }
-                } else {
-                    prevprev = prev;
-                    prev = cur.next;
+                    cur.state = newState;
+                    if (prev == cur) {
+                        assert state == newState;
+                        prevprev = prev;
+                        prev = cur.next;
+                    }
                 }
+                intervalMoved(cur, state, newState);
+            } else {
+                prevprev = prev;
+                prev = cur.next;
             }
         }
     }

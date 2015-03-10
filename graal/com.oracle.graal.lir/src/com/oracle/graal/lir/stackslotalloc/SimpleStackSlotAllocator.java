@@ -34,12 +34,13 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
 public class SimpleStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
     @Override
-    protected <B extends AbstractBlock<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
         lirGenRes.buildFrameMap(this);
     }
 
@@ -75,7 +76,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase implements StackSl
                 }
                 return value;
             };
-            for (AbstractBlock<?> block : res.getLIR().getControlFlowGraph().getBlocks()) {
+            for (AbstractBlockBase<?> block : res.getLIR().getControlFlowGraph().getBlocks()) {
                 try (Indent indent0 = Debug.logAndIndent("block: %s", block)) {
                     for (LIRInstruction inst : res.getLIR().getLIRforBlock(block)) {
                         try (Indent indent1 = Debug.logAndIndent("Inst: %d: %s", inst.id(), inst)) {

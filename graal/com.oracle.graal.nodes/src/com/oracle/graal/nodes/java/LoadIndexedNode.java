@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo
 public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable, Canonicalizable {
 
-    public static final NodeClass<LoadIndexedNode> TYPE = NodeClass.get(LoadIndexedNode.class);
+    public static final NodeClass<LoadIndexedNode> TYPE = NodeClass.create(LoadIndexedNode.class);
 
     /**
      * Creates a new LoadIndexedNode.

@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {InputType.Memory})
 public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable {
-    public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.get(InvokeWithExceptionNode.class);
+    public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
     private static final double EXCEPTION_PROBA = 1e-5;
 
@@ -231,5 +231,10 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     public void setGuard(GuardingNode guard) {
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;
+    }
+
+    @Override
+    public AbstractBeginNode getPrimarySuccessor() {
+        return this.next();
     }
 }

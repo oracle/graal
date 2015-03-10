@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements ConvertNode, ArithmeticLIRLowerable {
-    @SuppressWarnings("rawtypes") public static final NodeClass<IntegerConvertNode> TYPE = NodeClass.get(IntegerConvertNode.class);
+    @SuppressWarnings("rawtypes") public static final NodeClass<IntegerConvertNode> TYPE = NodeClass.create(IntegerConvertNode.class);
 
     protected final SerializableIntegerConvertFunction<OP> getOp;
     protected final SerializableIntegerConvertFunction<REV> getReverseOp;

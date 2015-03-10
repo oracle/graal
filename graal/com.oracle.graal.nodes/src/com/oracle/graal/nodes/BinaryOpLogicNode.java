@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -30,7 +32,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Binary<ValueNode> {
 
-    public static final NodeClass<BinaryOpLogicNode> TYPE = NodeClass.get(BinaryOpLogicNode.class);
+    public static final NodeClass<BinaryOpLogicNode> TYPE = NodeClass.create(BinaryOpLogicNode.class);
     @Input protected ValueNode x;
     @Input protected ValueNode y;
 
@@ -58,4 +60,35 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @Override
     public void generate(NodeLIRBuilderTool gen) {
     }
+
+    /**
+     * Ensure a canonical ordering of inputs for commutative nodes to improve GVN results. Order the
+     * inputs by increasing {@link Node#id} and call {@link Graph#findDuplicate(Node)} on the node
+     * if it's currently in a graph.
+     *
+     * @return the original node or another node with the same inputs, ignoring ordering.
+     */
+    @SuppressWarnings("deprecation")
+    public LogicNode maybeCommuteInputs() {
+        assert this instanceof BinaryCommutative;
+        if (x.getId() > y.getId()) {
+            ValueNode tmp = x;
+            x = y;
+            y = tmp;
+            if (graph() != null) {
+                // See if this node already exists
+                LogicNode duplicate = graph().findDuplicate(this);
+                if (duplicate != null) {
+                    return duplicate;
+                }
+            }
+        }
+        return this;
+    }
+
+    public abstract Stamp getSucceedingStampForX(boolean negated);
+
+    public abstract Stamp getSucceedingStampForY(boolean negated);
+
+    public abstract TriState tryFold(Stamp xStamp, Stamp yStamp);
 }

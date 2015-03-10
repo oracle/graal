@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
-    public static final NodeClass<InstanceOfNode> TYPE = NodeClass.get(InstanceOfNode.class);
+    public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     protected final ResolvedJavaType type;
     protected JavaTypeProfile profile;
@@ -159,5 +159,44 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
         if (state != null) {
             tool.replaceWithValue(LogicConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
         }
+    }
+
+    @Override
+    public Stamp getSucceedingStampForValue(boolean negated) {
+        if (negated) {
+            return null;
+        } else {
+            return StampFactory.declaredTrustedNonNull(type);
+        }
+    }
+
+    @Override
+    public TriState tryFold(Stamp valueStamp) {
+        if (valueStamp instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) valueStamp;
+            if (objectStamp.alwaysNull()) {
+                return TriState.FALSE;
+            }
+
+            ResolvedJavaType objectType = objectStamp.type();
+            if (objectType != null) {
+                ResolvedJavaType instanceofType = type;
+                if (instanceofType.isAssignableFrom(objectType)) {
+                    if (objectStamp.nonNull()) {
+                        return TriState.TRUE;
+                    }
+                } else {
+                    if (objectStamp.isExactType()) {
+                        return TriState.FALSE;
+                    } else {
+                        boolean superType = objectType.isAssignableFrom(instanceofType);
+                        if (!superType && !objectType.isInterface() && !instanceofType.isInterface()) {
+                            return TriState.FALSE;
+                        }
+                    }
+                }
+            }
+        }
+        return TriState.UNKNOWN;
     }
 }

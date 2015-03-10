@@ -63,13 +63,15 @@ public enum AMD64Arithmetic {
     /**
      * Unary operation with separate source and destination operand.
      */
-    public static class Unary2Op extends AMD64LIRInstruction {
+    public static final class Unary2Op extends AMD64LIRInstruction {
 
+        public static final LIRInstructionClass<Unary2Op> TYPE = LIRInstructionClass.create(Unary2Op.class);
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue x;
 
         public Unary2Op(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -84,13 +86,15 @@ public enum AMD64Arithmetic {
     /**
      * Unary operation with separate source and destination operand but register only.
      */
-    public static class Unary2RegOp extends AMD64LIRInstruction {
+    public static final class Unary2RegOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<Unary2RegOp> TYPE = LIRInstructionClass.create(Unary2RegOp.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2RegOp(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -106,12 +110,14 @@ public enum AMD64Arithmetic {
      * Unary operation with single operand for source and destination.
      */
     public static class Unary1Op extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<Unary1Op> TYPE = LIRInstructionClass.create(Unary1Op.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue x;
 
         public Unary1Op(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -127,13 +133,14 @@ public enum AMD64Arithmetic {
     /**
      * Unary operation with separate memory source and destination operand.
      */
-    public static class Unary2MemoryOp extends MemOp {
+    public static final class Unary2MemoryOp extends MemOp {
+        public static final LIRInstructionClass<Unary2MemoryOp> TYPE = LIRInstructionClass.create(Unary2MemoryOp.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
 
         public Unary2MemoryOp(AMD64Arithmetic opcode, AllocatableValue result, Kind kind, AMD64AddressValue address, LIRFrameState state) {
-            super(kind, address, state);
+            super(TYPE, kind, address, state);
             this.opcode = opcode;
             this.result = result;
         }
@@ -149,6 +156,7 @@ public enum AMD64Arithmetic {
      * destination. The second source operand may be a stack slot.
      */
     public static class BinaryRegStack extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BinaryRegStack> TYPE = LIRInstructionClass.create(BinaryRegStack.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -156,6 +164,7 @@ public enum AMD64Arithmetic {
         @Alive({REG, STACK}) protected AllocatableValue y;
 
         public BinaryRegStack(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -180,7 +189,8 @@ public enum AMD64Arithmetic {
      * Binary operation with two operands. The first source operand is combined with the
      * destination. The second source operand may be a stack slot.
      */
-    public static class BinaryMemory extends AMD64LIRInstruction {
+    public static final class BinaryMemory extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BinaryMemory> TYPE = LIRInstructionClass.create(BinaryMemory.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -190,6 +200,7 @@ public enum AMD64Arithmetic {
         @State protected LIRFrameState state;
 
         public BinaryMemory(AMD64Arithmetic opcode, Kind kind, AllocatableValue result, AllocatableValue x, AMD64AddressValue location, LIRFrameState state) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -219,7 +230,8 @@ public enum AMD64Arithmetic {
      * Binary operation with two operands. The first source operand is combined with the
      * destination. The second source operand must be a register.
      */
-    public static class BinaryRegReg extends AMD64LIRInstruction {
+    public static final class BinaryRegReg extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BinaryRegReg> TYPE = LIRInstructionClass.create(BinaryRegReg.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -227,6 +239,7 @@ public enum AMD64Arithmetic {
         @Alive({REG}) protected AllocatableValue y;
 
         public BinaryRegReg(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -250,7 +263,8 @@ public enum AMD64Arithmetic {
     /**
      * Binary operation with single source/destination operand and one constant.
      */
-    public static class BinaryRegConst extends AMD64LIRInstruction {
+    public static final class BinaryRegConst extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BinaryRegConst> TYPE = LIRInstructionClass.create(BinaryRegConst.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -258,6 +272,7 @@ public enum AMD64Arithmetic {
         protected JavaConstant y;
 
         public BinaryRegConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, JavaConstant y) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -281,7 +296,8 @@ public enum AMD64Arithmetic {
      * Commutative binary operation with two operands. One of the operands is combined with the
      * result.
      */
-    public static class BinaryCommutative extends AMD64LIRInstruction {
+    public static final class BinaryCommutative extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BinaryCommutative> TYPE = LIRInstructionClass.create(BinaryCommutative.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -289,6 +305,7 @@ public enum AMD64Arithmetic {
         @Use({REG, STACK}) protected AllocatableValue y;
 
         public BinaryCommutative(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -315,7 +332,8 @@ public enum AMD64Arithmetic {
     /**
      * Binary operation with separate source and destination and one constant operand.
      */
-    public static class BinaryRegStackConst extends AMD64LIRInstruction {
+    public static final class BinaryRegStackConst extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BinaryRegStackConst> TYPE = LIRInstructionClass.create(BinaryRegStackConst.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
@@ -323,6 +341,7 @@ public enum AMD64Arithmetic {
         protected JavaConstant y;
 
         public BinaryRegStackConst(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, JavaConstant y) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -364,7 +383,8 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class MulHighOp extends AMD64LIRInstruction {
+    public static final class MulHighOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<MulHighOp> TYPE = LIRInstructionClass.create(MulHighOp.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def({REG}) public AllocatableValue lowResult;
@@ -373,6 +393,7 @@ public enum AMD64Arithmetic {
         @Use({REG, STACK}) public AllocatableValue y;
 
         public MulHighOp(AMD64Arithmetic opcode, LIRKind kind, AllocatableValue y) {
+            super(TYPE);
             this.opcode = opcode;
             this.x = AMD64.rax.asValue(kind);
             this.y = y;
@@ -420,7 +441,8 @@ public enum AMD64Arithmetic {
         }
     }
 
-    public static class DivRemOp extends AMD64LIRInstruction {
+    public static final class DivRemOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<DivRemOp> TYPE = LIRInstructionClass.create(DivRemOp.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def public AllocatableValue divResult;
@@ -430,6 +452,7 @@ public enum AMD64Arithmetic {
         @State protected LIRFrameState state;
 
         public DivRemOp(AMD64Arithmetic opcode, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
+            super(TYPE);
             this.opcode = opcode;
             this.divResult = AMD64.rax.asValue(LIRKind.derive(x, y));
             this.remResult = AMD64.rdx.asValue(LIRKind.derive(x, y));
@@ -456,6 +479,7 @@ public enum AMD64Arithmetic {
     }
 
     public static class FPDivRemOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<FPDivRemOp> TYPE = LIRInstructionClass.create(FPDivRemOp.class);
 
         @Opcode private final AMD64Arithmetic opcode;
         @Def protected AllocatableValue result;
@@ -464,6 +488,7 @@ public enum AMD64Arithmetic {
         @Temp protected AllocatableValue raxTemp;
 
         public FPDivRemOp(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.raxTemp = AMD64.rax.asValue(LIRKind.value(Kind.Int));

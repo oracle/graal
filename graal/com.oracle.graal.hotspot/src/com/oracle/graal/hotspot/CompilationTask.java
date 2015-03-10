@@ -172,7 +172,7 @@ public class CompilationTask {
         EventProvider eventProvider = Graal.getRequiredCapability(EventProvider.class);
         CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
 
-        try (TimerCloseable a = CompilationTime.start()) {
+        try (DebugCloseable a = CompilationTime.start()) {
             // If there is already compiled code for this method on our level we simply return.
             // Graal compiles are always at the highest compile level, even in non-tiered mode so we
             // only need to check for that value.
@@ -259,7 +259,7 @@ public class CompilationTask {
                 }
             }
 
-            try (TimerCloseable b = CodeInstallationTime.start()) {
+            try (DebugCloseable b = CodeInstallationTime.start()) {
                 installedCode = (HotSpotInstalledCode) installMethod(result);
                 if (!isOSR) {
                     ProfilingInfo profile = method.getProfilingInfo();

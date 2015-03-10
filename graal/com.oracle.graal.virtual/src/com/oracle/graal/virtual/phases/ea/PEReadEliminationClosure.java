@@ -94,7 +94,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             ValueNode value = getScalarAlias(store.value());
             boolean result = false;
             if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                effects.deleteFixedNode(store);
+                effects.deleteNode(store);
                 result = true;
             }
             state.killReadCache(store.field());

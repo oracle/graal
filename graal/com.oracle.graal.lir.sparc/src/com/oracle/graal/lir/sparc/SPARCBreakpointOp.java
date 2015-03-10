@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ package com.oracle.graal.lir.sparc;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ta;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -34,7 +33,8 @@ import com.oracle.graal.lir.asm.*;
  * Emits a breakpoint.
  */
 @Opcode("BREAKPOINT")
-public class SPARCBreakpointOp extends SPARCLIRInstruction {
+public final class SPARCBreakpointOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCBreakpointOp> TYPE = LIRInstructionClass.create(SPARCBreakpointOp.class);
 
     // historical - from hotspot src/cpu/sparc/vm
     // <sys/trap.h> promises that the system will not use traps 16-31
@@ -47,11 +47,12 @@ public class SPARCBreakpointOp extends SPARCLIRInstruction {
     @Use({REG, STACK}) protected Value[] parameters;
 
     public SPARCBreakpointOp(Value[] parameters) {
+        super(TYPE);
         this.parameters = parameters;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        new Ta(ST_RESERVED_FOR_USER_0).emit(masm);
+        masm.ta(ST_RESERVED_FOR_USER_0);
     }
 }

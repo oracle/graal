@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
 public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, VirtualizableRoot, UncheckedInterfaceProvider {
 
-    public static final NodeClass<LoadFieldNode> TYPE = NodeClass.get(LoadFieldNode.class);
+    public static final NodeClass<LoadFieldNode> TYPE = NodeClass.create(LoadFieldNode.class);
 
     public LoadFieldNode(ValueNode object, ResolvedJavaField field) {
         super(TYPE, createStamp(field), object, field);

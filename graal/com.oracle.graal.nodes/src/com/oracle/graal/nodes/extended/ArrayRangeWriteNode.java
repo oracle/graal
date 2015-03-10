@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public abstract class ArrayRangeWriteNode extends AbstractMemoryCheckpoint {
 
-    public static final NodeClass<ArrayRangeWriteNode> TYPE = NodeClass.get(ArrayRangeWriteNode.class);
+    public static final NodeClass<ArrayRangeWriteNode> TYPE = NodeClass.create(ArrayRangeWriteNode.class);
 
     protected ArrayRangeWriteNode(NodeClass<? extends ArrayRangeWriteNode> c, Stamp stamp) {
         super(c, stamp);

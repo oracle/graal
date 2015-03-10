@@ -30,7 +30,7 @@ public interface BytecodeDisassemblerProvider {
     /**
      * Gets a textual disassembly of the bytecode for a given method. In the absence of bytecode
      * rewriting, disassembling a method will produce the same result.
-     * 
+     *
      * @return a non-zero length string containing a disassembly of {@code method}'s bytecode or
      *         null if {@code method} has no bytecode (i.e., {@code method.getCodeSize() == 0})
      */

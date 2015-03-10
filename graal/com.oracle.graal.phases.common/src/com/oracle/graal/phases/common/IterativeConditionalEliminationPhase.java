@@ -38,19 +38,20 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
     private static final int MAX_ITERATIONS = 256;
 
     private final CanonicalizerPhase canonicalizer;
+    private final boolean fullSchedule;
 
-    public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer) {
+    public IterativeConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule) {
         this.canonicalizer = canonicalizer;
+        this.fullSchedule = fullSchedule;
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase();
-        HashSetNodeEventListener listener = new HashSetNodeEventListener().exclude(NODE_ADDED);
+        HashSetNodeEventListener listener = new HashSetNodeEventListener().exclude(NODE_ADDED).exclude(ZERO_USAGES);
         int count = 0;
         while (true) {
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                eliminate.apply(graph);
+                new DominatorConditionalEliminationPhase(fullSchedule).apply(graph);
             }
             if (listener.getNodes().isEmpty()) {
                 break;

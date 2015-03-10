@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,15 +27,18 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
-public class AMD64PrefetchOp extends AMD64LIRInstruction {
+public final class AMD64PrefetchOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64PrefetchOp> TYPE = LIRInstructionClass.create(AMD64PrefetchOp.class);
 
     private final int instr;  // AllocatePrefetchInstr
     @Alive({COMPOSITE}) protected AMD64AddressValue address;
 
     public AMD64PrefetchOp(AMD64AddressValue address, int instr) {
+        super(TYPE);
         this.address = address;
         this.instr = instr;
     }

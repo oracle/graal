@@ -35,7 +35,7 @@ public class NodeUsagesTests {
 
     @NodeInfo
     static final class Def extends Node {
-        public static final NodeClass<Def> TYPE = NodeClass.get(Def.class);
+        public static final NodeClass<Def> TYPE = NodeClass.create(Def.class);
 
         protected Def() {
             super(TYPE);
@@ -44,7 +44,7 @@ public class NodeUsagesTests {
 
     @NodeInfo
     static final class Use extends Node {
-        public static final NodeClass<Use> TYPE = NodeClass.get(Use.class);
+        public static final NodeClass<Use> TYPE = NodeClass.create(Use.class);
         @Input Def in0;
         @Input Def in1;
         @Input Def in2;

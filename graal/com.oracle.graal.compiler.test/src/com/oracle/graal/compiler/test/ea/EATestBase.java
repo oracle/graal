@@ -154,10 +154,10 @@ public class EATestBase extends GraalCompilerTest {
             new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
                             OptimisticOptimizations.ALL, false).apply(graph);
             context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
-            new CanonicalizerPhase(true).apply(graph, context);
-            new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true), null).apply(graph, context);
+            new CanonicalizerPhase().apply(graph, context);
+            new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(), null).apply(graph, context);
             returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
         } catch (Throwable e) {
             throw Debug.handle(e);

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {
 
-    public static final NodeClass<KillingBeginNode> TYPE = NodeClass.get(KillingBeginNode.class);
+    public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);
     protected LocationIdentity locationIdentity;
 
     public KillingBeginNode(LocationIdentity locationIdentity) {

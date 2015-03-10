@@ -34,6 +34,13 @@ public interface Value extends KindProvider, TrustedInterface {
         public String toString() {
             return "-";
         }
+
+        @Override
+        public boolean equals(Object other) {
+            // Due to de-serialization this object may exist multiple times. So we compare classes
+            // instead of the individual objects. (This anonymous class has always the same meaning)
+            return other != null && this.getClass() == other.getClass();
+        }
     };
 
     LIRKind getLIRKind();

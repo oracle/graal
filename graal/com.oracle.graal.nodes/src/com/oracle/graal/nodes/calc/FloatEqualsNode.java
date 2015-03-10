@@ -27,14 +27,15 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "==")
-public final class FloatEqualsNode extends CompareNode {
-    public static final NodeClass<FloatEqualsNode> TYPE = NodeClass.get(FloatEqualsNode.class);
+public final class FloatEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {
+    public static final NodeClass<FloatEqualsNode> TYPE = NodeClass.create(FloatEqualsNode.class);
 
     public FloatEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.EQ, false, x, y);
@@ -47,7 +48,7 @@ public final class FloatEqualsNode extends CompareNode {
         if (result != null) {
             return result;
         } else {
-            return new FloatEqualsNode(x, y);
+            return new FloatEqualsNode(x, y).maybeCommuteInputs();
         }
     }
 
@@ -57,9 +58,11 @@ public final class FloatEqualsNode extends CompareNode {
         if (result != this) {
             return result;
         }
-        if (forX.stamp() instanceof FloatStamp && forY.stamp() instanceof FloatStamp) {
-            FloatStamp xStamp = (FloatStamp) forX.stamp();
-            FloatStamp yStamp = (FloatStamp) forY.stamp();
+        Stamp xStampGeneric = forX.stamp();
+        Stamp yStampGeneric = forY.stamp();
+        if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
+            FloatStamp xStamp = (FloatStamp) xStampGeneric;
+            FloatStamp yStamp = (FloatStamp) yStampGeneric;
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY) && xStamp.isNonNaN() && yStamp.isNonNaN()) {
                 return LogicConstantNode.tautology();
             } else if (xStamp.alwaysDistinct(yStamp)) {
@@ -77,5 +80,35 @@ public final class FloatEqualsNode extends CompareNode {
             return new IntegerEqualsNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
+    }
+
+    @Override
+    public Stamp getSucceedingStampForX(boolean negated) {
+        if (!negated) {
+            return getX().stamp().join(getY().stamp());
+        }
+        return null;
+    }
+
+    @Override
+    public Stamp getSucceedingStampForY(boolean negated) {
+        if (!negated) {
+            return getX().stamp().join(getY().stamp());
+        }
+        return null;
+    }
+
+    @Override
+    public TriState tryFold(Stamp xStampGeneric, Stamp yStampGeneric) {
+        if (xStampGeneric instanceof FloatStamp && yStampGeneric instanceof FloatStamp) {
+            FloatStamp xStamp = (FloatStamp) xStampGeneric;
+            FloatStamp yStamp = (FloatStamp) yStampGeneric;
+            if (xStamp.alwaysDistinct(yStamp)) {
+                return TriState.FALSE;
+            } else if (xStamp.neverDistinct(yStamp)) {
+                return TriState.TRUE;
+            }
+        }
+        return TriState.UNKNOWN;
     }
 }

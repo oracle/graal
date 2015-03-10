@@ -24,15 +24,18 @@ package com.oracle.graal.compiler.common.cfg;
 
 import java.util.*;
 
-public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements AbstractBlock<T> {
+public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     protected int id;
+    protected int domDepth;
 
     protected List<T> predecessors;
     protected List<T> successors;
 
     private T dominator;
     private List<T> dominated;
+    private int domNumber;
+    private int maxChildDomNumber;
 
     private boolean align;
     private int linearScanNumber;
@@ -40,6 +43,19 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
     protected AbstractBlockBase() {
         this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
         this.linearScanNumber = -1;
+    }
+
+    public void setDominatorNumbers(int domNumber, int maxChildDomNumber) {
+        this.domNumber = domNumber;
+        this.maxChildDomNumber = maxChildDomNumber;
+    }
+
+    public int getDominatorNumber() {
+        return domNumber;
+    }
+
+    public int getMaxChildDominatorNumber() {
+        return this.maxChildDomNumber;
     }
 
     public int getId() {
@@ -72,6 +88,11 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
 
     public void setDominator(T dominator) {
         this.dominator = dominator;
+        this.domDepth = dominator.domDepth + 1;
+    }
+
+    public int getDominatorDepth() {
+        return domDepth;
     }
 
     public List<T> getDominated() {
@@ -113,4 +134,20 @@ public abstract class AbstractBlockBase<T extends AbstractBlock<T>> implements A
     public void setAlign(boolean align) {
         this.align = align;
     }
+
+    public abstract boolean isExceptionEntry();
+
+    public abstract Loop<T> getLoop();
+
+    public abstract int getLoopDepth();
+
+    public abstract boolean isLoopEnd();
+
+    public abstract boolean isLoopHeader();
+
+    public abstract T getPostdominator();
+
+    public abstract double probability();
+
+    public abstract T getDominator(int distance);
 }

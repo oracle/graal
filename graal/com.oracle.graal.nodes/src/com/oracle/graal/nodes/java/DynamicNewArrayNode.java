@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.*;
  */
 @NodeInfo
 public class DynamicNewArrayNode extends AbstractNewArrayNode {
-    public static final NodeClass<DynamicNewArrayNode> TYPE = NodeClass.get(DynamicNewArrayNode.class);
+    public static final NodeClass<DynamicNewArrayNode> TYPE = NodeClass.create(DynamicNewArrayNode.class);
 
     @Input ValueNode elementType;
 

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass<BlackholeNode> TYPE = NodeClass.get(BlackholeNode.class);
+    public static final NodeClass<BlackholeNode> TYPE = NodeClass.create(BlackholeNode.class);
     @Input ValueNode value;
 
     public BlackholeNode(ValueNode value) {

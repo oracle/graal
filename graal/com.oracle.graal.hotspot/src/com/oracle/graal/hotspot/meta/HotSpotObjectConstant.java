@@ -87,7 +87,7 @@ public interface HotSpotObjectConstant extends JavaConstant, HotSpotConstant, VM
     JavaConstant getCallSiteTarget(Assumptions assumptions);
 
     /**
-     * Gets the result of {@link CompositeValueClass#get(Class)} for the {@link Class} object
+     * Gets the result of {@link CompositeValueClass#create(Class)} for the {@link Class} object
      * represented by this constant.
      *
      * @return {@code null} if this constant does not represent a {@link Class} object

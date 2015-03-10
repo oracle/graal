@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.virtual.*;
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
 public final class FrameState extends VirtualState implements IterableNodeType {
-    public static final NodeClass<FrameState> TYPE = NodeClass.get(FrameState.class);
+    public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 
     private static final DebugMetric METRIC_FRAMESTATE_COUNT = Debug.metric("FrameStateCount");
 
@@ -251,14 +251,20 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * changed to newBci.
      */
     private FrameState duplicateModified(int newBci, boolean newRethrowException, boolean newDuringCall, Kind popKind, ValueNode... pushedValues) {
-        ArrayList<ValueNode> copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
-        if (popKind != Kind.Void) {
-            if (stackAt(stackSize() - 1) == null) {
+        ArrayList<ValueNode> copy;
+        if (newRethrowException && !rethrowException && popKind == Kind.Void) {
+            assert popKind == Kind.Void;
+            copy = new ArrayList<>(values.subList(0, localsSize));
+        } else {
+            copy = new ArrayList<>(values.subList(0, localsSize + stackSize));
+            if (popKind != Kind.Void) {
+                if (stackAt(stackSize() - 1) == null) {
+                    copy.remove(copy.size() - 1);
+                }
+                ValueNode lastSlot = copy.get(copy.size() - 1);
+                assert lastSlot.getKind().getStackKind() == popKind.getStackKind();
                 copy.remove(copy.size() - 1);
             }
-            ValueNode lastSlot = copy.get(copy.size() - 1);
-            assert lastSlot.getKind().getStackKind() == popKind.getStackKind();
-            copy.remove(copy.size() - 1);
         }
         for (ValueNode node : pushedValues) {
             copy.add(node);
@@ -269,7 +275,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         int newStackSize = copy.size() - localsSize;
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
-        assert checkStackDepth(bci, stackSize, duringCall, newBci, newStackSize, newDuringCall);
+        assert checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
         return graph().add(new FrameState(outerFrameState(), method, newBci, copy, localsSize, newStackSize, newRethrowException, newDuringCall, monitorIds, virtualObjectMappings));
     }
 
@@ -277,7 +283,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * Perform a few sanity checks on the transformation of the stack state. The current expectation
      * is that a stateAfter is being transformed into a stateDuring, so the stack depth may change.
      */
-    private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, int newBci, int newStackSize, boolean newDuringCall) {
+    private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, boolean oldRethrowException, int newBci, int newStackSize, boolean newDuringCall, boolean newRethrowException) {
         /*
          * It would be nice to have a complete check of the shape of the FrameState based on a
          * dataflow of the bytecodes but for now just check for obvious expression stack depth
@@ -290,7 +296,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
         byte newCode = codes[newBci];
         if (oldBci == newBci) {
-            assert oldStackSize == newStackSize || oldDuringCall != newDuringCall : "bci is unchanged, stack depth shouldn't change";
+            assert oldStackSize == newStackSize || oldDuringCall != newDuringCall || oldRethrowException != newRethrowException : "bci is unchanged, stack depth shouldn't change";
         } else {
             byte oldCode = codes[oldBci];
             assert Bytecodes.lengthOf(newCode) + newBci == oldBci || Bytecodes.lengthOf(oldCode) + oldBci == newBci : "expecting roll back or forward";

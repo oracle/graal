@@ -32,7 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public class DispatchBeginNode extends BeginStateSplitNode {
 
-    public static final NodeClass<DispatchBeginNode> TYPE = NodeClass.get(DispatchBeginNode.class);
+    public static final NodeClass<DispatchBeginNode> TYPE = NodeClass.create(DispatchBeginNode.class);
 
     public DispatchBeginNode() {
         super(TYPE);

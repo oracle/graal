@@ -33,7 +33,6 @@ import sun.misc.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaMethodProfile.ProfiledMethod;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotMethodDataAccessor.Tag;
 

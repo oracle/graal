@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo
 public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
 
-    public static final NodeClass<PiArrayNode> TYPE = NodeClass.get(PiArrayNode.class);
+    public static final NodeClass<PiArrayNode> TYPE = NodeClass.create(PiArrayNode.class);
     @Input ValueNode length;
 
     public ValueNode length() {

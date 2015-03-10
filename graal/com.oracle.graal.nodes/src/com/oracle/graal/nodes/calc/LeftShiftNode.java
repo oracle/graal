@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(shortName = "<<")
 public final class LeftShiftNode extends ShiftNode<Shl> {
 
-    public static final NodeClass<LeftShiftNode> TYPE = NodeClass.get(LeftShiftNode.class);
+    public static final NodeClass<LeftShiftNode> TYPE = NodeClass.create(LeftShiftNode.class);
 
     public LeftShiftNode(ValueNode x, ValueNode y) {
         super(TYPE, ArithmeticOpTable::getShl, x, y);

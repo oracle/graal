@@ -147,7 +147,7 @@ public class TruffleCacheImpl implements TruffleCache {
             new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
 
             // Convert deopt to guards.
-            new ConvertDeoptimizeToGuardPhase().apply(graph);
+            new ConvertDeoptimizeToGuardPhase().apply(graph, phaseContext);
 
             PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizer);
 
@@ -175,7 +175,7 @@ public class TruffleCacheImpl implements TruffleCache {
                 }
 
                 // Convert deopt to guards.
-                new ConvertDeoptimizeToGuardPhase().apply(graph);
+                new ConvertDeoptimizeToGuardPhase().apply(graph, phaseContext);
 
                 new EarlyReadEliminationPhase(canonicalizer).apply(graph, phaseContext);
 

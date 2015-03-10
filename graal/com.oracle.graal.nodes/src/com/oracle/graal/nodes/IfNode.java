@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.graph.Edges.Type.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -48,7 +45,7 @@ import com.oracle.graal.nodes.util.*;
  */
 @NodeInfo
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
-    public static final NodeClass<IfNode> TYPE = NodeClass.get(IfNode.class);
+    public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
     private static final DebugMetric CORRECTED_PROBABILITIES = Debug.metric("CorrectedProbabilities");
 
@@ -94,6 +91,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     public AbstractBeginNode falseSuccessor() {
         return falseSuccessor;
+    }
+
+    public double getTrueSuccessorProbability() {
+        return this.trueSuccessorProbability;
     }
 
     public void setTrueSuccessor(AbstractBeginNode node) {
@@ -237,7 +238,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (nodeClass.getEdges(Inputs).areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
+                    if (nodeClass.getInputEdges().areEqualIn(trueNext, falseNext) && trueNext.valueEquals(falseNext)) {
                         falseNext.replaceAtUsages(trueNext);
                         graph().removeFixed(falseNext);
                         GraphUtil.unlinkFixedNode(trueNext);
@@ -750,7 +751,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         MergeNode falseMerge = null;
         assert merge.stateAfter() == null;
 
-        for (AbstractEndNode end : merge.forwardEnds().snapshot()) {
+        for (EndNode end : merge.forwardEnds().snapshot()) {
             Node value = phi.valueAt(end);
             Node result = null;
             if (condition() instanceof Canonicalizable.Binary<?>) {
@@ -906,7 +907,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
-        List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+        List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         assert phi.valueCount() == merge.forwardEndCount();
 
         Constant[] xs = constantValues(compare.getX(), merge, false);
@@ -920,8 +921,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        List<AbstractEndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
-        List<AbstractEndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
+        List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
+        List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         Map<AbstractEndNode, ValueNode> phiValues = CollectionsFactory.newMap(mergePredecessors.size());
 
         AbstractBeginNode oldFalseSuccessor = falseSuccessor();
@@ -930,9 +931,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         setFalseSuccessor(null);
         setTrueSuccessor(null);
 
-        Iterator<AbstractEndNode> ends = mergePredecessors.iterator();
+        Iterator<EndNode> ends = mergePredecessors.iterator();
         for (int i = 0; i < xs.length; i++) {
-            AbstractEndNode end = ends.next();
+            EndNode end = ends.next();
             phiValues.put(end, phi.valueAt(end));
             if (compare.condition().foldCondition(xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue())) {
                 trueEnds.add(end);
@@ -1062,7 +1063,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
-    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
+    private void connectEnds(List<EndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
         if (!ends.isEmpty()) {
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
@@ -1076,7 +1077,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(), newMerge));
 
-                for (AbstractEndNode end : ends) {
+                for (EndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));
                     newMerge.addForwardEnd(end);
                 }
@@ -1125,5 +1126,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         return null;
+    }
+
+    @Override
+    public AbstractBeginNode getPrimarySuccessor() {
+        return this.trueSuccessor();
+    }
+
+    public AbstractBeginNode getSuccessor(boolean result) {
+        return result ? this.trueSuccessor() : this.falseSuccessor();
     }
 }

@@ -128,4 +128,22 @@ public interface Canonicalizable {
             return canonical(tool, getX(), getY());
         }
     }
+
+    /**
+     * This sub-interface of {@link Canonicalizable.Binary} is for nodes with two inputs where the
+     * operation is commutative. It is used to improve GVN by trying to merge nodes with the same
+     * inputs in different order.
+     */
+    public interface BinaryCommutative<T extends Node> extends Binary<T> {
+
+        /**
+         * Ensure a canonical ordering of inputs for commutative nodes to improve GVN results. Order
+         * the inputs by increasing {@link Node#id} and call {@link Graph#findDuplicate(Node)} on
+         * the node if it's currently in a graph. It's assumed that if there was a constant on the
+         * left it's been moved to the right by other code and that ordering is left alone.
+         *
+         * @return the original node or another node with the same input ordering
+         */
+        Node maybeCommuteInputs();
+    }
 }

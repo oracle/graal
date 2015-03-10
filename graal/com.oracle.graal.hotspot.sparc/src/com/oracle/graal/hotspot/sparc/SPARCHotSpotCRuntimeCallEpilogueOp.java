@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,13 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 @Opcode("CRUNTIME_CALL_EPILOGUE")
 final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotCRuntimeCallEpilogueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotCRuntimeCallEpilogueOp.class);
 
     private final int threadLastJavaSpOffset;
     private final int threadLastJavaPcOffset;
@@ -44,6 +43,7 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     @Use({REG, STACK}) protected Value threadTemp;
 
     public SPARCHotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, Register thread, Value threadTemp) {
+        super(TYPE);
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadJavaFrameAnchorFlagsOffset = threadJavaFrameAnchorFlagsOffset;
@@ -58,8 +58,8 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
         SPARCMove.move(crb, masm, thread.asValue(LIRKind.value(Kind.Long)), threadTemp, SPARCDelayedControlTransfer.DUMMY);
 
         // Reset last Java frame, last Java PC and flags.
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
-        new Stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset)).emit(masm);
-        new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
+        masm.stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset));
+        masm.stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset));
+        masm.stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset));
     }
 }

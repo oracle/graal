@@ -62,7 +62,7 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
 
         PhaseContext context = new PhaseContext(getProviders());
         Assert.assertEquals(5, graph.getNodes().filter(loopPhis).count());
-        new CanonicalizerPhase(false).apply(graph, context);
+        new CanonicalizerPhase().apply(graph, context);
         Assert.assertEquals(2, graph.getNodes().filter(loopPhis).count());
 
         test("loopSnippet");

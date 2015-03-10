@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 @NodeInfo
 public final class StubStartNode extends StartNode {
 
-    public static final NodeClass<StubStartNode> TYPE = NodeClass.get(StubStartNode.class);
+    public static final NodeClass<StubStartNode> TYPE = NodeClass.create(StubStartNode.class);
     protected final Stub stub;
 
     public StubStartNode(Stub stub) {

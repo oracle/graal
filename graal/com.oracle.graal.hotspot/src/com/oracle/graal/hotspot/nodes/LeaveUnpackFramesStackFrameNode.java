@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class LeaveUnpackFramesStackFrameNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass<LeaveUnpackFramesStackFrameNode> TYPE = NodeClass.get(LeaveUnpackFramesStackFrameNode.class);
+    public static final NodeClass<LeaveUnpackFramesStackFrameNode> TYPE = NodeClass.create(LeaveUnpackFramesStackFrameNode.class);
     @Input SaveAllRegistersNode registerSaver;
 
     public LeaveUnpackFramesStackFrameNode(ValueNode registerSaver) {

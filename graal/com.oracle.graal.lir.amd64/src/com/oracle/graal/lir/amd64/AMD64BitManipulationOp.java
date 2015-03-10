@@ -28,7 +28,8 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
-public class AMD64BitManipulationOp extends AMD64LIRInstruction {
+public final class AMD64BitManipulationOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64BitManipulationOp> TYPE = LIRInstructionClass.create(AMD64BitManipulationOp.class);
 
     public enum IntrinsicOpcode {
         IPOPCNT,
@@ -47,6 +48,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
     @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
     public AMD64BitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input) {
+        super(TYPE);
         this.opcode = opcode;
         this.result = result;
         this.input = input;

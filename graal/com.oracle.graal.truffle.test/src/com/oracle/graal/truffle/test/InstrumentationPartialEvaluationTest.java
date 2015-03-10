@@ -141,7 +141,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         final int[] count = {1};
         count[0] = 0;
         // Register a "prober" that will get applied when CallTarget gets created.
-        Probe.registerASTProber(new ASTProber() {
+        final ASTProber prober = new ASTProber() {
 
             @Override
             public void probeAST(Node node) {
@@ -157,31 +157,92 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
 
                 });
             }
-        });
-        final RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
+        };
+        Probe.registerASTProber(prober);
+        try {
+            final RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
 
-        // The CallTarget has one Probe, attached to the ConstantTestNode, ready to run
-        Assert.assertEquals(42, callTarget.call()); // Correct result
-        Assert.assertEquals(0, count[0]);           // Didn't count anything
+            // The CallTarget has one Probe, attached to the ConstantTestNode, ready to run
+            Assert.assertEquals(42, callTarget.call()); // Correct result
+            Assert.assertEquals(0, count[0]);           // Didn't count anything
 
-        // Add a counting instrument; this changes the "Probe state" and should cause a deopt
-        final Instrument countingInstrument = Instrument.create(new DefaultEventListener() {
+            // Add a counting instrument; this changes the "Probe state" and should cause a deopt
+            final Instrument countingInstrument = Instrument.create(new DefaultEventListener() {
+
+                @Override
+                public void enter(Node node, VirtualFrame frame) {
+                    count[0] = count[0] + 1;
+                }
+            });
+            probe[0].attach(countingInstrument);
+
+            Assert.assertEquals(42, callTarget.call()); // Correct result
+            Assert.assertEquals(1, count[0]);           // Counted the first call
+
+            // Remove the counting instrument; this changes the "Probe state" and should cause a
+            // deopt
+            countingInstrument.dispose();
+
+            Assert.assertEquals(42, callTarget.call()); // Correct result
+            Assert.assertEquals(1, count[0]);           // Didn't count this time
+        } finally {
+            Probe.unregisterASTProber(prober);
+        }
+
+    }
+
+    /**
+     * Experimental feature; not yet validated.
+     */
+    @Test
+    public void specialOptInstrument() {
+        final FrameDescriptor fd = new FrameDescriptor();
+        final AbstractTestNode result = new ConstantTestNode(42);
+        final RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        final Probe[] probe = new Probe[1];
+        final int[] count = {1};
+        count[0] = 0;
+        // Register a "prober" that will get applied when CallTarget gets created.
+        final ASTProber prober = new ASTProber() {
 
             @Override
-            public void enter(Node node, VirtualFrame frame) {
-                count[0] = count[0] + 1;
+            public void probeAST(Node node) {
+                node.accept(new NodeVisitor() {
+
+                    @Override
+                    public boolean visit(Node visitedNode) {
+                        if (visitedNode instanceof ConstantTestNode) {
+                            probe[0] = visitedNode.probe();
+                        }
+                        return true;
+                    }
+                });
             }
-        });
-        probe[0].attach(countingInstrument);
+        };
+        Probe.registerASTProber(prober);
+        try {
+            final RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
 
-        Assert.assertEquals(42, callTarget.call()); // Correct result
-        Assert.assertEquals(1, count[0]);           // Counted the first call
+            // The CallTarget has one Probe, attached to the ConstantTestNode, ready to run
+            Assert.assertEquals(42, callTarget.call()); // Correct result
 
-        // Remove the counting instrument; this changes the "Probe state" and should cause a deopt
-        countingInstrument.dispose();
+            final boolean[] isCurrentlyCompiled = {false};
+            final Instrument optInstrument = Instrument.create(new Instrument.TruffleOptListener() {
 
-        Assert.assertEquals(42, callTarget.call()); // Correct result
-        Assert.assertEquals(1, count[0]);           // Didn't count this time
+                public void notifyIsCompiled(boolean isCompiled) {
+                    isCurrentlyCompiled[0] = isCompiled;
+                }
+            });
+            probe[0].attach(optInstrument);
+
+            Assert.assertEquals(42, callTarget.call()); // Correct result
+            Assert.assertFalse(isCurrentlyCompiled[0]);
+
+            // TODO (mlvdv) compile, call again, and assert that isCurrentlyCompiled == true
+
+        } finally {
+            Probe.unregisterASTProber(prober);
+        }
 
     }
 }

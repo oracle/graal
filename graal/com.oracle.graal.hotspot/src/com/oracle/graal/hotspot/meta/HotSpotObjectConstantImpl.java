@@ -190,7 +190,7 @@ public final class HotSpotObjectConstantImpl extends AbstractValue implements Ho
         if (object instanceof Class) {
             Class<? extends CompositeValue> c = (Class<? extends CompositeValue>) object;
             assert CompositeValue.class.isAssignableFrom(c) : c;
-            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.get(c));
+            return HotSpotObjectConstantImpl.forObject(CompositeValueClass.create(c));
         }
         return null;
     }

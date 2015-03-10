@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  */
 @NodeInfo
 public final class AbsNode extends UnaryArithmeticNode<Abs> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
-    public static final NodeClass<AbsNode> TYPE = NodeClass.get(AbsNode.class);
+    public static final NodeClass<AbsNode> TYPE = NodeClass.create(AbsNode.class);
 
     public AbsNode(ValueNode x) {
         super(TYPE, ArithmeticOpTable::getAbs, x);

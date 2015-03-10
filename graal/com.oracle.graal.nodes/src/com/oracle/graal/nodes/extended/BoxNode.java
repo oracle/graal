@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.virtual.*;
 @NodeInfo
 public final class BoxNode extends UnaryNode implements VirtualizableAllocation, Lowerable {
 
-    public static final NodeClass<BoxNode> TYPE = NodeClass.get(BoxNode.class);
+    public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
     protected final Kind boxingKind;
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {

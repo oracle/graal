@@ -43,7 +43,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
@@ -395,7 +394,7 @@ public class SnippetTemplate {
     @NodeInfo
     static final class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
 
-        public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.get(VarargsPlaceholderNode.class);
+        public static final NodeClass<VarargsPlaceholderNode> TYPE = NodeClass.create(VarargsPlaceholderNode.class);
         protected final Varargs varargs;
 
         public VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
@@ -520,7 +519,7 @@ public class SnippetTemplate {
             SnippetTemplate template = UseSnippetTemplateCache ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
-                try (TimerCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
+                try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
                     template = new SnippetTemplate(providers, snippetReflection, args);
                     if (UseSnippetTemplateCache) {
                         templates.put(args.cacheKey, template);
@@ -671,8 +670,8 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase(true));
-                    new CanonicalizerPhase(true).applyIncremental(snippetCopy, phaseContext, mark);
+                    LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase());
+                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
@@ -687,7 +686,7 @@ public class SnippetTemplate {
         }
         snippetCopy.setGuardsStage(guardsStage);
         try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-            new LoweringPhase(new CanonicalizerPhase(true), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
+            new LoweringPhase(new CanonicalizerPhase(), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -721,7 +720,7 @@ public class SnippetTemplate {
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        new FloatingReadPhase(false, true, false).apply(snippetCopy);
+        new FloatingReadPhase(false, true).apply(snippetCopy);
 
         MemoryAnchorNode memoryAnchor = snippetCopy.add(new MemoryAnchorNode());
         snippetCopy.start().replaceAtUsages(InputType.Memory, memoryAnchor);
@@ -746,7 +745,7 @@ public class SnippetTemplate {
             List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
             ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
             this.returnNode = snippet.add(new ReturnNode(returnValue));
-            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps, false);
+            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
             MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
             this.returnNode.setMemoryMap(memoryMap);
             for (MemoryMapNode mm : memMaps) {
@@ -1097,7 +1096,7 @@ public class SnippetTemplate {
      */
     public Map<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
         assert assertSnippetKills(replacee);
-        try (TimerCloseable a = args.info.instantiationTimer.start(); TimerCloseable b = instantiationTimer.start()) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(); DebugCloseable b = instantiationTimer.start()) {
             args.info.instantiationCounter.increment();
             instantiationCounter.increment();
             // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -1244,7 +1243,7 @@ public class SnippetTemplate {
      */
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         assert assertSnippetKills(replacee);
-        try (TimerCloseable a = args.info.instantiationTimer.start()) {
+        try (DebugCloseable a = args.info.instantiationTimer.start()) {
             args.info.instantiationCounter.increment();
             instantiationCounter.increment();
 

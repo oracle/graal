@@ -33,7 +33,7 @@ import com.oracle.truffle.api.frame.*;
 @NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}")
 public final class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
 
-    public static final NodeClass<MaterializeFrameNode> TYPE = NodeClass.get(MaterializeFrameNode.class);
+    public static final NodeClass<MaterializeFrameNode> TYPE = NodeClass.create(MaterializeFrameNode.class);
     @Input ValueNode frame;
 
     public MaterializeFrameNode(ValueNode frame) {

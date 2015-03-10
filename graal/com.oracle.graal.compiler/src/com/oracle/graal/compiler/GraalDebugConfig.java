@@ -62,7 +62,7 @@ public class GraalDebugConfig implements DebugConfig {
                    "Thread - aggregate by qualified name and thread", type = OptionType.Debug)
     public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
     @Option(help = "Omit reporting 0-value metrics", type = OptionType.Debug)
-    public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(false);
+    public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(true);
     @Option(help = "Send Graal IR to dump handlers on error", type = OptionType.Debug)
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)

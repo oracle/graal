@@ -78,7 +78,7 @@ public class CallingConvention {
 
     /**
      * Creates a description of the registers and stack locations used by a call.
-     * 
+     *
      * @param stackSize amount of stack space (in bytes) required for the stack-based arguments of
      *            the call
      * @param returnLocation the location for the return value or {@link Value#ILLEGAL} if a void

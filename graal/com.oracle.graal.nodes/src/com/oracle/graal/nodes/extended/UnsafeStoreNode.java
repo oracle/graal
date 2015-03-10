@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<UnsafeStoreNode> TYPE = NodeClass.get(UnsafeStoreNode.class);
+    public static final NodeClass<UnsafeStoreNode> TYPE = NodeClass.create(UnsafeStoreNode.class);
     @Input ValueNode value;
     @OptionalInput(InputType.State) FrameState stateAfter;
 

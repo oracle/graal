@@ -324,7 +324,7 @@ public class StructuredGraph extends Graph {
         if (node instanceof AbstractBeginNode) {
             ((AbstractBeginNode) node).prepareDelete();
         }
-        assert node.hasNoUsages() : node + " " + node.usages();
+        assert node.hasNoUsages() : node + " " + node.usages().count() + ", " + node.usages().first();
         GraphUtil.unlinkFixedNode(node);
         node.safeDelete();
     }
@@ -533,5 +533,13 @@ public class StructuredGraph extends Graph {
      */
     public Set<ResolvedJavaMethod> getInlinedMethods() {
         return inlinedMethods;
+    }
+
+    /**
+     *
+     * @return true if the graph contains only a {@link StartNode} and {@link ReturnNode}
+     */
+    public boolean isTrivial() {
+        return !(start.next() instanceof ReturnNode);
     }
 }

@@ -28,14 +28,13 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 @Opcode("CRUNTIME_CALL_PROLOGUE")
 final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
+    public static final LIRInstructionClass<SPARCHotSpotCRuntimeCallPrologueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotCRuntimeCallPrologueOp.class);
 
     private final int threadLastJavaSpOffset;
     private final Register thread;
@@ -43,6 +42,7 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction imple
     @Def({REG, STACK}) protected Value threadTemp;
 
     public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer, Value threadTemp) {
+        super(TYPE);
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.thread = thread;
         this.stackPointer = stackPointer;
@@ -52,8 +52,8 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction imple
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // Save last Java frame.
-        new Add(stackPointer, STACK_BIAS, g4).emit(masm);
-        new Stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
+        masm.add(stackPointer, STACK_BIAS, g4);
+        masm.stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset));
 
         // Save the thread register when calling out to the runtime.
         SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(Kind.Long)), delayedControlTransfer);

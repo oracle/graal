@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,27 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpa;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.asm.*;
 
-public class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
+public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
+    public static final LIRInstructionClass<SPARCJumpOp> TYPE = LIRInstructionClass.create(SPARCJumpOp.class);
     private boolean emitDone = false;
     private int delaySlotPosition = -1;
 
     public SPARCJumpOp(LabelRef destination) {
-        super(destination);
+        super(TYPE, destination);
     }
 
     public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         assert !emitDone;
         if (!crb.isSuccessorEdge(destination())) {
-            new Bpa(destination().label()).emit(masm);
+            masm.bicc(ConditionFlag.Always, NOT_ANNUL, destination().label());
             delaySlotPosition = masm.position();
         }
         emitDone = true;
@@ -51,8 +53,8 @@ public class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
         if (!crb.isSuccessorEdge(destination())) {
             if (!emitDone) {
                 SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
-                new Bpa(destination().label()).emit(masm);
-                new Nop().emit(masm);
+                masm.bicc(ConditionFlag.Always, NOT_ANNUL, destination().label());
+                masm.nop();
             } else {
                 assert crb.asm.position() - delaySlotPosition == 4;
             }

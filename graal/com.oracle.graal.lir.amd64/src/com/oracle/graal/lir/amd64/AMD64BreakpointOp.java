@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,8 @@ import com.oracle.graal.lir.asm.*;
  * Emits a breakpoint.
  */
 @Opcode("BREAKPOINT")
-public class AMD64BreakpointOp extends AMD64LIRInstruction {
+public final class AMD64BreakpointOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64BreakpointOp> TYPE = LIRInstructionClass.create(AMD64BreakpointOp.class);
 
     /**
      * A set of values loaded into the Java ABI parameter locations (for inspection by a debugger).
@@ -41,6 +42,7 @@ public class AMD64BreakpointOp extends AMD64LIRInstruction {
     @Use({REG, STACK}) protected Value[] parameters;
 
     public AMD64BreakpointOp(Value[] parameters) {
+        super(TYPE);
         this.parameters = parameters;
     }
 

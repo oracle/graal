@@ -36,7 +36,7 @@ public abstract class VirtualState extends Node {
         super(c);
     }
 
-    public static final NodeClass<VirtualState> TYPE = NodeClass.get(VirtualState.class);
+    public static final NodeClass<VirtualState> TYPE = NodeClass.create(VirtualState.class);
 
     public abstract static class NodeClosure<T extends Node> {
 

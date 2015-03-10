@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public final class HotSpotDirectCallTargetNode extends DirectCallTargetNode {
-    public static final NodeClass<HotSpotDirectCallTargetNode> TYPE = NodeClass.get(HotSpotDirectCallTargetNode.class);
+    public static final NodeClass<HotSpotDirectCallTargetNode> TYPE = NodeClass.create(HotSpotDirectCallTargetNode.class);
 
     public HotSpotDirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, Type callType, InvokeKind invokeKind) {
         super(TYPE, arguments, returnStamp, signature, target, callType, invokeKind);

@@ -628,14 +628,14 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         try (Scope d = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             HighTierContext highTierContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
-            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
+            new InliningPhase(new CanonicalizerPhase()).apply(graph, highTierContext);
 
             MidTierContext midTierContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
 
-            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highTierContext);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highTierContext);
             new GuardLoweringPhase().apply(graph, midTierContext);
             new LoopSafepointInsertionPhase().apply(graph);
-            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, highTierContext);
+            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, highTierContext);
 
             new WriteBarrierAdditionPhase(config).apply(graph);
 

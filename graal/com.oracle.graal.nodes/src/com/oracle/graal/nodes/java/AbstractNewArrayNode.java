@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public abstract class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
 
-    public static final NodeClass<AbstractNewArrayNode> TYPE = NodeClass.get(AbstractNewArrayNode.class);
+    public static final NodeClass<AbstractNewArrayNode> TYPE = NodeClass.create(AbstractNewArrayNode.class);
     @Input protected ValueNode length;
 
     @Override

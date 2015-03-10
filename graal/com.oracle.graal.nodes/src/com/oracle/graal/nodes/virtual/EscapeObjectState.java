@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 
 @NodeInfo
 public abstract class EscapeObjectState extends VirtualState implements ValueNumberable {
-    public static final NodeClass<EscapeObjectState> TYPE = NodeClass.get(EscapeObjectState.class);
+    public static final NodeClass<EscapeObjectState> TYPE = NodeClass.create(EscapeObjectState.class);
 
     @Input protected VirtualObjectNode object;
 

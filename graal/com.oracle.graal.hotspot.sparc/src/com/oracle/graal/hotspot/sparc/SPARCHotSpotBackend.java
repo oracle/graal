@@ -24,6 +24,10 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.sparc.SPARC.*;
@@ -34,14 +38,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpne;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Save;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Nop;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.RestoreWindow;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.hotspot.*;
@@ -115,12 +111,12 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     // Use SPARCAddress to get the final displacement including the stack bias.
                     SPARCAddress address = new SPARCAddress(sp, -disp);
                     if (SPARCAssembler.isSimm13(address.getDisplacement())) {
-                        new Stx(g0, address).emit(masm);
+                        masm.stx(g0, address);
                     } else {
                         try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                             Register scratch = sc.getRegister();
                             new Setx(address.getDisplacement(), scratch).emit(masm);
-                            new Stx(g0, new SPARCAddress(sp, scratch)).emit(masm);
+                            masm.stx(g0, new SPARCAddress(sp, scratch));
                         }
                     }
                 }
@@ -150,12 +146,12 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             }
 
             if (SPARCAssembler.isSimm13(stackpoinerChange)) {
-                new Save(sp, stackpoinerChange, sp).emit(masm);
+                masm.save(sp, stackpoinerChange, sp);
             } else {
                 try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
                     Register scratch = sc.getRegister();
                     new Setx(stackpoinerChange, scratch).emit(masm);
-                    new Save(sp, scratch, sp).emit(masm);
+                    masm.save(sp, scratch, sp);
                 }
             }
 
@@ -163,7 +159,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                 final int slotSize = 8;
                 for (int i = 0; i < frameSize / slotSize; ++i) {
                     // 0xC1C1C1C1
-                    new Stx(g0, new SPARCAddress(sp, i * slotSize)).emit(masm);
+                    masm.stx(g0, new SPARCAddress(sp, i * slotSize));
                 }
             }
         }
@@ -171,7 +167,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         @Override
         public void leave(CompilationResultBuilder crb) {
             SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
-            new RestoreWindow().emit(masm);
+            masm.restoreWindow();
         }
     }
 
@@ -236,11 +232,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     Register receiver = asRegister(cc.getArgument(0));
                     SPARCAddress src = new SPARCAddress(receiver, config.hubOffset);
 
-                    new Ldx(src, scratch).emit(masm);
-                    new Cmp(scratch, inlineCacheKlass).emit(masm);
+                    masm.ldx(src, scratch);
+                    masm.cmp(scratch, inlineCacheKlass);
                 }
-                new Bpne(CC.Xcc, unverifiedStub).emit(masm);
-                new Nop().emit(masm);  // delay slot
+                masm.bpcc(NotEqual, NOT_ANNUL, unverifiedStub, Xcc, PREDICT_NOT_TAKEN);
+                masm.nop();  // delay slot
             }
 
             masm.align(config.codeEntryAlignment);
@@ -273,7 +269,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     private static void resetDelayedControlTransfers(LIR lir) {
-        for (AbstractBlock<?> block : lir.codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof SPARCDelayedControlTransfer) {
                     ((SPARCDelayedControlTransfer) inst).resetState();
@@ -285,11 +281,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     /**
      * Fix-up over whole LIR.
      *
-     * @see #stuffDelayedControlTransfers(LIR, AbstractBlock)
+     * @see #stuffDelayedControlTransfers(LIR, AbstractBlockBase)
      * @param l
      */
     private static void stuffDelayedControlTransfers(LIR l) {
-        for (AbstractBlock<?> b : l.codeEmittingOrder()) {
+        for (AbstractBlockBase<?> b : l.codeEmittingOrder()) {
             stuffDelayedControlTransfers(l, b);
         }
     }
@@ -299,7 +295,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
      * it tries to move the DelayedLIRInstruction to the DelayedControlTransfer instruction, if
      * possible.
      */
-    private static void stuffDelayedControlTransfers(LIR l, AbstractBlock<?> block) {
+    private static void stuffDelayedControlTransfers(LIR l, AbstractBlockBase<?> block) {
         List<LIRInstruction> instructions = l.getLIRforBlock(block);
         if (instructions.size() >= 2) {
             LIRDependencyAccumulator acc = new LIRDependencyAccumulator();

@@ -117,9 +117,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
     @Override
     public void replaceWithVirtual(VirtualObjectNode virtual) {
         closure.addAndMarkAlias(virtual, current);
-        if (current instanceof FixedWithNextNode) {
-            effects.deleteFixedNode((FixedWithNextNode) current);
-        }
+        effects.deleteNode(current);
         deleted = true;
     }
 
@@ -132,7 +130,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public void delete() {
-        effects.deleteFixedNode((FixedWithNextNode) current);
+        effects.deleteNode(current);
         deleted = true;
     }
 

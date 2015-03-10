@@ -46,7 +46,10 @@ public class HighTier extends PhaseSuite<HighTierContext> {
     }
 
     public HighTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        if (ImmutableCode.getValue()) {
+            canonicalizer.disableReadCanonicalization();
+        }
 
         if (OptCanonicalizer.getValue()) {
             appendPhase(canonicalizer);
@@ -61,7 +64,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
 
                 if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
                     appendPhase(canonicalizer);
-                    appendPhase(new IterativeConditionalEliminationPhase(canonicalizer));
+                    appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
                 }
             }
         }

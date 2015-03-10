@@ -45,20 +45,20 @@ public class UntrustedInterfaces extends JTTTest {
      *     public void setField() {
      *         field = new TestConstant();
      *     }
-     * 
+     *
      *     public void setStaticField() {
      *         staticField = new TestConstant();
      *     }
-     * 
+     *
      *     public int callMe(CallBack callback) {
      *         return callback.callBack(new TestConstant());
      *     }
-     * 
+     *
      *     public TestInterface get() {
      *         return new TestConstant();
      *     }
      * }
-     * 
+     *
      * private static final class TestConstant implements TestInterface {
      *     public int method() {
      *         return 42;

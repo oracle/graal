@@ -41,7 +41,7 @@ import com.oracle.graal.replacements.nodes.*;
 @NodeInfo
 public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, Lowerable {
 
-    public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.get(ArrayCopyNode.class);
+    public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.create(ArrayCopyNode.class);
 
     public ArrayCopyNode(Invoke invoke) {
         super(TYPE, invoke);
@@ -77,9 +77,9 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
         PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.getStampProvider());
-        new CanonicalizerPhase(true).apply(snippetGraph, context);
-        new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(snippetGraph, context);
-        new CanonicalizerPhase(true).apply(snippetGraph, context);
+        new CanonicalizerPhase().apply(snippetGraph, context);
+        new LoopFullUnrollPhase(new CanonicalizerPhase()).apply(snippetGraph, context);
+        new CanonicalizerPhase().apply(snippetGraph, context);
     }
 
     @Override

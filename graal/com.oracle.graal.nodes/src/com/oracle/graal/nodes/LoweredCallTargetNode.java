@@ -33,7 +33,7 @@ import com.oracle.graal.nodeinfo.*;
 @NodeInfo
 public abstract class LoweredCallTargetNode extends CallTargetNode {
 
-    public static final NodeClass<LoweredCallTargetNode> TYPE = NodeClass.get(LoweredCallTargetNode.class);
+    public static final NodeClass<LoweredCallTargetNode> TYPE = NodeClass.create(LoweredCallTargetNode.class);
     protected final Stamp returnStamp;
     protected final JavaType[] signature;
     protected final CallingConvention.Type callType;

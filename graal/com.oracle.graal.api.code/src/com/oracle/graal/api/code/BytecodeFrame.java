@@ -66,7 +66,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * Note that the number of locals and the number of stack slots may be smaller than the maximum
      * number of locals and stack slots as specified in the compiled method.
      */
-    public final JavaValue[] values;
+    public final Value[] values;
 
     /**
      * The number of locals in the values array.
@@ -144,7 +144,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param numStack the depth of the stack
      * @param numLocks the number of locked objects
      */
-    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, JavaValue[] values, int numLocals, int numStack, int numLocks) {
+    public BytecodeFrame(BytecodeFrame caller, ResolvedJavaMethod method, int bci, boolean rethrowException, boolean duringCall, Value[] values, int numLocals, int numStack, int numLocks) {
         super(caller, method, bci);
         assert values != null;
         this.rethrowException = rethrowException;
@@ -161,17 +161,18 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * slot following a double word item. This should really be checked in FrameState itself but
      * because of Word type rewriting and alternative backends that can't be done.
      */
-    public boolean validateFormat() {
+    public boolean validateFormat(boolean derivedOk) {
         if (caller() != null) {
-            caller().validateFormat();
+            caller().validateFormat(derivedOk);
         }
         for (int i = 0; i < numLocals + numStack; i++) {
             if (values[i] != null) {
                 Kind kind = values[i].getKind();
                 if (kind.needsTwoSlots()) {
                     assert values.length > i + 1 : String.format("missing second word %s", this);
-                    assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal;
+                    assert values[i + 1] == null || values[i + 1].getKind() == Kind.Illegal : this;
                 }
+                assert derivedOk || ValueUtil.isIllegal(values[i]) || !values[i].getLIRKind().isDerivedReference() : "Unexpected derived value: " + values[i];
             }
         }
         return true;
@@ -183,7 +184,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param i the local variable index
      * @return the value that can be used to reconstruct the local's current value
      */
-    public JavaValue getLocalValue(int i) {
+    public Value getLocalValue(int i) {
         return values[i];
     }
 
@@ -193,7 +194,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param i the stack index
      * @return the value that can be used to reconstruct the stack slot's current value
      */
-    public JavaValue getStackValue(int i) {
+    public Value getStackValue(int i) {
         return values[i + numLocals];
     }
 
@@ -203,7 +204,7 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      * @param i the lock index
      * @return the value that can be used to reconstruct the lock's current value
      */
-    public JavaValue getLockValue(int i) {
+    public Value getLockValue(int i) {
         return values[i + numLocals + numStack];
     }
 

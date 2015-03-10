@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.*;
 @NodeInfo
 public class G1PostWriteBarrier extends WriteBarrier {
 
-    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.get(G1PostWriteBarrier.class);
+    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
     protected final boolean alwaysNull;
 
     public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise, boolean alwaysNull) {

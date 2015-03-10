@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<MembarNode> TYPE = NodeClass.get(MembarNode.class);
+    public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
     protected final int barriers;
 
     public MembarNode(int barriers) {

@@ -38,9 +38,9 @@ import com.oracle.graal.nodes.*;
  * into variants that do not materialize the value (CompareIf, CompareGuard...)
  */
 @NodeInfo
-public abstract class CompareNode extends BinaryOpLogicNode {
+public abstract class CompareNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode> {
 
-    public static final NodeClass<CompareNode> TYPE = NodeClass.get(CompareNode.class);
+    public static final NodeClass<CompareNode> TYPE = NodeClass.create(CompareNode.class);
     protected final Condition condition;
     protected final boolean unorderedIsTrue;
 

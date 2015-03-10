@@ -35,7 +35,7 @@ import com.oracle.graal.sparc.*;
  *
  * <pre>
  *   Base       Contents
- * 
+ *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive

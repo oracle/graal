@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo
 public final class KlassLayoutHelperNode extends FloatingGuardedNode implements Canonicalizable, Lowerable {
 
-    public static final NodeClass<KlassLayoutHelperNode> TYPE = NodeClass.get(KlassLayoutHelperNode.class);
+    public static final NodeClass<KlassLayoutHelperNode> TYPE = NodeClass.create(KlassLayoutHelperNode.class);
     @Input protected ValueNode klass;
     protected final HotSpotVMConfig config;
 

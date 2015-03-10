@@ -95,7 +95,7 @@ public class DataPatchTest extends GraalCompilerTest {
     @NodeInfo
     private static final class ConstantFoldBarrier extends FloatingNode implements LIRLowerable {
 
-        public static final NodeClass<ConstantFoldBarrier> TYPE = NodeClass.get(ConstantFoldBarrier.class);
+        public static final NodeClass<ConstantFoldBarrier> TYPE = NodeClass.create(ConstantFoldBarrier.class);
         @Input protected ValueNode input;
 
         public ConstantFoldBarrier(ValueNode input) {
