@@ -108,7 +108,17 @@ public class DominatorConditionalEliminationPhase extends Phase {
         } else {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
             cfg.computePostdominators();
-            blockToNodes = b -> b.getNodes();
+            BlockMap<List<FixedNode>> nodes = new BlockMap<>(cfg);
+            for (Block b : cfg.getBlocks()) {
+                ArrayList<FixedNode> curNodes = new ArrayList<>();
+                for (FixedNode node : b.getNodes()) {
+                    if (node instanceof AbstractBeginNode || node instanceof FixedGuardNode || node instanceof CheckCastNode || node instanceof ConditionAnchorNode || node instanceof IfNode) {
+                        curNodes.add(node);
+                    }
+                }
+                nodes.put(b, curNodes);
+            }
+            blockToNodes = b -> nodes.get(b);
             nodeToBlock = n -> cfg.blockFor(n);
             startBlock = cfg.getStartBlock();
         }
@@ -186,7 +196,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
             } else if (node instanceof ConditionAnchorNode) {
                 processConditionAnchor((ConditionAnchorNode) node);
             } else if (node instanceof IfNode) {
-                processIf((IfNode) node);
+                processIf((IfNode) node, undoOperations);
             } else {
                 return;
             }
@@ -207,7 +217,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
             });
         }
 
-        private void processIf(IfNode node) {
+        private void processIf(IfNode node, List<Runnable> undoOperations) {
             tryProofCondition(node.condition(), (guard, result) -> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard);
@@ -215,7 +225,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
                 if (survivingSuccessor instanceof BeginNode) {
-                    ((BeginNode) survivingSuccessor).trySimplify();
+                    undoOperations.add(() -> ((BeginNode) survivingSuccessor).trySimplify());
                 }
             });
         }
@@ -386,8 +396,9 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 } else {
                     DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.action(), node.reason()));
                     Block block = nodeToBlock.apply(node);
-                    FixedNode next = block.getBeginNode().next();
-                    block.getBeginNode().setNext(deopt);
+                    AbstractBeginNode beginNode = block.getBeginNode();
+                    FixedNode next = beginNode.next();
+                    beginNode.setNext(deopt);
                     GraphUtil.killCFG(next);
                 }
             })) {
