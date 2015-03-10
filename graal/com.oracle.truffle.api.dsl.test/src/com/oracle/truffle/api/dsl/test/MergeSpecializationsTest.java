@@ -40,7 +40,7 @@ import com.oracle.truffle.api.nodes.*;
 
 public class MergeSpecializationsTest {
 
-    private static final int THREADS = 8;
+    private static final int THREADS = 50;
 
     @NodeChild
     @SuppressWarnings("unused")
@@ -92,19 +92,16 @@ public class MergeSpecializationsTest {
         multithreadedMerge(TestNodeFactory.getInstance(), new Executions(1.0, 1L << 32, 1), 3, 2, 1);
     }
 
-    @Ignore
     @Test
     public void testMultithreadedMergeCachedInOrder() {
         multithreadedMerge(TestCachedNodeFactory.getInstance(), new Executions(1, 1L << 32, 1.0), 1, 2, 3);
     }
 
-    @Ignore
     @Test
     public void testMultithreadedMergeCachedTwoEntries() {
         multithreadedMerge(TestCachedNodeFactory.getInstance(), new Executions(1, 2, 1.0), 1, 1, 3);
     }
 
-    @Ignore
     @Test
     public void testMultithreadedMergeCachedThreeEntries() {
         multithreadedMerge(TestCachedNodeFactory.getInstance(), new Executions(1, 2, 3), 1, 1, 1);

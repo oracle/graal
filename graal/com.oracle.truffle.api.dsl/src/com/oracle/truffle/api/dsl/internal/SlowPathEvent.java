@@ -24,21 +24,24 @@
  */
 package com.oracle.truffle.api.dsl.internal;
 
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
  * Lazy rewrite event that implements {@link CharSequence} to be provided as message in
  * {@link Node#replace(Node, CharSequence)}.
  */
-abstract class RewriteEvent implements CharSequence {
+abstract class SlowPathEvent implements CharSequence {
 
-    private final Node source;
-    private final String reason;
+    protected final SpecializationNode source;
+    protected final String reason;
+    protected final Frame frame;
     private String message;
 
-    private RewriteEvent(Node source, String reason) {
+    SlowPathEvent(SpecializationNode source, String reason, Frame frame) {
         this.source = source;
         this.reason = reason;
+        this.frame = frame;
     }
 
     public int length() {
@@ -91,84 +94,84 @@ abstract class RewriteEvent implements CharSequence {
 
     public abstract Object[] getValues();
 
-    static final class RewriteEvent0 extends RewriteEvent {
+    static class SlowPathEvent0 extends SlowPathEvent {
 
         private static final Object[] EMPTY = new Object[0];
 
-        public RewriteEvent0(Node source, String reason) {
-            super(source, reason);
+        public SlowPathEvent0(SpecializationNode source, String reason, Frame frame) {
+            super(source, reason, frame);
         }
 
         @Override
-        public Object[] getValues() {
+        public final Object[] getValues() {
             return EMPTY;
         }
 
     }
 
-    static final class RewriteEvent1 extends RewriteEvent {
+    static class SlowPathEvent1 extends SlowPathEvent {
 
-        private final Object o1;
+        protected final Object o1;
 
-        public RewriteEvent1(Node source, String reason, Object o1) {
-            super(source, reason);
+        public SlowPathEvent1(SpecializationNode source, String reason, Frame frame, Object o1) {
+            super(source, reason, frame);
             this.o1 = o1;
         }
 
         @Override
-        public Object[] getValues() {
+        public final Object[] getValues() {
             return new Object[]{o1};
         }
 
     }
 
-    static final class RewriteEvent2 extends RewriteEvent {
+    static class SlowPathEvent2 extends SlowPathEvent {
 
-        private final Object o1;
-        private final Object o2;
+        protected final Object o1;
+        protected final Object o2;
 
-        public RewriteEvent2(Node source, String reason, Object o1, Object o2) {
-            super(source, reason);
+        public SlowPathEvent2(SpecializationNode source, String reason, Frame frame, Object o1, Object o2) {
+            super(source, reason, frame);
             this.o1 = o1;
             this.o2 = o2;
         }
 
         @Override
-        public Object[] getValues() {
+        public final Object[] getValues() {
             return new Object[]{o1, o2};
         }
 
     }
 
-    static final class RewriteEvent3 extends RewriteEvent {
+    static class SlowPathEvent3 extends SlowPathEvent {
 
-        private final Object o1;
-        private final Object o2;
-        private final Object o3;
+        protected final Object o1;
+        protected final Object o2;
+        protected final Object o3;
 
-        public RewriteEvent3(Node source, String reason, Object o1, Object o2, Object o3) {
-            super(source, reason);
+        public SlowPathEvent3(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3) {
+            super(source, reason, frame);
             this.o1 = o1;
             this.o2 = o2;
             this.o3 = o3;
         }
 
         @Override
-        public Object[] getValues() {
+        public final Object[] getValues() {
             return new Object[]{o1, o2, o3};
         }
 
     }
 
-    static final class RewriteEvent4 extends RewriteEvent {
+    static class SlowPathEvent4 extends SlowPathEvent {
 
-        private final Object o1;
-        private final Object o2;
-        private final Object o3;
-        private final Object o4;
+        protected final Object o1;
+        protected final Object o2;
+        protected final Object o3;
+        protected final Object o4;
 
-        public RewriteEvent4(Node source, String reason, Object o1, Object o2, Object o3, Object o4) {
-            super(source, reason);
+        public SlowPathEvent4(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, Object o4) {
+            super(source, reason, frame);
             this.o1 = o1;
             this.o2 = o2;
             this.o3 = o3;
@@ -176,23 +179,47 @@ abstract class RewriteEvent implements CharSequence {
         }
 
         @Override
-        public Object[] getValues() {
+        public final Object[] getValues() {
             return new Object[]{o1, o2, o3, o4};
         }
 
     }
 
-    static final class RewriteEventN extends RewriteEvent {
+    static class SlowPathEvent5 extends SlowPathEvent {
 
-        private final Object[] args;
+        protected final Object o1;
+        protected final Object o2;
+        protected final Object o3;
+        protected final Object o4;
+        protected final Object o5;
 
-        public RewriteEventN(Node source, String reason, Object... args) {
-            super(source, reason);
+        public SlowPathEvent5(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
+            super(source, reason, frame);
+            this.o1 = o1;
+            this.o2 = o2;
+            this.o3 = o3;
+            this.o4 = o4;
+            this.o5 = o5;
+        }
+
+        @Override
+        public final Object[] getValues() {
+            return new Object[]{o1, o2, o3, o4, o5};
+        }
+
+    }
+
+    static class SlowPathEventN extends SlowPathEvent {
+
+        protected final Object[] args;
+
+        public SlowPathEventN(SpecializationNode source, String reason, Frame frame, Object... args) {
+            super(source, reason, frame);
             this.args = args;
         }
 
         @Override
-        public Object[] getValues() {
+        public final Object[] getValues() {
             return args;
         }
 
