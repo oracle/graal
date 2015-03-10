@@ -56,6 +56,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     protected final CompilationPolicy compilationPolicy;
     private final OptimizedCallTarget sourceCallTarget;
     private final AtomicInteger callSitesKnown = new AtomicInteger(0);
+    private final ValueProfile exceptionProfile = ValueProfile.createClassProfile();
 
     @CompilationFinal private Class<?>[] profiledArgumentTypes;
     @CompilationFinal private Assumption profiledArgumentTypesAssumption;
@@ -232,7 +233,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     protected Object doInvoke(Object[] args) {
-        return callBoundary(args);
+        try {
+            return callBoundary(args);
+        } catch (Throwable t) {
+            t = exceptionProfile.profile(t);
+            if (t instanceof RuntimeException) {
+                throw (RuntimeException) t;
+            } else {
+                throw new RuntimeException(t);
+            }
+        }
     }
 
     @TruffleCallBoundary
