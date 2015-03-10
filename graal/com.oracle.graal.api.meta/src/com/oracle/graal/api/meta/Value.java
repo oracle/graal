@@ -37,7 +37,9 @@ public interface Value extends KindProvider, TrustedInterface {
 
         @Override
         public boolean equals(Object other) {
-            return this == other;
+            // Due to de-serialization this object may exist multiple times. So we compare classes
+            // instead of the individual objects. (This anonymous class has always the same meaning)
+            return other != null && this.getClass() == other.getClass();
         }
     };
 
