@@ -1231,47 +1231,4 @@ public final class SchedulePhase extends Phase {
             }
         }
     }
-
-    /**
-     * Sorts the nodes within a block by adding the nodes to a list in a post-order iteration over
-     * all usages. The resulting list is reversed to create an earliest-possible scheduling of
-     * nodes.
-     */
-    private List<ValueNode> sortNodesWithinBlockEarliest(Block b, NodeBitMap visited) {
-        List<ValueNode> sortedInstructions = new ArrayList<>(blockToNodesMap.get(b).size() + 2);
-        addToEarliestSorting(b, b.getEndNode(), sortedInstructions, visited);
-        Collections.reverse(sortedInstructions);
-        return sortedInstructions;
-    }
-
-    private void addToEarliestSorting(Block b, ValueNode i, List<ValueNode> sortedInstructions, NodeBitMap visited) {
-        ValueNode instruction = i;
-        while (true) {
-            if (instruction == null || visited.isMarked(instruction) || cfg.getNodeToBlock().get(instruction) != b || instruction instanceof PhiNode || instruction instanceof ProxyNode) {
-                return;
-            }
-
-            visited.mark(instruction);
-            for (Node usage : instruction.usages()) {
-                if (usage instanceof VirtualState) {
-                    // only fixed nodes can have VirtualState -> no need to schedule them
-                } else {
-                    addToEarliestSorting(b, (ValueNode) usage, sortedInstructions, visited);
-                }
-            }
-
-            if (instruction instanceof AbstractBeginNode) {
-                for (ValueNode inBlock : blockToNodesMap.get(b)) {
-                    if (!visited.isMarked(inBlock)) {
-                        addToEarliestSorting(b, inBlock, sortedInstructions, visited);
-                    }
-                }
-                sortedInstructions.add(instruction);
-                break;
-            } else {
-                sortedInstructions.add(instruction);
-                instruction = (ValueNode) instruction.predecessor();
-            }
-        }
-    }
 }
