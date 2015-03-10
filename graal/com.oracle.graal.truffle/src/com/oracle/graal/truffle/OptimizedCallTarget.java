@@ -71,6 +71,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private TruffleStamp argumentStamp = DefaultTruffleStamp.getInstance();
 
     private TruffleInlining inlining;
+    private int cachedNonTrivialNodeCount = -1;
 
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -298,6 +299,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (isValid()) {
             this.runtime.invalidateInstalledCode(this, source, reason);
         }
+        cachedNonTrivialNodeCount = -1;
     }
 
     public TruffleInlining getInlining() {
@@ -480,8 +482,17 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), false);
     }
 
-    public int countNonTrivialNodes(final boolean inlined) {
-        return (int) nodeStream(inlined).filter(e -> e != null && !e.getCost().isTrivial()).count();
+    public final int countNonTrivialNodes() {
+        if (cachedNonTrivialNodeCount == -1) {
+            cachedNonTrivialNodeCount = calculateNonTrivialNodesImpl();
+        }
+        return cachedNonTrivialNodeCount;
+    }
+
+    private int calculateNonTrivialNodesImpl() {
+        NonTrivialNodeCountVisitor visitor = new NonTrivialNodeCountVisitor();
+        getRootNode().accept(visitor);
+        return visitor.nodeCount;
     }
 
     public Map<String, Object> getDebugProperties() {
@@ -515,6 +526,19 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
 
         return context.getCompilerOptions();
+    }
+
+    private static final class NonTrivialNodeCountVisitor implements NodeVisitor {
+
+        public int nodeCount;
+
+        public boolean visit(Node node) {
+            if (!node.getCost().isTrivial()) {
+                nodeCount++;
+            }
+            return true;
+        }
+
     }
 
 }
