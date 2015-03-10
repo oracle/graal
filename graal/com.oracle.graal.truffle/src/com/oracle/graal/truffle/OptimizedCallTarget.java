@@ -239,6 +239,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             t = exceptionProfile.profile(t);
             if (t instanceof RuntimeException) {
                 throw (RuntimeException) t;
+            } else if (t instanceof Error) {
+                throw (Error) t;
             } else {
                 throw new RuntimeException(t);
             }
