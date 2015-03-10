@@ -40,6 +40,10 @@ import com.oracle.graal.phases.tiers.*;
 public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
     protected void test(String snippet, String referenceSnippet) {
+        test(snippet, referenceSnippet, false);
+    }
+
+    protected void test(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());
@@ -52,7 +56,13 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
         canonicalizer.apply(graph, context);
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
-        canonicalizer.apply(referenceGraph, context);
+        if (applyConditionalEliminationOnReference) {
+            new DominatorConditionalEliminationPhase(true).apply(referenceGraph, context);
+            canonicalizer.apply(referenceGraph, context);
+            canonicalizer.apply(referenceGraph, context);
+        } else {
+            canonicalizer.apply(referenceGraph, context);
+        }
         assertEquals(referenceGraph, graph);
     }
 

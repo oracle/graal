@@ -37,6 +37,12 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
     interface B extends A {
     }
 
+    static final class DistinctA {
+    }
+
+    static final class DistinctB {
+    }
+
     @SuppressWarnings("all")
     public static int reference1Snippet(A a, B b) {
         if (a instanceof B) {
@@ -60,16 +66,14 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
         test("test1Snippet", "reference1Snippet");
     }
 
-    @SuppressWarnings("all")
-    public static int reference2Snippet(A a, B b) {
+    public static int reference2Snippet(A a) {
         if (a instanceof B) {
             return 1;
         }
         return 2;
     }
 
-    @SuppressWarnings("all")
-    public static int test2Snippet(A a, B b) {
+    public static int test2Snippet(A a) {
         if (a instanceof B) {
             B newVal = (B) a;
             if (newVal != null) {
@@ -82,5 +86,35 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
     @Test
     public void test2() {
         test("test2Snippet", "reference2Snippet");
+    }
+
+    @SuppressWarnings("unused")
+    public static int reference3Snippet(Object a, Object b) {
+        if (a instanceof DistinctA) {
+            DistinctA proxyA = (DistinctA) a;
+            if (b instanceof DistinctB) {
+                return 1;
+            }
+        }
+        return 2;
+    }
+
+    @SuppressWarnings("all")
+    public static int test3Snippet(Object a, Object b) {
+        if (a instanceof DistinctA) {
+            DistinctA proxyA = (DistinctA) a;
+            if (b instanceof DistinctB) {
+                if (proxyA == b) {
+                    return 42;
+                }
+                return 1;
+            }
+        }
+        return 2;
+    }
+
+    @Test
+    public void test3() {
+        test("test3Snippet", "reference3Snippet", true);
     }
 }
