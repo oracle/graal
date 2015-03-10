@@ -51,8 +51,25 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     private boolean canonicalizeReads = true;
     private boolean simplify = true;
+    private final CustomCanonicalizer customCanonicalizer;
+
+    public abstract static class CustomCanonicalizer {
+
+        public Node canonicalize(Node node) {
+            return node;
+        }
+
+        @SuppressWarnings("unused")
+        public void simplify(Node node, SimplifierTool tool) {
+        }
+    }
 
     public CanonicalizerPhase() {
+        this(null);
+    }
+
+    public CanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
+        this.customCanonicalizer = customCanonicalizer;
     }
 
     public void disableReadCanonicalization() {
@@ -227,6 +244,14 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         public boolean tryCanonicalize(final Node node, NodeClass<?> nodeClass) {
+            if (customCanonicalizer != null) {
+                Node canonical = customCanonicalizer.canonicalize(node);
+                if (performReplacement(node, canonical)) {
+                    return true;
+                } else {
+                    customCanonicalizer.simplify(node, tool);
+                }
+            }
             if (nodeClass.isCanonicalizable()) {
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 try (Scope s = Debug.scope("CanonicalizeNode", node)) {
@@ -396,5 +421,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 return canonicalizeReads;
             }
         }
+    }
+
+    public boolean getCanonicalizeReads() {
+        return canonicalizeReads;
     }
 }
