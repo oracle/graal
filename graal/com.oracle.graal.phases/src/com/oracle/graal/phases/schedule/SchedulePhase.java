@@ -970,17 +970,8 @@ public final class SchedulePhase extends Phase {
         }
 
         List<ValueNode> sortedInstructions;
-        switch (strategy) {
-            case EARLIEST:
-                sortedInstructions = sortNodesWithinBlockEarliest(b, visited);
-                break;
-            case LATEST:
-            case LATEST_OUT_OF_LOOPS:
-                sortedInstructions = sortNodesWithinBlockLatest(b, visited, beforeLastLocation);
-                break;
-            default:
-                throw new GraalInternalError("unknown scheduling strategy");
-        }
+        assert strategy == SchedulingStrategy.LATEST || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS;
+        sortedInstructions = sortNodesWithinBlockLatest(b, visited, beforeLastLocation);
         assert filterSchedulableNodes(blockToNodesMap.get(b)).size() == removeProxies(sortedInstructions).size() : "sorted block does not contain the same amount of nodes: " +
                         filterSchedulableNodes(blockToNodesMap.get(b)) + " vs. " + removeProxies(sortedInstructions);
         assert sameOrderForFixedNodes(blockToNodesMap.get(b), sortedInstructions) : "fixed nodes in sorted block are not in the same order";
