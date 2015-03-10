@@ -73,7 +73,7 @@ public class CollectionsFactory {
      * Updates the mode for the current thread.
      *
      * @return an object which when {@linkplain ModeScope#close() closed} will revert the mode of
-     *         the current thread to the stae before calling this method
+     *         the current thread to the state before calling this method
      */
     public static ModeScope changeMode(Mode mode) {
         Mode previousMode = tl.get();
