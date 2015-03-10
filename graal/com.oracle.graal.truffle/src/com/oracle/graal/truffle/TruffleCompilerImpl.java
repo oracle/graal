@@ -93,7 +93,7 @@ public class TruffleCompilerImpl {
         this.config = GraphBuilderConfiguration.getDefault().withSkippedExceptionTypes(skippedExceptionTypes);
         if (TruffleCompilerOptions.FastPE.getValue()) {
             GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
-            this.config.getInvocationPlugins().setDefaults(phase.getGraphBuilderConfig().getInvocationPlugins());
+            this.config.getPlugins().getInvocationPlugins().setDefaults(phase.getGraphBuilderConfig().getPlugins().getInvocationPlugins());
         }
 
         this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, TruffleCompilerImpl.Optimizations);

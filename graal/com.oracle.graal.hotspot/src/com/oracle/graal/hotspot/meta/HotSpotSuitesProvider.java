@@ -119,9 +119,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
-        config.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
-        config.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(this, replacements));
-        config.setAnnotatedInvocationPlugin(new HotSpotAnnotatedInvocationPlugin(this));
+        config.getPlugins().setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
+        config.getPlugins().setInlineInvokePlugin(new HotSpotInlineInvokePlugin(this, replacements));
+        config.getPlugins().setGenericInvocationPlugin(new HotSpotAnnotatedInvocationPlugin(this));
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
     }

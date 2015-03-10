@@ -38,6 +38,7 @@ import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.loop.*;
@@ -252,12 +253,13 @@ public class PartialEvaluator {
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         newConfig.setUseProfiling(false);
-        newConfig.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
-        newConfig.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
+        Plugins plugins = newConfig.getPlugins();
+        plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
+        plugins.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-        newConfig.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
-        newConfig.setLoopExplosionPlugin(new LoopExplosionPlugin());
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getInvocationPlugins());
+        plugins.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
+        plugins.setLoopExplosionPlugin(new LoopExplosionPlugin());
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getPlugins().getInvocationPlugins());
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations, false).apply(graph);
         Debug.dump(graph, "After FastPE");

@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.java.GraphBuilderPlugin.AnnotatedInvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.GenericInvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
@@ -34,6 +34,80 @@ import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodes.*;
 
 public class GraphBuilderConfiguration {
+
+    public static class Plugins {
+        private InvocationPlugins invocationPlugins;
+        private LoadFieldPlugin loadFieldPlugin;
+        private ParameterPlugin parameterPlugin;
+        private InlineInvokePlugin inlineInvokePlugin;
+        private GenericInvocationPlugin genericInvocationPlugin;
+        private LoopExplosionPlugin loopExplosionPlugin;
+
+        public Plugins() {
+            invocationPlugins = new InvocationPlugins();
+        }
+
+        public Plugins(InvocationPlugins invocationPlugins) {
+            this.invocationPlugins = invocationPlugins;
+        }
+
+        public InvocationPlugins getInvocationPlugins() {
+            return invocationPlugins;
+        }
+
+        public GenericInvocationPlugin getGenericInvocationPlugin() {
+            return genericInvocationPlugin;
+        }
+
+        public void setGenericInvocationPlugin(GenericInvocationPlugin plugin) {
+            this.genericInvocationPlugin = plugin;
+        }
+
+        public LoadFieldPlugin getLoadFieldPlugin() {
+            return loadFieldPlugin;
+        }
+
+        public void setLoadFieldPlugin(LoadFieldPlugin plugin) {
+            this.loadFieldPlugin = plugin;
+        }
+
+        public ParameterPlugin getParameterPlugin() {
+            return parameterPlugin;
+        }
+
+        public void setParameterPlugin(ParameterPlugin plugin) {
+            this.parameterPlugin = plugin;
+        }
+
+        public InlineInvokePlugin getInlineInvokePlugin() {
+            return inlineInvokePlugin;
+        }
+
+        public void setInlineInvokePlugin(InlineInvokePlugin plugin) {
+            this.inlineInvokePlugin = plugin;
+        }
+
+        public LoopExplosionPlugin getLoopExplosionPlugin() {
+            return loopExplosionPlugin;
+        }
+
+        public void setLoopExplosionPlugin(LoopExplosionPlugin plugin) {
+            this.loopExplosionPlugin = plugin;
+        }
+
+        public Plugins updateFrom(Plugins other, boolean includeInvocationPlugins) {
+            if (includeInvocationPlugins) {
+                this.invocationPlugins.updateFrom(other.getInvocationPlugins());
+            }
+            this.parameterPlugin = other.parameterPlugin;
+            this.loadFieldPlugin = other.loadFieldPlugin;
+            this.inlineInvokePlugin = other.inlineInvokePlugin;
+            this.loopExplosionPlugin = other.loopExplosionPlugin;
+            this.genericInvocationPlugin = other.genericInvocationPlugin;
+            return this;
+        }
+    }
+
     private static final ResolvedJavaType[] EMPTY = new ResolvedJavaType[]{};
 
     private final boolean eagerResolving;
@@ -41,13 +115,8 @@ public class GraphBuilderConfiguration {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
-    private InvocationPlugins invocationPlugins = new InvocationPlugins();
-    private LoadFieldPlugin loadFieldPlugin;
-    private ParameterPlugin parameterPlugin;
-    private InlineInvokePlugin inlineInvokePlugin;
-    private AnnotatedInvocationPlugin annotatedInvocationPlugin;
-    private LoopExplosionPlugin loopExplosionPlugin;
     private boolean useProfiling;
+    private Plugins plugins = new Plugins();
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -114,26 +183,6 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis);
     }
 
-    public InvocationPlugins getInvocationPlugins() {
-        return invocationPlugins;
-    }
-
-    public AnnotatedInvocationPlugin getAnnotatedInvocationPlugin() {
-        return annotatedInvocationPlugin;
-    }
-
-    public void setAnnotatedInvocationPlugin(AnnotatedInvocationPlugin plugin) {
-        this.annotatedInvocationPlugin = plugin;
-    }
-
-    public LoadFieldPlugin getLoadFieldPlugin() {
-        return loadFieldPlugin;
-    }
-
-    public void setLoadFieldPlugin(LoadFieldPlugin plugin) {
-        this.loadFieldPlugin = plugin;
-    }
-
     public ResolvedJavaType[] getSkippedExceptionTypes() {
         return skippedExceptionTypes;
     }
@@ -183,37 +232,16 @@ public class GraphBuilderConfiguration {
         return eagerResolving;
     }
 
-    public ParameterPlugin getParameterPlugin() {
-        return parameterPlugin;
+    public Plugins getPlugins() {
+        return plugins;
     }
 
-    public void setParameterPlugin(ParameterPlugin plugin) {
-        this.parameterPlugin = plugin;
-    }
-
-    public InlineInvokePlugin getInlineInvokePlugin() {
-        return inlineInvokePlugin;
-    }
-
-    public void setInlineInvokePlugin(InlineInvokePlugin plugin) {
-        this.inlineInvokePlugin = plugin;
-    }
-
-    public LoopExplosionPlugin getLoopExplosionPlugin() {
-        return loopExplosionPlugin;
-    }
-
-    public void setLoopExplosionPlugin(LoopExplosionPlugin plugin) {
-        this.loopExplosionPlugin = plugin;
+    public void setPlugins(Plugins plugins) {
+        this.plugins = plugins;
     }
 
     public GraphBuilderConfiguration copyPluginsFrom(GraphBuilderConfiguration other) {
-        this.invocationPlugins.updateFrom(other.getInvocationPlugins());
-        this.parameterPlugin = other.parameterPlugin;
-        this.loadFieldPlugin = other.loadFieldPlugin;
-        this.inlineInvokePlugin = other.inlineInvokePlugin;
-        this.loopExplosionPlugin = other.loopExplosionPlugin;
-        this.annotatedInvocationPlugin = other.annotatedInvocationPlugin;
+        this.plugins.updateFrom(other.plugins, true);
         return this;
     }
 }

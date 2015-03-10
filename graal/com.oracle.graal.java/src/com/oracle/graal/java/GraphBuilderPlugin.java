@@ -89,9 +89,10 @@ public interface GraphBuilderPlugin {
     }
 
     /**
-     * Plugin for handling an invocation based on the annotations of the invoked method.
+     * Plugin for handling an invocation based on some property of the method being invoked such as
+     * any annotations it may have.
      */
-    public interface AnnotatedInvocationPlugin extends GraphBuilderPlugin {
+    public interface GenericInvocationPlugin extends GraphBuilderPlugin {
         /**
          * Executes this plugin for an invocation of a given method with a given set of arguments.
          *

@@ -47,7 +47,7 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
-import com.oracle.graal.java.GraphBuilderPlugin.AnnotatedInvocationPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.GenericInvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
@@ -129,7 +129,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             assert method.getCode() != null : "method must contain bytecodes: " + method;
             this.currentGraph = graph;
             HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(method, graph, true, null);
-            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getParameterPlugin());
+            frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving(), this.graphBuilderConfig.getPlugins().getParameterPlugin());
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, rootMethodIsReplacement);
@@ -231,7 +231,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     previousLineNumber = -1;
                 }
 
-                LoopExplosionPlugin loopExplosionPlugin = graphBuilderConfig.getLoopExplosionPlugin();
+                LoopExplosionPlugin loopExplosionPlugin = graphBuilderConfig.getPlugins().getLoopExplosionPlugin();
                 if (loopExplosionPlugin != null) {
                     explodeLoops = loopExplosionPlugin.shouldExplodeLoops(method);
                     if (explodeLoops) {
@@ -1093,7 +1093,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private boolean tryInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
-                InvocationPlugin plugin = graphBuilderConfig.getInvocationPlugins().lookupInvocation(targetMethod);
+                InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
                     int beforeStackSize = frameState.stackSize;
                     boolean needsNullCheck = !targetMethod.isStatic() && args[0].getKind() == Kind.Object && !StampTool.isPointerNonNull(args[0].stamp());
@@ -1112,7 +1112,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private boolean tryAnnotatedInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod) {
-                AnnotatedInvocationPlugin plugin = graphBuilderConfig.getAnnotatedInvocationPlugin();
+                GenericInvocationPlugin plugin = graphBuilderConfig.getPlugins().getGenericInvocationPlugin();
                 return plugin != null && plugin.apply(this, targetMethod, args);
             }
 
@@ -1129,7 +1129,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, JavaType returnType) {
-                InlineInvokePlugin plugin = graphBuilderConfig.getInlineInvokePlugin();
+                InlineInvokePlugin plugin = graphBuilderConfig.getPlugins().getInlineInvokePlugin();
                 if (plugin == null || !invokeKind.isDirect() || !targetMethod.canBeInlined()) {
                     return false;
                 }

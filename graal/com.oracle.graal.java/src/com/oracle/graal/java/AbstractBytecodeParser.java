@@ -689,7 +689,7 @@ public abstract class AbstractBytecodeParser {
         Kind kind = field.getKind();
         ValueNode receiver = frameState.apop();
         if ((field instanceof ResolvedJavaField) && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
+            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getPlugins().getLoadFieldPlugin();
             if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, receiver, (ResolvedJavaField) field)) {
                 appendOptimizedLoadField(kind, genLoadField(receiver, (ResolvedJavaField) field));
             }
@@ -738,7 +738,7 @@ public abstract class AbstractBytecodeParser {
     private void genGetStatic(JavaField field) {
         Kind kind = field.getKind();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getLoadFieldPlugin();
+            LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getPlugins().getLoadFieldPlugin();
             if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, (ResolvedJavaField) field)) {
                 appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
             }
