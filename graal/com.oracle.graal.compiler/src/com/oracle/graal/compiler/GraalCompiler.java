@@ -397,8 +397,6 @@ public class GraalCompiler {
             }
 
             Debug.dump(compilationResult, "After code generation");
-        } catch (Throwable e) {
-            throw Debug.handle(e);
         }
     }
 }
