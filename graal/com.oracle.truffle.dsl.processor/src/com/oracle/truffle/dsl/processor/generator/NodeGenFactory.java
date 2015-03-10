@@ -871,7 +871,7 @@ public class NodeGenFactory {
 
             CodeTreeBuilder contentBuilder = builder.create();
             contentBuilder.startReturn();
-            if (!hasExecutedUnexpected) {
+            if (!hasExecutedUnexpected && !execType.hasUnexpectedValue(context)) {
                 if (executedType == null || executedType.needsCastTo(returnType)) {
                     contentBuilder.cast(returnType.getPrimitiveType(), executeBuilder.build());
                 } else {
