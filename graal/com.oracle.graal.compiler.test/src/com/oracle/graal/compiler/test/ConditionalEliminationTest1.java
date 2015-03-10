@@ -130,4 +130,27 @@ public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase 
     public void test4() {
         test("test4Snippet", "test4Snippet");
     }
+
+    @SuppressWarnings("all")
+    public static int test5Snippet(int a, int b) {
+        if ((b & 3) == 0) {
+            GraalDirectives.controlFlowAnchor();
+            if ((b & 7) == 0) {
+                GraalDirectives.controlFlowAnchor();
+                return 1;
+            }
+        } else {
+            GraalDirectives.controlFlowAnchor();
+            if ((b & 1) == 0) {
+                GraalDirectives.controlFlowAnchor();
+                return 2;
+            }
+        }
+        return 0;
+    }
+
+    @Test
+    public void test5() {
+        test("test5Snippet", "test5Snippet");
+    }
 }
