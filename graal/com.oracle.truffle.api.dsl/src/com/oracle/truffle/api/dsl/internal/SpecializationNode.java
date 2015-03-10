@@ -266,11 +266,18 @@ public abstract class SpecializationNode extends Node {
     }
 
     protected final SpecializationNode removeSame(final CharSequence reason) {
-        return atomic(new Callable<SpecializationNode>() {
-            public SpecializationNode call() throws Exception {
-                return removeSameImpl(SpecializationNode.this, reason);
+        SpecializationNode start = SpecializationNode.this.findStart();
+        SpecializationNode current = start;
+        while (current != null) {
+            if (current.isSame(SpecializationNode.this)) {
+                NodeUtil.nonAtomicReplace(current, current.next, reason);
+                if (current == start) {
+                    start = start.next;
+                }
             }
-        });
+            current = current.next;
+        }
+        return SpecializationNode.this.findEnd().findStart();
     }
 
     /** Find the topmost of the specialization chain. */
@@ -767,7 +774,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
 
     }
@@ -779,7 +786,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
 
     }
@@ -791,7 +798,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
 
     }
@@ -803,7 +810,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
 
     }
@@ -815,7 +822,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
 
     }
@@ -827,7 +834,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
 
     }
@@ -839,7 +846,7 @@ public abstract class SpecializationNode extends Node {
         }
 
         public SpecializationNode call() throws Exception {
-            return removeSameImpl(source, this);
+            return source.removeSame(this);
         }
     }
 
