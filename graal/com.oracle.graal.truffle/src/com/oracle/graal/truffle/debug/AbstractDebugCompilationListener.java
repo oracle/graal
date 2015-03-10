@@ -101,7 +101,7 @@ public abstract class AbstractDebugCompilationListener implements GraalTruffleCo
     }
 
     public static void addASTSizeProperty(OptimizedCallTarget target, Map<String, Object> properties) {
-        int nodeCount = target.countNonTrivialNodes(false);
+        int nodeCount = target.countNonTrivialNodes();
         int deepNodeCount = nodeCount;
         TruffleInlining inlining = target.getInlining();
         if (inlining != null) {
