@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-import static org.junit.Assert.*;
-
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;

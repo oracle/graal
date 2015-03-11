@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.test;
 
-import static org.junit.Assert.*;
-
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -253,4 +251,105 @@ public class GraalTest {
             }
         }
     }
+
+    /*
+     * Overrides to the normal JUnit {@link Assert} routines that provide varargs style formatting
+     * and produce an exception stack trace with the assertion frames trimmed out.
+     */
+
+    /**
+     * Fails a test with the given message.
+     *
+     * @param message the identifying message for the {@link AssertionError} (<code>null</code>
+     *            okay)
+     * @see AssertionError
+     */
+    public static void fail(String message, Object... objects) {
+        AssertionError e;
+        if (message == null) {
+            e = new AssertionError();
+        } else {
+            e = new AssertionError(String.format(message, objects));
+        }
+        // Trim the assert frames from the stack trace
+        StackTraceElement[] trace = e.getStackTrace();
+        int start = 1; // Skip this frame
+        String thisClassName = GraalTest.class.getName();
+        while (start < trace.length && trace[start].getClassName().equals(thisClassName) && (trace[start].getMethodName().equals("assertTrue") || trace[start].getMethodName().equals("assertFalse"))) {
+            start++;
+        }
+        e.setStackTrace(Arrays.copyOfRange(trace, start, trace.length));
+        throw e;
+    }
+
+    /**
+     * Asserts that a condition is true. If it isn't it throws an {@link AssertionError} with the
+     * given message.
+     *
+     * @param message the identifying message for the {@link AssertionError} (<code>null</code>
+     *            okay)
+     * @param condition condition to be checked
+     */
+    public static void assertTrue(String message, boolean condition) {
+        assertTrue(condition, message);
+    }
+
+    /**
+     * Asserts that a condition is true. If it isn't it throws an {@link AssertionError} without a
+     * message.
+     *
+     * @param condition condition to be checked
+     */
+    public static void assertTrue(boolean condition) {
+        assertTrue(condition, null);
+    }
+
+    /**
+     * Asserts that a condition is false. If it isn't it throws an {@link AssertionError} with the
+     * given message.
+     *
+     * @param message the identifying message for the {@link AssertionError} (<code>null</code>
+     *            okay)
+     * @param condition condition to be checked
+     */
+    public static void assertFalse(String message, boolean condition) {
+        assertTrue(!condition, message);
+    }
+
+    /**
+     * Asserts that a condition is false. If it isn't it throws an {@link AssertionError} without a
+     * message.
+     *
+     * @param condition condition to be checked
+     */
+    public static void assertFalse(boolean condition) {
+        assertTrue(!condition, null);
+    }
+
+    /**
+     * Asserts that a condition is true. If it isn't it throws an {@link AssertionError} with the
+     * given message.
+     *
+     * @param condition condition to be checked
+     * @param message the identifying message for the {@link AssertionError}
+     * @param objects arguments to the format string
+     */
+    public static void assertTrue(boolean condition, String message, Object... objects) {
+        if (!condition) {
+            fail(message, objects);
+        }
+    }
+
+    /**
+     * Asserts that a condition is false. If it isn't it throws an {@link AssertionError} with the
+     * given message produced by {@link String#format}.
+     *
+     * @param condition condition to be checked
+     * @param message the identifying message for the {@link AssertionError}
+     * @param objects arguments to the format string
+     */
+    public static void assertFalse(boolean condition, String message, Object... objects) {
+        assertTrue(!condition, message, objects);
+    }
+
 }
