@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.ea;
+package com.oracle.graal.compiler.phases;
 
-import org.junit.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
-public class EAMergingTest extends EATestBase {
+public class EconomyHighTier extends PhaseSuite<HighTierContext> {
 
-    @Test
-    public void testSimpleMerge() {
-        testEscapeAnalysis("simpleMergeSnippet", null, false);
-        assertDeepEquals(1, returnNodes.size());
-        assertTrue(returnNodes.get(0).result() instanceof ValuePhiNode);
-        PhiNode phi = (PhiNode) returnNodes.get(0).result();
-        assertTrue(phi.valueAt(0) instanceof ParameterNode);
-        assertTrue(phi.valueAt(1) instanceof ParameterNode);
-    }
-
-    public static int simpleMergeSnippet(boolean b, int u, int v) {
-        TestClassInt obj;
-        if (b) {
-            obj = new TestClassInt(u, 0);
-            notInlineable();
-        } else {
-            obj = new TestClassInt(v, 0);
-            notInlineable();
+    public EconomyHighTier() {
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        if (ImmutableCode.getValue()) {
+            canonicalizer.disableReadCanonicalization();
         }
-        return obj.x;
+        appendPhase(new CleanTypeProfileProxyPhase(canonicalizer));
+        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
     }
 }

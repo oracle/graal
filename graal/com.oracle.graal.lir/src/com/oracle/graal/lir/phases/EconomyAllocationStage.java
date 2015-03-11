@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.ea;
+package com.oracle.graal.lir.phases;
 
-import org.junit.*;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.phases.AllocationPhase.*;
+import com.oracle.graal.lir.stackslotalloc.*;
 
-import com.oracle.graal.nodes.*;
+public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {
+    public EconomyAllocationStage() {
+        appendPhase(new LinearScanPhase());
 
-public class EAMergingTest extends EATestBase {
+        // build frame map
+        appendPhase(new SimpleStackSlotAllocator());
 
-    @Test
-    public void testSimpleMerge() {
-        testEscapeAnalysis("simpleMergeSnippet", null, false);
-        assertDeepEquals(1, returnNodes.size());
-        assertTrue(returnNodes.get(0).result() instanceof ValuePhiNode);
-        PhiNode phi = (PhiNode) returnNodes.get(0).result();
-        assertTrue(phi.valueAt(0) instanceof ParameterNode);
-        assertTrue(phi.valueAt(1) instanceof ParameterNode);
-    }
-
-    public static int simpleMergeSnippet(boolean b, int u, int v) {
-        TestClassInt obj;
-        if (b) {
-            obj = new TestClassInt(u, 0);
-            notInlineable();
-        } else {
-            obj = new TestClassInt(v, 0);
-            notInlineable();
-        }
-        return obj.x;
+        // currently we mark locations only if we do register allocation
+        appendPhase(new LocationMarker());
     }
 }

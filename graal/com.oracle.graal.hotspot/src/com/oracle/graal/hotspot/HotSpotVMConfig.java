@@ -1503,6 +1503,7 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMConstant(name = "GraalEnv::ok") @Stable public int codeInstallResultOk;
     @HotSpotVMConstant(name = "GraalEnv::dependencies_failed") @Stable public int codeInstallResultDependenciesFailed;
+    @HotSpotVMConstant(name = "GraalEnv::dependencies_invalid") @Stable public int codeInstallResultDependenciesInvalid;
     @HotSpotVMConstant(name = "GraalEnv::cache_full") @Stable public int codeInstallResultCacheFull;
     @HotSpotVMConstant(name = "GraalEnv::code_too_large") @Stable public int codeInstallResultCodeTooLarge;
 

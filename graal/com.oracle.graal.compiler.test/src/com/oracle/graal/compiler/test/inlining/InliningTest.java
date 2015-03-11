@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test.inlining;
 
-import static org.junit.Assert.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;

@@ -94,21 +94,26 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     private static void optimizeAtControlSplit(ControlSplitNode controlSplit, LazyCFG cfg) {
         AbstractBeginNode successor = findMinimumUsagesSuccessor(controlSplit);
         int successorCount = controlSplit.successors().count();
-        List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
         for (GuardNode guard : successor.guards().snapshot()) {
             if (guard.isDeleted() || guard.condition().getUsageCount() < successorCount) {
                 continue;
             }
+            List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
+            HashSet<Node> successorsWithoutGuards = new HashSet<>(controlSplit.successors().count());
+            controlSplit.successors().snapshotTo(successorsWithoutGuards);
+            successorsWithoutGuards.remove(guard.getAnchor());
             for (GuardNode conditonGuard : guard.condition().usages().filter(GuardNode.class)) {
                 if (conditonGuard != guard) {
-                    AnchoringNode conditonGuardAnchor = conditonGuard.getAnchor();
-                    if (conditonGuardAnchor.asNode().predecessor() == controlSplit && compatibleGuards(guard, conditonGuard)) {
+                    AnchoringNode conditionGuardAnchor = conditonGuard.getAnchor();
+                    if (conditionGuardAnchor.asNode().predecessor() == controlSplit && compatibleGuards(guard, conditonGuard)) {
                         otherGuards.add(conditonGuard);
+                        successorsWithoutGuards.remove(conditionGuardAnchor);
                     }
                 }
             }
 
-            if (otherGuards.size() == successorCount - 1) {
+            if (successorsWithoutGuards.isEmpty()) {
+                assert otherGuards.size() >= successorCount - 1;
                 AbstractBeginNode anchor = computeOptimalAnchor(cfg.get(), AbstractBeginNode.prevBegin(controlSplit));
                 GuardNode newGuard = controlSplit.graph().unique(new GuardNode(guard.condition(), anchor, guard.reason(), guard.action(), guard.isNegated(), guard.getSpeculation()));
                 for (GuardNode otherGuard : otherGuards) {

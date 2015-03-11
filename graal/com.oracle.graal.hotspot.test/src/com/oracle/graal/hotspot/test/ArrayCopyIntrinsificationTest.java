@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static org.junit.Assert.*;
-
 import java.lang.reflect.*;
 import java.util.*;
 

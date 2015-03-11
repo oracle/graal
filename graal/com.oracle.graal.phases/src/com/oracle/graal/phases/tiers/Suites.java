@@ -75,7 +75,9 @@ public final class Suites {
             name = name.toLowerCase();
 
             configurations.put(name, config);
-            if (name.equals("basic")) {
+            if (name.equals("economy")) {
+                // ignore economy configuration if not explicitely specified
+            } else if (name.equals("basic")) {
                 assert basic == null;
                 basic = config;
             } else {

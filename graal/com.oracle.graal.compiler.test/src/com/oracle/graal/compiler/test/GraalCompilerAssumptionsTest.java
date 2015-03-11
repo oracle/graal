@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static org.junit.Assert.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
@@ -70,9 +68,9 @@ public abstract class GraalCompilerAssumptionsTest extends GraalCompilerTest {
             try {
                 Class.forName(fullName);
             } catch (ClassNotFoundException e) {
-                assertFalse(String.format("Can't find class %s", fullName), true);
+                fail("Can't find class %s", fullName);
             }
-            assertTrue(!willInvalidate == installedCode.isValid());
+            assertTrue(!willInvalidate == installedCode.isValid(), "method should be %s", willInvalidate ? "invalid" : "valid");
         }
     }
 
@@ -83,7 +81,7 @@ public abstract class GraalCompilerAssumptionsTest extends GraalCompilerTest {
                 found = true;
             }
         }
-        assertTrue(String.format("Can't find assumption %s", expectedAssumption), found);
+        assertTrue(found, "Can't find assumption %s", expectedAssumption);
     }
 
     /**

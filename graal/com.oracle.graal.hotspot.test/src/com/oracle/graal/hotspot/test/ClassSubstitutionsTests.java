@@ -23,8 +23,6 @@
 
 package com.oracle.graal.hotspot.test;
 
-import static org.junit.Assert.*;
-
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
