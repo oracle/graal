@@ -264,9 +264,14 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         if (result != CodeInstallResult.OK) {
             String msg = compiledCode.getInstallationFailureMessage();
             if (msg != null) {
-                throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, "Code installation failed: %s%n%s", result, msg);
+                msg = String.format("Code installation failed: %s%n%s", result, msg);
+            } else {
+                msg = String.format("Code installation failed: %s", result);
             }
-            throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, "Code installation failed: %s", result);
+            if (result == CodeInstallResult.DEPENDENCIES_INVALID) {
+                throw new AssertionError(result + " " + msg);
+            }
+            throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, msg);
         }
         return logOrDump(installedCode, compResult);
     }
