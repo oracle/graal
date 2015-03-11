@@ -86,7 +86,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  *  &#064;Specialization
- *  void doCached(int operand, @Local(&quot;operand&quot;) int cachedOperand) {
+ *  void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
  *      CompilerAsserts.compilationConstant(cachedOperand);
  *      ...
  *  }
@@ -111,7 +111,7 @@ import com.oracle.truffle.api.utilities.*;
  * specialization instantiation limit is <code>3</code>.
  *
  * <pre>
- * &#064;Specialization(guards = &quot;==(operand, cachedOperand)&quot;)
+ * &#064;Specialization(guards = &quot;operand == cachedOperand&quot;)
  * void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
@@ -139,7 +139,7 @@ import com.oracle.truffle.api.utilities.*;
  * <code>doCached</code> instances remain but no new instances are created.
  *
  * <code>
- * &#064;Specialization(guards = &quot;==(operand, cachedOperand)&quot;)
+ * &#064;Specialization(guards = &quot;operand == cachedOperand&quot;)
  * void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
@@ -209,7 +209,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  * &#064;Specialization
- * void s(int operand, @Local(&quot;create()&quot;) BranchProfile profile) {
+ * void s(int operand, @Cached(&quot;create()&quot;) BranchProfile profile) {
  * }
  * </pre>
  *
