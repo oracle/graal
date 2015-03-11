@@ -384,86 +384,65 @@ public abstract class SpecializationNode extends Node {
 
     protected final Object uninitialized(Frame frame) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
-        }
-        if (nextSpecialization == null) {
+        SpecializationNode newNode = atomic(new InsertionEvent0(this, "insert new specialization", frame));
+        if (newNode == null) {
             return unsupported(frame);
         }
-        return atomic(new InsertionEvent0(this, "insert new specialization", frame, nextSpecialization)).acceptAndExecute(frame);
+        return newNode.acceptAndExecute(frame);
     }
 
     protected final Object uninitialized(Frame frame, Object o1) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame, o1);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
-        }
-        if (nextSpecialization == null) {
+        SpecializationNode newNode = atomic(new InsertionEvent1(this, "insert new specialization", frame, o1));
+        if (newNode == null) {
             return unsupported(frame, o1);
         }
-        return atomic(new InsertionEvent1(this, "insert new specialization", frame, o1, nextSpecialization)).acceptAndExecute(frame, o1);
+        return newNode.acceptAndExecute(frame, o1);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame, o1, o2);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
-        }
-        if (nextSpecialization == null) {
+        SpecializationNode newNode = atomic(new InsertionEvent2(this, "insert new specialization", frame, o1, o2));
+        if (newNode == null) {
             return unsupported(frame, o1, o2);
         }
-        return atomic(new InsertionEvent2(this, "insert new specialization", frame, o1, o2, nextSpecialization)).acceptAndExecute(frame, o1, o2);
+        return newNode.acceptAndExecute(frame, o1, o2);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame, o1, o2, o3);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
-        }
-        if (nextSpecialization == null) {
+        SpecializationNode newNode = atomic(new InsertionEvent3(this, "insert new specialization", frame, o1, o2, o3));
+        if (newNode == null) {
             return unsupported(frame, o1, o2, o3);
         }
-        return atomic(new InsertionEvent3(this, "insert new specialization", frame, o1, o2, o3, nextSpecialization)).acceptAndExecute(frame, o1, o2, o3);
+        return newNode.acceptAndExecute(frame, o1, o2, o3);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3, Object o4) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame, o1, o2, o3, o4);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
-        }
-        if (nextSpecialization == null) {
+        SpecializationNode newNode = atomic(new InsertionEvent4(this, "insert new specialization", frame, o1, o2, o3, o4));
+        if (newNode == null) {
             return unsupported(frame, o1, o2, o3, o4);
         }
-        return atomic(new InsertionEvent4(this, "insert new specialization", frame, o1, o2, o3, o4, nextSpecialization)).acceptAndExecute(frame, o1, o2, o3, o4);
+        return newNode.acceptAndExecute(frame, o1, o2, o3, o4);
     }
 
     protected final Object uninitialized(Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame, o1, o2, o3, o4, o5);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
+        SpecializationNode newNode = atomic(new InsertionEvent5(this, "insert new specialization", frame, o1, o2, o3, o4, o5));
+        if (newNode == null) {
+            return unsupported(frame, o1, o2, o3, o4, o5);
         }
-        if (nextSpecialization == null) {
-            unsupported(frame, o1, o2, o3, o4, o5);
-        }
-        return atomic(new InsertionEvent5(this, "insert new specialization", frame, o1, o2, o3, o4, o5, nextSpecialization)).acceptAndExecute(frame, o1, o2, o3, o4, o5);
+        return newNode.acceptAndExecute(frame, o1, o2, o3, o4, o5);
     }
 
     protected final Object uninitialized(Frame frame, Object... args) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        SpecializationNode nextSpecialization = createNext(frame, args);
-        if (nextSpecialization == null) {
-            nextSpecialization = createFallback();
+        SpecializationNode newNode = atomic(new InsertionEventN(this, "insert new specialization", frame, args));
+        if (newNode == null) {
+            return unsupported(frame, args);
         }
-        if (nextSpecialization == null) {
-            unsupported(frame, args);
-        }
-        return atomic(new InsertionEventN(this, "insert new specialization", frame, args, nextSpecialization)).acceptAndExecute(frame, args);
+        return newNode.acceptAndExecute(frame, args);
     }
 
     protected final Object remove(String reason, Frame frame) {
@@ -630,14 +609,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEvent0 extends SlowPathEvent0 implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEvent0(SpecializationNode source, String reason, Frame frame, SpecializationNode next) {
+        public InsertionEvent0(SpecializationNode source, String reason, Frame frame) {
             super(source, reason, frame);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
@@ -650,14 +633,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEvent1 extends SlowPathEvent1 implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEvent1(SpecializationNode source, String reason, Frame frame, Object o1, SpecializationNode next) {
+        public InsertionEvent1(SpecializationNode source, String reason, Frame frame, Object o1) {
             super(source, reason, frame, o1);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame, o1);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
@@ -670,14 +657,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEvent2 extends SlowPathEvent2 implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEvent2(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, SpecializationNode next) {
+        public InsertionEvent2(SpecializationNode source, String reason, Frame frame, Object o1, Object o2) {
             super(source, reason, frame, o1, o2);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame, o1, o2);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
@@ -690,14 +681,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEvent3 extends SlowPathEvent3 implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEvent3(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, SpecializationNode next) {
+        public InsertionEvent3(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3) {
             super(source, reason, frame, o1, o2, o3);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame, o1, o2, o3);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
@@ -710,14 +705,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEvent4 extends SlowPathEvent4 implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEvent4(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, Object o4, SpecializationNode next) {
+        public InsertionEvent4(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, Object o4) {
             super(source, reason, frame, o1, o2, o3, o4);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame, o1, o2, o3, o4);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
@@ -730,14 +729,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEvent5 extends SlowPathEvent5 implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEvent5(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5, SpecializationNode next) {
+        public InsertionEvent5(SpecializationNode source, String reason, Frame frame, Object o1, Object o2, Object o3, Object o4, Object o5) {
             super(source, reason, frame, o1, o2, o3, o4, o5);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame, o1, o2, o3, o4, o5);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
@@ -750,14 +753,18 @@ public abstract class SpecializationNode extends Node {
 
     private static final class InsertionEventN extends SlowPathEventN implements Callable<SpecializationNode> {
 
-        private final SpecializationNode next;
-
-        public InsertionEventN(SpecializationNode source, String reason, Frame frame, Object[] args, SpecializationNode next) {
+        public InsertionEventN(SpecializationNode source, String reason, Frame frame, Object[] args) {
             super(source, reason, frame, args);
-            this.next = next;
         }
 
         public SpecializationNode call() throws Exception {
+            SpecializationNode next = source.createNext(frame, args);
+            if (next == null) {
+                next = source.createFallback();
+            }
+            if (next == null) {
+                return null;
+            }
             SpecializationNode start = source.findStart();
             if (start.index == Integer.MAX_VALUE) {
                 return insertAt(start, next, this);
