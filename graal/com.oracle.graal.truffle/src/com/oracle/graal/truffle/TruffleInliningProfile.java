@@ -30,22 +30,22 @@ public class TruffleInliningProfile {
     private final int nodeCount;
     private final int deepNodeCount;
     private final double frequency;
-    private final boolean recursiveCall;
+    private final int recursions;
 
     private String failedReason;
     private int queryIndex = -1;
     private double score;
 
-    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int nodeCount, int deepNodeCount, double frequency, boolean recursiveCall) {
+    public TruffleInliningProfile(OptimizedDirectCallNode callNode, int nodeCount, int deepNodeCount, double frequency, int recursions) {
         this.callNode = callNode;
         this.nodeCount = nodeCount;
         this.deepNodeCount = deepNodeCount;
         this.frequency = frequency;
-        this.recursiveCall = recursiveCall;
+        this.recursions = recursions;
     }
 
-    public boolean isRecursiveCall() {
-        return recursiveCall;
+    public int getRecursions() {
+        return recursions;
     }
 
     public OptimizedDirectCallNode getCallNode() {
