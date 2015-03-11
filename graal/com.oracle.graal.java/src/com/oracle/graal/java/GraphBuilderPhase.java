@@ -86,7 +86,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         return graphBuilderConfig;
     }
 
-    public static class Instance extends Phase {
+    // Fully qualified name is a workaround for JDK-8056066
+    public static class Instance extends com.oracle.graal.phases.Phase {
 
         protected StructuredGraph currentGraph;
 
