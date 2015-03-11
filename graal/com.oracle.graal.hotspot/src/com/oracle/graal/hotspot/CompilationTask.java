@@ -55,7 +55,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.tiers.*;
@@ -203,16 +203,9 @@ public class CompilationTask {
                 boolean recordEvolMethodDeps = graalEnv == 0 || unsafe.getByte(graalEnv + config.graalEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0;
 
                 HotSpotProviders providers = backend.getProviders();
-                Replacements replacements = providers.getReplacements();
-                graph = replacements.getMethodSubstitution(method);
-                if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                    graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
-                    if (!recordEvolMethodDeps) {
-                        graph.disableInlinedMethodRecording();
-                    }
-                } else {
-                    // Compiling method substitution - must clone the graph
-                    graph = graph.copy(graph.name, method, AllowAssumptions.from(OptAssumptions.getValue()), recordEvolMethodDeps);
+                graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
+                if (!recordEvolMethodDeps) {
+                    graph.disableInlinedMethodRecording();
                 }
                 InlinedBytecodes.add(method.getCodeSize());
                 CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
