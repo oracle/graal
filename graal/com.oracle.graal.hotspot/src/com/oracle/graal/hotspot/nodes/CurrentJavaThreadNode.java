@@ -32,6 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
+import com.oracle.graal.word.phases.*;
 
 /**
  * Gets the address of the C++ JavaThread object for the current thread.
@@ -42,8 +43,8 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
 
     protected LIRKind wordKind;
 
-    public CurrentJavaThreadNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime) {
-        this(runtime.getTarget().wordKind);
+    public CurrentJavaThreadNode(@InjectedNodeParameter WordTypes wordTypes) {
+        this(wordTypes.getWordKind());
     }
 
     public CurrentJavaThreadNode(Kind wordKind) {
@@ -65,6 +66,6 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
         }
     }
 
-    @NodeIntrinsic(setStampFromReturnType = true)
+    @NodeIntrinsic
     public static native Word get();
 }

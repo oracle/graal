@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodeinfo.*;
@@ -31,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
+import com.oracle.graal.word.phases.*;
 
 /**
  * Intrinsic for opening a scope binding a stack-based lock with an object. A lock scope must be
@@ -44,8 +46,8 @@ public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implement
     public static final NodeClass<BeginLockScopeNode> TYPE = NodeClass.create(BeginLockScopeNode.class);
     protected int lockDepth;
 
-    public BeginLockScopeNode(int lockDepth) {
-        super(TYPE, null);
+    public BeginLockScopeNode(@InjectedNodeParameter WordTypes wordTypes, int lockDepth) {
+        super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
         this.lockDepth = lockDepth;
     }
 
@@ -68,6 +70,6 @@ public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implement
         gen.setResult(this, result);
     }
 
-    @NodeIntrinsic(setStampFromReturnType = true)
+    @NodeIntrinsic
     public static native Word beginLockScope(@ConstantNodeParameter int lockDepth);
 }

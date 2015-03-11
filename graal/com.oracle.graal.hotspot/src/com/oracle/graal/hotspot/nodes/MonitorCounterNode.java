@@ -26,11 +26,13 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
+import com.oracle.graal.word.phases.*;
 
 /**
  * Node that is used to maintain a stack based counter of how many locks are currently held.
@@ -39,8 +41,8 @@ import com.oracle.graal.word.*;
 public final class MonitorCounterNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<MonitorCounterNode> TYPE = NodeClass.create(MonitorCounterNode.class);
 
-    public MonitorCounterNode() {
-        super(TYPE, null);
+    public MonitorCounterNode(@InjectedNodeParameter WordTypes wordTypes) {
+        super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
     }
 
     @Override
@@ -51,6 +53,6 @@ public final class MonitorCounterNode extends FloatingNode implements LIRLowerab
         gen.setResult(this, result);
     }
 
-    @NodeIntrinsic(setStampFromReturnType = true)
+    @NodeIntrinsic
     public static native Word counter();
 }

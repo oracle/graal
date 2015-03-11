@@ -73,6 +73,9 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     }
 
     public Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type) {
+        if (type.isInstance(forObject(runtime.getHostProviders().getWordTypes()))) {
+            return runtime.getHostProviders().getWordTypes();
+        }
         if (type.isInstance(forObject(runtime))) {
             return runtime;
         }
