@@ -517,9 +517,7 @@ public class NodeGenFactory {
             }
         };
 
-        builder.startIf().string("isSame(other)").end().startBlock();
         builder.tree(createGuardAndCast(group, typeSystem.getGenericTypeData(), currentLocals, executionFactory));
-        builder.end();
         builder.returnFalse();
         return method;
     }
