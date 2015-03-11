@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
@@ -75,15 +74,5 @@ public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint impleme
         Value address = location.generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         Value result = gen.getLIRGeneratorTool().emitAtomicReadAndAdd(address, gen.operand(delta));
         gen.setResult(this, result);
-    }
-
-    @NodeIntrinsic
-    public static int getAndAddInt(Object object, long offset, int delta, @ConstantNodeParameter @SuppressWarnings("unused") LocationIdentity locationIdentity) {
-        return unsafe.getAndAddInt(object, offset, delta);
-    }
-
-    @NodeIntrinsic
-    public static long getAndAddLong(Object object, long offset, long delta, @ConstantNodeParameter @SuppressWarnings("unused") LocationIdentity locationIdentity) {
-        return unsafe.getAndAddLong(object, offset, delta);
     }
 }

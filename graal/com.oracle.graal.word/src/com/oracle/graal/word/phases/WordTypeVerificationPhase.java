@@ -23,7 +23,6 @@
 package com.oracle.graal.word.phases;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -42,10 +41,10 @@ import com.oracle.graal.word.Word.Operation;
  */
 public class WordTypeVerificationPhase extends Phase {
 
-    private final WordTypeRewriterPhase wordAccess;
+    private final WordTypes wordAccess;
 
-    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, Kind wordKind) {
-        this.wordAccess = new WordTypeRewriterPhase(metaAccess, snippetReflection, constantReflection, wordKind);
+    public WordTypeVerificationPhase(MetaAccessProvider metaAccess, Kind wordKind) {
+        this.wordAccess = new WordTypes(metaAccess, wordKind);
     }
 
     @Override
@@ -108,7 +107,7 @@ public class WordTypeVerificationPhase extends Phase {
             if (!isStatic) {
                 ValueNode receiver = arguments.get(argc);
                 if (receiver == node && isWord(node)) {
-                    ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveConcreteMethod(method, invoke.getContextType());
+                    ResolvedJavaMethod resolvedMethod = wordAccess.getWordImplType().resolveConcreteMethod(method, invoke.getContextType());
                     verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + method.format("%H.%n(%P) %r"));
                     Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
                     verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);

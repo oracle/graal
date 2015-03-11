@@ -28,13 +28,10 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.options.*;
 
 /**
  * Method substitutions that are VM-independent.
@@ -42,39 +39,14 @@ import com.oracle.graal.options.*;
 @ServiceProvider(ReplacementsProvider.class)
 public class GraalMethodSubstitutions implements ReplacementsProvider {
 
-    static class Options {
-        @Option(help = "") public static final OptionValue<Boolean> UseBlackholeSubstitution = new OptionValue<>(true);
-    }
-
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
-        BoxingSubstitutions.registerReplacements(replacements);
-        replacements.registerSubstitutions(GraalDirectives.class, GraalDirectivesSubstitutions.class);
         if (Intrinsify.getValue()) {
             replacements.registerSubstitutions(Arrays.class, ArraysSubstitutions.class);
             replacements.registerSubstitutions(Array.class, ArraySubstitutions.class);
             replacements.registerSubstitutions(String.class, StringSubstitutions.class);
             replacements.registerSubstitutions(Math.class, MathSubstitutionsX86.class);
-            replacements.registerSubstitutions(Double.class, DoubleSubstitutions.class);
-            replacements.registerSubstitutions(Float.class, FloatSubstitutions.class);
             replacements.registerSubstitutions(Long.class, LongSubstitutions.class);
             replacements.registerSubstitutions(Integer.class, IntegerSubstitutions.class);
-            replacements.registerSubstitutions(Character.class, CharacterSubstitutions.class);
-            replacements.registerSubstitutions(Short.class, ShortSubstitutions.class);
-            replacements.registerSubstitutions(UnsignedMath.class, UnsignedMathSubstitutions.class);
-            replacements.registerSubstitutions(Edges.class, EdgesSubstitutions.class);
-            replacements.registerSubstitutions(Class.class, ClassSubstitutions.class);
-        }
-        if (Options.UseBlackholeSubstitution.getValue()) {
-            replacements.registerSubstitutions(new Type() {
-                public String getTypeName() {
-                    return "org.openjdk.jmh.infra.Blackhole";
-                }
-            }, BlackholeSubstitutions.class);
-            replacements.registerSubstitutions(new Type() {
-                public String getTypeName() {
-                    return "org.openjdk.jmh.logic.BlackHole";
-                }
-            }, BlackholeSubstitutions.class);
         }
     }
 }

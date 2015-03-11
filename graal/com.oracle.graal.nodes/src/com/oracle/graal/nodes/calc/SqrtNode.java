@@ -46,9 +46,4 @@ public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements Arithme
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         builder.setResult(this, gen.emitMathSqrt(builder.operand(getValue())));
     }
-
-    @NodeIntrinsic
-    public static double sqrt(double n) {
-        return Math.sqrt(n);
-    }
 }

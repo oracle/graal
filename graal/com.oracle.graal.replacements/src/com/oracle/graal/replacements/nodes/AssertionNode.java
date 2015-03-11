@@ -86,9 +86,6 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         }
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean value, @ConstantNodeParameter String message) {
-        assert value : message;
-    }
+    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean value, @ConstantNodeParameter String message);
 }

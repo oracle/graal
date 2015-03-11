@@ -84,7 +84,7 @@ public class DeoptimizationStub extends SnippetStub {
     private final TargetDescription target;
 
     public DeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(DeoptimizationStub.class, "deoptimizationHandler", providers, target, linkage);
+        super(DeoptimizationStub.class, "deoptimizationHandler", providers, linkage);
         this.target = target;
         assert PreferGraalStubs.getValue();
     }

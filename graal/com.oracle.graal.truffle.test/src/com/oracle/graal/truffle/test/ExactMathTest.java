@@ -24,23 +24,17 @@ package com.oracle.graal.truffle.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.runtime.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.truffle.substitutions.*;
 import com.oracle.truffle.api.*;
 
 public class ExactMathTest extends GraalCompilerTest {
 
-    private static boolean substitutionsInstalled;
-
-    public ExactMathTest() {
-        if (!substitutionsInstalled) {
-            Replacements replacements = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getReplacements();
-            replacements.registerSubstitutions(ExactMath.class, ExactMathSubstitutions.class);
-            substitutionsInstalled = true;
-        }
+    @Override
+    protected void editGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(getMetaAccess(), plugins.getInvocationPlugins());
+        super.editGraphBuilderPlugins(plugins);
     }
 
     @Test

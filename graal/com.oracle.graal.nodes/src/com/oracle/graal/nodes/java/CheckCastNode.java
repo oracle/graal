@@ -56,6 +56,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
         super(TYPE, StampFactory.declaredTrusted(type));
+        assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
         assert type != null;
         this.type = type;
         this.object = object;
@@ -69,6 +70,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         if (synonym != null) {
             return synonym;
         }
+        assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
         if (assumptions != null) {
             ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
             if (uniqueConcreteType != null && !uniqueConcreteType.equals(type)) {

@@ -95,28 +95,4 @@ public final class UnboxNode extends UnaryNode implements Virtualizable, Lowerab
         }
         return null;
     }
-
-    @NodeIntrinsic
-    public static native boolean unbox(Boolean value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native byte unbox(Byte value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native char unbox(Character value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native double unbox(Double value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native float unbox(Float value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native int unbox(Integer value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native long unbox(Long value, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native short unbox(Short value, @ConstantNodeParameter Kind kind);
 }

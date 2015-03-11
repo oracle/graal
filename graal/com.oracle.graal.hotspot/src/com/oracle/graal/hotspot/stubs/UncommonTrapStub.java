@@ -84,7 +84,7 @@ public class UncommonTrapStub extends SnippetStub {
     private final TargetDescription target;
 
     public UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(UncommonTrapStub.class, "uncommonTrapHandler", providers, target, linkage);
+        super(UncommonTrapStub.class, "uncommonTrapHandler", providers, linkage);
         this.target = target;
         assert PreferGraalStubs.getValue();
     }

@@ -43,31 +43,4 @@ public final class BlackholeNode extends FixedWithNextNode implements LIRLowerab
     public void generate(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitBlackhole(gen.operand(value));
     }
-
-    @NodeIntrinsic
-    public static native void consume(boolean v);
-
-    @NodeIntrinsic
-    public static native void consume(byte v);
-
-    @NodeIntrinsic
-    public static native void consume(short v);
-
-    @NodeIntrinsic
-    public static native void consume(char v);
-
-    @NodeIntrinsic
-    public static native void consume(int v);
-
-    @NodeIntrinsic
-    public static native void consume(long v);
-
-    @NodeIntrinsic
-    public static native void consume(float v);
-
-    @NodeIntrinsic
-    public static native void consume(double v);
-
-    @NodeIntrinsic
-    public static native void consume(Object v);
 }

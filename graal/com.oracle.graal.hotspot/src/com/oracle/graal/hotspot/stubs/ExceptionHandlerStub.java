@@ -49,8 +49,8 @@ import com.oracle.graal.word.*;
  */
 public class ExceptionHandlerStub extends SnippetStub {
 
-    public ExceptionHandlerStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super("exceptionHandler", providers, target, linkage);
+    public ExceptionHandlerStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("exceptionHandler", providers, linkage);
     }
 
     /**

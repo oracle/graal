@@ -57,15 +57,6 @@ public final class GraalOptions {
     @Option(help = "Graphs with less than this number of nodes are trivial and therefore always inlined.", type = OptionType.Expert)
     public static final OptionValue<Integer> TrivialInliningSize = new OptionValue<>(10);
 
-    @Option(help = "Inlines trivial methods during parsing of the bytecodes.", type = OptionType.Expert)
-    public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(false);
-
-    @Option(help = "Traces .", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
-
-    @Option(help = "Maximum depth when inlining during parsing.", type = OptionType.Debug)
-    public static final StableOptionValue<Integer> InlineDuringParsingMaxDepth = new StableOptionValue<>(10);
-
     @Option(help = "Inlining is explored up to this number of nodes in the graph for each call site.", type = OptionType.Expert)
     public static final OptionValue<Integer> MaximumInliningSize = new OptionValue<>(300);
 

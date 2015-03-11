@@ -42,7 +42,7 @@ public class ReflectionSubstitutions {
 
     @MethodSubstitution
     public static int getClassAccessFlags(Class<?> aClass) {
-        KlassPointer klass = ClassGetHubNode.readClass(GuardingPiNode.guardingNonNull(aClass));
+        KlassPointer klass = ClassGetHubNode.readClass(GuardingPiNode.asNonNullClass(aClass));
         if (klass.isNull()) {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;

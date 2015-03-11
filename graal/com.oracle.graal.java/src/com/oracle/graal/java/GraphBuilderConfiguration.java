@@ -29,6 +29,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.java.GraphBuilderPlugin.GenericInvocationPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
+import com.oracle.graal.java.GraphBuilderPlugin.LoadIndexedPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodes.*;
@@ -38,6 +39,7 @@ public class GraphBuilderConfiguration {
     public static class Plugins {
         private InvocationPlugins invocationPlugins;
         private LoadFieldPlugin loadFieldPlugin;
+        private LoadIndexedPlugin loadIndexedPlugin;
         private ParameterPlugin parameterPlugin;
         private InlineInvokePlugin inlineInvokePlugin;
         private GenericInvocationPlugin genericInvocationPlugin;
@@ -71,6 +73,14 @@ public class GraphBuilderConfiguration {
             this.loadFieldPlugin = plugin;
         }
 
+        public LoadIndexedPlugin getLoadIndexedPlugin() {
+            return loadIndexedPlugin;
+        }
+
+        public void setLoadIndexedPlugin(LoadIndexedPlugin plugin) {
+            this.loadIndexedPlugin = plugin;
+        }
+
         public ParameterPlugin getParameterPlugin() {
             return parameterPlugin;
         }
@@ -101,6 +111,7 @@ public class GraphBuilderConfiguration {
             }
             this.parameterPlugin = other.parameterPlugin;
             this.loadFieldPlugin = other.loadFieldPlugin;
+            this.loadIndexedPlugin = other.loadIndexedPlugin;
             this.inlineInvokePlugin = other.inlineInvokePlugin;
             this.loopExplosionPlugin = other.loopExplosionPlugin;
             this.genericInvocationPlugin = other.genericInvocationPlugin;

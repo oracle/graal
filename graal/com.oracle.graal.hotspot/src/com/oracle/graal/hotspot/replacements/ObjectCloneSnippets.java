@@ -114,7 +114,7 @@ public class ObjectCloneSnippets implements Snippets {
 
     @Snippet(removeAllFrameStates = true)
     public static Object[] objectArrayClone(Object[] src) {
-        Object[] result = (Object[]) DynamicNewArrayNode.newUninitializedArray(GuardingPiNode.guardingNonNull(src.getClass().getComponentType()), src.length, Kind.Object);
+        Object[] result = (Object[]) DynamicNewArrayNode.newUninitializedArray(GuardingPiNode.asNonNullClass(src.getClass().getComponentType()), src.length, Kind.Object);
         ArrayCopyCallNode.disjointUninitializedArraycopy(src, 0, result, 0, src.length, Kind.Object);
         return result;
     }

@@ -30,11 +30,9 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for
@@ -52,16 +50,8 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     @Override
     protected ResolvedJavaMethod registerMethodSubstitution(ClassReplacements cr, Executable originalMethod, Method substituteMethod) {
         final Class<?> substituteClass = substituteMethod.getDeclaringClass();
-        if (substituteClass.getDeclaringClass() == BoxingSubstitutions.class) {
-            if (config.useHeapProfiler) {
-                return null;
-            }
-        } else if (substituteClass == IntegerSubstitutions.class || substituteClass == LongSubstitutions.class) {
-            if (substituteMethod.getName().equals("bitCount")) {
-                if (!config.usePopCountInstruction) {
-                    return null;
-                }
-            } else if (substituteMethod.getName().equals("numberOfLeadingZeros")) {
+        if (substituteClass == IntegerSubstitutions.class || substituteClass == LongSubstitutions.class) {
+            if (substituteMethod.getName().equals("numberOfLeadingZeros")) {
                 if (config.useCountLeadingZerosInstruction) {
                     return null;
                 }
@@ -101,24 +91,5 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             }
         }
         return super.getMacroSubstitution(method);
-    }
-
-    @Override
-    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, FrameStateProcessing frameStateProcessing) {
-        return new HotSpotGraphMaker(this, substitute, original, frameStateProcessing);
-    }
-
-    public static class HotSpotGraphMaker extends ReplacementsImpl.GraphMaker {
-
-        public HotSpotGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, FrameStateProcessing frameStateProcessing) {
-            super(replacements, substitute, substitutedMethod, frameStateProcessing);
-        }
-
-        @Override
-        protected void afterParsing(StructuredGraph graph) {
-            MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
-            new WordTypeVerificationPhase(metaAccess, replacements.snippetReflection, replacements.providers.getConstantReflection(), replacements.target.wordKind).apply(graph);
-            new HotSpotWordTypeRewriterPhase(metaAccess, replacements.snippetReflection, replacements.providers.getConstantReflection(), replacements.target.wordKind).apply(graph);
-        }
     }
 }

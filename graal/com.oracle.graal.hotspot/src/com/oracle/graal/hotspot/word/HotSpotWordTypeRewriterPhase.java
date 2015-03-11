@@ -34,44 +34,17 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.*;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
-import com.oracle.graal.word.Word.*;
+import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.phases.*;
 
 public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
-    private final ResolvedJavaType klassPointerType;
-    private final ResolvedJavaType methodPointerType;
-
     public HotSpotWordTypeRewriterPhase(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, Kind wordKind) {
-        super(metaAccess, snippetReflection, constantReflection, wordKind);
-        this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
-        this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
-    }
-
-    @Override
-    protected void changeToWord(StructuredGraph graph, ValueNode node) {
-        ResolvedJavaType baseType = StampTool.typeOrNull(node);
-        if (baseType != null && baseType.equals(klassPointerType)) {
-            node.setStamp(KlassPointerStamp.klass());
-        } else if (baseType != null && baseType.equals(methodPointerType)) {
-            node.setStamp(MethodPointerStamp.method());
-        } else {
-            super.changeToWord(graph, node);
-        }
-    }
-
-    @Override
-    protected Kind asKind(JavaType type) {
-        if (type.equals(klassPointerType) || type.equals(methodPointerType)) {
-            return wordKind;
-        }
-        return super.asKind(type);
+        super(metaAccess, snippetReflection, constantReflection, new HotSpotWordTypes(metaAccess, wordKind));
     }
 
     @Override
@@ -86,17 +59,16 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
         }
     }
 
+    /**
+     * Intrinsification of methods that are annotated with {@link Operation} or
+     * {@link HotSpotOperation}.
+     */
     @Override
     protected void rewriteInvoke(StructuredGraph graph, MethodCallTargetNode callTargetNode) {
         ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
         HotSpotOperation operation = targetMethod.getAnnotation(HotSpotOperation.class);
         if (operation == null) {
-            Operation wordOperation = targetMethod.getAnnotation(Word.Operation.class);
-            if (wordOperation != null) {
-                super.rewriteWordOperation(graph, callTargetNode, targetMethod);
-            } else {
-                super.rewriteInvoke(graph, callTargetNode);
-            }
+            super.rewriteInvoke(graph, callTargetNode);
         } else {
             Invoke invoke = callTargetNode.invoke();
             NodeInputList<ValueNode> arguments = callTargetNode.arguments();
@@ -115,7 +87,7 @@ public class HotSpotWordTypeRewriterPhase extends WordTypeRewriterPhase {
 
                 case FROM_POINTER:
                     assert arguments.size() == 1;
-                    replace(invoke, graph.unique(new PointerCastNode(StampFactory.forKind(wordKind), arguments.get(0))));
+                    replace(invoke, graph.unique(new PointerCastNode(StampFactory.forKind(wordTypes.getWordKind()), arguments.get(0))));
                     break;
 
                 case TO_KLASS_POINTER:

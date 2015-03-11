@@ -63,7 +63,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     final Replacements replacements = tool.getReplacements();
                     StructuredGraph snippetGraph = null;
                     try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
-                        snippetGraph = replacements.getSnippet(snippetMethod);
+                        snippetGraph = replacements.getSnippet(snippetMethod, null);
                     } catch (Throwable e) {
                         throw Debug.handle(e);
                     }

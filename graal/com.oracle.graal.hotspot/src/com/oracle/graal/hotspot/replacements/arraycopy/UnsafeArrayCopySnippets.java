@@ -91,42 +91,36 @@ public class UnsafeArrayCopySnippets implements Snippets {
             for (long i = 0; i < postLoopBytes; i += elementSize) {
                 srcOffset -= elementSize;
                 destOffset -= elementSize;
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
+                UnsafeCopyNode.copy(src, arrayBaseOffset + srcOffset, dest, arrayBaseOffset + destOffset, baseKind, locationIdentity);
             }
             // Main-loop
             for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
                 srcOffset -= VECTOR_SIZE;
                 destOffset -= VECTOR_SIZE;
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, VECTOR_KIND, locationIdentity);
+                UnsafeCopyNode.copy(src, arrayBaseOffset + srcOffset, dest, arrayBaseOffset + destOffset, VECTOR_KIND, locationIdentity);
             }
             // Pre-loop
             for (long i = 0; i < preLoopBytes; i += elementSize) {
                 srcOffset -= elementSize;
                 destOffset -= elementSize;
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
+                UnsafeCopyNode.copy(src, arrayBaseOffset + srcOffset, dest, arrayBaseOffset + destOffset, baseKind, locationIdentity);
             }
         } else {
             // Pre-loop
             for (long i = 0; i < preLoopBytes; i += elementSize) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
+                UnsafeCopyNode.copy(src, arrayBaseOffset + srcOffset, dest, arrayBaseOffset + destOffset, baseKind, locationIdentity);
                 srcOffset += elementSize;
                 destOffset += elementSize;
             }
             // Main-loop
             for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, VECTOR_KIND, locationIdentity);
+                UnsafeCopyNode.copy(src, arrayBaseOffset + srcOffset, dest, arrayBaseOffset + destOffset, VECTOR_KIND, locationIdentity);
                 srcOffset += VECTOR_SIZE;
                 destOffset += VECTOR_SIZE;
             }
             // Post-loop
             for (long i = 0; i < postLoopBytes; i += elementSize) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
+                UnsafeCopyNode.copy(src, arrayBaseOffset + srcOffset, dest, arrayBaseOffset + destOffset, baseKind, locationIdentity);
                 srcOffset += elementSize;
                 destOffset += elementSize;
             }

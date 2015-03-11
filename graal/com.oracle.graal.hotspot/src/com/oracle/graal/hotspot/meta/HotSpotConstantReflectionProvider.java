@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.stubs.SnippetStub.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -32,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
@@ -41,6 +43,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 /**
  * HotSpot implementation of {@link ConstantReflectionProvider}.
  */
+@SuppressWarnings("unused")
 public class HotSpotConstantReflectionProvider implements ConstantReflectionProvider, HotSpotProxified {
     private static final String SystemClassName = "Ljava/lang/System;";
 
@@ -195,7 +198,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
      * {@code receiver} is (assignable to) {@link StableOptionValue}.
      */
     public JavaConstant readConstantFieldValue(JavaField field, JavaConstant receiver) {
-        assert !ImmutableCode.getValue() || isCalledForSnippets() : receiver;
+        assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null || HotSpotLoadFieldPlugin.FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
 
         if (receiver == null) {
@@ -314,7 +317,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         ResolvedJavaMethod initMethod = null;
         try {
             Class<?> rjm = ResolvedJavaMethod.class;
-            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, rjm, SnippetInliningPolicy.class, FrameStateProcessing.class));
+            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm, SnippetInliningPolicy.class, FrameStateProcessing.class));
             initMethod = metaAccess.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);

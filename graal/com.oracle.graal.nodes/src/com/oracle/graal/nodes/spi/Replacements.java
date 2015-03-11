@@ -37,9 +37,10 @@ public interface Replacements {
     /**
      * Gets the snippet graph derived from a given method.
      *
+     * @param args arguments to the snippet if available, otherwise {@code null}
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method);
+    StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args);
 
     /**
      * Gets the snippet graph derived from a given method.
@@ -47,9 +48,10 @@ public interface Replacements {
      * @param recursiveEntry if the snippet contains a call to this method, it's considered as
      *            recursive call and won't be processed for {@linkplain MethodSubstitution
      *            substitutions} or {@linkplain MacroSubstitution macro nodes}.
+     * @param args arguments to the snippet if available, otherwise {@code null}
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry);
+    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args);
 
     /**
      * Registers a method as snippet.

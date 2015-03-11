@@ -46,8 +46,8 @@ import com.oracle.graal.word.*;
  */
 public class UnwindExceptionToCallerStub extends SnippetStub {
 
-    public UnwindExceptionToCallerStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super("unwindExceptionToCaller", providers, target, linkage);
+    public UnwindExceptionToCallerStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("unwindExceptionToCaller", providers, linkage);
     }
 
     /**

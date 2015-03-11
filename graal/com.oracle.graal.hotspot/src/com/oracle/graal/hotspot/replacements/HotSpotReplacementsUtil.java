@@ -593,22 +593,14 @@ public class HotSpotReplacementsUtil {
     @NodeIntrinsic(value = WriteRegisterNode.class, setStampFromReturnType = true)
     public static native void writeRegisterAsWord(@ConstantNodeParameter Register register, Word value);
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity) {
-        return Word.unsigned(unsafeReadWord(object, offset));
-    }
-
-    @SuppressWarnings("unused")
-    @NodeIntrinsic(value = LoadHubNode.class)
-    public static KlassPointer loadHubIntrinsic(Object object, GuardingNode anchor) {
-        return KlassPointer.fromWord(Word.unsigned(unsafeReadKlassPointer(object)));
-    }
+    private static native Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic(value = LoadHubNode.class)
-    public static KlassPointer loadHubIntrinsic(Object object) {
-        return KlassPointer.fromWord(Word.unsigned(unsafeReadKlassPointer(object)));
-    }
+    public static native KlassPointer loadHubIntrinsic(Object object, GuardingNode anchor);
+
+    @NodeIntrinsic(value = LoadHubNode.class)
+    public static native KlassPointer loadHubIntrinsic(Object object);
 
     @Fold
     public static int log2WordSize() {

@@ -93,14 +93,4 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
         Value b = builder.operand(getY());
         builder.setResult(this, gen.emitUMulHigh(a, b));
     }
-
-    @NodeIntrinsic
-    public static int multiplyHighUnsigned(int a, int b) {
-        return ExactMath.multiplyHighUnsigned(a, b);
-    }
-
-    @NodeIntrinsic
-    public static long multiplyHighUnsigned(long a, long b) {
-        return ExactMath.multiplyHighUnsigned(a, b);
-    }
 }

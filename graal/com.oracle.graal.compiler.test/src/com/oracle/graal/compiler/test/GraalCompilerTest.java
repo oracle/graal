@@ -837,10 +837,21 @@ public abstract class GraalCompilerTest extends GraalTest {
         PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
-        GraphBuilderConfiguration gbConfCopy = gbConf.copy().copyPluginsFrom(graphBuilderPhase.getGraphBuilderConfig());
+        GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy().copyPluginsFrom(graphBuilderPhase.getGraphBuilderConfig()));
         iterator.remove();
         iterator.add(new GraphBuilderPhase(gbConfCopy));
         return suite;
+    }
+
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        editGraphBuilderPlugins(conf.getPlugins());
+        return conf;
+    }
+
+    /**
+     * @param plugins
+     */
+    protected void editGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
     }
 
     protected Replacements getReplacements() {

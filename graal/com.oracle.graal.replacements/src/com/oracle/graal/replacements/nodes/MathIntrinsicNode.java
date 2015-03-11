@@ -51,7 +51,23 @@ public final class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRL
         return operation;
     }
 
-    public MathIntrinsicNode(ValueNode value, Operation op) {
+    public static ValueNode create(ValueNode value, Operation op) {
+        ValueNode c = tryConstantFold(value, op);
+        if (c != null) {
+            return c;
+        }
+        return new MathIntrinsicNode(value, op);
+    }
+
+    protected static ValueNode tryConstantFold(ValueNode value, Operation op) {
+        if (value.isConstant()) {
+            double ret = doCompute(value.asJavaConstant().asDouble(), op);
+            return ConstantNode.forDouble(ret);
+        }
+        return null;
+    }
+
+    protected MathIntrinsicNode(ValueNode value, Operation op) {
         super(TYPE, StampFactory.forKind(Kind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;
@@ -85,17 +101,15 @@ public final class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRL
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (forValue.isConstant()) {
-            double ret = doCompute(forValue.asJavaConstant().asDouble(), operation());
-            return ConstantNode.forDouble(ret);
+        ValueNode c = tryConstantFold(forValue, operation());
+        if (c != null) {
+            return c;
         }
         return this;
     }
 
     @NodeIntrinsic
-    public static double compute(double value, @ConstantNodeParameter Operation op) {
-        return doCompute(value, op);
-    }
+    public static native double compute(double value, @ConstantNodeParameter Operation op);
 
     private static double doCompute(double value, Operation op) {
         switch (op) {

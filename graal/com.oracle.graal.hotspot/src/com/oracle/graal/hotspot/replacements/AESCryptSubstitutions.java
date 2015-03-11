@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.word.Word.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
@@ -89,7 +90,7 @@ public class AESCryptSubstitutions {
     private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, AESCryptClass);
         Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
-        Word kAddr = (Word) Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
+        Word kAddr = fromWordBase(Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte)));
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
         Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         if (encrypt) {

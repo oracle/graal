@@ -34,12 +34,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A node that changes the type of its input, usually narrowing it. For example, a PiNode refines
- * the type of a receiver during type-guarded inlining to be the type tested by the guard.
+ * A node that changes the type of its input, usually narrowing it. For example, a {@link PiNode}
+ * refines the type of a receiver during type-guarded inlining to be the type tested by the guard.
  *
- * In contrast to a {@link GuardedValueNode}, a PiNode is useless as soon as the type of its input
- * is as narrow or narrower than the PiNode's type. The PiNode, and therefore also the scheduling
- * restriction enforced by the anchor, will go away.
+ * In contrast to a {@link GuardedValueNode}, a {@link PiNode} is useless as soon as the type of its
+ * input is as narrow or narrower than the {@link PiNode}'s type. The {@link PiNode}, and therefore
+ * also the scheduling restriction enforced by the anchor, will go away.
  */
 @NodeInfo
 public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
@@ -116,31 +116,37 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return object;
     }
 
+    /**
+     * Casts an object to have an exact, non-null stamp representing {@link Class}.
+     */
+    public static Class<?> asNonNullClass(Object object) {
+        return asNonNullClassIntrinsic(object, Class.class, true, true);
+    }
+
+    @NodeIntrinsic(PiNode.class)
+    private static native Class<?> asNonNullClassIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
+
+    /**
+     * Changes the stamp of an object.
+     */
     @NodeIntrinsic
-    public static native <T> T piCast(Object object, @ConstantNodeParameter Stamp stamp);
+    public static native Object piCast(Object object, @ConstantNodeParameter Stamp stamp);
 
+    /**
+     * Changes the stamp of an object and ensures the newly stamped value does float above a given
+     * anchor.
+     */
     @NodeIntrinsic
-    public static native <T> T piCast(Object object, @ConstantNodeParameter Stamp stamp, GuardingNode anchor);
+    public static native Object piCast(Object object, @ConstantNodeParameter Stamp stamp, GuardingNode anchor);
 
-    public static <T> T piCastExactNonNull(Object object, @ConstantNodeParameter Class<T> toType) {
-        return piCast(object, toType, true, true);
-    }
-
-    public static <T> T piCastExact(Object object, @ConstantNodeParameter Class<T> toType) {
-        return piCast(object, toType, true, false);
-    }
-
-    public static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType) {
-        return piCast(object, toType, false, false);
-    }
-
-    public static <T> T piCastNonNull(Object object, @ConstantNodeParameter Class<T> toType) {
+    /**
+     * Changes the stamp of an object to represent a given type and to indicate that the object is
+     * not null.
+     */
+    public static Object piCastNonNull(Object object, @ConstantNodeParameter Class<?> toType) {
         return piCast(object, toType, false, true);
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    private static <T> T piCast(Object object, @ConstantNodeParameter Class<T> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull) {
-        return toType.cast(object);
-    }
+    public static native Object piCast(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 }

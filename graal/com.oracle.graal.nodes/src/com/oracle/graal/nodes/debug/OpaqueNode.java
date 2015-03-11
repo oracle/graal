@@ -47,31 +47,4 @@ public final class OpaqueNode extends FloatingNode implements LIRLowerable {
     public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.operand(value));
     }
-
-    @NodeIntrinsic
-    public static native boolean opaque(boolean v);
-
-    @NodeIntrinsic
-    public static native byte opaque(byte v);
-
-    @NodeIntrinsic
-    public static native short opaque(short v);
-
-    @NodeIntrinsic
-    public static native char opaque(char v);
-
-    @NodeIntrinsic
-    public static native int opaque(int v);
-
-    @NodeIntrinsic
-    public static native long opaque(long v);
-
-    @NodeIntrinsic
-    public static native float opaque(float v);
-
-    @NodeIntrinsic
-    public static native double opaque(double v);
-
-    @NodeIntrinsic
-    public static native <T> T opaque(T v);
 }

@@ -96,12 +96,8 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
     }
 
     @NodeIntrinsic
-    public static int subtractExact(int a, int b) {
-        return ExactMath.subtractExact(a, b);
-    }
+    public static native int subtractExact(int a, int b);
 
     @NodeIntrinsic
-    public static long subtractExact(long a, long b) {
-        return ExactMath.subtractExact(a, b);
-    }
+    public static native long subtractExact(long a, long b);
 }

@@ -22,89 +22,109 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.java.GraphBuilderContext.*;
-import static java.lang.Character.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.nodes.type.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.InvocationPlugins.Registration;
 import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.word.*;
-import com.oracle.graal.word.nodes.*;
+import com.oracle.graal.replacements.*;
+import com.oracle.graal.word.phases.*;
 
 /**
- * Provides HotSpot specific {@link InvocationPlugin}s.
+ * Defines the {@link Plugins} used when running on HotSpot.
  */
 public class HotSpotGraphBuilderPlugins {
-    public static void registerInvocationPlugins(HotSpotProviders providers, InvocationPlugins plugins) {
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
-        Kind wordKind = providers.getCodeCache().getTarget().wordKind;
 
-        registerObjectPlugins(plugins, metaAccess);
-        registerClassPlugins(plugins, metaAccess);
-        registerStableOptionPlugins(plugins, metaAccess);
-        registerMetaspacePointerPlugins(plugins, metaAccess, snippetReflection, wordKind);
+    /**
+     * Creates a {@link Plugins} object that should be used when running on HotSpot.
+     */
+    public static Plugins create(HotSpotVMConfig config, HotSpotProviders providers) {
+
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        HotSpotWordTypes wordTypes = providers.getWordTypes();
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
+
+        Plugins plugins = new Plugins(invocationPlugins);
+        NodeIntrinsificationPhase nodeIntrinsification = new NodeIntrinsificationPhase(providers, providers.getSnippetReflection());
+        ConstantReflectionProvider constantReflection = providers.getConstantReflection();
+        HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(providers.getSnippetReflection(), wordTypes);
+
+        plugins.setParameterPlugin(new HotSpotParameterPlugin(wordTypes));
+        plugins.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
+        plugins.setLoadIndexedPlugin(new HotSpotLoadIndexedPlugin(wordTypes));
+        plugins.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(nodeIntrinsification, (ReplacementsImpl) providers.getReplacements()));
+        plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(nodeIntrinsification, wordOperationPlugin));
+
+        registerObjectPlugins(invocationPlugins, metaAccess);
+        registerSystemPlugins(invocationPlugins, metaAccess, providers.getForeignCalls());
+        registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
+        registerStableOptionPlugins(invocationPlugins, metaAccess);
+        StandardGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), providers.getCodeCache().target.arch, invocationPlugins, !config.useHeapProfiler);
+        return plugins;
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
         Registration r = new Registration(plugins, metaAccess, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode rcvr) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
                 ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
                 ValueNode mirror;
                 if (objectStamp.isExactType() && objectStamp.nonNull()) {
-                    mirror = builder.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), builder.getMetaAccess()));
+                    mirror = b.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), b.getMetaAccess()));
                 } else {
-                    StampProvider stampProvider = builder.getStampProvider();
-                    LoadHubNode hub = builder.append(new LoadHubNode(stampProvider, nullCheckedValue(builder, rcvr)));
-                    mirror = builder.append(new HubGetClassNode(builder.getMetaAccess(), hub));
+                    StampProvider stampProvider = b.getStampProvider();
+                    LoadHubNode hub = b.append(new LoadHubNode(stampProvider, nullCheckedValue(b, rcvr)));
+                    mirror = b.append(new HubGetClassNode(b.getMetaAccess(), hub));
                 }
-                builder.push(Kind.Object, mirror);
+                b.push(Kind.Object, mirror);
                 return true;
             }
         });
     }
 
-    private static void registerClassPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        Registration r = new Registration(plugins, metaAccess, Class.class);
-        r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode rcvr, ValueNode object) {
-                if (rcvr.isConstant() && !rcvr.isNullConstant()) {
-                    ResolvedJavaType type = builder.getConstantReflection().asJavaType(rcvr.asConstant());
-                    if (type != null && !type.isPrimitive()) {
-                        builder.push(Kind.Object, builder.append(CheckCastNode.create(type, object, null, false, builder.getAssumptions())));
-                        return true;
-                    }
-                }
-                return false;
+    private static void registerSystemPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+        Registration r = new Registration(plugins, metaAccess, System.class);
+        r.register0("currentTimeMillis", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+                b.push(Kind.Long, b.append(new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_MILLIS, StampFactory.forKind(Kind.Long))));
+                return true;
             }
         });
-        r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode rcvr, ValueNode object) {
-                if (rcvr.isConstant() && !rcvr.isNullConstant()) {
-                    ResolvedJavaType type = builder.getConstantReflection().asJavaType(rcvr.asConstant());
-                    if (type != null && !type.isPrimitive()) {
-                        LogicNode node = builder.append(InstanceOfNode.create(type, object, null));
-                        builder.push(Kind.Boolean.getStackKind(), builder.append(ConditionalNode.create(node)));
-                        return true;
-                    }
-                }
-                return false;
+        r.register0("nanoTime", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+                b.push(Kind.Long, b.append(new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_NANOS, StampFactory.forKind(Kind.Long))));
+                return true;
+            }
+        });
+    }
+
+    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, HotSpotVMConfig config) {
+        Registration r = new Registration(plugins, metaAccess, Thread.class);
+        r.register0("currentThread", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+                CurrentJavaThreadNode thread = b.append(new CurrentJavaThreadNode(wordTypes.getWordKind()));
+                ConstantLocationNode location = b.append(new ConstantLocationNode(JAVA_THREAD_THREAD_OBJECT_LOCATION, config.threadObjectOffset));
+                boolean compressible = false;
+                ValueNode javaThread = WordOperationPlugin.readOp(b, Kind.Object, thread, location, BarrierType.NONE, compressible);
+                boolean exactType = compressible;
+                boolean nonNull = true;
+                b.push(Kind.Object, b.append(new PiNode(javaThread, metaAccess.lookupJavaType(Thread.class), exactType, nonNull)));
+                return true;
             }
         });
     }
@@ -112,142 +132,16 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerStableOptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
         Registration r = new Registration(plugins, metaAccess, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode rcvr) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
                 if (rcvr.isConstant() && !rcvr.isNullConstant()) {
                     Object object = ((HotSpotObjectConstantImpl) rcvr.asConstant()).object();
                     StableOptionValue<?> option = (StableOptionValue<?>) object;
-                    ConstantNode value = builder.append(ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(option.getValue()), builder.getMetaAccess()));
-                    builder.push(Kind.Object, value);
+                    ConstantNode value = b.append(ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(option.getValue()), b.getMetaAccess()));
+                    b.push(Kind.Object, value);
                     return true;
                 }
                 return false;
             }
         });
-    }
-
-    private static void registerMetaspacePointerPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, Kind wordKind) {
-        Registration r = new Registration(plugins, metaAccess, MetaspacePointer.class);
-        r.register1("isNull", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode pointer) {
-                assert pointer.stamp() instanceof MetaspacePointerStamp;
-                IsNullNode isNull = builder.append(new IsNullNode(pointer));
-                ConstantNode trueValue = builder.append(ConstantNode.forBoolean(true));
-                ConstantNode falseValue = builder.append(ConstantNode.forBoolean(false));
-                builder.push(Kind.Boolean.getStackKind(), builder.append(new ConditionalNode(isNull, trueValue, falseValue)));
-                return true;
-            }
-        });
-        r.register1("asWord", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext builder, ValueNode pointer) {
-                builder.append(new PointerCastNode(StampFactory.forKind(wordKind), pointer));
-                return true;
-            }
-        });
-        r.register2("readObject", Receiver.class, int.class, new ReadOp(snippetReflection, wordKind, Kind.Object, BarrierType.NONE, true));
-        r.register3("readObject", Receiver.class, int.class, LocationIdentity.class, new ReadOp(snippetReflection, wordKind, Kind.Object, BarrierType.NONE, true));
-        r.register3("readObject", Receiver.class, int.class, BarrierType.class, new ReadOp(snippetReflection, wordKind, Kind.Object, BarrierType.NONE, true));
-        r.register2("readObject", Receiver.class, WordBase.class, new ReadOp(snippetReflection, wordKind, Kind.Object, BarrierType.NONE, true));
-        r.register3("readObject", Receiver.class, WordBase.class, LocationIdentity.class, new ReadOp(snippetReflection, wordKind, Kind.Object, BarrierType.NONE, true));
-        r.register3("readObject", Receiver.class, WordBase.class, BarrierType.class, new ReadOp(snippetReflection, wordKind, Kind.Object, BarrierType.NONE, true));
-
-        registerWordOpPlugins(r, snippetReflection, wordKind, Kind.Byte, Kind.Short, Kind.Char, Kind.Int, Kind.Float, Kind.Long, Kind.Double);
-    }
-
-    private static void registerWordOpPlugins(Registration r, SnippetReflectionProvider snippetReflection, Kind wordKind, Kind... kinds) {
-        for (Kind kind : kinds) {
-            String kindName = kind.getJavaName();
-            kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
-            String getName = "read" + kindName;
-            // String putName = "write" + kindName;
-            r.register2(getName, Receiver.class, int.class, new ReadOp(snippetReflection, wordKind, kind));
-            r.register3(getName, Receiver.class, int.class, LocationIdentity.class, new ReadOp(snippetReflection, wordKind, kind));
-        }
-    }
-
-    static class ReadOp implements InvocationPlugin {
-        final SnippetReflectionProvider snippetReflection;
-        final Kind wordKind;
-        final Kind resultKind;
-        final BarrierType barrierType;
-        final boolean compressible;
-
-        public ReadOp(SnippetReflectionProvider snippetReflection, Kind wordKind, Kind resultKind, BarrierType barrierType, boolean compressible) {
-            this.snippetReflection = snippetReflection;
-            this.wordKind = wordKind;
-            this.resultKind = resultKind;
-            this.barrierType = barrierType;
-            this.compressible = compressible;
-        }
-
-        public ReadOp(SnippetReflectionProvider snippetReflection, Kind wordKind, Kind resultKind) {
-            this(snippetReflection, wordKind, resultKind, BarrierType.NONE, false);
-        }
-
-        public boolean apply(GraphBuilderContext builder, ValueNode pointer, ValueNode offset) {
-            LocationNode location = makeLocation(builder, offset, ANY_LOCATION, wordKind);
-            builder.push(resultKind, builder.append(readOp(builder, resultKind, pointer, location, barrierType, compressible)));
-            return true;
-        }
-
-        public boolean apply(GraphBuilderContext builder, ValueNode pointer, ValueNode offset, ValueNode locationIdentityArg) {
-            assert locationIdentityArg.isConstant();
-            LocationIdentity locationIdentity = snippetReflection.asObject(LocationIdentity.class, locationIdentityArg.asJavaConstant());
-            LocationNode location = makeLocation(builder, offset, locationIdentity, wordKind);
-            builder.push(resultKind, builder.append(readOp(builder, resultKind, pointer, location, barrierType, compressible)));
-            return true;
-        }
-    }
-
-    public static ValueNode readOp(GraphBuilderContext builder, Kind readKind, ValueNode base, LocationNode location, BarrierType barrierType, boolean compressible) {
-        JavaReadNode read = builder.append(new JavaReadNode(readKind, base, location, barrierType, compressible));
-        /*
-         * The read must not float outside its block otherwise it may float above an explicit zero
-         * check on its base address.
-         */
-        read.setGuard(builder.getCurrentBlockGuard());
-        return read;
-    }
-
-    public static LocationNode makeLocation(GraphBuilderContext builder, ValueNode offset, LocationIdentity locationIdentity, Kind wordKind) {
-        return builder.append(new IndexedLocationNode(locationIdentity, 0, fromSigned(builder, offset, wordKind), 1));
-    }
-
-    public static LocationNode makeLocation(GraphBuilderContext builder, ValueNode offset, ValueNode locationIdentity, Kind wordKind) {
-        if (locationIdentity.isConstant()) {
-            return makeLocation(builder, offset, builder.getSnippetReflection().asObject(LocationIdentity.class, locationIdentity.asJavaConstant()), wordKind);
-        }
-        return builder.append(new SnippetLocationNode(builder.getSnippetReflection(), locationIdentity, builder.append(ConstantNode.forLong(0)), fromSigned(builder, offset, wordKind),
-                        builder.append(ConstantNode.forInt(1))));
-    }
-
-    public static ValueNode fromUnsigned(GraphBuilderContext builder, ValueNode value, Kind wordKind) {
-        return convert(builder, value, wordKind, true);
-    }
-
-    public static ValueNode fromSigned(GraphBuilderContext builder, ValueNode value, Kind wordKind) {
-        return convert(builder, value, wordKind, false);
-    }
-
-    public static ValueNode toUnsigned(GraphBuilderContext builder, ValueNode value, Kind toKind) {
-        return convert(builder, value, toKind, true);
-    }
-
-    public static ValueNode convert(GraphBuilderContext builder, ValueNode value, Kind toKind, boolean unsigned) {
-        if (value.getKind() == toKind) {
-            return value;
-        }
-
-        if (toKind == Kind.Int) {
-            assert value.getKind() == Kind.Long;
-            return builder.append(new NarrowNode(value, 32));
-        } else {
-            assert toKind == Kind.Long;
-            assert value.getKind().getStackKind() == Kind.Int;
-            if (unsigned) {
-                return builder.append(new ZeroExtendNode(value, 64));
-            } else {
-                return builder.append(new SignExtendNode(value, 64));
-            }
-        }
     }
 }

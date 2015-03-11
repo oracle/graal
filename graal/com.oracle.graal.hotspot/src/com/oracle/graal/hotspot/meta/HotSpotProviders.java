@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -38,6 +40,8 @@ public class HotSpotProviders extends Providers {
     private final SuitesProvider suites;
     private final HotSpotRegistersProvider registers;
     private final SnippetReflectionProvider snippetReflection;
+    private final HotSpotWordTypes wordTypes;
+    private Plugins graphBuilderPlugins;
 
     public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers,
@@ -47,6 +51,7 @@ public class HotSpotProviders extends Providers {
         this.suites = suites;
         this.registers = registers;
         this.snippetReflection = snippetReflection;
+        this.wordTypes = new HotSpotWordTypes(metaAccess, codeCache.getTarget().wordKind);
     }
 
     @Override
@@ -73,5 +78,18 @@ public class HotSpotProviders extends Providers {
 
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
+    }
+
+    public void setGraphBuilderPlugins(Plugins plugins) {
+        graphBuilderPlugins = plugins;
+    }
+
+    public Plugins getGraphBuilderPlugins() {
+        assert graphBuilderPlugins != null;
+        return graphBuilderPlugins;
+    }
+
+    public HotSpotWordTypes getWordTypes() {
+        return wordTypes;
     }
 }

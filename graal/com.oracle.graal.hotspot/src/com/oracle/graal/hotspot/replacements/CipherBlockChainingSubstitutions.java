@@ -97,8 +97,8 @@ public class CipherBlockChainingSubstitutions {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
         Object rObject = UnsafeLoadNode.load(realReceiver, rOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
-        Word kAddr = (Word) Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
-        Word rAddr = (Word) Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte));
+        Word kAddr = Word.fromWordBase(Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte)));
+        Word rAddr = Word.fromWordBase(Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte)));
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
         Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         if (encrypt) {

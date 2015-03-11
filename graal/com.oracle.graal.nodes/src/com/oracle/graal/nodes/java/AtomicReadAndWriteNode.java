@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
@@ -80,23 +79,4 @@ public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint imple
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
-
-    @NodeIntrinsic
-    public static int getAndSetInt(Object object, long offset, int newValue, @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind,
-                    @ConstantNodeParameter @SuppressWarnings("unused") LocationIdentity locationIdentity) {
-        return unsafe.getAndSetInt(object, offset, newValue);
-    }
-
-    @NodeIntrinsic
-    public static long getAndSetLong(Object object, long offset, long newValue, @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind,
-                    @ConstantNodeParameter @SuppressWarnings("unused") LocationIdentity locationIdentity) {
-        return unsafe.getAndSetLong(object, offset, newValue);
-    }
-
-    @NodeIntrinsic
-    public static Object getAndSetObject(Object object, long offset, Object newValue, @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind,
-                    @ConstantNodeParameter @SuppressWarnings("unused") LocationIdentity locationIdentity) {
-        return unsafe.getAndSetObject(object, offset, newValue);
-    }
-
 }

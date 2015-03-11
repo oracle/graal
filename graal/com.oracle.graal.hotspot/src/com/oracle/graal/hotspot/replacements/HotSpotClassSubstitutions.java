@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.PiNode.*;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
@@ -110,7 +110,7 @@ public class HotSpotClassSubstitutions {
     }
 
     public static Class<?> readJavaMirror(Word klass) {
-        return piCastExactNonNull(klass.readObject(classMirrorOffset(), CLASS_MIRROR_LOCATION), Class.class);
+        return PiNode.asNonNullClass(klass.readObject(classMirrorOffset(), CLASS_MIRROR_LOCATION));
     }
 
     @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
@@ -119,7 +119,7 @@ public class HotSpotClassSubstitutions {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (!klass.isNull()) {
             if (klassIsArray(klass)) {
-                return piCastExactNonNull(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR), Class.class);
+                return PiNode.asNonNullClass(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR));
             }
         }
         return null;

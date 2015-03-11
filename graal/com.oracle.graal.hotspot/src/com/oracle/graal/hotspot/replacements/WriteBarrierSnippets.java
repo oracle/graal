@@ -79,7 +79,7 @@ public class WriteBarrierSnippets implements Snippets {
         serialWriteBarrierCounter.inc();
         int cardTableShift = (isImmutableCode() && generatePIC()) ? CardTableShiftNode.cardTableShift() : cardTableShift();
         long cardTableAddress = (isImmutableCode() && generatePIC()) ? CardTableAddressNode.cardTableAddress() : cardTableStart();
-        Word base = (Word) oop.unsignedShiftRight(cardTableShift);
+        Word base = Word.fromWordBase(oop.unsignedShiftRight(cardTableShift));
         long startAddress = cardTableAddress;
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -105,7 +105,7 @@ public class WriteBarrierSnippets implements Snippets {
         long end = (dstAddr + header + ((long) startIndex + length - 1) * scale) >>> cardShift;
         long count = end - start + 1;
         while (count-- > 0) {
-            DirectStoreNode.store((start + cardStart) + count, false, Kind.Boolean);
+            DirectStoreNode.storeBoolean((start + cardStart) + count, false, Kind.Boolean);
         }
     }
 
@@ -119,8 +119,8 @@ public class WriteBarrierSnippets implements Snippets {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         verifyOop(fixedObject);
         Object fixedExpectedObject = FixedValueAnchorNode.getObject(expectedObject);
-        Word field = (Word) Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location));
-        Word previousOop = (Word) Word.fromObject(fixedExpectedObject);
+        Word field = Word.fromWordBase(Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location)));
+        Word previousOop = Word.fromWordBase(Word.fromObject(fixedExpectedObject));
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(g1SATBQueueIndexOffset());
@@ -140,7 +140,7 @@ public class WriteBarrierSnippets implements Snippets {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (probability(LIKELY_PROBABILITY, doLoad)) {
-                previousOop = (Word) Word.fromObject(field.readObject(0, BarrierType.NONE));
+                previousOop = Word.fromWordBase(Word.fromObject(field.readObject(0, BarrierType.NONE)));
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
                     verifyOop(previousOop.toObject());
@@ -176,9 +176,9 @@ public class WriteBarrierSnippets implements Snippets {
         validateObject(fixedObject, fixedValue);
         Word oop;
         if (usePrecise) {
-            oop = (Word) Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location));
+            oop = Word.fromWordBase(Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location)));
         } else {
-            oop = (Word) Word.fromObject(fixedObject);
+            oop = Word.fromWordBase(Word.fromObject(fixedObject));
         }
         int gcCycle = 0;
         if (trace) {
@@ -186,7 +186,7 @@ public class WriteBarrierSnippets implements Snippets {
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
-        Word writtenValue = (Word) Word.fromObject(fixedValue);
+        Word writtenValue = Word.fromWordBase(Word.fromObject(fixedValue));
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
         Word indexAddress = thread.add(g1CardQueueIndexOffset());
         Word indexValue = thread.readWord(g1CardQueueIndexOffset());

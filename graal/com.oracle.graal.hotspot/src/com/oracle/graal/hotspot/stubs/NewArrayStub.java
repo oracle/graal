@@ -38,12 +38,9 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
 /**
@@ -54,19 +51,19 @@ import com.oracle.graal.word.*;
  */
 public class NewArrayStub extends SnippetStub {
 
-    public NewArrayStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super("newArray", providers, target, linkage);
+    public NewArrayStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("newArray", providers, linkage);
     }
 
     @Override
-    protected Arguments makeArguments(SnippetInfo stub) {
+    protected Object[] makeConstArgs() {
         HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) providers.getMetaAccess().lookupJavaType(int[].class);
-
-        Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS, LoweringTool.StandardLoweringStage.HIGH_TIER);
-        args.add("hub", null);
-        args.add("length", null);
-        args.addConst("intArrayHub", intArrayType.klass(), KlassPointerStamp.klassNonNull());
-        args.addConst("threadRegister", providers.getRegisters().getThreadRegister());
+        int count = method.getSignature().getParameterCount(false);
+        Object[] args = new Object[count];
+        assert checkConstArg(2, "intArrayHub");
+        assert checkConstArg(3, "threadRegister");
+        args[2] = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), intArrayType.klass(), null);
+        args[3] = providers.getRegisters().getThreadRegister();
         return args;
     }
 

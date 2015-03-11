@@ -72,7 +72,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getStaticFinalObject", true);
         assertDeepEquals(1, getConstantNodes(result).count());
         Stamp constantStamp = getConstantNodes(result).first().stamp();
-        Assert.assertTrue(constantStamp instanceof KlassPointerStamp);
+        Assert.assertTrue(constantStamp.toString(), constantStamp instanceof KlassPointerStamp);
         assertDeepEquals(2, result.getNodes().filter(FloatingReadNode.class).count());
         assertDeepEquals(0, result.getNodes().filter(ReadNode.class).count());
     }

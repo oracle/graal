@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -87,24 +85,5 @@ public final class CompareAndSwapNode extends AbstractMemoryCheckpoint implement
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
-    }
-
-    // specialized on value type until boxing/unboxing is sorted out in intrinsification
-    @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, long offset, Object expected, Object newValue, @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind,
-                    @SuppressWarnings("unused") @ConstantNodeParameter LocationIdentity locationIdentity) {
-        return unsafe.compareAndSwapObject(object, offset, expected, newValue);
-    }
-
-    @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, long offset, long expected, long newValue, @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind,
-                    @SuppressWarnings("unused") @ConstantNodeParameter LocationIdentity locationIdentity) {
-        return unsafe.compareAndSwapLong(object, offset, expected, newValue);
-    }
-
-    @NodeIntrinsic
-    public static boolean compareAndSwap(Object object, long offset, int expected, int newValue, @SuppressWarnings("unused") @ConstantNodeParameter Kind valueKind,
-                    @SuppressWarnings("unused") @ConstantNodeParameter LocationIdentity locationIdentity) {
-        return unsafe.compareAndSwapInt(object, offset, expected, newValue);
     }
 }

@@ -75,6 +75,9 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
         if (!intrinsicMethod.getModifiers().contains(Modifier.STATIC)) {
             env.getMessager().printMessage(Kind.ERROR, String.format("A @%s method must be static.", NodeIntrinsic.class.getSimpleName()), element, annotation);
         }
+        if (!intrinsicMethod.getModifiers().contains(Modifier.NATIVE)) {
+            env.getMessager().printMessage(Kind.ERROR, String.format("A @%s method must be native.", NodeIntrinsic.class.getSimpleName()), element, annotation);
+        }
 
         TypeMirror nodeClassMirror = resolveAnnotationValue(TypeMirror.class, findAnnotationValue(annotation, NODE_CLASS_NAME));
         TypeElement nodeClass = (TypeElement) env.getTypeUtils().asElement(nodeClassMirror);
@@ -87,6 +90,10 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
             if (enclosingElement != null) {
                 nodeClass = (TypeElement) enclosingElement;
             }
+        }
+
+        if (intrinsicMethod.getReturnType() instanceof TypeVariable) {
+            env.getMessager().printMessage(Kind.ERROR, "@NodeIntrinsic cannot have a generic return type.", element, annotation);
         }
 
         if (isNodeType(nodeClass)) {

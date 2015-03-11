@@ -27,7 +27,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -65,12 +64,28 @@ public interface GraphBuilderContext {
     GraphBuilderContext getParent();
 
     /**
-     * Gets the inline depth of this context. 0 implies this is the context for the root method.
+     * Gets the root method for the graph building process.
+     */
+    ResolvedJavaMethod getRootMethod();
+
+    /**
+     * Gets the method currently being parsed.
+     */
+    ResolvedJavaMethod getMethod();
+
+    /**
+     * Gets the index of the bytecode instruction currently being parsed.
+     */
+    int bci();
+
+    /**
+     * Gets the inline depth of this context. 0 implies this is the context for the
+     * {@linkplain #getRootMethod() root method}.
      */
     int getDepth();
 
     /**
-     * Determines if the graph builder is parsing a snippet or method substitution.
+     * Determines if the current parsing context is a snippet or method substitution.
      */
     boolean parsingReplacement();
 
@@ -85,7 +100,7 @@ public interface GraphBuilderContext {
         return nonNullValue;
     }
 
-    GuardingNode getCurrentBlockGuard();
+    boolean eagerResolving();
 
     BailoutException bailout(String string);
 }

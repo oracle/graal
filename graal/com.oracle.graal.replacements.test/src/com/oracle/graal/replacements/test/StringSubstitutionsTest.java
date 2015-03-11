@@ -38,7 +38,7 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
     public void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, boolean optional, Object[] args1, Object[] args2) {
         ResolvedJavaMethod realMethod = getResolvedJavaMethod(holder, methodName);
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(testMethodName);
-        StructuredGraph graph = test(testMethodName);
+        StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
         StructuredGraph replacement = getReplacements().getMethodSubstitution(realMethod);

@@ -43,8 +43,12 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
     protected LIRKind wordKind;
 
     public CurrentJavaThreadNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime) {
-        super(TYPE, StampFactory.forKind(runtime.getTarget().wordKind));
-        this.wordKind = LIRKind.value(runtime.getTarget().wordKind);
+        this(runtime.getTarget().wordKind);
+    }
+
+    public CurrentJavaThreadNode(Kind wordKind) {
+        super(TYPE, StampFactory.forKind(wordKind));
+        this.wordKind = LIRKind.value(wordKind);
     }
 
     @Override

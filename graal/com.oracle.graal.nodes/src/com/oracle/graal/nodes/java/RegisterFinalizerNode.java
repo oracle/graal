@@ -102,8 +102,6 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
         return true;
     }
 
-    @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void register(Object thisObj) {
-    }
+    public static native void register(Object thisObj);
 }

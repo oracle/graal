@@ -88,14 +88,4 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
         Value b = builder.operand(getY());
         builder.setResult(this, gen.emitMulHigh(a, b));
     }
-
-    @NodeIntrinsic
-    public static int multiplyHigh(int a, int b) {
-        return ExactMath.multiplyHigh(a, b);
-    }
-
-    @NodeIntrinsic
-    public static long multiplyHigh(long a, long b) {
-        return ExactMath.multiplyHigh(a, b);
-    }
 }

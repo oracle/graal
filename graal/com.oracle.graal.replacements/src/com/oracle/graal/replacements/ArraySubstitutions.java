@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
+
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -36,19 +39,19 @@ public class ArraySubstitutions {
     public static Object newInstance(Class<?> componentType, int length) throws NegativeArraySizeException {
         // The error cases must be handled here since DynamicNewArrayNode can only deoptimize the
         // caller in response to exceptions.
-        if (length < 0) {
-            throw new NegativeArraySizeException();
+        if (probability(SLOW_PATH_PROBABILITY, length < 0)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (componentType == void.class) {
-            throw new IllegalArgumentException();
+        if (probability(SLOW_PATH_PROBABILITY, componentType == void.class)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        return DynamicNewArrayNode.newArray(GuardingPiNode.guardingNonNull(componentType), length);
+        return DynamicNewArrayNode.newArray(GuardingPiNode.asNonNullClass(componentType), length);
     }
 
     @MethodSubstitution
     public static int getLength(Object array) {
         if (!array.getClass().isArray()) {
-            throw new IllegalArgumentException("Argument is not an array");
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         return ArrayLengthNode.arrayLength(array);
     }
