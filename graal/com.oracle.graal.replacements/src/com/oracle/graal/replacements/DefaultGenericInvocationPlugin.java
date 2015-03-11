@@ -108,8 +108,11 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         }
 
         res = b.append(res);
-        if (res.getKind().getStackKind() != Kind.Void) {
+        if (returnKind != Kind.Void) {
+            assert res.getKind().getStackKind() != Kind.Void;
             b.push(returnKind.getStackKind(), res);
+        } else {
+            assert res.getKind().getStackKind() == Kind.Void;
         }
 
         return true;
