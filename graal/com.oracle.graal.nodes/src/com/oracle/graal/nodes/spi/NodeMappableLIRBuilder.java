@@ -24,13 +24,14 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 public interface NodeMappableLIRBuilder {
 
-    Value operand(ValueNode object);
+    Value operand(Node object);
 
-    boolean hasOperand(ValueNode object);
+    boolean hasOperand(Node object);
 
     Value setResult(ValueNode x, Value operand);
 }

@@ -147,7 +147,7 @@ public final class GraphOrder {
 
                 @Override
                 protected NodeBitMap processBlock(final Block block, final NodeBitMap currentState) {
-                    final List<ValueNode> list = schedule.getBlockToNodesMap().get(block);
+                    final List<Node> list = schedule.getBlockToNodesMap().get(block);
 
                     /*
                      * A stateAfter is not valid directly after its associated state split, but
@@ -155,7 +155,7 @@ public final class GraphOrder {
                      * will be checked at the correct position.
                      */
                     FrameState pendingStateAfter = null;
-                    for (final ValueNode node : list) {
+                    for (final Node node : list) {
                         FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
                         if (node instanceof FullInfopointNode) {
                             stateAfter = ((FullInfopointNode) node).getState();

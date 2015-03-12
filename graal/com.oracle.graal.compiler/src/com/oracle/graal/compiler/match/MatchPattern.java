@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.match;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
 
 /**
  * A simple recursive pattern matcher for a DAG of nodes.
@@ -50,11 +49,11 @@ public class MatchPattern {
     static class Result {
         final MatchResultCode code;
 
-        final ValueNode node;
+        final Node node;
 
         final MatchPattern matcher;
 
-        Result(MatchResultCode result, ValueNode node, MatchPattern matcher) {
+        Result(MatchResultCode result, Node node, MatchPattern matcher) {
             this.code = result;
             this.node = node;
             this.matcher = matcher;
@@ -75,32 +74,32 @@ public class MatchPattern {
         private static final Result CACHED_NOT_SAFE = new Result(MatchResultCode.NOT_SAFE, null, null);
         private static final Result CACHED_ALREADY_USED = new Result(MatchResultCode.ALREADY_USED, null, null);
 
-        static Result wrongClass(ValueNode node, MatchPattern matcher) {
+        static Result wrongClass(Node node, MatchPattern matcher) {
             MatchResult_WRONG_CLASS.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.WRONG_CLASS, node, matcher) : CACHED_WRONG_CLASS;
         }
 
-        static Result namedValueMismatch(ValueNode node, MatchPattern matcher) {
+        static Result namedValueMismatch(Node node, MatchPattern matcher) {
             MatchResult_NAMED_VALUE_MISMATCH.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher) : CACHED_NAMED_VALUE_MISMATCH;
         }
 
-        static Result tooManyUsers(ValueNode node, MatchPattern matcher) {
+        static Result tooManyUsers(Node node, MatchPattern matcher) {
             MatchResult_TOO_MANY_USERS.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.TOO_MANY_USERS, node, matcher) : CACHED_TOO_MANY_USERS;
         }
 
-        static Result notInBlock(ValueNode node, MatchPattern matcher) {
+        static Result notInBlock(Node node, MatchPattern matcher) {
             MatchResult_NOT_IN_BLOCK.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher) : CACHED_NOT_IN_BLOCK;
         }
 
-        static Result notSafe(ValueNode node, MatchPattern matcher) {
+        static Result notSafe(Node node, MatchPattern matcher) {
             MatchResult_NOT_SAFE.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.NOT_SAFE, node, matcher) : CACHED_NOT_SAFE;
         }
 
-        static Result alreadyUsed(ValueNode node, MatchPattern matcher) {
+        static Result alreadyUsed(Node node, MatchPattern matcher) {
             MatchResult_ALREADY_USED.increment();
             return Debug.isEnabled() ? new Result(MatchResultCode.ALREADY_USED, node, matcher) : CACHED_ALREADY_USED;
         }
@@ -121,7 +120,7 @@ public class MatchPattern {
     /**
      * The expected type of the node. It must match exactly.
      */
-    private final Class<? extends ValueNode> nodeClass;
+    private final Class<? extends Node> nodeClass;
 
     /**
      * An optional name for this node. A name can occur multiple times in a match and that name must
@@ -151,7 +150,7 @@ public class MatchPattern {
         this(null, name, singleUser);
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser) {
+    public MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser) {
         this.nodeClass = nodeClass;
         this.name = name;
         this.singleUser = singleUser;
@@ -159,7 +158,7 @@ public class MatchPattern {
         this.inputs = null;
     }
 
-    private MatchPattern(Class<? extends ValueNode> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, Position[] inputs) {
+    private MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser, MatchPattern[] patterns, Position[] inputs) {
         assert inputs == null || inputs.length == patterns.length;
         this.nodeClass = nodeClass;
         this.name = name;
@@ -168,23 +167,23 @@ public class MatchPattern {
         this.inputs = inputs;
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, Position[] inputs, boolean singleUser) {
+    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, Position[] inputs, boolean singleUser) {
         this(nodeClass, name, singleUser, new MatchPattern[]{first}, inputs);
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, Position[] inputs, boolean singleUser) {
+    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, MatchPattern second, Position[] inputs, boolean singleUser) {
         this(nodeClass, name, singleUser, new MatchPattern[]{first, second}, inputs);
     }
 
-    public MatchPattern(Class<? extends ValueNode> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, Position[] inputs, boolean singleUser) {
+    public MatchPattern(Class<? extends Node> nodeClass, String name, MatchPattern first, MatchPattern second, MatchPattern third, Position[] inputs, boolean singleUser) {
         this(nodeClass, name, singleUser, new MatchPattern[]{first, second, third}, inputs);
     }
 
-    Class<? extends ValueNode> nodeClass() {
+    Class<? extends Node> nodeClass() {
         return nodeClass;
     }
 
-    private Result matchType(ValueNode node) {
+    private Result matchType(Node node) {
         if (nodeClass != null && node.getClass() != nodeClass) {
             return Result.wrongClass(node, this);
         }
@@ -198,7 +197,7 @@ public class MatchPattern {
      * @param context
      * @return Result.OK is the pattern can be safely matched.
      */
-    Result matchUsage(ValueNode node, MatchContext context) {
+    Result matchUsage(Node node, MatchContext context) {
         Result result = matchUsage(node, context, true);
         if (result == Result.OK) {
             result = context.validate();
@@ -206,7 +205,7 @@ public class MatchPattern {
         return result;
     }
 
-    private Result matchUsage(ValueNode node, MatchContext context, boolean atRoot) {
+    private Result matchUsage(Node node, MatchContext context, boolean atRoot) {
         Result result = matchType(node);
         if (result != Result.OK) {
             return result;
@@ -240,11 +239,11 @@ public class MatchPattern {
      * @param statement
      * @return Result.OK if the shape of the pattern matches.
      */
-    public Result matchShape(ValueNode node, MatchStatement statement) {
+    public Result matchShape(Node node, MatchStatement statement) {
         return matchShape(node, statement, true);
     }
 
-    private Result matchShape(ValueNode node, MatchStatement statement, boolean atRoot) {
+    private Result matchShape(Node node, MatchStatement statement, boolean atRoot) {
         Result result = matchType(node);
         if (result != Result.OK) {
             return result;
@@ -271,7 +270,7 @@ public class MatchPattern {
      * rule. It's assumed that a match has already succeeded against this rule, otherwise the
      * printing may produce exceptions.
      */
-    public String formatMatch(ValueNode root) {
+    public String formatMatch(Node root) {
         String result = String.format("%s", root);
         if (patterns.length == 0) {
             return result;
@@ -288,8 +287,8 @@ public class MatchPattern {
         }
     }
 
-    private ValueNode getInput(int index, ValueNode node) {
-        return (ValueNode) inputs[index].get(node);
+    private Node getInput(int index, Node node) {
+        return inputs[index].get(node);
     }
 
     @Override

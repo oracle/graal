@@ -23,10 +23,12 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+
 import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -247,6 +249,62 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         SchedulePhase schedule = getFinalSchedule("testLoop5Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(10, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, false);
+        assertReadWithinAllReturnBlocks(schedule, false);
+    }
+
+    /**
+     * Here the read should not float out of the loop.
+     */
+    public static int testLoop6Snippet(int a, int b, MemoryScheduleTest obj) {
+        int ret = 0;
+        int bb = b;
+        for (int i = 0; i < a; i++) {
+            ret = obj.hash;
+            if (a > 10) {
+                bb++;
+            } else {
+                bb--;
+                for (int j = 0; j < b; ++j) {
+                    obj.hash = 3;
+                }
+            }
+            ret = ret / 10;
+        }
+        return ret + bb;
+    }
+
+    @Test
+    public void testLoop6() {
+        SchedulePhase schedule = getFinalSchedule("testLoop6Snippet", TestMode.WITHOUT_FRAMESTATES);
+        assertDeepEquals(13, schedule.getCFG().getBlocks().size());
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinAllReturnBlocks(schedule, false);
+    }
+
+    /**
+     * Here the read should not float to the end.
+     */
+    public static int testLoop7Snippet(int a, int b) {
+        int result = container.a;
+        for (int i = 0; i < a; i++) {
+            if (b < 0) {
+                container.b = 10;
+                break;
+            } else {
+                for (int j = 0; j < b; j++) {
+                    container.a = 0;
+                }
+            }
+        }
+        GraalDirectives.controlFlowAnchor();
+        return result;
+    }
+
+    @Test
+    public void testLoop7() {
+        SchedulePhase schedule = getFinalSchedule("testLoop7Snippet", TestMode.WITHOUT_FRAMESTATES);
+        assertDeepEquals(10, schedule.getCFG().getBlocks().size());
+        assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
     }
 

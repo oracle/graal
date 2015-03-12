@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
@@ -61,7 +62,7 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         context.lirGen.beforeRegisterAllocation();
     }
 
-    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<ValueNode>> blockMap) {
+    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
             for (Block pred : b.getPredecessors()) {
                 if (!b.isLoopHeader() || !pred.isLoopEnd()) {

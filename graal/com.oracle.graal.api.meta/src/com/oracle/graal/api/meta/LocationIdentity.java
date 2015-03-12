@@ -59,4 +59,8 @@ public interface LocationIdentity extends TrustedInterface {
     default boolean isImmutable() {
         return false;
     }
+
+    default boolean isMutable() {
+        return !isImmutable();
+    }
 }

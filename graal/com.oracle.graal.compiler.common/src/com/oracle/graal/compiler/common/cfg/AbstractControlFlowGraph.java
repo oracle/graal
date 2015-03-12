@@ -89,6 +89,14 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     }
 
     /**
+     * True if block {@code a} dominates block {@code b} and {@code a} is not identical block to
+     * {@code b}.
+     */
+    static boolean strictlyDominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+        return a != b && dominates(a, b);
+    }
+
+    /**
      * True if block {@code a} dominates block {@code b}.
      */
     static boolean dominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {

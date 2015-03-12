@@ -324,7 +324,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             result.append("\n");
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
-                if (node.isAlive()) {
+                if (node instanceof ValueNode && node.isAlive()) {
                     if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode)) {
                         if (node instanceof ConstantNode) {
                             String name = checkConstants ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();

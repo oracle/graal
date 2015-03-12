@@ -24,9 +24,11 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 
@@ -39,6 +41,8 @@ public final class Block extends AbstractBlockBase<Block> {
 
     protected Block postdominator;
     protected Block distancedDominatorCache;
+    private LocationSet killLocations;
+    private LocationSet killLocationsBetweenThisAndDominator;
 
     protected Block(AbstractBeginNode node) {
         this.beginNode = node;
@@ -188,5 +192,86 @@ public final class Block extends AbstractBlockBase<Block> {
             result = result.getDominator();
         }
         return result;
+    }
+
+    public boolean canKill(LocationIdentity location) {
+        if (location.isImmutable()) {
+            return false;
+        }
+        return getKillLocations().contains(location);
+    }
+
+    public LocationSet getKillLocations() {
+        if (killLocations == null) {
+            killLocations = calcKillLocations();
+        }
+        return killLocations;
+    }
+
+    private LocationSet calcKillLocations() {
+        LocationSet result = new LocationSet();
+        for (FixedNode node : this.getNodes()) {
+            if (node instanceof MemoryCheckpoint.Single) {
+                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
+                result.add(identity);
+            } else if (node instanceof MemoryCheckpoint.Multi) {
+                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+                    result.add(identity);
+                }
+            }
+            if (result.isKillAll()) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    public boolean canKillBetweenThisAndDominator(LocationIdentity location) {
+        if (location.isImmutable()) {
+            return false;
+        }
+        return this.getKillLocationsBetweenThisAndDominator().contains(location);
+    }
+
+    private LocationSet getKillLocationsBetweenThisAndDominator() {
+        if (this.killLocationsBetweenThisAndDominator == null) {
+            LocationSet dominatorResult = new LocationSet();
+            Block stopBlock = getDominator();
+            for (Block b : this.getPredecessors()) {
+                if (b != stopBlock && (!this.isLoopHeader() || b.getLoopDepth() < this.getLoopDepth())) {
+                    dominatorResult.addAll(b.getKillLocations());
+                    if (dominatorResult.isKillAll()) {
+                        break;
+                    }
+                    b.calcKillLocationsBetweenThisAndTarget(dominatorResult, stopBlock);
+                    if (dominatorResult.isKillAll()) {
+                        break;
+                    }
+                }
+            }
+            this.killLocationsBetweenThisAndDominator = dominatorResult;
+        }
+        return this.killLocationsBetweenThisAndDominator;
+    }
+
+    private void calcKillLocationsBetweenThisAndTarget(LocationSet result, Block stopBlock) {
+        assert AbstractControlFlowGraph.dominates(stopBlock, this);
+        if (stopBlock == this || result.isKillAll()) {
+            // We reached the stop block => nothing to do.
+            return;
+        } else {
+            if (stopBlock == this.getDominator()) {
+                result.addAll(this.getKillLocationsBetweenThisAndDominator());
+            } else {
+                // Divide and conquer: Aggregate kill locations from this to the dominator and then
+                // from the dominator onwards.
+                calcKillLocationsBetweenThisAndTarget(result, this.getDominator());
+                result.addAll(this.getDominator().getKillLocations());
+                if (result.isKillAll()) {
+                    return;
+                }
+                this.getDominator().calcKillLocationsBetweenThisAndTarget(result, stopBlock);
+            }
+        }
     }
 }
