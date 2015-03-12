@@ -26,8 +26,8 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -72,10 +72,10 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         }
         assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
         if (assumptions != null) {
-            ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
-            if (uniqueConcreteType != null && !uniqueConcreteType.equals(type)) {
-                assumptions.recordConcreteSubtype(type, uniqueConcreteType);
-                type = uniqueConcreteType;
+            AssumptionResult<ResolvedJavaType> uniqueConcreteType = type.findUniqueConcreteSubtype();
+            if (uniqueConcreteType != null && !uniqueConcreteType.getResult().equals(type)) {
+                assumptions.record(uniqueConcreteType);
+                type = uniqueConcreteType.getResult();
             }
         }
         return new CheckCastNode(type, object, profile, forStoreCheck);
@@ -170,11 +170,11 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
         Assumptions assumptions = graph().getAssumptions();
         if (assumptions != null) {
-            ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
-            if (exactType != null && !exactType.equals(type)) {
+            AssumptionResult<ResolvedJavaType> exactTypeResult = type.findUniqueConcreteSubtype();
+            if (exactTypeResult != null && !exactTypeResult.getResult().equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.
-                assumptions.recordConcreteSubtype(type, exactType);
-                return new CheckCastNode(exactType, object, profile, forStoreCheck);
+                assumptions.record(exactTypeResult);
+                return new CheckCastNode(exactTypeResult.getResult(), object, profile, forStoreCheck);
             }
         }
 

@@ -25,6 +25,7 @@ package com.oracle.graal.api.code;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 
 /**
@@ -95,11 +96,11 @@ public class TypeCheckHints {
         if (targetType != null && !canHaveSubtype(targetType)) {
             exact = targetType;
         } else {
-            ResolvedJavaType uniqueSubtype = targetType == null ? null : targetType.findUniqueConcreteSubtype();
-            if (uniqueSubtype != null) {
-                if (assumptions != null) {
-                    assumptions.recordConcreteSubtype(targetType, uniqueSubtype);
-                    exact = uniqueSubtype;
+            if (assumptions != null) {
+                AssumptionResult<ResolvedJavaType> uniqueSubtype = targetType == null ? null : targetType.findUniqueConcreteSubtype();
+                if (uniqueSubtype != null) {
+                    assumptions.record(uniqueSubtype);
+                    exact = uniqueSubtype.getResult();
                 } else {
                     exact = null;
                 }

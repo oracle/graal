@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import java.lang.invoke.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 

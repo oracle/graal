@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -72,16 +73,15 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
         if (metaAccess != null && getValue().stamp() instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) getValue().stamp();
 
-            ResolvedJavaType exactType;
+            ResolvedJavaType exactType = null;
             if (objectStamp.isExactType()) {
                 exactType = objectStamp.type();
             } else if (objectStamp.type() != null && graph().getAssumptions() != null) {
-                exactType = objectStamp.type().findUniqueConcreteSubtype();
-                if (exactType != null) {
-                    graph().getAssumptions().recordConcreteSubtype(objectStamp.type(), exactType);
+                AssumptionResult<ResolvedJavaType> typeResult = objectStamp.type().findUniqueConcreteSubtype();
+                if (typeResult != null) {
+                    exactType = typeResult.getResult();
+                    graph().getAssumptions().record(typeResult);
                 }
-            } else {
-                exactType = null;
             }
 
             if (exactType != null) {

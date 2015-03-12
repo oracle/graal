@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -34,7 +35,7 @@ public interface HotSpotResolvedObjectType extends ResolvedJavaType {
 
     ResolvedJavaType getComponentType();
 
-    HotSpotResolvedObjectType findUniqueConcreteSubtype();
+    AssumptionResult<ResolvedJavaType> findUniqueConcreteSubtype();
 
     HotSpotResolvedObjectType getSuperclass();
 
@@ -66,7 +67,7 @@ public interface HotSpotResolvedObjectType extends ResolvedJavaType {
     int getVtableLength();
 
     @Override
-    ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method);
+    AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method);
 
     /**
      * Performs a fast-path check that this type is resolved in the context of a given accessing

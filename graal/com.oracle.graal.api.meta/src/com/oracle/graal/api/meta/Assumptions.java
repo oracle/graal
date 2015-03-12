@@ -20,13 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.api.meta;
 
 import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
-
-import com.oracle.graal.api.meta.*;
 
 /**
  * Class for recording assumptions made during compilation.
@@ -43,6 +41,38 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     public abstract static class Assumption implements Serializable {
 
         private static final long serialVersionUID = -1936652569665112915L;
+    }
+
+    /**
+     * A class for providing information that is only valid in association with a set of
+     * {@link Assumption}s.
+     *
+     * @param <T>
+     */
+    public static class AssumptionResult<T> {
+        Assumption[] assumptions;
+        final T result;
+
+        private static final Assumption[] EMPTY = new Assumption[0];
+
+        public AssumptionResult(T result, Assumption... assumptions) {
+            this.result = result;
+            this.assumptions = assumptions.clone();
+        }
+
+        public AssumptionResult(T result) {
+            this(result, EMPTY);
+        }
+
+        public T getResult() {
+            return result;
+        }
+
+        public void add(AssumptionResult<T> other) {
+            Assumption[] newAssumptions = Arrays.copyOf(this.assumptions, this.assumptions.length + other.assumptions.length);
+            System.arraycopy(other.assumptions, 0, newAssumptions, this.assumptions.length, other.assumptions.length);
+            this.assumptions = newAssumptions;
+        }
     }
 
     /**
@@ -286,6 +316,12 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      */
     public void recordConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType context, ResolvedJavaMethod impl) {
         record(new ConcreteMethod(method, context, impl));
+    }
+
+    public void record(AssumptionResult<?> result) {
+        for (Assumption assumption : result.assumptions) {
+            record(assumption);
+        }
     }
 
     public void record(Assumption assumption) {

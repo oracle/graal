@@ -33,6 +33,7 @@ import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
@@ -139,10 +140,10 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public HotSpotResolvedObjectType findUniqueConcreteSubtype() {
+    public AssumptionResult<ResolvedJavaType> findUniqueConcreteSubtype() {
         HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
-            return getElementalType().isFinal() ? this : null;
+            return getElementalType().isFinal() ? new AssumptionResult<>(this) : null;
         } else if (isInterface()) {
             HotSpotResolvedObjectTypeImpl type = getSingleImplementor();
             if (type == null) {
@@ -157,7 +158,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
-            return type;
+            return new AssumptionResult<>(type, new Assumptions.ConcreteSubtype(this, type));
         } else {
             HotSpotResolvedObjectTypeImpl type = this;
             while (type.isAbstract()) {
@@ -170,7 +171,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
-            return type;
+            return new AssumptionResult<>(type, new Assumptions.ConcreteSubtype(this, type));
         }
     }
 
@@ -281,9 +282,12 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public boolean hasFinalizableSubclass() {
+    public AssumptionResult<Boolean> hasFinalizableSubclass() {
         assert !isArray();
-        return runtime().getCompilerToVM().hasFinalizableSubclass(getMetaspaceKlass());
+        if (!runtime().getCompilerToVM().hasFinalizableSubclass(getMetaspaceKlass())) {
+            return new AssumptionResult<>(false, new Assumptions.NoFinalizableSubclass(this));
+        }
+        return new AssumptionResult<>(true);
     }
 
     @Override
@@ -492,7 +496,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method) {
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
         HotSpotResolvedJavaMethod hmethod = (HotSpotResolvedJavaMethod) method;
         HotSpotResolvedObjectType declaredHolder = hmethod.getDeclaringClass();
         /*
@@ -503,7 +507,11 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
          * a deopt instead since they can't really be used if they aren't linked yet.
          */
         if (!declaredHolder.isAssignableFrom(this) || this.isArray() || this.equals(declaredHolder) || !isLinked() || isInterface()) {
-            return hmethod.uniqueConcreteMethod(declaredHolder);
+            ResolvedJavaMethod result = hmethod.uniqueConcreteMethod(declaredHolder);
+            if (result != null) {
+                return new AssumptionResult<>(result, new Assumptions.ConcreteMethod(method, declaredHolder, result));
+            }
+            return null;
         }
         /*
          * The holder may be a subtype of the declaredHolder so make sure to resolve the method to
@@ -515,7 +523,11 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             return null;
         }
 
-        return resolvedMethod.uniqueConcreteMethod(this);
+        ResolvedJavaMethod result = resolvedMethod.uniqueConcreteMethod(this);
+        if (result != null) {
+            return new AssumptionResult<>(result, new Assumptions.ConcreteMethod(method, this, result));
+        }
+        return null;
     }
 
     /**

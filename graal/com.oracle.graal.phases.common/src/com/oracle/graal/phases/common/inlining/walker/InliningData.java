@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
@@ -194,17 +195,17 @@ public class InliningData {
         }
 
         if (callTarget.graph().getAssumptions() != null) {
-            ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
+            AssumptionResult<ResolvedJavaType> uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveConcreteMethod(targetMethod, contextType);
+                ResolvedJavaMethod resolvedMethod = uniqueSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
                 if (resolvedMethod != null) {
-                    return getAssumptionInlineInfo(invoke, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                    return getAssumptionInlineInfo(invoke, resolvedMethod, uniqueSubtype);
                 }
             }
 
-            ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
+            AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
             if (concrete != null) {
-                return getAssumptionInlineInfo(invoke, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
+                return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
             }
         }
 
@@ -337,7 +338,7 @@ public class InliningData {
         }
     }
 
-    private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, Assumptions.Assumption takenAssumption) {
+    private InlineInfo getAssumptionInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, AssumptionResult<?> takenAssumption) {
         assert concrete.isConcrete();
         if (checkTargetConditions(invoke, concrete)) {
             return new AssumptionInlineInfo(invoke, concrete, takenAssumption);

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -72,10 +72,10 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
             }
             Assumptions assumptions = graph().getAssumptions();
             if (type != null && assumptions != null) {
-                ResolvedJavaMethod resolvedMethod = type.findUniqueConcreteMethod(method);
+                AssumptionResult<ResolvedJavaMethod> resolvedMethod = type.findUniqueConcreteMethod(method);
                 if (resolvedMethod != null && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
-                    assumptions.recordConcreteMethod(method, type, resolvedMethod);
-                    return ConstantNode.forConstant(stamp(), resolvedMethod.getEncoding(), tool.getMetaAccess());
+                    assumptions.record(resolvedMethod);
+                    return ConstantNode.forConstant(stamp(), resolvedMethod.getResult().getEncoding(), tool.getMetaAccess());
                 }
             }
         }

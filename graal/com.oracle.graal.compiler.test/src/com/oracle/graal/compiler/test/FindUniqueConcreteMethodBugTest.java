@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.test;
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 
 public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
 
@@ -59,8 +60,8 @@ public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
         test("getLabelLength", tenant);
 
         ResolvedJavaMethod expected = null;
-        ResolvedJavaMethod actual = getMetaAccess().lookupJavaType(AbstractPerson.class).findUniqueConcreteMethod(ifaceMethod);
-        Assert.assertEquals(expected, actual);
+        AssumptionResult<ResolvedJavaMethod> actual = getMetaAccess().lookupJavaType(AbstractPerson.class).findUniqueConcreteMethod(ifaceMethod);
+        Assert.assertEquals(expected, actual.getResult());
 
     }
 

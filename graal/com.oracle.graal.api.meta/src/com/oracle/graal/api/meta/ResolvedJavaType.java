@@ -25,6 +25,8 @@ package com.oracle.graal.api.meta;
 import java.lang.annotation.*;
 import java.net.*;
 
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
+
 /**
  * Represents a resolved Java type. Types include primitives, objects, {@code void}, and arrays
  * thereof. Types, like fields and methods, are resolved through {@link ConstantPool constant pools}
@@ -56,7 +58,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      *
      * @return {@code true} if this class has any subclasses with finalizers
      */
-    boolean hasFinalizableSubclass();
+    AssumptionResult<Boolean> hasFinalizableSubclass();
 
     /**
      * Checks whether this type is an interface.
@@ -202,7 +204,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      *
      * @return the unique concrete subclass for this type as described above
      */
-    ResolvedJavaType findUniqueConcreteSubtype();
+    AssumptionResult<ResolvedJavaType> findUniqueConcreteSubtype();
 
     ResolvedJavaType getComponentType();
 
@@ -257,7 +259,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
      * @return the unique concrete target or {@code null} if no such target exists or assumptions
      *         are not supported by this runtime
      */
-    ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method);
+    AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method);
 
     /**
      * Returns the instance fields of this class, including

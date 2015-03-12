@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -98,7 +99,7 @@ public final class TypeProfileProxyNode extends UnaryNode implements IterableNod
             }
         } else if (StampTool.typeOrNull(forValue) != null) {
             ResolvedJavaType type = StampTool.typeOrNull(forValue);
-            ResolvedJavaType uniqueConcrete = type.findUniqueConcreteSubtype();
+            AssumptionResult<ResolvedJavaType> uniqueConcrete = type.findUniqueConcreteSubtype();
             if (uniqueConcrete != null) {
                 // Profile is useless => remove.
                 Debug.log("Profile useless, there is enough static type information available.");

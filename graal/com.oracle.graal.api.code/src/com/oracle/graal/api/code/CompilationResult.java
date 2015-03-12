@@ -28,7 +28,7 @@ import static java.util.Collections.*;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.Assumptions.Assumption;
+import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 
