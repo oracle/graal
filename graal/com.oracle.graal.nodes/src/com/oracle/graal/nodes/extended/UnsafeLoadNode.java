@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -89,34 +87,6 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
         return new UnsafeLoadNode(object(), location, accessKind(), identity, guardingCondition);
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
     @NodeIntrinsic
-    public static <T> T load(Object object, long offset, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
-        if (kind == Kind.Boolean) {
-            return (T) (Boolean) unsafe.getBoolean(object, offset);
-        }
-        if (kind == Kind.Byte) {
-            return (T) (Byte) unsafe.getByte(object, offset);
-        }
-        if (kind == Kind.Short) {
-            return (T) (Short) unsafe.getShort(object, offset);
-        }
-        if (kind == Kind.Char) {
-            return (T) (Character) unsafe.getChar(object, offset);
-        }
-        if (kind == Kind.Int) {
-            return (T) (Integer) unsafe.getInt(object, offset);
-        }
-        if (kind == Kind.Float) {
-            return (T) (Float) unsafe.getFloat(object, offset);
-        }
-        if (kind == Kind.Long) {
-            return (T) (Long) unsafe.getLong(object, offset);
-        }
-        if (kind == Kind.Double) {
-            return (T) (Double) unsafe.getDouble(object, offset);
-        }
-        assert kind == Kind.Object;
-        return (T) unsafe.getObject(object, offset);
-    }
+    public static native Object load(Object object, long offset, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 }

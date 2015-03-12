@@ -27,10 +27,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -45,16 +42,6 @@ public class SystemSubstitutions {
     @MacroSubstitution(macro = ArrayCopyNode.class)
     public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length);
 
-    @MethodSubstitution
-    public static long currentTimeMillis() {
-        return callLong(JAVA_TIME_MILLIS);
-    }
-
-    @MethodSubstitution
-    public static long nanoTime() {
-        return callLong(JAVA_TIME_NANOS);
-    }
-
     @MacroSubstitution(macro = SystemIdentityHashCodeNode.class)
     @MethodSubstitution
     public static int identityHashCode(Object x) {
@@ -63,14 +50,5 @@ public class SystemSubstitutions {
         }
 
         return computeHashCode(x);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class, setStampFromReturnType = true)
-    public static long callLong(@ConstantNodeParameter ForeignCallDescriptor descriptor) {
-        if (descriptor == JAVA_TIME_MILLIS) {
-            return System.currentTimeMillis();
-        }
-        assert descriptor == JAVA_TIME_NANOS;
-        return System.nanoTime();
     }
 }

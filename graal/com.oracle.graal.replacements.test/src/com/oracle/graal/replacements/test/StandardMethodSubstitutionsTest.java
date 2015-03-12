@@ -29,7 +29,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
@@ -39,34 +38,95 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testMathSubstitutions() {
-        assertInGraph(assertNotInGraph(test("mathAbs"), IfNode.class), AbsNode.class);     // Java
-        test("math");
-
+        assertInGraph(assertNotInGraph(testGraph("mathAbs"), IfNode.class), AbsNode.class);     // Java
         double value = 34567.891D;
-        assertDeepEquals(Math.sqrt(value), MathSubstitutionsX86.sqrt(value));
-        assertDeepEquals(Math.log(value), MathSubstitutionsX86.log(value));
-        assertDeepEquals(Math.log10(value), MathSubstitutionsX86.log10(value));
-        assertDeepEquals(Math.sin(value), MathSubstitutionsX86.sin(value));
-        assertDeepEquals(Math.cos(value), MathSubstitutionsX86.cos(value));
-        assertDeepEquals(Math.tan(value), MathSubstitutionsX86.tan(value));
+        testGraph("mathCos");
+        testGraph("mathLog");
+        testGraph("mathLog10");
+        testGraph("mathSin");
+        testGraph("mathSqrt");
+        testGraph("mathTan");
+        testGraph("mathAll");
+
+        test("mathCos", value);
+        test("mathLog", value);
+        test("mathLog10", value);
+        test("mathSin", value);
+        test("mathSqrt", value);
+        test("mathTan", value);
+        test("mathAll", value);
     }
 
-    @SuppressWarnings("all")
+    @Test
+    public void testMathPow() {
+        double a = 34567.891D;
+        double b = 4.6D;
+        test("mathPow", a, b);
+
+        // Test the values directly handled by the substitution
+
+        // If the second argument is positive or negative zero, then the result is 1.0.
+        test("mathPow", a, 0.0D);
+        test("mathPow", a, -0.0D);
+        // If the second argument is 1.0, then the result is the same as the first argument.
+        test("mathPow", a, 1.0D);
+        // If the second argument is NaN, then the result is NaN.
+        test("mathPow", a, Double.NaN);
+        // If the first argument is NaN and the second argument is nonzero, then the result is NaN.
+        test("mathPow", Double.NaN, b);
+        test("mathPow", Double.NaN, 0.0D);
+        // x**-1 = 1/x
+        test("mathPow", a, -1.0D);
+        // x**2 = x*x
+        test("mathPow", a, 2.0D);
+        // x**0.5 = sqrt(x)
+        test("mathPow", a, 0.5D);
+    }
+
+    public static double mathPow(double a, double b) {
+        return mathPow0(a, b);
+    }
+
+    public static double mathPow0(double a, double b) {
+        return Math.pow(a, b);
+    }
+
     public static double mathAbs(double value) {
         return Math.abs(value);
     }
 
-    @SuppressWarnings("all")
-    public static double math(double value) {
+    public static double mathSqrt(double value) {
+        return Math.sqrt(value);
+    }
+
+    public static double mathLog(double value) {
+        return Math.log(value);
+    }
+
+    public static double mathLog10(double value) {
+        return Math.log10(value);
+    }
+
+    public static double mathSin(double value) {
+        return Math.sin(value);
+    }
+
+    public static double mathCos(double value) {
+        return Math.cos(value);
+    }
+
+    public static double mathTan(double value) {
+        return Math.tan(value);
+    }
+
+    public static double mathAll(double value) {
         return Math.sqrt(value) + Math.log(value) + Math.log10(value) + Math.sin(value) + Math.cos(value) + Math.tan(value);
-        // Math.exp(value) +
-        // Math.pow(value, 13);
     }
 
     public void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, boolean optional, Object... args) {
         ResolvedJavaMethod realJavaMethod = getResolvedJavaMethod(holder, methodName);
         ResolvedJavaMethod testJavaMethod = getResolvedJavaMethod(testMethodName);
-        StructuredGraph graph = test(testMethodName);
+        StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
         StructuredGraph replacement = getReplacements().getMethodSubstitution(realJavaMethod);
@@ -96,22 +156,18 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testSubstitution("integerBitCount", BitCountNode.class, Integer.class, "bitCount", true, args);
     }
 
-    @SuppressWarnings("all")
     public static int integerReverseBytes(int value) {
         return Integer.reverseBytes(value);
     }
 
-    @SuppressWarnings("all")
     public static int integerNumberOfLeadingZeros(int value) {
         return Integer.numberOfLeadingZeros(value);
     }
 
-    @SuppressWarnings("all")
     public static int integerNumberOfTrailingZeros(int value) {
         return Integer.numberOfTrailingZeros(value);
     }
 
-    @SuppressWarnings("all")
     public static int integerBitCount(int value) {
         return Integer.bitCount(value);
     }
@@ -126,75 +182,66 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testSubstitution("longBitCount", BitCountNode.class, Long.class, "bitCount", true, args);
     }
 
-    @SuppressWarnings("all")
     public static long longReverseBytes(long value) {
         return Long.reverseBytes(value);
     }
 
-    @SuppressWarnings("all")
     public static int longNumberOfLeadingZeros(long value) {
         return Long.numberOfLeadingZeros(value);
     }
 
-    @SuppressWarnings("all")
     public static int longNumberOfTrailingZeros(long value) {
         return Long.numberOfTrailingZeros(value);
     }
 
-    @SuppressWarnings("all")
     public static int longBitCount(long value) {
         return Long.bitCount(value);
     }
 
     @Test
     public void testFloatSubstitutions() {
-        assertInGraph(test("floatToIntBits"), ReinterpretNode.class); // Java
-        test("intBitsToFloat");
+        assertInGraph(testGraph("floatToIntBits"), ReinterpretNode.class); // Java
+        testGraph("intBitsToFloat");
     }
 
-    @SuppressWarnings("all")
     public static int floatToIntBits(float value) {
         return Float.floatToIntBits(value);
     }
 
-    @SuppressWarnings("all")
     public static float intBitsToFloat(int value) {
         return Float.intBitsToFloat(value);
     }
 
     @Test
     public void testDoubleSubstitutions() {
-        assertInGraph(test("doubleToLongBits"), ReinterpretNode.class); // Java
-        test("longBitsToDouble");
+        assertInGraph(testGraph("doubleToLongBits"), ReinterpretNode.class); // Java
+        testGraph("longBitsToDouble");
     }
 
-    @SuppressWarnings("all")
     public static long doubleToLongBits(double value) {
         return Double.doubleToLongBits(value);
     }
 
-    @SuppressWarnings("all")
     public static double longBitsToDouble(long value) {
         return Double.longBitsToDouble(value);
     }
 
-    @SuppressWarnings("all")
-    public static boolean isInstance(Class<?> clazz) {
-        return clazz.isInstance(Number.class);
+    public static boolean isInstance(Class<?> clazz, Object object) {
+        return clazz.isInstance(object);
     }
 
-    @SuppressWarnings("all")
-    public static boolean isAssignableFrom(Class<?> clazz) {
-        return clazz.isInstance(Number.class);
+    public static boolean isAssignableFrom(Class<?> clazz, Class<?> other) {
+        return clazz.isAssignableFrom(other);
     }
 
     @Test
     public void testClassSubstitutions() {
-        test("isInstance");
+        testGraph("isInstance");
+        testGraph("isAssignableFrom");
         for (Class<?> c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
             for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
-                assertDeepEquals(c.isInstance(o), ClassSubstitutions.isInstance(c, o));
-                assertDeepEquals(c.isAssignableFrom(o.getClass()), ClassSubstitutions.isAssignableFrom(c, o.getClass()));
+                test("isInstance", c, o);
+                test("isAssignableFrom", c, o.getClass());
             }
         }
     }

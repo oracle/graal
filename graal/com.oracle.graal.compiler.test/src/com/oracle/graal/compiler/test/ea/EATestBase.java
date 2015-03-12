@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
@@ -149,10 +148,8 @@ public class EATestBase extends GraalCompilerTest {
 
     protected void prepareGraph(String snippet, final boolean iterativeEscapeAnalysis) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
-        graph = new StructuredGraph(method, AllowAssumptions.NO);
-        try (Scope s = Debug.scope(getClass(), graph, method, getCodeCache())) {
-            new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(),
-                            OptimisticOptimizations.ALL).apply(graph);
+        try (Scope s = Debug.scope(getClass(), method, getCodeCache())) {
+            graph = parseEager(method, AllowAssumptions.YES);
             context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);

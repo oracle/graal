@@ -23,7 +23,6 @@
 //JaCoCo Exclude
 package com.oracle.graal.nodes.java;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -97,9 +96,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
     }
 
     @NodeIntrinsic
-    public static Object newArray(Class<?> componentType, int length) {
-        return Array.newInstance(componentType, length);
-    }
+    public static native Object newArray(Class<?> componentType, int length);
 
     @NodeIntrinsic
     private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter Kind knownElementKind);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
 
-/**
- * Substitutions for {@link java.lang.Double} methods.
- */
-@ClassSubstitution(java.lang.Double.class)
-public class DoubleSubstitutions {
+public final class HotSpotParameterPlugin implements ParameterPlugin {
+    private final WordTypes wordTypes;
 
-    private static final long NAN_RAW_LONG_BITS = Double.doubleToRawLongBits(Double.NaN);
-
-    @MethodSubstitution
-    public static long doubleToRawLongBits(double value) {
-        return ReinterpretNode.reinterpret(Kind.Long, value);
+    public HotSpotParameterPlugin(WordTypes wordTypes) {
+        this.wordTypes = wordTypes;
     }
 
-    // TODO This method is not necessary, since the JDK method does exactly this
-    @MethodSubstitution
-    public static long doubleToLongBits(double value) {
-        if (value != value) {
-            return NAN_RAW_LONG_BITS;
-        } else {
-            return doubleToRawLongBits(value);
+    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
+        if (b.parsingReplacement()) {
+            ResolvedJavaType type = StampTool.typeOrNull(stamp);
+            if (wordTypes.isWord(type)) {
+                return new ParameterNode(index, wordTypes.getWordStamp(type));
+            }
         }
-    }
-
-    @MethodSubstitution
-    public static double longBitsToDouble(long bits) {
-        return ReinterpretNode.reinterpret(Kind.Double, bits);
+        return null;
     }
 }

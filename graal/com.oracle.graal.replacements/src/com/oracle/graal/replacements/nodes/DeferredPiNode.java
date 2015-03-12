@@ -66,5 +66,5 @@ public final class DeferredPiNode extends FloatingNode implements Canonicalizabl
     }
 
     @NodeIntrinsic
-    public static native <T> T piCast(Class<T> type, Object object);
+    public static native Object piCast(Class<?> type, Object object);
 }

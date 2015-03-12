@@ -29,11 +29,12 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.Word.Opcode;
 
 /**
- * Cast between Word and Object that is introduced by the {@link WordTypeRewriterPhase}. It has an
- * impact on the pointer maps for the GC, so it must not be scheduled or optimized away.
+ * Casts between Word and Object exposed by the {@link Opcode#FROM_OBJECT} and
+ * {@link Opcode#TO_OBJECT} operations. It has an impact on the pointer maps for the GC, so it must
+ * not be scheduled or optimized away.
  */
 @NodeInfo
 public final class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {

@@ -48,6 +48,24 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
         }
     }
 
+    private boolean isValidObjectFieldDisplacement(Constant base, long displacement) {
+        if (base instanceof HotSpotMetaspaceConstant) {
+            Object metaspaceObject = HotSpotMetaspaceConstantImpl.getMetaspaceObject(base);
+            if (metaspaceObject instanceof HotSpotResolvedObjectTypeImpl) {
+                if (displacement == runtime.getConfig().classMirrorOffset) {
+                    // Klass::_java_mirror is valid for all Klass* values
+                    return true;
+                } else if (displacement == runtime.getConfig().arrayKlassComponentMirrorOffset) {
+                    // ArrayKlass::_component_mirror is only valid for all ArrayKlass* values
+                    return ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().isArray();
+                }
+            } else {
+                throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+        return false;
+    }
+
     private static long asRawPointer(Constant base) {
         if (base instanceof HotSpotMetaspaceConstant) {
             return ((HotSpotMetaspaceConstant) base).rawValue();
@@ -119,7 +137,6 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
         if (base == null) {
             displacement += asRawPointer(baseConstant);
         }
-
         Object ret = runtime.getCompilerToVM().readUnsafeOop(base, displacement, compressed);
         assert verifyReadRawObject(ret, baseConstant, initialDisplacement, compressed);
 
@@ -167,6 +184,9 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
 
     @Override
     public JavaConstant readObjectConstant(Constant base, long displacement) {
+        if (!isValidObjectFieldDisplacement(base, displacement)) {
+            return null;
+        }
         return HotSpotObjectConstantImpl.forObject(readRawObject(base, displacement, false));
     }
 

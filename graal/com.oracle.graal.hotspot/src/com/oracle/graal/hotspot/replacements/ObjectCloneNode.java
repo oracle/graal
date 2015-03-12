@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -63,7 +62,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     final Replacements replacements = tool.getReplacements();
                     StructuredGraph snippetGraph = null;
                     try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
-                        snippetGraph = replacements.getSnippet(snippetMethod);
+                        snippetGraph = replacements.getSnippet(snippetMethod, null);
                     } catch (Throwable e) {
                         throw Debug.handle(e);
                     }

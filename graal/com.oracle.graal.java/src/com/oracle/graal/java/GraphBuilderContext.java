@@ -27,13 +27,36 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
  * Used by a {@link GraphBuilderPlugin} to interface with a graph builder object.
  */
 public interface GraphBuilderContext {
+
+    /**
+     * Information about a snippet or method substitution currently being processed by the graph
+     * builder.
+     */
+    public interface Replacement {
+
+        /**
+         * Gets the method being replaced.
+         */
+        ResolvedJavaMethod getOriginalMethod();
+
+        /**
+         * Gets the replacement method.
+         */
+        ResolvedJavaMethod getReplacementMethod();
+
+        /**
+         * Determines if this replacement is being inlined as a compiler intrinsic. A compiler
+         * intrinsic is atomic with respect to deoptimization. Deoptimization within a compiler
+         * intrinsic will restart the interpreter at the intrinsified call.
+         */
+        boolean isIntrinsic();
+    }
 
     <T extends ControlSinkNode> T append(T fixed);
 
@@ -60,9 +83,43 @@ public interface GraphBuilderContext {
     StructuredGraph getGraph();
 
     /**
-     * Determines if the graph builder is parsing a snippet or method substitution.
+     * Gets the parsing context for the method that inlines the method being parsed by this context.
      */
-    boolean parsingReplacement();
+    GraphBuilderContext getParent();
+
+    /**
+     * Gets the root method for the graph building process.
+     */
+    ResolvedJavaMethod getRootMethod();
+
+    /**
+     * Gets the method currently being parsed.
+     */
+    ResolvedJavaMethod getMethod();
+
+    /**
+     * Gets the index of the bytecode instruction currently being parsed.
+     */
+    int bci();
+
+    /**
+     * Gets the inline depth of this context. 0 implies this is the context for the
+     * {@linkplain #getRootMethod() root method}.
+     */
+    int getDepth();
+
+    /**
+     * Determines if the current parsing context is a snippet or method substitution.
+     */
+    default boolean parsingReplacement() {
+        return getReplacement() == null;
+    }
+
+    /**
+     * Gets the replacement of the current parsing context or {@code null} if not
+     * {@link #parsingReplacement() parsing a replacement}.
+     */
+    Replacement getReplacement();
 
     /**
      * @see GuardingPiNode#nullCheckedValue(ValueNode)
@@ -75,7 +132,7 @@ public interface GraphBuilderContext {
         return nonNullValue;
     }
 
-    GuardingNode getCurrentBlockGuard();
+    boolean eagerResolving();
 
     BailoutException bailout(String string);
 }

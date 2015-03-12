@@ -59,7 +59,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
     private static final boolean USE_C_RUNTIME = Boolean.getBoolean("graal.loadExceptionObject.useCRuntime");
 
     @Snippet
-    public static Throwable loadException(@ConstantParameter Register threadRegister) {
+    public static Object loadException(@ConstantParameter Register threadRegister) {
         Word thread = registerAsWord(threadRegister);
         Object exception = readExceptionOop(thread);
         writeExceptionOop(thread, null);

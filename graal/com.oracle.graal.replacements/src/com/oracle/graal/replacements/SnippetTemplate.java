@@ -483,7 +483,7 @@ public class SnippetTemplate {
             }
         }
 
-        private static Method findMethod(Class<? extends Snippets> declaringClass, String methodName, Method except) {
+        public static Method findMethod(Class<? extends Snippets> declaringClass, String methodName, Method except) {
             for (Method m : declaringClass.getDeclaredMethods()) {
                 if (m.getName().equals(methodName) && !m.equals(except)) {
                     return m;
@@ -555,8 +555,8 @@ public class SnippetTemplate {
      */
     protected SnippetTemplate(final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
         this.snippetReflection = snippetReflection;
-
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
+        Object[] constantArgs = getConstantArgs(args);
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, constantArgs);
         instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
         instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
 
@@ -691,8 +691,6 @@ public class SnippetTemplate {
             throw Debug.handle(e);
         }
 
-        // Remove all frame states from snippet graph. Snippets must be atomic (i.e. free
-        // of side-effects that prevent deoptimizing to a point before the snippet).
         ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
         ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
         ArrayList<ValueNode> curStampNodes = new ArrayList<>();
@@ -773,6 +771,16 @@ public class SnippetTemplate {
         Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
         args.info.notifyNewTemplate();
         Debug.dump(snippet, "SnippetTemplate final state");
+    }
+
+    protected Object[] getConstantArgs(Arguments args) {
+        Object[] constantArgs = args.values.clone();
+        for (int i = 0; i < args.info.getParameterCount(); i++) {
+            if (!args.info.isConstantParameter(i)) {
+                constantArgs[i] = null;
+            }
+        }
+        return constantArgs;
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {

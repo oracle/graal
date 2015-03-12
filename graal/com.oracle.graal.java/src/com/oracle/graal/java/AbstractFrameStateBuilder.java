@@ -26,6 +26,7 @@ package com.oracle.graal.java;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 
 public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extends AbstractFrameStateBuilder<T, S>> {
 
@@ -35,32 +36,29 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     protected final T[] stack;
     protected T[] lockedObjects;
 
-    /**
-     * Specifies if asserting type checks are enabled.
-     */
-    protected final boolean checkTypes;
+    protected final BytecodeParser parser;
 
     /**
      * @see BytecodeFrame#rethrowException
      */
     protected boolean rethrowException;
 
-    public AbstractFrameStateBuilder(ResolvedJavaMethod method, boolean checkTypes) {
+    public AbstractFrameStateBuilder(ResolvedJavaMethod method, BytecodeParser parser) {
         this.method = method;
+        this.parser = parser;
         this.locals = allocateArray(method.getMaxLocals());
         this.stack = allocateArray(Math.max(1, method.getMaxStackSize()));
         this.lockedObjects = allocateArray(0);
-        this.checkTypes = checkTypes;
     }
 
     protected AbstractFrameStateBuilder(S other) {
         this.method = other.method;
+        this.parser = other.parser;
         this.stackSize = other.stackSize;
         this.locals = other.locals.clone();
         this.stack = other.stack.clone();
         this.lockedObjects = other.lockedObjects.length == 0 ? other.lockedObjects : other.lockedObjects.clone();
         this.rethrowException = other.rethrowException;
-        this.checkTypes = other.checkTypes;
 
         assert locals.length == method.getMaxLocals();
         assert stack.length == Math.max(1, method.getMaxStackSize());
@@ -178,9 +176,13 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public T loadLocal(int i) {
         T x = locals[i];
         assert x != null : i;
-        assert !checkTypes || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
-        assert !checkTypes || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
+        assert parser.parsingReplacement() || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
+        assert parser.parsingReplacement() || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
         return x;
+    }
+
+    public void storeLocal(int i, T x) {
+        storeLocal(i, x, x == null ? null : x.getKind());
     }
 
     /**
@@ -190,18 +192,20 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param i the index at which to store
      * @param x the instruction which produces the value for the local
      */
-    public void storeLocal(int i, T x) {
-        assert x == null || !checkTypes || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
+    public void storeLocal(int i, T x, Kind kind) {
+        assert x == null || parser.parsingReplacement() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
         locals[i] = x;
-        if (x != null && x.getKind().needsTwoSlots()) {
-            // if this is a double word, then kill i+1
-            locals[i + 1] = null;
-        }
-        if (x != null && i > 0) {
-            T p = locals[i - 1];
-            if (p != null && p.getKind().needsTwoSlots()) {
-                // if there was a double word at i - 1, then kill it
-                locals[i - 1] = null;
+        if (x != null) {
+            if (kind.needsTwoSlots() && !parser.parsingReplacement()) {
+                // if this is a double word, then kill i+1
+                locals[i + 1] = null;
+            }
+            if (i > 0 && !parser.parsingReplacement()) {
+                T p = locals[i - 1];
+                if (p != null && p.getKind().needsTwoSlots()) {
+                    // if there was a double word at i - 1, then kill it
+                    locals[i - 1] = null;
+                }
             }
         }
     }
@@ -218,7 +222,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction to push onto the stack
      */
     public void push(Kind kind, T x) {
-        assert !checkTypes || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : x;
+        assert kind != Kind.Void && kind != Kind.Illegal : kind + ":" + x;
         xpush(assertKind(kind, x));
         if (kind.needsTwoSlots()) {
             xpush(null);
@@ -231,7 +235,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction to push onto the stack
      */
     public void xpush(T x) {
-        assert !checkTypes || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
+        assert parser.parsingReplacement() || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
         stack[stackSize++] = x;
     }
 
@@ -375,7 +379,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
                 newStackSize--;
                 assert stack[newStackSize].getKind().needsTwoSlots();
             } else {
-                assert !checkTypes || (stack[newStackSize].getKind().getSlotCount() == 1);
+                assert parser.parsingReplacement() || (stack[newStackSize].getKind().getSlotCount() == 1);
             }
             result[i] = stack[newStackSize];
         }
@@ -411,7 +415,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertKind(Kind kind, T x) {
-        assert x != null && (!checkTypes || x.getKind() == kind) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
+        assert x != null && (parser.parsingReplacement() || x.getKind() == kind) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
         return x;
     }
 
@@ -431,7 +435,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertObject(T x) {
-        assert x != null && (!checkTypes || (x.getKind() == Kind.Object));
+        assert x != null && (parser.parsingReplacement() || (x.getKind() == Kind.Object));
         return x;
     }
 

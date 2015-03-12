@@ -30,6 +30,7 @@ import static com.oracle.graal.nodes.ConstantNode.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
 import org.junit.*;
 import org.junit.internal.*;
@@ -528,7 +529,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 executeArgs[i + 1] = args[i];
             }
         }
-        return executeArgs;
+        return applyArgSuppliers(executeArgs);
     }
 
     protected void test(String name, Object... args) {
@@ -542,12 +543,45 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    /**
+     * Type denoting a lambda that supplies a fresh value each time it is called. This is useful
+     * when supplying an argument to {@link GraalCompilerTest#test(String, Object...)} where the
+     * test modifies the state of the argument (e.g., updates a field).
+     */
+    @FunctionalInterface
+    public interface ArgSupplier extends Supplier<Object> {
+    }
+
+    /**
+     * Convenience method for using an {@link ArgSupplier} lambda in a varargs list.
+     */
+    public static Object supply(ArgSupplier supplier) {
+        return supplier;
+    }
+
     protected void test(ResolvedJavaMethod method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
         if (getCodeCache() == null) {
             return;
         }
         testAgainstExpected(method, expect, receiver, args);
+    }
+
+    /**
+     * Process a given set of arguments, converting any {@link ArgSupplier} argument to the argument
+     * it supplies.
+     */
+    protected Object[] applyArgSuppliers(Object... args) {
+        Object[] res = args;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof ArgSupplier) {
+                if (res == args) {
+                    res = args.clone();
+                }
+                res[i] = ((ArgSupplier) args[i]).get();
+            }
+        }
+        return res;
     }
 
     protected void testAgainstExpected(ResolvedJavaMethod method, Result expect, Object receiver, Object... args) {
@@ -736,7 +770,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         if (!method.isAccessible()) {
             method.setAccessible(true);
         }
-        return method.invoke(receiver, args);
+        return method.invoke(receiver, applyArgSuppliers(args));
     }
 
     /**
@@ -803,10 +837,21 @@ public abstract class GraalCompilerTest extends GraalTest {
         PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
-        GraphBuilderConfiguration gbConfCopy = gbConf.copy().copyPluginsFrom(graphBuilderPhase.getGraphBuilderConfig());
+        GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy().copyPluginsFrom(graphBuilderPhase.getGraphBuilderConfig()));
         iterator.remove();
         iterator.add(new GraphBuilderPhase(gbConfCopy));
         return suite;
+    }
+
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        editGraphBuilderPlugins(conf.getPlugins());
+        return conf;
+    }
+
+    /**
+     * @param plugins
+     */
+    protected void editGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
     }
 
     protected Replacements getReplacements() {

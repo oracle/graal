@@ -47,26 +47,16 @@ public final class BitCountNode extends UnaryNode implements LIRLowerable {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         assert (valueStamp.downMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.downMask();
         assert (valueStamp.upMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.upMask();
-        return updateStamp(StampFactory.forInteger(Kind.Int, bitCount(valueStamp.downMask()), bitCount(valueStamp.upMask())));
+        return updateStamp(StampFactory.forInteger(Kind.Int, Long.bitCount(valueStamp.downMask()), Long.bitCount(valueStamp.upMask())));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
-            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? bitCount(c.asInt()) : bitCount(c.asLong()));
+            return ConstantNode.forInt(forValue.getKind() == Kind.Int ? Integer.bitCount(c.asInt()) : Long.bitCount(c.asLong()));
         }
         return this;
-    }
-
-    @NodeIntrinsic
-    public static int bitCount(int v) {
-        return Integer.bitCount(v);
-    }
-
-    @NodeIntrinsic
-    public static int bitCount(long v) {
-        return Long.bitCount(v);
     }
 
     @Override

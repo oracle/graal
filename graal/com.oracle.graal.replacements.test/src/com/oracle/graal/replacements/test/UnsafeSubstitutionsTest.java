@@ -23,10 +23,6 @@
 package com.oracle.graal.replacements.test;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.replacements.UnsafeSubstitutions.*;
-
-import java.lang.reflect.*;
-import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 
@@ -71,7 +67,6 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     static class Foo {
-
         boolean z;
         byte b;
         short s;
@@ -81,130 +76,73 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         float f;
         double d;
         Object o;
-
-        void testGet(Field field, long offset, String getName, Object value) throws Exception {
-            field.set(this, value);
-            Method m1 = Unsafe.class.getDeclaredMethod(getName, Object.class, long.class);
-            Method m2 = UnsafeSubstitutions.class.getDeclaredMethod(getName, Object.class, Object.class, long.class);
-            Object expected = m1.invoke(unsafe, this, offset);
-            Object actual = m2.invoke(null, unsafe, this, offset);
-            Assert.assertEquals(expected, actual);
-        }
-
-        void testDirect(Field field, long offset, String type, Object value) throws Exception {
-            if (type.equals("Boolean") || type.equals("Object")) {
-                // No direct memory access for these types
-                return;
-            }
-
-            long address = unsafe.allocateMemory(offset + 16);
-
-            String getName = "get" + type;
-            String putName = "put" + type;
-            Method m1 = Unsafe.class.getDeclaredMethod(putName, long.class, field.getType());
-            Method m2 = Unsafe.class.getDeclaredMethod(getName, long.class);
-
-            Method m3 = UnsafeSubstitutions.class.getDeclaredMethod(putName, Object.class, long.class, field.getType());
-            Method m4 = UnsafeSubstitutions.class.getDeclaredMethod(getName, Object.class, long.class);
-
-            m1.invoke(unsafe, address + offset, value);
-            Object expected = m2.invoke(unsafe, address + offset);
-
-            m3.invoke(null, unsafe, address + offset, value);
-            Object actual = m4.invoke(null, unsafe, address + offset);
-
-            unsafe.freeMemory(address);
-            Assert.assertEquals(expected, actual);
-        }
-
-        void testPut(Field field, long offset, String putName, Object value) throws Exception {
-            Object initialValue = field.get(new Foo());
-            field.set(this, initialValue);
-
-            try {
-                Method m1 = Unsafe.class.getDeclaredMethod(putName, Object.class, long.class, field.getType());
-                Method m2 = UnsafeSubstitutions.class.getDeclaredMethod(putName, Object.class, Object.class, long.class, field.getType());
-                m1.invoke(unsafe, this, offset, value);
-                Object expected = field.get(this);
-                m2.invoke(null, unsafe, this, offset, value);
-                Object actual = field.get(this);
-                Assert.assertEquals(expected, actual);
-            } catch (NoSuchMethodException e) {
-                if (!putName.startsWith("putOrdered")) {
-                    throw e;
-                }
-            }
-        }
-
-        void test(String fieldName, String typeSuffix, Object value) {
-            try {
-                Field field = Foo.class.getDeclaredField(fieldName);
-                long offset = unsafe.objectFieldOffset(field);
-                testGet(field, offset, "get" + typeSuffix, value);
-                testGet(field, offset, "get" + typeSuffix + "Volatile", value);
-                testPut(field, offset, "put" + typeSuffix, value);
-                testPut(field, offset, "put" + typeSuffix + "Volatile", value);
-                testPut(field, offset, "putOrdered" + typeSuffix, value);
-                testDirect(field, offset, typeSuffix, value);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
     }
 
     @Test
     public void testUnsafeSubstitutions() throws Exception {
-        test("unsafeCompareAndSwapInt");
-        test("unsafeCompareAndSwapLong");
-        test("unsafeCompareAndSwapObject");
+        test("unsafeCompareAndSwapInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
 
-        test("unsafeGetBoolean");
-        test("unsafeGetByte");
-        test("unsafeGetShort");
-        test("unsafeGetChar");
-        test("unsafeGetInt");
-        test("unsafeGetLong");
-        test("unsafeGetFloat");
-        test("unsafeGetDouble");
-        test("unsafeGetObject");
+        testGraph("unsafeCompareAndSwapInt");
+        testGraph("unsafeCompareAndSwapLong");
+        testGraph("unsafeCompareAndSwapObject");
 
-        test("unsafePutBoolean");
-        test("unsafePutByte");
-        test("unsafePutShort");
-        test("unsafePutChar");
-        test("unsafePutInt");
-        test("unsafePutFloat");
-        test("unsafePutDouble");
-        test("unsafePutObject");
+        testGraph("unsafeGetBoolean");
+        testGraph("unsafeGetByte");
+        testGraph("unsafeGetShort");
+        testGraph("unsafeGetChar");
+        testGraph("unsafeGetInt");
+        testGraph("unsafeGetLong");
+        testGraph("unsafeGetFloat");
+        testGraph("unsafeGetDouble");
+        testGraph("unsafeGetObject");
 
-        test("unsafeDirectMemoryRead");
-        test("unsafeDirectMemoryWrite");
+        testGraph("unsafePutBoolean");
+        testGraph("unsafePutByte");
+        testGraph("unsafePutShort");
+        testGraph("unsafePutChar");
+        testGraph("unsafePutInt");
+        testGraph("unsafePutFloat");
+        testGraph("unsafePutDouble");
+        testGraph("unsafePutObject");
 
-        AtomicInteger a1 = new AtomicInteger(42);
-        AtomicInteger a2 = new AtomicInteger(42);
-        assertDeepEquals(unsafe.compareAndSwapInt(a1, off(a1, "value"), 42, 53), compareAndSwapInt(unsafe, a2, off(a2, "value"), 42, 53));
-        assertDeepEquals(a1.get(), a2.get());
+        testGraph("unsafeDirectMemoryRead");
+        testGraph("unsafeDirectMemoryWrite");
 
-        AtomicLong l1 = new AtomicLong(42);
-        AtomicLong l2 = new AtomicLong(42);
-        assertDeepEquals(unsafe.compareAndSwapLong(l1, off(l1, "value"), 42, 53), compareAndSwapLong(unsafe, l2, off(l2, "value"), 42, 53));
-        assertDeepEquals(l1.get(), l2.get());
+        test("unsafeCompareAndSwapInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
+        test("unsafeCompareAndSwapLong", unsafe, supply(() -> new Foo()), fooOffset("l"));
+        test("unsafeCompareAndSwapObject", unsafe, supply(() -> new Foo()), fooOffset("o"));
 
-        AtomicReference<String> o1 = new AtomicReference<>("42");
-        AtomicReference<String> o2 = new AtomicReference<>("42");
-        assertDeepEquals(unsafe.compareAndSwapObject(o1, off(o1, "value"), "42", "53"), compareAndSwapObject(unsafe, o2, off(o2, "value"), "42", "53"));
-        assertDeepEquals(o1.get(), o2.get());
+        test("unsafeGetBoolean", unsafe, supply(() -> new Foo()), fooOffset("z"));
+        test("unsafeGetByte", unsafe, supply(() -> new Foo()), fooOffset("b"));
+        test("unsafeGetShort", unsafe, supply(() -> new Foo()), fooOffset("s"));
+        test("unsafeGetChar", unsafe, supply(() -> new Foo()), fooOffset("c"));
+        test("unsafeGetInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
+        test("unsafeGetLong", unsafe, supply(() -> new Foo()), fooOffset("l"));
+        test("unsafeGetFloat", unsafe, supply(() -> new Foo()), fooOffset("f"));
+        test("unsafeGetDouble", unsafe, supply(() -> new Foo()), fooOffset("d"));
+        test("unsafeGetObject", unsafe, supply(() -> new Foo()), fooOffset("o"));
 
-        Foo f1 = new Foo();
-        f1.test("z", "Boolean", Boolean.TRUE);
-        f1.test("b", "Byte", Byte.MIN_VALUE);
-        f1.test("s", "Short", Short.MAX_VALUE);
-        f1.test("c", "Char", '!');
-        f1.test("i", "Int", 1010010);
-        f1.test("f", "Float", -34.5F);
-        f1.test("l", "Long", 99999L);
-        f1.test("d", "Double", 1234.5678D);
-        f1.test("o", "Object", "object");
+        test("unsafePutBoolean", unsafe, supply(() -> new Foo()), fooOffset("z"), true);
+        test("unsafePutByte", unsafe, supply(() -> new Foo()), fooOffset("b"), (byte) 87);
+        test("unsafePutShort", unsafe, supply(() -> new Foo()), fooOffset("s"), (short) -93);
+        test("unsafePutChar", unsafe, supply(() -> new Foo()), fooOffset("c"), 'A');
+        test("unsafePutInt", unsafe, supply(() -> new Foo()), fooOffset("i"), 42);
+        test("unsafePutFloat", unsafe, supply(() -> new Foo()), fooOffset("f"), 58.0F);
+        test("unsafePutDouble", unsafe, supply(() -> new Foo()), fooOffset("d"), -28736.243465D);
+        test("unsafePutObject", unsafe, supply(() -> new Foo()), fooOffset("i"), "value1", "value2", "value3");
+
+        long address = unsafe.allocateMemory(8 * Kind.values().length);
+        test("unsafeDirectMemoryRead", unsafe, address);
+        test("unsafeDirectMemoryWrite", unsafe, address, 0xCAFEBABEDEADBABEL);
+        unsafe.freeMemory(address);
+    }
+
+    private static long fooOffset(String name) {
+        try {
+            return unsafe.objectFieldOffset(Foo.class.getDeclaredField(name));
+        } catch (NoSuchFieldException | SecurityException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @SuppressWarnings("all")
@@ -268,78 +206,126 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutBoolean(Unsafe unsafe, Object obj, long offset, boolean value) {
+    public static int unsafePutBoolean(Unsafe unsafe, Object obj, long offset, boolean value) {
+        int res = 1;
         unsafe.putBoolean(obj, offset, value);
+        res += unsafe.getBoolean(obj, offset) ? 3 : 5;
         unsafe.putBooleanVolatile(obj, offset, value);
+        res += unsafe.getBoolean(obj, offset) ? 7 : 11;
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutByte(Unsafe unsafe, Object obj, long offset, byte value) {
-        unsafe.putByte(obj, offset, value);
-        unsafe.putByteVolatile(obj, offset, value);
+    public static int unsafePutByte(Unsafe unsafe, Object obj, long offset, byte value) {
+        int res = 1;
+        unsafe.putByte(obj, offset, (byte) (value + 1));
+        res += unsafe.getByte(obj, offset);
+        unsafe.putByteVolatile(obj, offset, (byte) (value + 2));
+        res += unsafe.getByte(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutShort(Unsafe unsafe, Object obj, long offset, short value) {
-        unsafe.putShort(obj, offset, value);
-        unsafe.putShortVolatile(obj, offset, value);
+    public static int unsafePutShort(Unsafe unsafe, Object obj, long offset, short value) {
+        int res = 1;
+        unsafe.putShort(obj, offset, (short) (value + 1));
+        res += unsafe.getShort(obj, offset);
+        unsafe.putShortVolatile(obj, offset, (short) (value + 2));
+        res += unsafe.getShort(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutChar(Unsafe unsafe, Object obj, long offset, char value) {
-        unsafe.putChar(obj, offset, value);
-        unsafe.putCharVolatile(obj, offset, value);
+    public static int unsafePutChar(Unsafe unsafe, Object obj, long offset, char value) {
+        int res = 1;
+        unsafe.putChar(obj, offset, (char) (value + 1));
+        res += unsafe.getChar(obj, offset);
+        unsafe.putCharVolatile(obj, offset, (char) (value + 2));
+        res += unsafe.getChar(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutInt(Unsafe unsafe, Object obj, long offset, int value) {
+    public static int unsafePutInt(Unsafe unsafe, Object obj, long offset, int value) {
+        int res = 1;
         unsafe.putInt(obj, offset, value);
-        unsafe.putIntVolatile(obj, offset, value);
-        unsafe.putOrderedInt(obj, offset, value);
+        res += unsafe.getInt(obj, offset);
+        unsafe.putIntVolatile(obj, offset, value + 1);
+        res += unsafe.getInt(obj, offset);
+        unsafe.putOrderedInt(obj, offset, value + 2);
+        res += unsafe.getInt(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutLong(Unsafe unsafe, Object obj, long offset, long value) {
-        unsafe.putLong(obj, offset, value);
-        unsafe.putLongVolatile(obj, offset, value);
-        unsafe.putOrderedLong(obj, offset, value);
+    public static long unsafePutLong(Unsafe unsafe, Object obj, long offset, long value) {
+        long res = 1;
+        unsafe.putLong(obj, offset, value + 1);
+        res += unsafe.getLong(obj, offset);
+        unsafe.putLongVolatile(obj, offset, value + 2);
+        res += unsafe.getLong(obj, offset);
+        unsafe.putOrderedLong(obj, offset, value + 3);
+        res += unsafe.getLong(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutFloat(Unsafe unsafe, Object obj, long offset, float value) {
-        unsafe.putFloat(obj, offset, value);
-        unsafe.putFloatVolatile(obj, offset, value);
+    public static float unsafePutFloat(Unsafe unsafe, Object obj, long offset, float value) {
+        float res = 1;
+        unsafe.putFloat(obj, offset, value + 1.0F);
+        res += unsafe.getFloat(obj, offset);
+        unsafe.putFloatVolatile(obj, offset, value + 2.0F);
+        res += unsafe.getFloat(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutDouble(Unsafe unsafe, Object obj, long offset, double value) {
+    public static double unsafePutDouble(Unsafe unsafe, Object obj, long offset, double value) {
+        double res = 1;
         unsafe.putDouble(obj, offset, value);
+        res += unsafe.getDouble(obj, offset);
         unsafe.putDoubleVolatile(obj, offset, value);
+        res += unsafe.getDouble(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
-    public static void unsafePutObject(Unsafe unsafe, Object obj, long offset, Object value) {
-        unsafe.putObject(obj, offset, value);
-        unsafe.putObjectVolatile(obj, offset, value);
-        unsafe.putOrderedObject(obj, offset, value);
+    public static Object[] unsafePutObject(Unsafe unsafe, Object obj, long offset, Object value1, Object value2, Object value3) {
+        Object[] res = new Object[3];
+        unsafe.putObject(obj, offset, value1);
+        res[0] = unsafe.getObject(obj, offset);
+        unsafe.putObjectVolatile(obj, offset, value2);
+        res[1] = unsafe.getObject(obj, offset);
+        unsafe.putOrderedObject(obj, offset, value3);
+        res[2] = unsafe.getObject(obj, offset);
+        return res;
     }
 
     @SuppressWarnings("all")
     public static double unsafeDirectMemoryRead(Unsafe unsafe, long address) {
         // Unsafe.getBoolean(long) and Unsafe.getObject(long) do not exist
-        return unsafe.getByte(address) + unsafe.getShort(address) + unsafe.getChar(address) + unsafe.getInt(address) + unsafe.getLong(address) + unsafe.getFloat(address) + unsafe.getDouble(address);
+        // @formatter:off
+        return unsafe.getByte(address) +
+               unsafe.getShort(address + 8) +
+               unsafe.getChar(address + 16) +
+               unsafe.getInt(address + 24) +
+               unsafe.getLong(address + 32) +
+               unsafe.getFloat(address + 40) +
+               unsafe.getDouble(address + 48);
+        // @formatter:on
     }
 
     @SuppressWarnings("all")
-    public static void unsafeDirectMemoryWrite(Unsafe unsafe, long address, byte value) {
+    public static double unsafeDirectMemoryWrite(Unsafe unsafe, long address, long value) {
         // Unsafe.putBoolean(long) and Unsafe.putObject(long) do not exist
-        unsafe.putByte(address, value);
-        unsafe.putShort(address, value);
-        unsafe.putChar(address, (char) value);
-        unsafe.putInt(address, value);
-        unsafe.putLong(address, value);
-        unsafe.putFloat(address, value);
-        unsafe.putDouble(address, value);
+        unsafe.putByte(address + 0, (byte) value);
+        unsafe.putShort(address + 8, (short) value);
+        unsafe.putChar(address + 16, (char) value);
+        unsafe.putInt(address + 24, (int) value);
+        unsafe.putLong(address + 32, value);
+        unsafe.putFloat(address + 40, value);
+        unsafe.putDouble(address + 48, value);
+        return unsafeDirectMemoryRead(unsafe, address);
     }
 
     @Test

@@ -192,7 +192,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         LIRSuites lirSuites = suitesProvider.createLIRSuites();
         removeInliningPhase(suites);
         StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL, null).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
@@ -315,7 +315,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
         if (TraceTruffleTransferToInterpreter.getValue()) {
-            Word thread = CurrentJavaThreadNode.get(HotSpotGraalRuntime.runtime().getTarget().wordKind);
+            Word thread = CurrentJavaThreadNode.get();
             boolean deoptimized = thread.readByte(HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset) != 0;
             if (deoptimized) {
                 thread.writeByte(HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset, (byte) 0);

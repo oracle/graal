@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
@@ -44,9 +42,13 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
 
     protected LIRKind wordKind;
 
-    public CurrentJavaThreadNode(Kind kind) {
-        super(TYPE, StampFactory.forKind(kind));
-        this.wordKind = LIRKind.value(kind);
+    public CurrentJavaThreadNode(@InjectedNodeParameter WordTypes wordTypes) {
+        this(wordTypes.getWordKind());
+    }
+
+    public CurrentJavaThreadNode(Kind wordKind) {
+        super(TYPE, StampFactory.forKind(wordKind));
+        this.wordKind = LIRKind.value(wordKind);
     }
 
     @Override
@@ -63,8 +65,6 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
         }
     }
 
-    @NodeIntrinsic(setStampFromReturnType = true)
-    public static Word get(@SuppressWarnings("unused") @ConstantNodeParameter Kind kind) {
-        return Word.unsigned(unsafeReadWord(Thread.currentThread(), eetopOffset()));
-    }
+    @NodeIntrinsic
+    public static native Word get();
 }

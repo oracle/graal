@@ -27,18 +27,18 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * A utility for manually creating a graph. This will be expanded as necessary to support all
@@ -49,6 +49,7 @@ public class GraphKit {
 
     protected final Providers providers;
     protected final StructuredGraph graph;
+    protected final WordTypes wordTypes;
     protected FixedWithNextNode lastFixedNode;
 
     private final List<Structure> structures;
@@ -56,9 +57,10 @@ public class GraphKit {
     abstract static class Structure {
     }
 
-    public GraphKit(StructuredGraph graph, Providers providers) {
+    public GraphKit(StructuredGraph graph, Providers providers, WordTypes wordTypes) {
         this.providers = providers;
         this.graph = graph;
+        this.wordTypes = wordTypes;
         this.lastFixedNode = graph.start();
 
         structures = new ArrayList<>();
@@ -77,14 +79,21 @@ public class GraphKit {
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends FloatingNode> T unique(T node) {
-        return graph.unique(node);
+        return graph.unique(changeToWord(node));
+    }
+
+    public <T extends ValueNode> T changeToWord(T node) {
+        if (wordTypes.isWord(node)) {
+            node.setStamp(wordTypes.getWordStamp(StampTool.typeOrNull(node)));
+        }
+        return node;
     }
 
     /**
      * Appends a fixed node to the graph.
      */
     public <T extends FixedNode> T append(T node) {
-        T result = graph.add(node);
+        T result = graph.add(changeToWord(node));
         assert lastFixedNode != null;
         assert result.predecessor() == null;
         graph.addAfterFixed(lastFixedNode, result);
@@ -135,11 +144,11 @@ public class GraphKit {
 
         if (frameStateBuilder != null) {
             if (invoke.getKind() != Kind.Void) {
-                frameStateBuilder.push(invoke.getKind(), invoke);
+                frameStateBuilder.push(returnType.getKind(), invoke);
             }
             invoke.setStateAfter(frameStateBuilder.create(bci));
             if (invoke.getKind() != Kind.Void) {
-                frameStateBuilder.pop(invoke.getKind());
+                frameStateBuilder.pop(returnType.getKind());
             }
         }
         return invoke;
@@ -162,15 +171,15 @@ public class GraphKit {
         if (signature.getParameterCount(!isStatic) != args.length) {
             throw new AssertionError(graph + ": wrong number of arguments to " + method);
         }
-        int paramNum = 0;
-        for (int i = 0; i != args.length; i++) {
-            Kind expected;
-            if (i == 0 && !isStatic) {
-                expected = Kind.Object;
-            } else {
-                expected = signature.getParameterKind(paramNum++).getStackKind();
-            }
-            Kind actual = args[i].stamp().getStackKind();
+        int argIndex = 0;
+        if (!isStatic) {
+            Kind expected = wordTypes.asKind(method.getDeclaringClass());
+            Kind actual = args[argIndex++].stamp().getStackKind();
+            assert expected == actual : graph + ": wrong kind of value for receiver argument of call to " + method + " [" + actual + " != " + expected + "]";
+        }
+        for (int i = 0; i != signature.getParameterCount(false); i++) {
+            Kind expected = wordTypes.asKind(signature.getParameterType(i, method.getDeclaringClass())).getStackKind();
+            Kind actual = args[argIndex++].stamp().getStackKind();
             if (expected != actual) {
                 throw new AssertionError(graph + ": wrong kind of value for argument " + i + " of call to " + method + " [" + actual + " != " + expected + "]");
             }
@@ -179,19 +188,12 @@ public class GraphKit {
     }
 
     /**
-     * Rewrite all word types in the graph.
-     */
-    public void rewriteWordTypes(SnippetReflectionProvider snippetReflection) {
-        new WordTypeRewriterPhase(providers.getMetaAccess(), snippetReflection, providers.getConstantReflection(), providers.getCodeCache().getTarget().wordKind).apply(graph);
-    }
-
-    /**
      * Recursively {@linkplain #inline inlines} all invocations currently in the graph.
      */
-    public void inlineInvokes(SnippetReflectionProvider snippetReflection) {
+    public void inlineInvokes() {
         while (!graph.getNodes().filter(InvokeNode.class).isEmpty()) {
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
-                inline(invoke, snippetReflection);
+                inline(invoke);
             }
         }
 
@@ -204,10 +206,10 @@ public class GraphKit {
      * {@linkplain ReplacementsImpl#makeGraph processed} in the same manner as for snippets and
      * method substitutions.
      */
-    public void inline(InvokeNode invoke, SnippetReflectionProvider snippetReflection) {
+    public void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(providers, snippetReflection, providers.getCodeCache().getTarget());
-        StructuredGraph calleeGraph = repl.makeGraph(method, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
+        ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
+        StructuredGraph calleeGraph = replacements.makeGraph(method, null, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
         InliningUtil.inline(invoke, calleeGraph, false, null);
     }
 

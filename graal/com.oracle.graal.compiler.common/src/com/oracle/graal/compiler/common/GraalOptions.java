@@ -57,15 +57,6 @@ public final class GraalOptions {
     @Option(help = "Graphs with less than this number of nodes are trivial and therefore always inlined.", type = OptionType.Expert)
     public static final OptionValue<Integer> TrivialInliningSize = new OptionValue<>(10);
 
-    @Option(help = "Inlines trivial methods during parsing of the bytecodes.", type = OptionType.Expert)
-    public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(false);
-
-    @Option(help = "Traces .", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
-
-    @Option(help = "Maximum depth when inlining during parsing.", type = OptionType.Debug)
-    public static final StableOptionValue<Integer> InlineDuringParsingMaxDepth = new StableOptionValue<>(10);
-
     @Option(help = "Inlining is explored up to this number of nodes in the graph for each call site.", type = OptionType.Expert)
     public static final OptionValue<Integer> MaximumInliningSize = new OptionValue<>(300);
 
@@ -142,9 +133,6 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<String> PrintFilter = new OptionValue<>(null);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> DumpDuringGraphBuilding = new StableOptionValue<>(false);
 
     // Debug settings:
     @Option(help = "", type = OptionType.Debug)
@@ -332,13 +320,6 @@ public final class GraalOptions {
 
     @Option(help = "Mark well-known stable fields as such.", type = OptionType.Debug)
     public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
-
-
-    @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)
-    public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
-
-    @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> FailedLoopExplosionIsFatal = new OptionValue<>(false);
 
     /**
      * Counts the various paths taken through snippets.

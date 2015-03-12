@@ -259,7 +259,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return reflectionCallArguments;
     }
 
-    private ResolvedJavaType getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
+    public ResolvedJavaType getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
         ResolvedJavaType result;
         if (intrinsic.value() == NodeIntrinsic.class) {
             result = target.getDeclaringClass();
@@ -283,6 +283,10 @@ public class NodeIntrinsificationPhase extends Phase {
                 if (constructor == null) {
                     constructor = c;
                     arguments = match;
+                    if (!Debug.isEnabled()) {
+                        // Don't verify there's a unique match in non-debug mode
+                        break;
+                    }
                 } else {
                     throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes), constructor, c);
                 }
@@ -358,13 +362,13 @@ public class NodeIntrinsificationPhase extends Phase {
                     throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
                 }
             } else {
-                if (i > 0) {
-                    // Chop injected arguments from signature
-                    signature = Arrays.copyOfRange(signature, i, signature.length);
-                }
                 assert checkNoMoreInjected(c, i);
                 break;
             }
+        }
+        if (injected != null) {
+            // Chop injected arguments from signature
+            signature = Arrays.copyOfRange(signature, injected.length, signature.length);
         }
 
         if (Arrays.equals(parameterTypes, signature)) {

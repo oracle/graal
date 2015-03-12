@@ -59,5 +59,5 @@ public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
     }
 
     @NodeIntrinsic
-    public static native <T> T piArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp);
+    public static native Object piArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp);
 }

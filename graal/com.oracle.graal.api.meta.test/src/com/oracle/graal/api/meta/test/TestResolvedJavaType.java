@@ -35,6 +35,7 @@ import org.junit.*;
 import sun.reflect.ConstantPool;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.*;
 
 /**
@@ -273,30 +274,30 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     void checkConcreteSubtype(ResolvedJavaType type, ResolvedJavaType expected) {
-        ResolvedJavaType subtype = type.findUniqueConcreteSubtype();
-        if (subtype == null) {
-            // findUniqueConcreteSubtype() is conservative
+        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+        if (leafConcreteSubtype == null) {
+            // findLeafConcreteSubtype() is conservative
         } else {
             if (expected == null) {
-                assertNull(subtype);
+                assertNull(leafConcreteSubtype);
             } else {
-                assertTrue(subtype.equals(expected));
+                assertTrue(leafConcreteSubtype.getResult().equals(expected));
             }
         }
 
         if (!type.isArray()) {
             ResolvedJavaType arrayType = type.getArrayClass();
-            ResolvedJavaType arraySubtype = arrayType.findUniqueConcreteSubtype();
+            AssumptionResult<ResolvedJavaType> arraySubtype = arrayType.findLeafConcreteSubtype();
             if (arraySubtype != null) {
-                assertEquals(arraySubtype, arrayType);
+                assertEquals(arraySubtype.getResult(), arrayType);
             } else {
-                // findUniqueConcreteSubtype() method is conservative
+                // findLeafConcreteSubtype() method is conservative
             }
         }
     }
 
     @Test
-    public void findUniqueConcreteSubtypeTest() {
+    public void findLeafConcreteSubtypeTest() {
         ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
         checkConcreteSubtype(base, base);
 
@@ -617,7 +618,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void findUniqueConcreteMethodTest() throws NoSuchMethodException {
         ResolvedJavaMethod thisMethod = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("findUniqueConcreteMethodTest"));
-        ResolvedJavaMethod ucm = metaAccess.lookupJavaType(getClass()).findUniqueConcreteMethod(thisMethod);
+        ResolvedJavaMethod ucm = metaAccess.lookupJavaType(getClass()).findUniqueConcreteMethod(thisMethod).getResult();
         assertEquals(thisMethod, ucm);
     }
 

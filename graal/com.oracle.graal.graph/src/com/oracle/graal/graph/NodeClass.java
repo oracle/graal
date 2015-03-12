@@ -182,9 +182,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
                 NodeClass<?> snc = superNodeClass;
                 while (snc != null && IterableNodeType.class.isAssignableFrom(snc.getClazz())) {
-                    assert !containsId(this.iterableId, snc.iterableIds);
-                    snc.iterableIds = Arrays.copyOf(snc.iterableIds, snc.iterableIds.length + 1);
-                    snc.iterableIds[snc.iterableIds.length - 1] = this.iterableId;
+                    snc.addIterableId(iterableId);
                     snc = snc.superNodeClass;
                 }
 
@@ -195,6 +193,23 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             this.iterableIds = null;
         }
         nodeIterableCount = Debug.metric("NodeIterable_%s", clazz);
+        assert verifyIterableIds();
+    }
+
+    private synchronized void addIterableId(int newIterableId) {
+        assert !containsId(newIterableId, iterableIds);
+        int[] copy = Arrays.copyOf(iterableIds, iterableIds.length + 1);
+        copy[iterableIds.length] = newIterableId;
+        iterableIds = copy;
+    }
+
+    private boolean verifyIterableIds() {
+        NodeClass<?> snc = superNodeClass;
+        while (snc != null && IterableNodeType.class.isAssignableFrom(snc.getClazz())) {
+            assert containsId(iterableId, snc.iterableIds);
+            snc = snc.superNodeClass;
+        }
+        return true;
     }
 
     private static boolean containsId(int iterableId, int[] iterableIds) {

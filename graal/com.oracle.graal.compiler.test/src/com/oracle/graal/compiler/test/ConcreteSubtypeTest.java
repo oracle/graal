@@ -24,7 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.Assumptions.*;
+import com.oracle.graal.api.meta.Assumptions.*;
 import com.oracle.graal.nodes.*;
 
 /**

@@ -80,28 +80,4 @@ public final class BoxNode extends UnaryNode implements VirtualizableAllocation,
         tool.createVirtualObject(newVirtual, new ValueNode[]{v}, Collections.<MonitorIdNode> emptyList());
         tool.replaceWithVirtual(newVirtual);
     }
-
-    @NodeIntrinsic
-    public static native Boolean box(boolean value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Byte box(byte value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Character box(char value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Double box(double value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Float box(float value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Integer box(int value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Long box(long value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
-
-    @NodeIntrinsic
-    public static native Short box(short value, @ConstantNodeParameter Class<?> clazz, @ConstantNodeParameter Kind kind);
 }

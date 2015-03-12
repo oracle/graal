@@ -632,19 +632,33 @@ public final class SchedulePhase extends Phase {
         processStack(cfg, blockToNodes, nodeToBlock, visited, floatingReads, stack);
 
         // Visit back input edges of loop phis.
-        for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
-            for (PhiNode phi : loopBegin.phis()) {
-                if (visited.isMarked(phi)) {
-                    for (int i = 0; i < loopBegin.getLoopEndCount(); ++i) {
-                        Node node = phi.valueAt(i + loopBegin.forwardEndCount());
-                        if (node != null && !visited.isMarked(node)) {
-                            stack.push(node);
-                            processStack(cfg, blockToNodes, nodeToBlock, visited, floatingReads, stack);
+        boolean changed;
+        boolean unmarkedPhi;
+        do {
+            changed = false;
+            unmarkedPhi = false;
+            for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
+                for (PhiNode phi : loopBegin.phis()) {
+                    if (visited.isMarked(phi)) {
+                        for (int i = 0; i < loopBegin.getLoopEndCount(); ++i) {
+                            Node node = phi.valueAt(i + loopBegin.forwardEndCount());
+                            if (node != null && !visited.isMarked(node)) {
+                                changed = true;
+                                stack.push(node);
+                                processStack(cfg, blockToNodes, nodeToBlock, visited, floatingReads, stack);
+                            }
                         }
+                    } else {
+                        unmarkedPhi = true;
                     }
                 }
             }
-        }
+
+            /*
+             * the processing of one loop phi could have marked a previously checked loop phi,
+             * therefore this needs to be iterative.
+             */
+        } while (unmarkedPhi && changed);
 
         // Check for dead nodes.
         if (visited.getCounter() < graph.getNodeCount()) {

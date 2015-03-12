@@ -100,7 +100,4 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         }
         return this;
     }
-
-    @NodeIntrinsic
-    public static native <T> T checkCastDynamic(Class<T> type, Object object, @ConstantNodeParameter boolean forStoreCheck);
 }

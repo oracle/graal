@@ -32,7 +32,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.*;
+import com.oracle.graal.sparc.SPARC.CPUFeature;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
@@ -64,14 +64,14 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), target);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
-        HotSpotSuitesProvider suites = createSuites(runtime, metaAccess, constantReflection, replacements);
+        HotSpotSuitesProvider suites = createSuites(runtime);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
 
         return createBackend(runtime, providers);
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Replacements replacements) {
-        return new HotSpotSuitesProvider(runtime, metaAccess, constantReflection, replacements);
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime) {
+        return new HotSpotSuitesProvider(runtime);
     }
 
     protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {

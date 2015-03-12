@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
@@ -38,8 +39,8 @@ public final class CStringNode extends FloatingNode implements LIRLowerable {
     public static final NodeClass<CStringNode> TYPE = NodeClass.create(CStringNode.class);
     protected final String string;
 
-    public CStringNode(String string) {
-        super(TYPE, null);
+    public CStringNode(@InjectedNodeParameter WordTypes wordTypes, String string) {
+        super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
         this.string = string;
     }
 
@@ -68,6 +69,6 @@ public final class CStringNode extends FloatingNode implements LIRLowerable {
         return bytes;
     }
 
-    @NodeIntrinsic(setStampFromReturnType = true)
+    @NodeIntrinsic
     public static native Word cstring(@ConstantNodeParameter String string);
 }

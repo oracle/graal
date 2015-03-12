@@ -49,7 +49,7 @@ public final class FixedValueAnchorNode extends FixedWithNextNode implements LIR
     }
 
     @NodeIntrinsic
-    public static native <T> T getObject(Object object);
+    public static native Object getObject(Object object);
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {

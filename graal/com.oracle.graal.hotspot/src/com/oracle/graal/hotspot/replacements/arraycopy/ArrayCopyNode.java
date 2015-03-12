@@ -63,7 +63,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
         Kind componentKind = srcType.getComponentType().getKind();
         final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind, shouldUnroll(), isExact()));
         try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
-            return replacements.getSnippet(snippetMethod);
+            return replacements.getSnippet(snippetMethod, null, null);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -103,7 +103,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
             }
             snippetGraph = null;
             try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
-                snippetGraph = replacements.getSnippet(snippetMethod, getTargetMethod()).copy();
+                snippetGraph = replacements.getSnippet(snippetMethod, getTargetMethod(), null).copy();
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

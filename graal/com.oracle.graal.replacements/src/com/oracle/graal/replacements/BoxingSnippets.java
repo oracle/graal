@@ -77,49 +77,49 @@ public class BoxingSnippets implements Snippets {
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Boolean booleanValueOf(boolean value) {
+    public static Object booleanValueOf(boolean value) {
         valueOfCounter.inc();
         return PiNode.piCast(Boolean.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Byte byteValueOf(byte value) {
+    public static Object byteValueOf(byte value) {
         valueOfCounter.inc();
         return PiNode.piCast(Byte.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Character charValueOf(char value) {
+    public static Object charValueOf(char value) {
         valueOfCounter.inc();
         return PiNode.piCast(Character.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Double doubleValueOf(double value) {
+    public static Object doubleValueOf(double value) {
         valueOfCounter.inc();
         return PiNode.piCast(Double.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Float floatValueOf(float value) {
+    public static Object floatValueOf(float value) {
         valueOfCounter.inc();
         return PiNode.piCast(Float.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Integer intValueOf(int value) {
+    public static Object intValueOf(int value) {
         valueOfCounter.inc();
         return PiNode.piCast(Integer.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Long longValueOf(long value) {
+    public static Object longValueOf(long value) {
         valueOfCounter.inc();
         return PiNode.piCast(Long.valueOf(value), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet(inlining = BoxingSnippetInliningPolicy.class)
-    public static Short shortValueOf(short value) {
+    public static Object shortValueOf(short value) {
         valueOfCounter.inc();
         return PiNode.piCast(Short.valueOf(value), StampFactory.forNodeIntrinsic());
     }

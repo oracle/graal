@@ -110,7 +110,9 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
             if (couldSet) {
                 ValueNode currentCondition = condition;
                 replaceAndDelete(currentCondition);
-                tool.addToWorkList(currentCondition.usages());
+                if (tool != null) {
+                    tool.addToWorkList(currentCondition.usages());
+                }
             } else {
                 if (!isSubstitutionGraph()) {
                     throw new GraalInternalError("Wrong usage of branch probability injection!");
@@ -135,10 +137,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
      * @return the condition
      */
     @NodeIntrinsic
-    public static boolean probability(double probability, boolean condition) {
-        assert probability >= 0.0 && probability <= 1.0;
-        return condition;
-    }
+    public static native boolean probability(double probability, boolean condition);
 
     @Override
     public void lower(LoweringTool tool) {

@@ -29,9 +29,4 @@ function test() {
 function main() {
     callUntilOptimized(test);
     assertTrue(isInlined(test, test, fib), "not inlined: test -> fib");
-    
-    assertTrue(isInlined(test, fib, call), "not inlined: fib -> call");
-    assertFalse(isInlined(test, call, fib), "inlined: call -> fib"); 
-    assertTrue(isInlined(test, call, void), "inlined: call -> void");
-    
 }  

@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 import java.net.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
@@ -115,8 +116,8 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public boolean hasFinalizableSubclass() {
-        return false;
+    public AssumptionResult<Boolean> hasFinalizableSubclass() {
+        return new AssumptionResult<>(false);
     }
 
     @Override
@@ -190,12 +191,12 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public ResolvedJavaType findUniqueConcreteSubtype() {
-        return this;
+    public AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
+        return new AssumptionResult<>(this);
     }
 
     @Override
-    public ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method) {
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
         return null;
     }
 

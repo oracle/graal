@@ -90,8 +90,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register1(String name, Class<?> arg, InvocationPlugin plugin) {
-            ResolvedJavaMethod method = arg == Receiver.class ? resolve(metaAccess, declaringClass, name) : resolve(metaAccess, declaringClass, name, arg);
-            plugins.register(method, plugin);
+            plugins.register(arg == Receiver.class ? resolve(metaAccess, declaringClass, name) : resolve(metaAccess, declaringClass, name, arg), plugin);
         }
 
         /**
@@ -101,8 +100,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register2(String name, Class<?> arg1, Class<?> arg2, InvocationPlugin plugin) {
-            ResolvedJavaMethod method = arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2) : resolve(metaAccess, declaringClass, name, arg1, arg2);
-            plugins.register(method, plugin);
+            plugins.register(arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2) : resolve(metaAccess, declaringClass, name, arg1, arg2), plugin);
         }
 
         /**
@@ -112,8 +110,7 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register3(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, InvocationPlugin plugin) {
-            ResolvedJavaMethod method = arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2, arg3) : resolve(metaAccess, declaringClass, name, arg1, arg2, arg3);
-            plugins.register(method, plugin);
+            plugins.register(arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2, arg3) : resolve(metaAccess, declaringClass, name, arg1, arg2, arg3), plugin);
         }
 
         /**
@@ -123,8 +120,18 @@ public class InvocationPlugins {
          * @param plugin the plugin to be registered
          */
         public void register4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
-            ResolvedJavaMethod method = arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2, arg3, arg4) : resolve(metaAccess, declaringClass, name, arg1, arg2, arg3, arg4);
-            plugins.register(method, plugin);
+            plugins.register(arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2, arg3, arg4) : resolve(metaAccess, declaringClass, name, arg1, arg2, arg3, arg4), plugin);
+        }
+
+        /**
+         * Registers a plugin for a method with 5 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void register5(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, Class<?> arg5, InvocationPlugin plugin) {
+            plugins.register(arg1 == Receiver.class ? resolve(metaAccess, declaringClass, name, arg2, arg3, arg4, arg5) : resolve(metaAccess, declaringClass, name, arg1, arg2, arg3, arg4, arg5),
+                            plugin);
         }
 
         /**
@@ -197,21 +204,23 @@ public class InvocationPlugins {
     }
 
     private static class Checker {
+        private static final int MAX_ARITY = 5;
         /**
          * The set of all {@link InvocationPlugin#apply} method signatures.
          */
         static final Class<?>[][] SIGS;
         static {
-            ArrayList<Class<?>[]> sigs = new ArrayList<>(5);
+            ArrayList<Class<?>[]> sigs = new ArrayList<>(MAX_ARITY);
             for (Method method : InvocationPlugin.class.getDeclaredMethods()) {
                 if (!Modifier.isStatic(method.getModifiers()) && method.getName().equals("apply")) {
                     Class<?>[] sig = method.getParameterTypes();
                     assert sig[0] == GraphBuilderContext.class;
-                    assert Arrays.asList(Arrays.copyOfRange(sig, 1, sig.length)).stream().allMatch(c -> c == ValueNode.class);
-                    while (sigs.size() < sig.length) {
+                    assert sig[1] == ResolvedJavaMethod.class;
+                    assert Arrays.asList(Arrays.copyOfRange(sig, 2, sig.length)).stream().allMatch(c -> c == ValueNode.class);
+                    while (sigs.size() < sig.length - 1) {
                         sigs.add(null);
                     }
-                    sigs.set(sig.length - 1, sig);
+                    sigs.set(sig.length - 2, sig);
                 }
             }
             assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),

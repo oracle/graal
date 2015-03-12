@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
@@ -91,7 +90,6 @@ public class NativeCallStubGraphBuilder {
 
             ReturnNode returnNode = g.add(new ReturnNode(boxedResult));
             callNode.setNext(returnNode);
-            (new HotSpotWordTypeRewriterPhase(providers.getMetaAccess(), providers.getSnippetReflection(), providers.getConstantReflection(), Kind.Long)).apply(g);
             return g;
         } catch (NoSuchMethodException e) {
             throw GraalInternalError.shouldNotReachHere("Call Stub method not found");
@@ -121,7 +119,7 @@ public class NativeCallStubGraphBuilder {
                 ConstantNode index = ConstantNode.forInt(0, g);
                 int indexScaling = runtime().getArrayIndexScale(arrayElementKind);
                 IndexedLocationNode locationNode = g.unique(new IndexedLocationNode(locationIdentity, displacement, index, indexScaling));
-                Stamp wordStamp = StampFactory.forKind(providers.getCodeCache().getTarget().wordKind);
+                Stamp wordStamp = StampFactory.forKind(providers.getWordTypes().getWordKind());
                 ComputeAddressNode arrayAddress = g.unique(new ComputeAddressNode(boxedElement, locationNode, wordStamp));
                 args.add(arrayAddress);
             } else {

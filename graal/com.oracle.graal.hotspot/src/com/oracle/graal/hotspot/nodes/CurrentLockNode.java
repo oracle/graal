@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodeinfo.*;
@@ -40,8 +41,8 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRLower
 
     protected int lockDepth;
 
-    public CurrentLockNode(int lockDepth) {
-        super(TYPE, null);
+    public CurrentLockNode(@InjectedNodeParameter WordTypes wordTypes, int lockDepth) {
+        super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
         this.lockDepth = lockDepth;
     }
 
@@ -55,6 +56,6 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRLower
         gen.setResult(this, result);
     }
 
-    @NodeIntrinsic(setStampFromReturnType = true)
+    @NodeIntrinsic
     public static native Word currentLock(@ConstantNodeParameter int lockDepth);
 }

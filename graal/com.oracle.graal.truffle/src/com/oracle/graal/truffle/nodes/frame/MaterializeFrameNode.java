@@ -46,5 +46,5 @@ public final class MaterializeFrameNode extends FixedWithNextNode implements Ite
     }
 
     @NodeIntrinsic
-    public static native <T> T materialize(VirtualFrame frame);
+    public static native MaterializedFrame materialize(VirtualFrame frame);
 }

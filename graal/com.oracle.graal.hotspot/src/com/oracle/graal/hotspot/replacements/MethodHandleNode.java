@@ -26,6 +26,7 @@ import java.lang.invoke.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -183,9 +184,9 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
         if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
             ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver().stamp());
             if (receiverType != null) {
-                ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(target);
+                AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.findUniqueConcreteMethod(target);
                 if (concreteMethod != null) {
-                    return createTargetInvokeNode(concreteMethod, intrinsicMethod);
+                    return createTargetInvokeNode(concreteMethod.getResult(), intrinsicMethod);
                 }
             }
         }
@@ -194,9 +195,9 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
             return createTargetInvokeNode(target, intrinsicMethod);
         }
 
-        ResolvedJavaMethod concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
+        AssumptionResult<ResolvedJavaMethod> concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
         if (concreteMethod != null) {
-            return createTargetInvokeNode(concreteMethod, intrinsicMethod);
+            return createTargetInvokeNode(concreteMethod.getResult(), intrinsicMethod);
         }
 
         return null;

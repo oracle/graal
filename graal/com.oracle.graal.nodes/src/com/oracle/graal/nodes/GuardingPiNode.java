@@ -147,19 +147,17 @@ public final class GuardingPiNode extends FixedWithNextNode implements Lowerable
     }
 
     @NodeIntrinsic
-    public static <T> T guardingNonNull(T object) {
-        if (object == null) {
-            throw new NullPointerException();
-        }
-        return object;
-    }
-
-    @NodeIntrinsic
-    public static native Object guardingPi(Object object, LogicNode condition, @ConstantNodeParameter boolean negateCondition, @ConstantNodeParameter DeoptimizationReason reason,
-                    @ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter Stamp stamp);
+    public static native Object guardingNonNull(Object object);
 
     @Override
     public ValueNode getOriginalNode() {
         return object;
     }
+
+    /**
+     * Casts a value to have an exact, non-null stamp representing {@link Class} that is guarded by
+     * a null check.
+     */
+    @NodeIntrinsic(GuardingPiNode.class)
+    public static native Class<?> asNonNullClass(Class<?> c);
 }

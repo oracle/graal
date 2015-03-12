@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -126,19 +126,19 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             }
             Assumptions assumptions = receiver.graph().getAssumptions();
             if (assumptions != null) {
-                ResolvedJavaType uniqueConcreteType = type.findUniqueConcreteSubtype();
-                if (uniqueConcreteType != null) {
-                    ResolvedJavaMethod methodFromUniqueType = uniqueConcreteType.resolveConcreteMethod(targetMethod, contextType);
+                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+                if (leafConcreteSubtype != null) {
+                    ResolvedJavaMethod methodFromUniqueType = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
                     if (methodFromUniqueType != null) {
-                        assumptions.recordConcreteSubtype(type, uniqueConcreteType);
+                        assumptions.record(leafConcreteSubtype);
                         return methodFromUniqueType;
                     }
                 }
 
-                ResolvedJavaMethod uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
+                AssumptionResult<ResolvedJavaMethod> uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
                 if (uniqueConcreteMethod != null) {
-                    assumptions.recordConcreteMethod(targetMethod, type, uniqueConcreteMethod);
-                    return uniqueConcreteMethod;
+                    assumptions.record(uniqueConcreteMethod);
+                    return uniqueConcreteMethod.getResult();
                 }
             }
         }

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.truffle.*;
 
 public final class AssumptionValidAssumption extends Assumptions.Assumption {

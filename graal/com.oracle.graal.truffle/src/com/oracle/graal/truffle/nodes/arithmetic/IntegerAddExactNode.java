@@ -107,14 +107,4 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
     public void lower(LoweringTool tool) {
         IntegerExactArithmeticSplitNode.lower(tool, this);
     }
-
-    @NodeIntrinsic
-    public static int addExact(int a, int b) {
-        return ExactMath.addExact(a, b);
-    }
-
-    @NodeIntrinsic
-    public static long addExact(long a, long b) {
-        return ExactMath.addExact(a, b);
-    }
 }

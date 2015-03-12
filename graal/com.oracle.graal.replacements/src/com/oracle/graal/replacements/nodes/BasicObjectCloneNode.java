@@ -24,8 +24,8 @@ package com.oracle.graal.replacements.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -77,10 +77,10 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         } else if (objectStamp.isExactType()) {
             return isCloneableType(objectStamp.type(), metaAccess) ? objectStamp.type() : null;
         } else {
-            ResolvedJavaType type = objectStamp.type().findUniqueConcreteSubtype();
-            if (type != null && isCloneableType(type, metaAccess)) {
-                assumptions.recordConcreteSubtype(objectStamp.type(), type);
-                return type;
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null && isCloneableType(leafConcreteSubtype.getResult(), metaAccess)) {
+                assumptions.record(leafConcreteSubtype);
+                return leafConcreteSubtype.getResult();
             } else {
                 return null;
             }

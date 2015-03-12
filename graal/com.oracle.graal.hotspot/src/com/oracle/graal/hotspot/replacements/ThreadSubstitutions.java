@@ -25,15 +25,11 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 
@@ -43,14 +39,9 @@ import com.oracle.graal.word.*;
 @ClassSubstitution(java.lang.Thread.class)
 public class ThreadSubstitutions {
 
-    @MethodSubstitution
-    public static Thread currentThread() {
-        return PiNode.piCastNonNull(CurrentJavaThreadNode.get(getWordKind()).readObject(threadObjectOffset(), JAVA_THREAD_THREAD_OBJECT_LOCATION), Thread.class);
-    }
-
     @MethodSubstitution(isStatic = false)
     public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
-        Word javaThread = CurrentJavaThreadNode.get(getWordKind());
+        Word javaThread = CurrentJavaThreadNode.get();
         Object thread = javaThread.readObject(threadObjectOffset(), JAVA_THREAD_THREAD_OBJECT_LOCATION);
         if (thisObject == thread) {
             Word osThread = javaThread.readWord(osThreadOffset(), JAVA_THREAD_OSTHREAD_LOCATION);
@@ -65,17 +56,6 @@ public class ThreadSubstitutions {
 
     public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", boolean.class, Object.class, boolean.class);
 
-    /**
-     * @param descriptor
-     */
     @NodeIntrinsic(ForeignCallNode.class)
-    private static boolean threadIsInterruptedStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Thread thread, boolean clearIsInterrupted) {
-        try {
-            Method isInterrupted = Thread.class.getDeclaredMethod("isInterrupted", boolean.class);
-            isInterrupted.setAccessible(true);
-            return (Boolean) isInterrupted.invoke(thread, clearIsInterrupted);
-        } catch (Exception e) {
-            throw new GraalInternalError(e);
-        }
-    }
+    private static native boolean threadIsInterruptedStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Thread thread, boolean clearIsInterrupted);
 }

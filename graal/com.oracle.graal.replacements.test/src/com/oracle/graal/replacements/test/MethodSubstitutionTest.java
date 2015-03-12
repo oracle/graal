@@ -45,7 +45,7 @@ import com.oracle.graal.phases.tiers.*;
  */
 public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
-    protected StructuredGraph test(final String snippet) {
+    protected StructuredGraph testGraph(final String snippet) {
         try (Scope s = Debug.scope("MethodSubstitutionTest", getResolvedJavaMethod(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
@@ -74,7 +74,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
     protected void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, Class<?>[] parameterTypes, boolean optional, Object[] args1, Object[] args2) {
         ResolvedJavaMethod realMethod = getResolvedJavaMethod(holder, methodName, parameterTypes);
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(testMethodName);
-        StructuredGraph graph = test(testMethodName);
+        StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
         StructuredGraph replacement = getReplacements().getMethodSubstitution(realMethod);

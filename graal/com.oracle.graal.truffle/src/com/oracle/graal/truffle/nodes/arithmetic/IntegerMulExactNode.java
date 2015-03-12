@@ -90,14 +90,4 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
     public void lower(LoweringTool tool) {
         IntegerExactArithmeticSplitNode.lower(tool, this);
     }
-
-    @NodeIntrinsic
-    public static int multiplyExact(int a, int b) {
-        return ExactMath.multiplyExact(a, b);
-    }
-
-    @NodeIntrinsic
-    public static long multiplyExact(long a, long b) {
-        return ExactMath.multiplyExact(a, b);
-    }
 }

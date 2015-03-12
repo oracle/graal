@@ -30,7 +30,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
-import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.*;
 
 /**
@@ -41,14 +40,12 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public WordTest() {
-        installer = new ReplacementsImpl(getProviders(), getSnippetReflection(), getTarget());
+        installer = (ReplacementsImpl) getReplacements();
     }
-
-    private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return installer.makeGraph(m, null, inliningPolicy.get(), FrameStateProcessing.CollapseFrameForSingleSideEffect);
+        return installer.makeGraph(m, null, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test

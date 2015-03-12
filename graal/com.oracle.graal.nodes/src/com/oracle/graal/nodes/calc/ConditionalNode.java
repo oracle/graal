@@ -31,7 +31,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -141,42 +140,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         generator.emitConditional(this);
     }
 
-    public ConditionalNode(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
+    public ConditionalNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
         this(createCompareNode(graph, condition, x, y, null));
-    }
-
-    public ConditionalNode(ValueNode type, ValueNode object) {
-        this(type.graph().unique(new InstanceOfDynamicNode(type, object)));
-    }
-
-    @NodeIntrinsic
-    public static native boolean materializeCondition(@ConstantNodeParameter Condition condition, int x, int y);
-
-    @NodeIntrinsic
-    public static native boolean materializeCondition(@ConstantNodeParameter Condition condition, long x, long y);
-
-    @NodeIntrinsic
-    public static boolean materializeIsInstance(Class<?> mirror, Object object) {
-        return mirror.isInstance(object);
-    }
-
-    /**
-     * @param thisClass
-     * @param otherClass
-     * @param dummy a marker to make this constructor unique for the
-     *            {@link #materializeIsAssignableFrom(Class, Class, int)} NodeIntrinsic
-     */
-    public ConditionalNode(ValueNode thisClass, ValueNode otherClass, int dummy) {
-        this(thisClass.graph().unique(new ClassIsAssignableFromNode(thisClass, otherClass)));
-    }
-
-    @SuppressWarnings("unused")
-    @NodeIntrinsic
-    private static boolean materializeIsAssignableFrom(Class<?> thisClass, Class<?> otherClass, @ConstantNodeParameter int dummy) {
-        return thisClass.isAssignableFrom(otherClass);
-    }
-
-    public static boolean materializeIsAssignableFrom(Class<?> thisClass, Class<?> otherClass) {
-        return materializeIsAssignableFrom(thisClass, otherClass, 0);
     }
 }

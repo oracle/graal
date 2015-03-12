@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -82,11 +82,11 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
             }
             Assumptions assumptions = graph().getAssumptions();
             if (assumptions != null) {
-                ResolvedJavaType exact = stampType.findUniqueConcreteSubtype();
-                if (exact != null) {
-                    result = checkInstanceOf(forValue, exact, objectStamp.nonNull(), true);
+                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = stampType.findLeafConcreteSubtype();
+                if (leafConcreteSubtype != null) {
+                    result = checkInstanceOf(forValue, leafConcreteSubtype.getResult(), objectStamp.nonNull(), true);
                     if (result != null) {
-                        assumptions.recordConcreteSubtype(stampType, exact);
+                        assumptions.record(leafConcreteSubtype);
                         return result;
                     }
                 }
