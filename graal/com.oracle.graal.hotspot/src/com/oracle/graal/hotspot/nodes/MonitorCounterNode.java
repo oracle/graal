@@ -32,7 +32,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * Node that is used to maintain a stack based counter of how many locks are currently held.

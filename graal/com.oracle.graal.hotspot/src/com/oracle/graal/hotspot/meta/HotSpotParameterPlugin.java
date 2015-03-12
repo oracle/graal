@@ -29,7 +29,7 @@ import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 public final class HotSpotParameterPlugin implements ParameterPlugin {
     private final WordTypes wordTypes;

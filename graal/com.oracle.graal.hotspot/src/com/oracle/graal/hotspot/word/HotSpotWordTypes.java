@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.word;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.nodes.type.*;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * Extends {@link WordTypes} with information about HotSpot metaspace pointer types.

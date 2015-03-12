@@ -35,7 +35,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.GenericInvocationPlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * An {@link GenericInvocationPlugin} that handles methods annotated by {@link Fold},

@@ -38,7 +38,6 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from

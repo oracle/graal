@@ -43,7 +43,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.

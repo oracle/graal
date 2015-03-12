@@ -42,7 +42,6 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.nodes.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * A {@link GenericInvocationPlugin} for calls to {@linkplain Operation word operations}.

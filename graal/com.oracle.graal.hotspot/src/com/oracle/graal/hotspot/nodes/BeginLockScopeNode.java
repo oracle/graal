@@ -32,7 +32,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * Intrinsic for opening a scope binding a stack-based lock with an object. A lock scope must be

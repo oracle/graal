@@ -20,13 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word.phases;
+package com.oracle.graal.word;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Operation;
 
 /**
@@ -80,7 +79,7 @@ public class WordTypes {
     /**
      * Gets the method annotated with {@link Operation} based on a given method that represents a
      * word operation (but may not necessarily have the annotation).
-     * 
+     *
      * @param callingContextType the {@linkplain ResolvedJavaType type} from which
      *            {@code targetMethod} is invoked
      * @return the {@link Operation} method resolved for {@code targetMethod} if any

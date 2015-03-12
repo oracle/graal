@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * Extends {@link WordOperationPlugin} to handle {@linkplain HotSpotOperation HotSpot word

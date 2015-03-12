@@ -38,7 +38,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
-import com.oracle.graal.word.phases.*;
+import com.oracle.graal.word.*;
 
 /**
  * A utility for manually creating a graph. This will be expanded as necessary to support all
