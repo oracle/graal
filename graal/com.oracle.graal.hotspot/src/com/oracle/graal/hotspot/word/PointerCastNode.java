@@ -25,14 +25,15 @@ package com.oracle.graal.hotspot.word;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Cast between Word and metaspace pointers that is introduced by the
- * {@link HotSpotWordTypeRewriterPhase}.
+ * Cast between Word and metaspace pointers exposed by the {@link HotspotOpcode#FROM_POINTER} and
+ * {@link HotspotOpcode#TO_KLASS_POINTER} operations.
  */
 @NodeInfo
 public final class PointerCastNode extends FloatingNode implements LIRLowerable {
