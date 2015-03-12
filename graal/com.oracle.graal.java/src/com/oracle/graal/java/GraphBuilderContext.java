@@ -34,6 +34,30 @@ import com.oracle.graal.nodes.spi.*;
  */
 public interface GraphBuilderContext {
 
+    /**
+     * Information about a snippet or method substitution currently being processed by the graph
+     * builder.
+     */
+    public interface Replacement {
+
+        /**
+         * Gets the method being replaced.
+         */
+        ResolvedJavaMethod getOriginalMethod();
+
+        /**
+         * Gets the replacement method.
+         */
+        ResolvedJavaMethod getReplacementMethod();
+
+        /**
+         * Determines if this replacement is being inlined as a compiler intrinsic. A compiler
+         * intrinsic is atomic with respect to deoptimization. Deoptimization within a compiler
+         * intrinsic will restart the interpreter at the intrinsified call.
+         */
+        boolean isIntrinsic();
+    }
+
     <T extends ControlSinkNode> T append(T fixed);
 
     <T extends ControlSplitNode> T append(T fixed);
@@ -87,7 +111,15 @@ public interface GraphBuilderContext {
     /**
      * Determines if the current parsing context is a snippet or method substitution.
      */
-    boolean parsingReplacement();
+    default boolean parsingReplacement() {
+        return getReplacement() == null;
+    }
+
+    /**
+     * Gets the replacement of the current parsing context or {@code null} if not
+     * {@link #parsingReplacement() parsing a replacement}.
+     */
+    Replacement getReplacement();
 
     /**
      * @see GuardingPiNode#nullCheckedValue(ValueNode)

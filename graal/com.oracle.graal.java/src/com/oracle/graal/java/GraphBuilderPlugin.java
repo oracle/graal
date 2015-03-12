@@ -77,7 +77,7 @@ public interface GraphBuilderPlugin {
             /**
              * The method to be inlined. If this is not equal to the {@code method} argument passed
              * to {@link InlineInvokePlugin#getClass()}, the graph builder context interprets it as
-             * a {@linkplain GraphBuilderContext#parsingReplacement() replacement}.
+             * a {@linkplain GraphBuilderContext.Replacement replacement}.
              */
             public final ResolvedJavaMethod methodToInline;
 

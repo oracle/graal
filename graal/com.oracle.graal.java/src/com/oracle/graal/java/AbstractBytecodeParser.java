@@ -38,6 +38,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import com.oracle.graal.java.GraphBuilderContext.Replacement;
 import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
 import com.oracle.graal.java.GraphBuilderPlugin.LoadIndexedPlugin;
@@ -81,7 +82,7 @@ public abstract class AbstractBytecodeParser {
      * happen when a call to a {@link MethodSubstitution} is encountered or the root of compilation
      * is a {@link MethodSubstitution} or a snippet.
      */
-    static class ReplacementContext {
+    static class ReplacementContext implements Replacement {
         /**
          * The method being replaced.
          */
@@ -95,6 +96,18 @@ public abstract class AbstractBytecodeParser {
         public ReplacementContext(ResolvedJavaMethod method, ResolvedJavaMethod substitute) {
             this.method = method;
             this.replacement = substitute;
+        }
+
+        public ResolvedJavaMethod getOriginalMethod() {
+            return method;
+        }
+
+        public ResolvedJavaMethod getReplacementMethod() {
+            return replacement;
+        }
+
+        public boolean isIntrinsic() {
+            return false;
         }
 
         /**
@@ -112,7 +125,7 @@ public abstract class AbstractBytecodeParser {
 
     /**
      * Context for a replacement being inlined as a compiler intrinsic. Deoptimization within a
-     * compiler intrinic must replay the intrinsified call. This context object retains the
+     * compiler intrinsic must replay the intrinsified call. This context object retains the
      * information required to build a frame state denoting the JVM state just before the
      * intrinsified call.
      */
@@ -135,6 +148,11 @@ public abstract class AbstractBytecodeParser {
             super(method, substitute);
             this.invokeArgs = invokeArgs;
             this.invokeBci = invokeBci;
+        }
+
+        @Override
+        public boolean isIntrinsic() {
+            return true;
         }
 
         /**

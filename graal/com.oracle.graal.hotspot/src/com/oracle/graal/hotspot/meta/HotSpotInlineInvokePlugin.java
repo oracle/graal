@@ -27,10 +27,10 @@ import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
 import static java.lang.String.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderContext.Replacement;
 import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
@@ -69,8 +69,10 @@ public final class HotSpotInlineInvokePlugin implements InlineInvokePlugin {
 
     public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (b.parsingReplacement()) {
-            boolean compilingSnippet = b.getRootMethod().getAnnotation(MethodSubstitution.class) == null;
-            assert compilingSnippet : format("All calls in the replacement %s must be inlined or intrinsified: found call to %s", b.getRootMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
+            boolean compilingSnippet = b.getRootMethod().getAnnotation(Snippet.class) != null;
+            Replacement replacement = b.getReplacement();
+            assert compilingSnippet : format("All calls in the replacement %s must be inlined or intrinsified: found call to %s", replacement.getReplacementMethod().format("%H.%n(%p)"),
+                            method.format("%h.%n(%p)"));
         }
     }
 }

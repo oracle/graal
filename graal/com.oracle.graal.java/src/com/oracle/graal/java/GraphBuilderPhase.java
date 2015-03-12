@@ -1212,8 +1212,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (context != null && context.isCallToOriginal(targetMethod)) {
                     // Self recursive replacement means the original
                     // method should be called.
-                    if (targetMethod.hasBytecodes()) {
-                        parseAndInlineCallee(context.method, args, null);
+                    if (context.method.hasBytecodes()) {
+                        IntrinsicContext intrinsic = context.asIntrinsic();
+                        parseAndInlineCallee(context.method, args, intrinsic);
                     } else {
                         return false;
                     }
@@ -1225,9 +1226,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             context = new ReplacementContext(targetMethod, inlinedMethod);
                         }
                     }
-                    parseAndInlineCallee(inlinedMethod, args, context);
-                    if (plugin != null) {
-                        plugin.postInline(inlinedMethod);
+                    if (inlinedMethod.hasBytecodes()) {
+                        parseAndInlineCallee(inlinedMethod, args, context);
+                        if (plugin != null) {
+                            plugin.postInline(inlinedMethod);
+                        }
+                    } else {
+                        return false;
                     }
                 }
                 return true;
@@ -2348,6 +2353,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public int getDepth() {
                 return parent == null ? 0 : 1 + parent.getDepth();
+            }
+
+            public Replacement getReplacement() {
+                return replacementContext;
             }
 
             public ResolvedJavaMethod getRootMethod() {
