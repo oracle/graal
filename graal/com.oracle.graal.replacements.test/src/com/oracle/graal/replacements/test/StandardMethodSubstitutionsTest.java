@@ -54,7 +54,6 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         test("mathSin", value);
         test("mathSqrt", value);
         test("mathTan", value);
-        test("mathPow", value);
         test("mathAll", value);
     }
 
@@ -62,11 +61,26 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
     public void testMathPow() {
         double a = 34567.891D;
         double b = 4.6D;
-        for (int i = 0; i < 10000; i++) {
-            a = mathPow(a, b);
-            a = StrictMath.pow(a, b);
-        }
         test("mathPow", a, b);
+
+        // Test the values directly handled by the substitution
+
+        // If the second argument is positive or negative zero, then the result is 1.0.
+        test("mathPow", a, 0.0D);
+        test("mathPow", a, -0.0D);
+        // If the second argument is 1.0, then the result is the same as the first argument.
+        test("mathPow", a, 1.0D);
+        // If the second argument is NaN, then the result is NaN.
+        test("mathPow", a, Double.NaN);
+        // If the first argument is NaN and the second argument is nonzero, then the result is NaN.
+        test("mathPow", Double.NaN, b);
+        test("mathPow", Double.NaN, 0.0D);
+        // x**-1 = 1/x
+        test("mathPow", a, -1.0D);
+        // x**2 = x*x
+        test("mathPow", a, 2.0D);
+        // x**0.5 = sqrt(x)
+        test("mathPow", a, 0.5D);
     }
 
     public static double mathPow(double a, double b) {
