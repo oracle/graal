@@ -438,10 +438,11 @@ public class InliningUtil {
                 } else {
                     // only handle the outermost frame states
                     if (frameState.outerFrameState() == null) {
+                        assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI : frameState;
                         assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
-                        assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method());
-                        assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI && frameState.bci != BytecodeFrame.BEFORE_BCI && frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI &&
-                                        frameState.bci != BytecodeFrame.UNWIND_BCI : frameState.bci;
+                        assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
+                        assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
+                        assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method()) : frameState;
                         if (outerFrameState == null) {
                             outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
                         }
