@@ -27,7 +27,7 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.Assumptions.Assumption;
+import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;

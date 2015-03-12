@@ -33,6 +33,7 @@ import java.nio.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.Assumptions.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 
@@ -139,25 +140,33 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public HotSpotResolvedObjectType findUniqueConcreteSubtype() {
+    public AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
         HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
-            return getElementalType().isFinal() ? this : null;
+            return getElementalType().isFinal() ? new AssumptionResult<>(this) : null;
         } else if (isInterface()) {
-            HotSpotResolvedObjectTypeImpl type = getSingleImplementor();
-            if (type == null) {
+            HotSpotResolvedObjectTypeImpl implementor = getSingleImplementor();
+            /*
+             * If the implementor field contains itself that indicates that the interface has more
+             * than one implementors (see: InstanceKlass::add_implementor).
+             */
+            if (implementor == null || implementor.equals(this)) {
                 return null;
             }
 
-            /*
-             * If the implementor field contains itself that indicates that the interface has more
-             * than one implementors (see: InstanceKlass::add_implementor). The isInterface check
-             * takes care of this fact since this class is an interface.
-             */
-            if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
+            assert !implementor.isInterface();
+            if (implementor.isAbstract() || !implementor.isLeafClass()) {
+                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = implementor.findLeafConcreteSubtype();
+                if (leafConcreteSubtype != null) {
+                    assert !leafConcreteSubtype.getResult().equals(implementor);
+                    AssumptionResult<ResolvedJavaType> newResult = new AssumptionResult<>(leafConcreteSubtype.getResult(), new ConcreteSubtype(this, implementor));
+                    newResult.add(leafConcreteSubtype);
+                    return leafConcreteSubtype;
+                }
                 return null;
             }
-            return type;
+
+            return new AssumptionResult<>(implementor, new LeafType(implementor), new ConcreteSubtype(this, implementor));
         } else {
             HotSpotResolvedObjectTypeImpl type = this;
             while (type.isAbstract()) {
@@ -170,7 +179,12 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             if (type.isAbstract() || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
-            return type;
+            if (this.isAbstract()) {
+                return new AssumptionResult<>(type, new LeafType(type), new ConcreteSubtype(this, type));
+            } else {
+                assert this.equals(type);
+                return new AssumptionResult<>(type, new LeafType(type));
+            }
         }
     }
 
@@ -281,9 +295,12 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public boolean hasFinalizableSubclass() {
+    public AssumptionResult<Boolean> hasFinalizableSubclass() {
         assert !isArray();
-        return runtime().getCompilerToVM().hasFinalizableSubclass(getMetaspaceKlass());
+        if (!runtime().getCompilerToVM().hasFinalizableSubclass(getMetaspaceKlass())) {
+            return new AssumptionResult<>(false, new NoFinalizableSubclass(this));
+        }
+        return new AssumptionResult<>(true);
     }
 
     @Override
@@ -492,7 +509,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     }
 
     @Override
-    public ResolvedJavaMethod findUniqueConcreteMethod(ResolvedJavaMethod method) {
+    public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
         HotSpotResolvedJavaMethod hmethod = (HotSpotResolvedJavaMethod) method;
         HotSpotResolvedObjectType declaredHolder = hmethod.getDeclaringClass();
         /*
@@ -503,7 +520,11 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
          * a deopt instead since they can't really be used if they aren't linked yet.
          */
         if (!declaredHolder.isAssignableFrom(this) || this.isArray() || this.equals(declaredHolder) || !isLinked() || isInterface()) {
-            return hmethod.uniqueConcreteMethod(declaredHolder);
+            ResolvedJavaMethod result = hmethod.uniqueConcreteMethod(declaredHolder);
+            if (result != null) {
+                return new AssumptionResult<>(result, new ConcreteMethod(method, declaredHolder, result));
+            }
+            return null;
         }
         /*
          * The holder may be a subtype of the declaredHolder so make sure to resolve the method to
@@ -515,7 +536,11 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
             return null;
         }
 
-        return resolvedMethod.uniqueConcreteMethod(this);
+        ResolvedJavaMethod result = resolvedMethod.uniqueConcreteMethod(this);
+        if (result != null) {
+            return new AssumptionResult<>(result, new ConcreteMethod(method, this, result));
+        }
+        return null;
     }
 
     /**

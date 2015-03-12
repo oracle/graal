@@ -23,7 +23,7 @@
 package com.oracle.graal.compiler.test;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Assumptions.Assumption;
+import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
