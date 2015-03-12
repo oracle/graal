@@ -36,7 +36,6 @@ import org.junit.*;
 import com.oracle.nfi.*;
 import com.oracle.nfi.api.*;
 
-@Ignore
 public class NativeFunctionInterfaceTest {
 
     public final NativeFunctionInterface nfi;
