@@ -97,10 +97,10 @@ public class TypeCheckHints {
             exact = targetType;
         } else {
             if (assumptions != null) {
-                AssumptionResult<ResolvedJavaType> uniqueSubtype = targetType == null ? null : targetType.findUniqueConcreteSubtype();
-                if (uniqueSubtype != null) {
-                    assumptions.record(uniqueSubtype);
-                    exact = uniqueSubtype.getResult();
+                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = targetType == null ? null : targetType.findLeafConcreteSubtype();
+                if (leafConcreteSubtype != null) {
+                    assumptions.record(leafConcreteSubtype);
+                    exact = leafConcreteSubtype.getResult();
                 } else {
                     exact = null;
                 }

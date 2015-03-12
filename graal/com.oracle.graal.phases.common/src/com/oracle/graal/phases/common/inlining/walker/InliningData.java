@@ -195,11 +195,11 @@ public class InliningData {
         }
 
         if (callTarget.graph().getAssumptions() != null) {
-            AssumptionResult<ResolvedJavaType> uniqueSubtype = holder.findUniqueConcreteSubtype();
-            if (uniqueSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = uniqueSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null) {
+                ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
                 if (resolvedMethod != null) {
-                    return getAssumptionInlineInfo(invoke, resolvedMethod, uniqueSubtype);
+                    return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
                 }
             }
 

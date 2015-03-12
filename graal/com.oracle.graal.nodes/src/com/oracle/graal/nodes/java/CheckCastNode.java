@@ -72,10 +72,10 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         }
         assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
         if (assumptions != null) {
-            AssumptionResult<ResolvedJavaType> uniqueConcreteType = type.findUniqueConcreteSubtype();
-            if (uniqueConcreteType != null && !uniqueConcreteType.getResult().equals(type)) {
-                assumptions.record(uniqueConcreteType);
-                type = uniqueConcreteType.getResult();
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null && !leafConcreteSubtype.getResult().equals(type)) {
+                assumptions.record(leafConcreteSubtype);
+                type = leafConcreteSubtype.getResult();
             }
         }
         return new CheckCastNode(type, object, profile, forStoreCheck);
@@ -170,11 +170,11 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
         Assumptions assumptions = graph().getAssumptions();
         if (assumptions != null) {
-            AssumptionResult<ResolvedJavaType> exactTypeResult = type.findUniqueConcreteSubtype();
-            if (exactTypeResult != null && !exactTypeResult.getResult().equals(type)) {
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null && !leafConcreteSubtype.getResult().equals(type)) {
                 // Propagate more precise type information to usages of the checkcast.
-                assumptions.record(exactTypeResult);
-                return new CheckCastNode(exactTypeResult.getResult(), object, profile, forStoreCheck);
+                assumptions.record(leafConcreteSubtype);
+                return new CheckCastNode(leafConcreteSubtype.getResult(), object, profile, forStoreCheck);
             }
         }
 

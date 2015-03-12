@@ -99,8 +99,8 @@ public final class TypeProfileProxyNode extends UnaryNode implements IterableNod
             }
         } else if (StampTool.typeOrNull(forValue) != null) {
             ResolvedJavaType type = StampTool.typeOrNull(forValue);
-            AssumptionResult<ResolvedJavaType> uniqueConcrete = type.findUniqueConcreteSubtype();
-            if (uniqueConcrete != null) {
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null) {
                 // Profile is useless => remove.
                 Debug.log("Profile useless, there is enough static type information available.");
                 return forValue;

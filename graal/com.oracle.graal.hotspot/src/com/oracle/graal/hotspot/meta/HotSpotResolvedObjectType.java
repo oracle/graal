@@ -35,7 +35,7 @@ public interface HotSpotResolvedObjectType extends ResolvedJavaType {
 
     ResolvedJavaType getComponentType();
 
-    AssumptionResult<ResolvedJavaType> findUniqueConcreteSubtype();
+    AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype();
 
     HotSpotResolvedObjectType getSuperclass();
 

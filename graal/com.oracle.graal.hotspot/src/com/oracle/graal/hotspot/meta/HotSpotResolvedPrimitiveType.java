@@ -191,7 +191,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     }
 
     @Override
-    public AssumptionResult<ResolvedJavaType> findUniqueConcreteSubtype() {
+    public AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype() {
         return new AssumptionResult<>(this);
     }
 

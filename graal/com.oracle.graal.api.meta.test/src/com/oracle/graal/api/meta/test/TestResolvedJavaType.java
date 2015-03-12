@@ -274,30 +274,30 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     void checkConcreteSubtype(ResolvedJavaType type, ResolvedJavaType expected) {
-        AssumptionResult<ResolvedJavaType> subtype = type.findUniqueConcreteSubtype();
-        if (subtype == null) {
-            // findUniqueConcreteSubtype() is conservative
+        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+        if (leafConcreteSubtype == null) {
+            // findLeafConcreteSubtype() is conservative
         } else {
             if (expected == null) {
-                assertNull(subtype);
+                assertNull(leafConcreteSubtype);
             } else {
-                assertTrue(subtype.getResult().equals(expected));
+                assertTrue(leafConcreteSubtype.getResult().equals(expected));
             }
         }
 
         if (!type.isArray()) {
             ResolvedJavaType arrayType = type.getArrayClass();
-            AssumptionResult<ResolvedJavaType> arraySubtype = arrayType.findUniqueConcreteSubtype();
+            AssumptionResult<ResolvedJavaType> arraySubtype = arrayType.findLeafConcreteSubtype();
             if (arraySubtype != null) {
                 assertEquals(arraySubtype.getResult(), arrayType);
             } else {
-                // findUniqueConcreteSubtype() method is conservative
+                // findLeafConcreteSubtype() method is conservative
             }
         }
     }
 
     @Test
-    public void findUniqueConcreteSubtypeTest() {
+    public void findLeafConcreteSubtypeTest() {
         ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
         checkConcreteSubtype(base, base);
 

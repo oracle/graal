@@ -77,10 +77,10 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
         } else if (objectStamp.isExactType()) {
             return isCloneableType(objectStamp.type(), metaAccess) ? objectStamp.type() : null;
         } else {
-            AssumptionResult<ResolvedJavaType> typeResult = objectStamp.type().findUniqueConcreteSubtype();
-            if (typeResult != null && isCloneableType(typeResult.getResult(), metaAccess)) {
-                assumptions.record(typeResult);
-                return typeResult.getResult();
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null && isCloneableType(leafConcreteSubtype.getResult(), metaAccess)) {
+                assumptions.record(leafConcreteSubtype);
+                return leafConcreteSubtype.getResult();
             } else {
                 return null;
             }

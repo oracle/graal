@@ -186,25 +186,27 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType);
 
     /**
-     * Attempts to get a unique concrete subclass of this type.
+     * Attempts to get a leaf concrete subclass of this type.
      * <p>
-     * For an {@linkplain #isArray() array} type A, the unique concrete subclass is A if the
+     * For an {@linkplain #isArray() array} type A, the leaf concrete subclass is A if the
      * {@linkplain #getElementalType() elemental} type of A is final (which includes primitive
      * types). Otherwise {@code null} is returned for A.
      * <p>
-     * For a non-array type T, the result is the unique concrete type in the current hierarchy of T.
+     * For a non-array type T, the result is the leaf concrete type in the current hierarchy of T.
      * <p>
      * A runtime may decide not to manage or walk a large hierarchy and so the result is
-     * conservative. That is, a non-null result is guaranteed to be the unique concrete class in T's
+     * conservative. That is, a non-null result is guaranteed to be the leaf concrete class in T's
      * hierarchy <b>at the current point in time</b> but a null result does not necessarily imply
-     * that there is no unique concrete class in T's hierarchy.
+     * that there is no leaf concrete class in T's hierarchy.
      * <p>
-     * If the compiler uses the result of this method for its compilation, it must register an
-     * assumption because dynamic class loading can invalidate the result of this method.
+     * If the compiler uses the result of this method for its compilation, it must register the
+     * {@link AssumptionResult} in its {@link Assumptions} because dynamic class loading can
+     * invalidate the result of this method.
      *
-     * @return the unique concrete subclass for this type as described above
+     * @return an {@link AssumptionResult} containing the leaf concrete subclass for this type as
+     *         described above
      */
-    AssumptionResult<ResolvedJavaType> findUniqueConcreteSubtype();
+    AssumptionResult<ResolvedJavaType> findLeafConcreteSubtype();
 
     ResolvedJavaType getComponentType();
 

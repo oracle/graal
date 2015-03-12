@@ -110,7 +110,8 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
     }
 
     /**
-     * An assumption that a given type has a given unique subtype.
+     * An assumption that a given abstract or interface type has one direct concrete subtype. There
+     * is no requirement that the subtype is a leaf type.
      */
     public static final class ConcreteSubtype extends Assumption {
 
@@ -122,14 +123,15 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         public final ResolvedJavaType context;
 
         /**
-         * Assumed unique concrete sub-type of the context type.
+         * Assumed concrete sub-type of the context type.
          */
         public final ResolvedJavaType subtype;
 
         public ConcreteSubtype(ResolvedJavaType context, ResolvedJavaType subtype) {
             this.context = context;
             this.subtype = subtype;
-            assert subtype.isConcrete() : subtype.toString() + " : " + context.toString();
+            assert context.isAbstract();
+            assert subtype.isConcrete() || context.isInterface() : subtype.toString() + " : " + context.toString();
             assert !subtype.isArray() || subtype.getElementalType().isFinal() : subtype.toString() + " : " + context.toString();
         }
 
@@ -154,6 +156,45 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         @Override
         public String toString() {
             return "ConcreteSubtype[context=" + context.toJavaName() + ", subtype=" + subtype.toJavaName() + "]";
+        }
+    }
+
+    /**
+     * An assumption that a given type has no subtypes.
+     */
+    public static final class LeafType extends Assumption {
+
+        private static final long serialVersionUID = -1457173265437676252L;
+
+        /**
+         * Type the assumption is made about.
+         */
+        public final ResolvedJavaType context;
+
+        public LeafType(ResolvedJavaType context) {
+            this.context = context;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + context.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof LeafType) {
+                LeafType other = (LeafType) obj;
+                return other.context.equals(context);
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return "LeafSubtype[context=" + context.toJavaName() + "]";
         }
     }
 

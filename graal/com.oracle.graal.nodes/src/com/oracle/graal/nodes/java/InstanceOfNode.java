@@ -82,11 +82,11 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
             }
             Assumptions assumptions = graph().getAssumptions();
             if (assumptions != null) {
-                AssumptionResult<ResolvedJavaType> typeResult = stampType.findUniqueConcreteSubtype();
-                if (typeResult != null) {
-                    result = checkInstanceOf(forValue, typeResult.getResult(), objectStamp.nonNull(), true);
+                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = stampType.findLeafConcreteSubtype();
+                if (leafConcreteSubtype != null) {
+                    result = checkInstanceOf(forValue, leafConcreteSubtype.getResult(), objectStamp.nonNull(), true);
                     if (result != null) {
-                        assumptions.record(typeResult);
+                        assumptions.record(leafConcreteSubtype);
                         return result;
                     }
                 }
