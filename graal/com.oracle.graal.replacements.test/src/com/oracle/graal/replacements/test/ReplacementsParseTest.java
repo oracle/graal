@@ -51,16 +51,6 @@ public class ReplacementsParseTest extends GraalCompilerTest {
     static class TestMethodsSubstitutions {
 
         @MethodSubstitution(isStatic = true)
-        static double next(double v) {
-            return TestMethods.next(v);
-        }
-
-        @MethodSubstitution(isStatic = true)
-        static double next2(double v) {
-            return next2(v);
-        }
-
-        @MethodSubstitution(isStatic = true)
         static double nextAfter(double x, double d) {
             double xx = (x == -0.0 ? 0.0 : x);
             return Math.nextAfter(xx, d);
