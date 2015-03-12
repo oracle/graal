@@ -34,8 +34,8 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.java.InvocationPlugins.Receiver;
 import com.oracle.graal.java.InvocationPlugins.Registration;
-import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
@@ -57,29 +57,29 @@ public class StandardGraphBuilderPlugins {
     // @formatter:on
 
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, Architecture arch, InvocationPlugins plugins, boolean useBoxingPlugins) {
-        registerObjectPlugins(metaAccess, plugins);
-        registerClassPlugins(metaAccess, plugins);
-        registerMathPlugins(metaAccess, arch, plugins);
-        registerUnsignedMathPlugins(metaAccess, plugins);
-        registerCharacterPlugins(metaAccess, plugins);
-        registerShortPlugins(metaAccess, plugins);
-        registerIntegerLongPlugins(metaAccess, plugins, Kind.Int);
-        registerIntegerLongPlugins(metaAccess, plugins, Kind.Long);
-        registerFloatPlugins(metaAccess, plugins);
-        registerDoublePlugins(metaAccess, plugins);
-        registerUnsafePlugins(metaAccess, arch, plugins);
+        registerObjectPlugins(plugins);
+        registerClassPlugins(plugins);
+        registerMathPlugins(arch, plugins);
+        registerUnsignedMathPlugins(plugins);
+        registerCharacterPlugins(plugins);
+        registerShortPlugins(plugins);
+        registerIntegerLongPlugins(plugins, Kind.Int);
+        registerIntegerLongPlugins(plugins, Kind.Long);
+        registerFloatPlugins(plugins);
+        registerDoublePlugins(plugins);
+        registerUnsafePlugins(arch, plugins);
         registerEdgesPlugins(metaAccess, plugins);
-        registerGraalDirectivesPlugins(metaAccess, plugins);
+        registerGraalDirectivesPlugins(plugins);
         if (useBoxingPlugins) {
-            registerBoxingPlugins(metaAccess, plugins);
+            registerBoxingPlugins(plugins);
         }
         if (Options.UseBlackholeSubstitution.getValue()) {
-            registerJMHBlackholePlugins(metaAccess, plugins);
+            registerJMHBlackholePlugins(plugins);
         }
     }
 
-    private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Architecture arch, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Unsafe.class);
+    private static void registerUnsafePlugins(Architecture arch, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Unsafe.class);
         for (Kind kind : Kind.values()) {
             if ((kind.isPrimitive() && kind != Kind.Void) || kind == Kind.Object) {
                 Class<?> javaClass = kind == Kind.Object ? Object.class : kind.toJavaClass();
@@ -141,10 +141,10 @@ public class StandardGraphBuilderPlugins {
         return arch.getName().equals("AMD64");
     }
 
-    private static void registerIntegerLongPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, Kind kind) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Kind kind) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
-        Registration r = new Registration(plugins, metaAccess, declaringClass);
+        Registration r = new Registration(plugins, declaringClass);
         r.register1("reverseBytes", type, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 b.push(kind, b.append(new ReverseBytesNode(value).canonical(null, value)));
@@ -171,8 +171,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerCharacterPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Character.class);
+    private static void registerCharacterPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Character.class);
         r.register1("reverseBytes", char.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 // return (char) (Integer.reverse(i) >> 16);
@@ -185,8 +185,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerShortPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Short.class);
+    private static void registerShortPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Short.class);
         r.register1("reverseBytes", short.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 // return (short) (Integer.reverse(i) >> 16);
@@ -199,8 +199,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerFloatPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Float.class);
+    private static void registerFloatPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Float.class);
         r.register1("floatToRawIntBits", float.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 b.push(Kind.Int, b.append(new ReinterpretNode(Kind.Int, value).canonical(null, value)));
@@ -215,8 +215,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerDoublePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Double.class);
+    private static void registerDoublePlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Double.class);
         r.register1("doubleToRawLongBits", double.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 b.push(Kind.Long, b.append(new ReinterpretNode(Kind.Long, value).canonical(null, value)));
@@ -231,8 +231,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(MetaAccessProvider metaAccess, Architecture arch, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Math.class);
+    private static void registerMathPlugins(Architecture arch, InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Math.class);
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 b.push(Kind.Float, b.append(new AbsNode(value).canonical(null, value)));
@@ -297,8 +297,8 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerUnsignedMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, UnsignedMath.class);
+    private static void registerUnsignedMathPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, UnsignedMath.class);
         r.register2("aboveThan", int.class, int.class, new UnsignedMathPlugin(Condition.AT));
         r.register2("aboveThan", long.class, long.class, new UnsignedMathPlugin(Condition.AT));
         r.register2("belowThan", int.class, int.class, new UnsignedMathPlugin(Condition.BT));
@@ -333,17 +333,17 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    protected static void registerBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    protected static void registerBoxingPlugins(InvocationPlugins plugins) {
         for (Kind kind : Kind.values()) {
             if (kind.isPrimitive() && kind != Kind.Void) {
-                new BoxPlugin(kind).register(metaAccess, plugins);
-                new UnboxPlugin(kind).register(metaAccess, plugins);
+                new BoxPlugin(kind).register(plugins);
+                new UnboxPlugin(kind).register(plugins);
             }
         }
     }
 
-    private static void registerObjectPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Object.class);
+    private static void registerObjectPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Object.class);
         r.register1("<init>", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode object) {
                 if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
@@ -354,8 +354,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerClassPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Class.class);
+    private static void registerClassPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Class.class);
         r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode type, ValueNode object) {
                 ValueNode nullCheckedType = nullCheckedValue(b, type);
@@ -393,7 +393,7 @@ public class StandardGraphBuilderPlugins {
      * project containing {@link Edges}.
      */
     private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, Edges.class);
+        Registration r = new Registration(plugins, Edges.class);
         for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
             r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode node, ValueNode offset) {
@@ -435,9 +435,8 @@ public class StandardGraphBuilderPlugins {
             return true;
         }
 
-        void register(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-            ResolvedJavaMethod method = Registration.resolve(metaAccess, kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass());
-            plugins.register(method, this);
+        void register(InvocationPlugins plugins) {
+            plugins.register(this, kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass());
         }
     }
 
@@ -463,10 +462,9 @@ public class StandardGraphBuilderPlugins {
             return true;
         }
 
-        void register(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        void register(InvocationPlugins plugins) {
             String name = kind.toJavaClass().getSimpleName() + "Value";
-            ResolvedJavaMethod method = Registration.resolve(metaAccess, kind.toBoxedJavaClass(), name);
-            plugins.register(method, this);
+            plugins.register(this, kind.toBoxedJavaClass(), name, Receiver.class);
         }
     }
 
@@ -524,8 +522,8 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerGraalDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, GraalDirectives.class);
+    private static void registerGraalDirectivesPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, GraalDirectives.class);
         r.register0("deoptimize", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
                 b.append(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
@@ -584,7 +582,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerJMHBlackholePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerJMHBlackholePlugins(InvocationPlugins plugins) {
         InvocationPlugin blackholePlugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode blackhole, ValueNode value) {
                 b.append(new BlackholeNode(value));
@@ -596,7 +594,7 @@ public class StandardGraphBuilderPlugins {
             Class<?> blackholeClass;
             blackholeClass = ReplacementsImpl.resolveClass(name, true);
             if (blackholeClass != null) {
-                Registration r = new Registration(plugins, metaAccess, blackholeClass);
+                Registration r = new Registration(plugins, blackholeClass);
                 for (Kind kind : Kind.values()) {
                     if ((kind.isPrimitive() && kind != Kind.Void) || kind == Kind.Object) {
                         Class<?> javaClass = kind == Kind.Object ? Object.class : kind.toJavaClass();

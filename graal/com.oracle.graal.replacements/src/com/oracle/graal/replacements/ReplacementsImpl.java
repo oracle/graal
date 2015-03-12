@@ -641,7 +641,8 @@ public class ReplacementsImpl implements Replacements {
                     graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
                 } else {
                     GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-                    Plugins plugins = config.getPlugins().updateFrom(replacements.graphBuilderPlugins, false);
+                    Plugins plugins = new Plugins(metaAccess).updateFrom(replacements.graphBuilderPlugins, false);
+                    config.setPlugins(plugins);
                     plugins.getInvocationPlugins().setDefaults(replacements.graphBuilderPlugins.getInvocationPlugins());
                     if (args != null) {
                         plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));

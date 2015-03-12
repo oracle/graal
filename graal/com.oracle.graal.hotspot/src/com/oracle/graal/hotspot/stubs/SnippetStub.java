@@ -79,11 +79,12 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
     @Override
     protected StructuredGraph getGraph() {
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
         Plugins defaultPlugins = providers.getGraphBuilderPlugins();
-        Plugins plugins = config.getPlugins().updateFrom(defaultPlugins, false);
+        Plugins plugins = new Plugins(providers.getMetaAccess()).updateFrom(defaultPlugins, false);
         plugins.getInvocationPlugins().setDefaults(defaultPlugins.getInvocationPlugins());
         plugins.setParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), plugins.getParameterPlugin(), providers.getMetaAccess(), providers.getSnippetReflection()));
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
+        config.setPlugins(plugins);
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM. Nor can they be

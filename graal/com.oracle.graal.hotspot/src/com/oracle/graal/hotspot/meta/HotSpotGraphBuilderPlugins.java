@@ -36,7 +36,7 @@ import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.InvocationPlugins.Registration;
-import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
+import com.oracle.graal.java.InvocationPlugins.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
@@ -70,16 +70,16 @@ public class HotSpotGraphBuilderPlugins {
         plugins.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(nodeIntrinsification, (ReplacementsImpl) providers.getReplacements()));
         plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(nodeIntrinsification, wordOperationPlugin));
 
-        registerObjectPlugins(invocationPlugins, metaAccess);
-        registerSystemPlugins(invocationPlugins, metaAccess, providers.getForeignCalls());
+        registerObjectPlugins(invocationPlugins);
+        registerSystemPlugins(invocationPlugins, providers.getForeignCalls());
         registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
-        registerStableOptionPlugins(invocationPlugins, metaAccess);
+        registerStableOptionPlugins(invocationPlugins);
         StandardGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), providers.getCodeCache().target.arch, invocationPlugins, !config.useHeapProfiler);
         return plugins;
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        Registration r = new Registration(plugins, metaAccess, Object.class);
+    private static void registerObjectPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
                 ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
@@ -97,8 +97,8 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerSystemPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        Registration r = new Registration(plugins, metaAccess, System.class);
+    private static void registerSystemPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
+        Registration r = new Registration(plugins, System.class);
         r.register0("currentTimeMillis", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
                 b.push(Kind.Long, b.append(new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_MILLIS, StampFactory.forKind(Kind.Long))));
@@ -114,7 +114,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, HotSpotVMConfig config) {
-        Registration r = new Registration(plugins, metaAccess, Thread.class);
+        Registration r = new Registration(plugins, Thread.class);
         r.register0("currentThread", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
                 CurrentJavaThreadNode thread = b.append(new CurrentJavaThreadNode(wordTypes.getWordKind()));
@@ -129,8 +129,8 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerStableOptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        Registration r = new Registration(plugins, metaAccess, StableOptionValue.class);
+    private static void registerStableOptionPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
                 if (rcvr.isConstant() && !rcvr.isNullConstant()) {

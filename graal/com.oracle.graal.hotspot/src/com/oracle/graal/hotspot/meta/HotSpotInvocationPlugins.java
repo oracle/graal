@@ -24,39 +24,38 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugin.*;
-import com.oracle.graal.replacements.StandardGraphBuilderPlugins.*;
+import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 
 /**
  * Extension of {@link InvocationPlugins} that disables plugins based on runtime configuration.
  */
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     final HotSpotVMConfig config;
-    final MetaAccessProvider metaAccess;
 
     public HotSpotInvocationPlugins(HotSpotVMConfig config, MetaAccessProvider metaAccess) {
+        super(metaAccess);
         this.config = config;
-        this.metaAccess = metaAccess;
     }
 
     @Override
-    public void register(ResolvedJavaMethod method, InvocationPlugin plugin) {
+    public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
         if (!config.usePopCountInstruction) {
-            if (method.getName().equals("bitCount")) {
-                assert method.getDeclaringClass().equals(metaAccess.lookupJavaType(Integer.class)) || method.getDeclaringClass().equals(metaAccess.lookupJavaType(Long.class));
+            if (name.equals("bitCount")) {
+                assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
                 return;
             }
         }
         if (!config.useCountLeadingZerosInstruction) {
-            if (method.getName().equals("numberOfLeadingZeros")) {
-                assert method.getDeclaringClass().equals(metaAccess.lookupJavaType(Integer.class)) || method.getDeclaringClass().equals(metaAccess.lookupJavaType(Long.class));
+            if (name.equals("numberOfLeadingZeros")) {
+                assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
                 return;
             }
         }
         if (!config.useCountTrailingZerosInstruction) {
-            if (method.getName().equals("numberOfTrailingZeros")) {
-                assert method.getDeclaringClass().equals(metaAccess.lookupJavaType(Integer.class));
+            if (name.equals("numberOfTrailingZeros")) {
+                assert declaringClass.equals(Integer.class);
                 return;
             }
         }
@@ -67,6 +66,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 return;
             }
         }
-        super.register(method, plugin);
+        super.register(plugin, declaringClass, name, argumentTypes);
     }
 }

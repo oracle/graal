@@ -45,8 +45,8 @@ public class GraphBuilderConfiguration {
         private GenericInvocationPlugin genericInvocationPlugin;
         private LoopExplosionPlugin loopExplosionPlugin;
 
-        public Plugins() {
-            invocationPlugins = new InvocationPlugins();
+        public Plugins(MetaAccessProvider metaAccess) {
+            invocationPlugins = new InvocationPlugins(metaAccess);
         }
 
         public Plugins(InvocationPlugins invocationPlugins) {
@@ -127,7 +127,7 @@ public class GraphBuilderConfiguration {
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
     private boolean useProfiling;
-    private Plugins plugins = new Plugins();
+    private Plugins plugins;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -252,7 +252,12 @@ public class GraphBuilderConfiguration {
     }
 
     public GraphBuilderConfiguration copyPluginsFrom(GraphBuilderConfiguration other) {
-        this.plugins.updateFrom(other.plugins, true);
+        if (other.plugins != null) {
+            if (this.plugins == null) {
+                this.plugins = new Plugins(other.plugins.getInvocationPlugins().getMetaAccess());
+            }
+            this.plugins.updateFrom(other.plugins, true);
+        }
         return this;
     }
 }

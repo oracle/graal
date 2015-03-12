@@ -33,7 +33,7 @@ public class ExactMathTest extends GraalCompilerTest {
 
     @Override
     protected void editGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(getMetaAccess(), plugins.getInvocationPlugins());
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(plugins.getInvocationPlugins());
         super.editGraphBuilderPlugins(plugins);
     }
 

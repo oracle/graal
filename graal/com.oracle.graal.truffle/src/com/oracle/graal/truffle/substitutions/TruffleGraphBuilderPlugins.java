@@ -34,7 +34,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
 import com.oracle.graal.java.InvocationPlugins.Registration;
-import com.oracle.graal.java.InvocationPlugins.Registration.Receiver;
+import com.oracle.graal.java.InvocationPlugins.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -53,22 +53,22 @@ import com.oracle.truffle.api.frame.*;
 public class TruffleGraphBuilderPlugins {
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
 
-        registerOptimizedAssumptionPlugins(metaAccess, plugins);
-        registerExactMathPlugins(metaAccess, plugins);
-        registerCompilerDirectivesPlugins(metaAccess, plugins);
+        registerOptimizedAssumptionPlugins(plugins);
+        registerExactMathPlugins(plugins);
+        registerCompilerDirectivesPlugins(plugins);
         registerOptimizedCallTargetPlugins(metaAccess, plugins);
-        registerUnsafeAccessImplPlugins(metaAccess, plugins);
+        registerUnsafeAccessImplPlugins(plugins);
 
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
-            registerFrameWithoutBoxingPlugins(metaAccess, plugins);
+            registerFrameWithoutBoxingPlugins(plugins);
         } else {
-            registerFrameWithBoxingPlugins(metaAccess, plugins);
+            registerFrameWithBoxingPlugins(plugins);
         }
 
     }
 
-    public static void registerOptimizedAssumptionPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, OptimizedAssumption.class);
+    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, OptimizedAssumption.class);
         r.register1("isValid", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode arg) {
                 if (arg.isConstant()) {
@@ -86,8 +86,8 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerExactMathPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, ExactMath.class);
+    public static void registerExactMathPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, ExactMath.class);
         for (Kind kind : new Kind[]{Kind.Int, Kind.Long}) {
             Class<?> type = kind.toJavaClass();
             r.register2("addExact", type, type, new InvocationPlugin() {
@@ -123,8 +123,8 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerCompilerDirectivesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, CompilerDirectives.class);
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
                 b.push(Kind.Boolean.getStackKind(), b.append(ConstantNode.forBoolean(false)));
@@ -190,7 +190,7 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        r = new Registration(plugins, metaAccess, CompilerAsserts.class);
+        r = new Registration(plugins, CompilerAsserts.class);
         r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode value) {
                 ValueNode curValue = value;
@@ -229,7 +229,7 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerOptimizedCallTargetPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, OptimizedCallTarget.class);
+        Registration r = new Registration(plugins, OptimizedCallTarget.class);
         r.register2("createFrame", FrameDescriptor.class, Object[].class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode descriptor, ValueNode args) {
                 Class<?> frameClass = TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue() ? FrameWithoutBoxing.class : FrameWithBoxing.class;
@@ -245,21 +245,21 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerFrameWithoutBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, FrameWithoutBoxing.class);
+    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, FrameWithoutBoxing.class);
         registerMaterialize(r);
         registerUnsafeCast(r);
         registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
-    public static void registerFrameWithBoxingPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, FrameWithBoxing.class);
+    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, FrameWithBoxing.class);
         registerMaterialize(r);
         registerUnsafeCast(r);
     }
 
-    public static void registerUnsafeAccessImplPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, metaAccess, UnsafeAccessImpl.class);
+    public static void registerUnsafeAccessImplPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, UnsafeAccessImpl.class);
         registerUnsafeCast(r);
         registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }

@@ -27,9 +27,9 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
@@ -91,6 +92,7 @@ public class TruffleCompilerImpl {
         GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault().withSkippedExceptionTypes(skippedExceptionTypes);
 
         this.config = GraphBuilderConfiguration.getDefault().withSkippedExceptionTypes(skippedExceptionTypes);
+        this.config.setPlugins(new Plugins(backendProviders.getMetaAccess()));
         if (TruffleCompilerOptions.FastPE.getValue()) {
             GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
             this.config.getPlugins().getInvocationPlugins().setDefaults(phase.getGraphBuilderConfig().getPlugins().getInvocationPlugins());
