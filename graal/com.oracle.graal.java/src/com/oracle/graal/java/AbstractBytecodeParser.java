@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -51,17 +52,26 @@ public abstract class AbstractBytecodeParser {
         @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode", type = OptionType.Debug)
         public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
 
-        @Option(help = "Inlines trivial methods during parsing of the bytecodes.", type = OptionType.Expert)
+        @Option(help = "Inlines trivial methods during bytecode parsing.", type = OptionType.Expert)
         public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(false);
 
-        @Option(help = "Traces inlining eagerly performed during bytecode parsing", type = OptionType.Debug)
+        @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
 
-        @Option(help = "Traces use of bytecode parser plugins", type = OptionType.Debug)
+        @Option(help = "Traces use of plugins during bytecode parsing.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceParserPlugins = new StableOptionValue<>(false);
 
-        @Option(help = "Maximum depth when inlining during parsing.", type = OptionType.Debug)
+        @Option(help = "Maximum depth when inlining during bytecode parsing.", type = OptionType.Debug)
         public static final StableOptionValue<Integer> InlineDuringParsingMaxDepth = new StableOptionValue<>(10);
+
+        @Option(help = "Dump graphs after non-trivial changes during bytecode parsing.", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> DumpDuringGraphBuilding = new StableOptionValue<>(false);
+
+        @Option(help = "Max number of loop explosions per method.", type = OptionType.Debug)
+        public static final OptionValue<Integer> MaximumLoopExplosionCount = new OptionValue<>(10000);
+
+        @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> FailedLoopExplosionIsFatal = new OptionValue<>(false);
 
         // @formatter:on
     }

@@ -461,7 +461,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 for (int i = loopBegins.size() - 1; i >= 0; --i) {
                     LoopBeginNode loopBegin = loopBegins.get(i);
                     insertLoopExits(loopBegin, innerLoopsMap);
-                    if (GraalOptions.DumpDuringGraphBuilding.getValue()) {
+                    if (DumpDuringGraphBuilding.getValue()) {
                         Debug.dump(currentGraph, "After building loop exits for %s.", loopBegin);
                     }
                 }
@@ -527,7 +527,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 for (LoopBeginNode inner : innerLoopBegins) {
                     addLoopExits(loopBegin, inner, innerLoopsMap, visited);
-                    if (GraalOptions.DumpDuringGraphBuilding.getValue()) {
+                    if (DumpDuringGraphBuilding.getValue()) {
                         Debug.dump(currentGraph, "After adding loop exits for %s.", inner);
                     }
                 }
