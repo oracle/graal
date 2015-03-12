@@ -299,7 +299,7 @@ public class ReplacementsImpl implements Replacements {
     }
 
     protected NodeIntrinsificationPhase createNodeIntrinsificationPhase() {
-        return new NodeIntrinsificationPhase(providers, snippetReflection);
+        return new NodeIntrinsificationPhase(providers.getMetaAccess(), providers.getConstantReflection(), snippetReflection, providers.getForeignCalls(), providers.getStampProvider());
     }
 
     @Override

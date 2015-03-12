@@ -27,6 +27,7 @@ import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -52,29 +53,32 @@ public class HotSpotGraphBuilderPlugins {
 
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
+     *
+     * @param constantReflection
+     * @param snippetReflection
+     * @param foreignCalls
+     * @param stampProvider
      */
-    public static Plugins create(HotSpotVMConfig config, HotSpotProviders providers) {
+    public static Plugins create(HotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
+                    SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, StampProvider stampProvider, ReplacementsImpl replacements, Architecture arch) {
 
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        HotSpotWordTypes wordTypes = providers.getWordTypes();
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
         Plugins plugins = new Plugins(invocationPlugins);
-        NodeIntrinsificationPhase nodeIntrinsification = new NodeIntrinsificationPhase(providers, providers.getSnippetReflection());
-        ConstantReflectionProvider constantReflection = providers.getConstantReflection();
-        HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(providers.getSnippetReflection(), wordTypes);
+        NodeIntrinsificationPhase nodeIntrinsification = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
+        HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
 
         plugins.setParameterPlugin(new HotSpotParameterPlugin(wordTypes));
         plugins.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
         plugins.setLoadIndexedPlugin(new HotSpotLoadIndexedPlugin(wordTypes));
-        plugins.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(nodeIntrinsification, (ReplacementsImpl) providers.getReplacements()));
+        plugins.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(nodeIntrinsification, replacements));
         plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(nodeIntrinsification, wordOperationPlugin));
 
         registerObjectPlugins(invocationPlugins);
-        registerSystemPlugins(invocationPlugins, providers.getForeignCalls());
+        registerSystemPlugins(invocationPlugins, foreignCalls);
         registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
         registerStableOptionPlugins(invocationPlugins);
-        StandardGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), providers.getCodeCache().target.arch, invocationPlugins, !config.useHeapProfiler);
+        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, arch, invocationPlugins, !config.useHeapProfiler);
         return plugins;
     }
 
