@@ -1210,11 +1210,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 ReplacementContext context = this.replacementContext;
                 if (context != null && context.isCallToOriginal(targetMethod)) {
+                    assert context.asIntrinsic() == null : "intrinsic cannot call the method it is intrinsifying";
                     // Self recursive replacement means the original
                     // method should be called.
                     if (context.method.hasBytecodes()) {
-                        IntrinsicContext intrinsic = context.asIntrinsic();
-                        parseAndInlineCallee(context.method, args, intrinsic);
+                        parseAndInlineCallee(context.method, args, null);
                     } else {
                         return false;
                     }
