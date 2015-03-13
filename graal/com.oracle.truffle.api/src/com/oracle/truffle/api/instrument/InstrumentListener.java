@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +24,31 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-
 /**
- * A listener of Truffle AST runtime execution events that can collect information and possibly
- * intervene on behalf of an external tool.
+ * A listener of Truffle execution events that can collect information on behalf of an external
+ * tool. Contextual information about the source of the event, if not stored in the implementation
+ * of the listener, can be obtained via access to the {@link Probe} that generates the event.
  */
-public interface TruffleEventListener {
+public interface InstrumentListener {
 
     /**
      * Receive notification that an AST node's execute method is about to be called.
      */
-    void enter(Node node, VirtualFrame vFrame);
+    void enter(Probe probe);
 
     /**
      * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
      */
-    void returnVoid(Node node, VirtualFrame vFrame);
+    void returnVoid(Probe probe);
 
     /**
-     * Receive notification that an AST Node'sexecute method has just returned a value (boxed if
+     * Receive notification that an AST Node's execute method has just returned a value (boxed if
      * primitive).
      */
-    void returnValue(Node node, VirtualFrame vFrame, Object result);
+    void returnValue(Probe probe, Object result);
 
     /**
      * Receive notification that an AST Node's execute method has just thrown an exception.
      */
-    void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
-
+    void returnExceptional(Probe probe, Exception exception);
 }

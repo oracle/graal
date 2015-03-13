@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,38 +29,39 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * An abstract listener for AST {@linkplain TruffleEventListener execution events} that ignores
+ * An abstract listener for AST {@linkplain ASTInstrumentListener execution events} that ignores
  * return values and supports handling all events by overriding only two methods:
  * <ul>
- * <li>{@link #enter(Node, VirtualFrame)}, and</li>
- * <li>{@link #returnAny(Node, VirtualFrame)}.</li>
+ * <li>{@link #enter(Probe, Node, VirtualFrame)}, and</li>
+ * <li>{@link #returnAny(Probe, Node, VirtualFrame)}.</li>
  * </ul>
  */
-public abstract class SimpleEventListener implements TruffleEventListener {
+public abstract class SimpleASTInstrumentListener implements ASTInstrumentListener {
 
-    public void enter(Node node, VirtualFrame vFrame) {
+    public void enter(Probe probe, Node node, VirtualFrame vFrame) {
     }
 
     /**
      * Receive notification that one of an AST Node's execute methods has just returned by any
      * means: with or without a return value (ignored) or via exception (ignored).
      *
-     * @param node
+     * @param probe where the event originated
+     * @param node specific node of the event
      * @param vFrame
      */
-    public void returnAny(Node node, VirtualFrame vFrame) {
+    protected void returnAny(Probe probe, Node node, VirtualFrame vFrame) {
     }
 
-    public final void returnVoid(Node node, VirtualFrame vFrame) {
-        returnAny(node, vFrame);
+    public final void returnVoid(Probe probe, Node node, VirtualFrame vFrame) {
+        returnAny(probe, node, vFrame);
     }
 
-    public final void returnValue(Node node, VirtualFrame vFrame, Object result) {
-        returnAny(node, vFrame);
+    public final void returnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
+        returnAny(probe, node, vFrame);
     }
 
-    public final void returnExceptional(Node node, VirtualFrame vFrame, Exception e) {
-        returnAny(node, vFrame);
+    public final void returnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception e) {
+        returnAny(probe, node, vFrame);
     }
 
 }
