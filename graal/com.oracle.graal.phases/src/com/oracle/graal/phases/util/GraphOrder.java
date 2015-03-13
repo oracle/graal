@@ -156,77 +156,80 @@ public final class GraphOrder {
                      */
                     FrameState pendingStateAfter = null;
                     for (final Node node : list) {
-                        FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
-                        if (node instanceof FullInfopointNode) {
-                            stateAfter = ((FullInfopointNode) node).getState();
-                        }
-
-                        if (pendingStateAfter != null && node instanceof FixedNode) {
-                            pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
-                                @Override
-                                public void apply(Node usage, Node nonVirtualNode) {
-                                    assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode || nonVirtualNode instanceof ConstantNode : nonVirtualNode +
-                                                    " not available at virtualstate " + usage + " before " + node + " in block " + block + " \n" + list;
-                                }
-                            });
-                            pendingStateAfter = null;
-                        }
-
-                        if (node instanceof AbstractMergeNode) {
-                            // phis aren't scheduled, so they need to be added explicitly
-                            currentState.markAll(((AbstractMergeNode) node).phis());
-                            if (node instanceof LoopBeginNode) {
-                                // remember the state at the loop entry, it's restored at exits
-                                loopEntryStates.put((LoopBeginNode) node, currentState.copy());
+                        if (node instanceof ValueNode) {
+                            FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
+                            if (node instanceof FullInfopointNode) {
+                                stateAfter = ((FullInfopointNode) node).getState();
                             }
-                        } else if (node instanceof ProxyNode) {
-                            assert false : "proxy nodes should not be in the schedule";
-                        } else if (node instanceof LoopExitNode) {
-                            if (graph.hasValueProxies()) {
-                                for (ProxyNode proxy : ((LoopExitNode) node).proxies()) {
-                                    for (Node input : proxy.inputs()) {
-                                        if (input != proxy.proxyPoint()) {
-                                            assert currentState.isMarked(input) : input + " not available at " + proxy + " in block " + block + "\n" + list;
+
+                            if (pendingStateAfter != null && node instanceof FixedNode) {
+                                pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
+                                    @Override
+                                    public void apply(Node usage, Node nonVirtualNode) {
+                                        assert currentState.isMarked(nonVirtualNode) || nonVirtualNode instanceof VirtualObjectNode || nonVirtualNode instanceof ConstantNode : nonVirtualNode +
+                                                        " not available at virtualstate " + usage + " before " + node + " in block " + block + " \n" + list;
+                                    }
+                                });
+                                pendingStateAfter = null;
+                            }
+
+                            if (node instanceof AbstractMergeNode) {
+                                // phis aren't scheduled, so they need to be added explicitly
+                                currentState.markAll(((AbstractMergeNode) node).phis());
+                                if (node instanceof LoopBeginNode) {
+                                    // remember the state at the loop entry, it's restored at exits
+                                    loopEntryStates.put((LoopBeginNode) node, currentState.copy());
+                                }
+                            } else if (node instanceof ProxyNode) {
+                                assert false : "proxy nodes should not be in the schedule";
+                            } else if (node instanceof LoopExitNode) {
+                                if (graph.hasValueProxies()) {
+                                    for (ProxyNode proxy : ((LoopExitNode) node).proxies()) {
+                                        for (Node input : proxy.inputs()) {
+                                            if (input != proxy.proxyPoint()) {
+                                                assert currentState.isMarked(input) : input + " not available at " + proxy + " in block " + block + "\n" + list;
+                                            }
+                                        }
+                                    }
+
+                                    // loop contents are only accessible via proxies at the exit
+                                    currentState.clearAll();
+                                    currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
+                                }
+                                // Loop proxies aren't scheduled, so they need to be added
+// explicitly
+                                currentState.markAll(((LoopExitNode) node).proxies());
+                            } else {
+                                for (Node input : node.inputs()) {
+                                    if (input != stateAfter) {
+                                        if (input instanceof FrameState) {
+                                            ((FrameState) input).applyToNonVirtual(new VirtualState.NodeClosure<Node>() {
+                                                @Override
+                                                public void apply(Node usage, Node nonVirtual) {
+                                                    assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
+                                                }
+                                            });
+                                        } else {
+                                            assert currentState.isMarked(input) || input instanceof VirtualObjectNode || input instanceof ConstantNode : input + " not available at " + node +
+                                                            " in block " + block + "\n" + list;
                                         }
                                     }
                                 }
-
-                                // loop contents are only accessible via proxies at the exit
-                                currentState.clearAll();
-                                currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
                             }
-                            // Loop proxies aren't scheduled, so they need to be added explicitly
-                            currentState.markAll(((LoopExitNode) node).proxies());
-                        } else {
-                            for (Node input : node.inputs()) {
-                                if (input != stateAfter) {
-                                    if (input instanceof FrameState) {
-                                        ((FrameState) input).applyToNonVirtual(new VirtualState.NodeClosure<Node>() {
-                                            @Override
-                                            public void apply(Node usage, Node nonVirtual) {
-                                                assert currentState.isMarked(nonVirtual) : nonVirtual + " not available at " + node + " in block " + block + "\n" + list;
-                                            }
-                                        });
-                                    } else {
-                                        assert currentState.isMarked(input) || input instanceof VirtualObjectNode || input instanceof ConstantNode : input + " not available at " + node +
-                                                        " in block " + block + "\n" + list;
-                                    }
+                            if (node instanceof AbstractEndNode) {
+                                AbstractMergeNode merge = ((AbstractEndNode) node).merge();
+                                for (PhiNode phi : merge.phis()) {
+                                    ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
+                                    assert phiValue == null || currentState.isMarked(phiValue) || phiValue instanceof ConstantNode : phiValue + " not available at phi " + phi + " / end " + node +
+                                                    " in block " + block;
                                 }
                             }
-                        }
-                        if (node instanceof AbstractEndNode) {
-                            AbstractMergeNode merge = ((AbstractEndNode) node).merge();
-                            for (PhiNode phi : merge.phis()) {
-                                ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
-                                assert phiValue == null || currentState.isMarked(phiValue) || phiValue instanceof ConstantNode : phiValue + " not available at phi " + phi + " / end " + node +
-                                                " in block " + block;
+                            if (stateAfter != null) {
+                                assert pendingStateAfter == null;
+                                pendingStateAfter = stateAfter;
                             }
+                            currentState.mark(node);
                         }
-                        if (stateAfter != null) {
-                            assert pendingStateAfter == null;
-                            pendingStateAfter = stateAfter;
-                        }
-                        currentState.mark(node);
                     }
                     if (pendingStateAfter != null) {
                         pendingStateAfter.applyToNonVirtual(new NodeClosure<Node>() {
