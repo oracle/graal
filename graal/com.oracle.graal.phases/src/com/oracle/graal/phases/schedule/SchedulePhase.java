@@ -278,7 +278,8 @@ public final class SchedulePhase extends Phase {
 
     private static void sortNodesLatestWithinBlock(Block b, BlockMap<List<Node>> earliestBlockToNodesMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeMap<Block> nodeMap,
                     BlockMap<ArrayList<FloatingReadNode>> watchListMap, NodeBitMap unprocessed) {
-        ArrayList<Node> result = new ArrayList<>();
+        List<Node> earliestSorting = earliestBlockToNodesMap.get(b);
+        ArrayList<Node> result = new ArrayList<>(earliestSorting.size());
         ArrayList<FloatingReadNode> watchList = null;
         if (watchListMap != null) {
             watchList = watchListMap.get(b);
@@ -296,7 +297,7 @@ public final class SchedulePhase extends Phase {
             }
         }
         FixedNode endNode = b.getEndNode();
-        for (Node n : earliestBlockToNodesMap.get(b)) {
+        for (Node n : earliestSorting) {
             if (n != endNode) {
                 if (n instanceof FixedNode) {
                     assert nodeMap.get(n) == b;
@@ -448,7 +449,7 @@ public final class SchedulePhase extends Phase {
 
     private static void scheduleEarliestIterative(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph) {
 
-        BlockMap<Boolean> floatingReads = new BlockMap<>(cfg);
+        BitSet floatingReads = new BitSet(cfg.getBlocks().size());
 
         // Add begin nodes as the first entry and set the block for phi nodes.
         for (Block b : cfg.getBlocks()) {
@@ -471,7 +472,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        Stack<Node> stack = new Stack<>();
+        NodeStack stack = new NodeStack();
 
         // Start analysis with control flow ends.
         for (Block b : cfg.postOrder()) {
@@ -529,9 +530,11 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        for (Block b : cfg.getBlocks()) {
-            if (floatingReads.get(b) == Boolean.TRUE) {
-                resortEarliestWithinBlock(b, blockToNodes, nodeToBlock, visited);
+        if (!floatingReads.isEmpty()) {
+            for (Block b : cfg.getBlocks()) {
+                if (floatingReads.get(b.getId())) {
+                    resortEarliestWithinBlock(b, blockToNodes, nodeToBlock, visited);
+                }
             }
         }
     }
@@ -556,7 +559,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        ArrayList<Node> newList = new ArrayList<>();
+        ArrayList<Node> newList = new ArrayList<>(oldList.size());
         assert oldList.get(0) == beginNode;
         unprocessed.clear(beginNode);
         newList.add(beginNode);
@@ -602,7 +605,7 @@ public final class SchedulePhase extends Phase {
         blockToNodes.get(b).add(endNode);
     }
 
-    private static void processStack(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, BlockMap<Boolean> floatingReads, Stack<Node> stack) {
+    private static void processStack(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, BitSet floatingReads, NodeStack stack) {
         Block startBlock = cfg.getStartBlock();
         while (!stack.isEmpty()) {
             Node current = stack.peek();
@@ -637,24 +640,21 @@ public final class SchedulePhase extends Phase {
                 stack.pop();
 
                 if (nodeToBlock.get(current) == null) {
-                    Node predecessor = current.predecessor();
-                    Block curBlock;
-                    if (predecessor != null) {
-                        // Predecessor determines block.
-                        curBlock = nodeToBlock.get(predecessor);
-                    } else {
+                    Block curBlock = cfg.blockFor(current);
+                    if (curBlock == null) {
+                        assert current.predecessor() == null && !(current instanceof FixedNode) : "The assignment of blocks to fixed nodes is already done when constructing the cfg.";
                         Block earliest = startBlock;
                         for (Node input : current.inputs()) {
-                            if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                                // ignore
+                            Block inputEarliest;
+                            if (input instanceof ControlSplitNode) {
+                                inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
                             } else {
-                                Block inputEarliest;
-                                if (input instanceof ControlSplitNode) {
-                                    inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
-                                } else {
-                                    inputEarliest = nodeToBlock.get(input);
-                                }
-                                assert inputEarliest != null : current + " / " + input;
+                                inputEarliest = nodeToBlock.get(input);
+                            }
+                            if (inputEarliest == null) {
+                                assert current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current;
+                            } else {
+                                assert inputEarliest != null;
                                 if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
                                     earliest = inputEarliest;
                                 }
@@ -668,7 +668,7 @@ public final class SchedulePhase extends Phase {
                     if (current instanceof FloatingReadNode) {
                         FloatingReadNode floatingReadNode = (FloatingReadNode) current;
                         if (curBlock.canKill(floatingReadNode.getLocationIdentity())) {
-                            floatingReads.put(curBlock, Boolean.TRUE);
+                            floatingReads.set(curBlock.getId());
                         }
                     }
                 }
