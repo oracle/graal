@@ -197,7 +197,7 @@ public final class GraphOrder {
                                     currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
                                 }
                                 // Loop proxies aren't scheduled, so they need to be added
-// explicitly
+                                // explicitly
                                 currentState.markAll(((LoopExitNode) node).proxies());
                             } else {
                                 for (Node input : node.inputs()) {
