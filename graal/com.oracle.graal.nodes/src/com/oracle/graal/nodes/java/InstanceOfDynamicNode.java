@@ -42,6 +42,15 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
     @Input ValueNode object;
     @Input ValueNode mirror;
 
+    public static LogicNode create(ConstantReflectionProvider constantReflection, ValueNode mirror, ValueNode object) {
+        LogicNode synonym = findSynonym(constantReflection, object, mirror);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new InstanceOfDynamicNode(mirror, object);
+
+    }
+
     public InstanceOfDynamicNode(ValueNode mirror, ValueNode object) {
         super(TYPE);
         this.mirror = mirror;
@@ -56,9 +65,9 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
         tool.getLowerer().lower(this, tool);
     }
 
-    public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
+    private static LogicNode findSynonym(ConstantReflectionProvider constantReflection, ValueNode forObject, ValueNode forMirror) {
         if (forMirror.isConstant()) {
-            ResolvedJavaType t = tool.getConstantReflection().asJavaType(forMirror.asConstant());
+            ResolvedJavaType t = constantReflection.asJavaType(forMirror.asConstant());
             if (t != null) {
                 if (t.isPrimitive()) {
                     return LogicConstantNode.contradiction();
@@ -67,7 +76,15 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
                 }
             }
         }
-        return this;
+        return null;
+    }
+
+    public LogicNode canonical(CanonicalizerTool tool, ValueNode forObject, ValueNode forMirror) {
+        LogicNode res = findSynonym(tool.getConstantReflection(), forObject, forMirror);
+        if (res == null) {
+            res = this;
+        }
+        return res;
     }
 
     public ValueNode object() {

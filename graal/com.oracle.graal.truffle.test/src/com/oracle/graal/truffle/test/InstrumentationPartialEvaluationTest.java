@@ -61,72 +61,144 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
     }
 
     @Test
-    public void constantValueProbedNullInstrument() {
+    public void constantValueProbedNullInstrument1() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument = Instrument.create(new DefaultEventListener(), "Null test Instrument");
+        Instrument instrument = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument");
         probe.attach(instrument);
         assertPartialEvalEquals("constant42", root);
     }
 
     @Test
-    public void constantValueProbedNullInstrumentDisposed() {
+    public void constantValueProbedNullInstrument2() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument = Instrument.create(new DefaultEventListener(), "Null test Instrument");
+        Instrument instrument = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument");
+        probe.attach(instrument);
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void constantValueProbedNullInstrumentDisposed1() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        Instrument instrument = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument");
         probe.attach(instrument);
         instrument.dispose();
         assertPartialEvalEquals("constant42", root);
     }
 
     @Test
-    public void constantValueProbedTwoNullInstruments() {
+    public void constantValueProbedNullInstrumentDisposed2() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument1 = Instrument.create(new DefaultEventListener(), "Null test Instrument 1");
+        Instrument instrument = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument");
+        probe.attach(instrument);
+        instrument.dispose();
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void constantValueProbedTwoNullInstruments1() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        Instrument instrument1 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 1");
         probe.attach(instrument1);
-        Instrument instrument2 = Instrument.create(new DefaultEventListener(), "Null test Instrument 2");
+        Instrument instrument2 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 2");
         probe.attach(instrument2);
         assertPartialEvalEquals("constant42", root);
     }
 
     @Test
-    public void constantValueProbedThreeNullInstruments() {
+    public void constantValueProbedTwoNullInstruments2() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument1 = Instrument.create(new DefaultEventListener(), "Null test Instrument 1");
+        Instrument instrument1 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 1");
         probe.attach(instrument1);
-        Instrument instrument2 = Instrument.create(new DefaultEventListener(), "Null test Instrument 2");
+        Instrument instrument2 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 2");
         probe.attach(instrument2);
-        Instrument instrument3 = Instrument.create(new DefaultEventListener(), "Null test Instrument 3");
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void constantValueProbedThreeNullInstruments1() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        Instrument instrument1 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 1");
+        probe.attach(instrument1);
+        Instrument instrument2 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 2");
+        probe.attach(instrument2);
+        Instrument instrument3 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 3");
         probe.attach(instrument3);
         assertPartialEvalEquals("constant42", root);
     }
 
     @Test
-    public void constantValueProbedThreeNullInstrumentsOneDisposed() {
+    public void constantValueProbedThreeNullInstruments2() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument1 = Instrument.create(new DefaultEventListener(), "Null test Instrument 1");
+        Instrument instrument1 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 1");
         probe.attach(instrument1);
-        Instrument instrument2 = Instrument.create(new DefaultEventListener(), "Null test Instrument 2");
+        Instrument instrument2 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 2");
         probe.attach(instrument2);
-        Instrument instrument3 = Instrument.create(new DefaultEventListener(), "Null test Instrument 3");
+        Instrument instrument3 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 3");
+        probe.attach(instrument3);
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void constantValueProbedThreeNullInstrumentsOneDisposed1() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        Instrument instrument1 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 1");
+        probe.attach(instrument1);
+        Instrument instrument2 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 2");
+        probe.attach(instrument2);
+        Instrument instrument3 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 3");
+        probe.attach(instrument3);
+        instrument2.dispose();
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void constantValueProbedThreeNullInstrumentsOneDisposed2() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        Instrument instrument1 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 1");
+        probe.attach(instrument1);
+        Instrument instrument2 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 2");
+        probe.attach(instrument2);
+        Instrument instrument3 = Instrument.create(new DefaultASTInstrumentListener(), "Null test Instrument 3");
         probe.attach(instrument3);
         instrument2.dispose();
         assertPartialEvalEquals("constant42", root);
@@ -167,13 +239,13 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
             Assert.assertEquals(0, count[0]);           // Didn't count anything
 
             // Add a counting instrument; this changes the "Probe state" and should cause a deopt
-            final Instrument countingInstrument = Instrument.create(new DefaultEventListener() {
+            final Instrument countingInstrument = Instrument.create(new DefaultInstrumentListener() {
 
                 @Override
-                public void enter(Node node, VirtualFrame frame) {
+                public void enter(Probe p) {
                     count[0] = count[0] + 1;
                 }
-            });
+            }, null);
             probe[0].attach(countingInstrument);
 
             Assert.assertEquals(42, callTarget.call()); // Correct result

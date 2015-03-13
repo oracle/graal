@@ -359,7 +359,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode type, ValueNode object) {
                 ValueNode nullCheckedType = nullCheckedValue(b, type);
-                LogicNode condition = b.append(new InstanceOfDynamicNode(nullCheckedType, object).canonical(null, nullCheckedType, object));
+                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getConstantReflection(), nullCheckedType, object));
                 b.push(Kind.Boolean.getStackKind(), b.append(new ConditionalNode(condition).canonical(null)));
                 return true;
             }
