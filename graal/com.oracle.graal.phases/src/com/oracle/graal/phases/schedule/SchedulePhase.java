@@ -36,6 +36,8 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 
+import edu.umd.cs.findbugs.annotations.*;
+
 public final class SchedulePhase extends Phase {
 
     /**
@@ -110,69 +112,7 @@ public final class SchedulePhase extends Phase {
                     latestBlockToNodesMap.put(b, new ArrayList<Node>());
                 }
 
-                BlockMap<ArrayList<FloatingReadNode>> watchListMap = null;
-                for (Block b : cfg.postOrder()) {
-                    List<Node> blockToNodes = earliestBlockToNodesMap.get(b);
-                    LocationSet killed = null;
-                    int previousIndex = blockToNodes.size();
-                    for (int i = blockToNodes.size() - 1; i >= 0; --i) {
-                        Node currentNode = blockToNodes.get(i);
-                        assert currentNodeMap.get(currentNode) == b;
-                        assert !(currentNode instanceof PhiNode) && !(currentNode instanceof ProxyNode);
-                        assert visited.isMarked(currentNode);
-                        if (currentNode instanceof FixedNode) {
-                            // For these nodes, the earliest is at the same time the latest block.
-                        } else {
-                            Block currentBlock = b;
-                            assert currentBlock != null;
-                            Block latestBlock = calcLatestBlock(b, isOutOfLoops, currentNode, currentNodeMap);
-                            assert AbstractControlFlowGraph.dominates(currentBlock, latestBlock) || currentNode instanceof VirtualState : currentNode + " " + currentBlock + " " + latestBlock;
-                            if (latestBlock != currentBlock) {
-                                if (currentNode instanceof FloatingReadNode) {
-
-                                    FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
-                                    LocationIdentity location = floatingReadNode.getLocationIdentity();
-                                    if (location.isMutable()) {
-                                        if (currentBlock.canKill(location)) {
-                                            if (killed == null) {
-                                                killed = new LocationSet();
-                                            }
-                                            fillKillSet(killed, blockToNodes.subList(i + 1, previousIndex));
-                                            previousIndex = i;
-                                            if (killed.contains(location)) {
-                                                latestBlock = currentBlock;
-                                            }
-                                        }
-
-                                        if (latestBlock != currentBlock) {
-                                            // We are not constraint within currentBlock. Check if
-                                            // we are contraint while walking down the dominator
-                                            // line.
-                                            Block newLatestBlock = adjustLatestForRead(currentBlock, latestBlock, location);
-                                            assert dominates(newLatestBlock, latestBlock);
-                                            assert dominates(currentBlock, newLatestBlock);
-                                            latestBlock = newLatestBlock;
-
-                                            if (newLatestBlock != currentBlock && latestBlock.canKill(location)) {
-                                                if (watchListMap == null) {
-                                                    watchListMap = new BlockMap<>(cfg);
-                                                }
-                                                if (watchListMap.get(latestBlock) == null) {
-                                                    watchListMap.put(latestBlock, new ArrayList<>());
-                                                }
-                                                watchListMap.get(latestBlock).add(floatingReadNode);
-                                            }
-                                        }
-                                    }
-                                }
-                                currentNodeMap.set(currentNode, latestBlock);
-                                currentBlock = latestBlock;
-                            }
-                            latestBlockToNodesMap.get(currentBlock).add(currentNode);
-                        }
-                    }
-                }
-
+                BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(isOutOfLoops, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap);
                 sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
@@ -182,6 +122,74 @@ public final class SchedulePhase extends Phase {
                 cfg.setNodeToBlock(currentNodeMap);
             }
         }
+    }
+
+    @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "false positive found by findbugs")
+    private BlockMap<ArrayList<FloatingReadNode>> calcLatestBlocks(boolean isOutOfLoops, NodeMap<Block> currentNodeMap, BlockMap<List<Node>> earliestBlockToNodesMap, NodeBitMap visited,
+                    BlockMap<List<Node>> latestBlockToNodesMap) {
+        BlockMap<ArrayList<FloatingReadNode>> watchListMap = null;
+        for (Block b : cfg.postOrder()) {
+            List<Node> blockToNodes = earliestBlockToNodesMap.get(b);
+            LocationSet killed = null;
+            int previousIndex = blockToNodes.size();
+            for (int i = blockToNodes.size() - 1; i >= 0; --i) {
+                Node currentNode = blockToNodes.get(i);
+                assert currentNodeMap.get(currentNode) == b;
+                assert !(currentNode instanceof PhiNode) && !(currentNode instanceof ProxyNode);
+                assert visited.isMarked(currentNode);
+                if (currentNode instanceof FixedNode) {
+                    // For these nodes, the earliest is at the same time the latest block.
+                } else {
+                    Block currentBlock = b;
+                    assert currentBlock != null;
+                    Block latestBlock = calcLatestBlock(b, isOutOfLoops, currentNode, currentNodeMap);
+                    assert AbstractControlFlowGraph.dominates(currentBlock, latestBlock) || currentNode instanceof VirtualState : currentNode + " " + currentBlock + " " + latestBlock;
+                    if (latestBlock != currentBlock) {
+                        if (currentNode instanceof FloatingReadNode) {
+
+                            FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
+                            LocationIdentity location = floatingReadNode.getLocationIdentity();
+                            if (location.isMutable()) {
+                                if (currentBlock.canKill(location)) {
+                                    if (killed == null) {
+                                        killed = new LocationSet();
+                                    }
+                                    fillKillSet(killed, blockToNodes.subList(i + 1, previousIndex));
+                                    previousIndex = i;
+                                    if (killed.contains(location)) {
+                                        latestBlock = currentBlock;
+                                    }
+                                }
+
+                                if (latestBlock != currentBlock) {
+                                    // We are not constraint within currentBlock. Check if
+                                    // we are contraint while walking down the dominator
+                                    // line.
+                                    Block newLatestBlock = adjustLatestForRead(currentBlock, latestBlock, location);
+                                    assert dominates(newLatestBlock, latestBlock);
+                                    assert dominates(currentBlock, newLatestBlock);
+                                    latestBlock = newLatestBlock;
+
+                                    if (newLatestBlock != currentBlock && latestBlock.canKill(location)) {
+                                        if (watchListMap == null) {
+                                            watchListMap = new BlockMap<>(cfg);
+                                        }
+                                        if (watchListMap.get(latestBlock) == null) {
+                                            watchListMap.put(latestBlock, new ArrayList<>());
+                                        }
+                                        watchListMap.get(latestBlock).add(floatingReadNode);
+                                    }
+                                }
+                            }
+                        }
+                        currentNodeMap.set(currentNode, latestBlock);
+                        currentBlock = latestBlock;
+                    }
+                    latestBlockToNodesMap.get(currentBlock).add(currentNode);
+                }
+            }
+        }
+        return watchListMap;
     }
 
     private static boolean verifySchedule(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap) {
