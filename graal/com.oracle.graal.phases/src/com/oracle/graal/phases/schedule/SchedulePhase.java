@@ -637,24 +637,21 @@ public final class SchedulePhase extends Phase {
                 stack.pop();
 
                 if (nodeToBlock.get(current) == null) {
-                    Node predecessor = current.predecessor();
-                    Block curBlock;
-                    if (predecessor != null) {
-                        // Predecessor determines block.
-                        curBlock = nodeToBlock.get(predecessor);
-                    } else {
+                    Block curBlock = cfg.blockFor(current);
+                    if (curBlock == null) {
+                        assert current.predecessor() == null && !(current instanceof FixedNode) : "The assignment of blocks to fixed nodes is already done when constructing the cfg.";
                         Block earliest = startBlock;
                         for (Node input : current.inputs()) {
-                            if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                                // ignore
+                            Block inputEarliest;
+                            if (input instanceof ControlSplitNode) {
+                                inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
                             } else {
-                                Block inputEarliest;
-                                if (input instanceof ControlSplitNode) {
-                                    inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
-                                } else {
-                                    inputEarliest = nodeToBlock.get(input);
-                                }
-                                assert inputEarliest != null : current + " / " + input;
+                                inputEarliest = nodeToBlock.get(input);
+                            }
+                            if (inputEarliest == null) {
+                                assert current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current;
+                            } else {
+                                assert inputEarliest != null;
                                 if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
                                     earliest = inputEarliest;
                                 }
