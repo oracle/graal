@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -36,4 +37,31 @@ public interface InstrumentationNode {
      * A short description of the particular role played by the node, intended to support debugging.
      */
     String instrumentationInfo();
+
+    /**
+     * Events at a Truffle node that get propagated through the Instrumentation Framework.
+     */
+    interface TruffleEvents {
+
+        /**
+         * An AST node's execute method is about to be called.
+         */
+        void enter(Node node, VirtualFrame vFrame);
+
+        /**
+         * An AST Node's {@code void}-valued execute method has just returned.
+         */
+        void returnVoid(Node node, VirtualFrame vFrame);
+
+        /**
+         * An AST Node's execute method has just returned a value (boxed if primitive).
+         */
+        void returnValue(Node node, VirtualFrame vFrame, Object result);
+
+        /**
+         * An AST Node's execute method has just thrown an exception.
+         */
+        void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
+
+    }
 }

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node.Child;
  * <p>
  * <ul>
  * <li>"Execution call" on a node is is defined as invocation of a node method that is instrumented
- * to produce the event {@link TruffleEventListener#enter(Node, VirtualFrame)};</li>
+ * to produce the event {@link ASTInstrumentListener#enter(Probe, Node, VirtualFrame)};</li>
  * <li>Execution calls are tabulated only at <em>instrumented</em> nodes, i.e. those for which
  * {@linkplain Node#isInstrumentable() isInstrumentable() == true};</li>
  * <li>Execution calls are tabulated only at nodes present in the AST when originally created;
@@ -95,15 +95,15 @@ public final class NodeExecCounter extends InstrumentationTool {
      * Listener for events at instrumented nodes. Counts are maintained in a shared table, so the
      * listener is stateless and can be shared by every {@link Instrument}.
      */
-    private final TruffleEventListener eventListener = new DefaultEventListener() {
+    private final ASTInstrumentListener instrumentListener = new DefaultASTInstrumentListener() {
         @Override
-        public void enter(Node node, VirtualFrame vFrame) {
+        public void enter(Probe probe, Node node, VirtualFrame vFrame) {
             if (isEnabled()) {
                 final Class<?> nodeClass = node.getClass();
                 /*
                  * Everything up to here is inlined by Truffle compilation. Delegate the next part
                  * to a method behind an inlining boundary.
-                 *
+                 * 
                  * Note that it is not permitted to pass a {@link VirtualFrame} across an inlining
                  * boundary; they are truly virtual in inlined code.
                  */
@@ -280,7 +280,7 @@ public final class NodeExecCounter extends InstrumentationTool {
 
             if (node.isInstrumentable()) {
                 try {
-                    final Instrument instrument = Instrument.create(eventListener, "NodeExecCounter");
+                    final Instrument instrument = Instrument.create(instrumentListener, "NodeExecCounter");
                     instruments.add(instrument);
                     node.probe().attach(instrument);
                 } catch (ProbeException ex) {
@@ -304,7 +304,7 @@ public final class NodeExecCounter extends InstrumentationTool {
         @Override
         public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
             if (countingTag == tag) {
-                final Instrument instrument = Instrument.create(eventListener, NodeExecCounter.class.getSimpleName());
+                final Instrument instrument = Instrument.create(instrumentListener, NodeExecCounter.class.getSimpleName());
                 instruments.add(instrument);
                 probe.attach(instrument);
             }

@@ -36,10 +36,8 @@ import org.junit.runner.notification.*;
 import org.junit.runners.*;
 import org.junit.runners.model.*;
 
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
-import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
@@ -271,12 +269,12 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
     }
 
     /**
-     * This sample instrument listener provides prints the value of an assignment (after the
-     * assignment is complete) to the {@link PrintStream} specified in the constructor. This
-     * instrument can only be attached to a wrapped {@link SLWriteLocalVariableNode}, but provides
-     * no guards to protect it from being attached elsewhere.
+     * This sample listener provides prints the value of an assignment (after the assignment is
+     * complete) to the {@link PrintStream} specified in the constructor. This listener can only be
+     * attached at {@link SLWriteLocalVariableNode}, but provides no guards to protect it from being
+     * attached elsewhere.
      */
-    public final class SLPrintAssigmentValueListener extends DefaultEventListener {
+    public final class SLPrintAssigmentValueListener extends DefaultInstrumentListener {
 
         private PrintStream output;
 
@@ -285,7 +283,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         }
 
         @Override
-        public void returnValue(Node node, VirtualFrame frame, Object result) {
+        public void returnValue(Probe probe, Object result) {
             output.println(result);
         }
     }

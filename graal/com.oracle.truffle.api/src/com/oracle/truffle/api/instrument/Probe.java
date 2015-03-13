@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
@@ -41,9 +42,9 @@ import com.oracle.truffle.api.utilities.*;
  * is intended to persist at the location, even if the specific node instance is
  * {@linkplain Node#replace(Node) replaced}.
  * <p>
- * The effect of a binding is to intercept {@linkplain TruffleEventListener execution events}
- * arriving at the node and notify each attached {@link Instrument} before execution is allowed to
- * proceed to the child.
+ * The effect of a binding is to intercept {@linkplain TruffleEvents execution events} arriving at
+ * the node and notify each attached {@link Instrument} before execution is allowed to proceed to
+ * the child.
  * <p>
  * A Probe is "inserted" into a GL node via a call to {@link Node#probe()}. No more than one Probe
  * can be inserted at a node.

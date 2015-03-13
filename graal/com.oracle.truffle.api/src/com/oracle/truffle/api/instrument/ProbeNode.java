@@ -27,14 +27,15 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.Instrument.InstrumentNode;
+import com.oracle.truffle.api.instrument.Instrument.AbstractInstrumentNode;
+import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 /**
  * Implementation interfaces and classes for attaching {@link Probe}s to {@link WrapperNode}s.
  */
-public abstract class ProbeNode extends Node implements TruffleEventListener, InstrumentationNode {
+public abstract class ProbeNode extends Node implements TruffleEvents, InstrumentationNode {
 
     /**
      * A node that can be inserted into a Truffle AST, and which enables {@linkplain Instrument
@@ -84,14 +85,14 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
 
         /**
          * Gets the node being "wrapped", i.e. the AST node for which
-         * {@linkplain TruffleEventListener execution events} will be reported through the
-         * Instrumentation Framework.
+         * {@linkplain InstrumentationNode.TruffleEvents execution events} will be reported through
+         * the Instrumentation Framework.
          */
         Node getChild();
 
         /**
          * Gets the {@link Probe} responsible for installing this wrapper; none if the wrapper
-         * installed via {@linkplain Node#probeLite(TruffleEventListener) "lite-Probing"}.
+         * installed via {@linkplain Node#probeLite(ASTInstrumentListener) "lite-Probing"}.
          */
         Probe getProbe();
 
@@ -119,8 +120,8 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
      * Creates a new {@link ProbeLiteNode} associated with, and attached to, a Guest Language
      * specific instance of {@link WrapperNode}.
      */
-    public static void insertProbeLite(WrapperNode wrapper, TruffleEventListener eventListener) {
-        final ProbeLiteNode probeLiteNode = new ProbeLiteNode(eventListener);
+    public static void insertProbeLite(WrapperNode wrapper, ASTInstrumentListener instrumentListener) {
+        final ProbeLiteNode probeLiteNode = new ProbeLiteNode(instrumentListener);
         wrapper.insertProbe(probeLiteNode);
     }
 
@@ -137,7 +138,7 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
     public abstract Probe getProbe() throws IllegalStateException;
 
     /**
-     * Adds an {@link InstrumentNode} to this chain.
+     * Adds an {@link AbstractInstrumentNode} to this chain.
      *
      * @throws IllegalStateException if at a "lite-Probed" location.
      */
@@ -168,9 +169,10 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
     private static final class ProbeFullNode extends ProbeNode {
 
         /**
-         * First {@link InstrumentNode} node in chain; {@code null} of no instruments in chain.
+         * First {@link AbstractInstrumentNode} node in chain; {@code null} of no instruments in
+         * chain.
          */
-        @Child protected InstrumentNode firstInstrument;
+        @Child protected AbstractInstrumentNode firstInstrument;
 
         // Never changed once set.
         @CompilationFinal private Probe probe = null;
@@ -208,7 +210,7 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
         @TruffleBoundary
         void removeInstrument(Instrument instrument) {
             assert instrument.getProbe() == probe;
-            final InstrumentNode modifiedChain = instrument.removeFromChain(firstInstrument);
+            final AbstractInstrumentNode modifiedChain = instrument.removeFromChain(firstInstrument);
             if (modifiedChain == null) {
                 firstInstrument = null;
             } else {
@@ -256,15 +258,15 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
     /**
      * Implementation of a probe that only ever has a single "instrument" associated with it. No
      * {@link Instrument} is ever created; instead this method simply delegates the various enter
-     * and return events to a {@link TruffleEventListener} passed in during construction.
+     * and return events to a {@link TruffleEvents} passed in during construction.
      */
     @NodeInfo(cost = NodeCost.NONE)
     private static final class ProbeLiteNode extends ProbeNode {
 
-        private final TruffleEventListener eventListener;
+        private final ASTInstrumentListener instrumentListener;
 
-        private ProbeLiteNode(TruffleEventListener eventListener) {
-            this.eventListener = eventListener;
+        private ProbeLiteNode(ASTInstrumentListener eventListener) {
+            this.instrumentListener = eventListener;
         }
 
         @Override
@@ -285,19 +287,19 @@ public abstract class ProbeNode extends Node implements TruffleEventListener, In
         }
 
         public void enter(Node node, VirtualFrame vFrame) {
-            eventListener.enter(node, vFrame);
+            instrumentListener.enter(getProbe(), node, vFrame);
         }
 
         public void returnVoid(Node node, VirtualFrame vFrame) {
-            eventListener.returnVoid(node, vFrame);
+            instrumentListener.returnVoid(getProbe(), node, vFrame);
         }
 
         public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-            eventListener.returnValue(node, vFrame, result);
+            instrumentListener.returnValue(getProbe(), node, vFrame, result);
         }
 
         public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-            eventListener.returnExceptional(node, vFrame, exception);
+            instrumentListener.returnExceptional(getProbe(), node, vFrame, exception);
         }
 
         public String instrumentationInfo() {
