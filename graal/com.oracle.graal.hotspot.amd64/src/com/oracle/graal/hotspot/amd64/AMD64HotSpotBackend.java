@@ -333,7 +333,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 return new AMD64RawNativeCallNode(returnType, functionPointer, args);
             }
         };
-        Backend backend = HotSpotGraalRuntime.runtime().getBackend(AMD64.class);
+        Backend backend = HotSpotGraalRuntime.runtime().getHostBackend();
         return new HotSpotNativeFunctionInterface(HotSpotGraalRuntime.runtime().getHostProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 
