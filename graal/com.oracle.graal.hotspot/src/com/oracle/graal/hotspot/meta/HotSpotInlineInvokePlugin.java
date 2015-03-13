@@ -49,19 +49,19 @@ public final class HotSpotInlineInvokePlugin implements InlineInvokePlugin {
         ResolvedJavaMethod subst = replacements.getMethodSubstitutionMethod(method);
         if (subst != null) {
             // Forced inlining of intrinsics
-            return new InlineInfo(subst, true);
+            return new InlineInfo(subst, true, true);
         }
         if (b.parsingReplacement()) {
             assert nodeIntrinsification.getIntrinsic(method) == null && method.getAnnotation(Word.Operation.class) == null && method.getAnnotation(HotSpotOperation.class) == null &&
                             !nodeIntrinsification.isFoldable(method) : format("%s should have been handled by %s", method.format("%H.%n(%p)"), DefaultGenericInvocationPlugin.class.getName());
 
             // Force inlining when parsing replacements
-            return new InlineInfo(method, true);
+            return new InlineInfo(method, true, true);
         } else {
             assert nodeIntrinsification.getIntrinsic(method) == null : String.format("@%s method %s must only be called from within a replacement%n%s", NodeIntrinsic.class.getSimpleName(),
                             method.format("%h.%n"), b);
             if (InlineDuringParsing.getValue() && method.hasBytecodes() && method.getCode().length <= TrivialInliningSize.getValue() && b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
-                return new InlineInfo(method, false);
+                return new InlineInfo(method, false, false);
             }
         }
         return null;

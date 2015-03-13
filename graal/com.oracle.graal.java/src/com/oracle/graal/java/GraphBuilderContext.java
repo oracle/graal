@@ -36,7 +36,9 @@ public interface GraphBuilderContext {
 
     /**
      * Information about a snippet or method substitution currently being processed by the graph
-     * builder.
+     * builder. When in the scope of a replacement, the graph builder does not check the value kinds
+     * flowing through the JVM state since replacements can employ non-Java kinds to represent
+     * values such as raw machine words and pointers.
      */
     public interface Replacement {
 
