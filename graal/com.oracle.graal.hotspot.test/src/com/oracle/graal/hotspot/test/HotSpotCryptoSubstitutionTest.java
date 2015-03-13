@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.nodes.spi.Replacements.*;
+
 import java.io.*;
 import java.lang.reflect.*;
 import java.security.*;
@@ -58,6 +60,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testEncryptSubstitution() throws Exception {
+        Assume.assumeTrue(SELF_RECURSIVE_INTRINSICS_ENABLED);
+
         byte[] seed = {0x4, 0x7, 0x1, 0x1};
         SecureRandom random = new SecureRandom(seed);
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
