@@ -79,7 +79,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                     schedule = null;
                     cfg = ControlFlowGraph.compute(graph, true, true, false, false);
                 } else {
-                    schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST);
+                    schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
                     schedule.apply(graph, false);
                     cfg = schedule.getCFG();
                 }
