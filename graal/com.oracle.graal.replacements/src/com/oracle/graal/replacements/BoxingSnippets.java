@@ -235,8 +235,7 @@ public class BoxingSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
-            template.instantiate(providers.getMetaAccess(), unbox, DEFAULT_REPLACER, tool, args);
-            GraphUtil.killWithUnusedFloatingInputs(unbox);
+            template.instantiate(providers.getMetaAccess(), unbox, DEFAULT_REPLACER, args);
         }
     }
 

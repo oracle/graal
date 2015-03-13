@@ -444,7 +444,7 @@ public class NodeIntrinsificationPhase extends Phase {
         } else if (usage instanceof UnboxNode) {
             UnboxNode unbox = (UnboxNode) usage;
             unbox.replaceAtUsages(intrinsifiedNode);
-            graph.removeFloating(unbox);
+            graph.removeFixed(unbox);
             Debug.log("%s: Removed an UnboxNode", Debug.contextSnapshot(JavaMethod.class));
         } else if (usage instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) usage;
