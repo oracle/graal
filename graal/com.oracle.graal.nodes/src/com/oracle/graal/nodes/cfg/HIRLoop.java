@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.nodes.*;
 
-public class HIRLoop extends Loop<Block> {
+public final class HIRLoop extends Loop<Block> {
 
     private LocationSet killLocations;
 
@@ -39,7 +39,7 @@ public class HIRLoop extends Loop<Block> {
         return ((LoopBeginNode) getHeader().getBeginNode()).loopEnds().count();
     }
 
-    protected LocationSet getKillLocations() {
+    private LocationSet getKillLocations() {
         if (killLocations == null) {
             killLocations = new LocationSet();
             for (Block b : this.getBlocks()) {
