@@ -1126,12 +1126,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (tryInline(args, targetMethod, invokeKind, returnType)) {
-// if (lastInstr instanceof StateSplit) {
-// StateSplit stateSplit = (StateSplit) lastInstr;
-// if (stateSplit.stateAfter() == null) {
-// stateSplit.setStateAfter(this.createStateAfter());
-// }
-// }
                     return;
                 }
 
