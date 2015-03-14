@@ -147,11 +147,14 @@ public class NewObjectSnippets implements Snippets {
             result = formatObject(hub, size, top, prototypeMarkWord, fillContents, constantSize, true);
         } else {
             new_stub.inc();
-            result = NewInstanceStubCall.call(hub);
+            result = newInstance(HotSpotBackend.NEW_INSTANCE, hub);
         }
         profileAllocation("instance", size, typeContext);
         return piCast(verifyOop(result), StampFactory.forNodeIntrinsic());
     }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native Object newInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
@@ -201,11 +204,14 @@ public class NewObjectSnippets implements Snippets {
             result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, maybeUnroll, true);
         } else {
             newarray_stub.inc();
-            result = NewArrayStubCall.call(hub, length);
+            result = newArray(HotSpotBackend.NEW_ARRAY, hub, length);
         }
         profileAllocation("array", allocationSize, typeContext);
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native Object newArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int length);
 
     public static final ForeignCallDescriptor DYNAMIC_NEW_ARRAY = new ForeignCallDescriptor("dynamic_new_array", Object.class, Class.class, int.class);
     public static final ForeignCallDescriptor DYNAMIC_NEW_INSTANCE = new ForeignCallDescriptor("dynamic_new_instance", Object.class, Class.class);
@@ -275,8 +281,11 @@ public class NewObjectSnippets implements Snippets {
         for (int i = 0; i < rank; i++) {
             dims.writeInt(i * 4, dimensions[i], INIT_LOCATION);
         }
-        return NewMultiArrayStubCall.call(hub, rank, dims);
+        return newArrayCall(HotSpotBackend.NEW_MULTI_ARRAY, hub, rank, dims);
     }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native Object newArrayCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dims);
 
     /**
      * Maximum number of long stores to emit when zeroing an object with a constant size. Larger
