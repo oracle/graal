@@ -44,7 +44,7 @@ public final class ExceptionObjectNode extends DispatchBeginNode implements Lowe
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return LocationIdentity.any();
     }
 
     @Override

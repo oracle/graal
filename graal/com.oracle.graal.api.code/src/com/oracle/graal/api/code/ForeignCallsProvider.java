@@ -37,8 +37,8 @@ public interface ForeignCallsProvider {
 
     /**
      * Gets the set of memory locations killed by a given foreign call. Returning the special value
-     * {@link LocationIdentity#ANY_LOCATION} denotes that the call kills all memory locations.
-     * Returning any empty array denotes that the call does not kill any memory locations.
+     * {@link LocationIdentity#any()} denotes that the call kills all memory locations. Returning
+     * any empty array denotes that the call does not kill any memory locations.
      */
     LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor);
 

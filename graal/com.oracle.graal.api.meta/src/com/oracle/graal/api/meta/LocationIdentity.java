@@ -40,7 +40,7 @@ public abstract class LocationIdentity {
      * analysis of memory accesses. A read from this location cannot be moved or coalesced with
      * other reads because its interaction with other reads is not known.
      */
-    public static final LocationIdentity ANY_LOCATION = NamedLocationIdentity.mutable("ANY_LOCATION");
+    private static final LocationIdentity ANY_LOCATION = NamedLocationIdentity.mutable("ANY_LOCATION");
 
     /**
      * Denotes the location of a value that is guaranteed to be unchanging.
@@ -52,15 +52,37 @@ public abstract class LocationIdentity {
      */
     public static final LocationIdentity ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("[].length");
 
+    protected final boolean immutable;
+
+    public static LocationIdentity any() {
+        return ANY_LOCATION;
+    }
+
+    protected LocationIdentity(boolean immutable) {
+        this.immutable = immutable;
+    }
+
     /**
      * Denotes a location is unchanging in all cases. Not that this is different than the Java
      * notion of final which only requires definite assignment.
      */
-    public boolean isImmutable() {
-        return false;
+    public final boolean isImmutable() {
+        return immutable;
     }
 
-    public boolean isMutable() {
-        return !isImmutable();
+    public final boolean isMutable() {
+        return !immutable;
+    }
+
+    public final boolean isAny() {
+        return this == ANY_LOCATION;
+    }
+
+    public final boolean isSingle() {
+        return this != ANY_LOCATION;
+    }
+
+    public final boolean overlaps(LocationIdentity other) {
+        return isAny() || other.isAny() || this.equals(other);
     }
 }

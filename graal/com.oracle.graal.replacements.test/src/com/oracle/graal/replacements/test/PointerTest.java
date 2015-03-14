@@ -79,7 +79,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void testRead3() {
         for (Kind kind : KINDS) {
-            assertRead(parseEager("read" + kind.name() + "3", AllowAssumptions.YES), kind, true, LocationIdentity.ANY_LOCATION);
+            assertRead(parseEager("read" + kind.name() + "3", AllowAssumptions.YES), kind, true, LocationIdentity.any());
         }
     }
 
@@ -100,7 +100,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void testWrite3() {
         for (Kind kind : KINDS) {
-            assertWrite(parseEager("write" + kind.name() + "3", AllowAssumptions.YES), true, LocationIdentity.ANY_LOCATION);
+            assertWrite(parseEager("write" + kind.name() + "3", AllowAssumptions.YES), true, LocationIdentity.any());
         }
     }
 

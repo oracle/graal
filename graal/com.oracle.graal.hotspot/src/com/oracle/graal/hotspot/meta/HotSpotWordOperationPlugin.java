@@ -114,7 +114,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 Stamp readStamp = KlassPointerStamp.klass();
                 LocationNode location;
                 if (args.length == 2) {
-                    location = makeLocation(b, args[1], ANY_LOCATION);
+                    location = makeLocation(b, args[1], any());
                 } else {
                     location = makeLocation(b, args[1], args[2]);
                 }

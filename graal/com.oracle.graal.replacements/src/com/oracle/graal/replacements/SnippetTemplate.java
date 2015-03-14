@@ -1027,8 +1027,8 @@ public class SnippetTemplate {
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
-            if (locationIdentity.equals(ANY_LOCATION)) {
-                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
+            if (locationIdentity.isAny()) {
+                assert !(memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             return true;
@@ -1038,12 +1038,12 @@ public class SnippetTemplate {
         Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). You might want %s to be a MemoryCheckpoint", replacee, kills, replacee);
 
         // remove ANY_LOCATION if it's just a kill by the start node
-        if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof MemoryAnchorNode) {
-            kills.remove(ANY_LOCATION);
+        if (memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) {
+            kills.remove(any());
         }
 
         // node can only lower to a ANY_LOCATION kill if the replacee also kills ANY_LOCATION
-        assert !kills.contains(ANY_LOCATION) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
+        assert !kills.contains(any()) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
 
         /*
          * kills to other locations than ANY_LOCATION can be still inserted if there aren't any

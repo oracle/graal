@@ -243,19 +243,19 @@ public class UnsafeArrayCopySnippets implements Snippets {
 
         Unsigned destNonVectorEnd = destStart.add(nonVectorBytes);
         while (destOffset.belowThan(destNonVectorEnd)) {
-            ObjectAccess.writeByte(dest, destOffset, ObjectAccess.readByte(src, srcOffset, ANY_LOCATION), ANY_LOCATION);
+            ObjectAccess.writeByte(dest, destOffset, ObjectAccess.readByte(src, srcOffset, any()), any());
             destOffset = destOffset.add(1);
             srcOffset = srcOffset.add(1);
         }
         // Unsigned destVectorEnd = destEnd.subtract(destEnd.unsignedRemainder(8));
         while (destOffset.belowThan(destVectorEnd)) {
-            ObjectAccess.writeWord(dest, destOffset, ObjectAccess.readWord(src, srcOffset, ANY_LOCATION), ANY_LOCATION);
+            ObjectAccess.writeWord(dest, destOffset, ObjectAccess.readWord(src, srcOffset, any()), any());
             destOffset = destOffset.add(wordSize());
             srcOffset = srcOffset.add(wordSize());
         }
         // Do the last bytes each when it is required to have absolute alignment.
         while (!supportsUnalignedMemoryAccess && destOffset.belowThan(destEnd)) {
-            ObjectAccess.writeByte(dest, destOffset, ObjectAccess.readByte(src, srcOffset, ANY_LOCATION), ANY_LOCATION);
+            ObjectAccess.writeByte(dest, destOffset, ObjectAccess.readByte(src, srcOffset, any()), any());
             destOffset = destOffset.add(1);
             srcOffset = srcOffset.add(1);
         }

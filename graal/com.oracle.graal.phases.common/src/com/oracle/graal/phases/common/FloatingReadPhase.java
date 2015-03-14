@@ -56,7 +56,7 @@ public class FloatingReadPhase extends Phase {
 
         public MemoryMapImpl(StartNode start) {
             lastMemorySnapshot = CollectionsFactory.newMap();
-            lastMemorySnapshot.put(ANY_LOCATION, start);
+            lastMemorySnapshot.put(any(), start);
         }
 
         public MemoryMapImpl() {
@@ -71,7 +71,7 @@ public class FloatingReadPhase extends Phase {
             } else {
                 lastLocationAccess = lastMemorySnapshot.get(locationIdentity);
                 if (lastLocationAccess == null) {
-                    lastLocationAccess = lastMemorySnapshot.get(ANY_LOCATION);
+                    lastLocationAccess = lastMemorySnapshot.get(any());
                     assert lastLocationAccess != null;
                 }
                 return lastLocationAccess;
@@ -280,7 +280,7 @@ public class FloatingReadPhase extends Phase {
 
         private static void processAccess(MemoryAccess access, MemoryMapImpl state) {
             LocationIdentity locationIdentity = access.getLocationIdentity();
-            if (!locationIdentity.equals(LocationIdentity.ANY_LOCATION)) {
+            if (!locationIdentity.equals(LocationIdentity.any())) {
                 MemoryNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 access.setLastLocationAccess(lastLocationAccess);
             }
@@ -297,7 +297,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         private static void processIdentity(LocationIdentity identity, MemoryCheckpoint checkpoint, MemoryMapImpl state) {
-            if (identity.equals(ANY_LOCATION)) {
+            if (identity.isAny()) {
                 state.lastMemorySnapshot.clear();
             }
             state.lastMemorySnapshot.put(identity, checkpoint);
@@ -345,7 +345,7 @@ public class FloatingReadPhase extends Phase {
         @Override
         protected Map<LoopExitNode, MemoryMapImpl> processLoop(LoopBeginNode loop, MemoryMapImpl initialState) {
             Set<LocationIdentity> modifiedLocations = modifiedInLoops.get(loop);
-            if (modifiedLocations.contains(ANY_LOCATION)) {
+            if (modifiedLocations.contains(any())) {
                 // create phis for all locations if ANY is modified in the loop
                 modifiedLocations = CollectionsFactory.newSet(modifiedLocations);
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.keySet());

@@ -47,21 +47,24 @@ public class LocationSet {
         }
     }
 
-    public boolean isKillNone() {
+    public boolean isEmpty() {
         return firstLocation == null;
     }
 
-    public boolean isKillAll() {
-        return LocationIdentity.ANY_LOCATION.equals(firstLocation);
+    public boolean isAny() {
+        return firstLocation != null && firstLocation.isAny();
     }
 
     public void add(LocationIdentity location) {
-        if (this.isKillAll()) {
+        if (this.isAny()) {
             return;
-        } else if (LocationIdentity.ANY_LOCATION.equals(location)) {
+        } else if (location.isAny()) {
             firstLocation = location;
             list = null;
+        } else if (location.isImmutable()) {
+            return;
         } else {
+            assert location.isMutable() && location.isSingle();
             if (firstLocation == null) {
                 firstLocation = location;
             } else if (location.equals(firstLocation)) {
@@ -92,10 +95,9 @@ public class LocationSet {
     }
 
     public boolean contains(LocationIdentity locationIdentity) {
-        assert locationIdentity != null;
-        assert !locationIdentity.equals(LocationIdentity.ANY_LOCATION);
+        assert locationIdentity.isSingle();
         assert locationIdentity.isMutable();
-        if (LocationIdentity.ANY_LOCATION.equals(firstLocation)) {
+        if (LocationIdentity.any().equals(firstLocation)) {
             return true;
         }
         if (locationIdentity.equals(firstLocation)) {
@@ -125,10 +127,10 @@ public class LocationSet {
 
     @Override
     public String toString() {
-        if (this.isKillAll()) {
-            return "KILLALL";
-        } else if (this.isKillNone()) {
-            return "KILLNONE";
+        if (this.isAny()) {
+            return "ANY";
+        } else if (this.isEmpty()) {
+            return "EMPTY";
         } else {
             List<LocationIdentity> copyAsList = getCopyAsList();
             return Arrays.toString(copyAsList.toArray(new LocationIdentity[0]));

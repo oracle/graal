@@ -76,7 +76,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, LIRL
         } else {
             int index = locationIdentities.indexOf(locationIdentity);
             if (index == -1) {
-                index = locationIdentities.indexOf(ANY_LOCATION);
+                index = locationIdentities.indexOf(any());
             }
             assert index != -1;
             return (MemoryNode) nodes.get(index);

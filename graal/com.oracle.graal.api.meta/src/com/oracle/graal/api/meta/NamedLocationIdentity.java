@@ -48,11 +48,9 @@ public final class NamedLocationIdentity extends LocationIdentity implements For
 
     protected final String name;
 
-    protected final boolean immutable;
-
     private NamedLocationIdentity(String name, boolean immutable) {
+        super(immutable);
         this.name = name;
-        this.immutable = immutable;
     }
 
     /**
@@ -109,12 +107,7 @@ public final class NamedLocationIdentity extends LocationIdentity implements For
 
     @Override
     public String toString() {
-        return name + (immutable ? ":immutable" : ":mutable");
-    }
-
-    @Override
-    public boolean isImmutable() {
-        return immutable;
+        return name + (isImmutable() ? ":immutable" : ":mutable");
     }
 
     /**

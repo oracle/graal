@@ -1135,7 +1135,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     invoke = createInvoke(callTarget, resultType);
                 } else {
                     invoke = createInvokeWithException(callTarget, resultType);
-                    AbstractBeginNode beginNode = currentGraph.add(new KillingBeginNode(LocationIdentity.ANY_LOCATION));
+                    AbstractBeginNode beginNode = currentGraph.add(new KillingBeginNode(LocationIdentity.any()));
                     invoke.setNext(beginNode);
                     lastInstr = beginNode;
                 }

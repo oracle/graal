@@ -45,7 +45,7 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return LocationIdentity.any();
     }
 
     @Override

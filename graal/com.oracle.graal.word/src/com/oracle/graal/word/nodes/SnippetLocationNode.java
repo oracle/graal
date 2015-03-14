@@ -74,7 +74,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
             return identity;
         }
         // We do not know our actual location identity yet, so be conservative.
-        return ANY_LOCATION;
+        return any();
     }
 
     @Override

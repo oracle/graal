@@ -102,7 +102,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
                 Kind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
                 LocationNode location;
                 if (args.length == 2) {
-                    location = makeLocation(b, args[1], ANY_LOCATION);
+                    location = makeLocation(b, args[1], any());
                 } else {
                     location = makeLocation(b, args[1], args[2]);
                 }
@@ -112,7 +112,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
             case READ_HEAP: {
                 assert args.length == 3;
                 Kind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
-                LocationNode location = makeLocation(b, args[1], ANY_LOCATION);
+                LocationNode location = makeLocation(b, args[1], any());
                 BarrierType barrierType = snippetReflection.asObject(BarrierType.class, args[2].asJavaConstant());
                 b.push(returnStackKind, readOp(b, readKind, args[0], location, barrierType, true));
                 break;
@@ -125,7 +125,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
                 Kind writeKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(wordMethod.isStatic() ? 2 : 1, wordMethod.getDeclaringClass()));
                 LocationNode location;
                 if (args.length == 3) {
-                    location = makeLocation(b, args[1], LocationIdentity.ANY_LOCATION);
+                    location = makeLocation(b, args[1], LocationIdentity.any());
                 } else {
                     location = makeLocation(b, args[1], args[3]);
                 }

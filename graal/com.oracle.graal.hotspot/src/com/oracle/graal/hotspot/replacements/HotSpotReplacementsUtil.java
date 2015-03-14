@@ -569,7 +569,7 @@ public class HotSpotReplacementsUtil {
 
     public static Word loadWordFromObject(Object object, int offset) {
         ReplacementsUtil.staticAssert(offset != hubOffset(), "Use loadHubIntrinsic instead of loadWordFromObject");
-        return loadWordFromObjectIntrinsic(object, offset, getWordKind(), LocationIdentity.ANY_LOCATION);
+        return loadWordFromObjectIntrinsic(object, offset, getWordKind(), LocationIdentity.any());
     }
 
     public static Word loadWordFromObject(Object object, int offset, LocationIdentity identity) {

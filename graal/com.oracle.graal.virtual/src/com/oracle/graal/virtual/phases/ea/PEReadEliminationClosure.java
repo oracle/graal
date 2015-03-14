@@ -101,13 +101,15 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             state.addReadCache(object, store.field().getLocationIdentity(), value, this);
             return result;
         } else {
-            processIdentity(state, ANY_LOCATION);
+            processIdentity(state, any());
         }
         return false;
     }
 
     private boolean processLoadField(LoadFieldNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (!load.isVolatile()) {
+        if (load.isVolatile()) {
+            processIdentity(state, any());
+        } else {
             ValueNode object = GraphUtil.unproxify(load.object());
             ValueNode cachedValue = state.getReadCache(object, load.field().getLocationIdentity(), this);
             if (cachedValue != null) {
@@ -117,14 +119,12 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             } else {
                 state.addReadCache(object, load.field().getLocationIdentity(), load, this);
             }
-        } else {
-            processIdentity(state, ANY_LOCATION);
         }
         return false;
     }
 
     private static void processIdentity(PEReadEliminationBlockState state, LocationIdentity identity) {
-        if (identity.equals(ANY_LOCATION)) {
+        if (identity.isAny()) {
             state.killReadCache();
         } else {
             state.killReadCache(identity);

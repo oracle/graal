@@ -219,7 +219,7 @@ public final class Block extends AbstractBlockBase<Block> {
                     result.add(identity);
                 }
             }
-            if (result.isKillAll()) {
+            if (result.isAny()) {
                 break;
             }
         }
@@ -240,11 +240,11 @@ public final class Block extends AbstractBlockBase<Block> {
             for (Block b : this.getPredecessors()) {
                 if (b != stopBlock && (!this.isLoopHeader() || b.getLoopDepth() < this.getLoopDepth())) {
                     dominatorResult.addAll(b.getKillLocations());
-                    if (dominatorResult.isKillAll()) {
+                    if (dominatorResult.isAny()) {
                         break;
                     }
                     b.calcKillLocationsBetweenThisAndTarget(dominatorResult, stopBlock);
-                    if (dominatorResult.isKillAll()) {
+                    if (dominatorResult.isAny()) {
                         break;
                     }
                 }
@@ -256,7 +256,7 @@ public final class Block extends AbstractBlockBase<Block> {
 
     private void calcKillLocationsBetweenThisAndTarget(LocationSet result, Block stopBlock) {
         assert AbstractControlFlowGraph.dominates(stopBlock, this);
-        if (stopBlock == this || result.isKillAll()) {
+        if (stopBlock == this || result.isAny()) {
             // We reached the stop block => nothing to do.
             return;
         } else {
@@ -267,7 +267,7 @@ public final class Block extends AbstractBlockBase<Block> {
                 // from the dominator onwards.
                 calcKillLocationsBetweenThisAndTarget(result, this.getDominator());
                 result.addAll(this.getDominator().getKillLocations());
-                if (result.isKillAll()) {
+                if (result.isAny()) {
                     return;
                 }
                 this.getDominator().calcKillLocationsBetweenThisAndTarget(result, stopBlock);

@@ -48,14 +48,13 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
      * This value contains all flags as stored in the VM including internal ones.
      */
     private final int modifiers;
-    private final LocationIdentity locationIdentity = new LocationIdentity() {
+    private final LocationIdentity locationIdentity = new FieldLocationIdentity(this);
 
-    };
-
-    public static class FieldLocationIdentity {
+    public static class FieldLocationIdentity extends LocationIdentity {
         HotSpotResolvedJavaFieldImpl inner;
 
         public FieldLocationIdentity(HotSpotResolvedJavaFieldImpl inner) {
+            super(false);
             this.inner = inner;
         }
 

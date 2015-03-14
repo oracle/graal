@@ -62,7 +62,7 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
     }
 
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return LocationIdentity.any();
     }
 
     protected void replaceSnippetInvokes(StructuredGraph snippetGraph) {

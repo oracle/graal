@@ -248,19 +248,19 @@ public final class SchedulePhase extends Phase {
     }
 
     private static void fillKillSet(LocationSet killed, List<Node> subList) {
-        if (!killed.isKillAll()) {
+        if (!killed.isAny()) {
             for (Node n : subList) {
                 // Check if this node kills a node in the watch list.
                 if (n instanceof MemoryCheckpoint.Single) {
                     LocationIdentity identity = ((MemoryCheckpoint.Single) n).getLocationIdentity();
                     killed.add(identity);
-                    if (killed.isKillAll()) {
+                    if (killed.isAny()) {
                         return;
                     }
                 } else if (n instanceof MemoryCheckpoint.Multi) {
                     for (LocationIdentity identity : ((MemoryCheckpoint.Multi) n).getLocationIdentities()) {
                         killed.add(identity);
-                        if (killed.isKillAll()) {
+                        if (killed.isAny()) {
                             return;
                         }
                     }
@@ -283,7 +283,7 @@ public final class SchedulePhase extends Phase {
         ArrayList<FloatingReadNode> watchList = null;
         if (watchListMap != null) {
             watchList = watchListMap.get(b);
-            assert watchList == null || !b.getKillLocations().isKillNone();
+            assert watchList == null || !b.getKillLocations().isEmpty();
         }
         AbstractBeginNode beginNode = b.getBeginNode();
         if (beginNode instanceof LoopExitNode) {
@@ -348,7 +348,7 @@ public final class SchedulePhase extends Phase {
 
     private static void checkWatchList(ArrayList<FloatingReadNode> watchList, LocationIdentity identity, Block b, ArrayList<Node> result, NodeMap<Block> nodeMap, NodeBitMap unprocessed) {
         assert identity.isMutable();
-        if (LocationIdentity.ANY_LOCATION.equals(identity)) {
+        if (identity.isAny()) {
             for (FloatingReadNode r : watchList) {
                 if (unprocessed.isMarked(r)) {
                     sortIntoList(r, b, result, nodeMap, unprocessed, null);
@@ -360,9 +360,9 @@ public final class SchedulePhase extends Phase {
             while (index < watchList.size()) {
                 FloatingReadNode r = watchList.get(index);
                 LocationIdentity locationIdentity = r.getLocationIdentity();
-                assert !LocationIdentity.FINAL_LOCATION.equals(locationIdentity);
+                assert locationIdentity.isMutable();
                 if (unprocessed.isMarked(r)) {
-                    if (LocationIdentity.ANY_LOCATION.equals(identity) || LocationIdentity.ANY_LOCATION.equals(locationIdentity) || identity.equals(locationIdentity)) {
+                    if (identity.overlaps(locationIdentity)) {
                         sortIntoList(r, b, result, nodeMap, unprocessed, null);
                     } else {
                         ++index;

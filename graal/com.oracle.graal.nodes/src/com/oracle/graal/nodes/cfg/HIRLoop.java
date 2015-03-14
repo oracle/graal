@@ -45,14 +45,14 @@ public class HIRLoop extends Loop<Block> {
             for (Block b : this.getBlocks()) {
                 if (b.getLoop() == this) {
                     killLocations.addAll(b.getKillLocations());
-                    if (killLocations.isKillAll()) {
+                    if (killLocations.isAny()) {
                         break;
                     }
                 }
             }
         }
         for (Loop<Block> child : this.getChildren()) {
-            if (killLocations.isKillAll()) {
+            if (killLocations.isAny()) {
                 break;
             }
             killLocations.addAll(((HIRLoop) child).getKillLocations());

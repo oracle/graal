@@ -337,7 +337,7 @@ public class TruffleGraphBuilderPlugins {
             if (location.isConstant()) {
                 LocationIdentity locationIdentity;
                 if (location.isNullConstant()) {
-                    locationIdentity = LocationIdentity.ANY_LOCATION;
+                    locationIdentity = LocationIdentity.any();
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
@@ -363,7 +363,7 @@ public class TruffleGraphBuilderPlugins {
             if (locationArgument.isConstant()) {
                 LocationIdentity locationIdentity;
                 if (locationArgument.isNullConstant()) {
-                    locationIdentity = LocationIdentity.ANY_LOCATION;
+                    locationIdentity = LocationIdentity.any();
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
                 }
