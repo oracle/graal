@@ -352,10 +352,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (method.isSynchronized()) {
                         // add a monitor enter to the start block
                         methodSynchronizedObject = synchronizedObject(frameState, method);
-                        MonitorEnterNode monitorEnter = genMonitorEnter(methodSynchronizedObject);
                         frameState.clearNonLiveLocals(startBlock, liveness, true);
                         assert bci() == 0;
-                        monitorEnter.setStateAfter(createFrameState(bci()));
+                        genMonitorEnter(methodSynchronizedObject, bci());
                     }
 
                     if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
@@ -761,8 +760,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected ValueNode genStoreIndexed(ValueNode array, ValueNode index, Kind kind, ValueNode value) {
-                return new StoreIndexedNode(array, index, kind, value);
+            protected void genStoreIndexed(ValueNode array, ValueNode index, Kind kind, ValueNode value) {
+                StoreIndexedNode storeIndexed = new StoreIndexedNode(array, index, kind, value);
+                append(storeIndexed);
+                storeIndexed.setStateAfter(this.createStateAfter());
             }
 
             @Override
@@ -978,8 +979,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected ValueNode genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
-                return new StoreFieldNode(receiver, field, value);
+            protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
+                StoreFieldNode storeFieldNode = new StoreFieldNode(receiver, field, value);
+                append(storeFieldNode);
+                storeFieldNode.setStateAfter(this.createFrameState(stream.nextBCI()));
             }
 
             /**
@@ -1123,6 +1126,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 if (tryInline(args, targetMethod, invokeKind, returnType)) {
+// if (lastInstr instanceof StateSplit) {
+// StateSplit stateSplit = (StateSplit) lastInstr;
+// if (stateSplit.stateAfter() == null) {
+// stateSplit.setStateAfter(this.createStateAfter());
+// }
+// }
                     return;
                 }
 
@@ -1307,6 +1316,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
                 InvokeNode invoke = append(new InvokeNode(callTarget, bci()));
                 frameState.pushReturn(resultType, invoke);
+                invoke.setStateAfter(createFrameState(stream.nextBCI()));
                 return invoke;
             }
 
@@ -1357,22 +1367,22 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected MonitorEnterNode genMonitorEnter(ValueNode x) {
+            protected void genMonitorEnter(ValueNode x, int bci) {
                 MonitorIdNode monitorId = currentGraph.add(new MonitorIdNode(frameState.lockDepth()));
                 MonitorEnterNode monitorEnter = append(new MonitorEnterNode(x, monitorId));
                 frameState.pushLock(x, monitorId);
-                return monitorEnter;
+                monitorEnter.setStateAfter(createFrameState(bci));
             }
 
             @Override
-            protected MonitorExitNode genMonitorExit(ValueNode x, ValueNode escapedReturnValue) {
+            protected void genMonitorExit(ValueNode x, ValueNode escapedReturnValue, int bci) {
                 MonitorIdNode monitorId = frameState.peekMonitorId();
                 ValueNode lockedObject = frameState.popLock();
                 if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
                     throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject)));
                 }
                 MonitorExitNode monitorExit = append(new MonitorExitNode(x, monitorId, escapedReturnValue));
-                return monitorExit;
+                monitorExit.setStateAfter(createFrameState(bci));
             }
 
             @Override
@@ -1927,11 +1937,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private void synchronizedEpilogue(int bci, ValueNode currentReturnValue, Kind currentReturnValueKind) {
                 if (method.isSynchronized()) {
-                    MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, currentReturnValue);
                     if (currentReturnValue != null) {
                         frameState.push(currentReturnValueKind, currentReturnValue);
                     }
-                    monitorExit.setStateAfter(createFrameState(bci));
+                    genMonitorExit(methodSynchronizedObject, currentReturnValue, bci);
                     assert !frameState.rethrowException();
                 }
             }
@@ -2062,19 +2071,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     stream.next();
                     bci = stream.currentBCI();
 
-                    if (bci > block.endBci) {
-                        frameState.clearNonLiveLocals(currentBlock, liveness, false);
-                    }
-                    if (lastInstr instanceof StateSplit) {
-                        if (lastInstr instanceof BeginNode) {
-                            // BeginNodes do not need a frame state
-                        } else {
-                            StateSplit stateSplit = (StateSplit) lastInstr;
-                            if (stateSplit.stateAfter() == null) {
-                                stateSplit.setStateAfter(createFrameState(bci));
-                            }
-                        }
-                    }
+                    assert block == currentBlock;
+                    assert !(lastInstr instanceof StateSplit) || lastInstr instanceof BeginNode || ((StateSplit) lastInstr).stateAfter() != null : lastInstr;
                     lastInstr = finishInstruction(lastInstr, frameState);
                     if (bci < endBCI) {
                         if (bci > block.endBci) {
@@ -2388,7 +2386,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private FrameState createFrameState(int bci) {
+                if (currentBlock != null && bci > currentBlock.endBci) {
+                    frameState.clearNonLiveLocals(currentBlock, liveness, false);
+                }
                 return frameState.create(bci);
+            }
+
+            public FrameState createStateAfter() {
+                return createFrameState(stream.nextBCI());
             }
         }
     }

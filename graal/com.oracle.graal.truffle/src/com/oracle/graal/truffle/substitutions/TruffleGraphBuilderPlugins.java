@@ -368,7 +368,9 @@ public class TruffleGraphBuilderPlugins {
                     locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
                 }
 
-                b.append(new UnsafeStoreNode(object, offset, value, kind, locationIdentity, null));
+                UnsafeStoreNode unsafeStore = new UnsafeStoreNode(object, offset, value, kind, locationIdentity, null);
+                b.append(unsafeStore);
+                unsafeStore.setStateAfter(b.createStateAfter());
                 return true;
             }
             // TODO: should we throw GraalInternalError.shouldNotReachHere() here?

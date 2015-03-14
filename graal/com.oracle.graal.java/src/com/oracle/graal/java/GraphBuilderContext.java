@@ -84,6 +84,8 @@ public interface GraphBuilderContext {
 
     StructuredGraph getGraph();
 
+    FrameState createStateAfter();
+
     /**
      * Gets the parsing context for the method that inlines the method being parsed by this context.
      */

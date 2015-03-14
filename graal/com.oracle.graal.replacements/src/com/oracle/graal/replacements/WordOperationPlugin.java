@@ -246,7 +246,9 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
         final BarrierType barrier = (op == Opcode.WRITE_BARRIERED ? BarrierType.PRECISE : BarrierType.NONE);
         final boolean compressible = (op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED);
         final boolean initialize = (op == Opcode.INITIALIZE);
-        b.append(new JavaWriteNode(writeKind, base, value, location, barrier, compressible, initialize));
+        JavaWriteNode writeNode = new JavaWriteNode(writeKind, base, value, location, barrier, compressible, initialize);
+        b.append(writeNode);
+        writeNode.setStateAfter(b.createStateAfter());
     }
 
     public LocationNode makeLocation(GraphBuilderContext b, ValueNode offset, LocationIdentity locationIdentity) {

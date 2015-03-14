@@ -100,7 +100,9 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         if (res instanceof UnsafeCopyNode) {
             UnsafeCopyNode copy = (UnsafeCopyNode) res;
             UnsafeLoadNode value = b.append(new UnsafeLoadNode(copy.sourceObject(), copy.sourceOffset(), copy.accessKind(), copy.getLocationIdentity()));
-            b.append(new UnsafeStoreNode(copy.destinationObject(), copy.destinationOffset(), value, copy.accessKind(), copy.getLocationIdentity()));
+            UnsafeStoreNode unsafeStore = new UnsafeStoreNode(copy.destinationObject(), copy.destinationOffset(), value, copy.accessKind(), copy.getLocationIdentity());
+            b.append(unsafeStore);
+            unsafeStore.setStateAfter(b.createStateAfter());
             return true;
         } else if (res instanceof ForeignCallNode) {
             ForeignCallNode foreign = (ForeignCallNode) res;
@@ -113,6 +115,13 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             b.push(returnKind.getStackKind(), res);
         } else {
             assert res.getKind().getStackKind() == Kind.Void;
+        }
+
+        if (res instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) res;
+            if (stateSplit.stateAfter() == null) {
+                stateSplit.setStateAfter(b.createStateAfter());
+            }
         }
 
         return true;
