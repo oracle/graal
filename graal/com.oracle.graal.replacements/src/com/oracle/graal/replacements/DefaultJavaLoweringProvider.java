@@ -590,7 +590,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected ConstantLocationNode createFieldLocation(StructuredGraph graph, ResolvedJavaField field, boolean initialization) {
         int offset = fieldOffset(field);
         if (offset >= 0) {
-            LocationIdentity loc = initialization ? initLocationIdentity() : field;
+            LocationIdentity loc = initialization ? initLocationIdentity() : field.getLocationIdentity();
             return graph.unique(new ConstantLocationNode(loc, offset));
         } else {
             return null;

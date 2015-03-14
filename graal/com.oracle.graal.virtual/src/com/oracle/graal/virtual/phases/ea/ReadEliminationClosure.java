@@ -60,7 +60,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 processIdentity(state, ANY_LOCATION);
             } else {
                 ValueNode object = GraphUtil.unproxify(access.object());
-                LoadCacheEntry identifier = new LoadCacheEntry(object, access.field());
+                LoadCacheEntry identifier = new LoadCacheEntry(object, access.field().getLocationIdentity());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (node instanceof LoadFieldNode) {
                     if (cachedValue != null && access.stamp().isCompatible(cachedValue.stamp())) {
@@ -78,7 +78,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                         effects.deleteNode(store);
                         deleted = true;
                     }
-                    state.killReadCache(store.field());
+                    state.killReadCache(store.field().getLocationIdentity());
                     state.addCacheEntry(identifier, value);
                 }
             }
