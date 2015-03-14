@@ -40,7 +40,7 @@ import com.oracle.graal.word.*;
  * A call to the runtime code implementing the uncommon trap logic.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
-public final class UncommonTrapCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
+public final class UncommonTrapCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<UncommonTrapCallNode> TYPE = NodeClass.create(UncommonTrapCallNode.class);
     @Input ValueNode trapRequest;
@@ -55,8 +55,8 @@ public final class UncommonTrapCallNode extends FixedWithNextNode implements LIR
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return foreignCalls.getKilledLocations(UNCOMMON_TRAP);
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.any();
     }
 
     public SaveRegistersOp getSaveRegistersOp() {
