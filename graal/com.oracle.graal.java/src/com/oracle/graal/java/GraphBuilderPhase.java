@@ -1987,10 +1987,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private boolean isBlockEnd(Node n) {
-                return n instanceof ControlSplitNode || n instanceof ControlSinkNode;
-            }
-
             @Override
             protected void iterateBytecodesForBlock(BciBlock block) {
                 if (block.isLoopHeader && !explodeLoops) {
@@ -2059,7 +2055,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         throw asParserError(e);
                     }
 
-                    if (lastInstr == null || isBlockEnd(lastInstr) || lastInstr.next() != null) {
+                    if (lastInstr == null || lastInstr.next() != null) {
                         break;
                     }
 
