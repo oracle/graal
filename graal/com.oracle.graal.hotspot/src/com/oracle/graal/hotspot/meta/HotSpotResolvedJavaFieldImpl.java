@@ -75,6 +75,11 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         public int hashCode() {
             return inner.hashCode();
         }
+
+        @Override
+        public String toString() {
+            return inner.name;
+        }
     }
 
     public HotSpotResolvedJavaFieldImpl(HotSpotResolvedObjectTypeImpl holder, String name, JavaType type, long offset, int modifiers) {

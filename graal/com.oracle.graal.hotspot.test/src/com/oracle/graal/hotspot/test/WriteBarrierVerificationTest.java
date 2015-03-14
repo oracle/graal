@@ -657,15 +657,13 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     if (node instanceof WriteNode) {
                         WriteNode write = (WriteNode) node;
                         LocationIdentity obj = write.getLocationIdentity();
-                        if (obj instanceof ResolvedJavaField) {
-                            if (((ResolvedJavaField) obj).getName().equals("barrierIndex")) {
-                                /*
-                                 * A "barrierIndex" variable was found and is checked against the
-                                 * input barrier array.
-                                 */
-                                if (eliminateBarrier(write.value().asJavaConstant().asInt(), removedBarrierIndices)) {
-                                    return true;
-                                }
+                        if (obj.toString().equals("barrierIndex")) {
+                            /*
+                             * A "barrierIndex" variable was found and is checked against the input
+                             * barrier array.
+                             */
+                            if (eliminateBarrier(write.value().asJavaConstant().asInt(), removedBarrierIndices)) {
+                                return true;
                             }
                         }
                     } else if (node instanceof SerialWriteBarrier || node instanceof G1PostWriteBarrier) {
