@@ -211,10 +211,7 @@ public class InliningUtil {
         if (callTarget.targetMethod() == null) {
             return "target method is null";
         }
-        if (invoke.stateAfter() == null) {
-            // TODO (chaeubl): why should an invoke not have a state after?
-            return "the invoke has no after state";
-        }
+        assert invoke.stateAfter() != null;
         if (!invoke.useForInlining()) {
             return "the invoke is marked to be not used for inlining";
         }
