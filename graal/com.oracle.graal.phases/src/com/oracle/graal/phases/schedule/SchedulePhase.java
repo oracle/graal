@@ -547,8 +547,9 @@ public final class SchedulePhase extends Phase {
             if (n instanceof FloatingReadNode) {
                 FloatingReadNode floatingReadNode = (FloatingReadNode) n;
                 LocationIdentity locationIdentity = floatingReadNode.getLocationIdentity();
-                if (locationIdentity.isMutable()) {
-                    ValueNode lastAccessLocation = floatingReadNode.getLastLocationAccess().asNode();
+                MemoryNode lastLocationAccess = floatingReadNode.getLastLocationAccess();
+                if (locationIdentity.isMutable() && lastLocationAccess != null) {
+                    ValueNode lastAccessLocation = lastLocationAccess.asNode();
                     if (nodeToBlock.get(lastAccessLocation) == b && lastAccessLocation != beginNode) {
                         // This node's last access location is within this block. Add to watch list
                         // when processing the last access location.
