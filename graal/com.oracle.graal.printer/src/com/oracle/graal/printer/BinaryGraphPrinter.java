@@ -469,7 +469,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void writeBlocks(List<Block> blocks, BlockMap<List<Node>> blockToNodes) throws IOException {
-        if (blocks != null) {
+        if (blocks != null && blockToNodes != null) {
             for (Block block : blocks) {
                 List<Node> nodes = blockToNodes.get(block);
                 if (nodes == null) {

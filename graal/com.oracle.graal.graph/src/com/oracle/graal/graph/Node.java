@@ -1074,4 +1074,8 @@ public abstract class Node implements Cloneable, Formattable {
     public boolean valueEquals(Node other) {
         return getNodeClass().dataEquals(this, other);
     }
+
+    public final void pushInputs(NodeStack stack) {
+        getNodeClass().getInputEdges().pushAll(this, stack);
+    }
 }
