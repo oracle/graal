@@ -36,11 +36,10 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderPlugin.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -184,13 +183,13 @@ public class PartialEvaluator {
         }
     }
 
-    private class InlineInvokePlugin implements GraphBuilderPlugin.InlineInvokePlugin {
+    private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
         private Stack<TruffleInlining> inlining;
         private OptimizedDirectCallNode lastDirectCallNode;
         private final Replacements replacements;
 
-        public InlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
+        public PEInlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
             this.inlining = new Stack<>();
             this.inlining.push(inlining);
             this.replacements = replacements;
@@ -233,7 +232,7 @@ public class PartialEvaluator {
         }
     }
 
-    private class LoopExplosionPlugin implements GraphBuilderPlugin.LoopExplosionPlugin {
+    private class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
         public boolean shouldExplodeLoops(ResolvedJavaMethod method) {
             return method.getAnnotation(ExplodeLoop.class) != null;
@@ -257,8 +256,8 @@ public class PartialEvaluator {
         plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         plugins.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-        plugins.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
-        plugins.setLoopExplosionPlugin(new LoopExplosionPlugin());
+        plugins.setInlineInvokePlugin(new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
+        plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations, null).apply(graph);

@@ -20,30 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.graphbuilderconf;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 
-public final class HotSpotParameterPlugin implements ParameterPlugin {
-    private final WordTypes wordTypes;
-
-    public HotSpotParameterPlugin(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
+public interface LoadFieldPlugin extends GraphBuilderPlugin {
+    @SuppressWarnings("unused")
+    default boolean apply(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
+        return false;
     }
 
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
-        if (b.parsingReplacement()) {
-            ResolvedJavaType type = StampTool.typeOrNull(stamp);
-            if (wordTypes.isWord(type)) {
-                return new ParameterNode(index, wordTypes.getWordStamp(type));
-            }
+    @SuppressWarnings("unused")
+    default boolean apply(GraphBuilderContext graphBuilderContext, ResolvedJavaField staticField) {
+        return false;
+    }
+
+    default boolean tryConstantFold(GraphBuilderContext b, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ResolvedJavaField field, JavaConstant receiver) {
+        JavaConstant result = constantReflection.readConstantFieldValue(field, receiver);
+        if (result != null) {
+            ConstantNode constantNode = b.append(ConstantNode.forConstant(result, metaAccess));
+            b.push(constantNode.getKind().getStackKind(), constantNode);
+            return true;
         }
-        return null;
+        return false;
     }
 }

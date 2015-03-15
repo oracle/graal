@@ -20,30 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.graphbuilderconf;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 
-public final class HotSpotParameterPlugin implements ParameterPlugin {
-    private final WordTypes wordTypes;
-
-    public HotSpotParameterPlugin(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
-    }
-
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
-        if (b.parsingReplacement()) {
-            ResolvedJavaType type = StampTool.typeOrNull(stamp);
-            if (wordTypes.isWord(type)) {
-                return new ParameterNode(index, wordTypes.getWordStamp(type));
-            }
-        }
-        return null;
-    }
+/**
+ * Plugin for handling an invocation based on some property of the method being invoked such as any
+ * annotations it may have.
+ */
+public interface GenericInvocationPlugin extends GraphBuilderPlugin {
+    /**
+     * Executes this plugin for an invocation of a given method with a given set of arguments.
+     *
+     * @return {@code true} if this plugin handled the invocation, {@code false} if not
+     */
+    boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args);
 }

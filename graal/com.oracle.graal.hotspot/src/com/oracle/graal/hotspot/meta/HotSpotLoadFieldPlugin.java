@@ -28,7 +28,6 @@ import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderPlugin.*;
 import com.oracle.graal.nodes.*;
 
 public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
