@@ -23,7 +23,7 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.java.GraphBuilderContext.*;
+import static com.oracle.graal.graphbuilderconf.GraphBuilderContext.*;
 import static com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation.*;
 import sun.misc.*;
 
@@ -32,10 +32,9 @@ import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
-import com.oracle.graal.java.InvocationPlugins.Receiver;
-import com.oracle.graal.java.InvocationPlugins.Registration;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderPlugin.*;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;

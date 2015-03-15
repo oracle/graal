@@ -20,18 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.graphbuilderconf;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.java.GraphBuilderPlugin.GenericInvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoadIndexedPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
+import com.oracle.graal.graphbuilderconf.GraphBuilderPlugin.*;
 import com.oracle.graal.nodes.*;
 
 public class GraphBuilderConfiguration {

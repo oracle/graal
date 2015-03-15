@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;

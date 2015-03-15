@@ -34,7 +34,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.java.*;
+import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;

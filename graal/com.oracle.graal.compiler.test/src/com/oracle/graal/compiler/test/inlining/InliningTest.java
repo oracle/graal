@@ -30,7 +30,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.java.*;
+import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;

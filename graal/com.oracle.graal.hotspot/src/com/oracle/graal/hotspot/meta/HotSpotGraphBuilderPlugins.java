@@ -22,22 +22,21 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.graphbuilderconf.GraphBuilderContext.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.java.GraphBuilderContext.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderPlugin.*;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
-import com.oracle.graal.java.InvocationPlugins.Registration;
-import com.oracle.graal.java.InvocationPlugins.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;

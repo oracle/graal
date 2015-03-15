@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.graphbuilderconf;
 
 import static java.lang.String.*;
 
@@ -30,7 +30,7 @@ import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.java.GraphBuilderPlugin.InvocationPlugin;
+import com.oracle.graal.graphbuilderconf.GraphBuilderPlugin.*;
 import com.oracle.graal.nodes.*;
 
 /**

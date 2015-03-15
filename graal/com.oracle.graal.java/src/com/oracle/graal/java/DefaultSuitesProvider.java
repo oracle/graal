@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;

@@ -20,15 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.graphbuilderconf;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
-import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin.InlineInfo;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -208,12 +206,12 @@ public interface GraphBuilderPlugin {
          *         invocation must not modify the graph being constructed.
          */
         static boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin plugin, ValueNode[] args) {
-            if (ALLOW_INVOCATION_PLUGIN_TO_DO_INLINING) {
-                ResolvedJavaMethod subst = plugin.getSubstitute();
-                if (subst != null) {
-                    return ((BytecodeParser) b).inline(null, targetMethod, new InlineInfo(subst, false), args);
-                }
-            }
+// if (ALLOW_INVOCATION_PLUGIN_TO_DO_INLINING) {
+// ResolvedJavaMethod subst = plugin.getSubstitute();
+// if (subst != null) {
+// return ((BytecodeParser) b).inline(null, targetMethod, new InlineInfo(subst, false), args);
+// }
+// }
             if (args.length == 0) {
                 return plugin.apply(b, targetMethod);
             } else if (args.length == 1) {

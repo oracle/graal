@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
