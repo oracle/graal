@@ -49,6 +49,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodeinfo.*;
@@ -774,7 +775,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault default} mode to
      * produce a graph.
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
@@ -784,7 +785,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault() default} mode to
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getDefault default} mode to
      * produce a graph.
      */
     protected StructuredGraph parseProfiled(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
@@ -792,8 +793,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
-     * to produce a graph.
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault eager} mode to
+     * produce a graph.
      *
      * @param methodName the name of the method in {@code this.getClass()} to be parsed
      */
@@ -802,19 +803,19 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault() eager} mode
-     * to produce a graph.
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getEagerDefault eager} mode to
+     * produce a graph.
      */
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault()), allowAssumptions);
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getEagerDefault(getDefaultGraphBuilderPlugins())), allowAssumptions);
     }
 
     /**
-     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getFullDebugDefault() full
-     * debug} mode to produce a graph.
+     * Parses a Java method in {@linkplain GraphBuilderConfiguration#getFullDebugDefault full debug}
+     * mode to produce a graph.
      */
     protected StructuredGraph parseDebug(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault()), allowAssumptions);
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault(getDefaultGraphBuilderPlugins())), allowAssumptions);
     }
 
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
@@ -828,30 +829,29 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected Plugins getDefaultGraphBuilderPlugins() {
+        PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite();
+        Plugins defaultPlugins = ((GraphBuilderPhase) suite.findPhase(GraphBuilderPhase.class).previous()).getGraphBuilderConfig().getPlugins();
+        // defensive copying
+        return new Plugins(defaultPlugins);
+    }
+
     protected PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
         // defensive copying
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 
     protected PhaseSuite<HighTierContext> getCustomGraphBuilderSuite(GraphBuilderConfiguration gbConf) {
-        PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite().copy();
+        PhaseSuite<HighTierContext> suite = getDefaultGraphBuilderSuite();
         ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
-        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) iterator.previous();
-        GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy().copyPluginsFrom(graphBuilderPhase.getGraphBuilderConfig()));
+        GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy());
         iterator.remove();
         iterator.add(new GraphBuilderPhase(gbConfCopy));
         return suite;
     }
 
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        editGraphBuilderPlugins(conf.getPlugins());
         return conf;
-    }
-
-    /**
-     * @param plugins
-     */
-    protected void editGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
     }
 
     protected Replacements getReplacements() {

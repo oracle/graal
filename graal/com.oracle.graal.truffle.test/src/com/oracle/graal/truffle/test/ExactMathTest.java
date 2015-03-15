@@ -32,9 +32,10 @@ import com.oracle.truffle.api.*;
 public class ExactMathTest extends GraalCompilerTest {
 
     @Override
-    protected void editGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(plugins.getInvocationPlugins());
-        super.editGraphBuilderPlugins(plugins);
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(conf.getPlugins().getInvocationPlugins());
+        super.editGraphBuilderConfiguration(conf);
+        return super.editGraphBuilderConfiguration(conf);
     }
 
     @Test

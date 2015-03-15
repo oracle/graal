@@ -193,7 +193,14 @@ public class InvocationPlugins {
     }
 
     protected final MetaAccessProvider metaAccess;
-    private final Map<MethodInfo, InvocationPlugin> registrations = new HashMap<>();
+
+    private final Map<MethodInfo, InvocationPlugin> registrations;
+
+    private final Thread registrationThread;
+
+    /**
+     * Null while registration is open, non-null when registration is closed.
+     */
     private volatile Map<ResolvedJavaMethod, InvocationPlugin> plugins;
 
     /**
@@ -201,8 +208,30 @@ public class InvocationPlugins {
      */
     private InvocationPlugins defaults;
 
+    /**
+     * Creates a set of invocation plugins with a given non-null set of plugins as the
+     * {@linkplain #getDefaults defaults}.
+     */
+    public InvocationPlugins(InvocationPlugins defaults) {
+        this.registrationThread = Thread.currentThread();
+        this.metaAccess = defaults.getMetaAccess();
+        this.registrations = new HashMap<>();
+        InvocationPlugins defs = defaults;
+        // Only adopt non-empty defaults
+        while (defs != null && defs.size() == 0) {
+            defs = defs.defaults;
+        }
+        this.defaults = defs;
+    }
+
     public InvocationPlugins(MetaAccessProvider metaAccess) {
+        this(metaAccess, 16);
+    }
+
+    public InvocationPlugins(MetaAccessProvider metaAccess, int estimatePluginCount) {
         this.metaAccess = metaAccess;
+        this.registrations = new HashMap<>(estimatePluginCount);
+        this.registrationThread = Thread.currentThread();
     }
 
     /**
@@ -210,11 +239,12 @@ public class InvocationPlugins {
      * registered for {@code method}.
      */
     public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        assert Thread.currentThread() == registrationThread : "invocation plugin registration must be single threaded";
         MethodInfo method = new MethodInfo(declaringClass, name, argumentTypes);
         assert Checker.check(method, plugin);
-        assert plugins == null;
+        assert plugins == null : "invocation plugin registration is closed";
         GraphBuilderPlugin oldValue = registrations.put(method, plugin);
-        assert oldValue == null;
+        assert oldValue == null : "a plugin is already registered for " + method;
     }
 
     /**
@@ -224,17 +254,23 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
+        InvocationPlugin res = null;
         if (plugins == null) {
             synchronized (this) {
                 if (plugins == null) {
-                    plugins = new HashMap<>(registrations.size());
-                    for (Map.Entry<MethodInfo, InvocationPlugin> e : registrations.entrySet()) {
-                        plugins.put(e.getKey().resolve(metaAccess), e.getValue());
+                    if (registrations.isEmpty()) {
+                        plugins = Collections.emptyMap();
+                    } else {
+                        // System.out.println("resolving " + registrations.size() + " plugins");
+                        plugins = new HashMap<>(registrations.size());
+                        for (Map.Entry<MethodInfo, InvocationPlugin> e : registrations.entrySet()) {
+                            plugins.put(e.getKey().resolve(metaAccess), e.getValue());
+                        }
                     }
                 }
             }
         }
-        InvocationPlugin res = plugins.get(method);
+        res = plugins.get(method);
         if (res == null && defaults != null) {
             return defaults.lookupInvocation(method);
         }
@@ -242,24 +278,11 @@ public class InvocationPlugins {
     }
 
     /**
-     * Sets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} if a
+     * Gets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} if a
      * plugin is not found in this object.
      */
-    public InvocationPlugins setDefaults(InvocationPlugins defaults) {
-        assert defaults != this.defaults;
-        InvocationPlugins old = this.defaults;
-        this.defaults = defaults;
-        return old;
-    }
-
-    /**
-     * Adds all the plugins from {@code other} to this object.
-     */
-    public void updateFrom(InvocationPlugins other) {
-        this.registrations.putAll(other.registrations);
-        if (other.defaults != null) {
-            updateFrom(other.defaults);
-        }
+    public InvocationPlugins getDefaults() {
+        return defaults;
     }
 
     @Override
@@ -309,5 +332,9 @@ public class InvocationPlugins {
 
     public MetaAccessProvider getMetaAccess() {
         return metaAccess;
+    }
+
+    public int size() {
+        return registrations.size();
     }
 }

@@ -34,8 +34,8 @@ import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     final HotSpotVMConfig config;
 
-    public HotSpotInvocationPlugins(HotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        super(metaAccess);
+    public HotSpotInvocationPlugins(HotSpotVMConfig config, MetaAccessProvider metaAccess, int estimatePluginCount) {
+        super(metaAccess, estimatePluginCount);
         this.config = config;
     }
 

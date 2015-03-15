@@ -80,11 +80,10 @@ public abstract class SnippetStub extends Stub implements Snippets {
     @Override
     protected StructuredGraph getGraph() {
         Plugins defaultPlugins = providers.getGraphBuilderPlugins();
-        Plugins plugins = new Plugins(providers.getMetaAccess()).updateFrom(defaultPlugins, false);
-        plugins.getInvocationPlugins().setDefaults(defaultPlugins.getInvocationPlugins());
-        plugins.setParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), plugins.getParameterPlugin(), providers.getMetaAccess(), providers.getSnippetReflection()));
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-        config.setPlugins(plugins);
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        Plugins plugins = new Plugins(defaultPlugins);
+        plugins.setParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), plugins.getParameterPlugin(), metaAccess, providers.getSnippetReflection()));
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM. Nor can they be
@@ -94,7 +93,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
         assert SnippetGraphUnderConstruction.get() == null;
         SnippetGraphUnderConstruction.set(graph);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, method).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, method).apply(graph);
         SnippetGraphUnderConstruction.set(null);
 
         graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);

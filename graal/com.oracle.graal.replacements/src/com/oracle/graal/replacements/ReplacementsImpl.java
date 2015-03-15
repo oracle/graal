@@ -71,7 +71,8 @@ public class ReplacementsImpl implements Replacements {
      */
     protected final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
 
-    public void completeInitialization(GraphBuilderConfiguration.Plugins plugins) {
+    public void setGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
+        assert this.graphBuilderPlugins == null;
         this.graphBuilderPlugins = plugins;
     }
 
@@ -640,10 +641,8 @@ public class ReplacementsImpl implements Replacements {
                 if (MethodsElidedInSnippets != null && methodToParse.getSignature().getReturnKind() == Kind.Void && MethodFilter.matches(MethodsElidedInSnippets, methodToParse)) {
                     graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
                 } else {
-                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-                    Plugins plugins = new Plugins(metaAccess).updateFrom(replacements.graphBuilderPlugins, false);
-                    config.setPlugins(plugins);
-                    plugins.getInvocationPlugins().setDefaults(replacements.graphBuilderPlugins.getInvocationPlugins());
+                    Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
+                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                     if (args != null) {
                         plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));
                     }

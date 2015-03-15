@@ -33,7 +33,8 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.phases.util.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
@@ -124,9 +125,11 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotMetaAccessProvider metaAccess;
         HotSpotLoweringProvider lowerer;
         HotSpotSnippetReflectionProvider snippetReflection;
-        Replacements replacements;
+        HotSpotReplacementsImpl replacements;
         HotSpotDisassemblerProvider disassembler;
         HotSpotSuitesProvider suites;
+        HotSpotWordTypes wordTypes;
+        Plugins plugins;
         try (InitTimer t = timer("create providers")) {
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = createRegisters();
@@ -152,7 +155,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Lowerer provider")) {
                 lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
             }
-            Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, new HotSpotStampProvider());
+            HotSpotStampProvider stampProvider = new HotSpotStampProvider();
+            Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(runtime);
@@ -163,10 +167,17 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Disassembler provider")) {
                 disassembler = createDisassembler(runtime);
             }
-            try (InitTimer rt = timer("create Suites provider")) {
-                suites = createSuites(runtime);
+            try (InitTimer rt = timer("create WordTypes")) {
+                wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
             }
-            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection);
+            try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
+                plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements, target.arch);
+                replacements.setGraphBuilderPlugins(plugins);
+            }
+            try (InitTimer rt = timer("create Suites provider")) {
+                suites = createSuites(runtime, plugins);
+            }
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection, wordTypes, plugins);
         }
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(runtime, providers);
@@ -185,7 +196,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotDisassemblerProvider(runtime);
     }
 
-    protected Replacements createReplacements(HotSpotGraalRuntimeProvider runtime, Providers p, SnippetReflectionProvider snippetReflection) {
+    protected HotSpotReplacementsImpl createReplacements(HotSpotGraalRuntimeProvider runtime, Providers p, SnippetReflectionProvider snippetReflection) {
         return new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), p.getCodeCache().getTarget());
     }
 
@@ -210,8 +221,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotMetaAccessProvider(runtime);
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime) {
-        return new HotSpotSuitesProvider(runtime);
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins) {
+        return new HotSpotSuitesProvider(runtime, plugins);
     }
 
     protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime) {

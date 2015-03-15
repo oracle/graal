@@ -223,7 +223,7 @@ public class StaticAnalysis {
                      * the code before static analysis, the classes would otherwise be not loaded
                      * yet and the bytecode parser would only create a graph.
                      */
-                    GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getEagerDefault();
+                    GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(metaAccess)));
                     /*
                      * For simplicity, we ignore all exception handling during the static analysis.
                      * This is a constraint of this example code, a real static analysis needs to
@@ -238,7 +238,6 @@ public class StaticAnalysis {
                      */
                     OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 
-                    graphBuilderConfig.setPlugins(new Plugins(metaAccess));
                     GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(metaAccess, stampProvider, null, graphBuilderConfig, optimisticOpts, null);
                     graphBuilder.apply(graph);
                 } catch (Throwable ex) {
