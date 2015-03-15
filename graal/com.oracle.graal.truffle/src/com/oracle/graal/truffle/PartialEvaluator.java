@@ -262,6 +262,7 @@ public class PartialEvaluator {
         plugins.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
         plugins.setLoopExplosionPlugin(new LoopExplosionPlugin());
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getPlugins().getInvocationPlugins());
+
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations, null).apply(graph);
         Debug.dump(graph, "After FastPE");
