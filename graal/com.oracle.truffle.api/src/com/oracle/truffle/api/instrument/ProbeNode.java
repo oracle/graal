@@ -33,9 +33,20 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * Implementation interfaces and classes for attaching {@link Probe}s to {@link WrapperNode}s.
+ * Implementation class & interface for enabling the attachment of {@linkplain Probe Probes} to
+ * Truffle ASTs.
+ * <p>
+ * A {@link ProbeNode} is the head of a chain of nodes acting on behalf of {@linkplain Instrument
+ * instruments}. It is attached to an AST as a child of a guest-language-specific
+ * {@link WrapperNode} node.
+ * <p>
+ * When Truffle clones an AST, the chain, including all attached {@linkplain Instrument instruments}
+ * will be cloned along with the {@link WrapperNode} to which it is attached. An instance of
+ * {@link Probe} represents abstractly the instrumentation at a particular location in a GL AST,
+ * tracks the clones of the chain, and keeps the instrumentation attached to the clones consistent.
  */
-public abstract class ProbeNode extends Node implements TruffleEvents, InstrumentationNode {
+@NodeInfo(cost = NodeCost.NONE)
+public final class ProbeNode extends Node implements TruffleEvents, InstrumentationNode {
 
     /**
      * A node that can be inserted into a Truffle AST, and which enables {@linkplain Instrument
@@ -91,8 +102,7 @@ public abstract class ProbeNode extends Node implements TruffleEvents, Instrumen
         Node getChild();
 
         /**
-         * Gets the {@link Probe} responsible for installing this wrapper; none if the wrapper
-         * installed via {@linkplain Node#probeLite(ASTInstrumentListener) "lite-Probing"}.
+         * Gets the {@link Probe} responsible for installing this wrapper.
          */
         Probe getProbe();
 
@@ -100,7 +110,6 @@ public abstract class ProbeNode extends Node implements TruffleEvents, Instrumen
          * Implementation support for completing a newly created wrapper node.
          */
         void insertProbe(ProbeNode probeNode);
-
     }
 
     /**
@@ -109,202 +118,99 @@ public abstract class ProbeNode extends Node implements TruffleEvents, Instrumen
      */
     public static Probe insertProbe(WrapperNode wrapper) {
         final SourceSection sourceSection = wrapper.getChild().getSourceSection();
-        final ProbeFullNode probeFullNode = new ProbeFullNode(); // private constructor
-        final Probe probe = new Probe(probeFullNode, sourceSection);  // package private access
-        probeFullNode.setProbe(probe);
-        wrapper.insertProbe(probeFullNode);
-        return probe;
+        final ProbeNode probeNode = new ProbeNode(); // private constructor
+        probeNode.probe = new Probe(probeNode, sourceSection);  // package private access
+        wrapper.insertProbe(probeNode);
+        return probeNode.probe;
     }
 
+    // Never changed once set.
+    @CompilationFinal Probe probe = null;
     /**
-     * Creates a new {@link ProbeLiteNode} associated with, and attached to, a Guest Language
-     * specific instance of {@link WrapperNode}.
+     * First {@link AbstractInstrumentNode} node in chain; {@code null} of no instruments in chain.
      */
-    public static void insertProbeLite(WrapperNode wrapper, ASTInstrumentListener instrumentListener) {
-        final ProbeLiteNode probeLiteNode = new ProbeLiteNode(instrumentListener);
-        wrapper.insertProbe(probeLiteNode);
-    }
+    @Child protected AbstractInstrumentNode firstInstrument;
 
     @Override
     public boolean isInstrumentable() {
         return false;
     }
 
+    @Override
+    public Node copy() {
+        Node node = super.copy();
+        probe.registerProbeNodeClone((ProbeNode) node);
+        return node;
+    }
+
     /**
      * @return the {@link Probe} permanently associated with this {@link ProbeNode}.
-     *
-     * @throws IllegalStateException if this location was "lite-Probed"
      */
-    public abstract Probe getProbe() throws IllegalStateException;
+    public Probe getProbe() {
+        return probe;
+    }
+
+    public void enter(Node node, VirtualFrame vFrame) {
+        this.probe.checkProbeUnchanged();
+        final SyntaxTagTrap trap = probe.getTrap();
+        if (trap != null) {
+            trap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        }
+        if (firstInstrument != null) {
+            firstInstrument.enter(node, vFrame);
+        }
+    }
+
+    public void returnVoid(Node node, VirtualFrame vFrame) {
+        this.probe.checkProbeUnchanged();
+        if (firstInstrument != null) {
+            firstInstrument.returnVoid(node, vFrame);
+        }
+    }
+
+    public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+        this.probe.checkProbeUnchanged();
+        if (firstInstrument != null) {
+            firstInstrument.returnValue(node, vFrame, result);
+        }
+    }
+
+    public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+        this.probe.checkProbeUnchanged();
+        if (firstInstrument != null) {
+            firstInstrument.returnExceptional(node, vFrame, exception);
+        }
+    }
+
+    public String instrumentationInfo() {
+        return "Standard probe";
+    }
 
     /**
      * Adds an {@link AbstractInstrumentNode} to this chain.
-     *
-     * @throws IllegalStateException if at a "lite-Probed" location.
      */
-    abstract void addInstrument(Instrument instrument);
+    @TruffleBoundary
+    void addInstrument(Instrument instrument) {
+        assert instrument.getProbe() == probe;
+        // The existing chain of nodes may be empty
+        // Attach the modified chain.
+        firstInstrument = insert(instrument.addToChain(firstInstrument));
+    }
 
     /**
      * Removes an instrument from this chain of instruments.
      *
-     * @throws IllegalStateException if at a "lite-Probed" location.
      * @throws RuntimeException if no matching instrument is found,
      */
-    abstract void removeInstrument(Instrument instrument);
-
-    /**
-     * Implementation class & interfaces for enabling the attachment of {@linkplain Probe Probes} to
-     * Truffle ASTs.
-     * <p>
-     * Head of a chain of nodes acting on behalf of {@linkplain Instrument instruments}, attached to
-     * a Guest Language (GL) AST as a child of a GL-specific {@link WrapperNode} node.
-     * <p>
-     * When Truffle clones an AST, the chain, including all attached {@linkplain Instrument
-     * instruments} will be cloned along with the {@link WrapperNode} to which it is attached. An
-     * instance of {@link Probe} represents abstractly the instrumentation at a particular location
-     * in a GL AST, tracks the clones of the chain, and keeps the instrumentation attached to the
-     * clones consistent.
-     */
-    @NodeInfo(cost = NodeCost.NONE)
-    private static final class ProbeFullNode extends ProbeNode {
-
-        /**
-         * First {@link AbstractInstrumentNode} node in chain; {@code null} of no instruments in
-         * chain.
-         */
-        @Child protected AbstractInstrumentNode firstInstrument;
-
-        // Never changed once set.
-        @CompilationFinal private Probe probe = null;
-
-        private ProbeFullNode() {
-            this.firstInstrument = null;
-        }
-
-        @Override
-        public Probe getProbe() throws IllegalStateException {
-            return probe;
-        }
-
-        @Override
-        public Node copy() {
-            Node node = super.copy();
-            probe.registerProbeNodeClone((ProbeNode) node);
-            return node;
-        }
-
-        private void setProbe(Probe probe) {
-            this.probe = probe;
-        }
-
-        @Override
-        @TruffleBoundary
-        void addInstrument(Instrument instrument) {
-            assert instrument.getProbe() == probe;
-            // The existing chain of nodes may be empty
-            // Attach the modified chain.
-            firstInstrument = insert(instrument.addToChain(firstInstrument));
-        }
-
-        @Override
-        @TruffleBoundary
-        void removeInstrument(Instrument instrument) {
-            assert instrument.getProbe() == probe;
-            final AbstractInstrumentNode modifiedChain = instrument.removeFromChain(firstInstrument);
-            if (modifiedChain == null) {
-                firstInstrument = null;
-            } else {
-                firstInstrument = insert(modifiedChain);
-            }
-        }
-
-        public void enter(Node node, VirtualFrame vFrame) {
-            this.probe.checkProbeUnchanged();
-            final SyntaxTagTrap trap = probe.getTrap();
-            if (trap != null) {
-                trap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
-            }
-            if (firstInstrument != null) {
-                firstInstrument.enter(node, vFrame);
-            }
-        }
-
-        public void returnVoid(Node node, VirtualFrame vFrame) {
-            this.probe.checkProbeUnchanged();
-            if (firstInstrument != null) {
-                firstInstrument.returnVoid(node, vFrame);
-            }
-        }
-
-        public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-            this.probe.checkProbeUnchanged();
-            if (firstInstrument != null) {
-                firstInstrument.returnValue(node, vFrame, result);
-            }
-        }
-
-        public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-            this.probe.checkProbeUnchanged();
-            if (firstInstrument != null) {
-                firstInstrument.returnExceptional(node, vFrame, exception);
-            }
-        }
-
-        public String instrumentationInfo() {
-            return "Standard probe";
+    @TruffleBoundary
+    void removeInstrument(Instrument instrument) {
+        assert instrument.getProbe() == probe;
+        final AbstractInstrumentNode modifiedChain = instrument.removeFromChain(firstInstrument);
+        if (modifiedChain == null) {
+            firstInstrument = null;
+        } else {
+            firstInstrument = insert(modifiedChain);
         }
     }
 
-    /**
-     * Implementation of a probe that only ever has a single "instrument" associated with it. No
-     * {@link Instrument} is ever created; instead this method simply delegates the various enter
-     * and return events to a {@link TruffleEvents} passed in during construction.
-     */
-    @NodeInfo(cost = NodeCost.NONE)
-    private static final class ProbeLiteNode extends ProbeNode {
-
-        private final ASTInstrumentListener instrumentListener;
-
-        private ProbeLiteNode(ASTInstrumentListener eventListener) {
-            this.instrumentListener = eventListener;
-        }
-
-        @Override
-        public Probe getProbe() throws IllegalStateException {
-            throw new IllegalStateException("\"lite-Probed\" nodes have no explicit Probe");
-        }
-
-        @Override
-        @TruffleBoundary
-        void addInstrument(Instrument instrument) {
-            throw new IllegalStateException("Instruments may not be added at a \"lite-probed\" location");
-        }
-
-        @Override
-        @TruffleBoundary
-        void removeInstrument(Instrument instrument) {
-            throw new IllegalStateException("Instruments may not be removed at a \"lite-probed\" location");
-        }
-
-        public void enter(Node node, VirtualFrame vFrame) {
-            instrumentListener.enter(getProbe(), node, vFrame);
-        }
-
-        public void returnVoid(Node node, VirtualFrame vFrame) {
-            instrumentListener.returnVoid(getProbe(), node, vFrame);
-        }
-
-        public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-            instrumentListener.returnValue(getProbe(), node, vFrame, result);
-        }
-
-        public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-            instrumentListener.returnExceptional(getProbe(), node, vFrame, exception);
-        }
-
-        public String instrumentationInfo() {
-            return "\"Lite\" probe";
-        }
-
-    }
 }

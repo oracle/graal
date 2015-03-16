@@ -497,61 +497,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Enables "one-shot", unmodifiable {@linkplain Instrument instrumentation} of a node, where the
-     * node is presumed to be part of a well-formed Truffle AST that is not being executed.
-     * <p>
-     * Modifies the AST by inserting a {@linkplain WrapperNode wrapper node} between the node and
-     * its parent; the wrapper node must be provided by implementations of
-     * {@link #createWrapperNode()}.
-     * <p>
-     * Unlike {@link #probe()}, once {@link #probeLite(ASTInstrumentListener)} is called at a node,
-     * no additional probing can be added and no additional instrumentation can be attached.
-     * <p>
-     * This restricted form of instrumentation is intended for special cases where only one kind of
-     * instrumentation is desired, and for which performance is a concern
-     *
-     * @param instrumentListener
-     * @throws ProbeException (unchecked) when a probe cannot be created, leaving the AST unchanged
-     */
-    public final void probeLite(ASTInstrumentListener instrumentListener) {
-
-        if (this instanceof WrapperNode) {
-            throw new ProbeException(ProbeFailure.Reason.WRAPPER_NODE, null, this, null);
-        }
-
-        if (parent == null) {
-            throw new ProbeException(ProbeFailure.Reason.NO_PARENT, null, this, null);
-        }
-
-        if (parent instanceof WrapperNode) {
-            throw new ProbeException(ProbeFailure.Reason.LITE_VIOLATION, null, this, null);
-        }
-
-        if (!isInstrumentable()) {
-            throw new ProbeException(ProbeFailure.Reason.NOT_INSTRUMENTABLE, parent, this, null);
-        }
-
-        // Create a new wrapper/probe with this node as its child.
-        final WrapperNode wrapper = createWrapperNode();
-
-        if (wrapper == null || !(wrapper instanceof Node)) {
-            throw new ProbeException(ProbeFailure.Reason.NO_WRAPPER, parent, this, wrapper);
-        }
-
-        final Node wrapperNode = (Node) wrapper;
-
-        if (!this.isSafelyReplaceableBy(wrapperNode)) {
-            throw new ProbeException(ProbeFailure.Reason.WRAPPER_TYPE, parent, this, wrapper);
-        }
-
-        // Connect it to a Probe
-        ProbeNode.insertProbeLite(wrapper, instrumentListener);
-
-        // Replace this node in the AST with the wrapper
-        this.replace(wrapperNode);
-    }
-
-    /**
      * Converts this node to a textual representation useful for debugging.
      */
     @Override

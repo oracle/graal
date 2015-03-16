@@ -119,11 +119,7 @@ public class TestNodes {
 
         @Override
         public Probe getProbe() {
-            try {
-                return probeNode.getProbe();
-            } catch (IllegalStateException e) {
-                throw new IllegalStateException("Cannot call getProbe() on a wrapper that has no probe");
-            }
+            return probeNode.getProbe();
         }
 
         @Override

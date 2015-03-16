@@ -58,12 +58,7 @@ public final class ProbeFailure {
         /**
          * Wrapper not assignable to the parent's child field.
          */
-        WRAPPER_TYPE("Wrapper not assignable to parent's child field"),
-
-        /**
-         * Attempt to \"probe lite\" an already probed node.
-         */
-        LITE_VIOLATION("Attempt to \"probe lite\" an already probed node");
+        WRAPPER_TYPE("Wrapper not assignable to parent's child field");
 
         final String message;
 

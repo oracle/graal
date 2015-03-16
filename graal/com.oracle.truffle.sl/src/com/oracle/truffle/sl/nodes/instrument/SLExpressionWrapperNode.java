@@ -72,11 +72,7 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
     }
 
     public Probe getProbe() {
-        try {
-            return probeNode.getProbe();
-        } catch (IllegalStateException e) {
-            throw new IllegalStateException("A lite-Probed wrapper has no explicit Probe");
-        }
+        return probeNode.getProbe();
     }
 
     public Node getChild() {
