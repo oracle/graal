@@ -149,9 +149,9 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
 
     @Override
     public JavaType getType() {
-        if (!(type instanceof ResolvedJavaType)) {
+        if (type instanceof HotSpotUnresolvedJavaType) {
             // Don't allow unresolved types to hang around forever
-            ResolvedJavaType resolved = type.resolve(holder);
+            ResolvedJavaType resolved = ((HotSpotUnresolvedJavaType) type).reresolve(holder);
             if (resolved != null) {
                 type = resolved;
             }
@@ -204,7 +204,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         }
         try {
             return holder.mirror().getDeclaredField(name);
-        } catch (NoSuchFieldException e) {
+        } catch (NoSuchFieldException | NoClassDefFoundError e) {
             return null;
         }
     }
