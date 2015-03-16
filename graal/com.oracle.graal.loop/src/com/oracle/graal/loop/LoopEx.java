@@ -266,9 +266,12 @@ public class LoopEx {
             if (loop().getExits().contains(b)) {
                 exits.add((LoopExitNode) b.getBeginNode());
             } else {
-                assert loop().getBlocks().contains(b);
                 blocks.add(b.getBeginNode());
-                work.addAll(b.getDominated());
+                for (Block d : b.getDominated()) {
+                    if (loop.getBlocks().contains(d)) {
+                        work.add(d);
+                    }
+                }
             }
         }
         return LoopFragment.computeNodes(branch.graph(), blocks, exits);
