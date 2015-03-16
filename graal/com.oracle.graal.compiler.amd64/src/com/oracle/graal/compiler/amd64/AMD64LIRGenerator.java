@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
 package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
-import static com.oracle.graal.lir.amd64.AMD64BitManipulationOp.IntrinsicOpcode.*;
-import static com.oracle.graal.lir.amd64.AMD64Compare.*;
 import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
 import com.oracle.graal.amd64.*;
@@ -34,7 +37,16 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MROp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMIOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
+import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -42,21 +54,7 @@ import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryCommutative;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryMemory;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegConst;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegReg;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStack;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStackConst;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.FPDivRemOp;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.MulHighOp;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2MemoryOp;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
-import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2RegOp;
-import com.oracle.graal.lir.amd64.AMD64Compare.CompareMemoryOp;
-import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatBranchOp;
@@ -291,41 +289,61 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     private void emitIntegerTest(Value a, Value b) {
         assert a.getKind().isNumericInteger();
-        if (LIRValueUtil.isVariable(b)) {
-            append(new AMD64TestOp(load(b), loadNonConst(a)));
+        OperandSize size = a.getKind() == Kind.Long ? QWORD : DWORD;
+        if (isConstant(b)) {
+            append(new AMD64CompareConstOp(AMD64MIOp.TEST, size, asAllocatable(a), asConstant(b)));
+        } else if (isConstant(a)) {
+            append(new AMD64CompareConstOp(AMD64MIOp.TEST, size, asAllocatable(b), asConstant(a)));
+        } else if (isAllocatableValue(b)) {
+            append(new AMD64CompareOp(AMD64RMOp.TEST, size, asAllocatable(b), asAllocatable(a)));
         } else {
-            append(new AMD64TestOp(load(a), loadNonConst(b)));
+            append(new AMD64CompareOp(AMD64RMOp.TEST, size, asAllocatable(a), asAllocatable(b)));
         }
     }
 
     protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
+        OperandSize size;
         switch ((Kind) cmpKind) {
             case Byte:
             case Boolean:
-                append(new CompareOp(BCMP, left, right));
+                size = BYTE;
                 break;
             case Short:
             case Char:
-                append(new CompareOp(SCMP, left, right));
+                size = WORD;
                 break;
             case Int:
-                append(new CompareOp(ICMP, left, right));
+                size = DWORD;
                 break;
             case Long:
-                append(new CompareOp(LCMP, left, right));
-                break;
             case Object:
-                append(new CompareOp(ACMP, left, right));
+                size = QWORD;
                 break;
             case Float:
-                append(new CompareOp(FCMP, left, right));
-                break;
+                append(new AMD64CompareOp(SSEOp.UCOMIS, PS, left, asAllocatable(right)));
+                return;
             case Double:
-                append(new CompareOp(DCMP, left, right));
-                break;
+                append(new AMD64CompareOp(SSEOp.UCOMIS, PD, left, asAllocatable(right)));
+                return;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("unexpected kind: " + cmpKind);
         }
+
+        if (isConstant(right)) {
+            JavaConstant c = asConstant(right);
+            if (c.isDefaultForKind()) {
+                AMD64RMOp op = size == BYTE ? TESTB : TEST;
+                append(new AMD64CompareOp(op, size, left, left));
+                return;
+            } else if (NumUtil.is32bit(c.asLong())) {
+                AMD64MIOp op = CMP.getMIOpcode(size, NumUtil.isByte(c.asLong()));
+                append(new AMD64CompareConstOp(op, size, left, c));
+                return;
+            }
+        }
+
+        AMD64RMOp op = CMP.getRMOpcode(size);
+        append(new AMD64CompareOp(op, size, left, asAllocatable(right)));
     }
 
     /**
@@ -336,74 +354,54 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
      * @return true if the left and right operands were switched, false otherwise
      */
     private boolean emitCompareMemory(Kind cmpKind, Value a, AMD64AddressValue b, LIRFrameState state) {
-        boolean mirrored;
-        if (LIRValueUtil.isVariable(a)) {
-            Variable left = load(a);
-            emitCompareRegMemoryOp(cmpKind, left, b, state);
-            mirrored = false;
-        } else {
-            emitCompareMemoryConOp(cmpKind, b, (JavaConstant) a, state);
-            mirrored = true;
-        }
-        return mirrored;
-    }
-
-    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, JavaConstant value, LIRFrameState state) {
-        assert kind.getStackKind() == value.getKind().getStackKind();
-        switch (kind) {
+        OperandSize size;
+        switch (cmpKind) {
             case Byte:
             case Boolean:
-                append(new CompareMemoryOp(BCMP, kind, address, value, state));
+                size = BYTE;
                 break;
             case Short:
             case Char:
-                append(new CompareMemoryOp(SCMP, kind, address, value, state));
+                size = WORD;
                 break;
             case Int:
-                append(new CompareMemoryOp(ICMP, kind, address, value, state));
+                size = DWORD;
                 break;
             case Long:
-                append(new CompareMemoryOp(LCMP, kind, address, value, state));
-                break;
             case Object:
-                assert value.isNull();
-                append(new CompareMemoryOp(ACMP, kind, address, value, state));
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    protected void emitCompareRegMemoryOp(Kind kind, Value value, AMD64AddressValue address, LIRFrameState state) {
-        AMD64Compare opcode = null;
-        switch (kind) {
-            case Byte:
-            case Boolean:
-                opcode = BCMP;
-                break;
-            case Short:
-            case Char:
-                opcode = SCMP;
-                break;
-            case Int:
-                opcode = ICMP;
-                break;
-            case Long:
-                opcode = LCMP;
-                break;
-            case Object:
-                opcode = ACMP;
+                size = QWORD;
                 break;
             case Float:
-                opcode = FCMP;
-                break;
+                append(new AMD64CompareMemoryOp(SSEOp.UCOMIS, PS, asAllocatable(a), b, state));
+                return false;
             case Double:
-                opcode = DCMP;
-                break;
+                append(new AMD64CompareMemoryOp(SSEOp.UCOMIS, PD, asAllocatable(a), b, state));
+                return false;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("unexpected kind: " + cmpKind);
         }
-        append(new CompareMemoryOp(opcode, kind, address, value, state));
+
+        if (isConstant(a)) {
+            return emitCompareMemoryConOp(size, asConstant(a), b, state);
+        } else {
+            return emitCompareRegMemoryOp(size, a, b, state);
+        }
+    }
+
+    protected boolean emitCompareMemoryConOp(OperandSize size, JavaConstant a, AMD64AddressValue b, LIRFrameState state) {
+        if (NumUtil.is32bit(a.asLong())) {
+            AMD64MIOp op = CMP.getMIOpcode(size, NumUtil.isByte(a.asLong()));
+            append(new AMD64CompareMemoryConstOp(op, size, b, a, state));
+            return true;
+        } else {
+            return emitCompareRegMemoryOp(size, a, b, state);
+        }
+    }
+
+    private boolean emitCompareRegMemoryOp(OperandSize size, Value a, AMD64AddressValue b, LIRFrameState state) {
+        AMD64RMOp op = CMP.getRMOpcode(size);
+        append(new AMD64CompareMemoryOp(op, size, asAllocatable(a), b, state));
+        return false;
     }
 
     /**
@@ -437,16 +435,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.derive(input));
         switch (input.getKind()) {
             case Int:
-                append(new Unary1Op(INEG, result, input));
+                append(new AMD64UnaryMOp(NEG, DWORD, result, input));
                 break;
             case Long:
-                append(new Unary1Op(LNEG, result, input));
+                append(new AMD64UnaryMOp(NEG, QWORD, result, input));
                 break;
             case Float:
-                append(new BinaryRegConst(FXOR, result, input, JavaConstant.forFloat(Float.intBitsToFloat(0x80000000))));
+                append(new AMD64BinaryPatchOp(SSEOp.XOR, PS, result, input, JavaConstant.forFloat(Float.intBitsToFloat(0x80000000)), 16));
                 break;
             case Double:
-                append(new BinaryRegConst(DXOR, result, input, JavaConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L))));
+                append(new AMD64BinaryPatchOp(SSEOp.XOR, PD, result, input, JavaConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)), 16));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -460,10 +458,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.derive(input));
         switch (input.getKind()) {
             case Int:
-                append(new Unary1Op(INOT, result, input));
+                append(new AMD64UnaryMOp(NOT, DWORD, result, input));
                 break;
             case Long:
-                append(new Unary1Op(LNOT, result, input));
+                append(new AMD64UnaryMOp(NOT, QWORD, result, input));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -471,54 +469,48 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    private Variable emitBinary(AMD64Arithmetic op, boolean commutative, Value a, Value b) {
+    private Variable emitBinary(AMD64BinaryArithmetic op, OperandSize size, boolean commutative, Value a, Value b) {
         if (isConstant(b)) {
-            return emitBinaryConst(op, commutative, asAllocatable(a), asConstant(b));
+            return emitBinaryConst(op, size, commutative, asAllocatable(a), asConstant(b));
         } else if (commutative && isConstant(a)) {
-            return emitBinaryConst(op, commutative, asAllocatable(b), asConstant(a));
+            return emitBinaryConst(op, size, commutative, asAllocatable(b), asConstant(a));
         } else {
-            return emitBinaryVar(op, commutative, asAllocatable(a), asAllocatable(b));
+            return emitBinaryVar(op.getRMOpcode(size), size, commutative, asAllocatable(a), asAllocatable(b));
         }
     }
 
-    private Variable emitBinaryConst(AMD64Arithmetic op, boolean commutative, AllocatableValue a, JavaConstant b) {
-        switch (op) {
-            case IADD:
-            case LADD:
-            case ISUB:
-            case LSUB:
-            case IAND:
-            case LAND:
-            case IOR:
-            case LOR:
-            case IXOR:
-            case LXOR:
-                if (NumUtil.isInt(b.asLong())) {
-                    Variable result = newVariable(LIRKind.derive(a, b));
-                    append(new BinaryRegConst(op, result, a, b));
-                    return result;
-                }
-                break;
-
-            case IMUL:
-            case LMUL:
-                if (NumUtil.isInt(b.asLong())) {
-                    Variable result = newVariable(LIRKind.derive(a, b));
-                    append(new BinaryRegStackConst(op, result, a, b));
-                    return result;
-                }
-                break;
+    private Variable emitBinary(AMD64RMOp op, OperandSize size, boolean commutative, Value a, Value b) {
+        if (isConstant(b)) {
+            return emitBinaryConst(op, size, asAllocatable(a), asConstant(b));
+        } else if (commutative && isConstant(a)) {
+            return emitBinaryConst(op, size, asAllocatable(b), asConstant(a));
+        } else {
+            return emitBinaryVar(op, size, commutative, asAllocatable(a), asAllocatable(b));
         }
-
-        return emitBinaryVar(op, commutative, a, asAllocatable(b));
     }
 
-    private Variable emitBinaryVar(AMD64Arithmetic op, boolean commutative, AllocatableValue a, AllocatableValue b) {
+    private Variable emitBinaryConst(AMD64BinaryArithmetic op, OperandSize size, boolean commutative, AllocatableValue a, JavaConstant b) {
+        if (NumUtil.isInt(b.asLong())) {
+            Variable result = newVariable(LIRKind.derive(a, b));
+            append(new AMD64BinaryConstOp(op, size, result, a, b));
+            return result;
+        } else {
+            return emitBinaryVar(op.getRMOpcode(size), size, commutative, a, asAllocatable(b));
+        }
+    }
+
+    private Variable emitBinaryConst(AMD64RMOp op, OperandSize size, AllocatableValue a, JavaConstant b) {
+        Variable result = newVariable(LIRKind.derive(a, b));
+        append(new AMD64BinaryPatchOp(op, size, result, a, b));
+        return result;
+    }
+
+    private Variable emitBinaryVar(AMD64RMOp op, OperandSize size, boolean commutative, AllocatableValue a, AllocatableValue b) {
         Variable result = newVariable(LIRKind.derive(a, b));
         if (commutative) {
-            append(new BinaryCommutative(op, result, a, b));
+            append(new AMD64BinaryCommutativeOp(op, size, result, a, b));
         } else {
-            append(new BinaryRegStack(op, result, a, b));
+            append(new AMD64BinaryOp(op, size, result, a, b));
         }
         return result;
     }
@@ -527,13 +519,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitAdd(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IADD, true, a, b);
+                return emitBinary(ADD, DWORD, true, a, b);
             case Long:
-                return emitBinary(LADD, true, a, b);
+                return emitBinary(ADD, QWORD, true, a, b);
             case Float:
-                return emitBinary(FADD, true, a, b);
+                return emitBinary(SSEOp.ADD, SS, true, a, b);
             case Double:
-                return emitBinary(DADD, true, a, b);
+                return emitBinary(SSEOp.ADD, SD, true, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -543,15 +535,43 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitSub(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(ISUB, false, a, b);
+                return emitBinary(SUB, DWORD, false, a, b);
             case Long:
-                return emitBinary(LSUB, false, a, b);
+                return emitBinary(SUB, QWORD, false, a, b);
             case Float:
-                return emitBinary(FSUB, false, a, b);
+                return emitBinary(SSEOp.SUB, SS, false, a, b);
             case Double:
-                return emitBinary(DSUB, false, a, b);
+                return emitBinary(SSEOp.SUB, SD, false, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private Variable emitIMULConst(OperandSize size, AllocatableValue a, JavaConstant b) {
+        if (NumUtil.isInt(b.asLong())) {
+            int imm = (int) b.asLong();
+            AMD64RMIOp op;
+            if (NumUtil.isByte(imm)) {
+                op = AMD64RMIOp.IMUL_SX;
+            } else {
+                op = AMD64RMIOp.IMUL;
+            }
+
+            Variable ret = newVariable(LIRKind.derive(a, b));
+            append(new AMD64MulConstOp(op, size, ret, a, b));
+            return ret;
+        } else {
+            return emitBinaryVar(AMD64RMOp.IMUL, size, true, a, asAllocatable(b));
+        }
+    }
+
+    private Variable emitIMUL(OperandSize size, Value a, Value b) {
+        if (isConstant(b)) {
+            return emitIMULConst(size, asAllocatable(a), asConstant(b));
+        } else if (isConstant(a)) {
+            return emitIMULConst(size, asAllocatable(b), asConstant(a));
+        } else {
+            return emitBinaryVar(AMD64RMOp.IMUL, size, true, asAllocatable(a), asAllocatable(b));
         }
     }
 
@@ -559,32 +579,36 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitMul(Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IMUL, true, a, b);
+                return emitIMUL(DWORD, a, b);
             case Long:
-                return emitBinary(LMUL, true, a, b);
+                return emitIMUL(QWORD, a, b);
             case Float:
-                return emitBinary(FMUL, true, a, b);
+                return emitBinary(SSEOp.MUL, SS, true, a, b);
             case Double:
-                return emitBinary(DMUL, true, a, b);
+                return emitBinary(SSEOp.MUL, SD, true, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    private Value emitMulHigh(AMD64Arithmetic opcode, Value a, Value b) {
-        MulHighOp mulHigh = new MulHighOp(opcode, LIRKind.derive(a, b), asAllocatable(b));
-        emitMove(mulHigh.x, a);
-        append(mulHigh);
-        return emitMove(mulHigh.highResult);
+    private RegisterValue moveToReg(Register reg, Value v) {
+        RegisterValue ret = reg.asValue(v.getLIRKind());
+        emitMove(ret, v);
+        return ret;
+    }
+
+    private Value emitMulHigh(AMD64MOp opcode, OperandSize size, Value a, Value b) {
+        AMD64MulDivOp mulHigh = append(new AMD64MulDivOp(opcode, size, LIRKind.derive(a, b), moveToReg(AMD64.rax, a), asAllocatable(b)));
+        return emitMove(mulHigh.getHighResult());
     }
 
     @Override
     public Value emitMulHigh(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitMulHigh(IMUL, a, b);
+                return emitMulHigh(AMD64MOp.IMUL, DWORD, a, b);
             case Long:
-                return emitMulHigh(LMUL, a, b);
+                return emitMulHigh(AMD64MOp.IMUL, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -594,23 +618,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitUMulHigh(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitMulHigh(IUMUL, a, b);
+                return emitMulHigh(AMD64MOp.MUL, DWORD, a, b);
             case Long:
-                return emitMulHigh(LUMUL, a, b);
+                return emitMulHigh(AMD64MOp.MUL, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    public Value emitBinaryMemory(AMD64Arithmetic op, Kind kind, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
+    public Value emitBinaryMemory(AMD64RMOp op, OperandSize size, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
         Variable result = newVariable(LIRKind.derive(a));
-        append(new BinaryMemory(op, kind, result, a, location, state));
+        append(new AMD64BinaryMemoryOp(op, size, result, a, location, state));
         return result;
     }
 
-    protected Value emitConvert2MemoryOp(PlatformKind kind, AMD64Arithmetic op, AMD64AddressValue address, LIRFrameState state) {
+    protected Value emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, AMD64AddressValue address, LIRFrameState state) {
         Variable result = newVariable(LIRKind.value(kind));
-        append(new Unary2MemoryOp(op, result, (Kind) null, address, state));
+        append(new AMD64UnaryMemoryOp(op, size, result, address, state));
         return result;
     }
 
@@ -622,48 +646,50 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    private DivRemOp emitDivRem(AMD64Arithmetic op, Value a, Value b, LIRFrameState state) {
-        AllocatableValue rax = AMD64.rax.asValue(a.getLIRKind());
-        emitMove(rax, a);
-        DivRemOp ret = new DivRemOp(op, rax, asAllocatable(b), state);
-        append(ret);
-        return ret;
+    private AMD64MulDivOp emitIDIV(OperandSize size, Value a, Value b, LIRFrameState state) {
+        LIRKind kind = LIRKind.derive(a, b);
+
+        AMD64SignExtendOp sx = append(new AMD64SignExtendOp(size, kind, moveToReg(AMD64.rax, a)));
+        return append(new AMD64MulDivOp(AMD64MOp.IDIV, size, kind, sx.getHighResult(), sx.getLowResult(), asAllocatable(b), state));
+    }
+
+    private AMD64MulDivOp emitDIV(OperandSize size, Value a, Value b, LIRFrameState state) {
+        LIRKind kind = LIRKind.derive(a, b);
+
+        RegisterValue rax = moveToReg(AMD64.rax, a);
+        RegisterValue rdx = AMD64.rdx.asValue(kind);
+        append(new AMD64ClearRegisterOp(size, rdx));
+        return append(new AMD64MulDivOp(AMD64MOp.DIV, size, kind, rdx, rax, asAllocatable(b), state));
     }
 
     public Value[] emitIntegerDivRem(Value a, Value b, LIRFrameState state) {
-        DivRemOp op;
+        AMD64MulDivOp op;
         switch (a.getKind().getStackKind()) {
             case Int:
-                op = emitDivRem(IDIVREM, a, b, state);
+                op = emitIDIV(DWORD, a, b, state);
                 break;
             case Long:
-                op = emitDivRem(LDIVREM, a, b, state);
+                op = emitIDIV(QWORD, a, b, state);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
-        return new Value[]{emitMove(op.divResult), emitMove(op.remResult)};
+        return new Value[]{emitMove(op.getQuotient()), emitMove(op.getRemainder())};
     }
 
     @Override
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                DivRemOp op = emitDivRem(IDIV, a, b, state);
-                return emitMove(op.divResult);
+                AMD64MulDivOp op = emitIDIV(DWORD, a, b, state);
+                return emitMove(op.getQuotient());
             case Long:
-                DivRemOp lop = emitDivRem(LDIV, a, b, state);
-                return emitMove(lop.divResult);
-            case Float: {
-                Variable result = newVariable(LIRKind.derive(a, b));
-                append(new BinaryRegStack(FDIV, result, asAllocatable(a), asAllocatable(b)));
-                return result;
-            }
-            case Double: {
-                Variable result = newVariable(LIRKind.derive(a, b));
-                append(new BinaryRegStack(DDIV, result, asAllocatable(a), asAllocatable(b)));
-                return result;
-            }
+                AMD64MulDivOp lop = emitIDIV(QWORD, a, b, state);
+                return emitMove(lop.getQuotient());
+            case Float:
+                return emitBinary(SSEOp.DIV, SS, false, a, b);
+            case Double:
+                return emitBinary(SSEOp.DIV, SD, false, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -673,11 +699,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitRem(Value a, Value b, LIRFrameState state) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                DivRemOp op = emitDivRem(IREM, a, b, state);
-                return emitMove(op.remResult);
+                AMD64MulDivOp op = emitIDIV(DWORD, a, b, state);
+                return emitMove(op.getRemainder());
             case Long:
-                DivRemOp lop = emitDivRem(LREM, a, b, state);
-                return emitMove(lop.remResult);
+                AMD64MulDivOp lop = emitIDIV(QWORD, a, b, state);
+                return emitMove(lop.getRemainder());
             case Float: {
                 Variable result = newVariable(LIRKind.derive(a, b));
                 append(new FPDivRemOp(FREM, result, load(a), load(b)));
@@ -695,43 +721,47 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitUDiv(Value a, Value b, LIRFrameState state) {
-        DivRemOp op;
+        AMD64MulDivOp op;
         switch (a.getKind().getStackKind()) {
             case Int:
-                op = emitDivRem(IUDIV, a, b, state);
+                op = emitDIV(DWORD, a, b, state);
                 break;
             case Long:
-                op = emitDivRem(LUDIV, a, b, state);
+                op = emitDIV(QWORD, a, b, state);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
-        return emitMove(op.divResult);
+        return emitMove(op.getQuotient());
     }
 
     @Override
     public Variable emitURem(Value a, Value b, LIRFrameState state) {
-        DivRemOp op;
+        AMD64MulDivOp op;
         switch (a.getKind().getStackKind()) {
             case Int:
-                op = emitDivRem(IUREM, a, b, state);
+                op = emitDIV(DWORD, a, b, state);
                 break;
             case Long:
-                op = emitDivRem(LUREM, a, b, state);
+                op = emitDIV(QWORD, a, b, state);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
-        return emitMove(op.remResult);
+        return emitMove(op.getRemainder());
     }
 
     @Override
     public Variable emitAnd(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IAND, true, a, b);
+                return emitBinary(AND, DWORD, true, a, b);
             case Long:
-                return emitBinary(LAND, true, a, b);
+                return emitBinary(AND, QWORD, true, a, b);
+            case Float:
+                return emitBinary(SSEOp.AND, PS, true, a, b);
+            case Double:
+                return emitBinary(SSEOp.AND, PD, true, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -741,9 +771,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitOr(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IOR, true, a, b);
+                return emitBinary(OR, DWORD, true, a, b);
             case Long:
-                return emitBinary(LOR, true, a, b);
+                return emitBinary(OR, QWORD, true, a, b);
+            case Float:
+                return emitBinary(SSEOp.OR, PS, true, a, b);
+            case Double:
+                return emitBinary(SSEOp.OR, PD, true, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -753,22 +787,31 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitXor(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IXOR, true, a, b);
+                return emitBinary(XOR, DWORD, true, a, b);
             case Long:
-                return emitBinary(LXOR, true, a, b);
+                return emitBinary(XOR, QWORD, true, a, b);
+            case Float:
+                return emitBinary(SSEOp.XOR, PS, true, a, b);
+            case Double:
+                return emitBinary(SSEOp.XOR, PD, true, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    private Variable emitShift(AMD64Arithmetic op, Value a, Value b) {
+    private Variable emitShift(AMD64Shift op, OperandSize size, Value a, Value b) {
         Variable result = newVariable(LIRKind.derive(a, b).changeType(a.getPlatformKind()));
         AllocatableValue input = asAllocatable(a);
         if (isConstant(b)) {
-            append(new BinaryRegConst(op, result, input, asConstant(b)));
+            JavaConstant c = asConstant(b);
+            if (c.asLong() == 1) {
+                append(new AMD64UnaryMOp(op.m1Op, size, result, input));
+            } else {
+                append(new AMD64BinaryConstOp(op.miOp, size, result, input, c));
+            }
         } else {
             emitMove(RCX_I, b);
-            append(new BinaryRegReg(op, result, input, RCX_I));
+            append(new AMD64ShiftOp(op.mcOp, size, result, input, RCX_I));
         }
         return result;
     }
@@ -777,9 +820,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitShl(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitShift(ISHL, a, b);
+                return emitShift(SHL, DWORD, a, b);
             case Long:
-                return emitShift(LSHL, a, b);
+                return emitShift(SHL, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -789,9 +832,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitShr(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitShift(ISHR, a, b);
+                return emitShift(SAR, DWORD, a, b);
             case Long:
-                return emitShift(LSHR, a, b);
+                return emitShift(SAR, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -801,9 +844,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitUShr(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitShift(IUSHR, a, b);
+                return emitShift(SHR, DWORD, a, b);
             case Long:
-                return emitShift(LUSHR, a, b);
+                return emitShift(SHR, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -812,9 +855,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitRol(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitShift(IROL, a, b);
+                return emitShift(ROL, DWORD, a, b);
             case Long:
-                return emitShift(LROL, a, b);
+                return emitShift(ROL, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -823,23 +866,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitRor(Value a, Value b) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitShift(IROR, a, b);
+                return emitShift(ROR, DWORD, a, b);
             case Long:
-                return emitShift(LROR, a, b);
+                return emitShift(ROR, QWORD, a, b);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    private AllocatableValue emitConvert2RegOp(LIRKind kind, AMD64Arithmetic op, AllocatableValue input) {
+    private AllocatableValue emitConvertOp(LIRKind kind, AMD64RMOp op, OperandSize size, Value input) {
         Variable result = newVariable(kind);
-        append(new Unary2RegOp(op, result, input));
+        append(new AMD64UnaryRMOp(op, size, result, asAllocatable(input)));
         return result;
     }
 
-    private AllocatableValue emitConvert2Op(LIRKind kind, AMD64Arithmetic op, AllocatableValue input) {
+    private AllocatableValue emitConvertOp(LIRKind kind, AMD64MROp op, OperandSize size, Value input) {
         Variable result = newVariable(kind);
-        append(new Unary2Op(op, result, input));
+        append(new AMD64UnaryMROp(op, size, result, asAllocatable(input)));
         return result;
     }
 
@@ -860,54 +903,53 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             case Int:
                 switch (fromKind) {
                     case Float:
-                        return emitConvert2Op(to, MOV_F2I, input);
+                        return emitConvertOp(to, AMD64MROp.MOVD, DWORD, input);
                 }
                 break;
             case Long:
                 switch (fromKind) {
                     case Double:
-                        return emitConvert2Op(to, MOV_D2L, input);
+                        return emitConvertOp(to, AMD64MROp.MOVQ, QWORD, input);
                 }
                 break;
             case Float:
                 switch (fromKind) {
                     case Int:
-                        return emitConvert2Op(to, MOV_I2F, input);
+                        return emitConvertOp(to, AMD64RMOp.MOVD, DWORD, input);
                 }
                 break;
             case Double:
                 switch (fromKind) {
                     case Long:
-                        return emitConvert2Op(to, MOV_L2D, input);
+                        return emitConvertOp(to, AMD64RMOp.MOVQ, QWORD, input);
                 }
                 break;
         }
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    public Value emitFloatConvert(FloatConvert op, Value inputVal) {
-        AllocatableValue input = asAllocatable(inputVal);
+    public Value emitFloatConvert(FloatConvert op, Value input) {
         switch (op) {
             case D2F:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), D2F, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSD2SS, SD, input);
             case D2I:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Int), D2I, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Int), SSEOp.CVTTSD2SI, DWORD, input);
             case D2L:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), D2L, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Long), SSEOp.CVTTSD2SI, QWORD, input);
             case F2D:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), F2D, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Double), SSEOp.CVTSS2SD, SS, input);
             case F2I:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Int), F2I, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Int), SSEOp.CVTTSS2SI, DWORD, input);
             case F2L:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), F2L, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Long), SSEOp.CVTTSS2SI, QWORD, input);
             case I2D:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), I2D, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Double), SSEOp.CVTSI2SD, DWORD, input);
             case I2F:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), I2F, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSI2SS, DWORD, input);
             case L2D:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), L2D, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Double), SSEOp.CVTSI2SD, QWORD, input);
             case L2F:
-                return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Float), L2F, input);
+                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSI2SS, QWORD, input);
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -917,7 +959,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitNarrow(Value inputVal, int bits) {
         if (inputVal.getKind() == Kind.Long && bits <= 32) {
             // TODO make it possible to reinterpret Long as Int in LIR without move
-            return emitConvert2RegOp(LIRKind.derive(inputVal).changeType(Kind.Int), L2I, asAllocatable(inputVal));
+            return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Int), AMD64RMOp.MOV, DWORD, inputVal);
         } else {
             return inputVal;
         }
@@ -932,11 +974,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             // sign extend to 64 bits
             switch (fromBits) {
                 case 8:
-                    return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), B2L, asAllocatable(inputVal));
+                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSXB, QWORD, inputVal);
                 case 16:
-                    return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), S2L, asAllocatable(inputVal));
+                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSX, QWORD, inputVal);
                 case 32:
-                    return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), I2L, asAllocatable(inputVal));
+                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSXD, QWORD, inputVal);
                 default:
                     throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
@@ -944,9 +986,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
             switch (fromBits) {
                 case 8:
-                    return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Int), B2I, asAllocatable(inputVal));
+                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Int), MOVSXB, DWORD, inputVal);
                 case 16:
-                    return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Int), S2I, asAllocatable(inputVal));
+                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Int), MOVSX, DWORD, inputVal);
                 case 32:
                     return inputVal;
                 default:
@@ -964,13 +1006,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             assert inputVal.getKind() == Kind.Long;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
             long mask = CodeUtil.mask(fromBits);
-            append(new BinaryRegConst(AMD64Arithmetic.LAND, result, asAllocatable(inputVal), JavaConstant.forLong(mask)));
+            append(new AMD64BinaryPatchOp(AND.getRMOpcode(QWORD), QWORD, result, asAllocatable(inputVal), JavaConstant.forLong(mask)));
             return result;
         } else {
             assert inputVal.getKind().getStackKind() == Kind.Int;
             Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
             int mask = (int) CodeUtil.mask(fromBits);
-            append(new BinaryRegConst(AMD64Arithmetic.IAND, result, asAllocatable(inputVal), JavaConstant.forInt(mask)));
+            append(new AMD64BinaryPatchOp(AND.getRMOpcode(DWORD), DWORD, result, asAllocatable(inputVal), JavaConstant.forInt(mask)));
             if (toBits > 32) {
                 Variable longResult = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
                 emitMove(longResult, result);
@@ -1005,9 +1047,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitBitCount(Value value) {
         Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitManipulationOp(IPOPCNT, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(POPCNT, DWORD, result, asAllocatable(value)));
         } else {
-            append(new AMD64BitManipulationOp(LPOPCNT, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(POPCNT, QWORD, result, asAllocatable(value)));
         }
         return result;
     }
@@ -1015,7 +1057,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitBitScanForward(Value value) {
         Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
-        append(new AMD64BitManipulationOp(BSF, result, asAllocatable(value)));
+        append(new AMD64UnaryRMOp(BSF, QWORD, result, asAllocatable(value)));
         return result;
     }
 
@@ -1023,9 +1065,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitBitScanReverse(Value value) {
         Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitManipulationOp(IBSR, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(BSR, DWORD, result, asAllocatable(value)));
         } else {
-            append(new AMD64BitManipulationOp(LBSR, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(BSR, QWORD, result, asAllocatable(value)));
         }
         return result;
     }
@@ -1033,9 +1075,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitCountLeadingZeros(Value value) {
         Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitManipulationOp(ILZCNT, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(LZCNT, DWORD, result, asAllocatable(value)));
         } else {
-            append(new AMD64BitManipulationOp(LLZCNT, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(LZCNT, QWORD, result, asAllocatable(value)));
         }
         return result;
     }
@@ -1043,9 +1085,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Value emitCountTrailingZeros(Value value) {
         Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
-            append(new AMD64BitManipulationOp(ITZCNT, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(TZCNT, DWORD, result, asAllocatable(value)));
         } else {
-            append(new AMD64BitManipulationOp(LTZCNT, result, asAllocatable(value)));
+            append(new AMD64UnaryRMOp(TZCNT, QWORD, result, asAllocatable(value)));
         }
         return result;
     }
@@ -1055,10 +1097,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(LIRKind.derive(input));
         switch (input.getKind()) {
             case Float:
-                append(new BinaryRegConst(FAND, result, asAllocatable(input), JavaConstant.forFloat(Float.intBitsToFloat(0x7FFFFFFF))));
+                append(new AMD64BinaryPatchOp(SSEOp.AND, PS, result, asAllocatable(input), JavaConstant.forFloat(Float.intBitsToFloat(0x7FFFFFFF)), 16));
                 break;
             case Double:
-                append(new BinaryRegConst(DAND, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+                append(new AMD64BinaryPatchOp(SSEOp.AND, PD, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)), 16));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -1069,7 +1111,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Value emitMathSqrt(Value input) {
         Variable result = newVariable(LIRKind.derive(input));
-        append(new Unary2Op(SQRT, result, asAllocatable(input)));
+        switch (input.getKind()) {
+            case Float:
+                append(new AMD64UnaryRMOp(SSEOp.SQRT, SS, result, asAllocatable(input)));
+                break;
+            case Double:
+                append(new AMD64UnaryRMOp(SSEOp.SQRT, SD, result, asAllocatable(input)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
         return result;
     }
 

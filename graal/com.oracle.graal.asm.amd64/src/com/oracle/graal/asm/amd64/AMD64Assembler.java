@@ -26,10 +26,13 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.amd64.AMD64.CPUFeature;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.Register.RegisterCategory;
 import com.oracle.graal.asm.*;
 
 /**
@@ -158,6 +161,131 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
+     * The x86 operand sizes.
+     */
+    public static enum OperandSize {
+        BYTE(1) {
+            @Override
+            protected void emitImmediate(AMD64Assembler asm, int imm) {
+                assert imm == (byte) imm;
+                asm.emitByte(imm);
+            }
+        },
+
+        WORD(2, 0x66) {
+            @Override
+            protected void emitImmediate(AMD64Assembler asm, int imm) {
+                assert imm == (short) imm;
+                asm.emitShort(imm);
+            }
+        },
+
+        DWORD(4) {
+            @Override
+            protected void emitImmediate(AMD64Assembler asm, int imm) {
+                asm.emitInt(imm);
+            }
+        },
+
+        QWORD(8) {
+            @Override
+            protected void emitImmediate(AMD64Assembler asm, int imm) {
+                asm.emitInt(imm);
+            }
+        },
+
+        SS(4, 0xF3, true),
+
+        SD(8, 0xF2, true),
+
+        PS(16, true),
+
+        PD(16, 0x66, true);
+
+        private final int sizePrefix;
+
+        private final int bytes;
+        private final boolean xmm;
+
+        private OperandSize(int bytes) {
+            this(bytes, 0);
+        }
+
+        private OperandSize(int bytes, int sizePrefix) {
+            this(bytes, sizePrefix, false);
+        }
+
+        private OperandSize(int bytes, boolean xmm) {
+            this(bytes, 0, xmm);
+        }
+
+        private OperandSize(int bytes, int sizePrefix, boolean xmm) {
+            this.sizePrefix = sizePrefix;
+            this.bytes = bytes;
+            this.xmm = xmm;
+        }
+
+        public int getBytes() {
+            return bytes;
+        }
+
+        public boolean isXmmType() {
+            return xmm;
+        }
+
+        /**
+         * Emit an immediate of this size. Note that immediate {@link #QWORD} operands are encoded
+         * as sign-extended 32-bit values.
+         *
+         * @param asm
+         * @param imm
+         */
+        protected void emitImmediate(AMD64Assembler asm, int imm) {
+            assert false;
+        }
+    }
+
+    /**
+     * Operand size and register type constraints.
+     */
+    private static enum OpAssertion {
+        ByteAssertion(CPU, CPU, BYTE),
+        IntegerAssertion(CPU, CPU, WORD, DWORD, QWORD),
+        No16BitAssertion(CPU, CPU, DWORD, QWORD),
+        QwordOnlyAssertion(CPU, CPU, QWORD),
+        FloatingAssertion(XMM, XMM, SS, SD, PS, PD),
+        PackedFloatingAssertion(XMM, XMM, PS, PD),
+        SingleAssertion(XMM, XMM, SS),
+        DoubleAssertion(XMM, XMM, SD),
+        IntToFloatingAssertion(XMM, CPU, DWORD, QWORD),
+        FloatingToIntAssertion(CPU, XMM, DWORD, QWORD);
+
+        private final RegisterCategory resultCategory;
+        private final RegisterCategory inputCategory;
+        private final OperandSize[] allowedSizes;
+
+        private OpAssertion(RegisterCategory resultCategory, RegisterCategory inputCategory, OperandSize... allowedSizes) {
+            this.resultCategory = resultCategory;
+            this.inputCategory = inputCategory;
+            this.allowedSizes = allowedSizes;
+        }
+
+        protected boolean checkOperands(AMD64Op op, OperandSize size, Register resultReg, Register inputReg) {
+            assert resultReg == null || resultCategory.equals(resultReg.getRegisterCategory()) : "invalid result register " + resultReg + " used in " + op;
+            assert inputReg == null || inputCategory.equals(inputReg.getRegisterCategory()) : "invalid input register " + inputReg + " used in " + op;
+
+            for (OperandSize s : allowedSizes) {
+                if (size == s) {
+                    return true;
+                }
+            }
+
+            assert false : "invalid operand size " + size + " used in " + op;
+            return false;
+        }
+    }
+
+    /**
      * The register to which {@link Register#Frame} and {@link Register#CallerFrame} are bound.
      */
     public final Register frameRegister;
@@ -184,97 +312,65 @@ public class AMD64Assembler extends Assembler {
         return r.encoding & 0x7;
     }
 
-    private void emitArithImm8(int op, Register dst, int imm8) {
-        int encode = prefixAndEncode(op, false, dst.encoding, true);
-        emitByte(0x80);
-        emitByte(0xC0 | encode);
-        emitByte(imm8);
+    /**
+     * Get RXB bits for register-register instruction. In that encoding, ModRM.rm contains a
+     * register index. The R bit extends the ModRM.reg field and the B bit extends the ModRM.rm
+     * field. The X bit must be 0.
+     */
+    protected static int getRXB(Register reg, Register rm) {
+        int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
+        rxb |= (rm == null ? 0 : rm.encoding & 0x08) >> 3;
+        return rxb;
     }
 
-    private void emitArithImm16(int op, Register dst, int imm16) {
-        emitByte(0x66);
-        int encode = prefixAndEncode(op, dst.encoding);
-        if (isByte(imm16)) {
-            emitByte(0x83); // imm8 sign extend
-            emitByte(0xC0 | encode);
-            emitByte(imm16 & 0xFF);
-        } else {
-            emitByte(0x81);
-            emitByte(0xC0 | encode);
-            emitShort(imm16);
+    /**
+     * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field. There
+     * are two cases for the memory operand:<br>
+     * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0.<br>
+     * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
+     */
+    protected static int getRXB(Register reg, AMD64Address rm) {
+        int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
+        if (!rm.getIndex().equals(Register.None)) {
+            rxb |= (rm.getIndex().encoding & 0x08) >> 2;
         }
-    }
-
-    private void emitArithImm32(int op, Register dst, int imm32) {
-        int encode = prefixAndEncode(op, dst.encoding);
-        if (isByte(imm32)) {
-            emitByte(0x83); // imm8 sign extend
-            emitByte(0xC0 | encode);
-            emitByte(imm32 & 0xFF);
-        } else {
-            emitByte(0x81);
-            emitByte(0xC0 | encode);
-            emitInt(imm32);
+        if (!rm.getBase().equals(Register.None)) {
+            rxb |= (rm.getBase().encoding & 0x08) >> 3;
         }
+        return rxb;
     }
 
-    private void emitArithImm32q(int op, Register dst, int imm32) {
-        emitArithImm32q(op, dst, imm32, false);
+    /**
+     * Emit the ModR/M byte for one register operand and an opcode extension in the R field.
+     * <p>
+     * Format: [ 11 reg r/m ]
+     */
+    protected void emitModRM(int reg, Register rm) {
+        assert (reg & 0x07) == reg;
+        emitByte(0xC0 | (reg << 3) | (rm.encoding & 0x07));
     }
 
-    private void emitArithImm32q(int op, Register dst, int imm32, boolean force32Imm) {
-        int encode = prefixqAndEncode(op, dst.encoding);
-        if (isByte(imm32) && !force32Imm) {
-            emitByte(0x83); // imm8 sign extend
-            emitByte(0xC0 | encode);
-            emitByte(imm32 & 0xFF);
-        } else {
-            emitByte(0x81);
-            emitByte(0xC0 | encode);
-            emitInt(imm32);
-        }
+    /**
+     * Emit the ModR/M byte for two register operands.
+     * <p>
+     * Format: [ 11 reg r/m ]
+     */
+    protected void emitModRM(Register reg, Register rm) {
+        emitModRM(reg.encoding & 0x07, rm);
     }
 
-    // immediate-to-memory forms
-    private void emitArithImm8(int op, AMD64Address adr, int imm8) {
-        prefix(adr);
-        emitByte(0x80);
-        emitOperandHelper(op, adr);
-        emitByte(imm8);
-    }
-
-    private void emitArithImm16(int op, AMD64Address adr, int imm16) {
-        emitByte(0x66);
-        prefix(adr);
-        if (isByte(imm16)) {
-            emitByte(0x83); // imm8 sign extend
-            emitOperandHelper(op, adr);
-            emitByte(imm16 & 0xFF);
-        } else {
-            emitByte(0x81);
-            emitOperandHelper(op, adr);
-            emitShort(imm16);
-        }
-    }
-
-    private void emitArithImm32(int op, AMD64Address adr, int imm32) {
-        prefix(adr);
-        if (isByte(imm32)) {
-            emitByte(0x83); // imm8 sign extend
-            emitOperandHelper(op, adr);
-            emitByte(imm32 & 0xFF);
-        } else {
-            emitByte(0x81);
-            emitOperandHelper(op, adr);
-            emitInt(imm32);
-        }
-    }
-
+    /**
+     * Emits the ModR/M byte and optionally the SIB byte for one register and one memory operand.
+     */
     protected void emitOperandHelper(Register reg, AMD64Address addr) {
         assert !reg.equals(Register.None);
         emitOperandHelper(encode(reg), addr);
     }
 
+    /**
+     * Emits the ModR/M byte and optionally the SIB byte for one memory operand and an opcode
+     * extension in the R field.
+     */
     protected void emitOperandHelper(int reg, AMD64Address addr) {
         assert (reg & 0x07) == reg;
         int regenc = reg << 3;
@@ -379,24 +475,470 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
+    /**
+     * Base class for AMD64 opcodes.
+     */
+    public static class AMD64Op {
+
+        protected static final int P_0F = 0x0F;
+        protected static final int P_0F38 = 0x380F;
+        protected static final int P_0F3A = 0x3A0F;
+
+        private final String opcode;
+
+        private final int prefix1;
+        private final int prefix2;
+        private final int op;
+
+        private final boolean dstIsByte;
+        private final boolean srcIsByte;
+
+        private final OpAssertion assertion;
+        private final CPUFeature feature;
+
+        protected AMD64Op(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
+            this(opcode, prefix1, prefix2, op, assertion == OpAssertion.ByteAssertion, assertion == OpAssertion.ByteAssertion, assertion, feature);
+        }
+
+        protected AMD64Op(String opcode, int prefix1, int prefix2, int op, boolean dstIsByte, boolean srcIsByte, OpAssertion assertion, CPUFeature feature) {
+            this.opcode = opcode;
+            this.prefix1 = prefix1;
+            this.prefix2 = prefix2;
+            this.op = op;
+
+            this.dstIsByte = dstIsByte;
+            this.srcIsByte = srcIsByte;
+
+            this.assertion = assertion;
+            this.feature = feature;
+        }
+
+        protected final void emitOpcode(AMD64Assembler asm, OperandSize size, int rxb, int dstEnc, int srcEnc) {
+            if (prefix1 != 0) {
+                asm.emitByte(prefix1);
+            }
+            if (size.sizePrefix != 0) {
+                asm.emitByte(size.sizePrefix);
+            }
+            int rexPrefix = 0x40 | rxb;
+            if (size == QWORD) {
+                rexPrefix |= 0x08;
+            }
+            if (rexPrefix != 0x40 || (dstIsByte && dstEnc >= 4) || (srcIsByte && srcEnc >= 4)) {
+                asm.emitByte(rexPrefix);
+            }
+            if (prefix2 > 0xFF) {
+                asm.emitShort(prefix2);
+            } else if (prefix2 > 0) {
+                asm.emitByte(prefix2);
+            }
+            asm.emitByte(op);
+        }
+
+        protected final boolean verify(AMD64Assembler asm, OperandSize size, Register resultReg, Register inputReg) {
+            assert feature == null || asm.supports(feature) : String.format("unsupported feature %s required for %s", feature, opcode);
+            assert assertion.checkOperands(this, size, resultReg, inputReg);
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return opcode;
+        }
+    }
+
+    /**
+     * Base class for AMD64 opcodes with immediate operands.
+     */
+    public static class AMD64ImmOp extends AMD64Op {
+
+        private final boolean immIsByte;
+
+        protected AMD64ImmOp(String opcode, boolean immIsByte, int prefix, int op, OpAssertion assertion) {
+            super(opcode, 0, prefix, op, assertion, null);
+            this.immIsByte = immIsByte;
+        }
+
+        protected final void emitImmediate(AMD64Assembler asm, OperandSize size, int imm) {
+            if (immIsByte) {
+                assert imm == (byte) imm;
+                asm.emitByte(imm);
+            } else {
+                size.emitImmediate(asm, imm);
+            }
+        }
+    }
+
+    /**
+     * Opcode with operand order of either RM or MR.
+     */
+    public abstract static class AMD64RROp extends AMD64Op {
+
+        protected AMD64RROp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, prefix1, prefix2, op, assertion, feature);
+        }
+
+        protected AMD64RROp(String opcode, int prefix1, int prefix2, int op, boolean dstIsByte, boolean srcIsByte, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, prefix1, prefix2, op, dstIsByte, srcIsByte, assertion, feature);
+        }
+
+        public abstract void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src);
+    }
+
+    /**
+     * Opcode with operand order of RM.
+     */
+    public static class AMD64RMOp extends AMD64RROp {
+        // @formatter:off
+        public static final AMD64RMOp IMUL   = new AMD64RMOp("IMUL",         P_0F, 0xAF);
+        public static final AMD64RMOp BSF    = new AMD64RMOp("BSF",          P_0F, 0xBC);
+        public static final AMD64RMOp BSR    = new AMD64RMOp("BSR",          P_0F, 0xBD);
+        public static final AMD64RMOp POPCNT = new AMD64RMOp("POPCNT", 0xF3, P_0F, 0xB8, CPUFeature.POPCNT);
+        public static final AMD64RMOp TZCNT  = new AMD64RMOp("TZCNT",  0xF3, P_0F, 0xBC, CPUFeature.BMI1);
+        public static final AMD64RMOp LZCNT  = new AMD64RMOp("LZCNT",  0xF3, P_0F, 0xBD, CPUFeature.LZCNT);
+        public static final AMD64RMOp MOVZXB = new AMD64RMOp("MOVZXB",       P_0F, 0xB6, false, true, OpAssertion.IntegerAssertion);
+        public static final AMD64RMOp MOVZX  = new AMD64RMOp("MOVZX",        P_0F, 0xB7, OpAssertion.No16BitAssertion);
+        public static final AMD64RMOp MOVSXB = new AMD64RMOp("MOVSXB",       P_0F, 0xBE, false, true, OpAssertion.IntegerAssertion);
+        public static final AMD64RMOp MOVSX  = new AMD64RMOp("MOVSX",        P_0F, 0xBF, OpAssertion.No16BitAssertion);
+        public static final AMD64RMOp MOVSXD = new AMD64RMOp("MOVSXD",             0x63, OpAssertion.QwordOnlyAssertion);
+        public static final AMD64RMOp MOV    = new AMD64RMOp("MOV",                0x8B);
+
+        // MOVD and MOVQ are the same opcode, just with different operand size prefix
+        public static final AMD64RMOp MOVD   = new AMD64RMOp("MOVD",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
+        public static final AMD64RMOp MOVQ   = new AMD64RMOp("MOVQ",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
+
+        // TEST is documented as MR operation, but it's symmetric, and using it as RM operation is more convenient.
+        public static final AMD64RMOp TESTB  = new AMD64RMOp("TEST",               0x84, OpAssertion.ByteAssertion);
+        public static final AMD64RMOp TEST   = new AMD64RMOp("TEST",               0x85);
+        // @formatter:on
+
+        protected AMD64RMOp(String opcode, int op) {
+            this(opcode, 0, op);
+        }
+
+        protected AMD64RMOp(String opcode, int op, OpAssertion assertion) {
+            this(opcode, 0, op, assertion);
+        }
+
+        protected AMD64RMOp(String opcode, int prefix, int op) {
+            this(opcode, 0, prefix, op, null);
+        }
+
+        protected AMD64RMOp(String opcode, int prefix, int op, OpAssertion assertion) {
+            this(opcode, 0, prefix, op, assertion, null);
+        }
+
+        protected AMD64RMOp(String opcode, int prefix, int op, boolean dstIsByte, boolean srcIsByte, OpAssertion assertion) {
+            super(opcode, 0, prefix, op, dstIsByte, srcIsByte, assertion, null);
+        }
+
+        protected AMD64RMOp(String opcode, int prefix1, int prefix2, int op, CPUFeature feature) {
+            this(opcode, prefix1, prefix2, op, OpAssertion.IntegerAssertion, feature);
+        }
+
+        protected AMD64RMOp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, prefix1, prefix2, op, assertion, feature);
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
+            assert verify(asm, size, dst, src);
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, src.encoding);
+            asm.emitModRM(dst, src);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
+            assert verify(asm, size, dst, null);
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
+            asm.emitOperandHelper(dst, src);
+        }
+    }
+
+    /**
+     * Opcode with operand order of MR.
+     */
+    public static class AMD64MROp extends AMD64RROp {
+        // @formatter:off
+        public static final AMD64MROp MOV    = new AMD64MROp("MOV",                0x89);
+
+        // MOVD and MOVQ are the same opcode, just with different operand size prefix
+        // Note that as MR opcodes, they have reverse operand order, so the IntToFloatingAssertion must be used.
+        public static final AMD64MROp MOVD   = new AMD64MROp("MOVD",   0x66, P_0F, 0x7E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
+        public static final AMD64MROp MOVQ   = new AMD64MROp("MOVQ",   0x66, P_0F, 0x7E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
+        // @formatter:on
+
+        protected AMD64MROp(String opcode, int op) {
+            this(opcode, 0, op);
+        }
+
+        protected AMD64MROp(String opcode, int op, OpAssertion assertion) {
+            this(opcode, 0, op, assertion);
+        }
+
+        protected AMD64MROp(String opcode, int prefix, int op) {
+            this(opcode, prefix, op, OpAssertion.IntegerAssertion);
+        }
+
+        protected AMD64MROp(String opcode, int prefix, int op, OpAssertion assertion) {
+            this(opcode, 0, prefix, op, assertion, null);
+        }
+
+        protected AMD64MROp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, prefix1, prefix2, op, assertion, feature);
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
+            assert verify(asm, size, src, dst);
+            emitOpcode(asm, size, getRXB(src, dst), src.encoding, dst.encoding);
+            asm.emitModRM(src, dst);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src) {
+            assert verify(asm, size, null, src);
+            emitOpcode(asm, size, getRXB(src, dst), src.encoding, 0);
+            asm.emitOperandHelper(src, dst);
+        }
+    }
+
+    /**
+     * Opcodes with operand order of M.
+     */
+    public static class AMD64MOp extends AMD64Op {
+        // @formatter:off
+        public static final AMD64MOp NOT  = new AMD64MOp("NOT",  0xF7, 2);
+        public static final AMD64MOp NEG  = new AMD64MOp("NEG",  0xF7, 3);
+        public static final AMD64MOp MUL  = new AMD64MOp("MUL",  0xF7, 4);
+        public static final AMD64MOp IMUL = new AMD64MOp("IMUL", 0xF7, 5);
+        public static final AMD64MOp DIV  = new AMD64MOp("DIV",  0xF7, 6);
+        public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
+        // @formatter:on
+
+        private final int ext;
+
+        protected AMD64MOp(String opcode, int op, int ext) {
+            this(opcode, 0, op, ext);
+        }
+
+        protected AMD64MOp(String opcode, int prefix, int op, int ext) {
+            this(opcode, prefix, op, ext, OpAssertion.IntegerAssertion);
+        }
+
+        protected AMD64MOp(String opcode, int prefix, int op, int ext, OpAssertion assertion) {
+            super(opcode, 0, prefix, op, assertion, null);
+            this.ext = ext;
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst) {
+            assert verify(asm, size, dst, null);
+            emitOpcode(asm, size, getRXB(null, dst), 0, dst.encoding);
+            asm.emitModRM(ext, dst);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst) {
+            assert verify(asm, size, null, null);
+            emitOpcode(asm, size, getRXB(null, dst), 0, 0);
+            asm.emitOperandHelper(ext, dst);
+        }
+    }
+
+    /**
+     * Opcodes with operand order of MI.
+     */
+    public static class AMD64MIOp extends AMD64ImmOp {
+        // @formatter:off
+        public static final AMD64MIOp MOV  = new AMD64MIOp("MOV",  false, 0xC7, 0);
+        public static final AMD64MIOp TEST = new AMD64MIOp("TEST", false, 0xF7, 0);
+        // @formatter:on
+
+        private final int ext;
+
+        protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext) {
+            this(opcode, immIsByte, 0, op, ext, OpAssertion.IntegerAssertion);
+        }
+
+        protected AMD64MIOp(String opcode, boolean immIsByte, int prefix, int op, int ext, OpAssertion assertion) {
+            super(opcode, immIsByte, prefix, op, assertion);
+            this.ext = ext;
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, int imm) {
+            assert verify(asm, size, dst, null);
+            emitOpcode(asm, size, getRXB(null, dst), 0, dst.encoding);
+            asm.emitModRM(ext, dst);
+            emitImmediate(asm, size, imm);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, int imm) {
+            assert verify(asm, size, null, null);
+            emitOpcode(asm, size, getRXB(null, dst), 0, 0);
+            asm.emitOperandHelper(ext, dst);
+            emitImmediate(asm, size, imm);
+        }
+    }
+
+    /**
+     * Opcodes with operand order of RMI.
+     */
+    public static class AMD64RMIOp extends AMD64ImmOp {
+        // @formatter:off
+        public static final AMD64RMIOp IMUL    = new AMD64RMIOp("IMUL", false, 0x69);
+        public static final AMD64RMIOp IMUL_SX = new AMD64RMIOp("IMUL", true,  0x6B);
+        // @formatter:on
+
+        protected AMD64RMIOp(String opcode, boolean immIsByte, int op) {
+            this(opcode, immIsByte, 0, op, OpAssertion.IntegerAssertion);
+        }
+
+        protected AMD64RMIOp(String opcode, boolean immIsByte, int prefix, int op, OpAssertion assertion) {
+            super(opcode, immIsByte, prefix, op, assertion);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
+            assert verify(asm, size, dst, src);
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, src.encoding);
+            asm.emitModRM(dst, src);
+            emitImmediate(asm, size, imm);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, int imm) {
+            assert verify(asm, size, dst, null);
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
+            asm.emitOperandHelper(dst, src);
+            emitImmediate(asm, size, imm);
+        }
+    }
+
+    public static class SSEOp extends AMD64RMOp {
+        // @formatter:off
+        public static final SSEOp CVTSI2SS  = new SSEOp("CVTSI2SS",  0xF3, P_0F, 0x2A, OpAssertion.IntToFloatingAssertion);
+        public static final SSEOp CVTSI2SD  = new SSEOp("CVTSI2SS",  0xF2, P_0F, 0x2A, OpAssertion.IntToFloatingAssertion);
+        public static final SSEOp CVTTSS2SI = new SSEOp("CVTTSS2SI", 0xF3, P_0F, 0x2C, OpAssertion.FloatingToIntAssertion);
+        public static final SSEOp CVTTSD2SI = new SSEOp("CVTTSD2SI", 0xF2, P_0F, 0x2C, OpAssertion.FloatingToIntAssertion);
+        public static final SSEOp UCOMIS    = new SSEOp("UCOMIS",          P_0F, 0x2E, OpAssertion.PackedFloatingAssertion);
+        public static final SSEOp SQRT      = new SSEOp("SQRT",            P_0F, 0x51);
+        public static final SSEOp AND       = new SSEOp("AND",             P_0F, 0x54, OpAssertion.PackedFloatingAssertion);
+        public static final SSEOp ANDN      = new SSEOp("ANDN",            P_0F, 0x55, OpAssertion.PackedFloatingAssertion);
+        public static final SSEOp OR        = new SSEOp("OR",              P_0F, 0x56, OpAssertion.PackedFloatingAssertion);
+        public static final SSEOp XOR       = new SSEOp("XOR",             P_0F, 0x57, OpAssertion.PackedFloatingAssertion);
+        public static final SSEOp ADD       = new SSEOp("ADD",             P_0F, 0x58);
+        public static final SSEOp MUL       = new SSEOp("MUL",             P_0F, 0x59);
+        public static final SSEOp CVTSS2SD  = new SSEOp("CVTSS2SD",        P_0F, 0x5A, OpAssertion.SingleAssertion);
+        public static final SSEOp CVTSD2SS  = new SSEOp("CVTSD2SS",        P_0F, 0x5A, OpAssertion.DoubleAssertion);
+        public static final SSEOp SUB       = new SSEOp("SUB",             P_0F, 0x5C);
+        public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D);
+        public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E);
+        public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F);
+        // @formatter:on
+
+        protected SSEOp(String opcode, int prefix, int op) {
+            this(opcode, prefix, op, OpAssertion.FloatingAssertion);
+        }
+
+        protected SSEOp(String opcode, int prefix, int op, OpAssertion assertion) {
+            this(opcode, 0, prefix, op, assertion);
+        }
+
+        protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, OpAssertion assertion) {
+            super(opcode, mandatoryPrefix, prefix, op, assertion, CPUFeature.SSE2);
+        }
+    }
+
+    /**
+     * Arithmetic operation with operand order of RM, MR or MI.
+     */
+    public static final class AMD64BinaryArithmetic {
+        // @formatter:off
+        public static final AMD64BinaryArithmetic ADD = new AMD64BinaryArithmetic("ADD", 0);
+        public static final AMD64BinaryArithmetic OR  = new AMD64BinaryArithmetic("OR",  1);
+        public static final AMD64BinaryArithmetic ADC = new AMD64BinaryArithmetic("ADC", 2);
+        public static final AMD64BinaryArithmetic SBB = new AMD64BinaryArithmetic("SBB", 3);
+        public static final AMD64BinaryArithmetic AND = new AMD64BinaryArithmetic("AND", 4);
+        public static final AMD64BinaryArithmetic SUB = new AMD64BinaryArithmetic("SUB", 5);
+        public static final AMD64BinaryArithmetic XOR = new AMD64BinaryArithmetic("XOR", 6);
+        public static final AMD64BinaryArithmetic CMP = new AMD64BinaryArithmetic("CMP", 7);
+        // @formatter:on
+
+        private final AMD64MIOp byteImmOp;
+        private final AMD64MROp byteMrOp;
+        private final AMD64RMOp byteRmOp;
+
+        private final AMD64MIOp immOp;
+        private final AMD64MIOp immSxOp;
+        private final AMD64MROp mrOp;
+        private final AMD64RMOp rmOp;
+
+        private AMD64BinaryArithmetic(String opcode, int code) {
+            int baseOp = code << 3;
+
+            byteImmOp = new AMD64MIOp(opcode, true, 0, 0x80, code, OpAssertion.ByteAssertion);
+            byteMrOp = new AMD64MROp(opcode, 0, baseOp, OpAssertion.ByteAssertion);
+            byteRmOp = new AMD64RMOp(opcode, 0, baseOp | 0x02, OpAssertion.ByteAssertion);
+
+            immOp = new AMD64MIOp(opcode, false, 0, 0x81, code, OpAssertion.IntegerAssertion);
+            immSxOp = new AMD64MIOp(opcode, true, 0, 0x83, code, OpAssertion.IntegerAssertion);
+            mrOp = new AMD64MROp(opcode, 0, baseOp | 0x01, OpAssertion.IntegerAssertion);
+            rmOp = new AMD64RMOp(opcode, 0, baseOp | 0x03, OpAssertion.IntegerAssertion);
+        }
+
+        public AMD64MIOp getMIOpcode(OperandSize size, boolean sx) {
+            if (size == BYTE) {
+                return byteImmOp;
+            } else if (sx) {
+                return immSxOp;
+            } else {
+                return immOp;
+            }
+        }
+
+        public AMD64MROp getMROpcode(OperandSize size) {
+            if (size == BYTE) {
+                return byteMrOp;
+            } else {
+                return mrOp;
+            }
+        }
+
+        public AMD64RMOp getRMOpcode(OperandSize size) {
+            if (size == BYTE) {
+                return byteRmOp;
+            } else {
+                return rmOp;
+            }
+        }
+    }
+
+    /**
+     * Shift operation with operand order of M1, MC or MI.
+     */
+    public static final class AMD64Shift {
+        // @formatter:off
+        public static final AMD64Shift ROL = new AMD64Shift("ROL", 0);
+        public static final AMD64Shift ROR = new AMD64Shift("ROR", 1);
+        public static final AMD64Shift RCL = new AMD64Shift("RCL", 2);
+        public static final AMD64Shift RCR = new AMD64Shift("RCR", 3);
+        public static final AMD64Shift SHL = new AMD64Shift("SHL", 4);
+        public static final AMD64Shift SHR = new AMD64Shift("SHR", 5);
+        public static final AMD64Shift SAR = new AMD64Shift("SAR", 7);
+        // @formatter:on
+
+        public final AMD64MOp m1Op;
+        public final AMD64MOp mcOp;
+        public final AMD64MIOp miOp;
+
+        private AMD64Shift(String opcode, int code) {
+            m1Op = new AMD64MOp(opcode, 0, 0xD1, code, OpAssertion.IntegerAssertion);
+            mcOp = new AMD64MOp(opcode, 0, 0xD3, code, OpAssertion.IntegerAssertion);
+            miOp = new AMD64MIOp(opcode, true, 0, 0xC1, code, OpAssertion.IntegerAssertion);
+        }
+    }
+
     public final void addl(AMD64Address dst, int imm32) {
-        emitArithImm32(0, dst, imm32);
+        ADD.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     public final void addl(Register dst, int imm32) {
-        emitArithImm32(0, dst, imm32);
-    }
-
-    public final void addl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x03);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void addl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x03);
-        emitByte(0xC0 | encode);
+        ADD.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     private void addrNop4() {
@@ -433,98 +975,8 @@ public class AMD64Assembler extends Assembler {
         emitInt(0); // 32-bits offset (4 bytes)
     }
 
-    public final void addsd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x58);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void addsd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x58);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void addss(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x58);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void addss(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x58);
-        emitOperandHelper(dst, src);
-    }
-
     public final void andl(Register dst, int imm32) {
-        emitArithImm32(4, dst, imm32);
-    }
-
-    public final void andl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x23);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void andl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x23);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void bsfq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void bsfq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void bsrq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void bsrq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void bsrl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void bsrl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitOperandHelper(dst, src);
+        AND.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     public final void bswapl(Register reg) {
@@ -551,66 +1003,20 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void cmpb(Register dst, int imm8) {
-        emitArithImm8(7, dst, imm8);
-    }
-
-    public final void cmpb(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, true, src.encoding, true);
-        emitByte(0x3A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cmpb(Register dst, AMD64Address src) {
-        prefix(src, dst, true);
-        emitByte(0x3A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cmpb(AMD64Address dst, int imm8) {
-        emitArithImm8(7, dst, imm8);
-    }
-
-    public final void cmpw(Register dst, int imm16) {
-        emitArithImm16(7, dst, imm16);
-    }
-
-    public final void cmpw(Register dst, Register src) {
-        emitByte(0x66);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x3B);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cmpw(Register dst, AMD64Address src) {
-        emitByte(0x66);
-        prefix(src, dst);
-        emitByte(0x3B);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cmpw(AMD64Address dst, int imm16) {
-        emitArithImm16(7, dst, imm16);
-    }
-
     public final void cmpl(Register dst, int imm32) {
-        emitArithImm32(7, dst, imm32);
+        CMP.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     public final void cmpl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x3B);
-        emitByte(0xC0 | encode);
+        CMP.rmOp.emit(this, DWORD, dst, src);
     }
 
     public final void cmpl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x3B);
-        emitOperandHelper(dst, src);
+        CMP.rmOp.emit(this, DWORD, dst, src);
     }
 
     public final void cmpl(AMD64Address dst, int imm32) {
-        emitArithImm32(7, dst, imm32);
+        CMP.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     // The 32-bit cmpxchg compares the value at adr with the contents of X86.rax,
@@ -623,235 +1029,21 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(reg, adr);
     }
 
-    public final void cvtsd2ss(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x5A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtsd2ss(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvtsi2sdl(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtsi2sdl(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvtsi2ssl(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtsi2ssl(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvtss2sd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x5A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtss2sd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvttsd2sil(Register dst, AMD64Address src) {
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvttsd2sil(Register dst, Register src) {
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvttss2sil(Register dst, AMD64Address src) {
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvttss2sil(Register dst, Register src) {
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitByte(0xC0 | encode);
-    }
-
     protected final void decl(AMD64Address dst) {
         prefix(dst);
         emitByte(0xFF);
         emitOperandHelper(1, dst);
     }
 
-    public final void divsd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x5E);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void divsd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5E);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void divss(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x5E);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void divss(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5E);
-        emitByte(0xC0 | encode);
-    }
-
     public final void hlt() {
         emitByte(0xF4);
     }
 
-    public final void idivl(Register src) {
-        int encode = prefixAndEncode(7, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void divl(Register src) {
-        int encode = prefixAndEncode(6, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void mull(Register src) {
-        int encode = prefixAndEncode(4, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void mull(AMD64Address src) {
-        prefix(src);
-        emitByte(0xF7);
-        emitOperandHelper(4, src);
-    }
-
-    public final void imull(Register src) {
-        int encode = prefixAndEncode(5, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void imull(AMD64Address src) {
-        prefix(src);
-        emitByte(0xF7);
-        emitOperandHelper(5, src);
-    }
-
-    public final void imull(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xAF);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void imull(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xAF);
-        emitOperandHelper(dst, src);
-    }
-
     public final void imull(Register dst, Register src, int value) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
         if (isByte(value)) {
-            emitByte(0x6B);
-            emitByte(0xC0 | encode);
-            emitByte(value & 0xFF);
+            AMD64RMIOp.IMUL_SX.emit(this, DWORD, dst, src, value);
         } else {
-            emitByte(0x69);
-            emitByte(0xC0 | encode);
-            emitInt(value);
-        }
-    }
-
-    public final void imull(Register dst, AMD64Address src, int value) {
-        prefix(src, dst);
-        if (isByte(value)) {
-            emitByte(0x6B);
-            emitOperandHelper(dst, src);
-            emitByte(value & 0xFF);
-        } else {
-            emitByte(0x69);
-            emitOperandHelper(dst, src);
-            emitInt(value);
+            AMD64RMIOp.IMUL.emit(this, DWORD, dst, src, value);
         }
     }
 
@@ -1039,25 +1231,6 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(src, dst);
     }
 
-    public final void movdl(Register dst, Register src) {
-        if (dst.getRegisterCategory().equals(AMD64.XMM)) {
-            assert !src.getRegisterCategory().equals(AMD64.XMM) : "does this hold?";
-            emitByte(0x66);
-            int encode = prefixAndEncode(dst.encoding, src.encoding);
-            emitByte(0x0F);
-            emitByte(0x6E);
-            emitByte(0xC0 | encode);
-        } else if (src.getRegisterCategory().equals(AMD64.XMM)) {
-            assert !dst.getRegisterCategory().equals(AMD64.XMM);
-            emitByte(0x66);
-            // swap src/dst to get correct prefix
-            int encode = prefixAndEncode(src.encoding, dst.encoding);
-            emitByte(0x0F);
-            emitByte(0x7E);
-            emitByte(0xC0 | encode);
-        }
-    }
-
     public final void movl(Register dst, int imm32) {
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0xB8 | encode);
@@ -1229,27 +1402,6 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void movswl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void movswq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void movswq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBF);
-        emitByte(0xC0 | encode);
-    }
-
     public final void movw(AMD64Address dst, int imm16) {
         emitByte(0x66); // switch to 16-bit mode
         prefix(dst);
@@ -1279,97 +1431,9 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void mulsd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x59);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void mulsd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x59);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void mulss(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x59);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void mulss(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x59);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void negl(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xF7);
-        emitByte(0xD8 | encode);
-    }
-
-    public final void notl(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xF7);
-        emitByte(0xD0 | encode);
-    }
-
     @Override
     public final void ensureUniquePC() {
         nop();
-    }
-
-    public final void lzcntl(Register dst, Register src) {
-        assert supports(CPUFeature.LZCNT);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void lzcntq(Register dst, Register src) {
-        assert supports(CPUFeature.LZCNT);
-        emitByte(0xF3);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void lzcntl(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.LZCNT);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void lzcntq(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.LZCNT);
-        emitByte(0xF3);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBD);
-        emitOperandHelper(dst, src);
     }
 
     public final void nop() {
@@ -1578,58 +1642,6 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
-    public final void orl(Register dst, int imm32) {
-        emitArithImm32(1, dst, imm32);
-    }
-
-    public final void orl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x0B);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void orl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0B);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void popcntl(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.POPCNT);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xB8);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void popcntl(Register dst, Register src) {
-        assert supports(CPUFeature.POPCNT);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xB8);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void popcntq(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.POPCNT);
-        emitByte(0xF3);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xB8);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void popcntq(Register dst, Register src) {
-        assert supports(CPUFeature.POPCNT);
-        emitByte(0xF3);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xB8);
-        emitByte(0xC0 | encode);
-    }
-
     public final void pop(Register dst) {
         int encode = prefixAndEncode(dst.encoding);
         emitByte(0x58 | encode);
@@ -1675,218 +1687,12 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
-    public final void sarl(Register dst, int imm8) {
-        int encode = prefixAndEncode(dst.encoding);
-        assert isShiftCount(imm8) : "illegal shift count";
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xF8 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xF8 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void sarl(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xF8 | encode);
-    }
-
-    public final void shll(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xE0 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xE0 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void shll(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xE0 | encode);
-    }
-
-    public final void shrl(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xE8 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xE8 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void shrl(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xE8 | encode);
-    }
-
-    public final void roll(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xC0 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xC0 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void roll(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void rorl(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xC8 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xC8 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void rorl(Register dst) {
-        int encode = prefixAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xC8 | encode);
-    }
-
-    public final void rolq(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixqAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xC0 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xC0 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void rolq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void rorq(Register dst, int imm8) {
-        assert isShiftCount(imm8) : "illegal shift count";
-        int encode = prefixqAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xC8 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xC8 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void rorq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xC8 | encode);
-    }
-
-    public final void sqrtsd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x51);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void sqrtsd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        // HMM Table D-1 says sse2
-        // assert is64 || target.supportsSSE();
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x51);
-        emitByte(0xC0 | encode);
-    }
-
     public final void subl(AMD64Address dst, int imm32) {
-        emitArithImm32(5, dst, imm32);
+        SUB.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     public final void subl(Register dst, int imm32) {
-        emitArithImm32(5, dst, imm32);
-    }
-
-    public final void subl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x2B);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void subl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x2B);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void subsd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5C);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void subsd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-
-        emitByte(0xF2);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x5C);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void subss(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x5C);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void subss(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x5C);
-        emitOperandHelper(dst, src);
+        SUB.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
     public final void testl(Register dst, int imm32) {
@@ -1904,13 +1710,6 @@ public class AMD64Assembler extends Assembler {
         emitInt(imm32);
     }
 
-    public final void testl(AMD64Address dst, int imm32) {
-        prefix(dst);
-        emitByte(0xF7);
-        emitOperandHelper(0, dst);
-        emitInt(imm32);
-    }
-
     public final void testl(Register dst, Register src) {
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x85);
@@ -1923,147 +1722,11 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void tzcntl(Register dst, Register src) {
-        assert supports(CPUFeature.BMI1);
-        emitByte(0xF3);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void tzcntq(Register dst, Register src) {
-        assert supports(CPUFeature.BMI1);
-        emitByte(0xF3);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void tzcntl(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.BMI1);
-        emitByte(0xF3);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void tzcntq(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.BMI1);
-        emitByte(0xF3);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xBC);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void ucomisd(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0x66);
-        ucomiss(dst, src);
-    }
-
-    public final void ucomisd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0x66);
-        ucomiss(dst, src);
-    }
-
-    public final void ucomiss(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2E);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void ucomiss(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2E);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void xorl(Register dst, int imm32) {
-        emitArithImm32(6, dst, imm32);
-    }
-
-    public final void xorl(Register dst, AMD64Address src) {
-        prefix(src, dst);
-        emitByte(0x33);
-        emitOperandHelper(dst, src);
-    }
-
     public final void xorl(Register dst, Register src) {
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x33);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void andpd(Register dst, Register src) {
-        emitByte(0x66);
-        andps(dst, src);
-    }
-
-    public final void andpd(Register dst, AMD64Address src) {
-        emitByte(0x66);
-        andps(dst, src);
-    }
-
-    public final void andps(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x54);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void andps(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x54);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void orpd(Register dst, Register src) {
-        emitByte(0x66);
-        orps(dst, src);
-    }
-
-    public final void orpd(Register dst, AMD64Address src) {
-        emitByte(0x66);
-        orps(dst, src);
-    }
-
-    public final void orps(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
-        int encode = prefixAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x56);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void orps(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x56);
-        emitOperandHelper(dst, src);
+        XOR.rmOp.emit(this, DWORD, dst, src);
     }
 
     public final void xorpd(Register dst, Register src) {
-        emitByte(0x66);
-        xorps(dst, src);
-    }
-
-    public final void xorpd(Register dst, AMD64Address src) {
         emitByte(0x66);
         xorps(dst, src);
     }
@@ -2074,14 +1737,6 @@ public class AMD64Assembler extends Assembler {
         emitByte(0x0F);
         emitByte(0x57);
         emitByte(0xC0 | encode);
-    }
-
-    public final void xorps(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        prefix(src, dst);
-        emitByte(0x0F);
-        emitByte(0x57);
-        emitOperandHelper(dst, src);
     }
 
     protected final void decl(Register dst) {
@@ -2281,35 +1936,15 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void addq(Register dst, int imm32) {
-        emitArithImm32q(0, dst, imm32);
-    }
-
-    public final void addq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x03);
-        emitOperandHelper(dst, src);
+        ADD.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
 
     public final void addq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x03);
-        emitByte(0xC0 | encode);
+        ADD.rmOp.emit(this, QWORD, dst, src);
     }
 
     public final void andq(Register dst, int imm32) {
-        emitArithImm32q(4, dst, imm32);
-    }
-
-    public final void andq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x23);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void andq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x23);
-        emitByte(0xC0 | encode);
+        AND.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
 
     public final void bswapq(Register reg) {
@@ -2337,27 +1972,16 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src);
     }
 
-    public final void cmpq(AMD64Address dst, int imm32) {
-        prefixq(dst);
-        emitByte(0x81);
-        emitOperandHelper(7, dst);
-        emitInt(imm32);
-    }
-
     public final void cmpq(Register dst, int imm32) {
-        emitArithImm32q(7, dst, imm32);
+        CMP.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
 
     public final void cmpq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x3B);
-        emitByte(0xC0 | encode);
+        CMP.rmOp.emit(this, QWORD, dst, src);
     }
 
     public final void cmpq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x3B);
-        emitOperandHelper(dst, src);
+        CMP.rmOp.emit(this, QWORD, dst, src);
     }
 
     public final void cmpxchgq(Register reg, AMD64Address adr) {
@@ -2367,163 +1991,11 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(reg, adr);
     }
 
-    public final void cvtsi2sdq(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtsi2sdq(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvtsi2ssq(Register dst, AMD64Address src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvtsi2ssq(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2A);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvttsd2siq(Register dst, AMD64Address src) {
-        emitByte(0xF2);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvttsd2siq(Register dst, Register src) {
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF2);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void cvttss2siq(Register dst, AMD64Address src) {
-        emitByte(0xF3);
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void cvttss2siq(Register dst, Register src) {
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        emitByte(0xF3);
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0x2C);
-        emitByte(0xC0 | encode);
-    }
-
     protected final void decq(Register dst) {
         // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
         int encode = prefixqAndEncode(dst.encoding);
         emitByte(0xFF);
         emitByte(0xC8 | encode);
-    }
-
-    protected final void decq(AMD64Address dst) {
-        prefixq(dst);
-        emitByte(0xFF);
-        emitOperandHelper(1, dst);
-    }
-
-    public final void divq(Register src) {
-        int encode = prefixqAndEncode(6, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void idivq(Register src) {
-        int encode = prefixqAndEncode(7, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void mulq(Register src) {
-        int encode = prefixqAndEncode(4, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void mulq(AMD64Address src) {
-        prefixq(src);
-        emitByte(0xF7);
-        emitOperandHelper(4, src);
-    }
-
-    public final void imulq(Register src) {
-        int encode = prefixqAndEncode(5, src.encoding);
-        emitByte(0xF7);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void imulq(AMD64Address src) {
-        prefixq(src);
-        emitByte(0xF7);
-        emitOperandHelper(5, src);
-    }
-
-    public final void imulq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0F);
-        emitByte(0xAF);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void imulq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0F);
-        emitByte(0xAF);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void imulq(Register dst, Register src, int value) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        if (isByte(value)) {
-            emitByte(0x6B);
-            emitByte(0xC0 | encode);
-            emitByte(value & 0xFF);
-        } else {
-            emitByte(0x69);
-            emitByte(0xC0 | encode);
-            emitInt(value);
-        }
-    }
-
-    public final void imulq(Register dst, AMD64Address src, int value) {
-        prefixq(src, dst);
-        if (isByte(value)) {
-            emitByte(0x6B);
-            emitOperandHelper(dst, src);
-            emitByte(value & 0xFF);
-        } else {
-            emitByte(0x69);
-            emitOperandHelper(dst, src);
-            emitInt(value);
-        }
     }
 
     public final void incq(Register dst) {
@@ -2602,47 +2074,6 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xD8 | encode);
     }
 
-    public final void notq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xF7);
-        emitByte(0xD0 | encode);
-    }
-
-    public final void orq(Register dst, int imm32) {
-        emitArithImm32q(1, dst, imm32);
-    }
-
-    public final void orq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x0B);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void orq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x0B);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void sarq(Register dst, int imm8) {
-        assert isShiftCount(imm8 >> 1) : "illegal shift count";
-        int encode = prefixqAndEncode(dst.encoding);
-        if (imm8 == 1) {
-            emitByte(0xD1);
-            emitByte(0xF8 | encode);
-        } else {
-            emitByte(0xC1);
-            emitByte(0xF8 | encode);
-            emitByte(imm8);
-        }
-    }
-
-    public final void sarq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xF8 | encode);
-    }
-
     public final void shlq(Register dst, int imm8) {
         assert isShiftCount(imm8 >> 1) : "illegal shift count";
         int encode = prefixqAndEncode(dst.encoding);
@@ -2654,12 +2085,6 @@ public class AMD64Assembler extends Assembler {
             emitByte(0xE0 | encode);
             emitByte(imm8);
         }
-    }
-
-    public final void shlq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xE0 | encode);
     }
 
     public final void shrq(Register dst, int imm8) {
@@ -2675,69 +2100,23 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
-    public final void shrq(Register dst) {
-        int encode = prefixqAndEncode(dst.encoding);
-        emitByte(0xD3);
-        emitByte(0xE8 | encode);
-    }
-
     public final void subq(Register dst, int imm32) {
-        subq(dst, imm32, false);
+        SUB.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
 
     public final void subqWide(Register dst, int imm32) {
-        subq(dst, imm32, true);
-    }
-
-    private void subq(Register dst, int imm32, boolean force32Imm) {
-        emitArithImm32q(5, dst, imm32, force32Imm);
-    }
-
-    public final void subq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x2B);
-        emitOperandHelper(dst, src);
+        // don't use the sign-extending version, forcing a 32-bit immediate
+        SUB.getMIOpcode(QWORD, false).emit(this, QWORD, dst, imm32);
     }
 
     public final void subq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x2B);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void testq(Register dst, int imm32) {
-        // not using emitArith because test
-        // doesn't support sign-extension of
-        // 8bit operands
-        int encode = dst.encoding;
-        if (encode == 0) {
-            emitByte(Prefix.REXW);
-            emitByte(0xA9);
-        } else {
-            encode = prefixqAndEncode(encode);
-            emitByte(0xF7);
-            emitByte(0xC0 | encode);
-        }
-        emitInt(imm32);
+        SUB.rmOp.emit(this, QWORD, dst, src);
     }
 
     public final void testq(Register dst, Register src) {
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x85);
         emitByte(0xC0 | encode);
-    }
-
-    public final void testq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x85);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void testq(AMD64Address dst, int imm32) {
-        prefixq(dst);
-        emitByte(0xF7);
-        emitOperandHelper(0, dst);
-        emitInt(imm32);
     }
 
     public final void xaddl(AMD64Address dst, Register src) {
@@ -2763,22 +2142,6 @@ public class AMD64Assembler extends Assembler {
     public final void xchgq(Register dst, AMD64Address src) {
         prefixq(src, dst);
         emitByte(0x87);
-        emitOperandHelper(dst, src);
-    }
-
-    public final void xorq(Register dst, int imm32) {
-        emitArithImm32q(6, dst, imm32);
-    }
-
-    public final void xorq(Register dst, Register src) {
-        int encode = prefixqAndEncode(dst.encoding, src.encoding);
-        emitByte(0x33);
-        emitByte(0xC0 | encode);
-    }
-
-    public final void xorq(Register dst, AMD64Address src) {
-        prefixq(src, dst);
-        emitByte(0x33);
         emitOperandHelper(dst, src);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,6 +88,10 @@ public final class AMD64AddressValue extends CompositeValue {
         }
         s.append("]");
         return s.toString();
+    }
+
+    public boolean isValidImplicitNullCheckFor(Value value, int implicitNullCheckLimit) {
+        return value.equals(base) && index.equals(Value.ILLEGAL) && displacement >= 0 && displacement < implicitNullCheckLimit;
     }
 
     @Override

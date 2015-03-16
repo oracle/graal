@@ -24,6 +24,9 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import java.util.*;
@@ -31,6 +34,7 @@ import java.util.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -580,19 +584,35 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
-        if (right instanceof HotSpotConstant) {
-            append(new AMD64HotSpotCompare.HotSpotCompareConstantOp(left, (JavaConstant) right));
+        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(right)) {
+            append(new AMD64CompareOp(TEST, DWORD, left, left));
+        } else if (right instanceof HotSpotConstant) {
+            HotSpotConstant c = (HotSpotConstant) right;
+
+            boolean isImmutable = GraalOptions.ImmutableCode.getValue();
+            boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+            if (c.isCompressed() && !(isImmutable && generatePIC)) {
+                append(new AMD64HotSpotCompareConstOp(CMP.getMIOpcode(DWORD, false), left, c));
+            } else {
+                OperandSize size = c.isCompressed() ? DWORD : QWORD;
+                append(new AMD64HotSpotComparePatchOp(CMP.getRMOpcode(size), size, left, c));
+            }
         } else {
             super.emitCompareOp(cmpKind, left, right);
         }
     }
 
     @Override
-    protected void emitCompareMemoryConOp(Kind kind, AMD64AddressValue address, JavaConstant value, LIRFrameState state) {
-        if (value instanceof HotSpotConstant) {
-            append(new AMD64HotSpotCompare.HotSpotCompareMemoryConstantOp(kind, address, value, state));
+    protected boolean emitCompareMemoryConOp(OperandSize size, JavaConstant a, AMD64AddressValue b, LIRFrameState state) {
+        if (a.isNull()) {
+            append(new AMD64CompareMemoryConstOp(CMP.getMIOpcode(size, true), size, b, PrimitiveConstant.INT_0, state));
+            return true;
+        } else if (a instanceof HotSpotConstant && size == DWORD) {
+            assert ((HotSpotConstant) a).isCompressed();
+            append(new AMD64HotSpotCompareMemoryConstOp(CMP.getMIOpcode(size, false), b, (HotSpotConstant) a, state));
+            return true;
         } else {
-            super.emitCompareMemoryConOp(kind, address, value, state);
+            return super.emitCompareMemoryConOp(size, a, b, state);
         }
     }
 
