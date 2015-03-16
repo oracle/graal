@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,11 +120,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     List<AMD64HotSpotEpilogueOp> epilogueOps = new ArrayList<>(2);
 
     @Override
-    public void append(LIRInstruction op) {
-        super.append(op);
+    public <I extends LIRInstruction> I append(I op) {
+        I ret = super.append(op);
         if (op instanceof AMD64HotSpotEpilogueOp) {
             epilogueOps.add((AMD64HotSpotEpilogueOp) op);
         }
+        return ret;
     }
 
     @Override
