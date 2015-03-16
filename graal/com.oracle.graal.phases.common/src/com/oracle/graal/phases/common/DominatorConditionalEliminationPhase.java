@@ -253,8 +253,8 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated);
                     registerNewStamp(y, newStampY, guard, undoOperations);
                 }
-                registerCondition(condition, negated, guard, undoOperations);
             }
+            registerCondition(condition, negated, guard, undoOperations);
         }
 
         private void registerCondition(LogicNode condition, boolean negated, ValueNode guard, List<Runnable> undoOperations) {
