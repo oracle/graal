@@ -218,11 +218,12 @@ public class LoopEx {
                         if (initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
                         }
-                    } else {
-                        assert iv.direction() == Direction.Down;
+                    } else if (iv.direction() == Direction.Down) {
                         if (initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
                         }
+                    } else {
+                        return false;
                     }
                     oneOff = true;
                     break;

@@ -60,6 +60,7 @@ public class CountedLoopInfo {
             if (iv.direction() == Direction.Up) {
                 range = add(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             } else {
+                assert iv.direction() == Direction.Down;
                 range = sub(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             }
         }
@@ -76,6 +77,7 @@ public class CountedLoopInfo {
     }
 
     public long constantMaxTripCount() {
+        assert iv.direction() != null;
         long off = oneOff ? iv.direction() == Direction.Up ? 1 : -1 : 0;
         long max = (((ConstantNode) end).asJavaConstant().asLong() + off - iv.constantInit()) / iv.constantStride();
         return Math.max(0, max);
