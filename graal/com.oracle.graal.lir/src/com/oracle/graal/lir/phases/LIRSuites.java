@@ -41,6 +41,10 @@ public class LIRSuites {
         this.postAllocStage = postAllocStage;
     }
 
+    public LIRSuites(LIRSuites other) {
+        this(other.getPreAllocationOptimizationStage().copy(), other.getAllocationStage().copy(), other.getPostAllocationOptimizationStage().copy());
+    }
+
     /**
      * {@link PreAllocationOptimizationPhase}s are executed between {@link LIR} generation and
      * register allocation.
