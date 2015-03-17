@@ -265,7 +265,7 @@ public class TruffleGraphBuilderPlugins {
     private static void registerMaterialize(Registration r) {
         r.register1("materialize", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode frame) {
-                b.push(Kind.Object, b.append(new MaterializeFrameNode(frame)));
+                b.push(Kind.Object, b.append(new MaterializeFrameNode(GraphBuilderContext.nullCheckedValue(b, frame))));
                 return true;
             }
         });
