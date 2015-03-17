@@ -109,15 +109,15 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n, tool);
         } else if (n instanceof InstanceOfNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfNode) n, tool);
             }
         } else if (n instanceof InstanceOfDynamicNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
             }
         } else if (n instanceof ClassIsAssignableFromNode) {
-            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((ClassIsAssignableFromNode) n, tool);
             }
         } else if (n instanceof NewInstanceNode) {
