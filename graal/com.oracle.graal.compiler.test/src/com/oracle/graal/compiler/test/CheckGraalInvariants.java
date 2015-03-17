@@ -41,6 +41,8 @@ import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -68,7 +70,8 @@ public class CheckGraalInvariants extends GraalTest {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
 
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getEagerDefault()));
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(metaAccess)));
+        graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, null, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());

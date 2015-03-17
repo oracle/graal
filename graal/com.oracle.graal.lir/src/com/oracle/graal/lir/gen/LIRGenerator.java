@@ -391,4 +391,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public void emitBlackhole(Value operand) {
         append(new StandardOp.BlackholeOp(operand));
     }
+
+    public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
+        throw GraalInternalError.unimplemented();
+    }
 }

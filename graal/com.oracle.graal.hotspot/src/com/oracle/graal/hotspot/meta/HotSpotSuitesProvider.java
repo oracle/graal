@@ -24,11 +24,12 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.DebugInfoMode;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
@@ -65,9 +66,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
     }
 
-    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime) {
+    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime, Plugins plugins) {
         this.runtime = runtime;
-        this.defaultGraphBuilderSuite = createGraphBuilderSuite();
+        this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);
         this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
         this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
     }
@@ -99,9 +100,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         return ret;
     }
 
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins);
         suite.appendPhase(new GraphBuilderPhase(config));
         return suite;
     }

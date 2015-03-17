@@ -282,9 +282,42 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     /**
+     * Here the read should not float out of the loop.
+     */
+    public static int testLoop7Snippet(int a, int b, MemoryScheduleTest obj) {
+        int ret = 0;
+        int bb = b;
+        for (int i = 0; i < a; i++) {
+            ret = obj.hash;
+            if (a > 10) {
+                bb++;
+            } else {
+                bb--;
+                for (int k = 0; k < a; ++k) {
+                    if (k % 2 == 1) {
+                        for (int j = 0; j < b; ++j) {
+                            obj.hash = 3;
+                        }
+                    }
+                }
+            }
+            ret = ret / 10;
+        }
+        return ret + bb;
+    }
+
+    @Test
+    public void testLoop7() {
+        SchedulePhase schedule = getFinalSchedule("testLoop7Snippet", TestMode.WITHOUT_FRAMESTATES);
+        assertDeepEquals(18, schedule.getCFG().getBlocks().size());
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinAllReturnBlocks(schedule, false);
+    }
+
+    /**
      * Here the read should not float to the end.
      */
-    public static int testLoop7Snippet(int a, int b) {
+    public static int testLoop8Snippet(int a, int b) {
         int result = container.a;
         for (int i = 0; i < a; i++) {
             if (b < 0) {
@@ -301,8 +334,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     @Test
-    public void testLoop7() {
-        SchedulePhase schedule = getFinalSchedule("testLoop7Snippet", TestMode.WITHOUT_FRAMESTATES);
+    public void testLoop8() {
+        SchedulePhase schedule = getFinalSchedule("testLoop8Snippet", TestMode.WITHOUT_FRAMESTATES);
         assertDeepEquals(10, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);

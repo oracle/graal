@@ -28,10 +28,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -79,11 +80,11 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
     @Override
     protected StructuredGraph getGraph() {
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
         Plugins defaultPlugins = providers.getGraphBuilderPlugins();
-        Plugins plugins = config.getPlugins().updateFrom(defaultPlugins, false);
-        plugins.getInvocationPlugins().setDefaults(defaultPlugins.getInvocationPlugins());
-        plugins.setParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), plugins.getParameterPlugin(), providers.getMetaAccess(), providers.getSnippetReflection()));
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        Plugins plugins = new Plugins(defaultPlugins);
+        plugins.setParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), plugins.getParameterPlugin(), metaAccess, providers.getSnippetReflection()));
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM. Nor can they be
@@ -93,7 +94,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
         assert SnippetGraphUnderConstruction.get() == null;
         SnippetGraphUnderConstruction.set(graph);
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, method).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, method).apply(graph);
         SnippetGraphUnderConstruction.set(null);
 
         graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);

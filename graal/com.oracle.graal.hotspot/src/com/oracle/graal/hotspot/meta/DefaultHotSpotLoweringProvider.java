@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -105,8 +104,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             lowerStoreHubNode((StoreHubNode) n, graph);
         } else if (n instanceof OSRStartNode) {
             lowerOSRStartNode((OSRStartNode) n);
-        } else if (n instanceof DynamicCounterNode) {
-            lowerDynamicCounterNode((DynamicCounterNode) n);
         } else if (n instanceof BytecodeExceptionNode) {
             lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
         } else if (n instanceof CheckCastDynamicNode) {
@@ -366,13 +363,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
             osrStart.replaceAtUsages(newStart);
             osrStart.safeDelete();
-        }
-    }
-
-    private void lowerDynamicCounterNode(DynamicCounterNode n) {
-        StructuredGraph graph = n.graph();
-        if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-            BenchmarkCounters.lower(n, registers, runtime.getConfig(), runtime.getTarget().wordKind);
         }
     }
 

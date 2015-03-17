@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.nodes.debug;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,7 +40,7 @@ import com.oracle.graal.nodes.spi.*;
  * value of withContext, the name of the root method is added to the counter's name.
  */
 @NodeInfo
-public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
+public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<DynamicCounterNode> TYPE = NodeClass.create(DynamicCounterNode.class);
     @Input ValueNode increment;
@@ -74,11 +77,6 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
         return withContext;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
     public static void addCounterBefore(String group, String name, long increment, boolean withContext, FixedNode position) {
         StructuredGraph graph = position.graph();
         graph.addBeforeFixed(position, position.graph().add(new DynamicCounterNode(name, group, ConstantNode.forLong(increment, position.graph()), withContext)));
@@ -86,5 +84,33 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
     @NodeIntrinsic
     public static native void counter(@ConstantNodeParameter String name, @ConstantNodeParameter String group, long increment, @ConstantNodeParameter boolean addContext);
+
+    public void generate(NodeLIRBuilderTool generator) {
+        LIRGeneratorTool lirGen = generator.getLIRGeneratorTool();
+        String nameWithContext;
+        if (isWithContext()) {
+            nameWithContext = getName() + " @ ";
+            if (graph().method() != null) {
+                StackTraceElement stackTraceElement = graph().method().asStackTraceElement(0);
+                if (stackTraceElement != null) {
+                    nameWithContext += " " + stackTraceElement.toString();
+                } else {
+                    nameWithContext += graph().method().format("%h.%n");
+                }
+            }
+            if (graph().name != null) {
+                nameWithContext += " (" + graph().name + ")";
+            }
+
+        } else {
+            nameWithContext = getName();
+        }
+        LIRInstruction counterOp = lirGen.createBenchmarkCounter(nameWithContext, getGroup(), generator.operand(increment));
+        if (counterOp != null) {
+            lirGen.append(counterOp);
+        } else {
+            throw GraalInternalError.unimplemented("Benchmark counters not enabled or not implemented by the back end.");
+        }
+    }
 
 }

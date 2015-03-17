@@ -28,10 +28,11 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.Assumptions.NoFinalizableSubclass;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -66,7 +67,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(constructors[0]);
         StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions);
 
-        GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault();
+        GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault(getDefaultGraphBuilderPlugins());
         new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), conf, OptimisticOptimizations.ALL, null).apply(graph);
         HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);

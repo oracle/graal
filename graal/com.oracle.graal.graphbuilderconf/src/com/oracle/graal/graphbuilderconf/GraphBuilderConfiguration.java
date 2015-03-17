@@ -20,24 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.graphbuilderconf;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.java.GraphBuilderPlugin.GenericInvocationPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoadIndexedPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.LoopExplosionPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.nodes.*;
 
 public class GraphBuilderConfiguration {
 
     public static class Plugins {
-        private InvocationPlugins invocationPlugins;
+        private final InvocationPlugins invocationPlugins;
         private LoadFieldPlugin loadFieldPlugin;
         private LoadIndexedPlugin loadIndexedPlugin;
         private ParameterPlugin parameterPlugin;
@@ -45,10 +39,27 @@ public class GraphBuilderConfiguration {
         private GenericInvocationPlugin genericInvocationPlugin;
         private LoopExplosionPlugin loopExplosionPlugin;
 
-        public Plugins() {
-            invocationPlugins = new InvocationPlugins();
+        /**
+         * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
+         * {@code copyFrom} become the {@linkplain InvocationPlugins#getParent() default}
+         * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
+         */
+        public Plugins(Plugins copyFrom) {
+            this.invocationPlugins = new InvocationPlugins(copyFrom.invocationPlugins);
+            this.parameterPlugin = copyFrom.parameterPlugin;
+            this.loadFieldPlugin = copyFrom.loadFieldPlugin;
+            this.loadIndexedPlugin = copyFrom.loadIndexedPlugin;
+            this.inlineInvokePlugin = copyFrom.inlineInvokePlugin;
+            this.loopExplosionPlugin = copyFrom.loopExplosionPlugin;
+            this.genericInvocationPlugin = copyFrom.genericInvocationPlugin;
         }
 
+        /**
+         * Creates a new set of plugins.
+         *
+         * @param invocationPlugins the {@linkplain #getInvocationPlugins() invocation plugins} in
+         *            this object
+         */
         public Plugins(InvocationPlugins invocationPlugins) {
             this.invocationPlugins = invocationPlugins;
         }
@@ -104,19 +115,6 @@ public class GraphBuilderConfiguration {
         public void setLoopExplosionPlugin(LoopExplosionPlugin plugin) {
             this.loopExplosionPlugin = plugin;
         }
-
-        public Plugins updateFrom(Plugins other, boolean includeInvocationPlugins) {
-            if (includeInvocationPlugins) {
-                this.invocationPlugins.updateFrom(other.getInvocationPlugins());
-            }
-            this.parameterPlugin = other.parameterPlugin;
-            this.loadFieldPlugin = other.loadFieldPlugin;
-            this.loadIndexedPlugin = other.loadIndexedPlugin;
-            this.inlineInvokePlugin = other.inlineInvokePlugin;
-            this.loopExplosionPlugin = other.loopExplosionPlugin;
-            this.genericInvocationPlugin = other.genericInvocationPlugin;
-            return this;
-        }
     }
 
     private static final ResolvedJavaType[] EMPTY = new ResolvedJavaType[]{};
@@ -127,7 +125,7 @@ public class GraphBuilderConfiguration {
     private final DebugInfoMode debugInfoMode;
     private final boolean doLivenessAnalysis;
     private boolean useProfiling;
-    private Plugins plugins = new Plugins();
+    private final Plugins plugins;
 
     public static enum DebugInfoMode {
         SafePointsOnly,
@@ -153,19 +151,26 @@ public class GraphBuilderConfiguration {
         Full,
     }
 
-    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes, boolean doLivenessAnalysis) {
+    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes, boolean doLivenessAnalysis,
+                    Plugins plugins) {
         this.eagerResolving = eagerResolving;
         this.omitAllExceptionEdges = omitAllExceptionEdges;
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.doLivenessAnalysis = doLivenessAnalysis;
         this.useProfiling = true;
+        this.plugins = plugins;
     }
 
+    /**
+     * Creates a copy of this configuration with all its plugins. The {@link InvocationPlugins} in
+     * this configuration become the {@linkplain InvocationPlugins#getParent() parent} of the
+     * {@link InvocationPlugins} in the copy.
+     */
     public GraphBuilderConfiguration copy() {
-        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
+        Plugins newPlugins = new Plugins(new InvocationPlugins(plugins.getInvocationPlugins()));
+        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, newPlugins);
         result.useProfiling = useProfiling;
-        result.copyPluginsFrom(this);
         return result;
     }
 
@@ -178,20 +183,20 @@ public class GraphBuilderConfiguration {
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, plugins);
     }
 
     public GraphBuilderConfiguration withOmitAllExceptionEdges(boolean newOmitAllExceptionEdges) {
-        return new GraphBuilderConfiguration(eagerResolving, newOmitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis);
+        return new GraphBuilderConfiguration(eagerResolving, newOmitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, plugins);
     }
 
     public GraphBuilderConfiguration withDebugInfoMode(DebugInfoMode newDebugInfoMode) {
         ResolvedJavaType[] newSkippedExceptionTypes = skippedExceptionTypes == EMPTY ? EMPTY : Arrays.copyOf(skippedExceptionTypes, skippedExceptionTypes.length);
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, plugins);
     }
 
     public GraphBuilderConfiguration withDoLivenessAnalysis(boolean newLivenessAnalysis) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis, plugins);
     }
 
     public ResolvedJavaType[] getSkippedExceptionTypes() {
@@ -218,20 +223,20 @@ public class GraphBuilderConfiguration {
         return doLivenessAnalysis;
     }
 
-    public static GraphBuilderConfiguration getDefault() {
-        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
+    public static GraphBuilderConfiguration getDefault(Plugins plugins) {
+        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
     }
 
-    public static GraphBuilderConfiguration getEagerDefault() {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
+    public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
     }
 
-    public static GraphBuilderConfiguration getSnippetDefault() {
-        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
+    public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
+        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
     }
 
-    public static GraphBuilderConfiguration getFullDebugDefault() {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptLivenessAnalysis.getValue());
+    public static GraphBuilderConfiguration getFullDebugDefault(Plugins plugins) {
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
     }
 
     /**
@@ -245,14 +250,5 @@ public class GraphBuilderConfiguration {
 
     public Plugins getPlugins() {
         return plugins;
-    }
-
-    public void setPlugins(Plugins plugins) {
-        this.plugins = plugins;
-    }
-
-    public GraphBuilderConfiguration copyPluginsFrom(GraphBuilderConfiguration other) {
-        this.plugins.updateFrom(other.plugins, true);
-        return this;
     }
 }

@@ -30,7 +30,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
 
-public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
+public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCounterFactory {
 
     public interface SpillMoveFactory {
 

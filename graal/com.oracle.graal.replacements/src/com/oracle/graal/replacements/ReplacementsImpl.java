@@ -42,9 +42,10 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -71,7 +72,8 @@ public class ReplacementsImpl implements Replacements {
      */
     protected final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
 
-    public void completeInitialization(GraphBuilderConfiguration.Plugins plugins) {
+    public void setGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
+        assert this.graphBuilderPlugins == null;
         this.graphBuilderPlugins = plugins;
     }
 
@@ -299,7 +301,7 @@ public class ReplacementsImpl implements Replacements {
     }
 
     protected NodeIntrinsificationPhase createNodeIntrinsificationPhase() {
-        return new NodeIntrinsificationPhase(providers, snippetReflection);
+        return new NodeIntrinsificationPhase(providers.getMetaAccess(), providers.getConstantReflection(), snippetReflection, providers.getForeignCalls(), providers.getStampProvider());
     }
 
     @Override
@@ -640,9 +642,8 @@ public class ReplacementsImpl implements Replacements {
                 if (MethodsElidedInSnippets != null && methodToParse.getSignature().getReturnKind() == Kind.Void && MethodFilter.matches(MethodsElidedInSnippets, methodToParse)) {
                     graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
                 } else {
-                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
-                    Plugins plugins = config.getPlugins().updateFrom(replacements.graphBuilderPlugins, false);
-                    plugins.getInvocationPlugins().setDefaults(replacements.graphBuilderPlugins.getInvocationPlugins());
+                    Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
+                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                     if (args != null) {
                         plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));
                     }
