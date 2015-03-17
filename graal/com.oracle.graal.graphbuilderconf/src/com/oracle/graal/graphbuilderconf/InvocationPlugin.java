@@ -79,8 +79,6 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
         return null;
     }
 
-    boolean ALLOW_INVOCATION_PLUGIN_TO_DO_INLINING = false;
-
     /**
      * Executes a given plugin against a set of invocation arguments by dispatching to the
      * {@code apply(...)} method that matches the number of arguments.
@@ -92,12 +90,6 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      *         invocation must not modify the graph being constructed.
      */
     static boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin plugin, ValueNode[] args) {
-// if (ALLOW_INVOCATION_PLUGIN_TO_DO_INLINING) {
-// ResolvedJavaMethod subst = plugin.getSubstitute();
-// if (subst != null) {
-// return ((BytecodeParser) b).inline(null, targetMethod, new InlineInfo(subst, false), args);
-// }
-// }
         if (args.length == 0) {
             return plugin.apply(b, targetMethod);
         } else if (args.length == 1) {
