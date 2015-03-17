@@ -39,7 +39,7 @@ public final class HIRLoop extends Loop<Block> {
         return ((LoopBeginNode) getHeader().getBeginNode()).loopEnds().count();
     }
 
-    private LocationSet getKillLocations() {
+    public LocationSet getKillLocations() {
         if (killLocations == null) {
             killLocations = new LocationSet();
             for (Block b : this.getBlocks()) {
