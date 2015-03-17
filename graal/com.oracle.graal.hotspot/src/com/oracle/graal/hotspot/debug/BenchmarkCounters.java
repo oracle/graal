@@ -105,13 +105,57 @@ public class BenchmarkCounters {
 
     public static boolean enabled = false;
 
-    public static final ConcurrentHashMap<String, Integer> indexes = new ConcurrentHashMap<>();
-    public static final ArrayList<String> groups = new ArrayList<>();
+    private static class Counter {
+        public final int index;
+        public final String group;
+        public final AtomicLong staticCounters;
+
+        public Counter(int index, String group, AtomicLong staticCounters) {
+            this.index = index;
+            this.group = group;
+            this.staticCounters = staticCounters;
+        }
+    }
+
+    public static final ConcurrentHashMap<String, Counter> counterMap = new ConcurrentHashMap<>();
     public static long[] delta;
-    public static final ArrayList<AtomicLong> staticCounters = new ArrayList<>();
+
+    public static int getIndexConstantIncrement(String name, String group, HotSpotVMConfig config, long increment) {
+        Counter counter = getCounter(name, group, config);
+        counter.staticCounters.addAndGet(increment);
+        return counter.index;
+    }
+
+    public static int getIndex(String name, String group, HotSpotVMConfig config) {
+        Counter counter = getCounter(name, group, config);
+        return counter.index;
+    }
 
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "concurrent abstraction calls are in synchronized block")
-    private static int getIndex(DynamicCounterNode counter, StructuredGraph currentGraph) {
+    private static Counter getCounter(String name, String group, HotSpotVMConfig config) throws GraalInternalError {
+        if (!enabled) {
+            throw new GraalInternalError("cannot access count index when counters are not enabled: " + group + ", " + name);
+        }
+        String nameGroup = name + "#" + group;
+        Counter counter = counterMap.get(nameGroup);
+        if (counter == null) {
+            synchronized (BenchmarkCounters.class) {
+                counter = counterMap.get(nameGroup);
+                if (counter == null) {
+                    counter = new Counter(counterMap.size(), group, new AtomicLong());
+                    counterMap.put(nameGroup, counter);
+                }
+            }
+        }
+        assert counter.group.equals(group) : "mismatching groups: " + counter.group + " vs. " + group;
+        int countersSize = config.graalCountersSize;
+        if (counter.index >= countersSize) {
+            throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + countersSize + ")");
+        }
+        return counter;
+    }
+
+    private static int getIndex(DynamicCounterNode counter, StructuredGraph currentGraph, HotSpotVMConfig config) {
         if (!enabled) {
             throw new GraalInternalError("counter nodes shouldn't exist when counters are not enabled: " + counter.getGroup() + ", " + counter.getName());
         }
@@ -135,29 +179,18 @@ public class BenchmarkCounters {
         } else {
             name = counter.getName() + "#" + group;
         }
-        Integer index = indexes.get(name);
-        if (index == null) {
-            synchronized (BenchmarkCounters.class) {
-                index = indexes.get(name);
-                if (index == null) {
-                    index = indexes.size();
-                    indexes.put(name, index);
-                    groups.add(group);
-                    staticCounters.add(new AtomicLong());
-                }
-            }
-        }
-        assert groups.get(index).equals(group) : "mismatching groups: " + groups.get(index) + " vs. " + group;
         if (counter.getIncrement().isConstant()) {
-            staticCounters.get(index).addAndGet(counter.getIncrement().asJavaConstant().asLong());
+            return getIndexConstantIncrement(name, group, config, counter.getIncrement().asJavaConstant().asLong());
         }
-        return index;
+        return getIndex(name, group, config);
     }
 
     private static synchronized void dump(PrintStream out, double seconds, long[] counters, int maxRows) {
-        if (!groups.isEmpty()) {
-            out.println("====== dynamic counters (" + staticCounters.size() + " in total) ======");
-            for (String group : new TreeSet<>(groups)) {
+        if (!counterMap.isEmpty()) {
+            out.println("====== dynamic counters (" + counterMap.size() + " in total) ======");
+            TreeSet<String> set = new TreeSet<>();
+            counterMap.forEach((nameGroup, counter) -> set.add(counter.group));
+            for (String group : set) {
                 if (group != null) {
                     if (DUMP_STATIC) {
                         dumpCounters(out, seconds, counters, true, group, maxRows);
@@ -181,9 +214,9 @@ public class BenchmarkCounters {
         // collect the numbers
         long[] array;
         if (staticCounter) {
-            array = new long[indexes.size()];
-            for (int i = 0; i < array.length; i++) {
-                array[i] = staticCounters.get(i).get();
+            array = new long[counterMap.size()];
+            for (Counter counter : counterMap.values()) {
+                array[counter.index] = counter.staticCounters.get();
             }
         } else {
             array = counters.clone();
@@ -193,9 +226,10 @@ public class BenchmarkCounters {
         }
         // sort the counters by putting them into a sorted map
         long sum = 0;
-        for (Map.Entry<String, Integer> entry : indexes.entrySet()) {
-            int index = entry.getValue();
-            if (groups.get(index).equals(group)) {
+        for (Map.Entry<String, Counter> entry : counterMap.entrySet()) {
+            Counter counter = entry.getValue();
+            int index = counter.index;
+            if (counter.group.equals(group)) {
                 sum += array[index];
                 sorted.put(array[index] * array.length + index, entry.getKey().substring(0, entry.getKey().length() - group.length() - 1));
             }
@@ -392,21 +426,17 @@ public class BenchmarkCounters {
 
         public static final NodeClass<CounterIndexNode> TYPE = NodeClass.create(CounterIndexNode.class);
         protected final Object counter;
-        protected final int countersSize;
+        protected final HotSpotVMConfig config;
 
-        protected CounterIndexNode(Stamp stamp, DynamicCounterNode counter, int countersSize) {
+        protected CounterIndexNode(Stamp stamp, DynamicCounterNode counter, HotSpotVMConfig config) {
             super(TYPE, stamp);
-            this.countersSize = countersSize;
+            this.config = config;
             this.counter = counter;
         }
 
         @Override
         public void generate(NodeLIRBuilderTool generator) {
-            int index = BenchmarkCounters.getIndex((DynamicCounterNode) counter, graph());
-            if (index >= countersSize) {
-                throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + countersSize + ")");
-            }
-
+            int index = BenchmarkCounters.getIndex((DynamicCounterNode) counter, graph(), config);
             generator.setResult(this, JavaConstant.forIntegerKind(getKind(), index));
         }
     }
@@ -416,7 +446,7 @@ public class BenchmarkCounters {
 
         ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), wordKind, true, false));
 
-        CounterIndexNode index = graph.unique(new CounterIndexNode(StampFactory.forKind(wordKind), counter, config.graalCountersSize));
+        CounterIndexNode index = graph.unique(new CounterIndexNode(StampFactory.forKind(wordKind), counter, config));
         ConstantLocationNode arrayLocation = graph.unique(new ConstantLocationNode(COUNTER_ARRAY_LOCATION, config.graalCountersThreadOffset));
         ReadNode readArray = graph.add(new ReadNode(thread, arrayLocation, StampFactory.forKind(wordKind), BarrierType.NONE));
         IndexedLocationNode location = graph.unique(new IndexedLocationNode(COUNTER_LOCATION, 0, index, Unsafe.ARRAY_LONG_INDEX_SCALE));
