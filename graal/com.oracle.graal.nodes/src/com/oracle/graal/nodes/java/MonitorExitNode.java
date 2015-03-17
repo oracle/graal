@@ -79,7 +79,6 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object());
         // the monitor exit for a synchronized method should never be virtualized
-        assert stateAfter().bci != BytecodeFrame.AFTER_BCI || state == null;
         if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
             MonitorIdNode removedLock = state.removeLock();
             assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();
