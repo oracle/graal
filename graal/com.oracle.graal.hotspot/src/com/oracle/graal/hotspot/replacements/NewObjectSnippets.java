@@ -157,7 +157,8 @@ public class NewObjectSnippets implements Snippets {
     public static native Object newInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
     @Snippet
-    public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
+    public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+                    @SuppressWarnings("unused") @ConstantParameter String typeContext) {
         KlassPointer hub = ClassGetHubNode.readClass(type);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
@@ -170,7 +171,11 @@ public class NewObjectSnippets implements Snippets {
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, typeContext);
+                    /*
+                     * FIXME(je,ds): we should actually pass typeContext instead of "" but late
+                     * binding of parameters is not yet supported by the GraphBuilderPlugin system.
+                     */
+                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, "");
                 }
             }
         }
