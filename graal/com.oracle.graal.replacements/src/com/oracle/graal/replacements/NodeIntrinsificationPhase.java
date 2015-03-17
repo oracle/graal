@@ -45,7 +45,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.util.*;
 
 /**
  * Replaces calls to {@link NodeIntrinsic}s with nodes and calls to methods annotated with
@@ -53,12 +52,19 @@ import com.oracle.graal.phases.util.*;
  */
 public class NodeIntrinsificationPhase extends Phase {
 
-    private final Providers providers;
+    private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
     private final SnippetReflectionProvider snippetReflection;
+    private final ForeignCallsProvider foreignCalls;
+    private final StampProvider stampProvider;
 
-    public NodeIntrinsificationPhase(Providers providers, SnippetReflectionProvider snippetReflection) {
-        this.providers = providers;
+    public NodeIntrinsificationPhase(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls,
+                    StampProvider stampProvider) {
+        this.metaAccess = metaAccess;
+        this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
+        this.foreignCalls = foreignCalls;
+        this.stampProvider = stampProvider;
     }
 
     @Override
@@ -101,7 +107,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forConstant(constant, providers.getMetaAccess(), methodCallTargetNode.graph());
+                ConstantNode node = ConstantNode.forConstant(constant, metaAccess, methodCallTargetNode.graph());
                 methodCallTargetNode.invoke().intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -165,7 +171,7 @@ public class NodeIntrinsificationPhase extends Phase {
         if (intrinsic.foldable() && areAllConstant(arguments)) {
             JavaConstant res = tryFold(arguments, parameterTypes, method);
             if (!res.equals(COULD_NOT_FOLD)) {
-                return ConstantNode.forConstant(res, providers.getMetaAccess());
+                return ConstantNode.forConstant(res, metaAccess);
             }
         }
 
@@ -220,12 +226,12 @@ public class NodeIntrinsificationPhase extends Phase {
                  * For intrinsification (but not for folding) if we have a Class<?> object we want
                  * the corresponding ResolvedJavaType.
                  */
-                ResolvedJavaType type = folding ? null : providers.getConstantReflection().asJavaType(constant);
+                ResolvedJavaType type = folding ? null : constantReflection.asJavaType(constant);
                 Object arg;
                 if (type != null) {
                     /* If we found such a type then it's our arg */
                     arg = type;
-                    parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ResolvedJavaType.class);
+                    parameterTypes[i] = metaAccess.lookupJavaType(ResolvedJavaType.class);
                 } else {
                     JavaConstant javaConstant = (JavaConstant) constant;
                     if (folding) {
@@ -253,7 +259,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 reflectionCallArguments[i] = arg;
             } else {
                 reflectionCallArguments[i] = argument;
-                parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ValueNode.class);
+                parameterTypes[i] = metaAccess.lookupJavaType(ValueNode.class);
             }
         }
         return reflectionCallArguments;
@@ -264,10 +270,10 @@ public class NodeIntrinsificationPhase extends Phase {
         if (intrinsic.value() == NodeIntrinsic.class) {
             result = target.getDeclaringClass();
         } else {
-            result = providers.getMetaAccess().lookupJavaType(intrinsic.value());
+            result = metaAccess.lookupJavaType(intrinsic.value());
         }
-        assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + result.toJavaName(false) + " derived from @" +
-                        NodeIntrinsic.class.getSimpleName() + " annotation on " + target.format("%H.%n(%p)") + " is not a subclass of " + ValueNode.class;
+        assert metaAccess.lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + result.toJavaName(false) + " derived from @" + NodeIntrinsic.class.getSimpleName() +
+                        " annotation on " + target.format("%H.%n(%p)") + " is not a subclass of " + ValueNode.class;
         return result;
     }
 
@@ -339,7 +345,6 @@ public class NodeIntrinsificationPhase extends Phase {
         Object[] injected = null;
 
         ResolvedJavaType[] signature = resolveJavaTypes(c.getSignature().toParameterTypes(null), c.getDeclaringClass());
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
             if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
                 injected = injected == null ? new Object[1] : Arrays.copyOf(injected, injected.length + 1);
@@ -351,13 +356,13 @@ public class NodeIntrinsificationPhase extends Phase {
                 } else if (signature[i].equals(metaAccess.lookupJavaType(StructuredGraph.class))) {
                     injected[injected.length - 1] = graph;
                 } else if (signature[i].equals(metaAccess.lookupJavaType(ForeignCallsProvider.class))) {
-                    injected[injected.length - 1] = providers.getForeignCalls();
+                    injected[injected.length - 1] = foreignCalls;
                 } else if (signature[i].equals(metaAccess.lookupJavaType(SnippetReflectionProvider.class))) {
                     injected[injected.length - 1] = snippetReflection;
                 } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(Stamp.class))) {
                     injected[injected.length - 1] = invokeStamp;
                 } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(StampProvider.class))) {
-                    injected[injected.length - 1] = providers.getStampProvider();
+                    injected[injected.length - 1] = stampProvider;
                 } else {
                     throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
                 }

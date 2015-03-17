@@ -20,30 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.graphbuilderconf;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 
-public final class HotSpotParameterPlugin implements ParameterPlugin {
-    private final WordTypes wordTypes;
+/**
+ * {@link ResolvedJavaMethod}s that can assign themselves an identifier for use in a side table
+ * mapping methods to {@link InvocationPlugin}s.
+ */
+public interface InvocationPluginIdHolder extends ResolvedJavaMethod {
+    /**
+     * Sets the unique, positive, non-zero identifier for this method.
+     */
+    void setInvocationPluginId(int id);
 
-    public HotSpotParameterPlugin(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
-    }
-
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
-        if (b.parsingReplacement()) {
-            ResolvedJavaType type = StampTool.typeOrNull(stamp);
-            if (wordTypes.isWord(type)) {
-                return new ParameterNode(index, wordTypes.getWordStamp(type));
-            }
-        }
-        return null;
-    }
+    /**
+     * Gets the identifier set by {@link #setInvocationPluginId(int)} or 0 if no
+     * {@link InvocationPlugin} identifier was assigned to this method.
+     */
+    int getInvocationPluginId();
 }

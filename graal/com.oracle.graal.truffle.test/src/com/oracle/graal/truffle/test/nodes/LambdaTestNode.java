@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.truffle.test.nodes;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
+import java.util.function.*;
 
-public final class HotSpotParameterPlugin implements ParameterPlugin {
-    private final WordTypes wordTypes;
+import com.oracle.truffle.api.frame.*;
 
-    public HotSpotParameterPlugin(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
+public class LambdaTestNode extends AbstractTestNode {
+    @Override
+    public int execute(VirtualFrame frame) {
+        return lambda(() -> 42);
     }
 
-    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
-        if (b.parsingReplacement()) {
-            ResolvedJavaType type = StampTool.typeOrNull(stamp);
-            if (wordTypes.isWord(type)) {
-                return new ParameterNode(index, wordTypes.getWordStamp(type));
-            }
-        }
-        return null;
+    private static int lambda(Supplier<Integer> supplier) {
+        return supplier.get();
     }
 }

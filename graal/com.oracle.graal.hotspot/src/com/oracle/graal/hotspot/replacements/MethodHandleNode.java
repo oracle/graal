@@ -180,24 +180,26 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
             maybeCastArgument(receiverSkip + index, parameterType);
         }
 
+        if (target.canBeStaticallyBound()) {
+            return createTargetInvokeNode(target, intrinsicMethod);
+        }
+
         // Try to get the most accurate receiver type
         if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
             ResolvedJavaType receiverType = StampTool.typeOrNull(getReceiver().stamp());
             if (receiverType != null) {
                 AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.findUniqueConcreteMethod(target);
                 if (concreteMethod != null) {
+                    graph().getAssumptions().record(concreteMethod);
                     return createTargetInvokeNode(concreteMethod.getResult(), intrinsicMethod);
                 }
             }
-        }
-
-        if (target.canBeStaticallyBound()) {
-            return createTargetInvokeNode(target, intrinsicMethod);
-        }
-
-        AssumptionResult<ResolvedJavaMethod> concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
-        if (concreteMethod != null) {
-            return createTargetInvokeNode(concreteMethod.getResult(), intrinsicMethod);
+        } else {
+            AssumptionResult<ResolvedJavaMethod> concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
+            if (concreteMethod != null) {
+                graph().getAssumptions().record(concreteMethod);
+                return createTargetInvokeNode(concreteMethod.getResult(), intrinsicMethod);
+            }
         }
 
         return null;

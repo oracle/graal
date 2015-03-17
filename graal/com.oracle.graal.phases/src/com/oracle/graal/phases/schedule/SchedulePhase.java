@@ -300,7 +300,7 @@ public final class SchedulePhase extends Phase {
             for (ProxyNode proxy : loopExitNode.proxies()) {
                 unprocessed.clear(proxy);
                 ValueNode value = proxy.value();
-                if (nodeMap.get(value) == b) {
+                if (value != null && nodeMap.get(value) == b) {
                     sortIntoList(value, b, result, nodeMap, unprocessed, null);
                 }
             }

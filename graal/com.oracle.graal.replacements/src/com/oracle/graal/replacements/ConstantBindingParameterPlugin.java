@@ -25,8 +25,7 @@ package com.oracle.graal.replacements;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
+import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 

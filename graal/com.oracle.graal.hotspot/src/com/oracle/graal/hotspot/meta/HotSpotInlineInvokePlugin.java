@@ -28,10 +28,9 @@ import static java.lang.String.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Replacement;
 import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderContext.Replacement;
-import com.oracle.graal.java.GraphBuilderPlugin.InlineInvokePlugin;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;

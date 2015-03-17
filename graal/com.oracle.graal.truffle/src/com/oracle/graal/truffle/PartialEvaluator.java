@@ -28,7 +28,9 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -38,10 +40,9 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
-import com.oracle.graal.java.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.GraphBuilderPlugin.LoadFieldPlugin;
-import com.oracle.graal.java.GraphBuilderPlugin.ParameterPlugin;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
@@ -49,6 +50,7 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -63,7 +65,6 @@ import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode;
 import com.oracle.graal.truffle.phases.*;
-import com.oracle.graal.truffle.substitutions.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -185,14 +186,14 @@ public class PartialEvaluator {
         }
     }
 
-    private class InlineInvokePlugin implements GraphBuilderPlugin.InlineInvokePlugin {
+    private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
-        private Stack<TruffleInlining> inlining;
+        private Deque<TruffleInlining> inlining;
         private OptimizedDirectCallNode lastDirectCallNode;
         private final Replacements replacements;
 
-        public InlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
-            this.inlining = new Stack<>();
+        public PEInlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
+            this.inlining = new ArrayDeque<>();
             this.inlining.push(inlining);
             this.replacements = replacements;
         }
@@ -201,28 +202,37 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
+            IntrinsicMethod intrinsicMethod = builder.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(original);
+            if (intrinsicMethod != null) {
+                InlineInfo inlineInfo = getMethodHandleIntrinsicInlineInfo(builder, arguments, intrinsicMethod);
+                if (inlineInfo != null) {
+                    return inlineInfo;
+                }
+            }
             if (replacements != null && (replacements.getMethodSubstitutionMethod(original) != null || replacements.getMacroSubstitution(original) != null)) {
                 return null;
             }
             assert !builder.parsingReplacement();
-            if (original.equals(callSiteProxyMethod)) {
-                ValueNode arg1 = arguments[0];
-                if (!arg1.isConstant()) {
-                    GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
-                }
+            if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+                if (original.equals(callSiteProxyMethod)) {
+                    ValueNode arg1 = arguments[0];
+                    if (!arg1.isConstant()) {
+                        GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                    }
 
-                Object callNode = builder.getSnippetReflection().asObject(Object.class, (JavaConstant) arg1.asConstant());
-                if (callNode instanceof OptimizedDirectCallNode) {
-                    OptimizedDirectCallNode directCallNode = (OptimizedDirectCallNode) callNode;
-                    lastDirectCallNode = directCallNode;
-                }
-            } else if (original.equals(callDirectMethod)) {
-                TruffleInliningDecision decision = getDecision(inlining.peek(), lastDirectCallNode);
-                lastDirectCallNode = null;
-                if (decision != null && decision.isInline()) {
-                    inlining.push(decision);
-                    builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
-                    return new InlineInfo(callInlinedMethod, false, false);
+                    Object callNode = builder.getSnippetReflection().asObject(Object.class, (JavaConstant) arg1.asConstant());
+                    if (callNode instanceof OptimizedDirectCallNode) {
+                        OptimizedDirectCallNode directCallNode = (OptimizedDirectCallNode) callNode;
+                        lastDirectCallNode = directCallNode;
+                    }
+                } else if (original.equals(callDirectMethod)) {
+                    TruffleInliningDecision decision = getDecision(inlining.peek(), lastDirectCallNode);
+                    lastDirectCallNode = null;
+                    if (decision != null && decision.isInline()) {
+                        inlining.push(decision);
+                        builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
+                        return new InlineInfo(callInlinedMethod, false, false);
+                    }
                 }
             }
             return new InlineInfo(original, false, false);
@@ -233,9 +243,59 @@ public class PartialEvaluator {
                 inlining.pop();
             }
         }
+
+        private InlineInfo getMethodHandleIntrinsicInlineInfo(GraphBuilderContext builder, ValueNode[] arguments, IntrinsicMethod intrinsicMethod) {
+            ResolvedJavaMethod targetMethod = null;
+            switch (intrinsicMethod) {
+                case INVOKE_BASIC:
+                    ValueNode methodHandleNode = arguments[0];
+                    if (methodHandleNode.isConstant()) {
+                        targetMethod = builder.getConstantReflection().getMethodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true);
+                    }
+                    break;
+                case LINK_TO_STATIC:
+                case LINK_TO_SPECIAL:
+                case LINK_TO_VIRTUAL:
+                case LINK_TO_INTERFACE:
+                    ValueNode memberNameNode = arguments[arguments.length - 1];
+                    if (memberNameNode.isConstant()) {
+                        targetMethod = builder.getConstantReflection().getMethodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant());
+                    }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+            if (targetMethod != null) {
+                // TODO maybe cast arguments
+
+                if (targetMethod.canBeStaticallyBound()) {
+                    return new InlineInfo(targetMethod, false, false);
+                }
+
+                // Try to get the most accurate receiver type
+                if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
+                    ResolvedJavaType receiverType = StampTool.typeOrNull(arguments[0].stamp());
+                    if (receiverType != null) {
+                        AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.findUniqueConcreteMethod(targetMethod);
+                        if (concreteMethod != null) {
+                            builder.getAssumptions().record(concreteMethod);
+                            return new InlineInfo(concreteMethod.getResult(), false, false);
+                        }
+                    }
+                } else {
+                    AssumptionResult<ResolvedJavaMethod> concreteMethod = targetMethod.getDeclaringClass().findUniqueConcreteMethod(targetMethod);
+                    if (concreteMethod != null) {
+                        builder.getAssumptions().record(concreteMethod);
+                        return new InlineInfo(concreteMethod.getResult(), false, false);
+                    }
+                }
+            }
+
+            return null;
+        }
     }
 
-    private class LoopExplosionPlugin implements GraphBuilderPlugin.LoopExplosionPlugin {
+    private class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
         public boolean shouldExplodeLoops(ResolvedJavaMethod method) {
             return method.getAnnotation(ExplodeLoop.class) != null;
@@ -259,10 +319,9 @@ public class PartialEvaluator {
         plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         plugins.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-        plugins.setInlineInvokePlugin(new InlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
-        plugins.setLoopExplosionPlugin(new LoopExplosionPlugin());
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), newConfig.getPlugins().getInvocationPlugins());
-
+        plugins.setInlineInvokePlugin(new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
+        plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
+        InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations, null).apply(graph);
         Debug.dump(graph, "After FastPE");
