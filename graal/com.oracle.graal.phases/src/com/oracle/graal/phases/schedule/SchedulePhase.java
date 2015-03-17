@@ -115,10 +115,12 @@ public final class SchedulePhase extends Phase {
                 BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(isOutOfLoops, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap);
                 sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
+                assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
+                assert MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
+
                 this.blockToNodesMap = latestBlockToNodesMap;
                 this.nodeToBlockMap = currentNodeMap;
 
-                assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
                 cfg.setNodeToBlock(currentNodeMap);
             }
         }
@@ -538,6 +540,8 @@ public final class SchedulePhase extends Phase {
                 }
             }
         }
+
+        assert MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
     }
 
     private static void resortEarliestWithinBlock(Block b, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap unprocessed) {
@@ -551,7 +555,7 @@ public final class SchedulePhase extends Phase {
                 MemoryNode lastLocationAccess = floatingReadNode.getLastLocationAccess();
                 if (locationIdentity.isMutable() && lastLocationAccess != null) {
                     ValueNode lastAccessLocation = lastLocationAccess.asNode();
-                    if (nodeToBlock.get(lastAccessLocation) == b && lastAccessLocation != beginNode) {
+                    if (nodeToBlock.get(lastAccessLocation) == b && lastAccessLocation != beginNode && !(lastAccessLocation instanceof MemoryPhiNode)) {
                         // This node's last access location is within this block. Add to watch list
                         // when processing the last access location.
                     } else {
