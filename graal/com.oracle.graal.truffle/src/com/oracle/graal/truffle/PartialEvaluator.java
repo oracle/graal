@@ -185,12 +185,12 @@ public class PartialEvaluator {
 
     private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
-        private Stack<TruffleInlining> inlining;
+        private Deque<TruffleInlining> inlining;
         private OptimizedDirectCallNode lastDirectCallNode;
         private final Replacements replacements;
 
         public PEInlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
-            this.inlining = new Stack<>();
+            this.inlining = new ArrayDeque<>();
             this.inlining.push(inlining);
             this.replacements = replacements;
         }
@@ -203,24 +203,26 @@ public class PartialEvaluator {
                 return null;
             }
             assert !builder.parsingReplacement();
-            if (original.equals(callSiteProxyMethod)) {
-                ValueNode arg1 = arguments[0];
-                if (!arg1.isConstant()) {
-                    GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
-                }
+            if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+                if (original.equals(callSiteProxyMethod)) {
+                    ValueNode arg1 = arguments[0];
+                    if (!arg1.isConstant()) {
+                        GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                    }
 
-                Object callNode = builder.getSnippetReflection().asObject(Object.class, (JavaConstant) arg1.asConstant());
-                if (callNode instanceof OptimizedDirectCallNode) {
-                    OptimizedDirectCallNode directCallNode = (OptimizedDirectCallNode) callNode;
-                    lastDirectCallNode = directCallNode;
-                }
-            } else if (original.equals(callDirectMethod)) {
-                TruffleInliningDecision decision = getDecision(inlining.peek(), lastDirectCallNode);
-                lastDirectCallNode = null;
-                if (decision != null && decision.isInline()) {
-                    inlining.push(decision);
-                    builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
-                    return new InlineInfo(callInlinedMethod, false, false);
+                    Object callNode = builder.getSnippetReflection().asObject(Object.class, (JavaConstant) arg1.asConstant());
+                    if (callNode instanceof OptimizedDirectCallNode) {
+                        OptimizedDirectCallNode directCallNode = (OptimizedDirectCallNode) callNode;
+                        lastDirectCallNode = directCallNode;
+                    }
+                } else if (original.equals(callDirectMethod)) {
+                    TruffleInliningDecision decision = getDecision(inlining.peek(), lastDirectCallNode);
+                    lastDirectCallNode = null;
+                    if (decision != null && decision.isInline()) {
+                        inlining.push(decision);
+                        builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
+                        return new InlineInfo(callInlinedMethod, false, false);
+                    }
                 }
             }
             return new InlineInfo(original, false, false);
