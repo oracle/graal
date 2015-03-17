@@ -604,7 +604,7 @@ class CFGPrinter extends CompilationPrinter {
         printedNodes = null;
     }
 
-    private void printScheduledBlock(Block block, List<ValueNode> nodesFor) {
+    private void printScheduledBlock(Block block, List<Node> nodesFor) {
         printBlockProlog(block);
         begin("IR");
         out.println("HIR");

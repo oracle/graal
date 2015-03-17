@@ -28,17 +28,22 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public final class UnboxNode extends UnaryNode implements Virtualizable, Lowerable {
+public final class UnboxNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<UnboxNode> TYPE = NodeClass.create(UnboxNode.class);
+    @Input protected ValueNode value;
     protected final Kind boxingKind;
 
+    public ValueNode getValue() {
+        return value;
+    }
+
     protected UnboxNode(ValueNode value, Kind boxingKind) {
-        super(TYPE, StampFactory.forKind(boxingKind.getStackKind()), value);
+        super(TYPE, StampFactory.forKind(boxingKind.getStackKind()));
+        this.value = value;
         this.boxingKind = boxingKind;
     }
 

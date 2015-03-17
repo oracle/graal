@@ -33,30 +33,56 @@ import java.util.*;
  * comparing two {@link LocationIdentity} values for equality. Likewise, they must not use
  * {@link IdentityHashMap}s with {@link LocationIdentity} values as keys.
  */
-public interface LocationIdentity extends TrustedInterface {
+public abstract class LocationIdentity {
 
     /**
      * Denotes any location. A write to such a location kills all values in a memory map during an
      * analysis of memory accesses. A read from this location cannot be moved or coalesced with
      * other reads because its interaction with other reads is not known.
      */
-    LocationIdentity ANY_LOCATION = NamedLocationIdentity.mutable("ANY_LOCATION");
+    private static final LocationIdentity ANY_LOCATION = NamedLocationIdentity.mutable("ANY_LOCATION");
 
     /**
      * Denotes the location of a value that is guaranteed to be unchanging.
      */
-    LocationIdentity FINAL_LOCATION = NamedLocationIdentity.immutable("FINAL_LOCATION");
+    public static final LocationIdentity FINAL_LOCATION = NamedLocationIdentity.immutable("FINAL_LOCATION");
 
     /**
      * Denotes the location of the length field of a Java array.
      */
-    LocationIdentity ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("[].length");
+    public static final LocationIdentity ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("[].length");
+
+    protected final boolean immutable;
+
+    public static LocationIdentity any() {
+        return ANY_LOCATION;
+    }
+
+    protected LocationIdentity(boolean immutable) {
+        this.immutable = immutable;
+    }
 
     /**
      * Denotes a location is unchanging in all cases. Not that this is different than the Java
      * notion of final which only requires definite assignment.
      */
-    default boolean isImmutable() {
-        return false;
+    public final boolean isImmutable() {
+        return immutable;
+    }
+
+    public final boolean isMutable() {
+        return !immutable;
+    }
+
+    public final boolean isAny() {
+        return this == ANY_LOCATION;
+    }
+
+    public final boolean isSingle() {
+        return this != ANY_LOCATION;
+    }
+
+    public final boolean overlaps(LocationIdentity other) {
+        return isAny() || other.isAny() || this.equals(other);
     }
 }

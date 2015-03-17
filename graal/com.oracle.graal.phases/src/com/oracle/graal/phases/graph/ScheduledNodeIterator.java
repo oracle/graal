@@ -40,7 +40,7 @@ public abstract class ScheduledNodeIterator {
 
     private FixedWithNextNode lastFixed;
     private FixedWithNextNode reconnect;
-    private ListIterator<ValueNode> iterator;
+    private ListIterator<Node> iterator;
 
     public void processNodes(Block block, SchedulePhase shedule) {
         lastFixed = block.getBeginNode();

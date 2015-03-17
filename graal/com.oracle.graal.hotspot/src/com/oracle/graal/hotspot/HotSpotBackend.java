@@ -119,17 +119,17 @@ public abstract class HotSpotBackend extends Backend {
     public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
 
     /**
-     * @see NewMultiArrayStubCall
+     * New multi array stub call.
      */
     public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, Word.class, int.class, Word.class);
 
     /**
-     * @see NewArrayStubCall
+     * New array stub.
      */
     public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class);
 
     /**
-     * @see NewInstanceStubCall
+     * New insstance stub.
      */
     public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
 

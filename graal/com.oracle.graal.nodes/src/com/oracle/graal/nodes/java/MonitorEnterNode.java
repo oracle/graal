@@ -43,7 +43,7 @@ public final class MonitorEnterNode extends AccessMonitorNode implements Virtual
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return LocationIdentity.any();
     }
 
     @Override

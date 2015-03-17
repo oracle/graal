@@ -57,7 +57,7 @@ public final class CustomizedUnsafeStoreMacroNode extends MacroStateSplitNode im
             ValueNode valueArgument = arguments.get(VALUE_ARGUMENT_INDEX);
             LocationIdentity locationIdentity;
             if (locationArgument.isNullConstant()) {
-                locationIdentity = LocationIdentity.ANY_LOCATION;
+                locationIdentity = LocationIdentity.any();
             } else {
                 locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
             }

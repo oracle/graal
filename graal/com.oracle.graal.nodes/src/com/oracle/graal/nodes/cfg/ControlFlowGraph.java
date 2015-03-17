@@ -40,7 +40,7 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     public final StructuredGraph graph;
 
-    private final NodeMap<Block> nodeToBlock;
+    private NodeMap<Block> nodeToBlock;
     private List<Block> reversePostOrder;
     private List<Loop<Block>> loops;
 
@@ -364,5 +364,9 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             }
         }
         return iterA;
+    }
+
+    public void setNodeToBlock(NodeMap<Block> nodeMap) {
+        this.nodeToBlock = nodeMap;
     }
 }

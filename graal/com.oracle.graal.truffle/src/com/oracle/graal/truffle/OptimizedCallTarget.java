@@ -344,18 +344,22 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public void notifyCompilationFailed(Throwable t) {
-        if (!(t instanceof BailoutException) || ((BailoutException) t).isPermanent()) {
+        if (t instanceof BailoutException && !((BailoutException) t).isPermanent()) {
+            /*
+             * Non permanent bailouts are expected cases. A non permanent bailout would be for
+             * example class redefinition during code installation. As opposed to permanent
+             * bailouts, non permanent bailouts will trigger recompilation and are not considered a
+             * failure state.
+             */
+        } else {
             compilationPolicy.recordCompilationFailure(t);
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, this);
             }
-        }
-
-        if (t instanceof BailoutException) {
-            // Bailout => move on.
-        } else if (TruffleCompilationExceptionsAreFatal.getValue()) {
-            t.printStackTrace(OUT);
-            System.exit(-1);
+            if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                t.printStackTrace(OUT);
+                System.exit(-1);
+            }
         }
     }
 

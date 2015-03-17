@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,14 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -270,27 +272,78 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         return null;
     }
 
-    @MatchRule("(Add value (Read=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Sub value (Read=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Mul value (Read=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Or value (Read=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Xor value (Read=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(And value (Read=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Add value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Sub value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Mul value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Or value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(Xor value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
-    @MatchRule("(And value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
-    public ComplexMatchResult binaryReadCompressed(BinaryNode root, ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+    private ComplexMatchResult binaryReadCompressed(AMD64RMOp op, OperandSize size, ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
         if (canFormCompressedMemory(compress, location)) {
-            AMD64Arithmetic op = getOp(root, access);
-            if (op != null) {
-                return builder -> getLIRGeneratorTool().emitBinaryMemory(op, getMemoryKind(access), getLIRGeneratorTool().asAllocatable(operand(value)), makeCompressedAddress(compress, location),
-                                getState(access));
-            }
+            return builder -> getLIRGeneratorTool().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), makeCompressedAddress(compress, location), getState(access));
+        } else {
+            return null;
         }
-        return null;
+    }
+
+    @MatchRule("(Add value (Read=access (Compression=compress object) ConstantLocation=location))")
+    @MatchRule("(Add value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
+    public ComplexMatchResult addMemoryCompressed(ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+        OperandSize size = getMemorySize(access);
+        if (size.isXmmType()) {
+            return binaryReadCompressed(SSEOp.ADD, size, value, access, compress, location);
+        } else {
+            return binaryReadCompressed(ADD.getRMOpcode(size), size, value, access, compress, location);
+        }
+    }
+
+    @MatchRule("(Sub value (Read=access (Compression=compress object) ConstantLocation=location))")
+    @MatchRule("(Sub value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
+    public ComplexMatchResult subMemoryCompressed(ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+        OperandSize size = getMemorySize(access);
+        if (size.isXmmType()) {
+            return binaryReadCompressed(SSEOp.SUB, size, value, access, compress, location);
+        } else {
+            return binaryReadCompressed(SUB.getRMOpcode(size), size, value, access, compress, location);
+        }
+    }
+
+    @MatchRule("(Mul value (Read=access (Compression=compress object) ConstantLocation=location))")
+    @MatchRule("(Mul value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
+    public ComplexMatchResult mulMemoryCompressed(ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+        OperandSize size = getMemorySize(access);
+        if (size.isXmmType()) {
+            return binaryReadCompressed(SSEOp.MUL, size, value, access, compress, location);
+        } else {
+            return binaryReadCompressed(AMD64RMOp.IMUL, size, value, access, compress, location);
+        }
+    }
+
+    @MatchRule("(And value (Read=access (Compression=compress object) ConstantLocation=location))")
+    @MatchRule("(And value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
+    public ComplexMatchResult andMemoryCompressed(ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+        OperandSize size = getMemorySize(access);
+        if (size.isXmmType()) {
+            return null;
+        } else {
+            return binaryReadCompressed(AND.getRMOpcode(size), size, value, access, compress, location);
+        }
+    }
+
+    @MatchRule("(Or value (Read=access (Compression=compress object) ConstantLocation=location))")
+    @MatchRule("(Or value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
+    public ComplexMatchResult orMemoryCompressed(ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+        OperandSize size = getMemorySize(access);
+        if (size.isXmmType()) {
+            return null;
+        } else {
+            return binaryReadCompressed(OR.getRMOpcode(size), size, value, access, compress, location);
+        }
+    }
+
+    @MatchRule("(Xor value (Read=access (Compression=compress object) ConstantLocation=location))")
+    @MatchRule("(Xor value (FloatingRead=access (Compression=compress object) ConstantLocation=location))")
+    public ComplexMatchResult xorMemoryCompressed(ValueNode value, Access access, CompressionNode compress, ConstantLocationNode location) {
+        OperandSize size = getMemorySize(access);
+        if (size.isXmmType()) {
+            return null;
+        } else {
+            return binaryReadCompressed(XOR.getRMOpcode(size), size, value, access, compress, location);
+        }
     }
 
     @MatchRule("(Read (Compression=compress object) ConstantLocation=location)")

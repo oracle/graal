@@ -248,7 +248,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                     // compiled code entry as HotSpot does not guarantee they are final
                     // values.
                     int methodCompiledEntryOffset = runtime.getConfig().methodCompiledEntryOffset;
-                    ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, graph.unique(new ConstantLocationNode(ANY_LOCATION, methodCompiledEntryOffset)), StampFactory.forKind(wordKind),
+                    ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, graph.unique(new ConstantLocationNode(any(), methodCompiledEntryOffset)), StampFactory.forKind(wordKind),
                                     BarrierType.NONE));
 
                     loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
@@ -359,7 +359,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.TYPE)) {
                 int size = osrLocal.getKind().getSlotCount();
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
-                IndexedLocationNode location = graph.unique(new IndexedLocationNode(ANY_LOCATION, offset, ConstantNode.forLong(0, graph), 1));
+                IndexedLocationNode location = graph.unique(new IndexedLocationNode(any(), offset, ConstantNode.forLong(0, graph), 1));
                 ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), BarrierType.NONE));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
@@ -444,7 +444,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
         Stamp methodStamp = MethodPointerStamp.method();
-        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, graph.unique(new ConstantLocationNode(ANY_LOCATION, vtableEntryOffset)), methodStamp, BarrierType.NONE));
+        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, graph.unique(new ConstantLocationNode(any(), vtableEntryOffset)), methodStamp, BarrierType.NONE));
         return metaspaceMethod;
     }
 

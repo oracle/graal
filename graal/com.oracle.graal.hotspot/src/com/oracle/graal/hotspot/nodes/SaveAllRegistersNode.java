@@ -66,6 +66,6 @@ public final class SaveAllRegistersNode extends FixedWithNextNode implements LIR
     public static native long saveAllRegisters();
 
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return LocationIdentity.any();
     }
 }

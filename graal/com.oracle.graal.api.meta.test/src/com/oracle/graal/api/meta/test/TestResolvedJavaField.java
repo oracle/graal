@@ -71,6 +71,14 @@ public class TestResolvedJavaField extends FieldUniverse {
     }
 
     @Test
+    public void getLocationIdentityTest() {
+        for (Map.Entry<Field, ResolvedJavaField> e : fields.entrySet()) {
+            LocationIdentity identity = e.getValue().getLocationIdentity();
+            assertTrue(identity != null);
+        }
+    }
+
+    @Test
     public void readConstantValueTest() throws NoSuchFieldException {
         ResolvedJavaField field = metaAccess.lookupJavaField(getClass().getDeclaredField("stringField"));
         for (Object receiver : new Object[]{this, null, new String()}) {

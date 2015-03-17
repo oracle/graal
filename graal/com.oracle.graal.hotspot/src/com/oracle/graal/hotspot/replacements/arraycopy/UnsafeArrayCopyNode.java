@@ -119,7 +119,7 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
         if (elementKind != null) {
             return NamedLocationIdentity.getArrayLocation(elementKind);
         }
-        return ANY_LOCATION;
+        return any();
     }
 
     @NodeIntrinsic

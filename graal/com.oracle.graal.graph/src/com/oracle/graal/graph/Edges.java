@@ -528,22 +528,56 @@ public abstract class Edges extends Fields {
             }
             index++;
         }
-        int count = getCount();
+        int count = curOffsets.length;
         while (index < count) {
             NodeList<Node> list = getNodeList(node, curOffsets, index);
-            if (list != null) {
-                for (int i = 0; i < list.size(); ++i) {
-                    Node curNode = list.get(i);
-                    if (curNode != null) {
-                        consumer.accept(node, curNode);
-                    }
+            acceptHelper(node, consumer, list);
+            index++;
+        }
+    }
+
+    private static void acceptHelper(Node node, BiConsumer<Node, Node> consumer, NodeList<Node> list) {
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    consumer.accept(node, curNode);
                 }
             }
-            index++;
         }
     }
 
     public long[] getOffsets() {
         return this.offsets;
+    }
+
+    public void pushAll(Node node, NodeStack stack) {
+        int index = 0;
+        int curDirectCount = this.directCount;
+        final long[] curOffsets = this.offsets;
+        while (index < curDirectCount) {
+            Node curNode = getNode(node, curOffsets, index);
+            if (curNode != null) {
+                stack.push(curNode);
+            }
+            index++;
+        }
+        int count = curOffsets.length;
+        while (index < count) {
+            NodeList<Node> list = getNodeList(node, curOffsets, index);
+            pushAllHelper(stack, list);
+            index++;
+        }
+    }
+
+    private static void pushAllHelper(NodeStack stack, NodeList<Node> list) {
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                Node curNode = list.get(i);
+                if (curNode != null) {
+                    stack.push(curNode);
+                }
+            }
+        }
     }
 }

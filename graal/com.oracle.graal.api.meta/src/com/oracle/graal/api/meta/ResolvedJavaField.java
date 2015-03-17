@@ -29,7 +29,7 @@ import java.lang.reflect.*;
  * Represents a reference to a resolved Java field. Fields, like methods and types, are resolved
  * through {@link ConstantPool constant pools}.
  */
-public interface ResolvedJavaField extends JavaField, LocationIdentity, ModifiersProvider {
+public interface ResolvedJavaField extends JavaField, ModifiersProvider {
 
     /**
      * {@inheritDoc}
@@ -65,4 +65,11 @@ public interface ResolvedJavaField extends JavaField, LocationIdentity, Modifier
      *         else {@code null}
      */
     <T extends Annotation> T getAnnotation(Class<T> annotationClass);
+
+    /**
+     * Returns an object representing the unique location identity of this resolved Java field.
+     * 
+     * @return the location identity of the field
+     */
+    LocationIdentity getLocationIdentity();
 }

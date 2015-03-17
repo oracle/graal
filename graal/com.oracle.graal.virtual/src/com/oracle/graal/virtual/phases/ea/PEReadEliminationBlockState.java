@@ -83,7 +83,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         if (virtual instanceof VirtualInstanceNode) {
             VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
             for (int i = 0; i < instance.entryCount(); i++) {
-                readCache.put(new ReadCacheEntry(instance.field(i), representation), values.get(i));
+                readCache.put(new ReadCacheEntry(instance.field(i).getLocationIdentity(), representation), values.get(i));
             }
         }
     }
@@ -133,7 +133,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         readCache.clear();
     }
 
-    public void killReadCache(ResolvedJavaField identity) {
+    public void killReadCache(LocationIdentity identity) {
         Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();

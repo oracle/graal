@@ -119,7 +119,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     @Override
     protected boolean processNode(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         boolean isMarked = usages.isMarked(node);
-        if (isMarked || node instanceof VirtualizableRoot) {
+        if ((isMarked && node instanceof ValueNode) || node instanceof VirtualizableRoot) {
             VirtualUtil.trace("[[%s]] ", node);
             FixedNode nextFixedNode = lastFixedNode == null ? null : lastFixedNode.next();
             return processNode((ValueNode) node, nextFixedNode, state, effects, isMarked);

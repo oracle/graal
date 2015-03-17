@@ -357,7 +357,7 @@ public abstract class AbstractBytecodeParser {
         }
     }
 
-    protected abstract ValueNode genStoreIndexed(ValueNode array, ValueNode index, Kind kind, ValueNode value);
+    protected abstract void genStoreIndexed(ValueNode array, ValueNode index, Kind kind, ValueNode value);
 
     private void genStoreIndexed(Kind kind) {
         emitExplicitExceptions(frameState.peek(2), frameState.peek(1));
@@ -365,7 +365,7 @@ public abstract class AbstractBytecodeParser {
         ValueNode value = frameState.pop(kind.getStackKind());
         ValueNode index = frameState.ipop();
         ValueNode array = frameState.apop();
-        append(genStoreIndexed(array, index, kind, value));
+        genStoreIndexed(array, index, kind, value);
     }
 
     private void stackOp(int opcode) {
@@ -869,7 +869,7 @@ public abstract class AbstractBytecodeParser {
         EXPLICIT_EXCEPTIONS.increment();
     }
 
-    protected abstract ValueNode genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value);
+    protected abstract void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value);
 
     private void genPutField(JavaField field) {
         emitExplicitExceptions(frameState.peek(1), null);
@@ -877,7 +877,7 @@ public abstract class AbstractBytecodeParser {
         ValueNode value = frameState.pop(field.getKind().getStackKind());
         ValueNode receiver = frameState.apop();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            appendOptimizedStoreField(genStoreField(receiver, (ResolvedJavaField) field, value));
+            genStoreField(receiver, (ResolvedJavaField) field, value);
         } else {
             handleUnresolvedStoreField(field, value, receiver);
         }
@@ -902,14 +902,10 @@ public abstract class AbstractBytecodeParser {
     private void genPutStatic(JavaField field) {
         ValueNode value = frameState.pop(field.getKind().getStackKind());
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            appendOptimizedStoreField(genStoreField(null, (ResolvedJavaField) field, value));
+            genStoreField(null, (ResolvedJavaField) field, value);
         } else {
             handleUnresolvedStoreField(field, value, null);
         }
-    }
-
-    protected void appendOptimizedStoreField(ValueNode store) {
-        append(store);
     }
 
     protected void appendOptimizedLoadField(Kind kind, ValueNode load) {
@@ -930,9 +926,9 @@ public abstract class AbstractBytecodeParser {
 
     protected abstract void genReturn(ValueNode x, Kind kind);
 
-    protected abstract ValueNode genMonitorEnter(ValueNode x);
+    protected abstract void genMonitorEnter(ValueNode x, int bci);
 
-    protected abstract ValueNode genMonitorExit(ValueNode x, ValueNode returnValue);
+    protected abstract void genMonitorExit(ValueNode x, ValueNode returnValue, int bci);
 
     protected abstract void genJsr(int dest);
 
@@ -1292,8 +1288,8 @@ public abstract class AbstractBytecodeParser {
         case ATHROW         : genThrow(); break;
         case CHECKCAST      : genCheckCast(); break;
         case INSTANCEOF     : genInstanceOf(); break;
-        case MONITORENTER   : genMonitorEnter(frameState.apop()); break;
-        case MONITOREXIT    : genMonitorExit(frameState.apop(), null); break;
+        case MONITORENTER   : genMonitorEnter(frameState.apop(), stream.nextBCI()); break;
+        case MONITOREXIT    : genMonitorExit(frameState.apop(), null, stream.nextBCI()); break;
         case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
         case IFNULL         : genIfNull(Condition.EQ); break;
         case IFNONNULL      : genIfNull(Condition.NE); break;

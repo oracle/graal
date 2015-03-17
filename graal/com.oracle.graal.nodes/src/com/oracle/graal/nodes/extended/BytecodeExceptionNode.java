@@ -59,7 +59,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
     }
 
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return LocationIdentity.any();
     }
 
     public void lower(LoweringTool tool) {

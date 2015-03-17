@@ -884,16 +884,20 @@ public abstract class Node implements Cloneable, Formattable {
         if (condition) {
             return true;
         } else {
-            throw new VerificationError(message, args).addContext(this);
+            throw fail(message, args);
         }
     }
 
     public boolean assertFalse(boolean condition, String message, Object... args) {
         if (condition) {
-            throw new VerificationError(message, args).addContext(this);
+            throw fail(message, args);
         } else {
             return true;
         }
+    }
+
+    protected VerificationError fail(String message, Object... args) throws GraalGraphInternalError {
+        throw new VerificationError(message, args).addContext(this);
     }
 
     public Iterable<? extends Node> cfgPredecessors() {
@@ -1069,5 +1073,9 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public boolean valueEquals(Node other) {
         return getNodeClass().dataEquals(this, other);
+    }
+
+    public final void pushInputs(NodeStack stack) {
+        getNodeClass().getInputEdges().pushAll(this, stack);
     }
 }

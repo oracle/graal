@@ -28,7 +28,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
@@ -42,7 +41,6 @@ import com.oracle.graal.nodes.spi.*;
 public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<ConstantNode> TYPE = NodeClass.create(ConstantNode.class);
-    private static final DebugMetric ConstantNodes = Debug.metric("ConstantNodes");
 
     protected final Constant value;
 
@@ -60,7 +58,6 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         super(TYPE, stamp);
         assert stamp != null && isCompatible(value, stamp);
         this.value = value;
-        ConstantNodes.increment();
     }
 
     private static boolean isCompatible(Constant value, Stamp stamp) {

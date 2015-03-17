@@ -109,13 +109,17 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, System.class);
         r.register0("currentTimeMillis", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-                b.push(Kind.Long, b.append(new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_MILLIS, StampFactory.forKind(Kind.Long))));
+                ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_MILLIS, StampFactory.forKind(Kind.Long));
+                b.push(Kind.Long, b.append(foreignCall));
+                foreignCall.setStateAfter(b.createStateAfter());
                 return true;
             }
         });
         r.register0("nanoTime", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
-                b.push(Kind.Long, b.append(new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_NANOS, StampFactory.forKind(Kind.Long))));
+                ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_NANOS, StampFactory.forKind(Kind.Long));
+                b.push(Kind.Long, b.append(foreignCall));
+                foreignCall.setStateAfter(b.createStateAfter());
                 return true;
             }
         });

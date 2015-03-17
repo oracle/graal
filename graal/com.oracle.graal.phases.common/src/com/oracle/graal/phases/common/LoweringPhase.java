@@ -289,7 +289,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode());
 
             // Lower the instructions of this block.
-            List<ValueNode> nodes = schedule.nodesFor(b);
+            List<Node> nodes = schedule.nodesFor(b);
             for (Node node : nodes) {
 
                 if (node.isDeleted()) {

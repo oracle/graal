@@ -34,22 +34,29 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
     public static class InlineInfo {
 
         /**
-         * The method to be inlined. If this is not equal to the {@code method} argument passed to
-         * {@link InlineInvokePlugin#getClass()}, the graph builder context interprets it as a
-         * {@linkplain GraphBuilderContext.Replacement replacement}.
+         * The method to be inlined.
          */
         public final ResolvedJavaMethod methodToInline;
+
+        /**
+         * Specifies if {@link #methodToInline} is to be considered a
+         * {@linkplain GraphBuilderContext.Replacement replacement} for the {@code method} passed to
+         * {@link InlineInvokePlugin#getInlineInfo}.
+         */
+        public final boolean isReplacement;
 
         /**
          * Specifies if {@link #methodToInline} is an intrinsic for the original method. If so, any
          * {@link StateSplit} node created in the (recursive) inlining scope will be given a frame
          * state that restarts the interpreter just before the intrinsified invocation.
          */
-        public final boolean adoptBeforeCallFrameState;
+        public final boolean isIntrinsic;
 
-        public InlineInfo(ResolvedJavaMethod methodToInline, boolean adoptBeforeCallFrameState) {
+        public InlineInfo(ResolvedJavaMethod methodToInline, boolean isReplacement, boolean isIntrinsic) {
             this.methodToInline = methodToInline;
-            this.adoptBeforeCallFrameState = adoptBeforeCallFrameState;
+            this.isIntrinsic = isIntrinsic;
+            this.isReplacement = isReplacement;
+            assert !isIntrinsic || isReplacement : "cannot be an intrinsic without also being a replacement";
         }
     }
 

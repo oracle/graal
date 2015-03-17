@@ -140,7 +140,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             }
         }
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
-        BlockMap<List<ValueNode>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
+        BlockMap<List<Node>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
         List<Block> blocks = cfg == null ? null : cfg.getBlocks();
         writeNodes(graph);
         writeBlocks(blocks, blockToNodes);
@@ -468,11 +468,18 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    private void writeBlocks(List<Block> blocks, BlockMap<List<ValueNode>> blockToNodes) throws IOException {
-        if (blocks != null) {
+    private void writeBlocks(List<Block> blocks, BlockMap<List<Node>> blockToNodes) throws IOException {
+        if (blocks != null && blockToNodes != null) {
+            for (Block block : blocks) {
+                List<Node> nodes = blockToNodes.get(block);
+                if (nodes == null) {
+                    writeInt(0);
+                    return;
+                }
+            }
             writeInt(blocks.size());
             for (Block block : blocks) {
-                List<ValueNode> nodes = blockToNodes.get(block);
+                List<Node> nodes = blockToNodes.get(block);
                 writeInt(block.getId());
                 writeInt(nodes.size());
                 for (Node node : nodes) {

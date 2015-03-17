@@ -70,7 +70,7 @@ public class CipherBlockChainingSubstitutions {
     @MethodSubstitution(isStatic = false)
     static int encrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
-        Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, Kind.Object, LocationIdentity.any());
         if (getAESCryptClass().isInstance(embeddedCipher)) {
             Object aesCipher = PiNode.piCastNonNull(embeddedCipher, AESCryptSubstitutions.AESCryptClass);
             crypt(realReceiver, in, inOffset, inLength, out, outOffset, aesCipher, true);
@@ -83,7 +83,7 @@ public class CipherBlockChainingSubstitutions {
     @MethodSubstitution(isStatic = false)
     static int decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
-        Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, Kind.Object, LocationIdentity.any());
         if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
             Object aesCipher = PiNode.piCastNonNull(embeddedCipher, AESCryptSubstitutions.AESCryptClass);
             crypt(realReceiver, in, inOffset, inLength, out, outOffset, aesCipher, false);
@@ -95,8 +95,8 @@ public class CipherBlockChainingSubstitutions {
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
-        Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
-        Object rObject = UnsafeLoadNode.load(realReceiver, rOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, LocationIdentity.any());
+        Object rObject = UnsafeLoadNode.load(realReceiver, rOffset, Kind.Object, LocationIdentity.any());
         Word kAddr = Word.fromWordBase(Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte)));
         Word rAddr = Word.fromWordBase(Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte)));
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);

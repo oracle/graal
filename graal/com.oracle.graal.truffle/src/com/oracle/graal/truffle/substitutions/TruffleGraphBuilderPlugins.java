@@ -335,7 +335,7 @@ public class TruffleGraphBuilderPlugins {
             if (location.isConstant()) {
                 LocationIdentity locationIdentity;
                 if (location.isNullConstant()) {
-                    locationIdentity = LocationIdentity.ANY_LOCATION;
+                    locationIdentity = LocationIdentity.any();
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
@@ -361,12 +361,14 @@ public class TruffleGraphBuilderPlugins {
             if (locationArgument.isConstant()) {
                 LocationIdentity locationIdentity;
                 if (locationArgument.isNullConstant()) {
-                    locationIdentity = LocationIdentity.ANY_LOCATION;
+                    locationIdentity = LocationIdentity.any();
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(locationArgument.asJavaConstant());
                 }
 
-                b.append(new UnsafeStoreNode(object, offset, value, kind, locationIdentity, null));
+                UnsafeStoreNode unsafeStore = new UnsafeStoreNode(object, offset, value, kind, locationIdentity, null);
+                b.append(unsafeStore);
+                unsafeStore.setStateAfter(b.createStateAfter());
                 return true;
             }
             // TODO: should we throw GraalInternalError.shouldNotReachHere() here?

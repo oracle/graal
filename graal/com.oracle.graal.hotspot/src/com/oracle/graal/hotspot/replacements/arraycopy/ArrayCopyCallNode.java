@@ -141,7 +141,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
         if (elementKind != null) {
             return NamedLocationIdentity.getArrayLocation(elementKind);
         }
-        return ANY_LOCATION;
+        return any();
     }
 
     @NodeIntrinsic

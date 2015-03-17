@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
@@ -71,5 +72,5 @@ public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 
     Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments);
 
-    void doBlock(Block block, StructuredGraph graph, BlockMap<List<ValueNode>> blockMap);
+    void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap);
 }

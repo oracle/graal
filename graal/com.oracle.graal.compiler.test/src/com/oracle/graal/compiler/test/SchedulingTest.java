@@ -60,10 +60,10 @@ public class SchedulingTest extends GraphScheduleTest {
         NodeMap<Block> nodeToBlock = schedule.getCFG().getNodeToBlock();
         assertTrue(graph.getNodes().filter(LoopExitNode.class).count() == 1);
         LoopExitNode loopExit = graph.getNodes().filter(LoopExitNode.class).first();
-        List<ValueNode> list = schedule.nodesFor(nodeToBlock.get(loopExit));
+        List<Node> list = schedule.nodesFor(nodeToBlock.get(loopExit));
         for (BinaryArithmeticNode<?> node : graph.getNodes().filter(BinaryArithmeticNode.class)) {
             if (!(node instanceof AddNode)) {
-                assertTrue(nodeToBlock.get(node) == nodeToBlock.get(loopExit));
+                assertTrue(node.toString(), nodeToBlock.get(node) == nodeToBlock.get(loopExit));
                 assertTrue(list.indexOf(node) + " < " + list.indexOf(loopExit) + ", " + node + ", " + loopExit, list.indexOf(node) < list.indexOf(loopExit));
             }
         }

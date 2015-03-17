@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * A {@link LocationIdentity} wrapping an object.
  */
-public final class ObjectLocationIdentity implements LocationIdentity {
+public final class ObjectLocationIdentity extends LocationIdentity {
 
     private JavaConstant object;
 
@@ -53,6 +53,7 @@ public final class ObjectLocationIdentity implements LocationIdentity {
     }
 
     private ObjectLocationIdentity(JavaConstant object) {
+        super(false);
         this.object = object;
     }
 

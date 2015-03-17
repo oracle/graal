@@ -66,7 +66,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (this.getLocationIdentity().equals(LocationIdentity.ANY_LOCATION) && offset().isConstant()) {
+        if (this.getLocationIdentity().isAny() && offset().isConstant()) {
             long constantOffset = offset().asJavaConstant().asLong();
 
             // Try to canonicalize to a field access.
@@ -82,7 +82,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 }
             }
         }
-        if (this.getLocationIdentity().equals(LocationIdentity.ANY_LOCATION)) {
+        if (this.getLocationIdentity().isAny()) {
             ResolvedJavaType receiverType = StampTool.typeOrNull(object());
             // Try to build a better location identity.
             if (receiverType != null && receiverType.isArray()) {
