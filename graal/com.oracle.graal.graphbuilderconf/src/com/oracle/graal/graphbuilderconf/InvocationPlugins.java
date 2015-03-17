@@ -132,24 +132,31 @@ public class InvocationPlugins {
         }
     }
 
-    public static final class MethodInfo {
-        public final boolean isStatic;
-        public final Class<?> declaringClass;
-        public final String name;
-        public final Class<?>[] argumentTypes;
+    static final class MethodInfo {
+        final boolean isStatic;
+        final Class<?> declaringClass;
+        final String name;
+        final Class<?>[] argumentTypes;
+        final InvocationPlugin plugin;
 
-        public MethodInfo(Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        int id;
+
+        MethodInfo(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+            this.plugin = plugin;
             this.isStatic = argumentTypes.length == 0 || argumentTypes[0] != Receiver.class;
             this.declaringClass = declaringClass;
             this.name = name;
             this.argumentTypes = argumentTypes;
+            if (!isStatic) {
+                argumentTypes[0] = declaringClass;
+            }
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof MethodInfo) {
                 MethodInfo that = (MethodInfo) obj;
-                boolean res = this.declaringClass == that.declaringClass && this.name.equals(that.name) && Arrays.equals(this.argumentTypes, that.argumentTypes);
+                boolean res = this.name.equals(that.name) && this.declaringClass.equals(that.declaringClass) && Arrays.equals(this.argumentTypes, that.argumentTypes);
                 assert !res || this.isStatic == that.isStatic;
                 return res;
             }
@@ -162,17 +169,17 @@ public class InvocationPlugins {
             return declaringClass.getName().hashCode() ^ name.hashCode();
         }
 
-        public ResolvedJavaMethod resolve(MetaAccessProvider metaAccess) {
+        ResolvedJavaMethod resolve(MetaAccessProvider metaAccess) {
             try {
+                ResolvedJavaMethod method;
                 Class<?>[] parameterTypes = isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length);
-                ResolvedJavaMethod resolved;
                 if (name.equals("<init>")) {
-                    resolved = metaAccess.lookupJavaMethod(declaringClass.getDeclaredConstructor(parameterTypes));
+                    method = metaAccess.lookupJavaMethod(declaringClass.getDeclaredConstructor(parameterTypes));
                 } else {
-                    resolved = metaAccess.lookupJavaMethod(declaringClass.getDeclaredMethod(name, parameterTypes));
+                    method = metaAccess.lookupJavaMethod(declaringClass.getDeclaredMethod(name, parameterTypes));
                 }
-                assert resolved.isStatic() == isStatic;
-                return resolved;
+                assert method.isStatic() == isStatic;
+                return method;
             } catch (NoSuchMethodException | SecurityException e) {
                 throw new GraalInternalError(e);
             }
@@ -192,45 +199,54 @@ public class InvocationPlugins {
     }
 
     protected final MetaAccessProvider metaAccess;
-
-    private final Map<MethodInfo, InvocationPlugin> registrations;
-
+    private final List<MethodInfo> registrations;
     private final Thread registrationThread;
 
     /**
-     * Null while registration is open, non-null when registration is closed.
+     * The minimum {@linkplain InvocationPluginIdHolder#getInvocationPluginId() id} for a method
+     * associated with a plugin in {@link #plugins}.
      */
-    private volatile Map<ResolvedJavaMethod, InvocationPlugin> plugins;
+    private int minId = Integer.MAX_VALUE;
 
     /**
-     * The invocation plugins deferred to if a plugin is not found in this object.
+     * Resolved methods to plugins map. The keys (i.e., indexes) are derived from
+     * {@link InvocationPluginIdHolder#getInvocationPluginId()}.
      */
-    private InvocationPlugins defaults;
+    private volatile InvocationPlugin[] plugins;
 
     /**
-     * Creates a set of invocation plugins with a given non-null set of plugins as the
-     * {@linkplain #getDefaults defaults}.
+     * The plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} before searching in
+     * this object.
      */
-    public InvocationPlugins(InvocationPlugins defaults) {
+    private InvocationPlugins parent;
+
+    private InvocationPlugins(InvocationPlugins parent, MetaAccessProvider metaAccess, int estimatePluginCount) {
         this.registrationThread = Thread.currentThread();
-        this.metaAccess = defaults.getMetaAccess();
-        this.registrations = new HashMap<>();
-        InvocationPlugins defs = defaults;
-        // Only adopt non-empty defaults
-        while (defs != null && defs.size() == 0) {
-            defs = defs.defaults;
+        this.metaAccess = metaAccess;
+        this.registrations = new ArrayList<>(estimatePluginCount);
+        InvocationPlugins p = parent;
+        // Only adopt a non-empty parent
+        while (p != null && p.size() == 0) {
+            p = p.parent;
         }
-        this.defaults = defs;
+        this.parent = p;
+    }
+
+    private static final int DEFAULT_ESTIMATE_PLUGIN_COUNT = 16;
+
+    /**
+     * Creates a set of invocation plugins with a non-null {@linkplain #getParent() parent}.
+     */
+    public InvocationPlugins(InvocationPlugins parent) {
+        this(parent, parent.metaAccess, DEFAULT_ESTIMATE_PLUGIN_COUNT);
     }
 
     public InvocationPlugins(MetaAccessProvider metaAccess) {
-        this(metaAccess, 16);
+        this(metaAccess, DEFAULT_ESTIMATE_PLUGIN_COUNT);
     }
 
     public InvocationPlugins(MetaAccessProvider metaAccess, int estimatePluginCount) {
-        this.metaAccess = metaAccess;
-        this.registrations = new HashMap<>(estimatePluginCount);
-        this.registrationThread = Thread.currentThread();
+        this(null, metaAccess, estimatePluginCount);
     }
 
     /**
@@ -239,12 +255,13 @@ public class InvocationPlugins {
      */
     public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
         assert Thread.currentThread() == registrationThread : "invocation plugin registration must be single threaded";
-        MethodInfo method = new MethodInfo(declaringClass, name, argumentTypes);
-        assert Checker.check(method, plugin);
+        MethodInfo methodInfo = new MethodInfo(plugin, declaringClass, name, argumentTypes);
+        assert Checker.check(this, methodInfo, plugin);
         assert plugins == null : "invocation plugin registration is closed";
-        GraphBuilderPlugin oldValue = registrations.put(method, plugin);
-        assert oldValue == null : "a plugin is already registered for " + method;
+        registrations.add(methodInfo);
     }
+
+    private static int nextInvocationPluginId = 1;
 
     /**
      * Gets the plugin for a given method.
@@ -253,40 +270,67 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
-        InvocationPlugin res = null;
+        assert method instanceof InvocationPluginIdHolder;
+        if (parent != null) {
+            InvocationPlugin plugin = parent.lookupInvocation(method);
+            if (plugin != null) {
+                return plugin;
+            }
+        }
+        InvocationPluginIdHolder pluggable = (InvocationPluginIdHolder) method;
         if (plugins == null) {
-            synchronized (this) {
+            // Must synchronize across all InvocationPlugins objects to ensure thread safe
+            // allocation of InvocationPlugin identifiers
+            synchronized (InvocationPlugins.class) {
                 if (plugins == null) {
                     if (registrations.isEmpty()) {
-                        plugins = Collections.emptyMap();
+                        plugins = new InvocationPlugin[0];
                     } else {
-                        // System.out.println("resolving " + registrations.size() + " plugins");
-                        plugins = new HashMap<>(registrations.size());
-                        for (Map.Entry<MethodInfo, InvocationPlugin> e : registrations.entrySet()) {
-                            plugins.put(e.getKey().resolve(metaAccess), e.getValue());
+                        int max = Integer.MIN_VALUE;
+                        for (MethodInfo methodInfo : registrations) {
+                            InvocationPluginIdHolder p = (InvocationPluginIdHolder) methodInfo.resolve(metaAccess);
+                            int id = p.getInvocationPluginId();
+                            if (id == 0) {
+                                id = nextInvocationPluginId++;
+                                p.setInvocationPluginId(id);
+                            }
+                            if (id < minId) {
+                                minId = id;
+                            }
+                            if (id > max) {
+                                max = id;
+
+                            }
+                            methodInfo.id = id;
+                        }
+
+                        int length = (max - minId) + 1;
+                        plugins = new InvocationPlugin[length];
+                        for (MethodInfo m : registrations) {
+                            int index = m.id - minId;
+                            plugins[index] = m.plugin;
                         }
                     }
                 }
             }
         }
-        res = plugins.get(method);
-        if (res == null && defaults != null) {
-            return defaults.lookupInvocation(method);
-        }
-        return res;
+
+        int id = pluggable.getInvocationPluginId();
+        int index = id - minId;
+        return index >= 0 && index < plugins.length ? plugins[index] : null;
     }
 
     /**
-     * Gets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} if a
-     * plugin is not found in this object.
+     * Gets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched}
+     * before searching in this object.
      */
-    public InvocationPlugins getDefaults() {
-        return defaults;
+    public InvocationPlugins getParent() {
+        return parent;
     }
 
     @Override
     public String toString() {
-        return registrations.keySet().stream().map(MethodInfo::toString).collect(Collectors.joining(", ")) + " / defaults: " + this.defaults;
+        return registrations.stream().map(MethodInfo::toString).collect(Collectors.joining(", ")) + " / parent: " + this.parent;
     }
 
     private static class Checker {
@@ -314,7 +358,12 @@ public class InvocationPlugins {
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
         }
 
-        public static boolean check(MethodInfo method, InvocationPlugin plugin) {
+        public static boolean check(InvocationPlugins plugins, MethodInfo method, InvocationPlugin plugin) {
+            InvocationPlugins p = plugins;
+            while (p != null) {
+                assert !p.registrations.contains(method) : "a plugin is already registered for " + method;
+                p = p.parent;
+            }
             int arguments = method.argumentTypes.length;
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, method);
             for (Method m : plugin.getClass().getDeclaredMethods()) {

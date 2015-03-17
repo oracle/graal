@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
  * Plugin for handling a specific method invocation.
  */
 public interface InvocationPlugin extends GraphBuilderPlugin {
+
     /**
      * @see #execute
      */

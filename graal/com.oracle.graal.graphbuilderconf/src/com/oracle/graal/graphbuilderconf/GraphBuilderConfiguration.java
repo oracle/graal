@@ -41,7 +41,7 @@ public class GraphBuilderConfiguration {
 
         /**
          * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
-         * {@code copyFrom} become the {@linkplain InvocationPlugins#getDefaults() default}
+         * {@code copyFrom} become the {@linkplain InvocationPlugins#getParent() default}
          * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
          */
         public Plugins(Plugins copyFrom) {
@@ -164,7 +164,7 @@ public class GraphBuilderConfiguration {
 
     /**
      * Creates a copy of this configuration with all its plugins. The {@link InvocationPlugins} in
-     * this configuration become the {@linkplain InvocationPlugins#getDefaults defaults} of the
+     * this configuration become the {@linkplain InvocationPlugins#getParent() parent} of the
      * {@link InvocationPlugins} in the copy.
      */
     public GraphBuilderConfiguration copy() {

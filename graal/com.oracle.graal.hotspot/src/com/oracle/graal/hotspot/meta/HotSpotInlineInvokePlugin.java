@@ -29,7 +29,7 @@ import static java.lang.String.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Replacement;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;

@@ -40,9 +40,12 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
@@ -184,12 +187,18 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private static CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
-        Providers providers = getGraalProviders();
-        SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
+        HotSpotProviders providers = getGraalProviders();
+        SuitesProvider suitesProvider = providers.getSuites();
         Suites suites = suitesProvider.createSuites();
         LIRSuites lirSuites = suitesProvider.createLIRSuites();
         removeInliningPhase(suites);
         StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO);
+
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(plugins);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
+
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
@@ -198,9 +207,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                         suites, lirSuites, new CompilationResult(), factory);
     }
 
-    private static Providers getGraalProviders() {
+    private static HotSpotProviders getGraalProviders() {
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
-        return runtimeProvider.getHostBackend().getProviders();
+        return (HotSpotProviders) runtimeProvider.getHostBackend().getProviders();
     }
 
     private static PhaseSuite<HighTierContext> getGraphBuilderSuite(SuitesProvider suitesProvider) {
