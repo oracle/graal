@@ -28,7 +28,9 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -48,6 +50,7 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -199,6 +202,13 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
+            IntrinsicMethod intrinsicMethod = builder.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(original);
+            if (intrinsicMethod != null) {
+                InlineInfo inlineInfo = getMethodHandleIntrinsicInlineInfo(builder, arguments, intrinsicMethod);
+                if (inlineInfo != null) {
+                    return inlineInfo;
+                }
+            }
             if (replacements != null && (replacements.getMethodSubstitutionMethod(original) != null || replacements.getMacroSubstitution(original) != null)) {
                 return null;
             }
@@ -232,6 +242,56 @@ public class PartialEvaluator {
             if (inlinedTargetMethod.equals(callInlinedMethod)) {
                 inlining.pop();
             }
+        }
+
+        private InlineInfo getMethodHandleIntrinsicInlineInfo(GraphBuilderContext builder, ValueNode[] arguments, IntrinsicMethod intrinsicMethod) {
+            ResolvedJavaMethod targetMethod = null;
+            switch (intrinsicMethod) {
+                case INVOKE_BASIC:
+                    ValueNode methodHandleNode = arguments[0];
+                    if (methodHandleNode.isConstant()) {
+                        targetMethod = builder.getConstantReflection().getMethodHandleAccess().resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true);
+                    }
+                    break;
+                case LINK_TO_STATIC:
+                case LINK_TO_SPECIAL:
+                case LINK_TO_VIRTUAL:
+                case LINK_TO_INTERFACE:
+                    ValueNode memberNameNode = arguments[arguments.length - 1];
+                    if (memberNameNode.isConstant()) {
+                        targetMethod = builder.getConstantReflection().getMethodHandleAccess().resolveLinkToTarget(memberNameNode.asJavaConstant());
+                    }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+            if (targetMethod != null) {
+                // TODO maybe cast arguments
+
+                if (targetMethod.canBeStaticallyBound()) {
+                    return new InlineInfo(targetMethod, false, false);
+                }
+
+                // Try to get the most accurate receiver type
+                if (intrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL || intrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE) {
+                    ResolvedJavaType receiverType = StampTool.typeOrNull(arguments[0].stamp());
+                    if (receiverType != null) {
+                        AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.findUniqueConcreteMethod(targetMethod);
+                        if (concreteMethod != null) {
+                            builder.getAssumptions().record(concreteMethod);
+                            return new InlineInfo(concreteMethod.getResult(), false, false);
+                        }
+                    }
+                } else {
+                    AssumptionResult<ResolvedJavaMethod> concreteMethod = targetMethod.getDeclaringClass().findUniqueConcreteMethod(targetMethod);
+                    if (concreteMethod != null) {
+                        builder.getAssumptions().record(concreteMethod);
+                        return new InlineInfo(concreteMethod.getResult(), false, false);
+                    }
+                }
+            }
+
+            return null;
         }
     }
 

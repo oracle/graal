@@ -136,4 +136,11 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         assertPartialEvalNoInvokes(rootNode);
         assertPartialEvalEquals("constant42", rootNode);
     }
+
+    @Test
+    public void lambda() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new LambdaTestNode();
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "constantValue", result));
+    }
 }
