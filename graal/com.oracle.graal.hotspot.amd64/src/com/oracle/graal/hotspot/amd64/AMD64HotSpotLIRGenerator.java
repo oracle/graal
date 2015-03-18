@@ -39,9 +39,11 @@ import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.HotSpotStoreConstantOp;
+import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -54,6 +56,8 @@ import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 
 /**
@@ -117,6 +121,41 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     SaveRbp saveRbp;
+
+    private static final class RescueSlotDummyOp extends LIRInstruction {
+        public static final LIRInstructionClass<RescueSlotDummyOp> TYPE = LIRInstructionClass.create(RescueSlotDummyOp.class);
+
+        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue slot;
+
+        public RescueSlotDummyOp(FrameMapBuilder frameMapBuilder, LIRKind kind) {
+            super(TYPE);
+            slot = frameMapBuilder.allocateSpillSlot(kind);
+        }
+
+        public StackSlotValue getSlot() {
+            return slot;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+        }
+    }
+
+    private RescueSlotDummyOp rescueSlotOp;
+
+    private StackSlotValue getOrInitRescueSlot() {
+        if (rescueSlotOp == null) {
+            // create dummy instruction to keep the rescue slot alive
+            rescueSlotOp = new RescueSlotDummyOp(getResult().getFrameMapBuilder(), getLIRKindTool().getWordKind());
+            // insert dummy instruction into the start block
+            LIR lir = getResult().getLIR();
+            List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
+            // Note: we do not insert at position 1 to avoid interference with the save rpb op
+            instructions.add(instructions.size() - 1, rescueSlotOp);
+            Debug.dump(lir, "created rescue dummy op");
+        }
+        return rescueSlotOp.getSlot();
+    }
 
     /**
      * List of epilogue operations that need to restore RBP.
@@ -440,6 +479,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         for (AMD64HotSpotEpilogueOp op : epilogueOps) {
             op.savedRbp = savedRbp;
         }
+        if (BenchmarkCounters.enabled) {
+            // ensure that the rescue slot is available
+            getOrInitRescueSlot();
+        }
     }
 
     private static LIRKind toStackKind(LIRKind kind) {
@@ -625,5 +668,21 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         } else {
             return super.canInlineConstant(c);
         }
+    }
+
+    @Override
+    public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
+        if (BenchmarkCounters.enabled) {
+            return new AMD64HotSpotCounterOp(name, group, increment, getProviders().getRegisters(), config, getOrInitRescueSlot());
+        }
+        return null;
+    }
+
+    @Override
+    public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
+        if (BenchmarkCounters.enabled) {
+            return new AMD64HotSpotCounterOp(names, groups, increments, getProviders().getRegisters(), config, getOrInitRescueSlot());
+        }
+        return null;
     }
 }
