@@ -85,6 +85,8 @@ public class BenchmarkCounters {
                        "  dacapo = 'err, starting =====, PASSED in'%n" +
                        "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'", type = OptionType.Debug)
         private static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
+        @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
+        private static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
         //@formatter:on
     }
 
@@ -207,28 +209,29 @@ public class BenchmarkCounters {
                 cnt--;
             }
 
+            String numFmt = Options.DynamicCountersPrintGroupSeparator.getValue() ? "%,19d" : "%19d";
             if (staticCounter) {
                 out.println("=========== " + group + " (static counters):");
                 for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                     long counter = entry.getKey() / array.length;
-                    out.format(Locale.US, "%,19d %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
+                    out.format(Locale.US, numFmt + " %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
                 }
-                out.format(Locale.US, "%,19d total\n", sum);
+                out.format(Locale.US, numFmt + " total\n", sum);
             } else {
                 if (group.startsWith("~")) {
                     out.println("=========== " + group + " (dynamic counters), time = " + seconds + " s:");
                     for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                         long counter = entry.getKey() / array.length;
-                        out.format(Locale.US, "%,19d/s %3d%%  %s\n", (long) (counter / seconds), percentage(counter, sum), entry.getValue());
+                        out.format(Locale.US, numFmt + "/s %3d%%  %s\n", (long) (counter / seconds), percentage(counter, sum), entry.getValue());
                     }
-                    out.format(Locale.US, "%,19d/s total\n", (long) (sum / seconds));
+                    out.format(Locale.US, numFmt + "/s total\n", (long) (sum / seconds));
                 } else {
                     out.println("=========== " + group + " (dynamic counters):");
                     for (Map.Entry<Long, String> entry : sorted.entrySet()) {
                         long counter = entry.getKey() / array.length;
-                        out.format(Locale.US, "%,19d %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
+                        out.format(Locale.US, numFmt + " %3d%%  %s\n", counter, percentage(counter, sum), entry.getValue());
                     }
-                    out.format(Locale.US, "%,19d total\n", sum);
+                    out.format(Locale.US, numFmt + " total\n", sum);
                 }
             }
         }
