@@ -31,9 +31,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.*;
 
 /**
  * Sets up the arguments for an exception handler in the callers frame, removes the current frame
@@ -69,7 +69,7 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
 
         // Restore SP from L7 if the exception PC is a method handle call site.
         SPARCAddress dst = new SPARCAddress(thread, isMethodHandleReturnOffset);
-        try (SPARCScratchRegister scratch = SPARCScratchRegister.get()) {
+        try (ScratchRegister scratch = masm.getScratchRegister()) {
             Register scratchReg = scratch.getRegister();
             masm.lduw(dst, scratchReg);
             masm.cmp(scratchReg, scratchReg);

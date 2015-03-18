@@ -39,6 +39,9 @@ public class SPARCMacroAssembler extends SPARCAssembler {
      * patched.
      */
     private static final SPARCAddress Placeholder = new SPARCAddress(g0, 0);
+    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(g1), new ScratchRegister(g3)};
+    // Points to the next free scratch register
+    private int nextFreeScratchRegister = 0;
 
     public SPARCMacroAssembler(TargetDescription target, RegisterConfig registerConfig) {
         super(target, registerConfig);
@@ -388,5 +391,27 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
     public void signx(Register rd) {
         sra(rd, g0, rd);
+    }
+
+    public ScratchRegister getScratchRegister() {
+        return scratchRegister[nextFreeScratchRegister++];
+    }
+
+    public class ScratchRegister implements AutoCloseable {
+        private final Register register;
+
+        public ScratchRegister(Register register) {
+            super();
+            this.register = register;
+        }
+
+        public Register getRegister() {
+            return register;
+        }
+
+        public void close() {
+            assert nextFreeScratchRegister > 0 : "Close called too often";
+            nextFreeScratchRegister--;
+        }
     }
 }
