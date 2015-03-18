@@ -260,7 +260,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                         canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
                     }
                 } catch (Throwable e) {
-                    throw Debug.handle(e);
+                    throw new RuntimeException(e);
                 }
                 if (performReplacement(node, canonical)) {
                     return true;
