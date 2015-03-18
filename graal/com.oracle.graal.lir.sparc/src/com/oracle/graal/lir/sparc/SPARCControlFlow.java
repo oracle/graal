@@ -39,7 +39,7 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
@@ -219,21 +219,14 @@ public class SPARCControlFlow {
                 actualConditionFlag = actualConditionFlag.mirror();
             }
             boolean isValidConstant = isConstant(actualY) && isSimm5(asConstant(actualY));
-            SPARCScratchRegister scratch = null;
-            try {
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
                 if (isConstant(actualY) && !isValidConstant) { // Make sure, the y value is loaded
-                    scratch = SPARCScratchRegister.get();
                     Value scratchValue = scratch.getRegister().asValue(actualY.getLIRKind());
                     SPARCMove.move(crb, masm, scratchValue, actualY, SPARCDelayedControlTransfer.DUMMY);
                     actualY = scratchValue;
                 }
                 emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
                 masm.nop();
-            } finally {
-                if (scratch != null) {
-                    // release the scratch if used
-                    scratch.close();
-                }
             }
             if (needJump) {
                 masm.jmp(actualFalseTarget);
@@ -481,14 +474,14 @@ public class SPARCControlFlow {
             if (isSimm13(lowKey)) {
                 masm.sub(value, lowKey, scratchReg);
             } else {
-                try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch2 = sc.getRegister();
                     new Setx(lowKey, scratch2).emit(masm);
                     masm.sub(value, scratch2, scratchReg);
                 }
             }
             int upperLimit = highKey - lowKey;
-            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch2 = sc.getRegister();
                 if (isSimm13(upperLimit)) {
                     masm.cmp(scratchReg, upperLimit);
