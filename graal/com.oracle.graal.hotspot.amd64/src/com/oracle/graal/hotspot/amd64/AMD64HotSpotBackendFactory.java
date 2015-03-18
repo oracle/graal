@@ -40,8 +40,6 @@ import com.oracle.graal.phases.util.*;
 @ServiceProvider(HotSpotBackendFactory.class)
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
-    private static final int PLUGIN_COUNT_ESTIMATE = 160;
-
     protected Architecture createArchitecture(HotSpotVMConfig config) {
         return new AMD64(computeFeatures(config), computeFlags(config));
     }
@@ -173,8 +171,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                 wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
-                plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements, target.arch,
-                                PLUGIN_COUNT_ESTIMATE);
+                plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements, target.arch);
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
@@ -263,15 +260,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             *
+             * 
              * Draft Version 0.96
-             *
+             * 
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             *
+             * 
              * 3.2.1
-             *
+             * 
              * ...
-             *
+             * 
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these
