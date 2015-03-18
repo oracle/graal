@@ -31,7 +31,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
@@ -133,7 +133,7 @@ public class SPARCMove {
             Kind inputKind = (Kind) input.getPlatformKind();
             Kind resultKind = (Kind) result.getPlatformKind();
             int resultKindSize = crb.target.getSizeInBytes(resultKind);
-            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 SPARCAddress tempAddress = generateSimm13OffsetLoad((SPARCAddress) crb.asAddress(temp), masm, scratch);
                 switch (inputKind) {
@@ -295,7 +295,7 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 final SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
                 final Register dst = asRegister(result);
@@ -495,7 +495,7 @@ public class SPARCMove {
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             assert isRegister(input);
-            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
                 delayedControlTransfer.emitControlTransfer(crb, masm);
@@ -548,7 +548,7 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
                 delayedControlTransfer.emitControlTransfer(crb, masm);
@@ -604,7 +604,7 @@ public class SPARCMove {
                 if (constant.isDefaultForKind() || constant.isNull()) {
                     reg2stack(crb, masm, result, g0.asValue(LIRKind.derive(input)), delaySlotLir);
                 } else {
-                    try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+                    try (ScratchRegister sc = masm.getScratchRegister()) {
                         Register scratch = sc.getRegister();
                         long value = constant.asLong();
                         if (isSimm13(value)) {
@@ -681,7 +681,7 @@ public class SPARCMove {
 
     private static void reg2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
         SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
-        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+        try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
             dst = generateSimm13OffsetLoad(dst, masm, scratch);
             Register src = asRegister(input);
@@ -716,7 +716,7 @@ public class SPARCMove {
 
     private static void stack2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
         SPARCAddress src = (SPARCAddress) crb.asAddress(input);
-        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+        try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
             src = generateSimm13OffsetLoad(src, masm, scratch);
             Register dst = asRegister(result);
@@ -752,7 +752,7 @@ public class SPARCMove {
     }
 
     private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, JavaConstant input, SPARCDelayedControlTransfer delaySlotLir) {
-        try (SPARCScratchRegister sc = SPARCScratchRegister.get()) {
+        try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
             boolean hasVIS3 = ((SPARC) masm.target.arch).getFeatures().contains(CPUFeature.VIS3);
             switch (input.getKind().getStackKind()) {

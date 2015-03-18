@@ -75,10 +75,6 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(new LoopFullUnrollPhase(canonicalizer));
         }
 
-        if (OptTailDuplication.getValue()) {
-            appendPhase(new TailDuplicationPhase(canonicalizer));
-        }
-
         if (PartialEscapeAnalysis.getValue()) {
             appendPhase(new PartialEscapePhase(true, canonicalizer));
         }

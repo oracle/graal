@@ -35,11 +35,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.sparc.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
 
@@ -53,7 +53,7 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
             protected void injectTailCallCode(HotSpotVMConfig config, HotSpotRegistersProvider registers) {
                 @SuppressWarnings("hiding")
                 SPARCMacroAssembler asm = (SPARCMacroAssembler) this.asm;
-                try (SPARCScratchRegister scratch = SPARCScratchRegister.get()) {
+                try (ScratchRegister scratch = asm.getScratchRegister()) {
                     Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object)[0];
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
