@@ -76,6 +76,7 @@ public class OnStackReplacementPhase extends Phase {
             }
 
             LoopTransformations.peel(osrLoop);
+            osr.replaceAtUsages(InputType.Guard, AbstractBeginNode.prevBegin((FixedNode) osr.predecessor()));
             for (Node usage : osr.usages().snapshot()) {
                 ProxyNode proxy = (ProxyNode) usage;
                 proxy.replaceAndDelete(proxy.value());
@@ -107,6 +108,8 @@ public class OnStackReplacementPhase extends Phase {
                 assert value == null || value instanceof OSRLocalNode;
             }
         }
+        osr.replaceAtUsages(InputType.Guard, osrStart);
+        assert osr.usages().isEmpty();
 
         GraphUtil.killCFG(start);
 
