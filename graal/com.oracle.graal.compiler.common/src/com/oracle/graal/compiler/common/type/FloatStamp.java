@@ -131,6 +131,10 @@ public class FloatStamp extends PrimitiveStamp {
         return nonNaN;
     }
 
+    public boolean isNaN() {
+        return Double.isNaN(lowerBound);
+    }
+
     public boolean isUnrestricted() {
         return lowerBound == Double.NEGATIVE_INFINITY && upperBound == Double.POSITIVE_INFINITY && !nonNaN;
     }
@@ -630,6 +634,9 @@ public class FloatStamp extends PrimitiveStamp {
         @Override
         public Stamp foldStamp(Stamp s) {
             FloatStamp stamp = (FloatStamp) s;
+            if (stamp.isNaN()) {
+                return stamp;
+            }
             return new FloatStamp(stamp.getBits(), 0, Math.max(-stamp.lowerBound(), stamp.upperBound()), stamp.isNonNaN());
         }
     },
