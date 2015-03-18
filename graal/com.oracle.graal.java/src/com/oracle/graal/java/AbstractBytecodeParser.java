@@ -1033,7 +1033,7 @@ public abstract class AbstractBytecodeParser {
 
     protected abstract ValueNode appendConstant(JavaConstant constant);
 
-    protected abstract ValueNode append(ValueNode v);
+    protected abstract <T extends ValueNode> T append(T v);
 
     protected boolean isNeverExecutedCode(double probability) {
         return probability == 0 && optimisticOpts.removeNeverExecutedCode();

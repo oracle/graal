@@ -1444,61 +1444,41 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return ConstantNode.forConstant(constant, metaAccess, currentGraph);
             }
 
-            @SuppressWarnings("unchecked")
             @Override
-            public ValueNode append(ValueNode v) {
-                if (v.graph() != null) {
-                    // This node was already appended to the graph.
-                    return v;
-                }
-                if (v instanceof ControlSinkNode) {
-                    return append((ControlSinkNode) v);
-                }
-                if (v instanceof ControlSplitNode) {
-                    return append((ControlSplitNode) v);
-                }
-                if (v instanceof FixedWithNextNode) {
-                    return append((FixedWithNextNode) v);
-                }
-                if (v instanceof FloatingNode) {
-                    return append((FloatingNode) v);
-                }
-                throw GraalInternalError.shouldNotReachHere("Can not append Node of type: " + v.getClass().getName());
-            }
-
-            public <T extends ControlSinkNode> T append(T fixed) {
-                assert !fixed.isAlive() && !fixed.isDeleted() : "instruction should not have been appended yet";
-                assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
-                T added = currentGraph.add(fixed);
-                lastInstr.setNext(added);
-                lastInstr = null;
-                return added;
-            }
-
-            public <T extends ControlSplitNode> T append(T fixed) {
-                assert !fixed.isAlive() && !fixed.isDeleted() : "instruction should not have been appended yet";
-                assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
-                T added = currentGraph.add(fixed);
-                lastInstr.setNext(added);
-                lastInstr = null;
-                return added;
-            }
-
-            public <T extends FixedWithNextNode> T append(T fixed) {
-                assert !fixed.isAlive() && !fixed.isDeleted() : "instruction should not have been appended yet";
-                assert lastInstr.next() == null : "cannot append instruction to instruction which isn't end (" + lastInstr + "->" + lastInstr.next() + ")";
-                T added = currentGraph.add(fixed);
-                lastInstr.setNext(added);
-                lastInstr = added;
-                return added;
-            }
-
-            public <T extends FloatingNode> T append(T v) {
+            public <T extends ValueNode> T append(T v) {
                 if (v.graph() != null) {
                     return v;
                 }
-                T added = currentGraph.unique(v);
+                T added = currentGraph.addOrUnique(v);
+                if (added == v) {
+                    updateLastInstruction(v);
+                }
                 return added;
+            }
+
+            public <T extends ValueNode> T recursiveAppend(T v) {
+                if (v.graph() != null) {
+                    return v;
+                }
+                T added = currentGraph.addOrUniqueWithInputs(v);
+                if (added == v) {
+                    updateLastInstruction(v);
+                }
+                return added;
+            }
+
+            private <T extends ValueNode> void updateLastInstruction(T v) {
+                if (v instanceof FixedNode) {
+                    FixedNode fixedNode = (FixedNode) v;
+                    lastInstr.setNext(fixedNode);
+                    if (fixedNode instanceof FixedWithNextNode) {
+                        FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
+                        assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
+                        lastInstr = fixedWithNextNode;
+                    } else {
+                        lastInstr = null;
+                    }
+                }
             }
 
             private Target checkLoopExit(FixedNode target, BciBlock targetBlock, HIRFrameStateBuilder state) {
