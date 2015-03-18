@@ -218,11 +218,12 @@ public class LoopEx {
                         if (initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
                         }
-                    } else {
-                        assert iv.direction() == Direction.Down;
+                    } else if (iv.direction() == Direction.Down) {
                         if (initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
                         }
+                    } else {
+                        return false;
                     }
                     oneOff = true;
                     break;
@@ -265,9 +266,12 @@ public class LoopEx {
             if (loop().getExits().contains(b)) {
                 exits.add((LoopExitNode) b.getBeginNode());
             } else {
-                assert loop().getBlocks().contains(b);
                 blocks.add(b.getBeginNode());
-                work.addAll(b.getDominated());
+                for (Block d : b.getDominated()) {
+                    if (loop.getBlocks().contains(d)) {
+                        work.add(d);
+                    }
+                }
             }
         }
         return LoopFragment.computeNodes(branch.graph(), blocks, exits);

@@ -88,4 +88,18 @@ public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return (ResolvedJavaType) runtime.lookupType(getName(), (HotSpotResolvedObjectType) accessingClass, true);
     }
+
+    /**
+     * Try to find a loaded version of this class.
+     *
+     * @param accessingClass
+     * @return the resolved class or null.
+     */
+    ResolvedJavaType reresolve(HotSpotResolvedObjectType accessingClass) {
+        JavaType type = runtime.lookupType(getName(), accessingClass, false);
+        if (type instanceof ResolvedJavaType) {
+            return (ResolvedJavaType) type;
+        }
+        return null;
+    }
 }

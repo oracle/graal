@@ -156,6 +156,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Print source secions for printed expansion trees", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTruffleExpansionSource = new OptionValue<>(false);
 
+    @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintTruffleExpansionHistogram = new OptionValue<>(false);
+
     @Option(help = "Print detailed information for the Truffle compilation cache", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTruffleCacheDetails = new OptionValue<>(false);
 

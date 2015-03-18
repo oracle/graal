@@ -319,11 +319,18 @@ public class PartialEvaluator {
         plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         plugins.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
-        plugins.setInlineInvokePlugin(new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements()));
+        InlineInvokePlugin inlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements());
+        if (PrintTruffleExpansionHistogram.getValue()) {
+            inlinePlugin = new HistogramInlineInvokePlugin(graph, inlinePlugin);
+        }
+        plugins.setInlineInvokePlugin(inlinePlugin);
         plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations, null).apply(graph);
+        if (PrintTruffleExpansionHistogram.getValue()) {
+            ((HistogramInlineInvokePlugin) inlinePlugin).print(callTarget, System.out);
+        }
         Debug.dump(graph, "After FastPE");
 
         // Perform deoptimize to guard conversion.

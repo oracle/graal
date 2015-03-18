@@ -253,7 +253,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
                 } else {
                     // silently ignored
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | CancellationException e) {
                 // silently ignored
             }
         }

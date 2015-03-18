@@ -1943,6 +1943,10 @@ public class AMD64Assembler extends Assembler {
         ADD.rmOp.emit(this, QWORD, dst, src);
     }
 
+    public final void addq(AMD64Address dst, Register src) {
+        ADD.mrOp.emit(this, QWORD, dst, src);
+    }
+
     public final void andq(Register dst, int imm32) {
         AND.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }

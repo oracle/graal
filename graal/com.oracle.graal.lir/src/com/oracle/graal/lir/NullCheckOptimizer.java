@@ -34,7 +34,8 @@ import com.oracle.graal.lir.phases.*;
 public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    BenchmarkCounterFactory counterFactory) {
         LIR ir = lirGenRes.getLIR();
         List<? extends AbstractBlockBase<?>> blocks = ir.codeEmittingOrder();
         NullCheckOptimizer.foldNullChecks(ir, blocks, target.implicitNullCheckLimit);

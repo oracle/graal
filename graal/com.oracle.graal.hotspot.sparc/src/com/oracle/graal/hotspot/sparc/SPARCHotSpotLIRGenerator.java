@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -48,6 +49,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
+import com.oracle.graal.sparc.*;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -361,5 +363,33 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         PlatformKind kind = address.getLIRKind().getPlatformKind();
         assert kind == Kind.Object || kind == Kind.Long : address + " - " + kind + " not an object!";
         append(new NullCheckOp(load(address), state));
+    }
+
+    @Override
+    public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
+        if (BenchmarkCounters.enabled) {
+            try (SPARCScratchRegister sc0 = SPARCScratchRegister.get()) {
+                RegisterValue scratch0 = sc0.getRegister().asValue(getLIRKindTool().getWordKind());
+                try (SPARCScratchRegister sc1 = SPARCScratchRegister.get()) {
+                    RegisterValue scratch1 = sc1.getRegister().asValue(getLIRKindTool().getWordKind());
+                    return new SPARCHotSpotCounterOp(name, group, increment, getProviders().getRegisters(), config, scratch0, scratch1);
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
+        if (BenchmarkCounters.enabled) {
+            try (SPARCScratchRegister sc0 = SPARCScratchRegister.get()) {
+                RegisterValue scratch0 = sc0.getRegister().asValue(getLIRKindTool().getWordKind());
+                try (SPARCScratchRegister sc1 = SPARCScratchRegister.get()) {
+                    RegisterValue scratch1 = sc1.getRegister().asValue(getLIRKindTool().getWordKind());
+                    return new SPARCHotSpotCounterOp(names, groups, increments, getProviders().getRegisters(), config, scratch0, scratch1);
+                }
+            }
+        }
+        return null;
     }
 }

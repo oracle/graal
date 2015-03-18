@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 
-public abstract class LIRPhaseSuite<C> extends LIRPhase<C> {
+public class LIRPhaseSuite<C> extends LIRPhase<C> {
     private final List<LIRPhase<C>> phases;
 
     public LIRPhaseSuite() {
@@ -75,4 +75,9 @@ public abstract class LIRPhaseSuite<C> extends LIRPhase<C> {
         }
     }
 
+    public LIRPhaseSuite<C> copy() {
+        LIRPhaseSuite<C> suite = new LIRPhaseSuite<>();
+        suite.phases.addAll(phases);
+        return suite;
+    }
 }
