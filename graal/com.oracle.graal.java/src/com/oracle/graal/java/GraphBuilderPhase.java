@@ -27,9 +27,10 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
+import static com.oracle.graal.nodes.type.StampTool.*;
 import static java.lang.String.*;
 
 import java.util.*;
@@ -49,6 +50,7 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
 import com.oracle.graal.java.AbstractBytecodeParser.ReplacementContext;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
@@ -233,6 +235,47 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
         }
 
+        static class InvocationPluginReceiver implements Receiver {
+            final BytecodeParser parser;
+            ValueNode[] args;
+            ValueNode value;
+
+            public InvocationPluginReceiver(BytecodeParser parser) {
+                this.parser = parser;
+            }
+
+            @Override
+            public ValueNode get() {
+                assert args != null : "Cannot get the receiver of a static method";
+                if (value == null) {
+                    value = parser.nullCheckedValue(args[0]);
+                    if (value != args[0]) {
+                        args[0] = value;
+                    }
+                }
+                return value;
+            }
+
+            @Override
+            public boolean isConstant() {
+                return args[0].isConstant();
+            }
+
+            @Override
+            public boolean isNullConstant() {
+                return args[0].isNullConstant();
+            }
+
+            InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
+                if (!targetMethod.isStatic()) {
+                    this.args = newArgs;
+                    this.value = null;
+                    return this;
+                }
+                return null;
+            }
+        }
+
         public class BytecodeParser extends AbstractBytecodeParser implements GraphBuilderContext {
 
             private BciBlockMapping blockMap;
@@ -258,6 +301,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private Stack<ExplodedLoopContext> explodeLoopsContext;
             private int nextPeelIteration = 1;
             private boolean controlFlowSplit;
+            private final InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(this);
 
             private FixedWithNextNode[] firstInstructionArray;
             private HIRFrameStateBuilder[] entryStateArray;
@@ -383,6 +427,28 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
+            }
+
+            /**
+             * Gets a version of a given value that has a
+             * {@linkplain StampTool#isPointerNonNull(ValueNode) non-null} stamp.
+             */
+            ValueNode nullCheckedValue(ValueNode value) {
+                if (!StampTool.isPointerNonNull(value.stamp())) {
+                    IsNullNode condition = currentGraph.unique(new IsNullNode(value));
+                    ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
+                    Stamp stamp = receiverStamp.join(objectNonNull());
+                    FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
+                    PiNode nonNullReceiver = currentGraph.unique(new PiNode(value, stamp));
+                    nonNullReceiver.setGuard(fixedGuard);
+                    // TODO: Propogating the non-null into the frame state would
+                    // remove subsequent null-checks on the same value. However,
+                    // it currently causes an assertion failure when merging states.
+                    //
+                    // frameState.replace(value, nonNullReceiver);
+                    return nonNullReceiver;
+                }
+                return value;
             }
 
             private void detectLoops(FixedNode startInstruction) {
@@ -947,21 +1013,24 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             @Override
-            protected void emitNullCheck(ValueNode receiver) {
+            protected ValueNode emitExplicitNullCheck(ValueNode receiver) {
                 if (StampTool.isPointerNonNull(receiver.stamp())) {
-                    return;
+                    return receiver;
                 }
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
                 AbstractBeginNode falseSucc = currentGraph.add(new BeginNode());
+                PiNode nonNullReceiver = currentGraph.unique(new PiNode(receiver, receiver.stamp().join(objectNonNull())));
+                nonNullReceiver.setGuard(falseSucc);
                 append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
                 exception.setStateAfter(createFrameState(bci()));
                 exception.setNext(handleException(exception, bci()));
+                return nonNullReceiver;
             }
 
             @Override
-            protected void emitBoundsCheck(ValueNode index, ValueNode length) {
+            protected void emitExplicitBoundsCheck(ValueNode index, ValueNode length) {
                 AbstractBeginNode trueSucc = currentGraph.add(new BeginNode());
                 BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
                 append(new IfNode(currentGraph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
@@ -1102,10 +1171,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     returnType = returnType.resolve(targetMethod.getDeclaringClass());
                 }
                 if (invokeKind.hasReceiver()) {
-                    emitExplicitExceptions(args[0], null);
+                    args[0] = emitExplicitExceptions(args[0], null);
                     if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
                         JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
                         args[0] = TypeProfileProxyNode.proxify(args[0], profile);
+                    }
+
+                    if (args[0].isNullConstant()) {
+                        append(new DeoptimizeNode(InvalidateRecompile, NullCheckException));
+                        return;
                     }
                 }
 
@@ -1176,24 +1250,30 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     this.mark = currentGraph.getMark();
                 }
 
+                String error(String format, Object... a) {
+                    return String.format(format, a) + String.format("%n\tplugin at %s", plugin.getApplySourceLocation(metaAccess));
+                }
+
                 boolean check(boolean pluginResult) {
                     if (pluginResult == true) {
-                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : "plugin manipulated the stack incorrectly " + targetMethod;
+                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : error("plugin manipulated the stack incorrectly");
                         NodeIterable<Node> newNodes = currentGraph.getNewNodes(mark);
-                        assert !needsNullCheck || args[0].usages().filter(isNotA(FrameState.class)).isEmpty() || containsNullCheckOf(newNodes, args[0]) : format(
-                                        "plugin needs to null check the receiver of %s: receiver=%s%n\tplugin at %s", targetMethod.format("%H.%n(%p)"), args[0],
-                                        plugin.getApplySourceLocation(metaAccess));
+                        assert !needsNullCheck || isPointerNonNull(args[0].stamp()) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
                         for (Node n : newNodes) {
                             if (n instanceof StateSplit) {
                                 StateSplit stateSplit = (StateSplit) n;
-                                assert stateSplit.stateAfter() != null : format("%s node added by plugin for %s need to have a non-null frame state: %s%n\tplugin at %s",
-                                                StateSplit.class.getSimpleName(), targetMethod.format("%H.%n(%p)"), stateSplit, plugin.getApplySourceLocation(metaAccess));
+                                assert stateSplit.stateAfter() != null : error("%s node added by plugin for %s need to have a non-null frame state: %s", StateSplit.class.getSimpleName(),
+                                                targetMethod.format("%H.%n(%p)"), stateSplit);
                             }
                         }
-                        graphBuilderConfig.getPlugins().getInvocationPlugins().checkNewNodes(BytecodeParser.this, plugin, newNodes);
+                        try {
+                            graphBuilderConfig.getPlugins().getInvocationPlugins().checkNewNodes(BytecodeParser.this, plugin, newNodes);
+                        } catch (Throwable t) {
+                            throw new AssertionError(error("Error in plugin"), t);
+                        }
                     } else {
-                        assert nodeCount == currentGraph.getNodeCount() : "plugin that returns false must not create new nodes";
-                        assert beforeStackSize == frameState.stackSize : "plugin that returns false must modify the stack";
+                        assert nodeCount == currentGraph.getNodeCount() : error("plugin that returns false must not create new nodes");
+                        assert beforeStackSize == frameState.stackSize : error("plugin that returns false must modify the stack");
                     }
                     return true;
                 }
@@ -1203,7 +1283,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
                     InvocationPluginAssertions assertions = assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-                    if (InvocationPlugin.execute(this, targetMethod, plugin, args)) {
+                    if (InvocationPlugin.execute(this, targetMethod, plugin, invocationPluginReceiver.init(targetMethod, args), args)) {
                         assert assertions.check(true);
                         return true;
                     }
@@ -1215,18 +1295,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private boolean tryGenericInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod) {
                 GenericInvocationPlugin plugin = graphBuilderConfig.getPlugins().getGenericInvocationPlugin();
                 return plugin != null && plugin.apply(this, targetMethod, args);
-            }
-
-            private boolean containsNullCheckOf(NodeIterable<Node> nodes, Node value) {
-                for (Node n : nodes) {
-                    if (n instanceof GuardingPiNode) {
-                        GuardingPiNode pi = (GuardingPiNode) n;
-                        if (pi.condition() instanceof IsNullNode) {
-                            return ((IsNullNode) pi.condition()).getValue() == value;
-                        }
-                    }
-                }
-                return false;
             }
 
             private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, JavaType returnType) {
@@ -1318,6 +1386,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, ReplacementContext calleeReplacementContext) {
                 BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeReplacementContext);
                 HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, currentGraph);
+                if (!targetMethod.isStatic()) {
+                    args[0] = nullCheckedValue(args[0]);
+                }
                 startFrameState.initializeFromArgumentsArray(args);
                 parser.build(this.lastInstr, startFrameState);
 

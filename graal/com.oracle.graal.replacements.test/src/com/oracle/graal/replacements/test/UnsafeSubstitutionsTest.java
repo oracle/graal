@@ -79,6 +79,11 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     @Test
+    public void testFoo() throws Exception {
+        testGraph("unsafeDirectMemoryRead");
+    }
+
+    @Test
     public void testUnsafeSubstitutions() throws Exception {
         test("unsafeCompareAndSwapInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
 
@@ -108,32 +113,34 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("unsafeDirectMemoryRead");
         testGraph("unsafeDirectMemoryWrite");
 
-        test("unsafeCompareAndSwapInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
-        test("unsafeCompareAndSwapLong", unsafe, supply(() -> new Foo()), fooOffset("l"));
-        test("unsafeCompareAndSwapObject", unsafe, supply(() -> new Foo()), fooOffset("o"));
-
-        test("unsafeGetBoolean", unsafe, supply(() -> new Foo()), fooOffset("z"));
-        test("unsafeGetByte", unsafe, supply(() -> new Foo()), fooOffset("b"));
-        test("unsafeGetShort", unsafe, supply(() -> new Foo()), fooOffset("s"));
-        test("unsafeGetChar", unsafe, supply(() -> new Foo()), fooOffset("c"));
-        test("unsafeGetInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
-        test("unsafeGetLong", unsafe, supply(() -> new Foo()), fooOffset("l"));
-        test("unsafeGetFloat", unsafe, supply(() -> new Foo()), fooOffset("f"));
-        test("unsafeGetDouble", unsafe, supply(() -> new Foo()), fooOffset("d"));
-        test("unsafeGetObject", unsafe, supply(() -> new Foo()), fooOffset("o"));
-
-        test("unsafePutBoolean", unsafe, supply(() -> new Foo()), fooOffset("z"), true);
-        test("unsafePutByte", unsafe, supply(() -> new Foo()), fooOffset("b"), (byte) 87);
-        test("unsafePutShort", unsafe, supply(() -> new Foo()), fooOffset("s"), (short) -93);
-        test("unsafePutChar", unsafe, supply(() -> new Foo()), fooOffset("c"), 'A');
-        test("unsafePutInt", unsafe, supply(() -> new Foo()), fooOffset("i"), 42);
-        test("unsafePutFloat", unsafe, supply(() -> new Foo()), fooOffset("f"), 58.0F);
-        test("unsafePutDouble", unsafe, supply(() -> new Foo()), fooOffset("d"), -28736.243465D);
-        test("unsafePutObject", unsafe, supply(() -> new Foo()), fooOffset("i"), "value1", "value2", "value3");
-
         long address = unsafe.allocateMemory(8 * Kind.values().length);
-        test("unsafeDirectMemoryRead", unsafe, address);
-        test("unsafeDirectMemoryWrite", unsafe, address, 0xCAFEBABEDEADBABEL);
+        for (Unsafe unsafeArg : new Unsafe[]{unsafe, null}) {
+            test("unsafeCompareAndSwapInt", unsafeArg, supply(() -> new Foo()), fooOffset("i"));
+            test("unsafeCompareAndSwapLong", unsafeArg, supply(() -> new Foo()), fooOffset("l"));
+            test("unsafeCompareAndSwapObject", unsafeArg, supply(() -> new Foo()), fooOffset("o"));
+
+            test("unsafeGetBoolean", unsafeArg, supply(() -> new Foo()), fooOffset("z"));
+            test("unsafeGetByte", unsafeArg, supply(() -> new Foo()), fooOffset("b"));
+            test("unsafeGetShort", unsafeArg, supply(() -> new Foo()), fooOffset("s"));
+            test("unsafeGetChar", unsafeArg, supply(() -> new Foo()), fooOffset("c"));
+            test("unsafeGetInt", unsafeArg, supply(() -> new Foo()), fooOffset("i"));
+            test("unsafeGetLong", unsafeArg, supply(() -> new Foo()), fooOffset("l"));
+            test("unsafeGetFloat", unsafeArg, supply(() -> new Foo()), fooOffset("f"));
+            test("unsafeGetDouble", unsafeArg, supply(() -> new Foo()), fooOffset("d"));
+            test("unsafeGetObject", unsafeArg, supply(() -> new Foo()), fooOffset("o"));
+
+            test("unsafePutBoolean", unsafeArg, supply(() -> new Foo()), fooOffset("z"), true);
+            test("unsafePutByte", unsafeArg, supply(() -> new Foo()), fooOffset("b"), (byte) 87);
+            test("unsafePutShort", unsafeArg, supply(() -> new Foo()), fooOffset("s"), (short) -93);
+            test("unsafePutChar", unsafeArg, supply(() -> new Foo()), fooOffset("c"), 'A');
+            test("unsafePutInt", unsafeArg, supply(() -> new Foo()), fooOffset("i"), 42);
+            test("unsafePutFloat", unsafeArg, supply(() -> new Foo()), fooOffset("f"), 58.0F);
+            test("unsafePutDouble", unsafeArg, supply(() -> new Foo()), fooOffset("d"), -28736.243465D);
+            test("unsafePutObject", unsafeArg, supply(() -> new Foo()), fooOffset("i"), "value1", "value2", "value3");
+
+            test("unsafeDirectMemoryRead", unsafeArg, address);
+            test("unsafeDirectMemoryWrite", unsafeArg, address, 0xCAFEBABEDEADBABEL);
+        }
         unsafe.freeMemory(address);
     }
 

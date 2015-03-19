@@ -124,17 +124,6 @@ public interface GraphBuilderContext {
      */
     Replacement getReplacement();
 
-    /**
-     * @see GuardingPiNode#nullCheckedValue(ValueNode)
-     */
-    static ValueNode nullCheckedValue(GraphBuilderContext builder, ValueNode value) {
-        ValueNode nonNullValue = GuardingPiNode.nullCheckedValue(value);
-        if (nonNullValue != value) {
-            builder.append((FixedWithNextNode) nonNullValue);
-        }
-        return nonNullValue;
-    }
-
     boolean eagerResolving();
 
     BailoutException bailout(String string);

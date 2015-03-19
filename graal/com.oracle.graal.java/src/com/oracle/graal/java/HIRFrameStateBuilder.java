@@ -297,7 +297,7 @@ public final class HIRFrameStateBuilder {
             ((PhiNode) currentValue).addInput(otherValue);
             return currentValue;
         } else if (currentValue != otherValue) {
-            assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for changed locals and all stack slots";
+            assert !(block instanceof LoopBeginNode) : String.format("Phi functions for loop headers are create eagerly for changed locals and all stack slots: %s != %s", currentValue, otherValue);
             if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
                 return null;
             }
@@ -957,5 +957,18 @@ public final class HIRFrameStateBuilder {
                             equals(other.monitorIds, monitorIds, monitorIds.length);
         }
         return false;
+    }
+
+    public void replace(ValueNode oldValue, ValueNode newValue) {
+        for (int i = 0; i < locals.length; i++) {
+            if (locals[i] == oldValue) {
+                locals[i] = newValue;
+            }
+        }
+        for (int i = 0; i < stackSize; i++) {
+            if (stack[i] == oldValue) {
+                stack[i] = newValue;
+            }
+        }
     }
 }

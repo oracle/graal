@@ -38,10 +38,11 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Replacement;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
@@ -333,11 +334,8 @@ public abstract class AbstractBytecodeParser {
     protected abstract ValueNode genLoadIndexed(ValueNode index, ValueNode array, Kind kind);
 
     private void genLoadIndexed(Kind kind) {
-
-        emitExplicitExceptions(frameState.peek(1), frameState.peek(0));
-
         ValueNode index = frameState.ipop();
-        ValueNode array = frameState.apop();
+        ValueNode array = emitExplicitExceptions(frameState.apop(), index);
         if (!tryLoadIndexedPlugin(kind, index, array)) {
             frameState.push(kind.getStackKind(), append(genLoadIndexed(array, index, kind)));
         }
@@ -360,11 +358,9 @@ public abstract class AbstractBytecodeParser {
     protected abstract void genStoreIndexed(ValueNode array, ValueNode index, Kind kind, ValueNode value);
 
     private void genStoreIndexed(Kind kind) {
-        emitExplicitExceptions(frameState.peek(2), frameState.peek(1));
-
         ValueNode value = frameState.pop(kind.getStackKind());
         ValueNode index = frameState.ipop();
-        ValueNode array = frameState.apop();
+        ValueNode array = emitExplicitExceptions(frameState.apop(), index);
         genStoreIndexed(array, index, kind, value);
     }
 
@@ -832,10 +828,8 @@ public abstract class AbstractBytecodeParser {
     protected abstract ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field);
 
     private void genGetField(JavaField field) {
-        emitExplicitExceptions(frameState.peek(0), null);
-
         Kind kind = field.getKind();
-        ValueNode receiver = frameState.apop();
+        ValueNode receiver = emitExplicitExceptions(frameState.apop(), null);
         if ((field instanceof ResolvedJavaField) && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
             LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getPlugins().getLoadFieldPlugin();
             if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, receiver, (ResolvedJavaField) field)) {
@@ -846,36 +840,53 @@ public abstract class AbstractBytecodeParser {
         }
     }
 
-    protected abstract void emitNullCheck(ValueNode receiver);
+    /**
+     * Emits control flow to null check a receiver if it's stamp does not indicate it is
+     * {@linkplain StampTool#isPointerNonNull always non-null}.
+     *
+     * @return the receiver with a stamp indicating non-nullness
+     */
+    protected abstract ValueNode emitExplicitNullCheck(ValueNode receiver);
 
-    protected abstract void emitBoundsCheck(ValueNode index, ValueNode length);
+    /**
+     * Emits control flow to check an array index is within bounds of an array's length.
+     *
+     * @param index the index to check
+     * @param length the length of the array being indexed
+     */
+    protected abstract void emitExplicitBoundsCheck(ValueNode index, ValueNode length);
 
     private static final DebugMetric EXPLICIT_EXCEPTIONS = Debug.metric("ExplicitExceptions");
 
     protected abstract ValueNode genArrayLength(ValueNode x);
 
-    protected void emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
+    /**
+     * @param receiver the receiver of an object based operation
+     * @param index the index of an array based operation that is to be tested for out of bounds.
+     *            This is null for a non-array operation.
+     * @return the receiver value possibly modified to have a tighter stamp
+     */
+    protected ValueNode emitExplicitExceptions(ValueNode receiver, ValueNode index) {
         assert receiver != null;
         if (graphBuilderConfig.omitAllExceptionEdges() || profilingInfo == null ||
                         (optimisticOpts.useExceptionProbabilityForOperations() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE && !GraalOptions.StressExplicitExceptionCode.getValue())) {
-            return;
+            return receiver;
         }
 
-        emitNullCheck(receiver);
-        if (outOfBoundsIndex != null) {
-            ValueNode length = append(genArrayLength(receiver));
-            emitBoundsCheck(outOfBoundsIndex, length);
+        ValueNode nonNullReceiver = emitExplicitNullCheck(receiver);
+        if (index != null) {
+            ValueNode length = append(genArrayLength(nonNullReceiver));
+            emitExplicitBoundsCheck(index, length);
         }
         EXPLICIT_EXCEPTIONS.increment();
+        return nonNullReceiver;
     }
 
     protected abstract void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value);
 
     private void genPutField(JavaField field) {
-        emitExplicitExceptions(frameState.peek(1), null);
-
         ValueNode value = frameState.pop(field.getKind().getStackKind());
-        ValueNode receiver = frameState.apop();
+        ValueNode receiver = emitExplicitExceptions(frameState.apop(), null);
         if (field instanceof ResolvedJavaField && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
             genStoreField(receiver, (ResolvedJavaField) field, value);
         } else {
