@@ -55,18 +55,17 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Set<F
 
     @Override
     protected Set<FloatingReadNode> processBlock(Block block, Set<FloatingReadNode> currentState) {
-        for (Node n : blockToNodesMap.get(block)) {
-            if (n instanceof AbstractMergeNode) {
-                AbstractMergeNode abstractMergeNode = (AbstractMergeNode) n;
-                for (PhiNode phi : abstractMergeNode.phis()) {
-                    if (phi instanceof MemoryPhiNode) {
-                        MemoryPhiNode memoryPhiNode = (MemoryPhiNode) phi;
-                        addFloatingReadUsages(currentState, memoryPhiNode);
-                    }
+        AbstractBeginNode beginNode = block.getBeginNode();
+        if (beginNode instanceof AbstractMergeNode) {
+            AbstractMergeNode abstractMergeNode = (AbstractMergeNode) beginNode;
+            for (PhiNode phi : abstractMergeNode.phis()) {
+                if (phi instanceof MemoryPhiNode) {
+                    MemoryPhiNode memoryPhiNode = (MemoryPhiNode) phi;
+                    addFloatingReadUsages(currentState, memoryPhiNode);
                 }
-
             }
-
+        }
+        for (Node n : blockToNodesMap.get(block)) {
             if (n instanceof MemoryCheckpoint) {
                 if (n instanceof MemoryCheckpoint.Single) {
                     MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
@@ -88,7 +87,8 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Set<F
                         // Floating read was found in the state.
                         currentState.remove(floatingReadNode);
                     } else {
-                        throw new RuntimeException("Floating read node " + n + " was not found in the state, i.e., it was killed by a memory check point before its place in the schedule");
+                        throw new RuntimeException("Floating read node " + n + " was not found in the state, i.e., it was killed by a memory check point before its place in the schedule. Block=" +
+                                        block + ", block begin: " + block.getBeginNode() + " block loop: " + block.getLoop() + ", " + blockToNodesMap.get(block).get(0));
                     }
                 }
 
