@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
@@ -86,7 +87,7 @@ public class HotSpotGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
                 ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
                 ValueNode mirror;
-                if (objectStamp.isExactType() && objectStamp.nonNull()) {
+                if (objectStamp.isExactType() && objectStamp.nonNull() && !GraalOptions.ImmutableCode.getValue()) {
                     mirror = b.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), b.getMetaAccess()));
                 } else {
                     StampProvider stampProvider = b.getStampProvider();
