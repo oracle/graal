@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -39,10 +37,8 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.elem.*;
-import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -51,8 +47,6 @@ import com.oracle.graal.phases.util.*;
  * unknown type is encountered a deoptimization is triggered.
  */
 public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
-
-    private static final DebugMetric metricInliningTailDuplication = Debug.metric("InliningTailDuplication");
 
     private final List<ResolvedJavaMethod> concretes;
     private final double[] methodProbabilities;
@@ -170,7 +164,6 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         int numberOfMethods = concretes.size();
         FixedNode continuation = invoke.next();
 
-        ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
         // setup merge and phi nodes for results and exceptions
         AbstractMergeNode returnMerge = graph.add(new MergeNode());
         returnMerge.setStateAfter(invoke.stateAfter());
@@ -255,35 +248,6 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         }
         if (shouldFallbackToInvoke()) {
             replacementNodes.add(null);
-        }
-
-        if (OptTailDuplication.getValue()) {
-            /*
-             * We might want to perform tail duplication at the merge after a type switch, if there
-             * are invokes that would benefit from the improvement in type information.
-             */
-            FixedNode current = returnMerge;
-            int opportunities = 0;
-            do {
-                if (current instanceof InvokeNode && ((InvokeNode) current).callTarget() instanceof MethodCallTargetNode &&
-                                ((MethodCallTargetNode) ((InvokeNode) current).callTarget()).receiver() == originalReceiver) {
-                    opportunities++;
-                } else if (current.inputs().contains(originalReceiver)) {
-                    opportunities++;
-                }
-                current = ((FixedWithNextNode) current).next();
-            } while (current instanceof FixedWithNextNode);
-
-            if (opportunities > 0) {
-                metricInliningTailDuplication.increment();
-                Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                PhaseContext phaseContext = new PhaseContext(providers);
-                CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-                if (ImmutableCode.getValue()) {
-                    canonicalizer.disableReadCanonicalization();
-                }
-                TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
-            }
         }
 
         Collection<Node> canonicalizeNodes = new ArrayList<>();

@@ -847,12 +847,19 @@ public abstract class Node implements Cloneable, Formattable {
     protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
+    public boolean verifyInputs() {
+        for (Node input : inputs()) {
+            assertFalse(input.isDeleted(), "input was deleted");
+            assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
+            assertTrue(input.usages().contains(this), "missing usage in input %s", input);
+        }
+        return true;
+    }
+
     public boolean verify() {
         assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
         assertTrue(graph() != null, "null graph");
-        for (Node input : inputs()) {
-            assertTrue(input.usages().contains(this), "missing usage in input %s", input);
-        }
+        verifyInputs();
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
             assertTrue(successor.graph() == graph(), "mismatching graph in successor %s", successor);
@@ -864,7 +871,7 @@ public abstract class Node implements Cloneable, Formattable {
             while (iterator.hasNext()) {
                 Position pos = iterator.nextPosition();
                 if (pos.get(usage) == this && pos.getInputType() != InputType.Unchecked) {
-                    assert isAllowedUsageType(pos.getInputType()) : "invalid input of type " + pos.getInputType() + " from " + usage + " to " + this + " (" + pos.getName() + ")";
+                    assertTrue(isAllowedUsageType(pos.getInputType()), "invalid input of type " + pos.getInputType() + " from " + usage + " to " + this + " (" + pos.getName() + ")");
                 }
             }
         }

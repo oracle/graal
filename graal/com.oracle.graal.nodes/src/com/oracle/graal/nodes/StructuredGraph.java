@@ -79,6 +79,10 @@ public class StructuredGraph extends Graph {
         public boolean areFrameStatesAtSideEffects() {
             return !this.areFrameStatesAtDeopts();
         }
+
+        public boolean areDeoptsFixed() {
+            return this.ordinal() >= FIXED_DEOPTS.ordinal();
+        }
     }
 
     /**

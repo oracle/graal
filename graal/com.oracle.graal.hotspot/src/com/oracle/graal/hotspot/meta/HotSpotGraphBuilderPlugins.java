@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
@@ -49,8 +50,6 @@ import com.oracle.graal.word.*;
  */
 public class HotSpotGraphBuilderPlugins {
 
-    private static final int PLUGIN_COUNT_ESTIMATE = 160;
-
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
      *
@@ -61,8 +60,7 @@ public class HotSpotGraphBuilderPlugins {
      */
     public static Plugins create(HotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, StampProvider stampProvider, ReplacementsImpl replacements, Architecture arch) {
-
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess, PLUGIN_COUNT_ESTIMATE);
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
         Plugins plugins = new Plugins(invocationPlugins);
         NodeIntrinsificationPhase nodeIntrinsification = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
@@ -80,9 +78,6 @@ public class HotSpotGraphBuilderPlugins {
         registerStableOptionPlugins(invocationPlugins);
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, arch, invocationPlugins, !config.useHeapProfiler);
 
-        int size = invocationPlugins.size();
-        assert PLUGIN_COUNT_ESTIMATE >= size : String.format("adjust %s.PLUGIN_COUNT_ESTIMATE to be above or equal to %d", HotSpotGraphBuilderPlugins.class.getSimpleName(), size);
-        assert PLUGIN_COUNT_ESTIMATE - size < 20 : String.format("adjust %s.PLUGIN_COUNT_ESTIMATE to be closer to %d", HotSpotGraphBuilderPlugins.class.getSimpleName(), size);
         return plugins;
     }
 
@@ -92,7 +87,7 @@ public class HotSpotGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
                 ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
                 ValueNode mirror;
-                if (objectStamp.isExactType() && objectStamp.nonNull()) {
+                if (objectStamp.isExactType() && objectStamp.nonNull() && !GraalOptions.ImmutableCode.getValue()) {
                     mirror = b.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), b.getMetaAccess()));
                 } else {
                     StampProvider stampProvider = b.getStampProvider();

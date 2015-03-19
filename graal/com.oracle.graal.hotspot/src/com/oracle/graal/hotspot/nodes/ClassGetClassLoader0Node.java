@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -53,7 +54,7 @@ public final class ClassGetClassLoader0Node extends MacroStateSplitNode implemen
     @Override
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
-        if (javaClass.isConstant()) {
+        if (javaClass.isConstant() && !GraalOptions.ImmutableCode.getValue()) {
             HotSpotObjectConstant c = (HotSpotObjectConstant) javaClass.asConstant();
             JavaConstant classLoader = c.getClassLoader();
             if (classLoader != null) {

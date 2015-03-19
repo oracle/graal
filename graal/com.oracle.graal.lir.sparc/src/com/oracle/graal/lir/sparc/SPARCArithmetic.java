@@ -37,7 +37,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -371,7 +371,7 @@ public enum SPARCArithmetic {
                 masm.mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IMULCC:
-                try (SPARCScratchRegister tmpScratch = SPARCScratchRegister.get()) {
+                try (ScratchRegister tmpScratch = masm.getScratchRegister()) {
                     Register tmp = tmpScratch.getRegister();
                     masm.mulx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                     Label noOverflow = new Label();

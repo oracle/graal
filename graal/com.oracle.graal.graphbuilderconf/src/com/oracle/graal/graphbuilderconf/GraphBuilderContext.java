@@ -26,7 +26,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -60,15 +59,15 @@ public interface GraphBuilderContext {
         boolean isIntrinsic();
     }
 
-    <T extends ControlSinkNode> T append(T fixed);
-
-    <T extends ControlSplitNode> T append(T fixed);
-
-    <T extends FixedWithNextNode> T append(T fixed);
-
-    <T extends FloatingNode> T append(T value);
-
     <T extends ValueNode> T append(T value);
+
+    /**
+     * Adds the given floating node to the graph and also adds recursively all referenced inputs.
+     *
+     * @param value the floating node to be added to the graph
+     * @return either the node added or an equivalent node
+     */
+    <T extends ValueNode> T recursiveAppend(T value);
 
     StampProvider getStampProvider();
 

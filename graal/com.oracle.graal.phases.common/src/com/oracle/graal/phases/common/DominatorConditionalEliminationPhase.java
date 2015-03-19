@@ -377,7 +377,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
         private void processConditionAnchor(ConditionAnchorNode node) {
             tryProofCondition(node.condition(), (guard, result) -> {
-                if (result == node.isNegated()) {
+                if (result != node.isNegated()) {
                     node.replaceAtUsages(guard);
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);

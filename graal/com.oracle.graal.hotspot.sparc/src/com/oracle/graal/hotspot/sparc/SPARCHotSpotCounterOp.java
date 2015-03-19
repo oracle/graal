@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
@@ -36,19 +37,12 @@ import com.oracle.graal.lir.asm.*;
 public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
     public static final LIRInstructionClass<SPARCHotSpotCounterOp> TYPE = LIRInstructionClass.create(SPARCHotSpotCounterOp.class);
 
-    @Temp({OperandFlag.REG}) private AllocatableValue scratch0;
-    @Temp({OperandFlag.REG}) private AllocatableValue scratch1;
-
-    public SPARCHotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config, AllocatableValue scratch0, AllocatableValue scratch1) {
+    public SPARCHotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config) {
         super(TYPE, name, group, increment, registers, config);
-        this.scratch0 = scratch0;
-        this.scratch1 = scratch1;
     }
 
-    public SPARCHotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config, AllocatableValue scratch0, AllocatableValue scratch1) {
+    public SPARCHotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config) {
         super(TYPE, names, groups, increments, registers, config);
-        this.scratch0 = scratch0;
-        this.scratch1 = scratch1;
     }
 
     @Override
@@ -58,27 +52,32 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
 
         // address for counters array
         SPARCAddress countersArrayAddr = new SPARCAddress(thread, config.graalCountersThreadOffset);
-        Register countersArrayReg = asRegister(scratch0);
+        try (ScratchRegister scratch = masm.getScratchRegister()) {
+            Register countersArrayReg = scratch.getRegister();
 
-        // load counters array
-        masm.ldx(countersArrayAddr, countersArrayReg);
+            // load counters array
+            masm.ldx(countersArrayAddr, countersArrayReg);
 
-        forEachCounter((name, group, increment) -> emitIncrement(masm, target, countersArrayReg, name, group, increment));
+            forEachCounter((name, group, increment) -> emitIncrement(masm, target, countersArrayReg, name, group, increment));
+        }
     }
 
     private void emitIncrement(SPARCMacroAssembler masm, TargetDescription target, Register countersArrayReg, String name, String group, Value increment) {
         // address for counter
         SPARCAddress counterAddr = new SPARCAddress(countersArrayReg, getDisplacementForLongIndex(target, getIndex(name, group, increment)));
-        Register counterReg = asRegister(scratch1);
-        // load counter value
-        masm.ldx(counterAddr, counterReg);
-        // increment counter
-        if (isConstant(increment)) {
-            masm.add(counterReg, asInt(asConstant(increment)), counterReg);
-        } else {
-            masm.add(counterReg, asRegister(increment), counterReg);
+
+        try (ScratchRegister scratch = masm.getScratchRegister()) {
+            Register counterReg = scratch.getRegister();
+            // load counter value
+            masm.ldx(counterAddr, counterReg);
+            // increment counter
+            if (isConstant(increment)) {
+                masm.add(counterReg, asInt(asConstant(increment)), counterReg);
+            } else {
+                masm.add(counterReg, asRegister(increment), counterReg);
+            }
+            // store counter value
+            masm.stx(counterReg, counterAddr);
         }
-        // store counter value
-        masm.stx(counterReg, counterAddr);
     }
 }
