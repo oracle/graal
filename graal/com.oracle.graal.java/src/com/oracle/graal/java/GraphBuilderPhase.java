@@ -1190,6 +1190,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                                 StateSplit.class.getSimpleName(), targetMethod.format("%H.%n(%p)"), stateSplit, plugin.getApplySourceLocation(metaAccess));
                             }
                         }
+                        graphBuilderConfig.getPlugins().getInvocationPlugins().checkNewNodes(BytecodeParser.this, plugin, newNodes);
                     } else {
                         assert nodeCount == currentGraph.getNodeCount() : "plugin that returns false must not create new nodes";
                         assert beforeStackSize == frameState.stackSize : "plugin that returns false must modify the stack";

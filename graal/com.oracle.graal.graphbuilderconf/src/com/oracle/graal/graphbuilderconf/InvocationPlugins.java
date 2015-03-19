@@ -30,6 +30,8 @@ import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -384,5 +386,19 @@ public class InvocationPlugins {
 
     public int size() {
         return registrations.size();
+    }
+
+    /**
+     * Checks a set of nodes added to the graph by an {@link InvocationPlugin}.
+     *
+     * @param b the graph builder that applied the plugin
+     * @param plugin a plugin that was just applied
+     * @param newNodes the nodes added to the graph by {@code plugin}
+     * @throws AssertionError if any check fail
+     */
+    public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
+        if (parent != null) {
+            parent.checkNewNodes(b, plugin, newNodes);
+        }
     }
 }

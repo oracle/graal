@@ -23,8 +23,13 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 
 /**
@@ -65,6 +70,22 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 return;
             }
         }
+
         super.register(plugin, declaringClass, name, argumentTypes);
+    }
+
+    @Override
+    public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
+        if (GraalOptions.ImmutableCode.getValue()) {
+            for (Node node : newNodes) {
+                if (node instanceof ConstantNode) {
+                    ConstantNode c = (ConstantNode) node;
+                    if (c.getKind() == Kind.Object && !AheadOfTimeVerificationPhase.isLegalObjectConstant(c)) {
+                        throw new AssertionError("illegal constant node in AOT: " + node);
+                    }
+                }
+            }
+        }
+        super.checkNewNodes(b, plugin, newNodes);
     }
 }
