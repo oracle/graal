@@ -249,6 +249,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     return true;
                 } else {
                     customCanonicalizer.simplify(node, tool);
+                    if (node.isDeleted()) {
+                        return true;
+                    }
                 }
             }
             if (nodeClass.isCanonicalizable()) {
