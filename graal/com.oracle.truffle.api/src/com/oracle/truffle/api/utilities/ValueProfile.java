@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import com.oracle.truffle.api.nodes.*;
+
 /**
  * Utility class to speculate on certain properties of values.
  *
@@ -42,7 +44,7 @@ package com.oracle.truffle.api.utilities;
  * @see #createIdentityProfile()
  * @see #createClassProfile()
  */
-public abstract class ValueProfile {
+public abstract class ValueProfile extends NodeCloneable {
 
     public abstract <T> T profile(T value);
 
