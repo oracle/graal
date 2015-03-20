@@ -557,22 +557,19 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     private static final Object GIL = new Object();
 
-    private static final ThreadLocal<Integer> IN_ATOMIC_BLOCK = new ThreadLocal<>();
+    private static final ThreadLocal<Integer> IN_ATOMIC_BLOCK = new ThreadLocal<Integer>() {
+        @Override
+        protected Integer initialValue() {
+            return 0;
+        }
+    };
 
     private static boolean inAtomicBlock() {
-        Integer value = IN_ATOMIC_BLOCK.get();
-        if (value == null) {
-            return false;
-        }
-        return value > 0;
+        return IN_ATOMIC_BLOCK.get() > 0;
     }
 
     private static boolean enterAtomic() {
-        Integer currentValue = IN_ATOMIC_BLOCK.get();
-        if (currentValue == null) {
-            currentValue = 0;
-        }
-        IN_ATOMIC_BLOCK.set(currentValue + 1);
+        IN_ATOMIC_BLOCK.set(IN_ATOMIC_BLOCK.get() + 1);
         return true;
     }
 
