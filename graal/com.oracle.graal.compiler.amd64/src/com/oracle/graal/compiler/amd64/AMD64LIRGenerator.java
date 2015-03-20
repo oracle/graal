@@ -50,7 +50,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.amd64.*;
@@ -68,7 +67,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
-import com.oracle.graal.lir.amd64.AMD64Move.ZeroExtendLoadOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.phases.util.*;
 
@@ -100,28 +98,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         switch (c.getKind()) {
             case Long:
                 return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
-    }
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    protected boolean canStoreConstant(JavaConstant c) {
-        // there is no immediate move of 64-bit constants on Intel
-        switch (c.getKind()) {
-            case Long:
-                return Util.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
-            case Double:
-                return false;
             case Object:
                 return c.isNull();
             default:
@@ -640,7 +616,24 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         // Issue a zero extending load of the proper bit size and set the result to
         // the proper kind.
         Variable result = newVariable(LIRKind.value(resultBits == 32 ? Kind.Int : Kind.Long));
-        append(new ZeroExtendLoadOp(memoryKind, result, address, state));
+        switch (memoryKind) {
+            case Boolean:
+            case Byte:
+                append(new AMD64Unary.MemoryOp(MOVZXB, DWORD, result, address, state));
+                break;
+            case Char:
+            case Short:
+                append(new AMD64Unary.MemoryOp(MOVZX, DWORD, result, address, state));
+                break;
+            case Int:
+                append(new AMD64Unary.MemoryOp(MOV, DWORD, result, address, state));
+                break;
+            case Long:
+                append(new AMD64Unary.MemoryOp(MOV, QWORD, result, address, state));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
         return result;
     }
 

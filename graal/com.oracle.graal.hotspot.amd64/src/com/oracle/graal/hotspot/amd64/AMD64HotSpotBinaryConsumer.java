@@ -50,6 +50,7 @@ public class AMD64HotSpotBinaryConsumer {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            assert crb.target.inlineObjects || !(c instanceof HotSpotObjectConstant);
             crb.recordInlineDataInCode(c);
             super.emitCode(crb, masm);
         }
@@ -72,6 +73,7 @@ public class AMD64HotSpotBinaryConsumer {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            assert crb.target.inlineObjects || !(c instanceof HotSpotObjectConstant);
             crb.recordInlineDataInCode(c);
             super.emitCode(crb, masm);
         }
