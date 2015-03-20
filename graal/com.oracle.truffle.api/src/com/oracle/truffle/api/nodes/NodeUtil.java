@@ -155,14 +155,20 @@ public final class NodeUtil {
 
         @Override
         public void putObject(Node receiver, Object value) {
-            assert !type.isPrimitive() && value == null || type.isInstance(value);
-            unsafe.putObject(receiver, offset, value);
+            if (!type.isPrimitive() && value == null || type.isInstance(value)) {
+                unsafe.putObject(receiver, offset, value);
+            } else {
+                throw new IllegalArgumentException();
+            }
         }
 
         @Override
         public Object getObject(Node receiver) {
-            assert !type.isPrimitive();
-            return unsafe.getObject(receiver, offset);
+            if (!type.isPrimitive()) {
+                return unsafe.getObject(receiver, offset);
+            } else {
+                throw new IllegalArgumentException();
+            }
         }
 
         @Override
