@@ -628,17 +628,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
         if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(right)) {
-            append(new AMD64CompareOp(TEST, DWORD, left, left));
+            append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
         } else if (right instanceof HotSpotConstant) {
             HotSpotConstant c = (HotSpotConstant) right;
 
             boolean isImmutable = GraalOptions.ImmutableCode.getValue();
             boolean generatePIC = GraalOptions.GeneratePIC.getValue();
             if (c.isCompressed() && !(isImmutable && generatePIC)) {
-                append(new AMD64HotSpotCompareConstOp(CMP.getMIOpcode(DWORD, false), left, c));
+                append(new AMD64HotSpotBinaryConsumer.ConstOp(CMP.getMIOpcode(DWORD, false), left, c));
             } else {
                 OperandSize size = c.isCompressed() ? DWORD : QWORD;
-                append(new AMD64HotSpotComparePatchOp(CMP.getRMOpcode(size), size, left, c));
+                append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, c));
             }
         } else {
             super.emitCompareOp(cmpKind, left, right);
@@ -648,11 +648,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected boolean emitCompareMemoryConOp(OperandSize size, JavaConstant a, AMD64AddressValue b, LIRFrameState state) {
         if (a.isNull()) {
-            append(new AMD64CompareMemoryConstOp(CMP.getMIOpcode(size, true), size, b, PrimitiveConstant.INT_0, state));
+            append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, 0, state));
             return true;
         } else if (a instanceof HotSpotConstant && size == DWORD) {
             assert ((HotSpotConstant) a).isCompressed();
-            append(new AMD64HotSpotCompareMemoryConstOp(CMP.getMIOpcode(size, false), b, (HotSpotConstant) a, state));
+            append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(CMP.getMIOpcode(size, false), b, (HotSpotConstant) a, state));
             return true;
         } else {
             return super.emitCompareMemoryConOp(size, a, b, state);

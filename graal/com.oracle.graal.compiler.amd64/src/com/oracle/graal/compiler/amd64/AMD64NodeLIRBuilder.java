@@ -214,13 +214,13 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 return null;
             }
             return builder -> {
-                gen.append(new AMD64CompareMemoryConstOp(AMD64MIOp.TEST, size, makeAddress(access), constant, getState(access)));
+                gen.append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.TEST, size, makeAddress(access), (int) constant.asLong(), getState(access)));
                 gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
         } else {
             return builder -> {
-                gen.append(new AMD64CompareMemoryOp(AMD64RMOp.TEST, size, gen.asAllocatable(operand(value)), makeAddress(access), getState(access)));
+                gen.append(new AMD64BinaryConsumer.MemoryRMOp(AMD64RMOp.TEST, size, gen.asAllocatable(operand(value)), makeAddress(access), getState(access)));
                 gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
