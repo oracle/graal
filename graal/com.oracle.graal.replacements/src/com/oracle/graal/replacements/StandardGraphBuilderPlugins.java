@@ -385,7 +385,7 @@ public class StandardGraphBuilderPlugins {
         });
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                if (receiver.isConstant() && !receiver.isNullConstant()) {
+                if (receiver.isConstant()) {
                     ResolvedJavaType type = b.getConstantReflection().asJavaType(receiver.get().asConstant());
                     if (type != null && !type.isPrimitive()) {
                         b.push(Kind.Object, b.append(CheckCastNode.create(type, object, null, false, b.getAssumptions())));

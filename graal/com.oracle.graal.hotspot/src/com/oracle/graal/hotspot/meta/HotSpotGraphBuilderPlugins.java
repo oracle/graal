@@ -141,7 +141,7 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (receiver.isConstant() && !receiver.isNullConstant()) {
+                if (receiver.isConstant()) {
                     Object object = ((HotSpotObjectConstantImpl) receiver.get().asConstant()).object();
                     StableOptionValue<?> option = (StableOptionValue<?>) object;
                     ConstantNode value = b.append(ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(option.getValue()), b.getMetaAccess()));

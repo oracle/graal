@@ -59,11 +59,6 @@ public class InvocationPlugins {
          * Determines if the receiver is constant.
          */
         boolean isConstant();
-
-        /**
-         * Determines if the receiver is the null constant.
-         */
-        boolean isNullConstant();
     }
 
     /**

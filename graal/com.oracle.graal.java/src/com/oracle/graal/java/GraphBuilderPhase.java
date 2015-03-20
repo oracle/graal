@@ -261,11 +261,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return args[0].isConstant();
             }
 
-            @Override
-            public boolean isNullConstant() {
-                return args[0].isNullConstant();
-            }
-
             InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
                 if (!targetMethod.isStatic()) {
                     this.args = newArgs;
