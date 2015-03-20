@@ -31,20 +31,8 @@ import com.oracle.truffle.api.frame.*;
  */
 public abstract class LoopNode extends Node {
 
-    @Child protected RepeatingNode repeatingNode;
-
-    public LoopNode(RepeatingNode repeatingNode) {
-        this.repeatingNode = repeatingNode;
-    }
-
     public abstract void executeLoop(VirtualFrame frame);
 
-    protected final boolean executeRepeatingNode(VirtualFrame frame) {
-        return getRepeatingNode().executeRepeating(frame);
-    }
-
-    public final RepeatingNode getRepeatingNode() {
-        return repeatingNode;
-    }
+    public abstract RepeatingNode getRepeatingNode();
 
 }

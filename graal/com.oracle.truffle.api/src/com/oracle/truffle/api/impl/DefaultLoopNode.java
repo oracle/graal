@@ -29,13 +29,20 @@ import com.oracle.truffle.api.nodes.*;
 
 public final class DefaultLoopNode extends LoopNode {
 
+    @Child private RepeatingNode repeatNode;
+
     public DefaultLoopNode(RepeatingNode repeatNode) {
-        super(repeatNode);
+        this.repeatNode = repeatNode;
+    }
+
+    @Override
+    public RepeatingNode getRepeatingNode() {
+        return repeatNode;
     }
 
     @Override
     public void executeLoop(VirtualFrame frame) {
-        while (executeRepeatingNode(frame)) {
+        while (repeatNode.executeRepeating(frame)) {
             // Empty
         }
     }
