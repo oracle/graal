@@ -17,6 +17,8 @@ This changelog summarizes major changes between Graal versions relevant to langu
 * Instrumentation:  AST "probing" is now safe and implemented by Node.probe(); language implementors need only implement Node.isInstrumentable() and Node.createWrapperNode().
 * Instrumentation:  A new framework defines a category of  simple "instrumentation tools" that can be created, configured, and installed, after which they autonomously collect execution data of some kind.
 * Instrumentation:  A new example "instrumentation tool" is a language-agnostic collector of code coverage information (CoverageTracker); there are two other examples.
+* Removed unsafe compiler directives; use `sun.misc.Unsafe` instead.
+* Removed `Node#onAdopt()`.
 
 ### Truffle-DSL
 * Implemented a new generated code layout that reduces the code size.
