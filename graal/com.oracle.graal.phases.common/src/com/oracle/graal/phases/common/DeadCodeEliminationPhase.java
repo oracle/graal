@@ -91,7 +91,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private static void iterateSuccessorsAndInputs(NodeFlood flood) {
         BiConsumer<Node, Node> consumer = (n, succOrInput) -> {
-            assert succOrInput.isAlive() : succOrInput;
+            assert succOrInput.isAlive() : "dead successor or input " + succOrInput + " in " + n;
             flood.add(succOrInput);
         };
         for (Node current : flood) {
