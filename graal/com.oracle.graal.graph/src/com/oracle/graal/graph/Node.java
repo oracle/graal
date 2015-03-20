@@ -851,7 +851,6 @@ public abstract class Node implements Cloneable, Formattable {
         for (Node input : inputs()) {
             assertFalse(input.isDeleted(), "input was deleted");
             assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
-            assertTrue(input.usages().contains(this), "missing usage in input %s", input);
         }
         return true;
     }
@@ -859,7 +858,22 @@ public abstract class Node implements Cloneable, Formattable {
     public boolean verify() {
         assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
         assertTrue(graph() != null, "null graph");
+        if (Options.VerifyGraalGraphEdges.getValue()) {
+            verifyEdges();
+        }
+        return true;
+    }
+
+    /**
+     * Perform expensive verification of inputs, usages, predecessors and successors.
+     *
+     * @return true
+     */
+    public boolean verifyEdges() {
         verifyInputs();
+        for (Node input : inputs()) {
+            assertTrue(input.usages().contains(this), "missing usage in input %s", input);
+        }
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
             assertTrue(successor.graph() == graph(), "mismatching graph in successor %s", successor);
