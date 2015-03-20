@@ -102,9 +102,9 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         }
 
         public int compareTo(MethodStatistics o) {
-            int result = (int) (o.shallowCount.getSum() - shallowCount.getSum());
+            int result = Long.compare(o.shallowCount.getSum(), shallowCount.getSum());
             if (result == 0) {
-                return o.count - count;
+                return Integer.compare(o.count, count);
             }
             return result;
         }
