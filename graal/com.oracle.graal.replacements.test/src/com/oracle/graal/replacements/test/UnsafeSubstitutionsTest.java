@@ -79,11 +79,6 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
     }
 
     @Test
-    public void testFoo() throws Exception {
-        testGraph("unsafeDirectMemoryRead");
-    }
-
-    @Test
     public void testUnsafeSubstitutions() throws Exception {
         test("unsafeCompareAndSwapInt", unsafe, supply(() -> new Foo()), fooOffset("i"));
 
