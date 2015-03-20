@@ -55,7 +55,7 @@ public class DefaultTruffleSplittingStrategyNew implements TruffleSplittingStrat
         if (TruffleCompilerOptions.TruffleSplittingAggressive.getValue()) {
             return true;
         }
-        int size = call.getCallTarget().countNonTrivialNodes();
+        int size = call.getCallTarget().getNonTrivialNodeCount();
         if (size > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
             return false;
         }
