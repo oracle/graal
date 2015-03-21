@@ -160,8 +160,9 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
                 if (leafConcreteSubtype != null) {
                     assert !leafConcreteSubtype.getResult().equals(implementor);
                     AssumptionResult<ResolvedJavaType> newResult = new AssumptionResult<>(leafConcreteSubtype.getResult(), new ConcreteSubtype(this, implementor));
+                    // Accumulate leaf assumptions and return the combined result.
                     newResult.add(leafConcreteSubtype);
-                    return leafConcreteSubtype;
+                    return newResult;
                 }
                 return null;
             }
