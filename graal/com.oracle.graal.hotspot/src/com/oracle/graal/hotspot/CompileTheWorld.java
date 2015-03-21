@@ -75,8 +75,10 @@ public final class CompileTheWorld {
                        "The format for each option is the same as on the command line just without the '-G:' prefix.", type = OptionType.Debug)
         public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
 
-        @Option(help = "Last class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
+        @Option(help = "Run CTW using as many threads as there are processors on the system", type = OptionType.Debug)
         public static final OptionValue<Boolean> CompileTheWorldMultiThreaded = new OptionValue<>(false);
+        @Option(help = "Number of threads to use for multithreaded CTW.  Defaults to Runtime.getRuntime().availableProcessors()", type = OptionType.Debug)
+        public static final OptionValue<Integer> CompileTheWorldThreads = new OptionValue<>(0);
         // @formatter:on
 
         /**
@@ -240,8 +242,11 @@ public final class CompileTheWorld {
                     return DebugEnvironment.initialize(System.out);
                 }
             });
-            int availableProcessors = Runtime.getRuntime().availableProcessors();
-            threadPool = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+            int threadCount = Options.CompileTheWorldThreads.getValue();
+            if (threadCount == 0) {
+                threadCount = Runtime.getRuntime().availableProcessors();
+            }
+            threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
         }
 
         try (OverrideScope s = config.apply()) {
