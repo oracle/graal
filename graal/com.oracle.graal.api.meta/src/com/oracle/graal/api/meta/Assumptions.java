@@ -57,7 +57,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         public AssumptionResult(T result, Assumption... assumptions) {
             this.result = result;
-            this.assumptions = assumptions.clone();
+            this.assumptions = assumptions;
         }
 
         public AssumptionResult(T result) {
