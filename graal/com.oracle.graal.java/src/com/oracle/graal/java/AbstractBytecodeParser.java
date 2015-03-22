@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
+import static com.oracle.graal.java.HIRFrameStateBuilder.*;
 
 import java.util.*;
 
@@ -42,6 +43,7 @@ import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Replacement;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
@@ -82,7 +84,7 @@ public abstract class AbstractBytecodeParser {
      * happen when a call to a {@link MethodSubstitution} is encountered or the root of compilation
      * is a {@link MethodSubstitution} or a snippet.
      */
-    static class ReplacementContext implements Replacement {
+    public static class ReplacementContext implements Replacement {
         /**
          * The method being replaced.
          */
@@ -121,6 +123,11 @@ public abstract class AbstractBytecodeParser {
         IntrinsicContext asIntrinsic() {
             return null;
         }
+
+        @Override
+        public String toString() {
+            return "Replacement{original: " + method.format("%H.%n(%p)") + ", replacement: " + replacement.format("%H.%n(%p)") + "}";
+        }
     }
 
     /**
@@ -129,25 +136,37 @@ public abstract class AbstractBytecodeParser {
      * information required to build a frame state denoting the JVM state just before the
      * intrinsified call.
      */
-    static class IntrinsicContext extends ReplacementContext {
+    public static class IntrinsicContext extends ReplacementContext {
 
         /**
-         * The arguments to the intrinsified invocation.
+         * BCI denoting an intrinsic is being parsed for inlining after the caller has been parsed.
          */
-        private final ValueNode[] invokeArgs;
+        public static final int POST_PARSE_INLINE_BCI = -1;
 
         /**
-         * The BCI of the intrinsified invocation.
+         * BCI denoting an intrinsic is the compilation root.
          */
-        private final int invokeBci;
+        public static final int ROOT_COMPILATION_BCI = -2;
 
-        private FrameState invokeStateBefore;
-        private FrameState invokeStateDuring;
+        /**
+         * The arguments to the intrinsic.
+         */
+        ValueNode[] args;
 
-        public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod substitute, ValueNode[] invokeArgs, int invokeBci) {
+        /**
+         * The BCI of the intrinsified invocation, {@link #POST_PARSE_INLINE_BCI} or
+         * {@link #ROOT_COMPILATION_BCI}.
+         */
+        final int bci;
+
+        private FrameState stateBeforeCache;
+
+        public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod substitute, ValueNode[] args, int bci) {
             super(method, substitute);
-            this.invokeArgs = invokeArgs;
-            this.invokeBci = invokeBci;
+            assert bci != POST_PARSE_INLINE_BCI || args == null;
+            this.args = args;
+            this.bci = bci;
+            assert !isCompilationRoot() || method.hasBytecodes() : "Cannot intrinsic for native or abstract method " + method.format("%H.%n(%p)");
         }
 
         @Override
@@ -155,33 +174,55 @@ public abstract class AbstractBytecodeParser {
             return true;
         }
 
-        /**
-         * Gets the frame state that will restart the interpreter just before the intrinsified
-         * invocation.
-         */
-        public FrameState getInvokeStateBefore(BytecodeParser parent) {
-            assert !parent.parsingReplacement() || parent.replacementContext instanceof IntrinsicContext;
-            if (invokeStateDuring == null) {
-                assert invokeStateBefore == null;
-                // Find the ancestor calling the replaced method
-                BytecodeParser ancestor = parent;
-                while (ancestor.parsingReplacement()) {
-                    ancestor = ancestor.getParent();
-                }
-                invokeStateDuring = ancestor.getFrameState().create(ancestor.bci(), ancestor.getParent(), true);
-                invokeStateBefore = invokeStateDuring.duplicateModifiedBeforeCall(invokeBci, Kind.Void, invokeArgs);
-            }
-            return invokeStateBefore;
+        public boolean isPostParseInlined() {
+            return bci == POST_PARSE_INLINE_BCI;
         }
 
-        public FrameState getInvokeStateDuring() {
-            assert invokeStateDuring != null : "must only be called after getInvokeStateBefore()";
-            return invokeStateDuring;
+        public boolean isCompilationRoot() {
+            return bci == ROOT_COMPILATION_BCI;
+        }
+
+        public FrameState getInvokeStateBefore(StructuredGraph graph, BytecodeParser parent) {
+            if (isCompilationRoot()) {
+                int maxLocals = method.getMaxLocals();
+                // The 'args' were initialized based on the intrinsic method but a
+                // frame state's 'locals' needs to have the same length as the frame
+                // state method's 'max_locals'.
+                ValueNode[] locals = maxLocals == args.length ? args : Arrays.copyOf(args, maxLocals);
+                ValueNode[] stack = EMPTY_ARRAY;
+                int stackSize = 0;
+                ValueNode[] locks = EMPTY_ARRAY;
+                List<MonitorIdNode> monitorIds = Collections.emptyList();
+                return graph.add(new FrameState(null, method, 0, locals, stack, stackSize, locks, monitorIds, false, false));
+            } else if (isPostParseInlined()) {
+                return graph.add(new FrameState(BytecodeFrame.BEFORE_BCI));
+            } else {
+                assert !parent.parsingReplacement() || parent.replacementContext instanceof IntrinsicContext;
+                if (stateBeforeCache == null) {
+                    assert stateBeforeCache == null;
+
+                    // Find the non-intrinsic ancestor calling the intrinsified method
+                    BytecodeParser ancestor = parent;
+                    while (ancestor.parsingReplacement()) {
+                        assert ancestor.replacementContext instanceof IntrinsicContext;
+                        ancestor = ancestor.getParent();
+                    }
+                    FrameState stateDuring = ancestor.getFrameState().create(ancestor.bci(), ancestor.getParent(), true);
+                    stateBeforeCache = stateDuring.duplicateModifiedBeforeCall(bci, Kind.Void, args);
+                }
+                return stateBeforeCache;
+            }
         }
 
         @Override
         IntrinsicContext asIntrinsic() {
             return this;
+        }
+
+        @Override
+        public String toString() {
+            return "Intrinsic{original: " + method.format("%H.%n(%p)") + ", replacement: " + replacement.format("%H.%n(%p)") + ", bci: " + bci +
+                            (args == null ? "" : ", args: " + Arrays.toString(args)) + (stateBeforeCache == null ? "" : ", stateBefore: " + stateBeforeCache) + "}";
         }
     }
 
@@ -1104,214 +1145,214 @@ public abstract class AbstractBytecodeParser {
 
         // Checkstyle: stop
         // @formatter:off
-    switch (opcode) {
-        case NOP            : /* nothing to do */ break;
-        case ACONST_NULL    : frameState.apush(appendConstant(JavaConstant.NULL_POINTER)); break;
-        case ICONST_M1      : // fall through
-        case ICONST_0       : // fall through
-        case ICONST_1       : // fall through
-        case ICONST_2       : // fall through
-        case ICONST_3       : // fall through
-        case ICONST_4       : // fall through
-        case ICONST_5       : frameState.ipush(appendConstant(JavaConstant.forInt(opcode - ICONST_0))); break;
-        case LCONST_0       : // fall through
-        case LCONST_1       : frameState.lpush(appendConstant(JavaConstant.forLong(opcode - LCONST_0))); break;
-        case FCONST_0       : // fall through
-        case FCONST_1       : // fall through
-        case FCONST_2       : frameState.fpush(appendConstant(JavaConstant.forFloat(opcode - FCONST_0))); break;
-        case DCONST_0       : // fall through
-        case DCONST_1       : frameState.dpush(appendConstant(JavaConstant.forDouble(opcode - DCONST_0))); break;
-        case BIPUSH         : frameState.ipush(appendConstant(JavaConstant.forInt(stream.readByte()))); break;
-        case SIPUSH         : frameState.ipush(appendConstant(JavaConstant.forInt(stream.readShort()))); break;
-        case LDC            : // fall through
-        case LDC_W          : // fall through
-        case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;
-        case ILOAD          : loadLocal(stream.readLocalIndex(), Kind.Int); break;
-        case LLOAD          : loadLocal(stream.readLocalIndex(), Kind.Long); break;
-        case FLOAD          : loadLocal(stream.readLocalIndex(), Kind.Float); break;
-        case DLOAD          : loadLocal(stream.readLocalIndex(), Kind.Double); break;
-        case ALOAD          : loadLocal(stream.readLocalIndex(), Kind.Object); break;
-        case ILOAD_0        : // fall through
-        case ILOAD_1        : // fall through
-        case ILOAD_2        : // fall through
-        case ILOAD_3        : loadLocal(opcode - ILOAD_0, Kind.Int); break;
-        case LLOAD_0        : // fall through
-        case LLOAD_1        : // fall through
-        case LLOAD_2        : // fall through
-        case LLOAD_3        : loadLocal(opcode - LLOAD_0, Kind.Long); break;
-        case FLOAD_0        : // fall through
-        case FLOAD_1        : // fall through
-        case FLOAD_2        : // fall through
-        case FLOAD_3        : loadLocal(opcode - FLOAD_0, Kind.Float); break;
-        case DLOAD_0        : // fall through
-        case DLOAD_1        : // fall through
-        case DLOAD_2        : // fall through
-        case DLOAD_3        : loadLocal(opcode - DLOAD_0, Kind.Double); break;
-        case ALOAD_0        : // fall through
-        case ALOAD_1        : // fall through
-        case ALOAD_2        : // fall through
-        case ALOAD_3        : loadLocal(opcode - ALOAD_0, Kind.Object); break;
-        case IALOAD         : genLoadIndexed(Kind.Int   ); break;
-        case LALOAD         : genLoadIndexed(Kind.Long  ); break;
-        case FALOAD         : genLoadIndexed(Kind.Float ); break;
-        case DALOAD         : genLoadIndexed(Kind.Double); break;
-        case AALOAD         : genLoadIndexed(Kind.Object); break;
-        case BALOAD         : genLoadIndexed(Kind.Byte  ); break;
-        case CALOAD         : genLoadIndexed(Kind.Char  ); break;
-        case SALOAD         : genLoadIndexed(Kind.Short ); break;
-        case ISTORE         : storeLocal(Kind.Int, stream.readLocalIndex()); break;
-        case LSTORE         : storeLocal(Kind.Long, stream.readLocalIndex()); break;
-        case FSTORE         : storeLocal(Kind.Float, stream.readLocalIndex()); break;
-        case DSTORE         : storeLocal(Kind.Double, stream.readLocalIndex()); break;
-        case ASTORE         : storeLocal(Kind.Object, stream.readLocalIndex()); break;
-        case ISTORE_0       : // fall through
-        case ISTORE_1       : // fall through
-        case ISTORE_2       : // fall through
-        case ISTORE_3       : storeLocal(Kind.Int, opcode - ISTORE_0); break;
-        case LSTORE_0       : // fall through
-        case LSTORE_1       : // fall through
-        case LSTORE_2       : // fall through
-        case LSTORE_3       : storeLocal(Kind.Long, opcode - LSTORE_0); break;
-        case FSTORE_0       : // fall through
-        case FSTORE_1       : // fall through
-        case FSTORE_2       : // fall through
-        case FSTORE_3       : storeLocal(Kind.Float, opcode - FSTORE_0); break;
-        case DSTORE_0       : // fall through
-        case DSTORE_1       : // fall through
-        case DSTORE_2       : // fall through
-        case DSTORE_3       : storeLocal(Kind.Double, opcode - DSTORE_0); break;
-        case ASTORE_0       : // fall through
-        case ASTORE_1       : // fall through
-        case ASTORE_2       : // fall through
-        case ASTORE_3       : storeLocal(Kind.Object, opcode - ASTORE_0); break;
-        case IASTORE        : genStoreIndexed(Kind.Int   ); break;
-        case LASTORE        : genStoreIndexed(Kind.Long  ); break;
-        case FASTORE        : genStoreIndexed(Kind.Float ); break;
-        case DASTORE        : genStoreIndexed(Kind.Double); break;
-        case AASTORE        : genStoreIndexed(Kind.Object); break;
-        case BASTORE        : genStoreIndexed(Kind.Byte  ); break;
-        case CASTORE        : genStoreIndexed(Kind.Char  ); break;
-        case SASTORE        : genStoreIndexed(Kind.Short ); break;
-        case POP            : frameState.xpop(); break;
-        case POP2           : frameState.xpop(); frameState.xpop(); break;
-        case DUP            : frameState.xpush(frameState.xpeek()); break;
-        case DUP_X1         : // fall through
-        case DUP_X2         : // fall through
-        case DUP2           : // fall through
-        case DUP2_X1        : // fall through
-        case DUP2_X2        : // fall through
-        case SWAP           : stackOp(opcode); break;
-        case IADD           : // fall through
-        case ISUB           : // fall through
-        case IMUL           : genArithmeticOp(Kind.Int, opcode); break;
-        case IDIV           : // fall through
-        case IREM           : genIntegerDivOp(Kind.Int, opcode); break;
-        case LADD           : // fall through
-        case LSUB           : // fall through
-        case LMUL           : genArithmeticOp(Kind.Long, opcode); break;
-        case LDIV           : // fall through
-        case LREM           : genIntegerDivOp(Kind.Long, opcode); break;
-        case FADD           : // fall through
-        case FSUB           : // fall through
-        case FMUL           : // fall through
-        case FDIV           : // fall through
-        case FREM           : genArithmeticOp(Kind.Float, opcode); break;
-        case DADD           : // fall through
-        case DSUB           : // fall through
-        case DMUL           : // fall through
-        case DDIV           : // fall through
-        case DREM           : genArithmeticOp(Kind.Double, opcode); break;
-        case INEG           : genNegateOp(Kind.Int); break;
-        case LNEG           : genNegateOp(Kind.Long); break;
-        case FNEG           : genNegateOp(Kind.Float); break;
-        case DNEG           : genNegateOp(Kind.Double); break;
-        case ISHL           : // fall through
-        case ISHR           : // fall through
-        case IUSHR          : genShiftOp(Kind.Int, opcode); break;
-        case IAND           : // fall through
-        case IOR            : // fall through
-        case IXOR           : genLogicOp(Kind.Int, opcode); break;
-        case LSHL           : // fall through
-        case LSHR           : // fall through
-        case LUSHR          : genShiftOp(Kind.Long, opcode); break;
-        case LAND           : // fall through
-        case LOR            : // fall through
-        case LXOR           : genLogicOp(Kind.Long, opcode); break;
-        case IINC           : genIncrement(); break;
-        case I2F            : genFloatConvert(FloatConvert.I2F, Kind.Int, Kind.Float); break;
-        case I2D            : genFloatConvert(FloatConvert.I2D, Kind.Int, Kind.Double); break;
-        case L2F            : genFloatConvert(FloatConvert.L2F, Kind.Long, Kind.Float); break;
-        case L2D            : genFloatConvert(FloatConvert.L2D, Kind.Long, Kind.Double); break;
-        case F2I            : genFloatConvert(FloatConvert.F2I, Kind.Float, Kind.Int); break;
-        case F2L            : genFloatConvert(FloatConvert.F2L, Kind.Float, Kind.Long); break;
-        case F2D            : genFloatConvert(FloatConvert.F2D, Kind.Float, Kind.Double); break;
-        case D2I            : genFloatConvert(FloatConvert.D2I, Kind.Double, Kind.Int); break;
-        case D2L            : genFloatConvert(FloatConvert.D2L, Kind.Double, Kind.Long); break;
-        case D2F            : genFloatConvert(FloatConvert.D2F, Kind.Double, Kind.Float); break;
-        case L2I            : genNarrow(Kind.Long, Kind.Int); break;
-        case I2L            : genSignExtend(Kind.Int, Kind.Long); break;
-        case I2B            : genSignExtend(Kind.Byte, Kind.Int); break;
-        case I2S            : genSignExtend(Kind.Short, Kind.Int); break;
-        case I2C            : genZeroExtend(Kind.Char, Kind.Int); break;
-        case LCMP           : genCompareOp(Kind.Long, false); break;
-        case FCMPL          : genCompareOp(Kind.Float, true); break;
-        case FCMPG          : genCompareOp(Kind.Float, false); break;
-        case DCMPL          : genCompareOp(Kind.Double, true); break;
-        case DCMPG          : genCompareOp(Kind.Double, false); break;
-        case IFEQ           : genIfZero(Condition.EQ); break;
-        case IFNE           : genIfZero(Condition.NE); break;
-        case IFLT           : genIfZero(Condition.LT); break;
-        case IFGE           : genIfZero(Condition.GE); break;
-        case IFGT           : genIfZero(Condition.GT); break;
-        case IFLE           : genIfZero(Condition.LE); break;
-        case IF_ICMPEQ      : genIfSame(Kind.Int, Condition.EQ); break;
-        case IF_ICMPNE      : genIfSame(Kind.Int, Condition.NE); break;
-        case IF_ICMPLT      : genIfSame(Kind.Int, Condition.LT); break;
-        case IF_ICMPGE      : genIfSame(Kind.Int, Condition.GE); break;
-        case IF_ICMPGT      : genIfSame(Kind.Int, Condition.GT); break;
-        case IF_ICMPLE      : genIfSame(Kind.Int, Condition.LE); break;
-        case IF_ACMPEQ      : genIfSame(Kind.Object, Condition.EQ); break;
-        case IF_ACMPNE      : genIfSame(Kind.Object, Condition.NE); break;
-        case GOTO           : genGoto(); break;
-        case JSR            : genJsr(stream.readBranchDest()); break;
-        case RET            : genRet(stream.readLocalIndex()); break;
-        case TABLESWITCH    : genSwitch(new BytecodeTableSwitch(getStream(), bci())); break;
-        case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(getStream(), bci())); break;
-        case IRETURN        : genReturn(frameState.ipop(), Kind.Int); break;
-        case LRETURN        : genReturn(frameState.lpop(), Kind.Long); break;
-        case FRETURN        : genReturn(frameState.fpop(), Kind.Float); break;
-        case DRETURN        : genReturn(frameState.dpop(), Kind.Double); break;
-        case ARETURN        : genReturn(frameState.apop(), Kind.Object); break;
-        case RETURN         : genReturn(null, Kind.Void); break;
-        case GETSTATIC      : cpi = stream.readCPI(); genGetStatic(lookupField(cpi, opcode)); break;
-        case PUTSTATIC      : cpi = stream.readCPI(); genPutStatic(lookupField(cpi, opcode)); break;
-        case GETFIELD       : cpi = stream.readCPI(); genGetField(lookupField(cpi, opcode)); break;
-        case PUTFIELD       : cpi = stream.readCPI(); genPutField(lookupField(cpi, opcode)); break;
-        case INVOKEVIRTUAL  : cpi = stream.readCPI(); genInvokeVirtual(lookupMethod(cpi, opcode)); break;
-        case INVOKESPECIAL  : cpi = stream.readCPI(); genInvokeSpecial(lookupMethod(cpi, opcode)); break;
-        case INVOKESTATIC   : cpi = stream.readCPI(); genInvokeStatic(lookupMethod(cpi, opcode)); break;
-        case INVOKEINTERFACE: cpi = stream.readCPI(); genInvokeInterface(lookupMethod(cpi, opcode)); break;
-        case INVOKEDYNAMIC  : cpi = stream.readCPI4(); genInvokeDynamic(lookupMethod(cpi, opcode)); break;
-        case NEW            : genNewInstance(stream.readCPI()); break;
-        case NEWARRAY       : genNewPrimitiveArray(stream.readLocalIndex()); break;
-        case ANEWARRAY      : genNewObjectArray(stream.readCPI()); break;
-        case ARRAYLENGTH    : genArrayLength(); break;
-        case ATHROW         : genThrow(); break;
-        case CHECKCAST      : genCheckCast(); break;
-        case INSTANCEOF     : genInstanceOf(); break;
-        case MONITORENTER   : genMonitorEnter(frameState.apop(), stream.nextBCI()); break;
-        case MONITOREXIT    : genMonitorExit(frameState.apop(), null, stream.nextBCI()); break;
-        case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
-        case IFNULL         : genIfNull(Condition.EQ); break;
-        case IFNONNULL      : genIfNull(Condition.NE); break;
-        case GOTO_W         : genGoto(); break;
-        case JSR_W          : genJsr(stream.readBranchDest()); break;
-        case BREAKPOINT:
-            throw new BailoutException("concurrent setting of breakpoint");
-        default:
-            throw new BailoutException("Unsupported opcode %d (%s) [bci=%d]", opcode, nameOf(opcode), bci);
-    }
-    // @formatter:on
+        switch (opcode) {
+            case NOP            : /* nothing to do */ break;
+            case ACONST_NULL    : frameState.apush(appendConstant(JavaConstant.NULL_POINTER)); break;
+            case ICONST_M1      : // fall through
+            case ICONST_0       : // fall through
+            case ICONST_1       : // fall through
+            case ICONST_2       : // fall through
+            case ICONST_3       : // fall through
+            case ICONST_4       : // fall through
+            case ICONST_5       : frameState.ipush(appendConstant(JavaConstant.forInt(opcode - ICONST_0))); break;
+            case LCONST_0       : // fall through
+            case LCONST_1       : frameState.lpush(appendConstant(JavaConstant.forLong(opcode - LCONST_0))); break;
+            case FCONST_0       : // fall through
+            case FCONST_1       : // fall through
+            case FCONST_2       : frameState.fpush(appendConstant(JavaConstant.forFloat(opcode - FCONST_0))); break;
+            case DCONST_0       : // fall through
+            case DCONST_1       : frameState.dpush(appendConstant(JavaConstant.forDouble(opcode - DCONST_0))); break;
+            case BIPUSH         : frameState.ipush(appendConstant(JavaConstant.forInt(stream.readByte()))); break;
+            case SIPUSH         : frameState.ipush(appendConstant(JavaConstant.forInt(stream.readShort()))); break;
+            case LDC            : // fall through
+            case LDC_W          : // fall through
+            case LDC2_W         : genLoadConstant(stream.readCPI(), opcode); break;
+            case ILOAD          : loadLocal(stream.readLocalIndex(), Kind.Int); break;
+            case LLOAD          : loadLocal(stream.readLocalIndex(), Kind.Long); break;
+            case FLOAD          : loadLocal(stream.readLocalIndex(), Kind.Float); break;
+            case DLOAD          : loadLocal(stream.readLocalIndex(), Kind.Double); break;
+            case ALOAD          : loadLocal(stream.readLocalIndex(), Kind.Object); break;
+            case ILOAD_0        : // fall through
+            case ILOAD_1        : // fall through
+            case ILOAD_2        : // fall through
+            case ILOAD_3        : loadLocal(opcode - ILOAD_0, Kind.Int); break;
+            case LLOAD_0        : // fall through
+            case LLOAD_1        : // fall through
+            case LLOAD_2        : // fall through
+            case LLOAD_3        : loadLocal(opcode - LLOAD_0, Kind.Long); break;
+            case FLOAD_0        : // fall through
+            case FLOAD_1        : // fall through
+            case FLOAD_2        : // fall through
+            case FLOAD_3        : loadLocal(opcode - FLOAD_0, Kind.Float); break;
+            case DLOAD_0        : // fall through
+            case DLOAD_1        : // fall through
+            case DLOAD_2        : // fall through
+            case DLOAD_3        : loadLocal(opcode - DLOAD_0, Kind.Double); break;
+            case ALOAD_0        : // fall through
+            case ALOAD_1        : // fall through
+            case ALOAD_2        : // fall through
+            case ALOAD_3        : loadLocal(opcode - ALOAD_0, Kind.Object); break;
+            case IALOAD         : genLoadIndexed(Kind.Int   ); break;
+            case LALOAD         : genLoadIndexed(Kind.Long  ); break;
+            case FALOAD         : genLoadIndexed(Kind.Float ); break;
+            case DALOAD         : genLoadIndexed(Kind.Double); break;
+            case AALOAD         : genLoadIndexed(Kind.Object); break;
+            case BALOAD         : genLoadIndexed(Kind.Byte  ); break;
+            case CALOAD         : genLoadIndexed(Kind.Char  ); break;
+            case SALOAD         : genLoadIndexed(Kind.Short ); break;
+            case ISTORE         : storeLocal(Kind.Int, stream.readLocalIndex()); break;
+            case LSTORE         : storeLocal(Kind.Long, stream.readLocalIndex()); break;
+            case FSTORE         : storeLocal(Kind.Float, stream.readLocalIndex()); break;
+            case DSTORE         : storeLocal(Kind.Double, stream.readLocalIndex()); break;
+            case ASTORE         : storeLocal(Kind.Object, stream.readLocalIndex()); break;
+            case ISTORE_0       : // fall through
+            case ISTORE_1       : // fall through
+            case ISTORE_2       : // fall through
+            case ISTORE_3       : storeLocal(Kind.Int, opcode - ISTORE_0); break;
+            case LSTORE_0       : // fall through
+            case LSTORE_1       : // fall through
+            case LSTORE_2       : // fall through
+            case LSTORE_3       : storeLocal(Kind.Long, opcode - LSTORE_0); break;
+            case FSTORE_0       : // fall through
+            case FSTORE_1       : // fall through
+            case FSTORE_2       : // fall through
+            case FSTORE_3       : storeLocal(Kind.Float, opcode - FSTORE_0); break;
+            case DSTORE_0       : // fall through
+            case DSTORE_1       : // fall through
+            case DSTORE_2       : // fall through
+            case DSTORE_3       : storeLocal(Kind.Double, opcode - DSTORE_0); break;
+            case ASTORE_0       : // fall through
+            case ASTORE_1       : // fall through
+            case ASTORE_2       : // fall through
+            case ASTORE_3       : storeLocal(Kind.Object, opcode - ASTORE_0); break;
+            case IASTORE        : genStoreIndexed(Kind.Int   ); break;
+            case LASTORE        : genStoreIndexed(Kind.Long  ); break;
+            case FASTORE        : genStoreIndexed(Kind.Float ); break;
+            case DASTORE        : genStoreIndexed(Kind.Double); break;
+            case AASTORE        : genStoreIndexed(Kind.Object); break;
+            case BASTORE        : genStoreIndexed(Kind.Byte  ); break;
+            case CASTORE        : genStoreIndexed(Kind.Char  ); break;
+            case SASTORE        : genStoreIndexed(Kind.Short ); break;
+            case POP            : frameState.xpop(); break;
+            case POP2           : frameState.xpop(); frameState.xpop(); break;
+            case DUP            : frameState.xpush(frameState.xpeek()); break;
+            case DUP_X1         : // fall through
+            case DUP_X2         : // fall through
+            case DUP2           : // fall through
+            case DUP2_X1        : // fall through
+            case DUP2_X2        : // fall through
+            case SWAP           : stackOp(opcode); break;
+            case IADD           : // fall through
+            case ISUB           : // fall through
+            case IMUL           : genArithmeticOp(Kind.Int, opcode); break;
+            case IDIV           : // fall through
+            case IREM           : genIntegerDivOp(Kind.Int, opcode); break;
+            case LADD           : // fall through
+            case LSUB           : // fall through
+            case LMUL           : genArithmeticOp(Kind.Long, opcode); break;
+            case LDIV           : // fall through
+            case LREM           : genIntegerDivOp(Kind.Long, opcode); break;
+            case FADD           : // fall through
+            case FSUB           : // fall through
+            case FMUL           : // fall through
+            case FDIV           : // fall through
+            case FREM           : genArithmeticOp(Kind.Float, opcode); break;
+            case DADD           : // fall through
+            case DSUB           : // fall through
+            case DMUL           : // fall through
+            case DDIV           : // fall through
+            case DREM           : genArithmeticOp(Kind.Double, opcode); break;
+            case INEG           : genNegateOp(Kind.Int); break;
+            case LNEG           : genNegateOp(Kind.Long); break;
+            case FNEG           : genNegateOp(Kind.Float); break;
+            case DNEG           : genNegateOp(Kind.Double); break;
+            case ISHL           : // fall through
+            case ISHR           : // fall through
+            case IUSHR          : genShiftOp(Kind.Int, opcode); break;
+            case IAND           : // fall through
+            case IOR            : // fall through
+            case IXOR           : genLogicOp(Kind.Int, opcode); break;
+            case LSHL           : // fall through
+            case LSHR           : // fall through
+            case LUSHR          : genShiftOp(Kind.Long, opcode); break;
+            case LAND           : // fall through
+            case LOR            : // fall through
+            case LXOR           : genLogicOp(Kind.Long, opcode); break;
+            case IINC           : genIncrement(); break;
+            case I2F            : genFloatConvert(FloatConvert.I2F, Kind.Int, Kind.Float); break;
+            case I2D            : genFloatConvert(FloatConvert.I2D, Kind.Int, Kind.Double); break;
+            case L2F            : genFloatConvert(FloatConvert.L2F, Kind.Long, Kind.Float); break;
+            case L2D            : genFloatConvert(FloatConvert.L2D, Kind.Long, Kind.Double); break;
+            case F2I            : genFloatConvert(FloatConvert.F2I, Kind.Float, Kind.Int); break;
+            case F2L            : genFloatConvert(FloatConvert.F2L, Kind.Float, Kind.Long); break;
+            case F2D            : genFloatConvert(FloatConvert.F2D, Kind.Float, Kind.Double); break;
+            case D2I            : genFloatConvert(FloatConvert.D2I, Kind.Double, Kind.Int); break;
+            case D2L            : genFloatConvert(FloatConvert.D2L, Kind.Double, Kind.Long); break;
+            case D2F            : genFloatConvert(FloatConvert.D2F, Kind.Double, Kind.Float); break;
+            case L2I            : genNarrow(Kind.Long, Kind.Int); break;
+            case I2L            : genSignExtend(Kind.Int, Kind.Long); break;
+            case I2B            : genSignExtend(Kind.Byte, Kind.Int); break;
+            case I2S            : genSignExtend(Kind.Short, Kind.Int); break;
+            case I2C            : genZeroExtend(Kind.Char, Kind.Int); break;
+            case LCMP           : genCompareOp(Kind.Long, false); break;
+            case FCMPL          : genCompareOp(Kind.Float, true); break;
+            case FCMPG          : genCompareOp(Kind.Float, false); break;
+            case DCMPL          : genCompareOp(Kind.Double, true); break;
+            case DCMPG          : genCompareOp(Kind.Double, false); break;
+            case IFEQ           : genIfZero(Condition.EQ); break;
+            case IFNE           : genIfZero(Condition.NE); break;
+            case IFLT           : genIfZero(Condition.LT); break;
+            case IFGE           : genIfZero(Condition.GE); break;
+            case IFGT           : genIfZero(Condition.GT); break;
+            case IFLE           : genIfZero(Condition.LE); break;
+            case IF_ICMPEQ      : genIfSame(Kind.Int, Condition.EQ); break;
+            case IF_ICMPNE      : genIfSame(Kind.Int, Condition.NE); break;
+            case IF_ICMPLT      : genIfSame(Kind.Int, Condition.LT); break;
+            case IF_ICMPGE      : genIfSame(Kind.Int, Condition.GE); break;
+            case IF_ICMPGT      : genIfSame(Kind.Int, Condition.GT); break;
+            case IF_ICMPLE      : genIfSame(Kind.Int, Condition.LE); break;
+            case IF_ACMPEQ      : genIfSame(Kind.Object, Condition.EQ); break;
+            case IF_ACMPNE      : genIfSame(Kind.Object, Condition.NE); break;
+            case GOTO           : genGoto(); break;
+            case JSR            : genJsr(stream.readBranchDest()); break;
+            case RET            : genRet(stream.readLocalIndex()); break;
+            case TABLESWITCH    : genSwitch(new BytecodeTableSwitch(getStream(), bci())); break;
+            case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(getStream(), bci())); break;
+            case IRETURN        : genReturn(frameState.ipop(), Kind.Int); break;
+            case LRETURN        : genReturn(frameState.lpop(), Kind.Long); break;
+            case FRETURN        : genReturn(frameState.fpop(), Kind.Float); break;
+            case DRETURN        : genReturn(frameState.dpop(), Kind.Double); break;
+            case ARETURN        : genReturn(frameState.apop(), Kind.Object); break;
+            case RETURN         : genReturn(null, Kind.Void); break;
+            case GETSTATIC      : cpi = stream.readCPI(); genGetStatic(lookupField(cpi, opcode)); break;
+            case PUTSTATIC      : cpi = stream.readCPI(); genPutStatic(lookupField(cpi, opcode)); break;
+            case GETFIELD       : cpi = stream.readCPI(); genGetField(lookupField(cpi, opcode)); break;
+            case PUTFIELD       : cpi = stream.readCPI(); genPutField(lookupField(cpi, opcode)); break;
+            case INVOKEVIRTUAL  : cpi = stream.readCPI(); genInvokeVirtual(lookupMethod(cpi, opcode)); break;
+            case INVOKESPECIAL  : cpi = stream.readCPI(); genInvokeSpecial(lookupMethod(cpi, opcode)); break;
+            case INVOKESTATIC   : cpi = stream.readCPI(); genInvokeStatic(lookupMethod(cpi, opcode)); break;
+            case INVOKEINTERFACE: cpi = stream.readCPI(); genInvokeInterface(lookupMethod(cpi, opcode)); break;
+            case INVOKEDYNAMIC  : cpi = stream.readCPI4(); genInvokeDynamic(lookupMethod(cpi, opcode)); break;
+            case NEW            : genNewInstance(stream.readCPI()); break;
+            case NEWARRAY       : genNewPrimitiveArray(stream.readLocalIndex()); break;
+            case ANEWARRAY      : genNewObjectArray(stream.readCPI()); break;
+            case ARRAYLENGTH    : genArrayLength(); break;
+            case ATHROW         : genThrow(); break;
+            case CHECKCAST      : genCheckCast(); break;
+            case INSTANCEOF     : genInstanceOf(); break;
+            case MONITORENTER   : genMonitorEnter(frameState.apop(), stream.nextBCI()); break;
+            case MONITOREXIT    : genMonitorExit(frameState.apop(), null, stream.nextBCI()); break;
+            case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
+            case IFNULL         : genIfNull(Condition.EQ); break;
+            case IFNONNULL      : genIfNull(Condition.NE); break;
+            case GOTO_W         : genGoto(); break;
+            case JSR_W          : genJsr(stream.readBranchDest()); break;
+            case BREAKPOINT:
+                throw new BailoutException("concurrent setting of breakpoint");
+            default:
+                throw new BailoutException("Unsupported opcode %d (%s) [bci=%d]", opcode, nameOf(opcode), bci);
+        }
+        // @formatter:on
         // Checkstyle: resume
     }
 

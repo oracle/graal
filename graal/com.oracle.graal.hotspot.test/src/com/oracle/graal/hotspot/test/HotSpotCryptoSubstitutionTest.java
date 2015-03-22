@@ -100,16 +100,12 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     public void testCipherBlockChainingIntrinsics() throws Exception {
         if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", "encrypt", "decrypt")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
-            System.out.println("testCipherBlockChainingIntrinsics: 1");
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
-            System.out.println("testCipherBlockChainingIntrinsics: 2");
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
             Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
 
             actual.reset();
-            System.out.println("testCipherBlockChainingIntrinsics: 3");
             actual.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding"));
-            System.out.println("testCipherBlockChainingIntrinsics: 4");
             actual.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding"));
             Assert.assertArrayEquals(desExpected.toByteArray(), actual.toByteArray());
         }

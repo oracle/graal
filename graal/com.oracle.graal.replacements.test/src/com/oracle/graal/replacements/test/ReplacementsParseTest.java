@@ -24,13 +24,24 @@ package com.oracle.graal.replacements.test;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.runtime.*;
 
 public class ReplacementsParseTest extends GraalCompilerTest {
+
+    private static final Object THROW_EXCEPTION_MARKER = new Object() {
+        @Override
+        public String toString() {
+            return "THROW_EXCEPTION_MARKER";
+        }
+    };
 
     static class TestMethods {
         static double next(double v) {
@@ -45,6 +56,14 @@ public class ReplacementsParseTest extends GraalCompilerTest {
             return Math.nextAfter(x, d);
         }
 
+        static String stringize(Object obj) {
+            String res = String.valueOf(obj);
+            if (res.equals(THROW_EXCEPTION_MARKER.toString())) {
+                // Tests exception throwing from partial intrinsification
+                throw new RuntimeException("ex: " + obj);
+            }
+            return res;
+        }
     }
 
     @ClassSubstitution(TestMethods.class)
@@ -55,6 +74,23 @@ public class ReplacementsParseTest extends GraalCompilerTest {
             double xx = (x == -0.0 ? 0.0 : x);
             return Math.nextAfter(xx, d);
         }
+
+        @MethodSubstitution
+        static String stringize(Object obj) {
+            if (obj != null && obj.getClass() == String.class) {
+                return asNonNullString(obj);
+            } else {
+                return stringize(obj);
+            }
+        }
+
+        public static String asNonNullString(Object object) {
+            return asNonNullStringIntrinsic(object, String.class, true, true);
+        }
+
+        @NodeIntrinsic(PiNode.class)
+        private static native String asNonNullStringIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
+
     }
 
     private static boolean substitutionsInstalled;
@@ -111,5 +147,24 @@ public class ReplacementsParseTest extends GraalCompilerTest {
             double direction = (i & 1) == 0 ? Double.POSITIVE_INFINITY : -Double.NEGATIVE_INFINITY;
             outArray[i] = TestMethods.nextAfter(inArray[i], direction);
         }
+    }
+
+    @Test
+    public void testCallStringize() {
+        test("callStringize", "a string");
+        test("callStringize", THROW_EXCEPTION_MARKER);
+        test("callStringize", Boolean.TRUE);
+    }
+
+    public Object callStringize(Object obj) {
+        return TestMethods.stringize(obj);
+    }
+
+    @Test
+    public void testRootCompileStringize() {
+        ResolvedJavaMethod method = getResolvedJavaMethod(TestMethods.class, "stringize");
+        test(method, null, "a string");
+        test(method, null, Boolean.TRUE);
+        test(method, null, THROW_EXCEPTION_MARKER);
     }
 }
