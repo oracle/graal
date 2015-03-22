@@ -88,7 +88,7 @@ public final class NamedLocationIdentity extends LocationIdentity implements For
 
     @Override
     public String toString() {
-        return name + (isImmutable() ? ":immutable" : ":mutable");
+        return name + (isImmutable() ? ":final" : "");
     }
 
     /**

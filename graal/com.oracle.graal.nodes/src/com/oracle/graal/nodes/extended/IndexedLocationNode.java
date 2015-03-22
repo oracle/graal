@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
  * [base + index * scale + disp] where base and index are nodes and scale and disp are integer
  * constants.
  */
-@NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
+@NodeInfo(nameTemplate = "&({p#locationIdentity/s})[{i#index}]")
 public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
     public static final NodeClass<IndexedLocationNode> TYPE = NodeClass.create(IndexedLocationNode.class);
 

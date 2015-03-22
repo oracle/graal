@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.spi.*;
  * Location node that has a constant displacement. Can represent addresses of the form [base + disp]
  * where base is a node and disp is a constant.
  */
-@NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
+@NodeInfo(nameTemplate = "&({p#locationIdentity/s})")
 public final class ConstantLocationNode extends LocationNode {
 
     public static final NodeClass<ConstantLocationNode> TYPE = NodeClass.create(ConstantLocationNode.class);

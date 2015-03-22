@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
  */
-@NodeInfo(nameTemplate = "Param({p#index})")
+@NodeInfo(nameTemplate = "P({p#index})")
 public final class ParameterNode extends AbstractLocalNode implements IterableNodeType, UncheckedInterfaceProvider {
 
     public static final NodeClass<ParameterNode> TYPE = NodeClass.create(ParameterNode.class);

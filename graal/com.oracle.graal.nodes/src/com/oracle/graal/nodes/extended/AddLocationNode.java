@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
  * Location node that is the sum of two other location nodes. Can represent locations in the form of
  * [(base + x) + y] where base is a node and x and y are location nodes.
  */
-@NodeInfo(nameTemplate = "AddLoc {p#locationIdentity/s}")
+@NodeInfo(nameTemplate = "&+({p#locationIdentity/s})")
 public final class AddLocationNode extends LocationNode implements Canonicalizable.Binary<LocationNode> {
 
     public static final NodeClass<AddLocationNode> TYPE = NodeClass.create(AddLocationNode.class);

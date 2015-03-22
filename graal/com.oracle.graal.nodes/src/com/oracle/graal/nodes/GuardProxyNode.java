@@ -28,7 +28,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Guard})
+@NodeInfo(allowedUsageTypes = {InputType.Guard}, nameTemplate = "Proxy({i#value})")
 public final class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy, LIRLowerable {
 
     public static final NodeClass<GuardProxyNode> TYPE = NodeClass.create(GuardProxyNode.class);
