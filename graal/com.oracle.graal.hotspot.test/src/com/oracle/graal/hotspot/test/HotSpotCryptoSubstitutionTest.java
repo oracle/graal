@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.nodes.spi.Replacements.*;
-
 import java.io.*;
 import java.lang.reflect.*;
 import java.security.*;
@@ -34,10 +32,16 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.java.AbstractBytecodeParser.IntrinsicContext;
+import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Tests the intrinsification of certain crypto methods.
@@ -58,44 +62,55 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         return installedCode;
     }
 
-    @Test
-    public void testEncryptSubstitution() throws Exception {
-        Assume.assumeTrue(SELF_RECURSIVE_INTRINSICS_ENABLED);
+    SecretKey aesKey;
+    SecretKey desKey;
+    byte[] input;
+    ByteArrayOutputStream aesExpected = new ByteArrayOutputStream();
+    ByteArrayOutputStream desExpected = new ByteArrayOutputStream();
 
+    public HotSpotCryptoSubstitutionTest() throws Exception {
         byte[] seed = {0x4, 0x7, 0x1, 0x1};
         SecureRandom random = new SecureRandom(seed);
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
         KeyGenerator desKeyGen = KeyGenerator.getInstance("DESede");
         aesKeyGen.init(128, random);
         desKeyGen.init(168, random);
-        SecretKey aesKey = aesKeyGen.generateKey();
-        SecretKey desKey = desKeyGen.generateKey();
-        byte[] input = readClassfile16(getClass());
+        aesKey = aesKeyGen.generateKey();
+        desKey = desKeyGen.generateKey();
+        input = readClassfile16(getClass());
 
-        ByteArrayOutputStream aesExpected = new ByteArrayOutputStream();
-        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
-        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
+        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
+        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
 
+        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding"));
+        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding"));
+    }
+
+    @Test
+    public void testAESCryptIntrinsics() throws Exception {
         if (compileAndInstall("com.sun.crypto.provider.AESCrypt", "encryptBlock", "decryptBlock")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
-            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
-            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
+            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
+            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
             Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
         }
+    }
 
-        ByteArrayOutputStream desExpected = new ByteArrayOutputStream();
-        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding", input));
-        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding", input));
-
+    @Test
+    public void testCipherBlockChainingIntrinsics() throws Exception {
         if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", "encrypt", "decrypt")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
-            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
-            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
+            System.out.println("testCipherBlockChainingIntrinsics: 1");
+            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
+            System.out.println("testCipherBlockChainingIntrinsics: 2");
+            actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));
             Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
 
             actual.reset();
-            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding", input));
-            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding", input));
+            System.out.println("testCipherBlockChainingIntrinsics: 3");
+            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding"));
+            System.out.println("testCipherBlockChainingIntrinsics: 4");
+            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding"));
             Assert.assertArrayEquals(desExpected.toByteArray(), actual.toByteArray());
         }
     }
@@ -114,9 +129,13 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
             Method method = lookup(className, methodName);
             if (method != null) {
                 ResolvedJavaMethod installedCodeOwner = getMetaAccess().lookupJavaMethod(method);
-                StructuredGraph subst = getReplacements().getMethodSubstitution(installedCodeOwner);
-                if (subst != null) {
-                    StructuredGraph graph = subst.copy();
+                ResolvedJavaMethod substMethod = getReplacements().getMethodSubstitutionMethod(installedCodeOwner);
+                if (substMethod != null) {
+                    StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
+                    Plugins plugins = new Plugins(((HotSpotProviders) getProviders()).getGraphBuilderPlugins());
+                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+                    IntrinsicContext initialReplacementContext = new IntrinsicContext(installedCodeOwner, substMethod, null, -2);
+                    new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
                     atLeastOneCompiled = true;
                 } else {
@@ -191,7 +210,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         return classFile;
     }
 
-    public byte[] runEncryptDecrypt(SecretKey key, String algorithm, byte[] input) throws Exception {
+    public byte[] runEncryptDecrypt(SecretKey key, String algorithm) throws Exception {
         byte[] indata = input.clone();
         byte[] cipher = encrypt(indata, key, algorithm);
         byte[] plain = decrypt(cipher, key, algorithm);
