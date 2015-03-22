@@ -51,6 +51,15 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
      * @return {@code null} if {@code method} has no bytecode (e.g., it is native or abstract)
      */
     public String disassemble(ResolvedJavaMethod method) {
+        return disassemble(method, 0, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Disassembles the bytecode of a given method in a {@code javap}-like format.
+     *
+     * @return {@code null} if {@code method} has no bytecode (e.g., it is native or abstract)
+     */
+    public String disassemble(ResolvedJavaMethod method, int startBci, int endBci) {
         if (method.getCode() == null) {
             return null;
         }
@@ -60,10 +69,11 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
         int opcode = stream.currentBC();
         while (opcode != Bytecodes.END) {
             int bci = stream.currentBCI();
-            String mnemonic = Bytecodes.nameOf(opcode);
-            buf.append(String.format("%4d: %-14s", bci, mnemonic));
-            if (stream.nextBCI() > bci + 1) {
-                // @formatter:off
+            if (bci >= startBci && bci <= endBci) {
+                String mnemonic = Bytecodes.nameOf(opcode);
+                buf.append(String.format("%4d: %-14s", bci, mnemonic));
+                if (stream.nextBCI() > bci + 1) {
+                    // @formatter:off
                 switch (opcode) {
                     case BIPUSH         : buf.append(stream.readByte()); break;
                     case SIPUSH         : buf.append(stream.readShort()); break;
@@ -211,8 +221,9 @@ public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
                     }
                 }
                 // @formatter:on
+                }
+                buf.append(String.format("%n"));
             }
-            buf.append(String.format("%n"));
             stream.next();
             opcode = stream.currentBC();
         }
