@@ -335,8 +335,12 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @Override
     @SuppressWarnings("unchecked")
-    public <A> A[] toArray(A[] template) {
-        return (A[]) Arrays.copyOf(nodes, size, template.getClass());
+    public <A> A[] toArray(A[] a) {
+        if (a.length >= size) {
+            System.arraycopy(nodes, 0, a, 0, size);
+            return a;
+        }
+        return (A[]) Arrays.copyOf(nodes, size, a.getClass());
     }
 
     @Override

@@ -33,8 +33,6 @@ import com.oracle.graal.nodes.*;
  * Interface for managing replacements.
  */
 public interface Replacements {
-    // Disabled until bug in support for this is fixed.
-    boolean SELF_RECURSIVE_INTRINSICS_ENABLED = false;
 
     /**
      * Gets the snippet graph derived from a given method.

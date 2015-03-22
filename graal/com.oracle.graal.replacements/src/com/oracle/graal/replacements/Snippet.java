@@ -24,11 +24,7 @@ package com.oracle.graal.replacements;
 
 import java.lang.annotation.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.word.*;
 
 /**
  * A snippet is a Graal graph expressed as a Java source method. Snippets are used for lowering
@@ -39,81 +35,11 @@ import com.oracle.graal.word.*;
 public @interface Snippet {
 
     /**
-     * Specifies the class defining the inlining policy for this snippet. A
-     * {@linkplain DefaultSnippetInliningPolicy default} policy is used if none is supplied.
-     */
-    Class<? extends SnippetInliningPolicy> inlining() default SnippetInliningPolicy.class;
-
-    /**
      * Specifies whether all FrameStates within this snippet should always be removed. If this is
      * false, FrameStates are only removed if there are no side-effecting instructions in the
      * snippet.
      */
     boolean removeAllFrameStates() default false;
-
-    /**
-     * Guides inlining decisions used when installing a snippet.
-     */
-    public interface SnippetInliningPolicy {
-
-        /**
-         * Determines if {@code method} should be inlined into {@code caller}.
-         */
-        boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller);
-
-        /**
-         * Determines if {@code method} should be inlined using its replacement graph.
-         *
-         * @return true if the replacement graph should be used, false for normal inlining.
-         */
-        boolean shouldUseReplacement(ResolvedJavaMethod callee, ResolvedJavaMethod methodToParse);
-    }
-
-    /**
-     * The default inlining policy which inlines everything except for methods in any of the
-     * following categories.
-     * <ul>
-     * <li>{@linkplain Fold foldable} methods</li>
-     * <li>{@linkplain NodeIntrinsic node intrinsics}</li>
-     * <li>native methods</li>
-     * <li>constructors of {@link Throwable} classes</li>
-     * </ul>
-     */
-    public static class DefaultSnippetInliningPolicy implements SnippetInliningPolicy {
-
-        private final MetaAccessProvider metaAccess;
-
-        public DefaultSnippetInliningPolicy(MetaAccessProvider metaAccess) {
-            this.metaAccess = metaAccess;
-        }
-
-        @Override
-        public boolean shouldInline(ResolvedJavaMethod method, ResolvedJavaMethod caller) {
-            if (method.isNative()) {
-                return false;
-            }
-            if (method.getAnnotation(Fold.class) != null) {
-                return false;
-            }
-            if (method.getAnnotation(NodeIntrinsic.class) != null) {
-                return false;
-            }
-            if (metaAccess.lookupJavaType(Throwable.class).isAssignableFrom(method.getDeclaringClass())) {
-                if (method.isConstructor()) {
-                    return false;
-                }
-            }
-            if (method.getAnnotation(Word.Operation.class) != null) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public boolean shouldUseReplacement(ResolvedJavaMethod callee, ResolvedJavaMethod methodToParse) {
-            return true;
-        }
-    }
 
     /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during

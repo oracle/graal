@@ -35,7 +35,7 @@ public class Math_sin extends JTTTest {
     }
 
     public static double test(double arg) throws NaN {
-        double v = Math.sin(arg);
+        double v = Math.sin(arg) * Math.sin(arg * 5);
         if (Double.isNaN(v)) {
             // NaN can't be tested against itself
             throw new NaN();

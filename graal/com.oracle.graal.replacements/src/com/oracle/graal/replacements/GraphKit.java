@@ -28,16 +28,21 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.java.AbstractBytecodeParser.IntrinsicContext;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.word.*;
 
 /**
@@ -50,6 +55,7 @@ public class GraphKit {
     protected final Providers providers;
     protected final StructuredGraph graph;
     protected final WordTypes wordTypes;
+    protected final GraphBuilderConfiguration.Plugins graphBuilderPlugins;
     protected FixedWithNextNode lastFixedNode;
 
     private final List<Structure> structures;
@@ -57,10 +63,11 @@ public class GraphKit {
     abstract static class Structure {
     }
 
-    public GraphKit(StructuredGraph graph, Providers providers, WordTypes wordTypes) {
+    public GraphKit(StructuredGraph graph, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
         this.providers = providers;
         this.graph = graph;
         this.wordTypes = wordTypes;
+        this.graphBuilderPlugins = graphBuilderPlugins;
         this.lastFixedNode = graph.start();
 
         structures = new ArrayList<>();
@@ -202,14 +209,28 @@ public class GraphKit {
     }
 
     /**
-     * Inlines a given invocation to a method. The graph of the inlined method is
-     * {@linkplain ReplacementsImpl#makeGraph processed} in the same manner as for snippets and
-     * method substitutions.
+     * Inlines a given invocation to a method. The graph of the inlined method is processed in the
+     * same manner as for snippets and method substitutions.
      */
     public void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
-        StructuredGraph calleeGraph = replacements.makeGraph(method, null, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
+
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        Plugins plugins = new Plugins(graphBuilderPlugins);
+        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+
+        StructuredGraph calleeGraph = new StructuredGraph(method, AllowAssumptions.NO);
+        IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, null, IntrinsicContext.POST_PARSE_INLINE_BCI);
+        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(calleeGraph);
+
+        // Remove all frame states from inlinee
+        for (Node node : calleeGraph.getNodes()) {
+            if (node instanceof StateSplit) {
+                ((StateSplit) node).setStateAfter(null);
+            }
+        }
+        new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
+
         InliningUtil.inline(invoke, calleeGraph, false, null);
     }
 
