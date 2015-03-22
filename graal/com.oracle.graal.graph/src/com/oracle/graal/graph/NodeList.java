@@ -336,7 +336,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     @SuppressWarnings("unchecked")
     public <A> A[] toArray(A[] a) {
-        if (a.length <= size) {
+        if (a.length >= size) {
             System.arraycopy(nodes, 0, a, 0, size);
             return a;
         }
