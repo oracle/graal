@@ -38,7 +38,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64HotSpotMove {
@@ -143,44 +142,6 @@ public class AMD64HotSpotMove {
 
         public AllocatableValue getResult() {
             return result;
-        }
-    }
-
-    public static class HotSpotStoreConstantOp extends StoreConstantOp {
-        public static final LIRInstructionClass<HotSpotStoreConstantOp> TYPE = LIRInstructionClass.create(HotSpotStoreConstantOp.class);
-
-        public HotSpotStoreConstantOp(Kind kind, AMD64AddressValue address, JavaConstant input, LIRFrameState state) {
-            super(TYPE, kind, address, input, state);
-        }
-
-        @Override
-        public void emitMemAccess(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (input.isNull() && kind == Kind.Int) {
-                // compressed null
-                masm.movl(address.toAddress(), 0);
-            } else if (input instanceof HotSpotObjectConstant) {
-                HotSpotObjectConstant c = (HotSpotObjectConstant) input;
-                if (c.isCompressed() && crb.target.inlineObjects) {
-                    // compressed oop
-                    crb.recordInlineDataInCode(input);
-                    masm.movl(address.toAddress(), 0xDEADDEAD);
-                } else {
-                    // uncompressed oop
-                    throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
-                }
-            } else if (input instanceof HotSpotMetaspaceConstant) {
-                if (input.getKind() == Kind.Int) {
-                    // compressed metaspace pointer
-                    crb.recordInlineDataInCode(input);
-                    masm.movl(address.toAddress(), input.asInt());
-                } else {
-                    // uncompressed metaspace pointer
-                    throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
-                }
-            } else {
-                // primitive value
-                super.emitMemAccess(crb, masm);
-            }
         }
     }
 

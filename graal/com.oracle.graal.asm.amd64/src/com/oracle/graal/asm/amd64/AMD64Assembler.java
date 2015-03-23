@@ -601,11 +601,14 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64RMOp MOVSXB = new AMD64RMOp("MOVSXB",       P_0F, 0xBE, false, true, OpAssertion.IntegerAssertion);
         public static final AMD64RMOp MOVSX  = new AMD64RMOp("MOVSX",        P_0F, 0xBF, OpAssertion.No16BitAssertion);
         public static final AMD64RMOp MOVSXD = new AMD64RMOp("MOVSXD",             0x63, OpAssertion.QwordOnlyAssertion);
+        public static final AMD64RMOp MOVB   = new AMD64RMOp("MOVB",               0x8A, OpAssertion.ByteAssertion);
         public static final AMD64RMOp MOV    = new AMD64RMOp("MOV",                0x8B);
 
-        // MOVD and MOVQ are the same opcode, just with different operand size prefix
+        // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
         public static final AMD64RMOp MOVD   = new AMD64RMOp("MOVD",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
         public static final AMD64RMOp MOVQ   = new AMD64RMOp("MOVQ",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
+        public static final AMD64RMOp MOVSS  = new AMD64RMOp("MOVSS",        P_0F, 0x10, OpAssertion.FloatingAssertion, CPUFeature.SSE);
+        public static final AMD64RMOp MOVSD  = new AMD64RMOp("MOVSD",        P_0F, 0x10, OpAssertion.FloatingAssertion, CPUFeature.SSE);
 
         // TEST is documented as MR operation, but it's symmetric, and using it as RM operation is more convenient.
         public static final AMD64RMOp TESTB  = new AMD64RMOp("TEST",               0x84, OpAssertion.ByteAssertion);
@@ -626,6 +629,10 @@ public class AMD64Assembler extends Assembler {
 
         protected AMD64RMOp(String opcode, int prefix, int op, OpAssertion assertion) {
             this(opcode, 0, prefix, op, assertion, null);
+        }
+
+        protected AMD64RMOp(String opcode, int prefix, int op, OpAssertion assertion, CPUFeature feature) {
+            this(opcode, 0, prefix, op, assertion, feature);
         }
 
         protected AMD64RMOp(String opcode, int prefix, int op, boolean dstIsByte, boolean srcIsByte, OpAssertion assertion) {
@@ -659,12 +666,17 @@ public class AMD64Assembler extends Assembler {
      */
     public static class AMD64MROp extends AMD64RROp {
         // @formatter:off
+        public static final AMD64MROp MOVB   = new AMD64MROp("MOVB",               0x88, OpAssertion.ByteAssertion);
         public static final AMD64MROp MOV    = new AMD64MROp("MOV",                0x89);
 
         // MOVD and MOVQ are the same opcode, just with different operand size prefix
         // Note that as MR opcodes, they have reverse operand order, so the IntToFloatingAssertion must be used.
         public static final AMD64MROp MOVD   = new AMD64MROp("MOVD",   0x66, P_0F, 0x7E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
         public static final AMD64MROp MOVQ   = new AMD64MROp("MOVQ",   0x66, P_0F, 0x7E, OpAssertion.IntToFloatingAssertion, CPUFeature.SSE2);
+
+        // MOVSS and MOVSD are the same opcode, just with different operand size prefix
+        public static final AMD64MROp MOVSS  = new AMD64MROp("MOVSS",        P_0F, 0x11, OpAssertion.FloatingAssertion, CPUFeature.SSE);
+        public static final AMD64MROp MOVSD  = new AMD64MROp("MOVSD",        P_0F, 0x11, OpAssertion.FloatingAssertion, CPUFeature.SSE);
         // @formatter:on
 
         protected AMD64MROp(String opcode, int op) {
@@ -680,7 +692,11 @@ public class AMD64Assembler extends Assembler {
         }
 
         protected AMD64MROp(String opcode, int prefix, int op, OpAssertion assertion) {
-            this(opcode, 0, prefix, op, assertion, null);
+            this(opcode, prefix, op, assertion, null);
+        }
+
+        protected AMD64MROp(String opcode, int prefix, int op, OpAssertion assertion, CPUFeature feature) {
+            this(opcode, 0, prefix, op, assertion, feature);
         }
 
         protected AMD64MROp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
@@ -747,6 +763,7 @@ public class AMD64Assembler extends Assembler {
      */
     public static class AMD64MIOp extends AMD64ImmOp {
         // @formatter:off
+        public static final AMD64MIOp MOVB = new AMD64MIOp("MOVB", true,  0xC6, 0, OpAssertion.ByteAssertion);
         public static final AMD64MIOp MOV  = new AMD64MIOp("MOV",  false, 0xC7, 0);
         public static final AMD64MIOp TEST = new AMD64MIOp("TEST", false, 0xF7, 0);
         // @formatter:on
@@ -754,7 +771,11 @@ public class AMD64Assembler extends Assembler {
         private final int ext;
 
         protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext) {
-            this(opcode, immIsByte, 0, op, ext, OpAssertion.IntegerAssertion);
+            this(opcode, immIsByte, op, ext, OpAssertion.IntegerAssertion);
+        }
+
+        protected AMD64MIOp(String opcode, boolean immIsByte, int op, int ext, OpAssertion assertion) {
+            this(opcode, immIsByte, 0, op, ext, assertion);
         }
 
         protected AMD64MIOp(String opcode, boolean immIsByte, int prefix, int op, int ext, OpAssertion assertion) {

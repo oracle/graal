@@ -43,8 +43,8 @@ import com.oracle.graal.nodes.util.*;
 
 public final class HIRFrameStateBuilder {
 
-    private static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
-    private static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
+    static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
+    static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
 
     protected final BytecodeParser parser;
     protected final ResolvedJavaMethod method;
@@ -145,6 +145,14 @@ public final class HIRFrameStateBuilder {
             javaIndex += kind.getSlotCount();
             index++;
         }
+
+        if (parser.replacementContext instanceof IntrinsicContext) {
+            IntrinsicContext intrinsic = (IntrinsicContext) parser.replacementContext;
+            if (intrinsic.isCompilationRoot()) {
+                // Records the parameters to an root compiled intrinsic
+                intrinsic.args = locals.clone();
+            }
+        }
     }
 
     private HIRFrameStateBuilder(HIRFrameStateBuilder other) {
@@ -200,13 +208,13 @@ public final class HIRFrameStateBuilder {
         if (parser.parsingReplacement()) {
             IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
             if (intrinsic != null) {
-                assert parent != null : "intrinsics can only be processed in context of a caller";
-
-                // We're somewhere in an intrinsic. In this case, we want a frame state
-                // that will restart the interpreter just before the intrinsified
-                // invocation.
-                return intrinsic.getInvokeStateBefore(parent);
+                return intrinsic.getInvokeStateBefore(parser.getGraph(), parent);
             }
+        }
+        // If this is the recursive call in a partial intrinsification
+        // the frame(s) of the intrinsic method are omitted
+        while (parent != null && parent.parsingReplacement() && parent.replacementContext.asIntrinsic() != null) {
+            parent = parent.getParent();
         }
         return create(bci, parent, false);
     }
@@ -214,14 +222,6 @@ public final class HIRFrameStateBuilder {
     public FrameState create(int bci, BytecodeParser parent, boolean duringCall) {
         if (outerFrameState == null && parent != null) {
             outerFrameState = parent.getFrameState().create(parent.bci());
-            if (parser.parsingReplacement()) {
-                IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
-                if (intrinsic != null) {
-                    // A side-effect of creating the frame state in a replacing
-                    // parent is that the 'during' frame state is created as well
-                    outerFrameState = intrinsic.getInvokeStateDuring();
-                }
-            }
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, this.peek(0));
@@ -297,7 +297,7 @@ public final class HIRFrameStateBuilder {
             ((PhiNode) currentValue).addInput(otherValue);
             return currentValue;
         } else if (currentValue != otherValue) {
-            assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for changed locals and all stack slots";
+            assert !(block instanceof LoopBeginNode) : String.format("Phi functions for loop headers are create eagerly for changed locals and all stack slots: %s != %s", currentValue, otherValue);
             if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
                 return null;
             }
@@ -957,5 +957,18 @@ public final class HIRFrameStateBuilder {
                             equals(other.monitorIds, monitorIds, monitorIds.length);
         }
         return false;
+    }
+
+    public void replace(ValueNode oldValue, ValueNode newValue) {
+        for (int i = 0; i < locals.length; i++) {
+            if (locals[i] == oldValue) {
+                locals[i] = newValue;
+            }
+        }
+        for (int i = 0; i < stackSize; i++) {
+            if (stack[i] == oldValue) {
+                stack[i] = newValue;
+            }
+        }
     }
 }

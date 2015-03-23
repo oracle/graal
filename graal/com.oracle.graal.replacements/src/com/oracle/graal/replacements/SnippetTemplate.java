@@ -158,7 +158,7 @@ public class SnippetTemplate {
 
         void notifyNewTemplate() {
             templateCount++;
-            if (UseSnippetTemplateCache && templateCount > MaxTemplatesPerSnippet) {
+            if (UseSnippetTemplateCache && templateCount == MaxTemplatesPerSnippet) {
                 PrintStream err = System.err;
                 err.printf("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, method.format("%h.%n(%p)"),
                                 MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME);

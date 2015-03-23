@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.truffle;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
+public interface PrioritizedServiceProvider {
 
-@NodeInfo(allowedUsageTypes = {InputType.Association}, nameTemplate = "End")
-public final class EndNode extends AbstractEndNode {
-    public static final NodeClass<EndNode> TYPE = NodeClass.create(EndNode.class);
-
-    public EndNode() {
-        super(TYPE);
+    default int getPriority() {
+        return 0;
     }
 
 }

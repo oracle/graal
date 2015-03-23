@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-/**
- * Temporary node for legacy loop count reporting support as it was most likely done in other
- * implementations.
- */
-public final class OptimizedLoopNode extends LoopNode {
+public interface LoopNodeFactory extends PrioritizedServiceProvider {
 
-    @Child private RepeatingNode repeatingNode;
-
-    public OptimizedLoopNode(RepeatingNode repeatingNode) {
-        this.repeatingNode = repeatingNode;
-    }
-
-    @Override
-    public RepeatingNode getRepeatingNode() {
-        return repeatingNode;
-    }
-
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        int loopCount = 0;
-        try {
-            while (repeatingNode.executeRepeating(frame)) {
-                if (CompilerDirectives.inInterpreter()) {
-                    loopCount++;
-                }
-            }
-        } finally {
-            if (CompilerDirectives.inInterpreter()) {
-                getRootNode().reportLoopCount(loopCount);
-            }
-        }
-    }
+    LoopNode create(RepeatingNode repeatingNode);
 
 }

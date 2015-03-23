@@ -34,6 +34,10 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
+/**
+ * AMD64 mul/div operation. This operation has a single operand for the second input. The first
+ * input must be in RAX for mul and in RDX:RAX for div. The result is in RDX:RAX.
+ */
 public class AMD64MulDivOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64MulDivOp> TYPE = LIRInstructionClass.create(AMD64MulDivOp.class);
 

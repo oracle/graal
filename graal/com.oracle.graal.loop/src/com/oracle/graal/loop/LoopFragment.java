@@ -349,6 +349,11 @@ public abstract class LoopFragment {
                 if (vpn.hasNoUsages()) {
                     continue;
                 }
+                if (vpn.value() == null) {
+                    assert vpn instanceof GuardProxyNode;
+                    vpn.replaceAtUsages(null);
+                    continue;
+                }
                 final ValueNode replaceWith;
                 ValueNode newVpn = prim(newEarlyExitIsLoopExit ? vpn : vpn.value());
                 if (newVpn != null) {

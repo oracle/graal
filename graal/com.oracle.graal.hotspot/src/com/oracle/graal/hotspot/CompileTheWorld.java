@@ -31,16 +31,21 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 import java.util.jar.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
 import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -69,6 +74,9 @@ public final class CompileTheWorld {
                        "to disable inlining and partial escape analysis specify '-PartialEscapeAnalysis -Inline'. " +
                        "The format for each option is the same as on the command line just without the '-G:' prefix.", type = OptionType.Debug)
         public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
+
+        @Option(help = "Last class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
+        public static final OptionValue<Boolean> CompileTheWorldMultiThreaded = new OptionValue<>(false);
         // @formatter:on
 
         /**
@@ -98,9 +106,7 @@ public final class CompileTheWorld {
      * </pre>
      */
     @SuppressWarnings("serial")
-    public static class Config extends HashMap<OptionValue<?>, Object> implements AutoCloseable, OptionConsumer {
-        OverrideScope scope;
-
+    public static class Config extends HashMap<OptionValue<?>, Object> implements OptionConsumer {
         /**
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *
@@ -120,20 +126,10 @@ public final class CompileTheWorld {
 
         /**
          * Applies the overrides represented by this object. The overrides are in effect until
-         * {@link #close()} is called on this object.
+         * {@link OverrideScope#close()} is called on the returned object.
          */
-        Config apply() {
-            assert scope == null;
-            scope = OptionValue.override(this);
-            return this;
-        }
-
-        public void close() {
-            assert scope != null;
-            scope.close();
-
-            scope = null;
-
+        OverrideScope apply() {
+            return OptionValue.override(this);
         }
 
         public void set(OptionDescriptor desc, Object value) {
@@ -155,12 +151,14 @@ public final class CompileTheWorld {
 
     // Counters
     private int classFileCounter = 0;
-    private int compiledMethodsCounter = 0;
-    private long compileTime = 0;
-    private long memoryUsed = 0;
+    private AtomicLong compiledMethodsCounter = new AtomicLong();
+    private AtomicLong compileTime = new AtomicLong();
+    private AtomicLong memoryUsed = new AtomicLong();
 
     private boolean verbose;
     private final Config config;
+
+    private ThreadPoolExecutor threadPool;
 
     /**
      * Creates a compile-the-world instance.
@@ -177,11 +175,11 @@ public final class CompileTheWorld {
         this.config = config;
 
         // We don't want the VM to exit when a method fails to compile...
-        config.put(ExitVMOnException, false);
+        config.putIfAbsent(ExitVMOnException, false);
 
         // ...but we want to see exceptions.
-        config.put(PrintBailout, true);
-        config.put(PrintStackTraceOnException, true);
+        config.putIfAbsent(PrintBailout, true);
+        config.putIfAbsent(PrintStackTraceOnException, true);
     }
 
     /**
@@ -230,12 +228,23 @@ public final class CompileTheWorld {
      * Compiles all methods in all classes in the Zip/Jar files passed.
      *
      * @param fileList {@link File#pathSeparator} separated list of Zip/Jar files to compile
-     * @throws Throwable
+     * @throws IOException
      */
-    private void compile(String fileList) throws Throwable {
+    private void compile(String fileList) throws IOException {
         final String[] entries = fileList.split(File.pathSeparator);
+        long start = System.currentTimeMillis();
 
-        try (AutoCloseable s = config.apply()) {
+        if (Options.CompileTheWorldMultiThreaded.getValue()) {
+            CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
+                public GraalDebugConfig getDebugConfig() {
+                    return DebugEnvironment.initialize(System.out);
+                }
+            });
+            int availableProcessors = Runtime.getRuntime().availableProcessors();
+            threadPool = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        }
+
+        try (OverrideScope s = config.apply()) {
             for (int i = 0; i < entries.length; i++) {
                 final String entry = entries[i];
 
@@ -312,8 +321,22 @@ public final class CompileTheWorld {
             }
         }
 
+        if (threadPool != null) {
+            while (threadPool.getCompletedTaskCount() != threadPool.getTaskCount()) {
+                System.out.println("CompileTheWorld : Waiting for " + (threadPool.getTaskCount() - threadPool.getCompletedTaskCount()) + " compiles");
+                try {
+                    threadPool.awaitTermination(15, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                }
+            }
+            threadPool = null;
+        }
+
+        long elapsedTime = System.currentTimeMillis() - start;
+
         println();
-        println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", classFileCounter, compiledMethodsCounter, compileTime, memoryUsed);
+        println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), elapsedTime,
+                        compileTime.get(), memoryUsed.get());
     }
 
     class CTWCompilationTask extends CompilationTask {
@@ -332,10 +355,24 @@ public final class CompileTheWorld {
         }
     }
 
+    private void compileMethod(HotSpotResolvedJavaMethod method) {
+        if (threadPool != null) {
+            threadPool.submit(new Runnable() {
+                public void run() {
+                    try (OverrideScope s = config.apply()) {
+                        compileMethod(method, classFileCounter);
+                    }
+                }
+            });
+        } else {
+            compileMethod(method, classFileCounter);
+        }
+    }
+
     /**
      * Compiles a method and gathers some statistics.
      */
-    private void compileMethod(HotSpotResolvedJavaMethod method) {
+    private void compileMethod(HotSpotResolvedJavaMethod method, int counter) {
         try {
             long start = System.currentTimeMillis();
             long allocatedAtStart = getCurrentThreadAllocatedBytes();
@@ -344,12 +381,12 @@ public final class CompileTheWorld {
             CompilationTask task = new CTWCompilationTask(backend, method);
             task.runCompilation();
 
-            memoryUsed += getCurrentThreadAllocatedBytes() - allocatedAtStart;
-            compileTime += (System.currentTimeMillis() - start);
-            compiledMethodsCounter++;
+            memoryUsed.getAndAdd(getCurrentThreadAllocatedBytes() - allocatedAtStart);
+            compileTime.getAndAdd(System.currentTimeMillis() - start);
+            compiledMethodsCounter.incrementAndGet();
         } catch (Throwable t) {
             // Catch everything and print a message
-            println("CompileTheWorld (%d) : Error compiling method: %s", classFileCounter, method.format("%H.%n(%p):%r"));
+            println("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r"));
             t.printStackTrace(TTY.cachedOut);
         }
     }

@@ -486,16 +486,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, 0), false);
     }
 
-    public final int countNonTrivialNodes() {
+    public final int getNonTrivialNodeCount() {
         if (cachedNonTrivialNodeCount == -1) {
-            cachedNonTrivialNodeCount = calculateNonTrivialNodesImpl();
+            cachedNonTrivialNodeCount = calculateNonTrivialNodes(getRootNode());
         }
         return cachedNonTrivialNodeCount;
     }
 
-    private int calculateNonTrivialNodesImpl() {
+    public static int calculateNonTrivialNodes(Node node) {
         NonTrivialNodeCountVisitor visitor = new NonTrivialNodeCountVisitor();
-        getRootNode().accept(visitor);
+        node.accept(visitor);
         return visitor.nodeCount;
     }
 

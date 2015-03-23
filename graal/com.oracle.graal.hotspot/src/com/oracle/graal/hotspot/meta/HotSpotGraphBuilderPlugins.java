@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graphbuilderconf.GraphBuilderContext.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.*;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -68,7 +69,7 @@ public class HotSpotGraphBuilderPlugins {
         plugins.setParameterPlugin(new HotSpotParameterPlugin(wordTypes));
         plugins.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
         plugins.setLoadIndexedPlugin(new HotSpotLoadIndexedPlugin(wordTypes));
-        plugins.setInlineInvokePlugin(new HotSpotInlineInvokePlugin(nodeIntrinsification, replacements));
+        plugins.setInlineInvokePlugin(new DefaultInlineInvokePlugin(replacements));
         plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(nodeIntrinsification, wordOperationPlugin));
 
         registerObjectPlugins(invocationPlugins);
@@ -83,14 +84,15 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
         r.register1("getClass", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode rcvr = receiver.get();
                 ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
                 ValueNode mirror;
-                if (objectStamp.isExactType() && objectStamp.nonNull()) {
+                if (objectStamp.isExactType() && objectStamp.nonNull() && !GraalOptions.ImmutableCode.getValue()) {
                     mirror = b.append(ConstantNode.forConstant(objectStamp.type().getJavaClass(), b.getMetaAccess()));
                 } else {
                     StampProvider stampProvider = b.getStampProvider();
-                    LoadHubNode hub = b.append(new LoadHubNode(stampProvider, nullCheckedValue(b, rcvr)));
+                    LoadHubNode hub = b.append(new LoadHubNode(stampProvider, rcvr));
                     mirror = b.append(new HubGetClassNode(b.getMetaAccess(), hub));
                 }
                 b.push(Kind.Object, mirror);
@@ -102,7 +104,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerSystemPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, System.class);
         r.register0("currentTimeMillis", new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_MILLIS, StampFactory.forKind(Kind.Long));
                 b.push(Kind.Long, b.append(foreignCall));
                 foreignCall.setStateAfter(b.createStateAfter());
@@ -110,7 +112,7 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
         r.register0("nanoTime", new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_NANOS, StampFactory.forKind(Kind.Long));
                 b.push(Kind.Long, b.append(foreignCall));
                 foreignCall.setStateAfter(b.createStateAfter());
@@ -122,7 +124,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, HotSpotVMConfig config) {
         Registration r = new Registration(plugins, Thread.class);
         r.register0("currentThread", new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 CurrentJavaThreadNode thread = b.append(new CurrentJavaThreadNode(wordTypes.getWordKind()));
                 ConstantLocationNode location = b.append(new ConstantLocationNode(JAVA_THREAD_THREAD_OBJECT_LOCATION, config.threadObjectOffset));
                 boolean compressible = false;
@@ -138,9 +140,9 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerStableOptionPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode rcvr) {
-                if (rcvr.isConstant() && !rcvr.isNullConstant()) {
-                    Object object = ((HotSpotObjectConstantImpl) rcvr.asConstant()).object();
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (receiver.isConstant()) {
+                    Object object = ((HotSpotObjectConstantImpl) receiver.get().asConstant()).object();
                     StableOptionValue<?> option = (StableOptionValue<?>) object;
                     ConstantNode value = b.append(ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(option.getValue()), b.getMetaAccess()));
                     b.push(Kind.Object, value);

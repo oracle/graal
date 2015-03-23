@@ -30,7 +30,10 @@ import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
@@ -38,14 +41,24 @@ import com.oracle.graal.nodes.*;
 public class InvocationPlugins {
 
     /**
-     * Sentinel class for use with
+     * Access to the receiver in an {@link InvocationPlugin} for a non-static method. The class
+     * literal for this interface must be used with
      * {@link InvocationPlugins#register(InvocationPlugin, Class, String, Class...)} to denote the
-     * receiver argument for a non-static method.
+     * receiver argument for such a non-static method.
      */
-    public static final class Receiver {
-        private Receiver() {
-            throw GraalInternalError.shouldNotReachHere();
-        }
+    public interface Receiver {
+        /**
+         * Gets the receiver value, null checking it first if necessary.
+         *
+         * @return the receiver value with a {@linkplain StampTool#isPointerNonNull(ValueNode)
+         *         non-null} stamp
+         */
+        ValueNode get();
+
+        /**
+         * Determines if the receiver is constant.
+         */
+        boolean isConstant();
     }
 
     /**
@@ -342,11 +355,12 @@ public class InvocationPlugins {
                     Class<?>[] sig = method.getParameterTypes();
                     assert sig[0] == GraphBuilderContext.class;
                     assert sig[1] == ResolvedJavaMethod.class;
-                    assert Arrays.asList(Arrays.copyOfRange(sig, 2, sig.length)).stream().allMatch(c -> c == ValueNode.class);
-                    while (sigs.size() < sig.length - 1) {
+                    assert sig[2] == Receiver.class;
+                    assert Arrays.asList(Arrays.copyOfRange(sig, 3, sig.length)).stream().allMatch(c -> c == ValueNode.class);
+                    while (sigs.size() < sig.length - 2) {
                         sigs.add(null);
                     }
-                    sigs.set(sig.length - 2, sig);
+                    sigs.set(sig.length - 3, sig);
                 }
             }
             assert sigs.indexOf(null) == -1 : format("need to add an apply() method to %s that takes %d %s arguments ", InvocationPlugin.class.getName(), sigs.indexOf(null),
@@ -360,7 +374,7 @@ public class InvocationPlugins {
                 assert !p.registrations.contains(method) : "a plugin is already registered for " + method;
                 p = p.parent;
             }
-            int arguments = method.argumentTypes.length;
+            int arguments = method.isStatic ? method.argumentTypes.length : method.argumentTypes.length - 1;
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, method);
             for (Method m : plugin.getClass().getDeclaredMethods()) {
                 if (m.getName().equals("apply")) {
@@ -380,5 +394,19 @@ public class InvocationPlugins {
 
     public int size() {
         return registrations.size();
+    }
+
+    /**
+     * Checks a set of nodes added to the graph by an {@link InvocationPlugin}.
+     *
+     * @param b the graph builder that applied the plugin
+     * @param plugin a plugin that was just applied
+     * @param newNodes the nodes added to the graph by {@code plugin}
+     * @throws AssertionError if any check fail
+     */
+    public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
+        if (parent != null) {
+            parent.checkNewNodes(b, plugin, newNodes);
+        }
     }
 }

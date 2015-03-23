@@ -168,7 +168,7 @@ public class GraphBuilderConfiguration {
      * {@link InvocationPlugins} in the copy.
      */
     public GraphBuilderConfiguration copy() {
-        Plugins newPlugins = new Plugins(new InvocationPlugins(plugins.getInvocationPlugins()));
+        Plugins newPlugins = new Plugins(plugins);
         GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, newPlugins);
         result.useProfiling = useProfiling;
         return result;

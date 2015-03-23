@@ -50,7 +50,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
 
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return installer.makeGraph(m, null, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
+        return installer.makeGraph(m, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
     }
 
     @Test

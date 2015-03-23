@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
-import static com.oracle.graal.compiler.common.type.StampFactory.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -68,21 +64,6 @@ public final class GuardingPiNode extends FixedWithNextNode implements Lowerable
 
     public DeoptimizationAction getAction() {
         return action;
-    }
-
-    /**
-     * Returns a node whose stamp is guaranteed to be {@linkplain StampTool#isPointerNonNull(Stamp)
-     * non-null}. If {@code value} already has such a stamp, then it is returned. Otherwise a fixed
-     * node guarding {@code value} is returned where the guard performs a null check.
-     */
-    public static ValueNode nullCheckedValue(ValueNode value) {
-        ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
-        if (!StampTool.isPointerNonNull(receiverStamp)) {
-            IsNullNode condition = value.graph().unique(new IsNullNode(value));
-            Stamp stamp = receiverStamp.join(objectNonNull());
-            return new GuardingPiNode(value, condition, true, NullCheckException, InvalidateReprofile, stamp);
-        }
-        return value;
     }
 
     public GuardingPiNode(ValueNode object) {

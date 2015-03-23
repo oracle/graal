@@ -94,10 +94,4 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
     public void lower(LoweringTool tool) {
         IntegerExactArithmeticSplitNode.lower(tool, this);
     }
-
-    @NodeIntrinsic
-    public static native int subtractExact(int a, int b);
-
-    @NodeIntrinsic
-    public static native long subtractExact(long a, long b);
 }

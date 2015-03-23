@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.virtual.*;
  *
  * This can be used as debug or deoptimization information.
  */
-@NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
+@NodeInfo(nameTemplate = "@{p#method/s}:{p#bci}")
 public final class FrameState extends VirtualState implements IterableNodeType {
     public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 

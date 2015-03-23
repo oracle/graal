@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code ConstantNode} represents a {@link Constant constant}.
  */
-@NodeInfo(shortName = "Const", nameTemplate = "Const({p#rawvalue})")
+@NodeInfo(nameTemplate = "C({p#rawvalue})")
 public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     public static final NodeClass<ConstantNode> TYPE = NodeClass.create(ConstantNode.class);

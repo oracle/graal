@@ -192,7 +192,7 @@ public class ForeignCallStub extends Stub {
         StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO);
         graph.disableInlinedMethodRecording();
 
-        GraphKit kit = new GraphKit(graph, providers, wordTypes);
+        GraphKit kit = new GraphKit(graph, providers, wordTypes, providers.getGraphBuilderPlugins());
         ParameterNode[] params = createParameters(kit, args);
 
         ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));

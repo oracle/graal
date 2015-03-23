@@ -26,9 +26,11 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.truffle.*;
 
 public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
@@ -47,7 +49,7 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
     public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
         InlineInfo inlineInfo = delegate.getInlineInfo(b, method, args, returnType);
         if (inlineInfo != null) {
-            currentStatistic = new MethodStatistic(currentStatistic, inlineInfo.methodToInline, graph.getNodeCount(), graph.getNodes(MethodCallTargetNode.TYPE).count());
+            currentStatistic = new MethodStatistic(currentStatistic, inlineInfo.methodToInline, countNodes(), countCalls());
         }
         return inlineInfo;
     }
@@ -56,11 +58,23 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         delegate.postInline(inlinedTargetMethod);
 
         if (currentStatistic != null) {
-            currentStatistic.applyNodeCountAfter(graph.getNodeCount());
-            currentStatistic.applyCallsAfter(graph.getNodes(MethodCallTargetNode.TYPE).count());
+            currentStatistic.applyNodeCountAfter(countNodes());
+            currentStatistic.applyCallsAfter(countCalls());
             accept(currentStatistic);
             currentStatistic = currentStatistic.getParent();
         }
+    }
+
+    private int countNodes() {
+        return graph.getNodes().filter(node -> isNonTrivial(node)).count();
+    }
+
+    private int countCalls() {
+        return graph.getNodes(MethodCallTargetNode.TYPE).count();
+    }
+
+    private static boolean isNonTrivial(Node node) {
+        return !(node instanceof VirtualState || node instanceof VirtualObjectNode || node instanceof BeginNode || node instanceof DeoptimizeNode);
     }
 
     private void accept(MethodStatistic current) {
@@ -74,12 +88,12 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
     }
 
     public void print(OptimizedCallTarget target, PrintStream out) {
-        out.printf("Truffle expansion histogram for %s", target);
+        out.printf("Truffle expansion histogram for %s%n", target);
         out.println("  Invocations = Number of expanded invocations");
-        out.println("  Nodes = Number of Graal nodes created for this method during partial evaluation.");
+        out.println("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
         out.println("  Calls = Number of not expanded calls created for this method during partial evaluation.");
         out.printf(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name%n", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg");
-        histogram.values().stream().sorted().forEach(statistics -> statistics.print(out));
+        histogram.values().stream().filter(statistics -> statistics.shallowCount.getSum() > 0).sorted().forEach(statistics -> statistics.print(out));
     }
 
     private static class MethodStatistics implements Comparable<MethodStatistics> {
@@ -95,16 +109,16 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         }
 
         public void print(PrintStream out) {
-            out.printf(" %11d |        %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s%n", //
+            out.printf(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s%n", //
                             count, shallowCount.getSum(), shallowCount.getMin(), shallowCount.getMax(), //
                             shallowCount.getAverage(), callCount.getSum(), callCount.getMin(), callCount.getMax(), //
                             callCount.getAverage(), method.format("%h.%n(%p)"));
         }
 
         public int compareTo(MethodStatistics o) {
-            int result = (int) (o.shallowCount.getSum() - shallowCount.getSum());
+            int result = Long.compare(o.shallowCount.getSum(), shallowCount.getSum());
             if (result == 0) {
-                return o.count - count;
+                return Integer.compare(o.count, count);
             }
             return result;
         }

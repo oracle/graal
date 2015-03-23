@@ -56,8 +56,26 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final List<GraalTruffleCompilationListener> compilationListeners = new ArrayList<>();
     private final GraalTruffleCompilationListener compilationNotify = new DispatchTruffleCompilationListener();
 
+    private LoopNodeFactory loopNodeFactory;
+
     public GraalTruffleRuntime() {
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+    }
+
+    private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
+        ServiceLoader<T> serviceLoader = ServiceLoader.load(clazz, GraalTruffleRuntime.class.getClassLoader());
+        T bestFactory = null;
+        for (T factory : serviceLoader) {
+            if (bestFactory == null) {
+                bestFactory = factory;
+            } else if (factory.getPriority() > bestFactory.getPriority()) {
+                bestFactory = factory;
+            }
+        }
+        if (bestFactory == null) {
+            throw new IllegalStateException("Unable to load a factory for " + clazz.getName());
+        }
+        return bestFactory;
     }
 
     protected void installDefaultListeners() {
@@ -80,11 +98,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
-    public LoopNode createLoopNode(RepeatingNode repeating) {
-        if (!(repeating instanceof Node)) {
+    public LoopNode createLoopNode(RepeatingNode repeatingNode) {
+        if (!(repeatingNode instanceof Node)) {
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
-        return new OptimizedLoopNode(repeating);
+        if (loopNodeFactory == null) {
+            loopNodeFactory = loadPrioritizedServiceProvider(LoopNodeFactory.class);
+        }
+
+        return loopNodeFactory.create(repeatingNode);
     }
 
     @Override

@@ -32,6 +32,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
@@ -432,14 +433,18 @@ public class InliningUtil {
                     frameState.replaceAndDelete(stateAfterException);
                 } else if (frameState.bci == BytecodeFrame.UNWIND_BCI || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
                     handleMissingAfterExceptionFrameState(frameState);
+                } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
+                    // This is an intrinsic. Deoptimizing within an intrinsic
+                    // must re-execute the intrinsified invocation
+                    assert frameState.outerFrameState() == null;
+                    NodeInputList<ValueNode> invokeArgsList = invoke.callTarget().arguments();
+                    ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
+                    FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeArgs);
+                    frameState.replaceAndDelete(stateBeforeCall);
                 } else {
                     // only handle the outermost frame states
                     if (frameState.outerFrameState() == null) {
-                        assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI : frameState;
-                        assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
-                        assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
-                        assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
-                        assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI || frameState.method().equals(inlineGraph.method()) : frameState;
+                        assert checkInlineeFrameState(invoke, inlineGraph, frameState);
                         if (outerFrameState == null) {
                             outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
                         }
@@ -449,6 +454,32 @@ public class InliningUtil {
             }
         }
     }
+
+    static boolean checkInlineeFrameState(Invoke invoke, StructuredGraph inlineGraph, FrameState frameState) {
+        assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI : frameState;
+        assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
+        assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
+        assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
+        if (frameState.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            if (frameState.method().equals(inlineGraph.method())) {
+                // Normal inlining expects all outermost inlinee frame states to
+                // denote the inlinee method
+            } else if (frameState.method().equals(invoke.callTarget().targetMethod())) {
+                // This occurs when an intrinsic calls back to the original
+                // method to handle a slow path. During parsing of such a
+                // partial intrinsic, these calls are given frame states
+                // that exclude the outer frame state denoting a position
+                // in the intrinsic code.
+                assert inlineGraph.method().getAnnotation(MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
+                                frameState;
+            } else {
+                throw new AssertionError(frameState.toString());
+            }
+        }
+        return true;
+    }
+
+    private static final ValueNode[] NO_ARGS = {};
 
     private static boolean isStateAfterException(FrameState frameState) {
         return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized());
@@ -543,7 +574,7 @@ public class InliningUtil {
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target) {
-        return getIntrinsicGraph(replacements, target) != null || getMacroNodeClass(replacements, target) != null;
+        return replacements.getMethodSubstitutionMethod(target) != null || getMacroNodeClass(replacements, target) != null;
     }
 
     public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target) {

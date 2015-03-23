@@ -526,7 +526,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
             Method result = holder.mirror().getDeclaredMethod(name, signatureToTypes());
             toJavaCache = result;
             return result;
-        } catch (NoSuchMethodException e) {
+        } catch (NoSuchMethodException | NoClassDefFoundError e) {
             return null;
         }
     }
@@ -539,7 +539,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
             Constructor<?> result = holder.mirror().getDeclaredConstructor(signatureToTypes());
             toJavaCache = result;
             return result;
-        } catch (NoSuchMethodException e) {
+        } catch (NoSuchMethodException | NoClassDefFoundError e) {
             return null;
         }
     }

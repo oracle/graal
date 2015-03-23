@@ -290,7 +290,7 @@ public class CompilationTask {
             final int processedBytes = (int) (InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes);
 
             // Log a compilation event.
-            if (compilationEvent.shouldWrite()) {
+            if (compilationEvent.shouldWrite() && installedCode != null) {
                 compilationEvent.setMethod(method.format("%H.%n(%p)"));
                 compilationEvent.setCompileId(getId());
                 compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
