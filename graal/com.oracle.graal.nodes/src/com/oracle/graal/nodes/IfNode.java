@@ -781,12 +781,22 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             }
         }
+        transferProxies(trueSuccessor(), trueMerge);
+        transferProxies(falseSuccessor(), falseMerge);
 
         cleanupMerge(tool, merge);
         cleanupMerge(tool, trueMerge);
         cleanupMerge(tool, falseMerge);
 
         return true;
+    }
+
+    private static void transferProxies(AbstractBeginNode successor, MergeNode falseMerge) {
+        if (falseMerge != null) {
+            for (ProxyNode proxy : successor.proxies().snapshot()) {
+                proxy.replaceFirstInput(successor, falseMerge);
+            }
+        }
     }
 
     private void cleanupMerge(SimplifierTool tool, MergeNode merge) {
