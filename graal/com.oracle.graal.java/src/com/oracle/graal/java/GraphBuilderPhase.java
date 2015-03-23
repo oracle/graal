@@ -100,7 +100,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
          * Furthermore, if it is non-null and not equal to {@link #rootMethod} then this is the
          * original method for which a snippet exists (e.g., System.arraycopy()).
          */
-        private final ResolvedJavaMethod rootMethodIsReplacement;
+        // private final ResolvedJavaMethod rootMethodIsReplacement;
+
+        private final ReplacementContext initialReplacementContext;
 
         private final GraphBuilderConfiguration graphBuilderConfig;
         private final OptimisticOptimizations optimisticOpts;
@@ -109,20 +111,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final SnippetReflectionProvider snippetReflectionProvider;
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod rootMethodIsReplacement) {
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, ReplacementContext initialReplacementContext) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.constantReflection = constantReflection;
             this.snippetReflectionProvider = snippetReflectionProvider;
-            this.rootMethodIsReplacement = rootMethodIsReplacement;
+            this.initialReplacementContext = initialReplacementContext;
+
             assert metaAccess != null;
         }
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
-                        OptimisticOptimizations optimisticOpts, ResolvedJavaMethod rootMethodIsReplacement) {
-            this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, optimisticOpts, rootMethodIsReplacement);
+                        OptimisticOptimizations optimisticOpts, ReplacementContext initialReplacementContext) {
+            this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, optimisticOpts, initialReplacementContext);
         }
 
         @Override
@@ -134,10 +137,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.currentGraph = graph;
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
-                ReplacementContext replacementContext = rootMethodIsReplacement != null ? new ReplacementContext(rootMethodIsReplacement, rootMethod) : null;
+                ReplacementContext replacementContext = initialReplacementContext;
                 BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, replacementContext);
                 HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(parser, method, graph);
-                frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || rootMethodIsReplacement != null, graphBuilderConfig.getPlugins().getParameterPlugin());
+                frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || replacementContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
                 parser.build(graph.start(), frameState);
 
                 parser.connectLoopEndToBegin();
@@ -1316,13 +1319,30 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 ReplacementContext context = this.replacementContext;
                 if (context != null && context.isCallToOriginal(targetMethod)) {
-                    assert context.asIntrinsic() == null : "intrinsic cannot call the method it is intrinsifying";
-                    // Self recursive replacement means the original
-                    // method should be called.
-                    if (context.method.hasBytecodes()) {
-                        parseAndInlineCallee(context.method, args, null);
+                    IntrinsicContext intrinsic = context.asIntrinsic();
+                    if (intrinsic != null) {
+                        if (intrinsic.isCompilationRoot()) {
+                            // A root compiled intrinsic needs to deoptimize
+                            // if the slow path is taken
+                            DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
+                            deopt.setStateBefore(intrinsic.getInvokeStateBefore(currentGraph, null));
+                            return true;
+                        } else {
+                            // Otherwise inline the original method. Any frame state created
+                            // during the inlining will exclude frame(s) in the
+                            // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
+                            parseAndInlineCallee(context.method, args, null);
+                            return true;
+                        }
                     } else {
-                        return false;
+                        // Self recursive replacement means the original
+                        // method should be called.
+                        if (context.method.hasBytecodes()) {
+                            parseAndInlineCallee(context.method, args, null);
+                            return true;
+                        } else {
+                            return false;
+                        }
                     }
                 } else {
                     if (context == null && inlineInfo.isReplacement) {
@@ -2451,7 +2471,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (bp != this) {
                         fmt.format("%n%s", indent);
                     }
-                    fmt.format("%s [bci: %d, replacement: %s]", bp.method.asStackTraceElement(bp.bci()), bci(), bp.parsingReplacement());
+                    fmt.format("%s [bci: %d, replacement: %s]", bp.method.asStackTraceElement(bp.bci()), bp.bci(), bp.parsingReplacement());
+                    fmt.format("%n%s", new BytecodeDisassembler().disassemble(bp.method, bp.bci(), bp.bci() + 10));
                     bp = bp.parent;
                     indent += " ";
                 }

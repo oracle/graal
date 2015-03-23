@@ -320,7 +320,14 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
             FrameMapBuilder frameMapBuilder = backend.newFrameMapBuilder(registerConfig);
-            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(lir, frameMapBuilder, graph.method(), stub);
+            String compilationUnitName;
+            ResolvedJavaMethod method = graph.method();
+            if (method == null) {
+                compilationUnitName = "<unknown>";
+            } else {
+                compilationUnitName = method.format("%H.%n(%p)");
+            }
+            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, graph.method(), stub);
             LIRGeneratorTool lirGen = backend.newLIRGenerator(cc, lirGenRes);
             NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
 
