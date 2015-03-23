@@ -54,9 +54,9 @@ public final class HotSpotLoadIndexedPlugin implements LoadIndexedPlugin {
                  */
                 Stamp componentStamp = wordTypes.getWordStamp(arrayType.getComponentType());
                 if (componentStamp instanceof MetaspacePointerStamp) {
-                    b.push(elementKind, b.append(new LoadIndexedPointerNode(componentStamp, array, index)));
+                    b.addPush(elementKind, new LoadIndexedPointerNode(componentStamp, array, index));
                 } else {
-                    b.push(elementKind, b.append(new LoadIndexedNode(array, index, wordTypes.getWordKind())));
+                    b.addPush(elementKind, new LoadIndexedNode(array, index, wordTypes.getWordKind()));
                 }
                 return true;
             }

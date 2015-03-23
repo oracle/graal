@@ -79,7 +79,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
                     if (constant != null) {
                         // Replace the invoke with the result of the call
                         ConstantNode res = b.append(ConstantNode.forConstant(constant, b.getMetaAccess()));
-                        b.push(res.getKind().getStackKind(), b.append(res));
+                        b.addPush(res.getKind().getStackKind(), res);
                     } else {
                         // This must be a void invoke
                         assert method.getSignature().getReturnKind() == Kind.Void;
@@ -99,9 +99,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         if (res instanceof UnsafeCopyNode) {
             UnsafeCopyNode copy = (UnsafeCopyNode) res;
             UnsafeLoadNode value = b.append(new UnsafeLoadNode(copy.sourceObject(), copy.sourceOffset(), copy.accessKind(), copy.getLocationIdentity()));
-            UnsafeStoreNode unsafeStore = new UnsafeStoreNode(copy.destinationObject(), copy.destinationOffset(), value, copy.accessKind(), copy.getLocationIdentity());
-            b.append(unsafeStore);
-            unsafeStore.setStateAfter(b.createStateAfter());
+            b.add(new UnsafeStoreNode(copy.destinationObject(), copy.destinationOffset(), value, copy.accessKind(), copy.getLocationIdentity()));
             return true;
         } else if (res instanceof ForeignCallNode) {
             ForeignCallNode foreign = (ForeignCallNode) res;

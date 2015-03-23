@@ -39,8 +39,8 @@ public interface LoadFieldPlugin extends GraphBuilderPlugin {
     default boolean tryConstantFold(GraphBuilderContext b, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ResolvedJavaField field, JavaConstant receiver) {
         JavaConstant result = constantReflection.readConstantFieldValue(field, receiver);
         if (result != null) {
-            ConstantNode constantNode = b.append(ConstantNode.forConstant(result, metaAccess));
-            b.push(constantNode.getKind().getStackKind(), constantNode);
+            ConstantNode constantNode = ConstantNode.forConstant(result, metaAccess);
+            b.addPush(constantNode.getKind().getStackKind(), constantNode);
             return true;
         }
         return false;

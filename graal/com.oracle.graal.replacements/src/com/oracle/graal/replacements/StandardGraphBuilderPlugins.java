@@ -108,9 +108,7 @@ public class StandardGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode expected, ValueNode x) {
                     // Emits a null-check for the otherwise unused receiver
                     unsafe.get();
-                    CompareAndSwapNode compareAndSwap = new CompareAndSwapNode(object, offset, expected, x, kind, LocationIdentity.any());
-                    b.push(Kind.Boolean.getStackKind(), b.append(compareAndSwap));
-                    compareAndSwap.setStateAfter(b.createStateAfter());
+                    b.addPush(Kind.Int, new CompareAndSwapNode(object, offset, expected, x, kind, LocationIdentity.any()));
                     return true;
                 }
             });
@@ -120,9 +118,7 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
-                        AtomicReadAndWriteNode atomicReadWrite = new AtomicReadAndWriteNode(object, offset, value, kind, LocationIdentity.any());
-                        b.push(kind.getStackKind(), b.append(atomicReadWrite));
-                        atomicReadWrite.setStateAfter(b.createStateAfter());
+                        b.addPush(kind.getStackKind(), new AtomicReadAndWriteNode(object, offset, value, kind, LocationIdentity.any()));
                         return true;
                     }
                 });
@@ -131,9 +127,7 @@ public class StandardGraphBuilderPlugins {
                         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                             // Emits a null-check for the otherwise unused receiver
                             unsafe.get();
-                            AtomicReadAndAddNode atomicReadAdd = new AtomicReadAndAddNode(object, offset, delta, LocationIdentity.any());
-                            b.push(kind.getStackKind(), b.append(atomicReadAdd));
-                            atomicReadAdd.setStateAfter(b.createStateAfter());
+                            b.addPush(kind.getStackKind(), new AtomicReadAndAddNode(object, offset, delta, LocationIdentity.any()));
                             return true;
                         }
                     });
@@ -302,7 +296,7 @@ public class StandardGraphBuilderPlugins {
             }
 
             LogicNode compare = CompareNode.createCompareNode(graph, cond, lhs, rhs, b.getConstantReflection());
-            b.push(Kind.Boolean.getStackKind(), b.append(new ConditionalNode(compare, trueValue, falseValue)));
+            b.addPush(Kind.Boolean.getStackKind(), new ConditionalNode(compare, trueValue, falseValue));
             return true;
         }
     }
@@ -358,9 +352,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
-                    RegisterFinalizerNode registerFinalizer = new RegisterFinalizerNode(object);
-                    b.append(registerFinalizer);
-                    registerFinalizer.setStateAfter(b.createStateAfter());
+                    b.add(new RegisterFinalizerNode(object));
                 }
                 return true;
             }
@@ -388,7 +380,7 @@ public class StandardGraphBuilderPlugins {
                 if (receiver.isConstant()) {
                     ResolvedJavaType type = b.getConstantReflection().asJavaType(receiver.get().asConstant());
                     if (type != null && !type.isPrimitive()) {
-                        b.push(Kind.Object, b.append(CheckCastNode.create(type, object, null, false, b.getAssumptions())));
+                        b.addPush(Kind.Object, CheckCastNode.create(type, object, null, false, b.getAssumptions()));
                         return true;
                     }
                 }
@@ -412,15 +404,13 @@ public class StandardGraphBuilderPlugins {
                     ValueNode value = b.append(new UnsafeLoadNode(node, offset, Kind.Object, LocationIdentity.any()));
                     boolean exactType = false;
                     boolean nonNull = false;
-                    b.push(Kind.Object, b.append(new PiNode(value, metaAccess.lookupJavaType(c), exactType, nonNull)));
+                    b.addPush(Kind.Object, new PiNode(value, metaAccess.lookupJavaType(c), exactType, nonNull));
                     return true;
                 }
             });
             r.register3("put" + c.getSimpleName() + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset, ValueNode value) {
-                    UnsafeStoreNode unsafeStore = new UnsafeStoreNode(node, offset, value, Kind.Object, LocationIdentity.any());
-                    b.append(unsafeStore);
-                    unsafeStore.setStateAfter(b.createStateAfter());
+                    b.add(new UnsafeStoreNode(node, offset, value, Kind.Object, LocationIdentity.any()));
                     return true;
                 }
             });
@@ -445,7 +435,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ResolvedJavaType resultType = b.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
-            b.push(Kind.Object, b.append(new BoxNode(value, resultType, kind)));
+            b.addPush(Kind.Object, new BoxNode(value, resultType, kind));
             return true;
         }
 
@@ -472,7 +462,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ValueNode valueNode = UnboxNode.create(b.getMetaAccess(), b.getConstantReflection(), receiver.get(), kind);
-            b.push(kind.getStackKind(), b.append(valueNode));
+            b.addPush(kind.getStackKind(), valueNode);
             return true;
         }
 
@@ -495,7 +485,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.push(returnKind.getStackKind(), b.append(new DirectReadNode(address, returnKind)));
+            b.addPush(returnKind.getStackKind(), new DirectReadNode(address, returnKind));
             return true;
         }
 
@@ -505,7 +495,7 @@ public class StandardGraphBuilderPlugins {
             if (isVolatile) {
                 b.append(new MembarNode(JMM_PRE_VOLATILE_READ));
             }
-            b.push(returnKind.getStackKind(), b.append(new UnsafeLoadNode(object, offset, returnKind, LocationIdentity.any())));
+            b.addPush(returnKind.getStackKind(), new UnsafeLoadNode(object, offset, returnKind, LocationIdentity.any()));
             if (isVolatile) {
                 b.append(new MembarNode(JMM_POST_VOLATILE_READ));
             }
@@ -536,9 +526,7 @@ public class StandardGraphBuilderPlugins {
             if (isVolatile) {
                 b.append(new MembarNode(JMM_PRE_VOLATILE_WRITE));
             }
-            UnsafeStoreNode unsafeStore = new UnsafeStoreNode(object, offset, value, kind, LocationIdentity.any());
-            b.append(unsafeStore);
-            unsafeStore.setStateAfter(b.createStateAfter());
+            b.add(new UnsafeStoreNode(object, offset, value, kind, LocationIdentity.any()));
             if (isVolatile) {
                 b.append(new MembarNode(JMM_PRE_VOLATILE_WRITE));
             }
@@ -564,7 +552,7 @@ public class StandardGraphBuilderPlugins {
 
         r.register0("inCompiledCode", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.push(Kind.Int, b.append(ConstantNode.forInt(1)));
+                b.addPush(Kind.Int, ConstantNode.forInt(1));
                 return true;
             }
         });
@@ -578,7 +566,7 @@ public class StandardGraphBuilderPlugins {
 
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {
-                b.push(Kind.Int, b.append(new BranchProbabilityNode(probability, condition)));
+                b.addPush(Kind.Int, new BranchProbabilityNode(probability, condition));
                 return true;
             }
         });
@@ -598,7 +586,7 @@ public class StandardGraphBuilderPlugins {
                 final Kind stackKind = kind.getStackKind();
                 r.register1("opaque", javaClass, new InvocationPlugin() {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                        b.push(stackKind, b.append(new OpaqueNode(value)));
+                        b.addPush(stackKind, new OpaqueNode(value));
                         return true;
                     }
                 });

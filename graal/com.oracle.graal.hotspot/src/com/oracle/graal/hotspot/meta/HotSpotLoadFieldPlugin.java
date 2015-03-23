@@ -75,8 +75,7 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
                 // HotSpotInlineInvokePlugin.notifyOfNoninlinedInvoke). Direct use of
                 // assertions in intrinsics is forbidden.
                 assert b.getMethod().getAnnotation(MethodSubstitution.class) == null : "cannot use assertions in " + b.getMethod().format("%H.%n(%p)");
-                ConstantNode trueNode = b.append(ConstantNode.forBoolean(true));
-                b.push(trueNode.getKind().getStackKind(), trueNode);
+                b.addPush(ConstantNode.forBoolean(true));
                 return true;
             }
             return tryReadField(b, staticField, null);
