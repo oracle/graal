@@ -2118,7 +2118,7 @@ public class NodeGenFactory {
         boolean elseIf = false;
         for (ExecutableTypeData executableType : executableTypes) {
             elseIf = builder.startIf(elseIf);
-            builder.string(implicitClassFieldName).string(" == ").typeLiteral(executableType.getType().getBoxedType());
+            builder.string(implicitClassFieldName).string(" == ").typeLiteral(executableType.getType().getPrimitiveType());
             builder.end();
             builder.startBlock();
             builder.startStatement().tree(assignment);
