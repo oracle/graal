@@ -40,13 +40,16 @@ public class GraalDebugConfig implements DebugConfig {
     // @formatter:off
     @Option(help = "Pattern for scope(s) in which dumping is enabled (see DebugFilter and Debug.dump)", type = OptionType.Debug)
     public static final OptionValue<String> Dump = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric)", type = OptionType.Debug)
+    @Option(help = "Pattern for scope(s) in which metering is enabled (see DebugFilter and Debug.metric). " +
+                   "An empty value enables all metrics unconditionally.", type = OptionType.Debug)
     public static final OptionValue<String> Meter = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify)", type = OptionType.Debug)
+    @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify).", type = OptionType.Debug)
     public static final OptionValue<String> Verify = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric)", type = OptionType.Debug)
+    @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.metric). " +
+                   "An empty value enables all memory use trackers unconditionally.", type = OptionType.Debug)
     public static final OptionValue<String> TrackMemUse = new OptionValue<>(null);
-    @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer)", type = OptionType.Debug)
+    @Option(help = "Pattern for scope(s) in which timing is enabled (see DebugFilter and Debug.timer). " +
+                   "An empty value enables all timers unconditionally.", type = OptionType.Debug)
     public static final OptionValue<String> Time = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) in which logging is enabled (see DebugFilter and Debug.log)", type = OptionType.Debug)
     public static final OptionValue<String> Log = new OptionValue<>(null);
@@ -71,12 +74,20 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
 
-    public static boolean areDebugScopePatternsEnabled() {
-        return DumpOnError.getValue() || Dump.getValue() != null || Log.getValue() != null || areMetricsOrTimersEnabled();
+    public static boolean isNotEmpty(OptionValue<String> option) {
+        return option.getValue() != null && !option.getValue().isEmpty();
     }
 
-    public static boolean areMetricsOrTimersEnabled() {
-        return Meter.getValue() != null || Time.getValue() != null || TrackMemUse.getValue() != null;
+    public static boolean areDebugScopePatternsEnabled() {
+        return DumpOnError.getValue() || Dump.getValue() != null || Log.getValue() != null || areScopedMetricsOrTimersEnabled();
+    }
+
+    /**
+     * Determines if any of {@link #Meter}, {@link #Time} or {@link #TrackMemUse} has a non-null,
+     * non-empty value.
+     */
+    public static boolean areScopedMetricsOrTimersEnabled() {
+        return isNotEmpty(Meter) || isNotEmpty(Time) || isNotEmpty(TrackMemUse);
     }
 
     private final DebugFilter logFilter;
