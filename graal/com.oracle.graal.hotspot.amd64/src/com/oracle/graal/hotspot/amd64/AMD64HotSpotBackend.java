@@ -78,8 +78,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
-        return new AMD64HotSpotLIRGenerationResult(lir, frameMapBuilder, stub);
+    public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, ResolvedJavaMethod method, Object stub) {
+        return new AMD64HotSpotLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, stub);
     }
 
     @Override
@@ -254,6 +254,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
         // Emit the suffix
         emitCodeSuffix(installedCodeOwner, crb, asm, frameMap);
+
+        // Profile assembler instructions
+        profileInstructions(lir, crb);
     }
 
     /**

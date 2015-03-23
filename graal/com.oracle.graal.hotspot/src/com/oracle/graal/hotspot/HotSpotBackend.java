@@ -40,6 +40,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
@@ -55,6 +56,9 @@ public abstract class HotSpotBackend extends Backend {
         // @formatter:off
         @Option(help = "Use Graal stubs instead of HotSpot stubs where possible")
         public static final OptionValue<Boolean> PreferGraalStubs = new OptionValue<>(false);
+        @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
+                        " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
+        public static final OptionValue<String> ASMInstructionProfiling = new OptionValue<>(null);
         // @formatter:on
     }
 
@@ -234,5 +238,11 @@ public abstract class HotSpotBackend extends Backend {
     @Override
     public DisassemblerProvider getDisassembler() {
         return getProviders().getDisassembler();
+    }
+
+    protected void profileInstructions(LIR lir, CompilationResultBuilder crb) {
+        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue() != null) {
+            HotSpotInstructionProfiling.countInstructions(lir, crb.asm);
+        }
     }
 }

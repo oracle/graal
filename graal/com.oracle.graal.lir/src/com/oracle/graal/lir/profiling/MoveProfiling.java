@@ -136,12 +136,13 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
             }
             String[] groups = new String[names.size()];
             Arrays.fill(groups, "Move Operations");
-
-            LIRInstruction inst = counterFactory.createMultiBenchmarkCounter(names.toArray(new String[0]), groups, increments.toArray(new Value[0]));
-            assert inst != null;
-            buffer.init(instructions);
-            buffer.append(1, inst);
-            buffer.finish();
+            if (names.size() > 0) { // Don't pollute LIR when nothing has to be done
+                LIRInstruction inst = counterFactory.createMultiBenchmarkCounter(names.toArray(new String[0]), groups, increments.toArray(new Value[0]));
+                assert inst != null;
+                buffer.init(instructions);
+                buffer.append(1, inst);
+                buffer.finish();
+            }
         }
     }
 

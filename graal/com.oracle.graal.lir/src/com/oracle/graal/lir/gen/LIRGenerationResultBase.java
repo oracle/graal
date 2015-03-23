@@ -34,10 +34,15 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
      * Records whether the code being generated makes at least one foreign call.
      */
     private boolean hasForeignCall;
+    /**
+     * Human readable name of this compilation unit.
+     */
+    private final String compilationUnitName;
 
-    public LIRGenerationResultBase(LIR lir, FrameMapBuilder frameMapBuilder) {
+    public LIRGenerationResultBase(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder) {
         this.lir = lir;
         this.frameMapBuilder = frameMapBuilder;
+        this.compilationUnitName = compilationUnitName;
     }
 
     public LIR getLIR() {
@@ -68,5 +73,9 @@ public class LIRGenerationResultBase implements LIRGenerationResult {
     public FrameMap getFrameMap() {
         assert frameMap != null : "getFrameMap() can only be used after calling buildFrameMap()!";
         return frameMap;
+    }
+
+    public String getCompilationUnitName() {
+        return compilationUnitName;
     }
 }

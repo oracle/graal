@@ -56,4 +56,6 @@ public interface LIRGenerationResult {
     boolean hasForeignCall();
 
     void setForeignCall(boolean b);
+
+    String getCompilationUnitName();
 }

@@ -132,7 +132,11 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     }
 
     public LIRSuites createLIRSuites() {
-        return Suites.createDefaultLIRSuites();
+        LIRSuites suites = Suites.createDefaultLIRSuites();
+        String profileInstructions = HotSpotBackend.Options.ASMInstructionProfiling.getValue();
+        if (profileInstructions != null) {
+            suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotInstructionProfiling(profileInstructions));
+        }
+        return suites;
     }
-
 }

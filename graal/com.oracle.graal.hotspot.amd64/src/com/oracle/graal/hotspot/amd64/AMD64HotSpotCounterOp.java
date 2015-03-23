@@ -65,16 +65,16 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
 
         // load counters array
         masm.movptr(countersArrayReg, countersArrayAddr);
-
-        forEachCounter((name, group, increment) -> emitIncrement(masm, target, countersArrayReg, name, group, increment));
+        CounterProcedure emitProcedure = (counterIndex, increment, displacement) -> emitIncrement(masm, countersArrayReg, increment, displacement);
+        forEachCounter(emitProcedure, target);
 
         // restore scratch register
         masm.movq(scratch, (AMD64Address) crb.asAddress(backupSlot));
     }
 
-    private void emitIncrement(AMD64MacroAssembler masm, TargetDescription target, Register countersArrayReg, String name, String group, Value increment) {
+    private static void emitIncrement(AMD64MacroAssembler masm, Register countersArrayReg, Value increment, int displacement) {
         // address for counter value
-        AMD64Address counterAddr = new AMD64Address(countersArrayReg, getDisplacementForLongIndex(target, getIndex(name, group, increment)));
+        AMD64Address counterAddr = new AMD64Address(countersArrayReg, displacement);
         // increment counter (in memory)
         if (isConstant(increment)) {
             masm.incrementl(counterAddr, asInt(asConstant(increment)));

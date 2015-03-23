@@ -1741,4 +1741,20 @@ public abstract class SPARCAssembler extends Assembler {
     public void casxa(Register rs1, Register rs2, Register rd, Asi asi) {
         ld(Casxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
+
+    @Override
+    public InstructionCounter getInstructionCounter() {
+        return new SPARCInstructionCounter(this);
+    }
+
+    public void patchAddImmediate(int position, int simm13) {
+        int inst = getInt(position);
+        assert SPARCAssembler.isSimm13(simm13) : simm13;
+        assert (inst >>> 30) == 0b10 : String.format("0x%x", inst);
+        assert ((inst >>> 18) & 0b11_1111) == 0 : String.format("0x%x", inst);
+        assert (inst & (1 << 13)) != 0 : String.format("0x%x", inst);
+        inst = inst & (~((1 << 13) - 1));
+        inst |= simm13 & ((1 << 12) - 1);
+        emitInt(inst, position);
+    }
 }

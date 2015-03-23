@@ -23,11 +23,14 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
@@ -37,12 +40,16 @@ import com.oracle.graal.lir.asm.*;
 public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
     public static final LIRInstructionClass<SPARCHotSpotCounterOp> TYPE = LIRInstructionClass.create(SPARCHotSpotCounterOp.class);
 
+    private int[] counterPatchOffsets;
+
     public SPARCHotSpotCounterOp(String name, String group, Value increment, HotSpotRegistersProvider registers, HotSpotVMConfig config) {
         super(TYPE, name, group, increment, registers, config);
+        this.counterPatchOffsets = new int[1];
     }
 
     public SPARCHotSpotCounterOp(String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, HotSpotVMConfig config) {
         super(TYPE, names, groups, increments, registers, config);
+        this.counterPatchOffsets = new int[names.length];
     }
 
     @Override
@@ -57,19 +64,17 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
 
             // load counters array
             masm.ldx(countersArrayAddr, countersArrayReg);
-
-            forEachCounter((name, group, increment) -> emitIncrement(masm, target, countersArrayReg, name, group, increment));
+            IncrementEmitter emitter = new IncrementEmitter(countersArrayReg, masm);
+            forEachCounter(emitter, target);
         }
     }
 
-    private void emitIncrement(SPARCMacroAssembler masm, TargetDescription target, Register countersArrayReg, String name, String group, Value increment) {
-        // address for counter
-        SPARCAddress counterAddr = new SPARCAddress(countersArrayReg, getDisplacementForLongIndex(target, getIndex(name, group, increment)));
-
+    private void emitIncrement(int counterIndex, SPARCMacroAssembler masm, SPARCAddress counterAddr, Value increment) {
         try (ScratchRegister scratch = masm.getScratchRegister()) {
             Register counterReg = scratch.getRegister();
             // load counter value
             masm.ldx(counterAddr, counterReg);
+            counterPatchOffsets[counterIndex] = masm.position();
             // increment counter
             if (isConstant(increment)) {
                 masm.add(counterReg, asInt(asConstant(increment)), counterReg);
@@ -78,6 +83,55 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
             }
             // store counter value
             masm.stx(counterReg, counterAddr);
+        }
+    }
+
+    /**
+     * Patches the increment value in the instruction emitted by the
+     * {@link #emitIncrement(int, SPARCMacroAssembler, SPARCAddress, Value)} method. This method is
+     * used if patching is needed after assembly.
+     *
+     * @param asm
+     * @param increment
+     */
+    @Override
+    public void patchCounterIncrement(Assembler asm, int[] increment) {
+        for (int i = 0; i < increment.length; i++) {
+            int inst = counterPatchOffsets[i];
+            ((SPARCAssembler) asm).patchAddImmediate(inst, increment[i]);
+        }
+    }
+
+    public int[] getCounterPatchOffsets() {
+        return counterPatchOffsets;
+    }
+
+    private class IncrementEmitter implements CounterProcedure {
+        private int lastDisplacement = 0;
+        private final Register countersArrayReg;
+        private final SPARCMacroAssembler masm;
+
+        public IncrementEmitter(Register countersArrayReg, SPARCMacroAssembler masm) {
+            super();
+            this.countersArrayReg = countersArrayReg;
+            this.masm = masm;
+        }
+
+        public void apply(int counterIndex, Value increment, int displacement) {
+            SPARCAddress counterAddr;
+            int relativeDisplacement = displacement - lastDisplacement;
+            if (isSimm13(relativeDisplacement)) { // Displacement fits into ld instruction
+                counterAddr = new SPARCAddress(countersArrayReg, relativeDisplacement);
+            } else {
+                try (ScratchRegister scratch = masm.getScratchRegister()) {
+                    Register tempOffsetRegister = scratch.getRegister();
+                    new Setx(relativeDisplacement, tempOffsetRegister, false).emit(masm);
+                    masm.add(countersArrayReg, tempOffsetRegister, countersArrayReg);
+                }
+                lastDisplacement = displacement;
+                counterAddr = new SPARCAddress(countersArrayReg, 0);
+            }
+            emitIncrement(counterIndex, masm, counterAddr, increment);
         }
     }
 }
