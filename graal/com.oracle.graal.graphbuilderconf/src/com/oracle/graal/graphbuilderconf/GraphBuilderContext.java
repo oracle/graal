@@ -59,15 +59,78 @@ public interface GraphBuilderContext {
         boolean isIntrinsic();
     }
 
+    /**
+     * Raw operation for adding a node to the graph when neither {@link #add},
+     * {@link #addPush(ValueNode)} nor {@link #addPush(Kind, ValueNode)} can be used.
+     */
     <T extends ValueNode> T append(T value);
 
     /**
-     * Adds the given floating node to the graph and also adds recursively all referenced inputs.
+     * Adds the given node to the graph and also adds recursively all referenced inputs.
      *
-     * @param value the floating node to be added to the graph
+     * @param value the node to be added to the graph
      * @return either the node added or an equivalent node
      */
     <T extends ValueNode> T recursiveAppend(T value);
+
+    /**
+     * Pushes a given value to the frame state stack using an explicit kind. This should be used
+     * when {@code value.getKind()} is different from the kind that the bytecode instruction
+     * currently being parsed pushes to the stack.
+     *
+     * @param kind the kind to use when type checking this operation
+     * @param value the value to push to the stack. The value must already have been
+     *            {@linkplain #append(ValueNode) appended}.
+     */
+    void push(Kind kind, ValueNode value);
+
+    /**
+     * Appends a node with a void kind to the graph. If the node is a {@link StateSplit}, then its
+     * {@linkplain StateSplit#stateAfter() frame state} is also set.
+     */
+    default <T extends ValueNode> T add(T value) {
+        assert value.getKind() == Kind.Void;
+        T appended = append(value);
+        if (appended instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) appended;
+            assert stateSplit.stateAfter() == null;
+            stateSplit.setStateAfter(createStateAfter());
+        }
+        return appended;
+    }
+
+    /**
+     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the node is a
+     * {@link StateSplit}, then its {@linkplain StateSplit#stateAfter() frame state} is also set.
+     *
+     * @param value the value to push to the stack. The value must already have been
+     *            {@linkplain #append(ValueNode) appended}. The {@code value.getKind()} kind is used
+     *            when type checking this operation.
+     * @return the version of {@code value} in the graph which may be different than {@code value}
+     */
+    default <T extends ValueNode> T addPush(T value) {
+        return addPush(value.getKind().getStackKind(), value);
+    }
+
+    /**
+     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the node is a
+     * {@link StateSplit}, then its {@linkplain StateSplit#stateAfter() frame state} is also set.
+     *
+     * @param kind the kind to use when type checking this operation
+     * @param value the value to push to the stack. The value must already have been
+     *            {@linkplain #append(ValueNode) appended}.
+     * @return the version of {@code value} in the graph which may be different than {@code value}
+     */
+    default <T extends ValueNode> T addPush(Kind kind, T value) {
+        T appended = append(value);
+        push(kind, appended);
+        if (appended instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) appended;
+            assert stateSplit.stateAfter() == null;
+            stateSplit.setStateAfter(createStateAfter());
+        }
+        return appended;
+    }
 
     StampProvider getStampProvider();
 
@@ -79,10 +142,12 @@ public interface GraphBuilderContext {
 
     SnippetReflectionProvider getSnippetReflection();
 
-    void push(Kind kind, ValueNode value);
-
     StructuredGraph getGraph();
 
+    /**
+     * Creates a snap shot of the current frame state with the BCI of the instruction after the one
+     * currently being parsed.
+     */
     FrameState createStateAfter();
 
     /**

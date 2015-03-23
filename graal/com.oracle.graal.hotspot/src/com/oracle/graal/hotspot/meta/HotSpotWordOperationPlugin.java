@@ -82,7 +82,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 PointerEqualsNode comparison = b.append(new PointerEqualsNode(left, right));
                 ValueNode eqValue = b.append(forBoolean(opcode == POINTER_EQ));
                 ValueNode neValue = b.append(forBoolean(opcode == POINTER_NE));
-                b.push(returnStackKind, b.append(new ConditionalNode(comparison, eqValue, neValue)));
+                b.addPush(returnStackKind, new ConditionalNode(comparison, eqValue, neValue));
                 break;
 
             case IS_NULL:
@@ -91,22 +91,22 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 assert pointer.stamp() instanceof MetaspacePointerStamp;
 
                 IsNullNode isNull = b.append(new IsNullNode(pointer));
-                b.push(returnStackKind, b.append(new ConditionalNode(isNull, b.append(forBoolean(true)), b.append(forBoolean(false)))));
+                b.addPush(returnStackKind, new ConditionalNode(isNull, b.append(forBoolean(true)), b.append(forBoolean(false))));
                 break;
 
             case FROM_POINTER:
                 assert args.length == 1;
-                b.push(returnStackKind, b.append(new PointerCastNode(StampFactory.forKind(wordKind), args[0])));
+                b.addPush(returnStackKind, new PointerCastNode(StampFactory.forKind(wordKind), args[0]));
                 break;
 
             case TO_KLASS_POINTER:
                 assert args.length == 1;
-                b.push(returnStackKind, b.append(new PointerCastNode(KlassPointerStamp.klass(), args[0])));
+                b.addPush(returnStackKind, new PointerCastNode(KlassPointerStamp.klass(), args[0]));
                 break;
 
             case TO_METHOD_POINTER:
                 assert args.length == 1;
-                b.push(returnStackKind, b.append(new PointerCastNode(MethodPointerStamp.method(), args[0])));
+                b.addPush(returnStackKind, new PointerCastNode(MethodPointerStamp.method(), args[0]));
                 break;
 
             case READ_KLASS_POINTER:

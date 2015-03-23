@@ -81,7 +81,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
                 ValueNode left = args[0];
                 ValueNode right = operation.rightOperandIsInt() ? toUnsigned(b, args[1], Kind.Int) : fromSigned(b, args[1]);
 
-                b.push(returnStackKind, b.append(createBinaryNodeInstance(operation.node(), left, right)));
+                b.addPush(returnStackKind, createBinaryNodeInstance(operation.node(), left, right));
                 break;
 
             case COMPARISON:
@@ -91,7 +91,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
 
             case NOT:
                 assert args.length == 1;
-                b.push(returnStackKind, b.append(new XorNode(args[0], b.append(forIntegerKind(wordKind, -1)))));
+                b.addPush(returnStackKind, new XorNode(args[0], b.append(forIntegerKind(wordKind, -1))));
                 break;
 
             case READ_POINTER:
@@ -133,7 +133,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
             }
             case ZERO:
                 assert args.length == 0;
-                b.push(returnStackKind, b.append(forIntegerKind(wordKind, 0L)));
+                b.addPush(returnStackKind, forIntegerKind(wordKind, 0L));
                 break;
 
             case FROM_UNSIGNED:
@@ -164,7 +164,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
 
             case FROM_ARRAY:
                 assert args.length == 2;
-                b.push(returnStackKind, b.append(new ComputeAddressNode(args[0], args[1], StampFactory.forKind(wordKind))));
+                b.addPush(returnStackKind, new ComputeAddressNode(args[0], args[1], StampFactory.forKind(wordKind)));
                 break;
 
             case TO_OBJECT:
@@ -245,9 +245,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
         final BarrierType barrier = (op == Opcode.WRITE_BARRIERED ? BarrierType.PRECISE : BarrierType.NONE);
         final boolean compressible = (op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED);
         final boolean initialize = (op == Opcode.INITIALIZE);
-        JavaWriteNode writeNode = new JavaWriteNode(writeKind, base, value, location, barrier, compressible, initialize);
-        b.append(writeNode);
-        writeNode.setStateAfter(b.createStateAfter());
+        b.add(new JavaWriteNode(writeKind, base, value, location, barrier, compressible, initialize));
     }
 
     public LocationNode makeLocation(GraphBuilderContext b, ValueNode offset, LocationIdentity locationIdentity) {
