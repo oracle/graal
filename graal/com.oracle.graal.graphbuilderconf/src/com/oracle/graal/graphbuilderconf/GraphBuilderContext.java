@@ -85,49 +85,55 @@ public interface GraphBuilderContext {
     void push(Kind kind, ValueNode value);
 
     /**
-     * Appends a node with a void kind to the graph. If the node is a {@link StateSplit}, then its
-     * {@linkplain StateSplit#stateAfter() frame state} is also set.
+     * Appends a node with a void kind to the graph. If the returned node is a {@link StateSplit},
+     * with a null {@linkplain StateSplit#stateAfter() frame state}, the frame state is initialized.
+     *
+     * @param value the value to add to the graph and push to the stack. The {@code value.getKind()}
+     *            kind is used when type checking this operation.
+     * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T add(T value) {
         assert value.getKind() == Kind.Void;
         T appended = append(value);
         if (appended instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) appended;
-            assert stateSplit.stateAfter() == null;
-            stateSplit.setStateAfter(createStateAfter());
+            if (stateSplit.stateAfter() == null) {
+                stateSplit.setStateAfter(createStateAfter());
+            }
         }
         return appended;
     }
 
     /**
-     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the node is a
-     * {@link StateSplit}, then its {@linkplain StateSplit#stateAfter() frame state} is also set.
+     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the returned node
+     * is a {@link StateSplit}, with a null {@linkplain StateSplit#stateAfter() frame state}, the
+     * frame state is initialized.
      *
-     * @param value the value to push to the stack. The value must already have been
-     *            {@linkplain #append(ValueNode) appended}. The {@code value.getKind()} kind is used
-     *            when type checking this operation.
-     * @return the version of {@code value} in the graph which may be different than {@code value}
+     * @param value the value to add to the graph and push to the stack. The {@code value.getKind()}
+     *            kind is used when type checking this operation.
+     * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T addPush(T value) {
         return addPush(value.getKind().getStackKind(), value);
     }
 
     /**
-     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the node is a
-     * {@link StateSplit}, then its {@linkplain StateSplit#stateAfter() frame state} is also set.
+     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the returned node
+     * is a {@link StateSplit}, with a null {@linkplain StateSplit#stateAfter() frame state}, the
+     * frame state is initialized.
      *
      * @param kind the kind to use when type checking this operation
-     * @param value the value to push to the stack. The value must already have been
-     *            {@linkplain #append(ValueNode) appended}.
-     * @return the version of {@code value} in the graph which may be different than {@code value}
+     * @param value the value to add to the graph and push to the stack
+     * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T addPush(Kind kind, T value) {
         T appended = append(value);
         push(kind, appended);
         if (appended instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) appended;
-            assert stateSplit.stateAfter() == null;
-            stateSplit.setStateAfter(createStateAfter());
+            if (stateSplit.stateAfter() == null) {
+                stateSplit.setStateAfter(createStateAfter());
+            }
         }
         return appended;
     }
