@@ -81,7 +81,7 @@ public abstract class Source {
     /**
      * All Sources that have been created.
      */
-    private static final List<WeakReference<Source>> allSources = new ArrayList<>();
+    private static final List<WeakReference<Source>> allSources = Collections.synchronizedList(new ArrayList<WeakReference<Source>>());
 
     // Files and pseudo files are indexed.
     private static final Map<String, WeakReference<Source>> filePathToSource = new Hashtable<>();
@@ -273,11 +273,13 @@ public abstract class Source {
      */
     public static Collection<Source> findSourcesTaggedAs(SourceTag tag) {
         final List<Source> taggedSources = new ArrayList<>();
-        for (WeakReference<Source> ref : allSources) {
-            Source source = ref.get();
-            if (source != null) {
-                if (tag == null || source.isTaggedAs(tag)) {
-                    taggedSources.add(ref.get());
+        synchronized (allSources) {
+            for (WeakReference<Source> ref : allSources) {
+                Source source = ref.get();
+                if (source != null) {
+                    if (tag == null || source.isTaggedAs(tag)) {
+                        taggedSources.add(ref.get());
+                    }
                 }
             }
         }
