@@ -24,6 +24,11 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.NumUtil.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
+import static com.oracle.graal.compiler.common.GraalInternalError.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -54,7 +59,19 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
         TargetDescription target = crb.target;
 
-        Register scratch = rax;
+        Register scratch;
+        // It can happen that the rax register is the increment register, in this case we do not
+        // want to spill it to the stack.
+        if (!contains(increments, rax)) {
+            scratch = rax;
+        } else if (!contains(increments, rbx)) {
+            scratch = rbx;
+        } else {
+            // In this case rax and rbx are used as increment. Either we implement a third register
+            // or we implement a spillover the value from rax to rbx or vice versa during
+            // emitIncrement().
+            throw unimplemented("RAX and RBX are increment registers a the same time, spilling over the scratch register is not supported right now");
+        }
 
         // address for counters array
         AMD64Address countersArrayAddr = new AMD64Address(thread, config.graalCountersThreadOffset);
@@ -72,14 +89,32 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         masm.movq(scratch, (AMD64Address) crb.asAddress(backupSlot));
     }
 
-    private static void emitIncrement(AMD64MacroAssembler masm, Register countersArrayReg, Value increment, int displacement) {
+    /**
+     * Tests if the array contains the register.
+     */
+    private static boolean contains(Value[] increments, Register register) {
+        for (Value increment : increments) {
+            if (isRegister(increment) && asRegister(increment).equals(register)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void emitIncrement(AMD64MacroAssembler masm, Register countersArrayReg, Value incrementValue, int displacement) {
         // address for counter value
         AMD64Address counterAddr = new AMD64Address(countersArrayReg, displacement);
         // increment counter (in memory)
-        if (isConstant(increment)) {
-            masm.incrementl(counterAddr, asInt(asConstant(increment)));
+        if (isConstant(incrementValue)) {
+            int increment = asInt(asConstant(incrementValue));
+            if (increment == 1) {
+                INC.emit(masm, QWORD, counterAddr);
+            } else {
+                ADD.getMIOpcode(QWORD, isByte(increment)).emit(masm, QWORD, counterAddr, increment);
+            }
         } else {
-            masm.addq(counterAddr, asRegister(increment));
+            masm.addq(counterAddr, asRegister(incrementValue));
         }
+
     }
 }

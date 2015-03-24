@@ -728,6 +728,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64MOp IMUL = new AMD64MOp("IMUL", 0xF7, 5);
         public static final AMD64MOp DIV  = new AMD64MOp("DIV",  0xF7, 6);
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
+        public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
         // @formatter:on
 
         private final int ext;
@@ -2412,4 +2413,12 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(1, src);
     }
 
+    /**
+     * Emits an instruction which is considered to be illegal. This is used if we deliberately want
+     * to crash the program (debugging etc.).
+     */
+    public void illegal() {
+        emitByte(0x0f);
+        emitByte(0x0b);
+    }
 }
