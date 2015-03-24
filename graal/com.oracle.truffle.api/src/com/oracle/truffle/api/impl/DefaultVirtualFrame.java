@@ -150,32 +150,27 @@ final class DefaultVirtualFrame implements VirtualFrame {
 
     @Override
     public Object getValue(FrameSlot slot) {
-        int slotIndex = slot.getIndex();
-        if (slotIndex >= tags.length) {
-            if (!resize()) {
-                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
-            }
-        }
+        int slotIndex = getSlotIndexChecked(slot);
         return locals[slotIndex];
     }
 
-    private void verifySet(FrameSlot slot, FrameSlotKind accessKind) {
+    private int getSlotIndexChecked(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
             if (!resize()) {
                 throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
             }
         }
+        return slotIndex;
+    }
+
+    private void verifySet(FrameSlot slot, FrameSlotKind accessKind) {
+        int slotIndex = getSlotIndexChecked(slot);
         tags[slotIndex] = (byte) accessKind.ordinal();
     }
 
     private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
-        if (slotIndex >= tags.length) {
-            if (!resize()) {
-                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
-            }
-        }
+        int slotIndex = getSlotIndexChecked(slot);
         byte tag = tags[slotIndex];
         if (accessKind == FrameSlotKind.Object ? tag != 0 : tag != accessKind.ordinal()) {
             throw new FrameSlotTypeException();
@@ -195,12 +190,7 @@ final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     private byte getTag(FrameSlot slot) {
-        int slotIndex = slot.getIndex();
-        if (slotIndex >= tags.length) {
-            if (!resize()) {
-                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
-            }
-        }
+        int slotIndex = getSlotIndexChecked(slot);
         return tags[slotIndex];
     }
 
