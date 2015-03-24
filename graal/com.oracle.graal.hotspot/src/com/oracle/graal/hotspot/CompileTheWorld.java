@@ -34,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.jar.*;
+import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
@@ -66,6 +67,8 @@ public final class CompileTheWorld {
         public static final OptionValue<Boolean> CompileTheWorldVerbose = new OptionValue<>(true);
         @Option(help = "The number of CompileTheWorld iterations to perform", type = OptionType.Debug)
         public static final OptionValue<Integer> CompileTheWorldIterations = new OptionValue<>(1);
+        @Option(help = "Only compile methods matching this filter", type = OptionType.Debug)
+        public static final OptionValue<String> CompileTheWorldMethodFilter = new OptionValue<>(null);
         @Option(help = "First class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
         public static final OptionValue<Integer> CompileTheWorldStartAt = new OptionValue<>(1);
         @Option(help = "Last class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
@@ -151,6 +154,9 @@ public final class CompileTheWorld {
     /** Class index to stop compilation at (see {@link Options#CompileTheWorldStopAt}). */
     private final int stopAt;
 
+    /** Only compile methods matching one of the filters in this array if the array is non-null. */
+    private final MethodFilter[] methodFilters;
+
     // Counters
     private int classFileCounter = 0;
     private AtomicLong compiledMethodsCounter = new AtomicLong();
@@ -174,10 +180,11 @@ public final class CompileTheWorld {
      * @param startAt index of the class file to start compilation at
      * @param stopAt index of the class file to stop compilation at
      */
-    public CompileTheWorld(String files, Config config, int startAt, int stopAt, boolean verbose) {
+    public CompileTheWorld(String files, Config config, int startAt, int stopAt, String methodFilters, boolean verbose) {
         this.files = files;
         this.startAt = startAt;
         this.stopAt = stopAt;
+        this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
         this.verbose = verbose;
         this.config = config;
 
@@ -265,7 +272,12 @@ public final class CompileTheWorld {
                     continue;
                 }
 
-                println("CompileTheWorld : Compiling all classes in " + entry);
+                if (methodFilters == null || methodFilters.length == 0) {
+                    println("CompileTheWorld : Compiling all classes in " + entry);
+                } else {
+                    println("CompileTheWorld : Compiling all methods in " + entry + " matching one of the following filters: " +
+                                    Arrays.asList(methodFilters).stream().map(MethodFilter::toString).collect(Collectors.joining(", ")));
+                }
                 println();
 
                 URL url = new URL("jar", "", "file:" + entry + "!/");
@@ -286,11 +298,16 @@ public final class CompileTheWorld {
                     }
 
                     String className = je.getName().substring(0, je.getName().length() - ".class".length());
+                    String dottedClassName = className.replace('/', '.');
                     classFileCounter++;
+
+                    if (methodFilters != null && !MethodFilter.matchesClassName(methodFilters, dottedClassName)) {
+                        continue;
+                    }
 
                     try {
                         // Load and initialize class
-                        Class<?> javaClass = Class.forName(className.replace('/', '.'), true, loader);
+                        Class<?> javaClass = Class.forName(dottedClassName, true, loader);
 
                         // Pre-load all classes in the constant pool.
                         try {
@@ -386,6 +403,9 @@ public final class CompileTheWorld {
     }
 
     private void compileMethod(HotSpotResolvedJavaMethod method) {
+        if (methodFilters != null && !MethodFilter.matches(methodFilters, method)) {
+            return;
+        }
         if (threadPool != null) {
             threadPool.submit(new Runnable() {
                 public void run() {

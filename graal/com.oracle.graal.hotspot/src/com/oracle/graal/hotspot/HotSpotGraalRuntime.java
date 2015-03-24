@@ -552,7 +552,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             getCompilerToVM().resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
             CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
-                            CompileTheWorldStopAt.getValue(), CompileTheWorldVerbose.getValue());
+                            CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
             ctw.compile();
         }
         System.exit(0);

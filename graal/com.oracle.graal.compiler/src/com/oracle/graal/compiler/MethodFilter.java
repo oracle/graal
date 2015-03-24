@@ -121,6 +121,18 @@ public class MethodFilter {
         return false;
     }
 
+    /**
+     * Determines if a given class name is matched by a given array of filters.
+     */
+    public static boolean matchesClassName(MethodFilter[] filters, String className) {
+        for (MethodFilter filter : filters) {
+            if (filter.matchesClassName(className)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public MethodFilter(String sourcePattern) {
         String pattern = sourcePattern.trim();
 
