@@ -42,6 +42,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
@@ -203,6 +204,11 @@ public final class CompileTheWorld {
      * files from the boot class path.
      */
     public void compile() throws Throwable {
+        // By default only report statistics for the CTW threads themselves
+        if (GraalDebugConfig.DebugValueThreadFilter.hasInitialValue()) {
+            GraalDebugConfig.DebugValueThreadFilter.setValue("^CompileTheWorld");
+        }
+
         if (SUN_BOOT_CLASS_PATH.equals(files)) {
             final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
             String bcpFiles = "";
@@ -248,18 +254,29 @@ public final class CompileTheWorld {
         final String[] entries = fileList.split(File.pathSeparator);
         long start = System.currentTimeMillis();
 
-        if (Options.CompileTheWorldMultiThreaded.getValue()) {
-            CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
-                public GraalDebugConfig getDebugConfig() {
+        CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
+            public GraalDebugConfig getDebugConfig() {
+                if (Debug.isEnabled() && DebugScope.getConfig() == null) {
                     return DebugEnvironment.initialize(System.out);
                 }
-            });
-            int threadCount = Options.CompileTheWorldThreads.getValue();
+                return null;
+            }
+        });
+
+        /*
+         * Always use a thread pool, even for single threaded mode since it simplifies the use of
+         * DebugValueThreadFilter to filter on the thread names.
+         */
+        int threadCount = 1;
+        if (Options.CompileTheWorldMultiThreaded.getValue()) {
+            threadCount = Options.CompileTheWorldThreads.getValue();
             if (threadCount == 0) {
                 threadCount = Runtime.getRuntime().availableProcessors();
             }
-            threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        } else {
+            running = true;
         }
+        threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
         try (OverrideScope s = config.apply()) {
             for (int i = 0; i < entries.length; i++) {
@@ -348,17 +365,17 @@ public final class CompileTheWorld {
             }
         }
 
-        if (threadPool != null) {
+        if (!running) {
             startThreads();
-            while (threadPool.getCompletedTaskCount() != threadPool.getTaskCount()) {
-                TTY.println("CompileTheWorld : Waiting for " + (threadPool.getTaskCount() - threadPool.getCompletedTaskCount()) + " compiles");
-                try {
-                    threadPool.awaitTermination(15, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                }
-            }
-            threadPool = null;
         }
+        while (threadPool.getCompletedTaskCount() != threadPool.getTaskCount()) {
+            TTY.println("CompileTheWorld : Waiting for " + (threadPool.getTaskCount() - threadPool.getCompletedTaskCount()) + " compiles");
+            try {
+                threadPool.awaitTermination(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+            }
+        }
+        threadPool = null;
 
         long elapsedTime = System.currentTimeMillis() - start;
 
@@ -402,21 +419,20 @@ public final class CompileTheWorld {
         }
     }
 
-    private void compileMethod(HotSpotResolvedJavaMethod method) {
+    private void compileMethod(HotSpotResolvedJavaMethod method) throws InterruptedException, ExecutionException {
         if (methodFilters != null && !MethodFilter.matches(methodFilters, method)) {
             return;
         }
-        if (threadPool != null) {
-            threadPool.submit(new Runnable() {
-                public void run() {
-                    waitToRun();
-                    try (OverrideScope s = config.apply()) {
-                        compileMethod(method, classFileCounter);
-                    }
+        Future<?> task = threadPool.submit(new Runnable() {
+            public void run() {
+                waitToRun();
+                try (OverrideScope s = config.apply()) {
+                    compileMethod(method, classFileCounter);
                 }
-            });
-        } else {
-            compileMethod(method, classFileCounter);
+            }
+        });
+        if (threadPool.getCorePoolSize() == 1) {
+            task.get();
         }
     }
 
