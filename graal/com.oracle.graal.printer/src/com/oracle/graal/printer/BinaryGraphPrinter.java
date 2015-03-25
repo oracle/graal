@@ -141,8 +141,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
         BlockMap<List<Node>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
+        NodeMap<Block> nodeToBlocks = schedule == null ? null : schedule.getNodeToBlockMap();
         List<Block> blocks = cfg == null ? null : cfg.getBlocks();
-        writeNodes(graph);
+        writeNodes(graph, nodeToBlocks);
         writeBlocks(blocks, blockToNodes);
     }
 
@@ -399,7 +400,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return node.getId();
     }
 
-    private void writeNodes(Graph graph) throws IOException {
+    private void writeNodes(Graph graph, NodeMap<Block> nodeToBlocks) throws IOException {
         ToDoubleFunction<FixedNode> probabilities = null;
         if (PrintGraphProbabilities.getValue()) {
             try {
@@ -419,6 +420,16 @@ public class BinaryGraphPrinter implements GraphPrinter {
                     props.put("probability", probabilities.applyAsDouble((FixedNode) node));
                 } catch (Throwable t) {
                     props.put("probability", t);
+                }
+            }
+            if (nodeToBlocks != null) {
+                if (nodeToBlocks.isNew(node)) {
+                    props.put("node-to-block", "NEW (not in schedule)");
+                } else {
+                    Block block = nodeToBlocks.get(node);
+                    if (block != null) {
+                        props.put("node-to-block", block.getId());
+                    }
                 }
             }
             writeInt(getNodeId(node));
