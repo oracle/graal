@@ -26,6 +26,8 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.regex.*;
+import java.util.stream.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
@@ -50,6 +52,12 @@ public class DebugValuesPrinter {
                 String summary = DebugValueSummary.getValue();
                 if (summary == null) {
                     summary = "Complete";
+                }
+                if (DebugValueThreadFilter.getValue() != null && topLevelMaps.size() != 0) {
+                    topLevelMaps = topLevelMaps.stream().filter(map -> Pattern.compile(DebugValueThreadFilter.getValue()).matcher(map.getName()).find()).collect(Collectors.toList());
+                    if (topLevelMaps.size() == 0) {
+                        TTY.println("Warning: DebugValueThreadFilter=%s eliminated all maps so nothing will be printed", DebugValueThreadFilter.getValue());
+                    }
                 }
                 switch (summary) {
                     case "Name":
