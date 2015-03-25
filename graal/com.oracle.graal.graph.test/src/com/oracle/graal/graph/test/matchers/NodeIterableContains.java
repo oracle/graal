@@ -35,19 +35,16 @@ public class NodeIterableContains<T extends Node> extends TypeSafeDiagnosingMatc
     }
 
     public void describeTo(Description description) {
-        description.appendText("is a NodeIterable containing").appendValue(node);
+        description.appendText("is a NodeIterable containing ").appendValue(node);
     }
 
     public static <T extends Node> NodeIterableContains<T> contains(T node) {
         return new NodeIterableContains<>(node);
     }
 
-    public static <T extends Node> NodeIterableContains<T> d(T node) {
-        return new NodeIterableContains<>(node);
-    }
-
     @Override
-    protected boolean matchesSafely(NodeIterable<T> iterable, Description description) {
+    protected boolean matchesSafely(NodeIterable<T> iterable, Description mismatchDescription) {
+        mismatchDescription.appendText("is a NodeIterable that does not contain ").appendValue(node);
         return iterable.contains(node);
     }
 }

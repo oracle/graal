@@ -23,29 +23,28 @@
 package com.oracle.graal.graph.test.matchers;
 
 import org.hamcrest.*;
-import org.hamcrest.core.*;
 
 import com.oracle.graal.graph.iterators.*;
 
-public class NodeIterableIsEmpty extends TypeSafeDiagnosingMatcher<NodeIterable<?>> {
+public class NodeIterableCount extends TypeSafeDiagnosingMatcher<NodeIterable<?>> {
+    private int count;
 
-    private static final NodeIterableIsEmpty INSTANCE = new NodeIterableIsEmpty();
+    public NodeIterableCount(int count) {
+        this.count = count;
+    }
 
     @Override
-    public boolean matchesSafely(NodeIterable<?> iterable, Description mismatchDescription) {
-        mismatchDescription.appendText("is a non-empty NodeIterable");
-        return iterable.isEmpty();
-    }
-
     public void describeTo(Description description) {
-        description.appendText("is an empty NodeIterable");
+        description.appendText("is a NodeIterable containing ").appendValue(count).appendText(" elements");
     }
 
-    public static Matcher<NodeIterable<?>> isEmpty() {
-        return INSTANCE;
+    public static NodeIterableCount hasCount(int count) {
+        return new NodeIterableCount(count);
     }
 
-    public static Matcher<NodeIterable<?>> isNotEmpty() {
-        return IsNot.not(INSTANCE);
+    @Override
+    protected boolean matchesSafely(NodeIterable<?> iterable, Description mismatchDescription) {
+        mismatchDescription.appendText("is a NodeIterable containing ").appendValue(iterable.count()).appendText(" elements");
+        return iterable.count() == count;
     }
 }
