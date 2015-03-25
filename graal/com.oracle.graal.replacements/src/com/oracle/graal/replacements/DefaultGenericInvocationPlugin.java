@@ -52,7 +52,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         if (wordOperationPlugin.apply(b, method, args)) {
             return true;
-        } else if (b.parsingReplacement() || b.eagerResolving()) {
+        } else if (b.parsingReplacement()) {
             NodeIntrinsic intrinsic = nodeIntrinsification.getIntrinsic(method);
             if (intrinsic != null) {
                 Signature sig = method.getSignature();
