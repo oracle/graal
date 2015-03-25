@@ -351,7 +351,7 @@ public final class CompileTheWorld {
         if (threadPool != null) {
             startThreads();
             while (threadPool.getCompletedTaskCount() != threadPool.getTaskCount()) {
-                System.out.println("CompileTheWorld : Waiting for " + (threadPool.getTaskCount() - threadPool.getCompletedTaskCount()) + " compiles");
+                TTY.println("CompileTheWorld : Waiting for " + (threadPool.getTaskCount() - threadPool.getCompletedTaskCount()) + " compiles");
                 try {
                     threadPool.awaitTermination(15, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
@@ -364,10 +364,10 @@ public final class CompileTheWorld {
 
         println();
         if (Options.CompileTheWorldMultiThreaded.getValue()) {
-            println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), elapsedTime,
+            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), elapsedTime,
                             compileTime.get(), memoryUsed.get());
         } else {
-            println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
+            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
         }
     }
 
