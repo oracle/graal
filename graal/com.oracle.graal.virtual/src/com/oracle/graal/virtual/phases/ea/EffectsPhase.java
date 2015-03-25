@@ -83,33 +83,36 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                     schedule.apply(graph, false);
                     cfg = schedule.getCFG();
                 }
+                try (Scope scheduleScope = Debug.scope("EffectsPhaseWithSchedule", schedule)) {
+                    Closure<?> closure = createEffectsClosure(context, schedule, cfg);
+                    ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
 
-                Closure<?> closure = createEffectsClosure(context, schedule, cfg);
-                ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
-
-                if (!closure.hasChanged()) {
-                    break;
-                }
-
-                // apply the effects collected during this iteration
-                HashSetNodeEventListener listener = new HashSetNodeEventListener();
-                try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                    closure.applyEffects();
-                }
-
-                if (Debug.isDumpEnabled()) {
-                    Debug.dump(graph, "after " + getName() + " iteration");
-                }
-
-                new DeadCodeEliminationPhase(Required).apply(graph);
-
-                Set<Node> changedNodes = listener.getNodes();
-                for (Node node : graph.getNodes()) {
-                    if (node instanceof Simplifiable) {
-                        changedNodes.add(node);
+                    if (!closure.hasChanged()) {
+                        break;
                     }
+
+                    // apply the effects collected during this iteration
+                    HashSetNodeEventListener listener = new HashSetNodeEventListener();
+                    try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                        closure.applyEffects();
+                    }
+
+                    if (Debug.isDumpEnabled()) {
+                        Debug.dump(graph, "after " + getName() + " iteration");
+                    }
+
+                    new DeadCodeEliminationPhase(Required).apply(graph);
+
+                    Set<Node> changedNodes = listener.getNodes();
+                    for (Node node : graph.getNodes()) {
+                        if (node instanceof Simplifiable) {
+                            changedNodes.add(node);
+                        }
+                    }
+                    postIteration(graph, context, changedNodes);
+                } catch (Throwable t) {
+                    throw Debug.handle(t);
                 }
-                postIteration(graph, context, changedNodes);
             }
             changed = true;
         }
