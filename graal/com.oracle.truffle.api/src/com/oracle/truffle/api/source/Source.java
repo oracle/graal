@@ -84,7 +84,7 @@ public abstract class Source {
     private static final List<WeakReference<Source>> allSources = Collections.synchronizedList(new ArrayList<WeakReference<Source>>());
 
     // Files and pseudo files are indexed.
-    private static final Map<String, WeakReference<Source>> filePathToSource = new Hashtable<>();
+    private static final Map<String, WeakReference<Source>> filePathToSource = new HashMap<>();
 
     private static boolean fileCacheEnabled = true;
 

@@ -5,7 +5,7 @@
     This configuration file was written by the eclipse-cs plugin configuration editor
 -->
 <!--
-    Checkstyle-Configuration: Maxine Checks
+    Checkstyle-Configuration: Checks
     Description: none
 -->
 <module name="Checker">
@@ -122,8 +122,12 @@
       <property name="format" value=" ,"/>
       <property name="message" value="illegal space before a comma"/>
       <property name="ignoreComments" value="true"/>
-      <metadata name="com.atlassw.tools.eclipse.checkstyle.customMessage" value="Illegal whitespace before a comma."/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Checks for whitespace before a comma."/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.customMessage" value="Illegal whitespace before a comma."/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="new (Hashtable|Vector|Stack|StringBuffer)[^\w]"/>
+      <property name="message" value="Don't use old synchronized collection classes"/>
     </module>
   </module>
   <module name="RegexpHeader">
