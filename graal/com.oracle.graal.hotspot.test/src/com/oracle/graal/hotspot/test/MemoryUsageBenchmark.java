@@ -63,7 +63,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             return cs.hashCode();
         }
 
-        if (cs instanceof StringBuffer) {
+        if (cs instanceof StringBuilder) {
             int[] hash = {0};
             cs.chars().forEach(c -> hash[0] += c);
             return hash[0];
