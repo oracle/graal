@@ -296,7 +296,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private final boolean explodeLoops;
             private final boolean mergeExplosions;
             private final Map<HIRFrameStateBuilder, Integer> mergeExplosionsMap;
-            private Stack<ExplodedLoopContext> explodeLoopsContext;
+            private Deque<ExplodedLoopContext> explodeLoopsContext;
             private int nextPeelIteration = 1;
             private boolean controlFlowSplit;
             private final InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(this);
@@ -452,7 +452,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void detectLoops(FixedNode startInstruction) {
                 NodeBitMap visited = currentGraph.createNodeBitMap();
                 NodeBitMap active = currentGraph.createNodeBitMap();
-                Stack<Node> stack = new Stack<>();
+                Deque<Node> stack = new ArrayDeque<>();
                 stack.add(startInstruction);
                 visited.mark(startInstruction);
                 while (!stack.isEmpty()) {
@@ -498,7 +498,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private void insertLoopEnds(FixedNode startInstruction) {
                 NodeBitMap visited = currentGraph.createNodeBitMap();
-                Stack<Node> stack = new Stack<>();
+                Deque<Node> stack = new ArrayDeque<>();
                 stack.add(startInstruction);
                 visited.mark(startInstruction);
                 List<LoopBeginNode> loopBegins = new ArrayList<>();
@@ -538,7 +538,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private void insertLoopExits(LoopBeginNode loopBegin, IdentityHashMap<LoopBeginNode, List<LoopBeginNode>> innerLoopsMap) {
                 NodeBitMap visited = currentGraph.createNodeBitMap();
-                Stack<Node> stack = new Stack<>();
+                Deque<Node> stack = new ArrayDeque<>();
                 for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
                     stack.push(loopEnd);
                     visited.mark(loopEnd);
@@ -622,7 +622,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private int iterateExplodedLoopHeader(BciBlock[] blocks, BciBlock header) {
                 if (explodeLoopsContext == null) {
-                    explodeLoopsContext = new Stack<>();
+                    explodeLoopsContext = new ArrayDeque<>();
                 }
 
                 ExplodedLoopContext context = new ExplodedLoopContext();
@@ -1870,9 +1870,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private int findOperatingDimensionWithLoopExplosion(BciBlock block, HIRFrameStateBuilder state) {
-                int i;
-                for (i = explodeLoopsContext.size() - 1; i >= 0; --i) {
-                    ExplodedLoopContext context = explodeLoopsContext.elementAt(i);
+                for (ExplodedLoopContext context : explodeLoopsContext) {
                     if (context.header == block) {
 
                         if (this.mergeExplosions) {

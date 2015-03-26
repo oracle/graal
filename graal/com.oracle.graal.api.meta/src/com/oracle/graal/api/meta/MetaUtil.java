@@ -51,7 +51,7 @@ public class MetaUtil {
      */
     public static long getMemorySizeRecursive(MetaAccessProvider access, ConstantReflectionProvider constantReflection, JavaConstant constant, PrintStream out, int printTopN) {
         Set<JavaConstant> marked = new HashSet<>();
-        Stack<JavaConstant> stack = new Stack<>();
+        Deque<JavaConstant> stack = new ArrayDeque<>();
         if (constant.getKind() == Kind.Object && constant.isNonNull()) {
             marked.add(constant);
         }
@@ -120,7 +120,7 @@ public class MetaUtil {
         return sum;
     }
 
-    private static void pushConstant(Set<JavaConstant> marked, Stack<JavaConstant> stack, JavaConstant value) {
+    private static void pushConstant(Set<JavaConstant> marked, Deque<JavaConstant> stack, JavaConstant value) {
         if (value.isNonNull()) {
             if (!marked.contains(value)) {
                 marked.add(value);

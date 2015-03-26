@@ -300,7 +300,7 @@ public class CompressedOopTest extends GraalCompilerTest {
     @Test
     public void test14() throws Exception {
         HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBufferTest", Object.class, Object.class);
-        StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
+        StringBuilder buffer = new StringBuilder("TestTestTestTestTestTestTest");
         Assert.assertTrue(buffer.length() == 28);
         String a = new String("TestTestTestTestTestTestTest");
         installedBenchmarkCode.executeVarargs(buffer, a.toCharArray());
@@ -323,7 +323,7 @@ public class CompressedOopTest extends GraalCompilerTest {
     }
 
     public static void stringBufferTestIn() {
-        StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
+        StringBuilder buffer = new StringBuilder("TestTestTestTestTestTestTest");
         Assert.assertTrue(buffer.length() == 28);
         String a = new String("TestTestTestTestTestTestTest");
         char[] add = a.toCharArray();
@@ -341,7 +341,7 @@ public class CompressedOopTest extends GraalCompilerTest {
     }
 
     public static void stringBufferArrayCopy() {
-        StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
+        StringBuilder buffer = new StringBuilder("TestTestTestTestTestTestTest");
         Assert.assertTrue(buffer.length() == 28);
         String a = new String("TestTestTestTestTestTestTest");
         char[] dst = new char[buffer.length() * 2];

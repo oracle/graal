@@ -130,13 +130,13 @@ public class DominatorConditionalEliminationPhase extends Phase {
     private static class Instance {
 
         private final NodeMap<Info> map;
-        private final Stack<LoopExitNode> loopExits;
+        private final Deque<LoopExitNode> loopExits;
         private final Function<Block, Iterable<? extends Node>> blockToNodes;
         private final Function<Node, Block> nodeToBlock;
 
         public Instance(StructuredGraph graph, Function<Block, Iterable<? extends Node>> blockToNodes, Function<Node, Block> nodeToBlock) {
             map = graph.createNodeMap();
-            loopExits = new Stack<>();
+            loopExits = new ArrayDeque<>();
             this.blockToNodes = blockToNodes;
             this.nodeToBlock = nodeToBlock;
         }
@@ -282,8 +282,8 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 }
                 Block guardBlock = nodeToBlock.apply(proxiedGuard);
                 assert guardBlock != null;
-                for (int i = 0; i < loopExits.size(); ++i) {
-                    LoopExitNode loopExitNode = loopExits.get(i);
+                for (Iterator<LoopExitNode> iter = loopExits.descendingIterator(); iter.hasNext();) {
+                    LoopExitNode loopExitNode = iter.next();
                     Block loopExitBlock = nodeToBlock.apply(loopExitNode);
                     if (guardBlock != loopExitBlock && AbstractControlFlowGraph.dominates(guardBlock, loopExitBlock)) {
                         Block loopBeginBlock = nodeToBlock.apply(loopExitNode.loopBegin());

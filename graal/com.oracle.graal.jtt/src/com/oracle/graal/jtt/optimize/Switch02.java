@@ -89,7 +89,7 @@ public class Switch02 extends JTTTest {
                 break;
             case (char) 0xFFFF - 21:
                 result = 858112498 / val;
-                x = new Hashtable<>();
+                x = new HashMap<>();
                 break;
             default:
                 result = 34324341 / val;
@@ -142,7 +142,7 @@ public class Switch02 extends JTTTest {
                 break;
             case (short) -0x7FFF + 21:
                 result = 858112498 / val;
-                x = new Hashtable<>();
+                x = new HashMap<>();
                 break;
             default:
                 result = 34324341 / val;
@@ -198,7 +198,7 @@ public class Switch02 extends JTTTest {
                 break;
             case (byte) -0x7F + 21:
                 result = 858112498 / val;
-                x = new Hashtable<>();
+                x = new HashMap<>();
                 break;
             default:
                 result = 34324341 / val;

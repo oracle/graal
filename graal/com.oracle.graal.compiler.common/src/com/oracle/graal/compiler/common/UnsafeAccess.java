@@ -65,7 +65,7 @@ public class UnsafeAccess {
         if (address == 0) {
             return null;
         }
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         for (int i = 0;; i++) {
             char c = (char) unsafe.getByte(address + i);
             if (c == 0) {
