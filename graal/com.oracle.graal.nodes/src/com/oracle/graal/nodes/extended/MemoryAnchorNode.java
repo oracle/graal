@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodeinfo.StructuralInput.Memory;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
@@ -47,4 +47,7 @@ public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowe
     public Node canonical(CanonicalizerTool tool) {
         return hasNoUsages() ? null : this;
     }
+
+    @NodeIntrinsic
+    public static native Memory anchor();
 }
