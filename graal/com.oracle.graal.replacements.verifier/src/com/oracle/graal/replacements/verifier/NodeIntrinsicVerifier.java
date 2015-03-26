@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,8 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.InjectedNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
 
 public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
@@ -53,6 +55,10 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
     private TypeMirror resolvedJavaTypeType() {
         return env.getElementUtils().getTypeElement("com.oracle.graal.api.meta.ResolvedJavaType").asType();
+    }
+
+    private TypeMirror structuralInputType() {
+        return env.getElementUtils().getTypeElement("com.oracle.graal.nodeinfo.StructuralInput").asType();
     }
 
     public NodeIntrinsicVerifier(ProcessingEnvironment env) {
@@ -100,12 +106,50 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
             if (nodeClass.getModifiers().contains(Modifier.ABSTRACT)) {
                 env.getMessager().printMessage(Kind.ERROR, String.format("Cannot make @NodeIntrinsic for abstract node class %s.", nodeClass.getSimpleName()), element, annotation);
             } else {
+                TypeMirror ret = intrinsicMethod.getReturnType();
+                if (env.getTypeUtils().isAssignable(ret, structuralInputType())) {
+                    checkInputType(nodeClass, ret, element, annotation);
+                }
+
                 TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
                 findConstructor(nodeClass, constructorSignature, intrinsicMethod, annotation);
             }
         } else {
             env.getMessager().printMessage(Kind.ERROR, String.format("The class %s is not a Node subclass.", nodeClass.getSimpleName()), element, annotation);
         }
+    }
+
+    private void checkInputType(TypeElement nodeClass, TypeMirror returnType, Element element, AnnotationMirror annotation) {
+        InputType inputType = getInputType(returnType, element, annotation);
+        if (inputType != InputType.Value) {
+            boolean allowed = false;
+            InputType[] allowedTypes = nodeClass.getAnnotation(NodeInfo.class).allowedUsageTypes();
+            for (InputType allowedType : allowedTypes) {
+                if (inputType == allowedType) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                env.getMessager().printMessage(Kind.ERROR, String.format("@NodeIntrinsic returns input type %s, but only %s is allowed.", inputType, Arrays.toString(allowedTypes)), element,
+                                annotation);
+            }
+        }
+    }
+
+    private InputType getInputType(TypeMirror type, Element element, AnnotationMirror annotation) {
+        TypeElement current = (TypeElement) env.getTypeUtils().asElement(type);
+        while (current != null) {
+            MarkerType markerType = current.getAnnotation(MarkerType.class);
+            if (markerType != null) {
+                return markerType.value();
+            }
+
+            current = (TypeElement) env.getTypeUtils().asElement(current.getSuperclass());
+        }
+
+        env.getMessager().printMessage(Kind.ERROR, String.format("The class %s is a subclass of StructuralInput, but isn't annotated with @MarkerType.", type), element, annotation);
+        return InputType.Value;
     }
 
     private boolean isNodeType(TypeElement nodeClass) {
