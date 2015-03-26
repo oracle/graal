@@ -29,9 +29,12 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
@@ -44,9 +47,13 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
     protected final NodeIntrinsificationPhase nodeIntrinsification;
     protected final WordOperationPlugin wordOperationPlugin;
 
-    public DefaultGenericInvocationPlugin(NodeIntrinsificationPhase nodeIntrinsification, WordOperationPlugin wordOperationPlugin) {
+    private final ResolvedJavaType structuralInputType;
+
+    public DefaultGenericInvocationPlugin(MetaAccessProvider metaAccess, NodeIntrinsificationPhase nodeIntrinsification, WordOperationPlugin wordOperationPlugin) {
         this.nodeIntrinsification = nodeIntrinsification;
         this.wordOperationPlugin = wordOperationPlugin;
+
+        this.structuralInputType = metaAccess.lookupJavaType(StructuralInput.class);
     }
 
     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
@@ -91,6 +98,24 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         return false;
     }
 
+    private InputType getInputType(ObjectStamp stamp) {
+        ResolvedJavaType type = stamp.type();
+        if (type != null && structuralInputType.isAssignableFrom(type)) {
+            while (type != null) {
+                MarkerType markerType = type.getAnnotation(MarkerType.class);
+                if (markerType != null) {
+                    return markerType.value();
+                }
+
+                type = type.getSuperclass();
+            }
+
+            throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", stamp.type()));
+        } else {
+            return InputType.Value;
+        }
+    }
+
     protected boolean processNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Kind returnKind, Stamp stamp) {
         ValueNode res = createNodeIntrinsic(b, method, intrinsic, args, stamp);
         if (res == null) {
@@ -107,7 +132,16 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         }
 
         res = b.append(res);
-        if (returnKind != Kind.Void) {
+
+        InputType inputType = InputType.Value;
+        if (returnKind == Kind.Object && stamp instanceof ObjectStamp) {
+            inputType = getInputType((ObjectStamp) stamp);
+        }
+
+        if (inputType != InputType.Value) {
+            assert res.isAllowedUsageType(inputType);
+            b.push(Kind.Object, res);
+        } else if (returnKind != Kind.Void) {
             assert res.getKind().getStackKind() != Kind.Void;
             b.push(returnKind.getStackKind(), res);
         } else {

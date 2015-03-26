@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -255,6 +255,11 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected MemoryMapImpl processNode(FixedNode node, MemoryMapImpl state) {
+            if (node instanceof MemoryAnchorNode) {
+                processAnchor((MemoryAnchorNode) node, state);
+                return state;
+            }
+
             if (node instanceof MemoryAccess) {
                 processAccess((MemoryAccess) node, state);
             }
@@ -272,6 +277,28 @@ public class FloatingReadPhase extends Phase {
                 ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.lastMemorySnapshot)));
             }
             return state;
+        }
+
+        /**
+         * Improve the memory graph by re-wiring all usages of a {@link MemoryAnchorNode} to the
+         * real last access location.
+         */
+        private static void processAnchor(MemoryAnchorNode anchor, MemoryMapImpl state) {
+            for (Node node : anchor.usages().snapshot()) {
+                if (node instanceof MemoryAccess) {
+                    MemoryAccess access = (MemoryAccess) node;
+                    if (access.getLastLocationAccess() == anchor) {
+                        MemoryNode lastLocationAccess = state.getLastLocationAccess(access.getLocationIdentity());
+                        if (lastLocationAccess != null) {
+                            access.setLastLocationAccess(lastLocationAccess);
+                        }
+                    }
+                }
+            }
+
+            if (anchor.hasNoUsages()) {
+                anchor.graph().removeFixed(anchor);
+            }
         }
 
         private static void processAccess(MemoryAccess access, MemoryMapImpl state) {
