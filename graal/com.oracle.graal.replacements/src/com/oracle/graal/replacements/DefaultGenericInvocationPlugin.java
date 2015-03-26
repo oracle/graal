@@ -50,7 +50,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
     }
 
     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        if (wordOperationPlugin.apply(b, method, args)) {
+        if (b.parsingReplacement() && wordOperationPlugin.apply(b, method, args)) {
             return true;
         } else if (b.parsingReplacement()) {
             NodeIntrinsic intrinsic = nodeIntrinsification.getIntrinsic(method);

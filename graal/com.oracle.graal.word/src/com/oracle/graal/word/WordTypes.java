@@ -91,6 +91,7 @@ public class WordTypes {
             assert wordImplType.isLinked();
             wordMethod = wordImplType.resolveConcreteMethod(targetMethod, callingContextType);
         }
+        assert wordMethod != null : targetMethod;
         assert wordMethod.getAnnotation(Operation.class) != null : wordMethod;
         return wordMethod;
     }
