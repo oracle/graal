@@ -174,7 +174,7 @@ public class MethodFilter {
         } else if (pattern.contains(".")) {
             return Pattern.compile(createGlobString(pattern));
         } else {
-            return Pattern.compile("([^\\.]*\\.)*" + createGlobString(pattern));
+            return Pattern.compile("([^\\.\\$]*[\\.\\$])*" + createGlobString(pattern));
         }
     }
 
