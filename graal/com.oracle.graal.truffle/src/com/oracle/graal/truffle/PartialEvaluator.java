@@ -209,7 +209,7 @@ public class PartialEvaluator {
                     return inlineInfo;
                 }
             }
-            if (replacements != null && (replacements.getMethodSubstitutionMethod(original) != null || replacements.getMacroSubstitution(original) != null)) {
+            if (replacements != null && replacements.getMethodSubstitutionMethod(original) != null) {
                 return null;
             }
             assert !builder.parsingReplacement();
@@ -340,14 +340,9 @@ public class PartialEvaluator {
         new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
-            if (macroSubstitution != null) {
-                InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
-            } else {
-                StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
-                if (inlineGraph != null) {
-                    InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, null);
-                }
+            StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
+            if (inlineGraph != null) {
+                InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, null);
             }
         }
 
@@ -519,12 +514,6 @@ public class PartialEvaluator {
                         }
 
                         Replacements replacements = providers.getReplacements();
-                        Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
-                        if (macroSubstitution != null) {
-                            InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
-                            changed = changedInIteration = true;
-                            continue;
-                        }
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
 
                         ResolvedJavaMethod targetMethod = methodCallTargetNode.targetMethod();

@@ -123,15 +123,11 @@ public class MethodInvocation {
 
     public CallsiteHolder buildCallsiteHolderForElement(int index) {
         Inlineable elem = callee.inlineableElementAt(index);
-        if (elem instanceof InlineableGraph) {
-            InlineableGraph ig = (InlineableGraph) elem;
-            final double invokeProbability = probability * callee.probabilityAt(index);
-            final double invokeRelevance = relevance * callee.relevanceAt(index);
-            return new CallsiteHolderExplorable(ig.getGraph(), invokeProbability, invokeRelevance, freshlyInstantiatedArguments);
-        } else {
-            assert elem instanceof InlineableMacroNode;
-            return CallsiteHolderDummy.DUMMY_CALLSITE_HOLDER;
-        }
+        assert elem instanceof InlineableGraph;
+        InlineableGraph ig = (InlineableGraph) elem;
+        final double invokeProbability = probability * callee.probabilityAt(index);
+        final double invokeRelevance = relevance * callee.relevanceAt(index);
+        return new CallsiteHolderExplorable(ig.getGraph(), invokeProbability, invokeRelevance, freshlyInstantiatedArguments);
     }
 
     @Override

@@ -47,7 +47,7 @@ public interface Replacements {
      *
      * @param recursiveEntry if the snippet contains a call to this method, it's considered as
      *            recursive call and won't be processed for {@linkplain MethodSubstitution
-     *            substitutions} or {@linkplain MacroSubstitution macro nodes}.
+     *            substitutions}.
      * @param args arguments to the snippet if available, otherwise {@code null}
      * @return the snippet graph, if any, that is derived from {@code method}
      */
@@ -82,17 +82,8 @@ public interface Replacements {
     ResolvedJavaMethod getMethodSubstitutionMethod(ResolvedJavaMethod method);
 
     /**
-     * Gets the node class with which a method invocation should be replaced.
-     *
-     * @param method target of an invocation
-     * @return the {@linkplain MacroSubstitution#macro() macro node class} associated with
-     *         {@code method} or null if there is no such association
-     */
-    Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method);
-
-    /**
-     * Registers all the {@linkplain MethodSubstitution method} and {@linkplain MacroSubstitution
-     * macro} substitutions defined by a given class.
+     * Registers all the {@linkplain MethodSubstitution method} substitutions defined by a given
+     * class.
      *
      * @param original the original class for which substitutions are being registered. This must be
      *            the same type denoted by the {@link ClassSubstitution} annotation on

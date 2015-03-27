@@ -59,15 +59,6 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
-        Class<? extends FixedWithNextNode> clazz = graalReplacements.getMacroSubstitution(method);
-        if (clazz == null) {
-            return super.getMacroSubstitution(method);
-        }
-        return clazz;
-    }
-
-    @Override
     public Collection<ResolvedJavaMethod> getAllReplacements() {
         throw GraalInternalError.shouldNotReachHere();
     }

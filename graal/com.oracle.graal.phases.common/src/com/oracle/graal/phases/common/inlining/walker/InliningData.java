@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common.inlining.walker;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.phases.common.inlining.walker.CallsiteHolderDummy.*;
 
 import java.util.*;
 
@@ -560,7 +559,7 @@ public class InliningData {
         assert graphQueue.size() <= maxGraphs;
         for (int i = 0; i < info.numberOfMethods(); i++) {
             CallsiteHolder ch = methodInvocation.buildCallsiteHolderForElement(i);
-            assert (ch == DUMMY_CALLSITE_HOLDER) || !contains(ch.graph());
+            assert !contains(ch.graph());
             graphQueue.push(ch);
             assert graphQueue.size() <= maxGraphs;
         }
@@ -733,12 +732,8 @@ public class InliningData {
             }
             CallsiteHolder queuedTargetCH = iter.next();
             Inlineable targetIE = currentInvocation().callee().inlineableElementAt(i);
-            if (targetIE instanceof InlineableMacroNode) {
-                assert queuedTargetCH == DUMMY_CALLSITE_HOLDER;
-            } else {
-                InlineableGraph targetIG = (InlineableGraph) targetIE;
-                assert queuedTargetCH.method().equals(targetIG.getGraph().method());
-            }
+            InlineableGraph targetIG = (InlineableGraph) targetIE;
+            assert queuedTargetCH.method().equals(targetIG.getGraph().method());
         }
         return true;
     }

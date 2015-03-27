@@ -574,15 +574,11 @@ public class InliningUtil {
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target) {
-        return replacements.getMethodSubstitutionMethod(target) != null || getMacroNodeClass(replacements, target) != null;
+        return replacements.getMethodSubstitutionMethod(target) != null;
     }
 
     public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target) {
         return replacements.getMethodSubstitution(target);
-    }
-
-    public static Class<? extends FixedWithNextNode> getMacroNodeClass(Replacements replacements, ResolvedJavaMethod target) {
-        return replacements.getMacroSubstitution(target);
     }
 
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalInternalError {

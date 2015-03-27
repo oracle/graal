@@ -236,12 +236,7 @@ public class TruffleCacheImpl implements TruffleCache {
         for (Node newNode : graph.getNewNodes(mark)) {
             if (newNode instanceof MethodCallTargetNode) {
                 MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
-                Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
-                if (macroSubstitution != null) {
-                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), macroSubstitution);
-                } else {
-                    tryCutOffRuntimeExceptionsAndErrors(methodCallTargetNode);
-                }
+                tryCutOffRuntimeExceptionsAndErrors(methodCallTargetNode);
             }
         }
         return graph.getMark();
