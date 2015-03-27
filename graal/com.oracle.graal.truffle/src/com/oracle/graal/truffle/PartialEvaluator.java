@@ -362,6 +362,9 @@ public class PartialEvaluator {
         } catch (Throwable t) {
             Debug.handle(t);
         }
+
+        // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
+        ComputeLoopFrequenciesClosure.compute(graph);
     }
 
     private void partialEvaluation(final OptimizedCallTarget callTarget, final StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
