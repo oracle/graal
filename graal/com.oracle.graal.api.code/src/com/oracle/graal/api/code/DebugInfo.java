@@ -24,6 +24,8 @@ package com.oracle.graal.api.code;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
+
 /**
  * Represents the debugging information for a particular point of execution. This information
  * includes:
@@ -40,6 +42,7 @@ public final class DebugInfo {
 
     private final BytecodePosition bytecodePosition;
     private final ReferenceMap referenceMap;
+    @SuppressWarnings("unused") private final Value[] virtualObjectMapping;
     private RegisterSaveLayout calleeSaveInfo;
 
     /**
@@ -48,10 +51,16 @@ public final class DebugInfo {
      * @param codePos the {@linkplain BytecodePosition code position} or {@linkplain BytecodeFrame
      *            frame} info
      * @param referenceMap the reference map
+     * @param virtualObjectMapping the mapping of {@link VirtualObject}s to their real values
      */
-    public DebugInfo(BytecodePosition codePos, ReferenceMap referenceMap) {
+    public DebugInfo(BytecodePosition codePos, ReferenceMap referenceMap, Value[] virtualObjectMapping) {
         this.bytecodePosition = codePos;
         this.referenceMap = referenceMap;
+        this.virtualObjectMapping = virtualObjectMapping;
+    }
+
+    public DebugInfo(BytecodePosition codePos) {
+        this(codePos, null, null);
     }
 
     /**

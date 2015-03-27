@@ -130,7 +130,7 @@ public class LIRFrameState {
      * @param canHaveRegisters True if there can be any register map entries.
      */
     public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
-        debugInfo = new DebugInfo(topFrame, frameMap.initReferenceMap(canHaveRegisters));
+        debugInfo = new DebugInfo(topFrame, frameMap.initReferenceMap(canHaveRegisters), virtualObjects);
     }
 
     /**
