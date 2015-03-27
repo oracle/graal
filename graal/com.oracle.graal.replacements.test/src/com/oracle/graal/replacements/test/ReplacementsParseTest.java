@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.test;
 
+import java.util.function.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
@@ -34,6 +36,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.runtime.*;
 
+/**
+ * Tests for expected behavior when parsing snippets and intrinsics.
+ */
 public class ReplacementsParseTest extends GraalCompilerTest {
 
     private static final Object THROW_EXCEPTION_MARKER = new Object() {
@@ -64,6 +69,10 @@ public class ReplacementsParseTest extends GraalCompilerTest {
             }
             return res;
         }
+
+        static String identity(String s) {
+            return s;
+        }
     }
 
     @ClassSubstitution(TestMethods.class)
@@ -75,11 +84,17 @@ public class ReplacementsParseTest extends GraalCompilerTest {
             return Math.nextAfter(xx, d);
         }
 
+        /**
+         * Tests partial intrinsification.
+         */
         @MethodSubstitution
         static String stringize(Object obj) {
             if (obj != null && obj.getClass() == String.class) {
                 return asNonNullString(obj);
             } else {
+                // A recursive call denotes exiting/deoptimizing
+                // out of the partial intrinsification to the
+                // slow/uncommon case.
                 return stringize(obj);
             }
         }
@@ -91,6 +106,17 @@ public class ReplacementsParseTest extends GraalCompilerTest {
         @NodeIntrinsic(PiNode.class)
         private static native String asNonNullStringIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
 
+        /**
+         * Tests that non-capturing lambdas are folded away.
+         */
+        @MethodSubstitution
+        static String identity(String value) {
+            return apply(s -> s, value);
+        }
+
+        private static String apply(Function<String, String> f, String value) {
+            return f.apply(value);
+        }
     }
 
     private static boolean substitutionsInstalled;
@@ -156,7 +182,7 @@ public class ReplacementsParseTest extends GraalCompilerTest {
         test("callStringize", Boolean.TRUE);
     }
 
-    public Object callStringize(Object obj) {
+    public static Object callStringize(Object obj) {
         return TestMethods.stringize(obj);
     }
 
@@ -166,5 +192,15 @@ public class ReplacementsParseTest extends GraalCompilerTest {
         test(method, null, "a string");
         test(method, null, Boolean.TRUE);
         test(method, null, THROW_EXCEPTION_MARKER);
+    }
+
+    @Test
+    public void testLambda() {
+        test("callLambda", (String) null);
+        test("callLambda", "a string");
+    }
+
+    public static String callLambda(String value) {
+        return TestMethods.identity(value);
     }
 }

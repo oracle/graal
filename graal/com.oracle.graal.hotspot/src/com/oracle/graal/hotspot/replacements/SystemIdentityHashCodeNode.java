@@ -29,6 +29,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
@@ -36,8 +37,8 @@ public final class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
 
     public static final NodeClass<SystemIdentityHashCodeNode> TYPE = NodeClass.create(SystemIdentityHashCodeNode.class);
 
-    public SystemIdentityHashCodeNode(Invoke invoke) {
-        super(TYPE, invoke);
+    public SystemIdentityHashCodeNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode object) {
+        super(TYPE, invokeKind, targetMethod, bci, returnType, object);
     }
 
     @Override

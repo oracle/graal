@@ -27,10 +27,8 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -39,7 +37,6 @@ import com.oracle.graal.word.*;
 @ClassSubstitution(java.lang.Class.class)
 public class HotSpotClassSubstitutions {
 
-    @MacroSubstitution(macro = ClassGetModifiersNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static int getModifiers(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
@@ -51,8 +48,6 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    // This MacroSubstitution should be removed once non-null klass pointers can be optimized
-    @MacroSubstitution(macro = ClassIsInterfaceNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isInterface(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
@@ -64,8 +59,6 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    // This MacroSubstitution should be removed once non-null klass pointers can be optimized
-    @MacroSubstitution(macro = ClassIsArrayNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isArray(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
@@ -76,18 +69,14 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    // This MacroSubstitution should be removed once non-null klass pointers can be optimized
-    @MacroSubstitution(macro = ClassIsPrimitiveNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isPrimitive(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         return klass.isNull();
     }
 
-    @MacroSubstitution(macro = ClassGetClassLoader0Node.class, isStatic = false)
     public static native ClassLoader getClassLoader0(Class<?> thisObj);
 
-    @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
@@ -113,7 +102,6 @@ public class HotSpotClassSubstitutions {
         return PiNode.asNonNullClass(klass.readObject(classMirrorOffset(), CLASS_MIRROR_LOCATION));
     }
 
-    @MacroSubstitution(macro = ClassGetComponentTypeNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
@@ -124,7 +112,4 @@ public class HotSpotClassSubstitutions {
         }
         return null;
     }
-
-    @MacroSubstitution(macro = ClassCastNode.class, isStatic = false)
-    public static native Object cast(final Class<?> thisObj, Object obj);
 }

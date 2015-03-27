@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 /**
  * This node class can be used to create {@link MacroNode}s for simple pure functions like
@@ -37,8 +38,8 @@ public abstract class PureFunctionMacroNode extends MacroStateSplitNode implemen
 
     public static final NodeClass<PureFunctionMacroNode> TYPE = NodeClass.create(PureFunctionMacroNode.class);
 
-    protected PureFunctionMacroNode(NodeClass<? extends PureFunctionMacroNode> c, Invoke invoke) {
-        super(c, invoke);
+    public PureFunctionMacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(c, invokeKind, targetMethod, bci, returnType, arguments);
     }
 
     /**

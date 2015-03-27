@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
@@ -41,9 +42,8 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
     public static final NodeClass<MacroStateSplitNode> TYPE = NodeClass.create(MacroStateSplitNode.class);
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public MacroStateSplitNode(NodeClass<? extends MacroStateSplitNode> c, Invoke invoke) {
-        super(c, invoke);
-        this.stateAfter = invoke.stateAfter();
+    protected MacroStateSplitNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(c, invokeKind, targetMethod, bci, returnType, arguments);
     }
 
     @Override

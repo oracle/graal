@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -40,8 +41,8 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
 
     public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
 
-    protected BasicObjectCloneNode(NodeClass<? extends BasicObjectCloneNode> c, Invoke invoke) {
-        super(c, invoke);
+    public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(c, invokeKind, targetMethod, bci, returnType, arguments);
     }
 
     @Override

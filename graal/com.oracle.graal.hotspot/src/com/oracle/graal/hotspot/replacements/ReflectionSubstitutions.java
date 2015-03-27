@@ -29,16 +29,12 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
  * Substitutions for {@link sun.reflect.Reflection} methods.
  */
 @ClassSubstitution(sun.reflect.Reflection.class)
 public class ReflectionSubstitutions {
-
-    @MacroSubstitution(macro = ReflectionGetCallerClassNode.class, optional = true)
-    public static native Class<?> getCallerClass();
 
     @MethodSubstitution
     public static int getClassAccessFlags(Class<?> aClass) {

@@ -98,18 +98,23 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
     public IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
         int intrinsicId = ((HotSpotResolvedJavaMethodImpl) method).intrinsicId();
         if (intrinsicId != 0) {
-            HotSpotVMConfig config = runtime().getConfig();
-            if (intrinsicId == config.vmIntrinsicInvokeBasic) {
-                return IntrinsicMethod.INVOKE_BASIC;
-            } else if (intrinsicId == config.vmIntrinsicLinkToInterface) {
-                return IntrinsicMethod.LINK_TO_INTERFACE;
-            } else if (intrinsicId == config.vmIntrinsicLinkToSpecial) {
-                return IntrinsicMethod.LINK_TO_SPECIAL;
-            } else if (intrinsicId == config.vmIntrinsicLinkToStatic) {
-                return IntrinsicMethod.LINK_TO_STATIC;
-            } else if (intrinsicId == config.vmIntrinsicLinkToVirtual) {
-                return IntrinsicMethod.LINK_TO_VIRTUAL;
-            }
+            return getMethodHandleIntrinsic(intrinsicId);
+        }
+        return null;
+    }
+
+    public static IntrinsicMethod getMethodHandleIntrinsic(int intrinsicId) {
+        HotSpotVMConfig config = runtime().getConfig();
+        if (intrinsicId == config.vmIntrinsicInvokeBasic) {
+            return IntrinsicMethod.INVOKE_BASIC;
+        } else if (intrinsicId == config.vmIntrinsicLinkToInterface) {
+            return IntrinsicMethod.LINK_TO_INTERFACE;
+        } else if (intrinsicId == config.vmIntrinsicLinkToSpecial) {
+            return IntrinsicMethod.LINK_TO_SPECIAL;
+        } else if (intrinsicId == config.vmIntrinsicLinkToStatic) {
+            return IntrinsicMethod.LINK_TO_STATIC;
+        } else if (intrinsicId == config.vmIntrinsicLinkToVirtual) {
+            return IntrinsicMethod.LINK_TO_VIRTUAL;
         }
         return null;
     }

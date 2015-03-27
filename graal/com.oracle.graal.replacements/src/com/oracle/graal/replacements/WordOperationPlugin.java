@@ -91,7 +91,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
 
             case NOT:
                 assert args.length == 1;
-                b.addPush(returnStackKind, new XorNode(args[0], b.append(forIntegerKind(wordKind, -1))));
+                b.addPush(returnStackKind, new XorNode(args[0], b.add(forIntegerKind(wordKind, -1))));
                 break;
 
             case READ_POINTER:
@@ -158,7 +158,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
 
             case FROM_OBJECT:
                 assert args.length == 1;
-                WordCastNode objectToWord = b.append(WordCastNode.objectToWord(args[0], wordKind));
+                WordCastNode objectToWord = b.add(WordCastNode.objectToWord(args[0], wordKind));
                 b.push(returnStackKind, objectToWord);
                 break;
 
@@ -169,7 +169,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
 
             case TO_OBJECT:
                 assert args.length == 1;
-                WordCastNode wordToObject = b.append(WordCastNode.wordToObject(args[0], wordKind));
+                WordCastNode wordToObject = b.add(WordCastNode.wordToObject(args[0], wordKind));
                 b.push(returnStackKind, wordToObject);
                 break;
 
@@ -210,15 +210,15 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
             comparison = new IntegerLessThanNode(a, b);
         }
 
-        ConstantNode trueValue = graph.append(forInt(1));
-        ConstantNode falseValue = graph.append(forInt(0));
+        ConstantNode trueValue = graph.add(forInt(1));
+        ConstantNode falseValue = graph.add(forInt(0));
 
         if (condition.canonicalNegate()) {
             ConstantNode temp = trueValue;
             trueValue = falseValue;
             falseValue = temp;
         }
-        ConditionalNode materialize = graph.append(new ConditionalNode(graph.append(comparison), trueValue, falseValue));
+        ConditionalNode materialize = graph.add(new ConditionalNode(graph.add(comparison), trueValue, falseValue));
         return materialize;
     }
 
@@ -231,7 +231,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
     }
 
     public static ValueNode readOp(GraphBuilderContext b, Kind readKind, ValueNode base, LocationNode location, BarrierType barrierType, boolean compressible) {
-        JavaReadNode read = b.append(new JavaReadNode(readKind, base, location, barrierType, compressible));
+        JavaReadNode read = b.add(new JavaReadNode(readKind, base, location, barrierType, compressible));
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero
          * check on its base address.
@@ -249,14 +249,14 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
     }
 
     public LocationNode makeLocation(GraphBuilderContext b, ValueNode offset, LocationIdentity locationIdentity) {
-        return b.append(new IndexedLocationNode(locationIdentity, 0, fromSigned(b, offset), 1));
+        return b.add(new IndexedLocationNode(locationIdentity, 0, fromSigned(b, offset), 1));
     }
 
     public LocationNode makeLocation(GraphBuilderContext b, ValueNode offset, ValueNode locationIdentity) {
         if (locationIdentity.isConstant()) {
             return makeLocation(b, offset, snippetReflection.asObject(LocationIdentity.class, locationIdentity.asJavaConstant()));
         }
-        return b.append(new SnippetLocationNode(snippetReflection, locationIdentity, b.append(ConstantNode.forLong(0)), fromSigned(b, offset), b.append(ConstantNode.forInt(1))));
+        return b.add(new SnippetLocationNode(snippetReflection, locationIdentity, b.add(ConstantNode.forLong(0)), fromSigned(b, offset), b.add(ConstantNode.forInt(1))));
     }
 
     public ValueNode fromUnsigned(GraphBuilderContext b, ValueNode value) {
@@ -278,14 +278,14 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
 
         if (toKind == Kind.Int) {
             assert value.getKind() == Kind.Long;
-            return b.append(new NarrowNode(value, 32));
+            return b.add(new NarrowNode(value, 32));
         } else {
             assert toKind == Kind.Long;
             assert value.getKind().getStackKind() == Kind.Int;
             if (unsigned) {
-                return b.append(new ZeroExtendNode(value, 64));
+                return b.add(new ZeroExtendNode(value, 64));
             } else {
-                return b.append(new SignExtendNode(value, 64));
+                return b.add(new SignExtendNode(value, 64));
             }
         }
     }

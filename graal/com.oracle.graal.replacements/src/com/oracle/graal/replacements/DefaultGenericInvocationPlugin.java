@@ -85,7 +85,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
                 if (!COULD_NOT_FOLD.equals(constant)) {
                     if (constant != null) {
                         // Replace the invoke with the result of the call
-                        ConstantNode res = b.append(ConstantNode.forConstant(constant, b.getMetaAccess()));
+                        ConstantNode res = b.add(ConstantNode.forConstant(constant, b.getMetaAccess()));
                         b.addPush(res.getKind().getStackKind(), res);
                     } else {
                         // This must be a void invoke
@@ -123,7 +123,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         }
         if (res instanceof UnsafeCopyNode) {
             UnsafeCopyNode copy = (UnsafeCopyNode) res;
-            UnsafeLoadNode value = b.append(new UnsafeLoadNode(copy.sourceObject(), copy.sourceOffset(), copy.accessKind(), copy.getLocationIdentity()));
+            UnsafeLoadNode value = b.add(new UnsafeLoadNode(copy.sourceObject(), copy.sourceOffset(), copy.accessKind(), copy.getLocationIdentity()));
             b.add(new UnsafeStoreNode(copy.destinationObject(), copy.destinationOffset(), value, copy.accessKind(), copy.getLocationIdentity()));
             return true;
         } else if (res instanceof ForeignCallNode) {
@@ -131,7 +131,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             foreign.setBci(b.bci());
         }
 
-        res = b.append(res);
+        res = b.add(res);
 
         InputType inputType = InputType.Value;
         if (returnKind == Kind.Object && stamp instanceof ObjectStamp) {

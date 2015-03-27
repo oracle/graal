@@ -55,6 +55,7 @@ public class TruffleGraphBuilderPlugins {
         registerOptimizedAssumptionPlugins(plugins);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
+        registerCompilerAssertsPlugins(plugins);
         registerOptimizedCallTargetPlugins(metaAccess, plugins);
         registerUnsafeAccessImplPlugins(plugins);
 
@@ -68,21 +69,34 @@ public class TruffleGraphBuilderPlugins {
 
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
-        r.register1("isValid", Receiver.class, new InvocationPlugin() {
+        InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
                     Constant constant = receiver.get().asConstant();
                     OptimizedAssumption assumption = b.getSnippetReflection().asObject(OptimizedAssumption.class, (JavaConstant) constant);
-                    b.addPush(Kind.Boolean.getStackKind(), ConstantNode.forBoolean(assumption.isValid()));
                     if (assumption.isValid()) {
+                        if (targetMethod.getName().equals("isValid")) {
+                            b.addPush(ConstantNode.forBoolean(true));
+                        } else {
+                            assert targetMethod.getName().equals("check") : targetMethod;
+                        }
                         b.getAssumptions().record(new AssumptionValidAssumption(assumption));
+                    } else {
+                        if (targetMethod.getName().equals("isValid")) {
+                            b.addPush(ConstantNode.forBoolean(false));
+                        } else {
+                            assert targetMethod.getName().equals("check") : targetMethod;
+                            b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None));
+                        }
                     }
                 } else {
                     throw b.bailout("assumption could not be reduced to a constant");
                 }
                 return true;
             }
-        });
+        };
+        r.register1("isValid", Receiver.class, plugin);
+        r.register1("check", Receiver.class, plugin);
     }
 
     public static void registerExactMathPlugins(InvocationPlugins plugins) {
@@ -138,13 +152,13 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register0("transferToInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.append(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
+                b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
         });
         r.register0("transferToInterpreterAndInvalidate", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.append(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
+                b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
         });
@@ -184,12 +198,14 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register1("materialize", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.append(new ForceMaterializeNode(value));
+                b.add(new ForceMaterializeNode(value));
                 return true;
             }
         });
+    }
 
-        r = new Registration(plugins, CompilerAsserts.class);
+    public static void registerCompilerAssertsPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, CompilerAsserts.class);
         r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ValueNode curValue = value;
@@ -219,7 +235,7 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 if (message.isConstant()) {
                     String messageString = message.asConstant().toValueString();
-                    b.append(new NeverPartOfCompilationNode(messageString));
+                    b.add(new NeverPartOfCompilationNode(messageString));
                     return true;
                 }
                 throw b.bailout("message for never part of compilation is non-constant");
@@ -301,7 +317,7 @@ public class TruffleGraphBuilderPlugins {
                         }
                         ConditionAnchorNode valueAnchorNode = null;
                         if (!skipAnchor) {
-                            valueAnchorNode = b.append(new ConditionAnchorNode(compareNode));
+                            valueAnchorNode = b.add(new ConditionAnchorNode(compareNode));
                         }
                         b.addPush(Kind.Object, new PiNode(object, piStamp, valueAnchorNode));
                     }
@@ -339,8 +355,8 @@ public class TruffleGraphBuilderPlugins {
                 } else {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
-                LogicNode compare = b.append(CompareNode.createCompareNode(Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), b.getConstantReflection()));
-                b.addPush(returnKind.getStackKind(), b.append(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
+                LogicNode compare = b.add(CompareNode.createCompareNode(Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), b.getConstantReflection()));
+                b.addPush(returnKind.getStackKind(), b.add(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
                 return true;
             }
             // TODO: should we throw GraalInternalError.shouldNotReachHere() here?

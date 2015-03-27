@@ -42,9 +42,8 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 
 /**
- * Macro nodes can be used to temporarily replace an invoke (usually by using the
- * {@link MacroSubstitution} annotation). They can, for example, be used to implement constant
- * folding for known JDK functions like {@link Class#isInterface()}.<br/>
+ * Macro nodes can be used to temporarily replace an invoke. They can, for example, be used to
+ * implement constant folding for known JDK functions like {@link Class#isInterface()}.<br/>
  * <br/>
  * During lowering, multiple sources are queried in order to look for a replacement:
  * <ul>
@@ -75,6 +74,16 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         this.targetMethod = methodCallTarget.targetMethod();
         this.returnType = methodCallTarget.returnType();
         this.invokeKind = methodCallTarget.invokeKind();
+    }
+
+    protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(c, StampFactory.forKind(returnType.getKind()));
+        assert targetMethod.getSignature().getParameterCount(!targetMethod.isStatic()) == arguments.length;
+        this.arguments = new NodeInputList<>(this, arguments);
+        this.bci = bci;
+        this.targetMethod = targetMethod;
+        this.returnType = returnType;
+        this.invokeKind = invokeKind;
     }
 
     public int getBci() {

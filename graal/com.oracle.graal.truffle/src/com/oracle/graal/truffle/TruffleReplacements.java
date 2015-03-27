@@ -31,8 +31,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.truffle.substitutions.*;
-import com.oracle.truffle.api.*;
 
 /**
  * Custom {@link Replacements} for Truffle compilation.
@@ -44,15 +42,6 @@ public abstract class TruffleReplacements extends ReplacementsImpl {
     protected TruffleReplacements(Providers providers, SnippetReflectionProvider snippetReflection) {
         super(providers, snippetReflection, providers.getCodeCache().getTarget());
         this.graalReplacements = providers.getReplacements();
-
-        registerTruffleSubstitutions();
-    }
-
-    protected void registerTruffleSubstitutions() {
-        if (!TruffleCompilerOptions.FastPE.getValue()) {
-            registerSubstitutions(CompilerAsserts.class, CompilerAssertsSubstitutions.class);
-            registerSubstitutions(OptimizedAssumption.class, OptimizedAssumptionSubstitutions.class);
-        }
     }
 
     @Override

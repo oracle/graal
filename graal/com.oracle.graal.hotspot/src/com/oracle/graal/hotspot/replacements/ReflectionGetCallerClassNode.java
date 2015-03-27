@@ -31,6 +31,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -39,8 +40,8 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
 
     public static final NodeClass<ReflectionGetCallerClassNode> TYPE = NodeClass.create(ReflectionGetCallerClassNode.class);
 
-    public ReflectionGetCallerClassNode(Invoke invoke) {
-        super(TYPE, invoke);
+    public ReflectionGetCallerClassNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(TYPE, invokeKind, targetMethod, bci, returnType, arguments);
     }
 
     @Override

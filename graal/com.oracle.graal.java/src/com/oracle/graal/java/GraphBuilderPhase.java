@@ -1143,6 +1143,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
+            private InvokeKind currentInvokeKind;
+            private JavaType currentInvokeReturnType;
+
+            public InvokeKind getInvokeKind() {
+                return currentInvokeKind;
+            }
+
+            public JavaType getInvokeReturnType() {
+                return currentInvokeReturnType;
+            }
+
+            public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+                appendInvoke(invokeKind, targetMethod, args);
+            }
+
             private void appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
                 ResolvedJavaMethod targetMethod = initialTargetMethod;
                 InvokeKind invokeKind = initialInvokeKind;
@@ -1179,22 +1194,29 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
 
-                if (tryGenericInvocationPlugin(args, targetMethod)) {
-                    if (TraceParserPlugins.getValue()) {
-                        traceWithContext("used generic invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
+                try {
+                    currentInvokeReturnType = returnType;
+                    currentInvokeKind = invokeKind;
+                    if (tryGenericInvocationPlugin(args, targetMethod)) {
+                        if (TraceParserPlugins.getValue()) {
+                            traceWithContext("used generic invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
+                        }
+                        return;
                     }
-                    return;
-                }
 
-                if (tryInvocationPlugin(args, targetMethod, resultType)) {
-                    if (TraceParserPlugins.getValue()) {
-                        traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
+                    if (tryInvocationPlugin(args, targetMethod, resultType)) {
+                        if (TraceParserPlugins.getValue()) {
+                            traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
+                        }
+                        return;
                     }
-                    return;
-                }
 
-                if (tryInline(args, targetMethod, invokeKind, returnType)) {
-                    return;
+                    if (tryInline(args, targetMethod, invokeKind, returnType)) {
+                        return;
+                    }
+                } finally {
+                    currentInvokeReturnType = null;
+                    currentInvokeKind = null;
                 }
 
                 MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
@@ -1252,7 +1274,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 boolean check(boolean pluginResult) {
                     if (pluginResult == true) {
-                        assert beforeStackSize + resultType.getSlotCount() == frameState.stackSize : error("plugin manipulated the stack incorrectly");
+                        int expectedStackSize = beforeStackSize + resultType.getSlotCount();
+                        assert expectedStackSize == frameState.stackSize : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize);
                         NodeIterable<Node> newNodes = currentGraph.getNewNodes(mark);
                         assert !needsNullCheck || isPointerNonNull(args[0].stamp()) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
                         for (Node n : newNodes) {
@@ -1278,6 +1301,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private boolean tryInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod, Kind resultType) {
                 InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
+
+                    ReplacementContext context = this.replacementContext;
+                    if (context != null && context.isCallToOriginal(targetMethod)) {
+                        // Self recursive replacement means the original
+                        // method should be called.
+                        assert !targetMethod.hasBytecodes() : "TODO: when does this happen?";
+                        return false;
+                    }
+
                     InvocationPluginAssertions assertions = assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
                     if (InvocationPlugin.execute(this, targetMethod, plugin, invocationPluginReceiver.init(targetMethod, args), args)) {
                         assert assertions.check(true);
@@ -1305,7 +1337,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return false;
             }
 
-            boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, InlineInfo inlineInfo, ValueNode[] args) {
+            public boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, InlineInfo inlineInfo, ValueNode[] args) {
                 int bci = bci();
                 ResolvedJavaMethod inlinedMethod = inlineInfo.methodToInline;
                 if (TraceInlineDuringParsing.getValue() || TraceParserPlugins.getValue()) {

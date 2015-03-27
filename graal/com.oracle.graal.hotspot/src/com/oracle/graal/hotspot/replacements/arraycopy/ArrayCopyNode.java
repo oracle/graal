@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
@@ -43,8 +44,8 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
 
     public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.create(ArrayCopyNode.class);
 
-    public ArrayCopyNode(Invoke invoke) {
-        super(TYPE, invoke);
+    public ArrayCopyNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
+        super(TYPE, invokeKind, targetMethod, bci, returnType, src, srcPos, dst, dstPos, length);
     }
 
     private StructuredGraph selectSnippet(LoweringTool tool, final Replacements replacements) {

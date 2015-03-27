@@ -22,28 +22,34 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 
 @NodeInfo
 public final class MathPowNode extends MacroStateSplitNode implements Canonicalizable.Binary<ValueNode> {
 
     public static final NodeClass<MathPowNode> TYPE = NodeClass.create(MathPowNode.class);
 
-    public MathPowNode(Invoke i) {
-        super(TYPE, i);
+    public MathPowNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode x, ValueNode y) {
+        super(TYPE, invokeKind, targetMethod, bci, returnType, x, y);
     }
 
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (forX.isConstant() && forY.isConstant()) {
-            double x = forX.asJavaConstant().asDouble();
-            double y = forY.asJavaConstant().asDouble();
-            return ConstantNode.forDouble(Math.pow(x, y));
-        } else {
-            return this;
+        ValueNode folded = tryFold(forX, forY);
+        return folded != null ? folded : this;
+    }
+
+    public static ValueNode tryFold(ValueNode x, ValueNode y) {
+        if (x.isConstant() && y.isConstant()) {
+            double xPrim = x.asJavaConstant().asDouble();
+            double yPrim = y.asJavaConstant().asDouble();
+            return ConstantNode.forDouble(Math.pow(xPrim, yPrim));
         }
+        return null;
     }
 
     public ValueNode getX() {

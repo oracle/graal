@@ -212,7 +212,7 @@ public class InliningUtil {
         if (callTarget.targetMethod() == null) {
             return "target method is null";
         }
-        assert invoke.stateAfter() != null;
+        assert invoke.stateAfter() != null : invoke;
         if (!invoke.useForInlining()) {
             return "the invoke is marked to be not used for inlining";
         }

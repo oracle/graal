@@ -49,7 +49,4 @@ public final class NeverPartOfCompilationNode extends FixedWithNextNode implemen
             throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
         }
     }
-
-    @NodeIntrinsic
-    public static native void apply(@ConstantNodeParameter String message);
 }

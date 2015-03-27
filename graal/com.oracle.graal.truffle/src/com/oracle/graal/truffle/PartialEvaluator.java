@@ -162,7 +162,7 @@ public class PartialEvaluator {
 
         public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
             if (TruffleCompilerOptions.TruffleExcludeAssertions.getValue() && staticField.getName().equals("$assertionsDisabled")) {
-                ConstantNode trueNode = builder.append(ConstantNode.forBoolean(true));
+                ConstantNode trueNode = builder.add(ConstantNode.forBoolean(true));
                 builder.addPush(trueNode);
                 return true;
             }

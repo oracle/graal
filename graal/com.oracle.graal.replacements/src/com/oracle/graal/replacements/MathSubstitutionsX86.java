@@ -27,7 +27,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation;
 
@@ -42,7 +41,6 @@ public class MathSubstitutionsX86 {
     /**
      * Special cases from {@link Math#pow} and __ieee754_pow (in sharedRuntimeTrans.cpp).
      */
-    @MacroSubstitution(macro = MathPowNode.class)
     @MethodSubstitution(guard = MathGuard.class)
     public static double pow(double x, double y) {
         // If the second argument is positive or negative zero, then the result is 1.0.

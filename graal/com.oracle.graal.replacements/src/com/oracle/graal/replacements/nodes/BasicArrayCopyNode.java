@@ -27,6 +27,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -36,8 +37,8 @@ public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements 
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 
-    public BasicArrayCopyNode(NodeClass<? extends BasicArrayCopyNode> c, Invoke invoke) {
-        super(c, invoke);
+    public BasicArrayCopyNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(c, invokeKind, targetMethod, bci, returnType, arguments);
     }
 
     protected ValueNode getSource() {

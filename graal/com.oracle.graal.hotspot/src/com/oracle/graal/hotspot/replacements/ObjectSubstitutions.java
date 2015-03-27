@@ -28,7 +28,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
  * Substitutions for {@link java.lang.Object} methods.
@@ -51,7 +50,4 @@ public class ObjectSubstitutions {
     public static void init(Object thisObj) {
         RegisterFinalizerNode.register(thisObj);
     }
-
-    @MacroSubstitution(macro = ObjectCloneNode.class, isStatic = false, forced = true)
-    public static native Object clone(Object obj);
 }
