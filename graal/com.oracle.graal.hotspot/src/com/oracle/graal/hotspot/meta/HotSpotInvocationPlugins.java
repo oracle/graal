@@ -110,10 +110,16 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                                 if (invokeKind != InvokeKind.Static) {
                                     receiver.get();
                                 }
+                                JavaType invokeReturnType = b.getInvokeReturnType();
                                 InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(b.getAssumptions(), b.getConstantReflection().getMethodHandleAccess(), intrinsicMethod, targetMethod,
-                                                b.bci(), b.getInvokeReturnType(), argsIncludingReceiver);
+                                                b.bci(), invokeReturnType, argsIncludingReceiver);
                                 if (invoke == null) {
-                                    b.addPush(new MethodHandleNode(intrinsicMethod, invokeKind, targetMethod, b.bci(), b.getInvokeReturnType(), argsIncludingReceiver));
+                                    MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, invokeKind, targetMethod, b.bci(), invokeReturnType, argsIncludingReceiver);
+                                    if (invokeReturnType.getKind() == Kind.Void) {
+                                        b.add(methodHandleNode);
+                                    } else {
+                                        b.addPush(methodHandleNode);
+                                    }
                                 } else {
                                     CallTargetNode callTarget = invoke.callTarget();
                                     NodeInputList<ValueNode> argumentsList = callTarget.arguments();
