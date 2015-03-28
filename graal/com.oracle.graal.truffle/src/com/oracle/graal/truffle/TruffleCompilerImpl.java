@@ -43,7 +43,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -66,7 +65,6 @@ public class TruffleCompilerImpl {
     private final Backend backend;
     private final GraphBuilderConfiguration config;
     private final RuntimeProvider runtime;
-    private final TruffleCache truffleCache;
     private final GraalTruffleCompilationListener compilationNotify;
 
     // @formatter:off
@@ -89,34 +87,22 @@ public class TruffleCompilerImpl {
         this.runtime = Graal.getRequiredCapability(RuntimeProvider.class);
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = runtime.getHostBackend();
-        Replacements truffleReplacements = graalTruffleRuntime.getReplacements();
         Providers backendProviders = backend.getProviders();
         ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backendProviders.getConstantReflection(), backendProviders.getMetaAccess());
-        if (!TruffleCompilerOptions.FastPE.getValue()) {
-            backendProviders = backendProviders.copyWith(truffleReplacements);
-        }
         this.providers = backendProviders.copyWith(constantReflection);
         this.suites = backend.getSuites().getDefaultSuites();
         this.lirSuites = backend.getSuites().getDefaultLIRSuites();
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
-        Plugins plugins;
-        if (TruffleCompilerOptions.FastPE.getValue()) {
-            GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
-            InvocationPlugins invocationPlugins = new InvocationPlugins(phase.getGraphBuilderConfig().getPlugins().getInvocationPlugins());
-            plugins = new Plugins(invocationPlugins);
-            TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins);
-        } else {
-            plugins = new Plugins(new InvocationPlugins(backendProviders.getMetaAccess()));
-        }
+        GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
+        InvocationPlugins invocationPlugins = new InvocationPlugins(phase.getGraphBuilderConfig().getPlugins().getInvocationPlugins());
+        Plugins plugins = new Plugins(invocationPlugins);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins);
 
         this.config = GraphBuilderConfiguration.getDefault(plugins).withSkippedExceptionTypes(skippedExceptionTypes);
 
-        GraphBuilderConfiguration eagerConfig = GraphBuilderConfiguration.getEagerDefault(plugins).withSkippedExceptionTypes(skippedExceptionTypes);
-        this.truffleCache = new TruffleCacheImpl(providers, eagerConfig, TruffleCompilerImpl.Optimizations);
-
-        this.partialEvaluator = new PartialEvaluator(providers, config, truffleCache, Graal.getRequiredCapability(SnippetReflectionProvider.class));
+        this.partialEvaluator = new PartialEvaluator(providers, config, Graal.getRequiredCapability(SnippetReflectionProvider.class));
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
