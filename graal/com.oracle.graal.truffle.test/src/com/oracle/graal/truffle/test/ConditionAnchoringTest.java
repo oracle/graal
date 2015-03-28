@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
+import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.*;
 import static org.hamcrest.core.IsInstanceOf.*;
 import static org.junit.Assert.*;
 
