@@ -37,7 +37,9 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 
@@ -432,6 +434,29 @@ public class BinaryGraphPrinter implements GraphPrinter {
                     }
                 }
             }
+
+            if (node instanceof ControlSinkNode) {
+                props.put("category", "controlSink");
+            } else if (node instanceof ControlSplitNode) {
+                props.put("category", "controlSplit");
+            } else if (node instanceof AbstractMergeNode) {
+                props.put("category", "merge");
+            } else if (node instanceof AbstractBeginNode) {
+                props.put("category", "begin");
+            } else if (node instanceof AbstractEndNode) {
+                props.put("category", "end");
+            } else if (node instanceof FixedNode) {
+                props.put("category", "fixed");
+            } else if (node instanceof VirtualState) {
+                props.put("category", "state");
+            } else if (node instanceof PhiNode) {
+                props.put("category", "phi");
+            } else if (node instanceof ProxyNode) {
+                props.put("category", "proxy");
+            } else {
+                props.put("category", "floating");
+            }
+
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
