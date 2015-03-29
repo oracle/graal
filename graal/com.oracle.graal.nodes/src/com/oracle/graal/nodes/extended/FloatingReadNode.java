@@ -81,12 +81,4 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     public FixedAccessNode asFixedNode() {
         return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
     }
-
-    @Override
-    public boolean verify() {
-        MemoryNode lla = getLastLocationAccess();
-        assert lla == null || lla instanceof MemoryCheckpoint || lla instanceof MemoryProxy || lla instanceof MemoryPhiNode : "lastLocationAccess of " + this +
-                        " should be a MemoryCheckpoint, but is " + lla;
-        return super.verify();
-    }
 }
