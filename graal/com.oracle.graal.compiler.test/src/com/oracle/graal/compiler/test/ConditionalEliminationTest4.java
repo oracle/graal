@@ -51,7 +51,7 @@ public class ConditionalEliminationTest4 extends ConditionalEliminationTestBase 
 
     @Test
     public void test1() {
-        test("test1Snippet", "reference1Snippet");
+        testConditionalElimination("test1Snippet", "reference1Snippet");
     }
 
     @SuppressWarnings("all")
@@ -74,6 +74,6 @@ public class ConditionalEliminationTest4 extends ConditionalEliminationTestBase 
 
     @Test
     public void test2() {
-        test("test2Snippet", "reference2Snippet");
+        testConditionalElimination("test2Snippet", "reference2Snippet");
     }
 }

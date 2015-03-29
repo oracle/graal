@@ -45,7 +45,7 @@ public class ConditionalEliminationTest9 extends ConditionalEliminationTestBase 
 
     @Test
     public void test1() {
-        test("test1Snippet", REFERENCE_SNIPPET);
+        testConditionalElimination("test1Snippet", REFERENCE_SNIPPET);
     }
 
     @SuppressWarnings("all")
