@@ -115,15 +115,12 @@ public final class IntegerBelowNode extends CompareNode {
                     }
                 } else {
                     // x < y
-                    if (yStamp.isPositive()) {
+                    if (yStamp.isStrictlyPositive()) {
                         // x >= 0 && x < y
                         long xUpperBound = xStamp.upperBound();
                         long yUpperBound = yStamp.upperBound();
                         if (yUpperBound <= xUpperBound || !xStamp.isPositive()) {
-                            if (yUpperBound != 0) {
-                                yUpperBound--;
-                            }
-                            return new IntegerStamp(bits, Math.max(0, xStamp.lowerBound()), Math.min(xUpperBound, yUpperBound), xStamp.downMask(), xStamp.upMask());
+                            return new IntegerStamp(bits, Math.max(0, xStamp.lowerBound()), Math.min(xUpperBound, yUpperBound - 1), xStamp.downMask(), xStamp.upMask());
                         }
                     }
                 }
@@ -156,11 +153,11 @@ public final class IntegerBelowNode extends CompareNode {
                     if (xStamp.isPositive() && yStamp.isPositive()) {
                         long xLowerBound = xStamp.lowerBound();
                         long yLowerBound = yStamp.lowerBound();
-                        if (xLowerBound >= yLowerBound) {
-                            if (xLowerBound != CodeUtil.maxValue(bits)) {
-                                xLowerBound++;
-                            }
-                            return new IntegerStamp(bits, xLowerBound, yStamp.upperBound(), yStamp.downMask(), yStamp.upMask());
+                        if (xLowerBound == CodeUtil.maxValue(bits)) {
+                            return null;
+                        } else if (xLowerBound >= yLowerBound) {
+                            assert xLowerBound != CodeUtil.maxValue(bits);
+                            return new IntegerStamp(bits, xLowerBound + 1, yStamp.upperBound(), yStamp.downMask(), yStamp.upMask());
                         }
                     }
                 }
