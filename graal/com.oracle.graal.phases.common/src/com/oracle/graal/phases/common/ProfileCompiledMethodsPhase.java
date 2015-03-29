@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common;
 
 import java.util.*;
-import java.util.function.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
@@ -36,7 +35,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**
@@ -63,15 +61,14 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph, false);
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         for (Loop<Block> loop : cfg.getLoops()) {
-            double loopProbability = probabilities.applyAsDouble(loop.getHeader().getBeginNode());
+            double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).probability();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
-                addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), schedule, probabilities);
+                addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), schedule, cfg);
             }
         }
         // don't put the counter increase directly after the start (problems with OSR)
@@ -79,7 +76,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
         while (current.next() instanceof FixedWithNextNode) {
             current = (FixedWithNextNode) current.next();
         }
-        addSectionCounters(current, cfg.getBlocks(), cfg.getLoops(), schedule, probabilities);
+        addSectionCounters(current, cfg.getBlocks(), cfg.getLoops(), schedule, cfg);
 
         if (WITH_INVOKES) {
             for (Node node : graph.getNodes()) {
@@ -92,13 +89,12 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule,
-                    ToDoubleFunction<FixedNode> probabilities) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, SchedulePhase schedule, ControlFlowGraph cfg) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
         for (Loop<?> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
-        double weight = getSectionWeight(schedule, probabilities, blocks) / probabilities.applyAsDouble(start);
+        double weight = getSectionWeight(schedule, blocks) / cfg.blockFor(start).probability();
         DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), (long) weight, true, start.next());
         if (WITH_INVOKE_FREE_SECTIONS && !hasInvoke(blocks)) {
             DynamicCounterNode.addCounterBefore(GROUP_NAME_WITHOUT, sectionHead(start), (long) weight, true, start.next());
@@ -113,10 +109,10 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static double getSectionWeight(SchedulePhase schedule, ToDoubleFunction<FixedNode> probabilities, Collection<Block> blocks) {
+    private static double getSectionWeight(SchedulePhase schedule, Collection<Block> blocks) {
         double count = 0;
         for (Block block : blocks) {
-            double blockProbability = probabilities.applyAsDouble(block.getBeginNode());
+            double blockProbability = block.probability();
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 count += blockProbability * getNodeWeight(node);
             }

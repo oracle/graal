@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,19 @@
  */
 package com.oracle.graal.loop.phases;
 
-import java.util.function.*;
-
 import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
 
 public class LoopPeelingPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            ToDoubleFunction<FixedNode> probabilities = new FixedNodeProbabilityCache();
             LoopsData data = new LoopsData(graph);
             for (LoopEx loop : data.outerFirst()) {
-                if (LoopPolicies.shouldPeel(loop, probabilities)) {
+                if (LoopPolicies.shouldPeel(loop, data.getCFG())) {
                     Debug.log("Peeling %s", loop);
                     LoopTransformations.peel(loop);
                     Debug.dump(graph, "After peeling %s", loop);

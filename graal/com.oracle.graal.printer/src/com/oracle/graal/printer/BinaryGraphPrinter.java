@@ -30,15 +30,12 @@ import java.nio.*;
 import java.nio.channels.*;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 
 public class BinaryGraphPrinter implements GraphPrinter {
@@ -143,7 +140,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         BlockMap<List<Node>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
         NodeMap<Block> nodeToBlocks = schedule == null ? null : schedule.getNodeToBlockMap();
         List<Block> blocks = cfg == null ? null : cfg.getBlocks();
-        writeNodes(graph, nodeToBlocks);
+        writeNodes(graph, nodeToBlocks, cfg);
         writeBlocks(blocks, blockToNodes);
     }
 
@@ -400,14 +397,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return node.getId();
     }
 
-    private void writeNodes(Graph graph, NodeMap<Block> nodeToBlocks) throws IOException {
-        ToDoubleFunction<FixedNode> probabilities = null;
-        if (PrintGraphProbabilities.getValue()) {
-            try {
-                probabilities = new FixedNodeProbabilityCache();
-            } catch (Throwable t) {
-            }
-        }
+    private void writeNodes(Graph graph, NodeMap<Block> nodeToBlocks, ControlFlowGraph cfg) throws IOException {
         Map<Object, Object> props = new HashMap<>();
 
         writeInt(graph.getNodeCount());
@@ -415,9 +405,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
         for (Node node : graph.getNodes()) {
             NodeClass<?> nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
-            if (probabilities != null && node instanceof FixedNode) {
+            if (cfg != null && PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
                 try {
-                    props.put("probability", probabilities.applyAsDouble((FixedNode) node));
+                    props.put("probability", cfg.blockFor(node).probability());
                 } catch (Throwable t) {
                     props.put("probability", t);
                 }

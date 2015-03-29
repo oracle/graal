@@ -118,6 +118,10 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return nodeToBlock.get(node);
     }
 
+    public double frequencyFor(FixedNode node) {
+        return blockFor(node).probability();
+    }
+
     public List<Loop<Block>> getLoops() {
         return loops;
     }

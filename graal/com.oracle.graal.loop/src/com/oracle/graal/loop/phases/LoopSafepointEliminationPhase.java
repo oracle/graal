@@ -53,7 +53,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
         for (LoopEx loop : loops.countedLoops()) {
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                Block b = loops.controlFlowGraph().blockFor(loopEnd);
+                Block b = loops.getCFG().blockFor(loopEnd);
                 blocks: while (b != loop.loop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {

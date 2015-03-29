@@ -104,7 +104,7 @@ public class LoopsData {
         }
     }
 
-    public ControlFlowGraph controlFlowGraph() {
+    public ControlFlowGraph getCFG() {
         return cfg;
     }
 
