@@ -75,10 +75,6 @@ public class InlineableGraph implements Inlineable {
         if (result != null) {
             return result;
         }
-        result = getCachedGraph(method, context);
-        if (result != null) {
-            return result;
-        }
         return parseBytecodes(method, context, canonicalizer, caller);
     }
 
@@ -181,18 +177,6 @@ public class InlineableGraph implements Inlineable {
         return result;
     }
 
-    private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {
-        if (context.getGraphCache() != null) {
-            StructuredGraph cachedGraph = context.getGraphCache().get(method);
-            if (cachedGraph != null) {
-                // TODO: check that cachedGraph.getAssumptions() are still valid
-                // instead of waiting for code installation to do it.
-                return cachedGraph;
-            }
-        }
-        return null;
-    }
-
     /**
      * This method builds the IR nodes for the given <code>method</code> and canonicalizes them.
      * Provided profiling info is mature, the resulting graph is cached. The caller is responsible
@@ -219,9 +203,6 @@ public class InlineableGraph implements Inlineable {
                 canonicalizer.apply(newGraph, context);
             }
 
-            if (context.getGraphCache() != null) {
-                context.getGraphCache().put(newGraph.method(), newGraph);
-            }
             return newGraph;
         } catch (Throwable e) {
             throw Debug.handle(e);

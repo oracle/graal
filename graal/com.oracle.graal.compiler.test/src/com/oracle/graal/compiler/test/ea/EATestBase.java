@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
@@ -150,7 +149,7 @@ public class EATestBase extends GraalCompilerTest {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         try (Scope s = Debug.scope(getClass(), method, getCodeCache())) {
             graph = parseEager(method, AllowAssumptions.YES);
-            context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            context = getDefaultHighTierContext();
             new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             new CanonicalizerPhase().apply(graph, context);

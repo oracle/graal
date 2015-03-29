@@ -376,6 +376,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return providers;
     }
 
+    protected HighTierContext getDefaultHighTierContext() {
+        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+    }
+
     protected SnippetReflectionProvider getSnippetReflection() {
         return Graal.getRequiredCapability(SnippetReflectionProvider.class);
     }
@@ -718,7 +722,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-        Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultGraphBuilderSuite(),
+        Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), getDefaultGraphBuilderSuite(),
                         OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLIRSuites(), new CompilationResult(),
                         CompilationResultBuilderFactory.Default);
         return GraalCompiler.compile(request);
@@ -822,7 +826,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         try (Scope ds = Debug.scope("Parsing", javaMethod)) {
             StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions);
-            graphBuilderSuite.apply(graph, new HighTierContext(providers, null, graphBuilderSuite, OptimisticOptimizations.ALL));
+            graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
         } catch (Throwable e) {
             throw Debug.handle(e);

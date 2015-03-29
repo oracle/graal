@@ -627,7 +627,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
     private void testPredicate(final String snippet, final GraphPredicate expectedBarriers, final int... removedBarrierIndices) {
         try (Scope d = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-            HighTierContext highTierContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            HighTierContext highTierContext = getDefaultHighTierContext();
             new InliningPhase(new CanonicalizerPhase()).apply(graph, highTierContext);
 
             MidTierContext midTierContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);

@@ -688,7 +688,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
             try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
-                HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+                HighTierContext context = getDefaultHighTierContext();
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
                 canonicalizer.apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {

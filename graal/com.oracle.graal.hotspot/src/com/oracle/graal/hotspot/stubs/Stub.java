@@ -180,8 +180,8 @@ public abstract class Stub {
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
                     Suites defaultSuites = providers.getSuites().getDefaultSuites();
                     Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
-                    SchedulePhase schedule = emitFrontEnd(providers, target, graph, null, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph),
-                                    null, suites);
+                    SchedulePhase schedule = emitFrontEnd(providers, target, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null,
+                                    suites);
                     LIRSuites lirSuites = createLIRSuites();
                     emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, target, compResult, CompilationResultBuilderFactory.Default, schedule, getRegisterConfig(), lirSuites);
                 } catch (Throwable e) {

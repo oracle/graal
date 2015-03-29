@@ -249,7 +249,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
         ResolvedJavaMethod snippet = getResolvedJavaMethod(snippetName);
         try (Scope s = Debug.scope("WriteBarrierAdditionTest", snippet)) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
-            HighTierContext highContext = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            HighTierContext highContext = getDefaultHighTierContext();
             MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
             new NodeIntrinsificationPhase(getMetaAccess(), getConstantReflection(), getSnippetReflection(), getProviders().getForeignCalls(), getProviders().getStampProvider()).apply(graph);
             new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase()).apply(graph, highContext);

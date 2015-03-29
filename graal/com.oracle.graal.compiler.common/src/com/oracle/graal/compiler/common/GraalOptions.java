@@ -91,9 +91,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Expert)
     public static final OptionValue<Integer> DeoptsToDisableOptimisticOptimization = new OptionValue<>(40);
 
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Boolean> CacheGraphs = new OptionValue<>(false);
-
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> LoopPeeling = new OptionValue<>(true);
 

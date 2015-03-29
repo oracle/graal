@@ -28,7 +28,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
@@ -82,7 +81,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
     private void test(final String snippet) {
         try (Scope s = Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-            HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            HighTierContext context = getDefaultHighTierContext();
             new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
             new CanonicalizerPhase().apply(graph, context);
             Debug.dump(graph, "Graph");

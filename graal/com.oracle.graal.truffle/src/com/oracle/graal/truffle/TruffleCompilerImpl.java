@@ -163,7 +163,7 @@ public class TruffleCompilerImpl {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, graphBuilderSuite, Optimizations, getProfilingInfo(graph), speculationLog, suites,
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), graphBuilderSuite, Optimizations, getProfilingInfo(graph), speculationLog, suites,
                             lirSuites, compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);

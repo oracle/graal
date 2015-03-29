@@ -27,7 +27,6 @@ import org.junit.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
@@ -306,7 +305,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
     private void processMethod(final String snippet) {
         graph = parseEager(snippet, AllowAssumptions.NO);
-        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
         new PartialEscapePhase(false, new CanonicalizerPhase()).apply(graph, context);
     }
@@ -317,7 +316,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
     private void compareGraphs(final String snippet, final String referenceSnippet, final boolean loopPeeling, final boolean excludeVirtual) {
         graph = parseEager(snippet, AllowAssumptions.NO);
-        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        HighTierContext context = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         canonicalizer.apply(graph, context);
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);

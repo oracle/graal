@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -103,12 +102,8 @@ public class PartialEvaluator {
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
 
-            Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
-            if (CacheGraphs.getValue()) {
-                graphCache = new HashMap<>();
-            }
             PhaseContext baseContext = new PhaseContext(providers);
-            HighTierContext tierContext = new HighTierContext(providers, graphCache, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
+            HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
             fastPartialEvaluation(callTarget, graph, baseContext, tierContext);
 

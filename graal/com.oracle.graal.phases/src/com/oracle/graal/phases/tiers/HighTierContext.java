@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import java.util.*;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 
@@ -33,22 +29,16 @@ public class HighTierContext extends PhaseContext {
 
     private final PhaseSuite<HighTierContext> graphBuilderSuite;
 
-    private final Map<ResolvedJavaMethod, StructuredGraph> cache;
     private final OptimisticOptimizations optimisticOpts;
 
-    public HighTierContext(Providers providers, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
+    public HighTierContext(Providers providers, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
         super(providers);
-        this.cache = cache;
         this.graphBuilderSuite = graphBuilderSuite;
         this.optimisticOpts = optimisticOpts;
     }
 
     public PhaseSuite<HighTierContext> getGraphBuilderSuite() {
         return graphBuilderSuite;
-    }
-
-    public Map<ResolvedJavaMethod, StructuredGraph> getGraphCache() {
-        return cache;
     }
 
     public OptimisticOptimizations getOptimisticOptimizations() {
