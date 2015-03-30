@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
+import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 
 import com.oracle.graal.amd64.*;
@@ -729,6 +730,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64MOp DIV  = new AMD64MOp("DIV",  0xF7, 6);
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
         public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
+        public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
         // @formatter:on
 
         private final int ext;
@@ -1961,6 +1963,10 @@ public class AMD64Assembler extends Assembler {
         ADD.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
 
+    public final void addq(AMD64Address dst, int imm32) {
+        ADD.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
+    }
+
     public final void addq(Register dst, Register src) {
         ADD.rmOp.emit(this, QWORD, dst, src);
     }
@@ -2024,12 +2030,20 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xC8 | encode);
     }
 
+    public final void decq(AMD64Address dst) {
+        DEC.emit(this, QWORD, dst);
+    }
+
     public final void incq(Register dst) {
         // Don't use it directly. Use Macroincrementq() instead.
         // Use two-byte form (one-byte from is a REX prefix in 64-bit mode)
         int encode = prefixqAndEncode(dst.encoding);
         emitByte(0xFF);
         emitByte(0xC0 | encode);
+    }
+
+    public final void incq(AMD64Address dst) {
+        INC.emit(this, QWORD, dst);
     }
 
     public final void movq(Register dst, long imm64) {
@@ -2127,6 +2141,10 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void subq(Register dst, int imm32) {
+        SUB.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
+    }
+
+    public final void subq(AMD64Address dst, int imm32) {
         SUB.getMIOpcode(QWORD, isByte(imm32)).emit(this, QWORD, dst, imm32);
     }
 
