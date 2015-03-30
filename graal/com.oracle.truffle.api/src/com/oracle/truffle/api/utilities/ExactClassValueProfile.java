@@ -40,14 +40,16 @@ public final class ExactClassValueProfile extends ValueProfile {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T profile(T value) {
-        if (cachedClass != null && cachedClass.isInstance(value)) {
-            return (T) cachedClass.cast(value);
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (cachedClass == null && value != null) {
-                cachedClass = value.getClass();
+        if (cachedClass != Object.class) {
+            if (cachedClass != null && cachedClass.isInstance(value)) {
+                return (T) cachedClass.cast(value);
             } else {
-                cachedClass = Object.class;
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (cachedClass == null && value != null) {
+                    cachedClass = value.getClass();
+                } else {
+                    cachedClass = Object.class;
+                }
             }
         }
         return value;
