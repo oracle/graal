@@ -205,10 +205,9 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     }
 
     private StructuredGraph compile(String test, boolean compileAOT) {
-        StructuredGraph graph = parseEager(test, AllowAssumptions.YES);
-        ResolvedJavaMethod method = graph.method();
-
         try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {
+            StructuredGraph graph = parseEager(test, AllowAssumptions.YES);
+            ResolvedJavaMethod method = graph.method();
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             // create suites everytime, as we modify options for the compiler
             SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
@@ -217,8 +216,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
             final CompilationResult compResult = compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                             getProfilingInfo(graph), getSpeculationLog(), suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
             addMethod(method, compResult);
+            return graph;
         }
-
-        return graph;
     }
 }

@@ -206,7 +206,9 @@ public class StandardOp {
         }
 
         public void replace(LIR lir, LIRInstruction replacement) {
-            lir.getLIRforBlock(block).set(index, replacement);
+            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            assert instructions.get(index).equals(this) : String.format("Replacing the wrong instruction: %s instead of %s", instructions.get(index), this);
+            instructions.set(index, replacement);
         }
 
         @Override
