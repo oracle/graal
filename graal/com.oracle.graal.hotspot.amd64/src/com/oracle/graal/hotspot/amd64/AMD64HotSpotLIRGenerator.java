@@ -122,6 +122,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     SaveRbp saveRbp;
 
+    /**
+     * Helper instruction to reserve a stack slot for the whole method. Note that the actual users
+     * of the stack slot might be inserted after stack slot allocation. This dummy instruction
+     * ensures that the stack slot is alive and gets a real stack slot assigned.
+     */
     private static final class RescueSlotDummyOp extends LIRInstruction {
         public static final LIRInstructionClass<RescueSlotDummyOp> TYPE = LIRInstructionClass.create(RescueSlotDummyOp.class);
 
