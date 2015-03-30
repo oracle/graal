@@ -53,27 +53,42 @@ public class PrimitiveValueProfile extends ValueProfile {
     public Object profile(Object value) {
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
-            if (snapshot instanceof Byte && value instanceof Byte && (byte) snapshot == (byte) value) {
-                return snapshot;
-            } else if (snapshot instanceof Short && value instanceof Short && (short) snapshot == (short) value) {
-                return snapshot;
-            } else if (snapshot instanceof Integer && value instanceof Integer && (int) snapshot == (int) value) {
-                return snapshot;
-            } else if (snapshot instanceof Long && value instanceof Long && (long) snapshot == (long) value) {
-                return snapshot;
-            } else if (snapshot instanceof Float && value instanceof Float && exactCompare((float) snapshot, (float) value)) {
-                return snapshot;
-            } else if (snapshot instanceof Double && value instanceof Double && exactCompare((double) snapshot, (double) value)) {
-                return snapshot;
-            } else if (snapshot instanceof Boolean && value instanceof Boolean && (boolean) snapshot == (boolean) value) {
-                return snapshot;
-            } else if (snapshot instanceof Character && value instanceof Character && (char) snapshot == (char) value) {
-                return snapshot;
+            if (snapshot instanceof Byte) {
+                if (value instanceof Byte && (byte) snapshot == (byte) value) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Short) {
+                if (value instanceof Short && (short) snapshot == (short) value) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Integer) {
+                if (value instanceof Integer && (int) snapshot == (int) value) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Long) {
+                if (value instanceof Long && (long) snapshot == (long) value) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Float) {
+                if (value instanceof Float && exactCompare((float) snapshot, (float) value)) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Double) {
+                if (value instanceof Double && exactCompare((double) snapshot, (double) value)) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Boolean) {
+                if (value instanceof Boolean && (boolean) snapshot == (boolean) value) {
+                    return snapshot;
+                }
+            } else if (snapshot instanceof Character) {
+                if (value instanceof Character && (char) snapshot == (char) value) {
+                    return snapshot;
+                }
             } else if (snapshot == value) {
                 return snapshot;
-            } else {
-                cacheMiss(value);
             }
+            cacheMiss(value);
         }
         return value;
     }
