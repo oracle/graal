@@ -414,7 +414,7 @@ public final class Interval {
         }
 
         public void setRegisterPriority(int index, RegisterPriority registerPriority) {
-            list.set(index * 2, registerPriority.ordinal());
+            list.set((index << 1) + 1, registerPriority.ordinal());
         }
 
         @Override
