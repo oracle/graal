@@ -29,6 +29,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo
 public final class UnboxNode extends FixedWithNextNode implements Virtualizable, Lowerable, Canonicalizable.Unary<ValueNode> {
@@ -78,6 +79,9 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (hasNoUsages() && StampTool.isPointerNonNull(forValue)) {
+            return null;
+        }
         ValueNode synonym = findSynonym(tool.getMetaAccess(), tool.getConstantReflection(), forValue, boxingKind);
         if (synonym != null) {
             return synonym;
