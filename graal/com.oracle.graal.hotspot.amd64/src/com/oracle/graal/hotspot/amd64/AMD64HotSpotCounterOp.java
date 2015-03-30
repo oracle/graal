@@ -24,10 +24,6 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.asm.NumUtil.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.compiler.common.GraalInternalError.*;
 
 import com.oracle.graal.api.code.*;
@@ -107,11 +103,7 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         // increment counter (in memory)
         if (isConstant(incrementValue)) {
             int increment = asInt(asConstant(incrementValue));
-            if (increment == 1) {
-                INC.emit(masm, QWORD, counterAddr);
-            } else {
-                ADD.getMIOpcode(QWORD, isByte(increment)).emit(masm, QWORD, counterAddr, increment);
-            }
+            masm.incrementq(counterAddr, increment);
         } else {
             masm.addq(counterAddr, asRegister(incrementValue));
         }
