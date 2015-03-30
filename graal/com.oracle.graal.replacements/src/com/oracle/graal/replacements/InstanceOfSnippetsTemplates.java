@@ -208,7 +208,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         }
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode) {
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
             newNode.inferStamp();
@@ -239,7 +239,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         }
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode) {
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
             newNode.inferStamp();
