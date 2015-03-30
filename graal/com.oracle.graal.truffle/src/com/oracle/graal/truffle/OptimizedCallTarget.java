@@ -27,7 +27,6 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 
@@ -72,6 +71,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private TruffleInlining inlining;
     private int cachedNonTrivialNodeCount = -1;
+    private boolean compiling;
 
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -100,6 +100,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             this.compilationProfile = new CompilationProfile();
         }
         this.nodeRewritingAssumption = new CyclicAssumption("nodeRewritingAssumption of " + rootNode.toString());
+    }
+
+    public final boolean isCompiling() {
+        return compiling;
     }
 
     private static RootNode cloneRootNode(RootNode root) {
@@ -174,7 +178,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     @ExplodeLoop
-    private void profileArguments(Object[] args) {
+    void profileArguments(Object[] args) {
         if (profiledArgumentTypesAssumption == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initializeProfiledArgumentTypes(args);
@@ -272,7 +276,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         VirtualFrame frame = createFrame(getRootNode().getFrameDescriptor(), args);
         Object result = callProxy(frame);
 
-        // Profile call return type
+        profileReturnType(result);
+
+        return result;
+    }
+
+    void profileReturnType(Object result) {
         if (profiledReturnTypeAssumption == null) {
             if (TruffleReturnTypeSpeculation.getValue()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -286,8 +295,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 profiledReturnTypeAssumption.invalidate();
             }
         }
-
-        return result;
     }
 
     @Override
@@ -321,25 +328,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             this.runtime.reinstallStubs();
         } else {
             compilationProfile.reportInterpreterCall();
-            if (compilationPolicy.shouldCompile(compilationProfile, getCompilerOptions())) {
+            if (!isCompiling() && compilationPolicy.shouldCompile(compilationProfile, getCompilerOptions())) {
                 compile();
             }
         }
     }
 
     public void compile() {
-        compile(TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
-    }
-
-    public void compile(boolean mayBeAsynchronous) {
-        if (!runtime.isCompiling(this)) {
-            runtime.compile(this, mayBeAsynchronous);
-        } else if (!mayBeAsynchronous && runtime.isCompiling(this)) {
-            try {
-                runtime.waitForCompilation(this, 20000);
-            } catch (ExecutionException | TimeoutException e) {
-                Debug.log(3, e.getMessage());
-            }
+        if (!isCompiling()) {
+            compiling = true;
+            runtime.compile(this, TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue());
         }
     }
 
@@ -363,11 +361,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         }
     }
 
-    public void notifyCompilationFinished() {
-        // Compilation was successful.
-        if (inlining != null) {
+    public void notifyCompilationFinished(boolean successful) {
+        if (successful && inlining != null) {
             dequeueInlinedCallSites(inlining);
         }
+        compiling = false;
     }
 
     private void dequeueInlinedCallSites(TruffleInlining parentDecision) {
