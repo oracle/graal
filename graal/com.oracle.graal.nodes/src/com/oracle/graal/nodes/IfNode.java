@@ -304,7 +304,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                          */
                         JavaConstant positive = lessThan2.getX().asJavaConstant();
                         if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getKind().getMaxValue()) {
-                            ConstantNode newLimit = ConstantNode.forIntegerKind(positive.getKind(), positive.asLong() + 1, graph());
+                            ConstantNode newLimit = ConstantNode.forIntegerStamp(lessThan2.getX().stamp(), positive.asLong() + 1, graph());
                             below = graph().unique(new IntegerBelowNode(lessThan.getX(), newLimit));
                         }
                     }
