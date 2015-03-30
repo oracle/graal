@@ -32,7 +32,6 @@ import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
@@ -269,8 +268,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public abstract Collection<OptimizedCallTarget> getQueuedCallTargets();
-
-    public abstract Replacements getReplacements();
 
     public abstract void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous);
 

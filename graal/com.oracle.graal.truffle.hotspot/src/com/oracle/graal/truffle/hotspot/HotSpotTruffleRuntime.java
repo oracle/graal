@@ -50,7 +50,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
@@ -74,7 +73,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private TruffleCompilerImpl truffleCompiler;
-    private Replacements truffleReplacements;
     private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
     private final ThreadPoolExecutor compileQueue;
 
@@ -141,14 +139,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode root) {
         return createCallTargetImpl(source, root);
-    }
-
-    @Override
-    public Replacements getReplacements() {
-        if (truffleReplacements == null) {
-            truffleReplacements = HotSpotTruffleReplacements.makeInstance();
-        }
-        return truffleReplacements;
     }
 
     public static void installOptimizedCallTargetCallMethod() {
