@@ -256,7 +256,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
                 throw GraalInternalError.shouldNotReachHere();
         }
 
-        MethodCallTargetNode callTarget = new ResolvedMethodHandleCallTargetNode(targetInvokeKind, target, targetArguments, targetReturnType, original, arguments, returnType);
+        MethodCallTargetNode callTarget = ResolvedMethodHandleCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, original, arguments, returnType);
 
         // The call target can have a different return type than the invoker,
         // e.g. the target returns an Object but the invoker void. In this case
