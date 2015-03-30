@@ -80,7 +80,7 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
                 if (state1.getVirtualObject() == state2.getVirtualObject()) {
                     // the same virtual objects will always have the same contents
                     tool.replaceWithValue(ConstantNode.forBoolean(true, graph()));
-                } else if (state1.getVirtualObject().entryCount() == state2.getVirtualObject().entryCount()) {
+                } else if (state1.getVirtualObject().entryCount() == state2.getVirtualObject().entryCount() && state1.getState() == EscapeState.Virtual && state2.getState() == EscapeState.Virtual) {
                     int entryCount = state1.getVirtualObject().entryCount();
                     boolean allEqual = true;
                     for (int i = 0; i < entryCount; i++) {

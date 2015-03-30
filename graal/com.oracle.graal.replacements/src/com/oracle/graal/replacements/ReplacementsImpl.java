@@ -97,7 +97,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
         ResolvedJavaMethod subst = getMethodSubstitutionMethod(method);
         if (subst != null) {
-            if (b.parsingReplacement() || InlineDuringParsing.getValue()) {
+            if (b.parsingReplacement() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
                 // Forced inlining of intrinsics
                 return new InlineInfo(subst, true, true);
             }

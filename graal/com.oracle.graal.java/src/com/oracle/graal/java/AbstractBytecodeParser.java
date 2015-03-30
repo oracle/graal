@@ -58,6 +58,9 @@ public abstract class AbstractBytecodeParser {
         @Option(help = "Inlines trivial methods during bytecode parsing.", type = OptionType.Expert)
         public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(false);
 
+        @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)
+        public static final StableOptionValue<Boolean> InlineIntrinsicsDuringParsing = new StableOptionValue<>(true);
+
         @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
 
