@@ -144,17 +144,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private RescueSlotDummyOp rescueSlotOp;
 
     private StackSlotValue getOrInitRescueSlot() {
+        RescueSlotDummyOp op = getOrInitRescueSlotOp();
+        return op.getSlot();
+    }
+
+    private RescueSlotDummyOp getOrInitRescueSlotOp() {
         if (rescueSlotOp == null) {
             // create dummy instruction to keep the rescue slot alive
             rescueSlotOp = new RescueSlotDummyOp(getResult().getFrameMapBuilder(), getLIRKindTool().getWordKind());
-            // insert dummy instruction into the start block
-            LIR lir = getResult().getLIR();
-            List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
-            // Note: we do not insert at position 1 to avoid interference with the save rpb op
-            instructions.add(instructions.size() - 1, rescueSlotOp);
-            Debug.dump(lir, "created rescue dummy op");
         }
-        return rescueSlotOp.getSlot();
+        return rescueSlotOp;
     }
 
     /**
@@ -481,7 +480,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
         if (BenchmarkCounters.enabled) {
             // ensure that the rescue slot is available
-            getOrInitRescueSlot();
+            LIRInstruction op = getOrInitRescueSlotOp();
+            // insert dummy instruction into the start block
+            LIR lir = getResult().getLIR();
+            List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
+            instructions.add(1, op);
+            Debug.dump(lir, "created rescue dummy op");
         }
     }
 
