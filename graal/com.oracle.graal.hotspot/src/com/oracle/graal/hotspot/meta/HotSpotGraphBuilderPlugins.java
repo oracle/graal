@@ -47,6 +47,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -124,7 +125,7 @@ public class HotSpotGraphBuilderPlugins {
             r.register1(query.name(), Receiver.class, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     ValueNode javaClass = receiver.get();
-                    ValueNode folded = ClassQueryNode.tryFold(javaClass, query, b.getMetaAccess(), b.getConstantReflection());
+                    ValueNode folded = ClassQueryNode.tryFold(GraphUtil.originalValue(javaClass), query, b.getMetaAccess(), b.getConstantReflection());
                     if (folded != null) {
                         b.addPush(query.returnKind, folded);
                     } else {
@@ -137,7 +138,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode javaClass = receiver.get();
-                ValueNode folded = ClassCastNode.tryFold(javaClass, object, b.getConstantReflection(), b.getAssumptions());
+                ValueNode folded = ClassCastNode.tryFold(GraphUtil.originalValue(javaClass), object, b.getConstantReflection(), b.getAssumptions());
                 if (folded != null) {
                     b.addPush(Kind.Object, folded);
                 } else {
@@ -151,7 +152,7 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerCallSitePlugins(InvocationPlugins plugins) {
         InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode callSite = receiver.get();
+                ValueNode callSite = GraphUtil.originalValue(receiver.get());
                 ValueNode folded = CallSiteTargetNode.tryFold(callSite, b.getMetaAccess(), b.getAssumptions());
                 if (folded != null) {
                     b.addPush(Kind.Object, folded);
