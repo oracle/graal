@@ -79,8 +79,10 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
 
     public void generate(NodeLIRBuilderTool generator) {
         assert compileTimeAssertion;
-        if (value.isConstant() && value.asJavaConstant().asInt() == 0) {
-            throw new GraalInternalError("%s: failed compile-time assertion: %s", this, message);
+        if (value.isConstant()) {
+            if (value.asJavaConstant().asInt() == 0) {
+                throw new GraalInternalError("%s: failed compile-time assertion: %s", this, message);
+            }
         } else {
             throw new GraalInternalError("%s: failed compile-time assertion (value %s): %s", this, value, message);
         }
