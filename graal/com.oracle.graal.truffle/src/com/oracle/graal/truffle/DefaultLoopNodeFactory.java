@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.*;
 public class DefaultLoopNodeFactory implements LoopNodeFactory {
 
     public LoopNode create(RepeatingNode repeatingNode) {
-        return new OptimizedLoopNode(repeatingNode);
+        return OptimizedOSRLoopNode.create(repeatingNode);
     }
 
 }
