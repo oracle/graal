@@ -51,7 +51,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
     private final LocationIdentity locationIdentity = new FieldLocationIdentity(this);
 
     public static class FieldLocationIdentity extends LocationIdentity {
-        HotSpotResolvedJavaFieldImpl inner;
+        HotSpotResolvedJavaField inner;
 
         public FieldLocationIdentity(HotSpotResolvedJavaFieldImpl inner) {
             super(false);
@@ -78,7 +78,7 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
 
         @Override
         public String toString() {
-            return inner.name;
+            return inner.getName();
         }
     }
 

@@ -213,7 +213,6 @@ public class InvocationPlugins {
 
     protected final MetaAccessProvider metaAccess;
     private final List<MethodInfo> registrations;
-    private final Thread registrationThread;
 
     /**
      * The minimum {@linkplain InvocationPluginIdHolder#getInvocationPluginId() id} for a method
@@ -234,7 +233,6 @@ public class InvocationPlugins {
     private InvocationPlugins parent;
 
     private InvocationPlugins(InvocationPlugins parent, MetaAccessProvider metaAccess) {
-        this.registrationThread = Thread.currentThread();
         this.metaAccess = metaAccess;
         this.registrations = new ArrayList<>(INITIAL_PLUGIN_CAPACITY);
         InvocationPlugins p = parent;
@@ -263,7 +261,6 @@ public class InvocationPlugins {
      * registered for {@code method}.
      */
     public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
-        assert Thread.currentThread() == registrationThread : "invocation plugin registration must be single threaded";
         MethodInfo methodInfo = new MethodInfo(plugin, declaringClass, name, argumentTypes);
         assert Checker.check(this, methodInfo, plugin);
         assert plugins == null : "invocation plugin registration is closed";
