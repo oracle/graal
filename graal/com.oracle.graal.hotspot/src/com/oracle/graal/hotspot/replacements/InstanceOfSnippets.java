@@ -273,6 +273,8 @@ public class InstanceOfSnippets implements Snippets {
                 Arguments args = new Arguments(instanceofExact, typeCheck.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("object", object);
                 args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) typeCheck.type()).klass(), providers.getMetaAccess(), typeCheck.graph()));
+                args.add("trueValue", replacer.trueValue);
+                args.add("falseValue", replacer.falseValue);
                 return args;
             } else if (replacer.instanceOf instanceof InstanceOfDynamicNode) {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;

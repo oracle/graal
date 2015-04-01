@@ -65,7 +65,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     protected abstract Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool);
 
     public void lower(FloatingNode instanceOf, LoweringTool tool) {
-        assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
+        assert instanceOf instanceof InstanceOfNode || instanceOf instanceof TypeCheckNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
         List<Node> usages = instanceOf.usages().snapshot();
 
         Instantiation instantiation = new Instantiation();
@@ -176,7 +176,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         public final ValueNode falseValue;
 
         public InstanceOfUsageReplacer(Instantiation instantiation, FloatingNode instanceOf, ValueNode trueValue, ValueNode falseValue) {
-            assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
+            assert instanceOf instanceof InstanceOfNode || instanceOf instanceof TypeCheckNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
             this.instantiation = instantiation;
             this.instanceOf = instanceOf;
             this.trueValue = trueValue;
