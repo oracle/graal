@@ -45,6 +45,11 @@ public abstract class ArithmeticStamp extends Stamp {
     public abstract SerializableConstant deserialize(ByteBuffer buffer);
 
     @Override
+    public Stamp improveWith(Stamp other) {
+        return this.join(other);
+    }
+
+    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

@@ -113,10 +113,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      */
     @Override
     public void lower(LoweringTool tool) {
-        Stamp newStamp = StampFactory.declaredTrusted(type);
-        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
-            newStamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) newStamp);
-        }
+        Stamp newStamp = StampFactory.declaredTrusted(type).improveWith(object().stamp());
         ValueNode condition;
         ValueNode theValue = object;
         if (newStamp instanceof IllegalStamp) {
@@ -156,7 +153,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public boolean inferStamp() {
         if (object().stamp() instanceof ObjectStamp) {
             ObjectStamp castStamp = (ObjectStamp) StampFactory.declaredTrusted(type);
-            return updateStamp(((ObjectStamp) object().stamp()).castTo(castStamp));
+            return updateStamp(castStamp.improveWith(object().stamp()));
         }
         return false;
     }

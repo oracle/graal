@@ -86,7 +86,11 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     }
 
     protected void appendString(StringBuilder str) {
-        str.append(nonNull() ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.getName()).append(alwaysNull() ? " NULL" : "");
+        if (this.isIllegal()) {
+            str.append(" illegal");
+        } else {
+            str.append(nonNull() ? "!" : "").append(exactType ? "#" : "").append(' ').append(type == null ? "-" : type.getName()).append(alwaysNull() ? " NULL" : "");
+        }
     }
 
     @Override
@@ -98,9 +102,9 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
             return StampFactory.illegal(Kind.Illegal);
         }
         AbstractObjectStamp other = (AbstractObjectStamp) otherStamp;
-        if (!isLegal()) {
+        if (isIllegal()) {
             return other;
-        } else if (!other.isLegal()) {
+        } else if (other.isIllegal()) {
             return this;
         }
         ResolvedJavaType meetType;
@@ -154,14 +158,15 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
      * this reason, in some cases a {@code castTo} operation is preferable in order to keep at least
      * the {@link AbstractList} type.
      *
-     * @param to the stamp this stamp should be casted to
-     * @return This stamp casted to the {@code to} stamp
+     * @param other the stamp this stamp should be casted to
+     * @return the new improved stamp or {@code null} if this stamp cannot be improved
      */
-    public Stamp castTo(ObjectStamp to) {
-        return join0(to, true);
+    @Override
+    public Stamp improveWith(Stamp other) {
+        return join0(other, true);
     }
 
-    private Stamp join0(Stamp otherStamp, boolean castToOther) {
+    private Stamp join0(Stamp otherStamp, boolean improve) {
         if (this == otherStamp) {
             return this;
         }
@@ -169,9 +174,9 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
             return StampFactory.illegal(Kind.Illegal);
         }
         AbstractObjectStamp other = (AbstractObjectStamp) otherStamp;
-        if (!isLegal()) {
+        if (isIllegal()) {
             return this;
-        } else if (!other.isLegal()) {
+        } else if (other.isIllegal()) {
             return other;
         }
 
@@ -200,9 +205,9 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
                     joinAlwaysNull = true;
                 }
             } else {
-                if (castToOther) {
-                    joinType = other.type;
-                    joinExactType = other.exactType;
+                if (improve) {
+                    joinType = type;
+                    joinExactType = exactType;
                 } else {
                     joinType = null;
                 }

@@ -84,10 +84,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (piStamp == StampFactory.forNodeIntrinsic()) {
             return false;
         }
-        if (piStamp instanceof ObjectStamp && object.stamp() instanceof ObjectStamp) {
-            return updateStamp(((ObjectStamp) object.stamp()).castTo((ObjectStamp) piStamp));
-        }
-        return updateStamp(piStamp.join(object().stamp()));
+        return updateStamp(piStamp.improveWith(object().stamp()));
     }
 
     @Override
