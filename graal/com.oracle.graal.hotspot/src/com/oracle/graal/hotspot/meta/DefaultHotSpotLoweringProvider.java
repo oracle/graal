@@ -112,6 +112,10 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfNode) n, tool);
             }
+        } else if (n instanceof TypeCheckNode) {
+            if (graph.getGuardsStage().areDeoptsFixed()) {
+                instanceofSnippets.lower((TypeCheckNode) n, tool);
+            }
         } else if (n instanceof InstanceOfDynamicNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
