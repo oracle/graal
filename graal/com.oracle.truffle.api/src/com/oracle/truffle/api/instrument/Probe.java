@@ -336,7 +336,7 @@ public final class Probe implements SyntaxTagged {
         }
     }
 
-    private void invalidateProbeUnchanged() {
+    void invalidateProbeUnchanged() {
         probeStateUnchangedCyclic.invalidate();
     }
 
