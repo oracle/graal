@@ -79,7 +79,7 @@ public abstract class SpecializationNode extends Node {
     }
 
     private static void updateRootImpl(SpecializationNode start, Node node) {
-        NodeFieldAccessor[] fields = NodeClass.get(start.getClass()).getFields();
+        NodeFieldAccessor[] fields = NodeClass.get(start).getFields();
         for (int i = fields.length - 1; i >= 0; i--) {
             NodeFieldAccessor f = fields[i];
             if (f.getName().equals("root")) {

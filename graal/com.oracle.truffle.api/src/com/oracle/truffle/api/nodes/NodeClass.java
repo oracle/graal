@@ -54,6 +54,7 @@ public final class NodeClass {
     private final NodeFieldAccessor[] fields;
     // Separate arrays for the frequently accessed fields.
     private final NodeFieldAccessor parentField;
+    private final NodeFieldAccessor nodeClassField;
     private final NodeFieldAccessor[] childFields;
     private final NodeFieldAccessor[] childrenFields;
     private final NodeFieldAccessor[] cloneableFields;
@@ -64,9 +65,14 @@ public final class NodeClass {
         return nodeClasses.get(clazz);
     }
 
+    public static NodeClass get(Node clazz) {
+        return clazz.getNodeClass();
+    }
+
     public NodeClass(Class<? extends Node> clazz) {
         List<NodeFieldAccessor> fieldsList = new ArrayList<>();
         NodeFieldAccessor parentFieldTmp = null;
+        NodeFieldAccessor nodeClassFieldTmp = null;
         List<NodeFieldAccessor> childFieldList = new ArrayList<>();
         List<NodeFieldAccessor> childrenFieldList = new ArrayList<>();
         List<NodeFieldAccessor> cloneableFieldList = new ArrayList<>();
@@ -81,6 +87,10 @@ public final class NodeClass {
                 assert Node.class.isAssignableFrom(field.getType());
                 nodeField = NodeFieldAccessor.create(NodeFieldKind.PARENT, field);
                 parentFieldTmp = nodeField;
+            } else if (field.getDeclaringClass() == Node.class && field.getName().equals("nodeClass")) {
+                assert NodeClass.class.isAssignableFrom(field.getType());
+                nodeField = NodeFieldAccessor.create(NodeFieldKind.NODE_CLASS, field);
+                nodeClassFieldTmp = nodeField;
             } else if (field.getAnnotation(Child.class) != null) {
                 checkChildField(field);
                 nodeField = NodeFieldAccessor.create(NodeFieldKind.CHILD, field);
@@ -103,11 +113,16 @@ public final class NodeClass {
         }
 
         this.fields = fieldsList.toArray(new NodeFieldAccessor[fieldsList.size()]);
+        this.nodeClassField = nodeClassFieldTmp;
         this.parentField = parentFieldTmp;
         this.childFields = childFieldList.toArray(new NodeFieldAccessor[childFieldList.size()]);
         this.childrenFields = childrenFieldList.toArray(new NodeFieldAccessor[childrenFieldList.size()]);
         this.cloneableFields = cloneableFieldList.toArray(new NodeFieldAccessor[cloneableFieldList.size()]);
         this.clazz = clazz;
+    }
+
+    public NodeFieldAccessor getNodeClassField() {
+        return nodeClassField;
     }
 
     public NodeFieldAccessor[] getCloneableFields() {

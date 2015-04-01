@@ -76,7 +76,7 @@ public class DefaultASTPrinter implements ASTPrinter {
 
         ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
 
-        for (NodeFieldAccessor field : NodeClass.get(node.getClass()).getFields()) {
+        for (NodeFieldAccessor field : NodeClass.get(node).getFields()) {
             if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
                 childFields.add(field);
             } else if (field.getKind() == NodeFieldKind.DATA) {

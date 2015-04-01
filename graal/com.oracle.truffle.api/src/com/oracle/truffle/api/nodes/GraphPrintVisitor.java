@@ -262,7 +262,7 @@ public class GraphPrintVisitor {
     }
 
     private void readNodeProperties(Node node) {
-        NodeFieldAccessor[] fields = NodeClass.get(node.getClass()).getFields();
+        NodeFieldAccessor[] fields = node.getNodeClass().getFields();
         for (NodeFieldAccessor field : fields) {
             if (field.getKind() == NodeFieldKind.DATA) {
                 String key = field.getName();
@@ -339,7 +339,7 @@ public class GraphPrintVisitor {
 
     private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
-        NodeClass nodeClass = NodeClass.get(node.getClass());
+        NodeClass nodeClass = node.getNodeClass();
 
         for (NodeFieldAccessor field : nodeClass.getFields()) {
             NodeFieldKind kind = field.getKind();

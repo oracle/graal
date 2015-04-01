@@ -54,7 +54,7 @@ public final class NodeUtil {
     }
 
     static Iterator<Node> makeIterator(Node node) {
-        return NodeClass.get(node.getClass()).makeIterator(node);
+        return node.getNodeClass().makeIterator(node);
     }
 
     public static Iterator<Node> makeRecursiveIterator(Node node) {
@@ -132,7 +132,7 @@ public final class NodeUtil {
 
     static Node deepCopyImpl(Node orig) {
         final Node clone = orig.copy();
-        NodeClass nodeClass = NodeClass.get(clone.getClass());
+        NodeClass nodeClass = clone.getNodeClass();
 
         nodeClass.getParentField().putObject(clone, null);
 
@@ -169,7 +169,7 @@ public final class NodeUtil {
 
     public static List<Node> findNodeChildren(Node node) {
         List<Node> nodes = new ArrayList<>();
-        NodeClass nodeClass = NodeClass.get(node.getClass());
+        NodeClass nodeClass = node.getNodeClass();
 
         for (NodeFieldAccessor nodeField : nodeClass.getChildFields()) {
             Object child = nodeField.getObject(node);
@@ -197,7 +197,7 @@ public final class NodeUtil {
     }
 
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
-        NodeClass nodeClass = NodeClass.get(parent.getClass());
+        NodeClass nodeClass = parent.getNodeClass();
 
         for (NodeFieldAccessor nodeField : nodeClass.getChildFields()) {
             if (nodeField.getObject(parent) == oldChild) {
@@ -252,7 +252,7 @@ public final class NodeUtil {
      */
     public static NodeFieldAccessor findChildField(Node parent, Node child) {
         assert child != null;
-        NodeClass parentNodeClass = NodeClass.get(parent.getClass());
+        NodeClass parentNodeClass = parent.getNodeClass();
 
         for (NodeFieldAccessor field : parentNodeClass.getChildFields()) {
             if (field.getObject(parent) == child) {
@@ -302,7 +302,7 @@ public final class NodeUtil {
      */
     public static boolean forEachChild(Node parent, NodeVisitor visitor) {
         Objects.requireNonNull(visitor);
-        NodeClass parentNodeClass = NodeClass.get(parent.getClass());
+        NodeClass parentNodeClass = parent.getNodeClass();
 
         for (NodeFieldAccessor field : parentNodeClass.getChildFields()) {
             Object child = field.getObject(parent);
@@ -564,7 +564,7 @@ public final class NodeUtil {
     }
 
     private static String getNodeFieldName(Node parent, Node node, String defaultName) {
-        NodeFieldAccessor[] fields = NodeClass.get(parent.getClass()).getFields();
+        NodeFieldAccessor[] fields = parent.getNodeClass().getFields();
         for (NodeFieldAccessor field : fields) {
             Object value = field.loadValue(parent);
             if (field.getKind() == NodeFieldKind.CHILD && value == node) {
@@ -644,7 +644,7 @@ public final class NodeUtil {
         ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
         String sep = "";
         p.print("(");
-        for (NodeFieldAccessor field : NodeClass.get(node.getClass()).getFields()) {
+        for (NodeFieldAccessor field : NodeClass.get(node).getFields()) {
             if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
                 childFields.add(field);
             } else if (field.getKind() == NodeFieldKind.DATA) {

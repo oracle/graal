@@ -257,7 +257,9 @@ public final class PostOrderDeserializer {
 
     private static Node updateParent(Node parent, Node child) {
         if (child != null) {
-            NodeClass.get(child.getClass()).getParentField().putObject(child, parent);
+            NodeClass nodeClass = NodeClass.get(child.getClass());
+            nodeClass.getNodeClassField().putObject(child, nodeClass);
+            nodeClass.getParentField().putObject(child, parent);
         }
         return child;
     }
