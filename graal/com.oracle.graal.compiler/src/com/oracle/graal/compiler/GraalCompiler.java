@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler;
 
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
-import static com.oracle.graal.compiler.MethodFilter.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import java.util.*;
@@ -66,69 +65,13 @@ public class GraalCompiler {
     private static final DebugTimer EmitLIR = Debug.timer("EmitLIR");
     private static final DebugTimer EmitCode = Debug.timer("EmitCode");
 
-    /**
-     * The set of positive filters specified by the {@code -G:IntrinsificationsEnabled} option. To
-     * enable a fast path in {@link #shouldIntrinsify(JavaMethod)}, this field is {@code null} when
-     * no enabling/disabling filters are specified.
-     */
-    private static final MethodFilter[] positiveIntrinsificationFilter;
-
-    /**
-     * The set of negative filters specified by the {@code -G:IntrinsificationsDisabled} option.
-     */
-    private static final MethodFilter[] negativeIntrinsificationFilter;
-
     static class Options {
 
         // @formatter:off
-        /**
-         * @see MethodFilter
-         */
-        @Option(help = "Pattern for method(s) to which intrinsification (if available) will be applied. " +
-                       "By default, all available intrinsifications are applied except for methods matched " +
-                       "by IntrinsificationsDisabled. See MethodFilter class for pattern syntax.", type = OptionType.Debug)
-        public static final OptionValue<String> IntrinsificationsEnabled = new OptionValue<>(null);
-        /**
-         * @see MethodFilter
-         */
-        @Option(help = "Pattern for method(s) to which intrinsification will not be applied. " +
-                       "See MethodFilter class for pattern syntax.", type = OptionType.Debug)
-        public static final OptionValue<String> IntrinsificationsDisabled = new OptionValue<>(null);
-
         @Option(help = "Repeatedly run the LIR code generation pass to improve statistical profiling results.", type = OptionType.Debug)
         public static final OptionValue<Integer> EmitLIRRepeatCount = new OptionValue<>(0);
         // @formatter:on
 
-    }
-
-    static {
-        if (IntrinsificationsDisabled.getValue() != null) {
-            negativeIntrinsificationFilter = parse(IntrinsificationsDisabled.getValue());
-        } else {
-            negativeIntrinsificationFilter = null;
-        }
-
-        if (Options.IntrinsificationsEnabled.getValue() != null) {
-            positiveIntrinsificationFilter = parse(IntrinsificationsEnabled.getValue());
-        } else if (negativeIntrinsificationFilter != null) {
-            positiveIntrinsificationFilter = new MethodFilter[0];
-        } else {
-            positiveIntrinsificationFilter = null;
-        }
-    }
-
-    /**
-     * Determines if a given method should be intrinsified based on the values of
-     * {@link Options#IntrinsificationsEnabled} and {@link Options#IntrinsificationsDisabled}.
-     */
-    public static boolean shouldIntrinsify(JavaMethod method) {
-        if (positiveIntrinsificationFilter == null) {
-            return true;
-        }
-        if (positiveIntrinsificationFilter.length == 0 || matches(positiveIntrinsificationFilter, method)) {
-            return negativeIntrinsificationFilter == null || !matches(negativeIntrinsificationFilter, method);
-        }
-        return false;
     }
 
     /**

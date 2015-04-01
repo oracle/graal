@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
@@ -124,10 +123,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (b.parsingReplacement()) {
-            boolean compilingSnippet = b.getRootMethod().getAnnotation(Snippet.class) != null;
             Replacement replacement = b.getReplacement();
-            assert compilingSnippet : format("All calls in the replacement %s must be inlined or intrinsified: found call to %s", replacement.getReplacementMethod().format("%H.%n(%p)"),
-                            method.format("%h.%n(%p)"));
+            assert replacement.isCallToOriginal(method) : format("All non-recursive calls in the replacement %s must be inlined or intrinsified: found call to %s",
+                            replacement.getReplacementMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
         }
     }
 
@@ -174,7 +172,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                             for (Executable originalMethod : originalMethods) {
                                 if (originalMethod != null && (guard == null || guard.execute())) {
                                     ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
-                                    if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
+                                    if (original != null && methodSubstitution.forced()) {
                                         forcedSubstitutions.add(original);
                                     }
                                 }

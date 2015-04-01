@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.compiler.GraalCompiler.*;
-
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -50,10 +48,6 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
 
     @Override
     protected StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
-        if (!shouldIntrinsify(getTargetMethod())) {
-            return null;
-        }
-
         ResolvedJavaType type = StampTool.typeOrNull(getObject());
         if (type != null) {
             if (type.isArray()) {
