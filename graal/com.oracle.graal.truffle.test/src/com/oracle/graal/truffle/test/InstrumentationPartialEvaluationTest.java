@@ -205,6 +205,47 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
     }
 
     @Test
+    public void constantValueInertToolNodeInstrumentListener() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        // A listener that could insert a "tool node" into the AST, but which never does.
+        Instrument instrument = Instrument.create(new ToolNodeInstrumentListener() {
+
+            public ToolNode getToolNode(Probe p) {
+                return null;
+            }
+
+        }, null);
+        probe.attach(instrument);
+
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
+    public void constantValueInertToolNode() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ConstantTestNode(42);
+        RootTestNode root = new RootTestNode(fd, "constantValue", result);
+        root.adoptChildren();
+        Probe probe = result.probe();
+        // A listener that inserts a "tool node" with empty methods into the AST.
+        Instrument instrument = Instrument.create(new ToolNodeInstrumentListener() {
+
+            public ToolNode getToolNode(Probe p) {
+                return new ToolNode() {
+                };
+            }
+
+        }, null);
+        probe.attach(instrument);
+
+        assertPartialEvalEquals("constant42", root);
+    }
+
+    @Test
     public void instrumentDeopt() {
         final FrameDescriptor fd = new FrameDescriptor();
         final AbstractTestNode result = new ConstantTestNode(42);

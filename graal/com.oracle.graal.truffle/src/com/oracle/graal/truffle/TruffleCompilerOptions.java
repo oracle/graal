@@ -98,6 +98,12 @@ public class TruffleCompilerOptions {
     @Option(help = "Experimental. New splitting only: Split everything aggressively. ", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleSplittingAggressive = new OptionValue<>(false);
 
+    @Option(help = "Enable on stack replacement for Truffle loops.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> TruffleOSR = new OptionValue<>(true);
+
+    @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", type = OptionType.Debug)
+    public static final OptionValue<Integer> TruffleOSRCompilationThreshold = new OptionValue<>(10000);
+
     @Option(help = "Disable call target splitting if tree size exceeds this limit", type = OptionType.Debug)
     public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(100);
 

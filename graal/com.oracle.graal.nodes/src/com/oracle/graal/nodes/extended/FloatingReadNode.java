@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,5 +80,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     @Override
     public FixedAccessNode asFixedNode() {
         return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
+    }
+
+    @Override
+    public boolean verify() {
+        MemoryNode lla = getLastLocationAccess();
+        assert lla != null || getLocationIdentity().isImmutable() : "lastLocationAccess of " + this + " shouldn't be null for mutable location identity " + getLocationIdentity();
+        return super.verify();
     }
 }

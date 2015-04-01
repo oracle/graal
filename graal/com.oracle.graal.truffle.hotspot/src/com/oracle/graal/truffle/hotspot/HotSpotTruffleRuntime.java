@@ -215,11 +215,15 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Runnable r = new Runnable() {
             @Override
             public void run() {
+                boolean success = true;
                 try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
                     truffleCompiler.compileMethod(optimizedCallTarget);
-                    optimizedCallTarget.notifyCompilationFinished();
                 } catch (Throwable e) {
                     optimizedCallTarget.notifyCompilationFailed(e);
+                    success = false;
+                } finally {
+                    optimizedCallTarget.notifyCompilationFinished(success);
+
                 }
             }
         };
@@ -248,7 +252,10 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         if (codeTask != null && isCompiling(optimizedCallTarget)) {
             this.compilations.remove(optimizedCallTarget);
             boolean result = codeTask.cancel(true);
-            getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
+            if (result) {
+                optimizedCallTarget.notifyCompilationFinished(false);
+                getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
+            }
             return result;
         }
         return false;
