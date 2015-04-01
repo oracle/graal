@@ -45,6 +45,14 @@ public final class VoidStamp extends Stamp {
     }
 
     @Override
+    public Stamp improveWith(Stamp other) {
+        if (other instanceof VoidStamp) {
+            return this;
+        }
+        return StampFactory.illegal(Kind.Illegal);
+    }
+
+    @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
         throw GraalInternalError.shouldNotReachHere("void stamp has no value");
     }
