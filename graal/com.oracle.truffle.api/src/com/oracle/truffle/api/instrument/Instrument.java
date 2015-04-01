@@ -194,6 +194,19 @@ public abstract class Instrument {
         return new ASTInstrument(astListener, instrumentInfo);
     }
 
+    /**
+     * Creates an instrument that, when executed the first time in any particular AST location,
+     * invites the tool to provide an AST fragment for attachment/adoption into the running AST.
+     *
+     * @param toolNodeListener a listener for the tool that can request an AST fragment
+     * @param instrumentInfo instrumentInfo optional description of the instrument's role, useful
+     *            for debugging.
+     * @return a new instrument, ready for attachment at a probe.
+     */
+    public static Instrument create(ToolNodeInstrumentListener toolNodeListener, String instrumentInfo) {
+        return new ToolNodeInstrument(toolNodeListener, instrumentInfo);
+    }
+
     // TODO (mlvdv) experimental
     /**
      * For implementation testing.
@@ -278,7 +291,7 @@ public abstract class Instrument {
             if (instrumentNode != null) {
                 if (instrumentNode.getInstrument() == this) {
                     // Found the match at the head of the chain
-                    return instrumentNode.nextInstrument;
+                    return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
                 found = instrumentNode.removeFromChain(BasicInstrument.this);
@@ -298,29 +311,29 @@ public abstract class Instrument {
 
             public void enter(Node node, VirtualFrame vFrame) {
                 BasicInstrument.this.instrumentListener.enter(BasicInstrument.this.probe);
-                if (nextInstrument != null) {
-                    nextInstrument.enter(node, vFrame);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.enter(node, vFrame);
                 }
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {
                 BasicInstrument.this.instrumentListener.returnVoid(BasicInstrument.this.probe);
-                if (nextInstrument != null) {
-                    nextInstrument.returnVoid(node, vFrame);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
                 BasicInstrument.this.instrumentListener.returnValue(BasicInstrument.this.probe, result);
-                if (nextInstrument != null) {
-                    nextInstrument.returnValue(node, vFrame, result);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
                 BasicInstrument.this.instrumentListener.returnExceptional(BasicInstrument.this.probe, exception);
-                if (nextInstrument != null) {
-                    nextInstrument.returnExceptional(node, vFrame, exception);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
             }
 
@@ -362,7 +375,7 @@ public abstract class Instrument {
             if (instrumentNode != null) {
                 if (instrumentNode.getInstrument() == this) {
                     // Found the match at the head of the chain
-                    return instrumentNode.nextInstrument;
+                    return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
                 found = instrumentNode.removeFromChain(ASTInstrument.this);
@@ -382,35 +395,133 @@ public abstract class Instrument {
 
             public void enter(Node node, VirtualFrame vFrame) {
                 ASTInstrument.this.astListener.enter(ASTInstrument.this.probe, node, vFrame);
-                if (nextInstrument != null) {
-                    nextInstrument.enter(node, vFrame);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.enter(node, vFrame);
                 }
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {
                 ASTInstrument.this.astListener.returnVoid(ASTInstrument.this.probe, node, vFrame);
-                if (nextInstrument != null) {
-                    nextInstrument.returnVoid(node, vFrame);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
                 ASTInstrument.this.astListener.returnValue(ASTInstrument.this.probe, node, vFrame, result);
-                if (nextInstrument != null) {
-                    nextInstrument.returnValue(node, vFrame, result);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
                 ASTInstrument.this.astListener.returnExceptional(ASTInstrument.this.probe, node, vFrame, exception);
-                if (nextInstrument != null) {
-                    nextInstrument.returnExceptional(node, vFrame, exception);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
             }
 
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
                 return info != null ? info : astListener.getClass().getSimpleName();
+            }
+        }
+
+    }
+
+    /**
+     * An instrument that propagates events to an instance of {@link ASTInstrumentListener}.
+     */
+    private static final class ToolNodeInstrument extends Instrument {
+
+        /**
+         * Tool-supplied listener for AST events.
+         */
+        private final ToolNodeInstrumentListener toolNodeListener;
+
+        private ToolNodeInstrument(ToolNodeInstrumentListener toolNodeListener, String instrumentInfo) {
+            super(instrumentInfo);
+            this.toolNodeListener = toolNodeListener;
+        }
+
+        @Override
+        AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
+            return new ToolInstrumentNode(nextNode);
+        }
+
+        @Override
+        AbstractInstrumentNode removeFromChain(AbstractInstrumentNode instrumentNode) {
+            boolean found = false;
+            if (instrumentNode != null) {
+                if (instrumentNode.getInstrument() == this) {
+                    // Found the match at the head of the chain
+                    return instrumentNode.nextInstrumentNode;
+                }
+                // Match not at the head of the chain; remove it.
+                found = instrumentNode.removeFromChain(ToolNodeInstrument.this);
+            }
+            if (!found) {
+                throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
+            }
+            return instrumentNode;
+        }
+
+        @NodeInfo(cost = NodeCost.NONE)
+        private final class ToolInstrumentNode extends AbstractInstrumentNode {
+
+            @Child ToolNode toolNode;
+
+            private ToolInstrumentNode(AbstractInstrumentNode nextNode) {
+                super(nextNode);
+            }
+
+            public void enter(Node node, VirtualFrame vFrame) {
+                if (toolNode == null) {
+                    final ToolNode newToolNode = ToolNodeInstrument.this.toolNodeListener.getToolNode(ToolNodeInstrument.this.probe);
+                    if (newToolNode != null) {
+                        toolNode = newToolNode;
+                        adoptChildren();
+                        ToolNodeInstrument.this.probe.invalidateProbeUnchanged();
+                    }
+                }
+                if (toolNode != null) {
+                    toolNode.enter(node, vFrame);
+                }
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.enter(node, vFrame);
+                }
+            }
+
+            public void returnVoid(Node node, VirtualFrame vFrame) {
+                if (toolNode != null) {
+                    toolNode.returnVoid(node, vFrame);
+                }
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnVoid(node, vFrame);
+                }
+            }
+
+            public void returnValue(Node node, VirtualFrame vFrame, Object result) {
+                if (toolNode != null) {
+                    toolNode.returnValue(node, vFrame, result);
+                }
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnValue(node, vFrame, result);
+                }
+            }
+
+            public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
+                if (toolNode != null) {
+                    toolNode.returnExceptional(node, vFrame, exception);
+                }
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
+                }
+            }
+
+            public String instrumentationInfo() {
+                final String info = getInstrumentInfo();
+                return info != null ? info : toolNodeListener.getClass().getSimpleName();
             }
         }
 
@@ -440,7 +551,7 @@ public abstract class Instrument {
             if (instrumentNode != null) {
                 if (instrumentNode.getInstrument() == this) {
                     // Found the match at the head of the chain
-                    return instrumentNode.nextInstrument;
+                    return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
                 found = instrumentNode.removeFromChain(TruffleOptInstrument.this);
@@ -466,26 +577,26 @@ public abstract class Instrument {
                     this.isCompiled = CompilerDirectives.inCompiledCode();
                     TruffleOptInstrument.this.toolOptListener.notifyIsCompiled(this.isCompiled);
                 }
-                if (nextInstrument != null) {
-                    nextInstrument.enter(node, vFrame);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.enter(node, vFrame);
                 }
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {
-                if (nextInstrument != null) {
-                    nextInstrument.returnVoid(node, vFrame);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                if (nextInstrument != null) {
-                    nextInstrument.returnValue(node, vFrame, result);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-                if (nextInstrument != null) {
-                    nextInstrument.returnExceptional(node, vFrame, exception);
+                if (nextInstrumentNode != null) {
+                    nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
             }
 
@@ -500,10 +611,10 @@ public abstract class Instrument {
     @NodeInfo(cost = NodeCost.NONE)
     abstract class AbstractInstrumentNode extends Node implements TruffleEvents, InstrumentationNode {
 
-        @Child protected AbstractInstrumentNode nextInstrument;
+        @Child protected AbstractInstrumentNode nextInstrumentNode;
 
         protected AbstractInstrumentNode(AbstractInstrumentNode nextNode) {
-            this.nextInstrument = nextNode;
+            this.nextInstrumentNode = nextNode;
         }
 
         @Override
@@ -527,21 +638,21 @@ public abstract class Instrument {
          */
         private boolean removeFromChain(Instrument instrument) {
             assert getInstrument() != instrument;
-            if (nextInstrument == null) {
+            if (nextInstrumentNode == null) {
                 return false;
             }
-            if (nextInstrument.getInstrument() == instrument) {
+            if (nextInstrumentNode.getInstrument() == instrument) {
                 // Next is the one to remove
-                if (nextInstrument.nextInstrument == null) {
+                if (nextInstrumentNode.nextInstrumentNode == null) {
                     // Next is at the tail; just forget
-                    nextInstrument = null;
+                    nextInstrumentNode = null;
                 } else {
                     // Replace next with its successor
-                    nextInstrument.replace(nextInstrument.nextInstrument);
+                    nextInstrumentNode.replace(nextInstrumentNode.nextInstrumentNode);
                 }
                 return true;
             }
-            return nextInstrument.removeFromChain(instrument);
+            return nextInstrumentNode.removeFromChain(instrument);
         }
 
         protected String getInstrumentInfo() {

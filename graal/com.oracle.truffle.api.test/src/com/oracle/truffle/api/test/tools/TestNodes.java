@@ -32,7 +32,7 @@ import com.oracle.truffle.api.source.*;
 /**
  * Nodes and an {@linkplain CallTarget executable ASTs} for testing.
  */
-public class TestNodes {
+class TestNodes {
 
     /**
      * A fake source used for testing: empty line 1, expression on line 2.
@@ -44,7 +44,7 @@ public class TestNodes {
     /**
      * An executable addition expression that evaluates to 13.
      */
-    public static CallTarget createExpr13TestCallTarget() {
+    static CallTarget createExpr13TestCallTarget() {
         final RootNode rootNode = createExpr13TestRootNode();
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
@@ -52,7 +52,7 @@ public class TestNodes {
     /**
      * Root holding an addition expression that evaluates to 13.
      */
-    public static RootNode createExpr13TestRootNode() {
+    static RootNode createExpr13TestRootNode() {
         final TestLanguageNode ast = createExpr13AST();
         final TestRootNode rootNode = new TestRootNode(ast);
         rootNode.adoptChildren();
@@ -62,7 +62,7 @@ public class TestNodes {
     /**
      * Addition expression that evaluates to 13, with faked source attribution.
      */
-    public static TestLanguageNode createExpr13AST() {
+    static TestLanguageNode createExpr13AST() {
         final SourceSection leftSourceSection = expr13Source.createSection("left", 1, 1);
         final TestValueNode leftValueNode = new TestValueNode(6, leftSourceSection);
         final SourceSection rightSourceSection = expr13Source.createSection("right", 3, 1);
@@ -71,7 +71,7 @@ public class TestNodes {
         return new TestAddNode(leftValueNode, rightValueNode, exprSourceSection);
     }
 
-    public abstract static class TestLanguageNode extends Node {
+    abstract static class TestLanguageNode extends Node {
         public abstract Object execute(VirtualFrame frame);
 
         public TestLanguageNode() {
@@ -93,7 +93,7 @@ public class TestNodes {
     }
 
     @NodeInfo(cost = NodeCost.NONE)
-    public static class TestWrapperNode extends TestLanguageNode implements WrapperNode {
+    static class TestWrapperNode extends TestLanguageNode implements WrapperNode {
         @Child private TestLanguageNode child;
         @Child private ProbeNode probeNode;
 
@@ -151,7 +151,7 @@ public class TestNodes {
      * of the guest language. This is necessary since creating a {@link CallTarget} is how Truffle
      * completes an AST. The root nodes serves as our entry point into a program.
      */
-    public static class TestRootNode extends RootNode {
+    static class TestRootNode extends RootNode {
         @Child private TestLanguageNode body;
 
         /**
@@ -180,7 +180,7 @@ public class TestNodes {
         }
     }
 
-    public static class TestValueNode extends TestLanguageNode {
+    static class TestValueNode extends TestLanguageNode {
         private final int value;
 
         public TestValueNode(int value) {
@@ -198,7 +198,7 @@ public class TestNodes {
         }
     }
 
-    public static class TestAddNode extends TestLanguageNode {
+    static class TestAddNode extends TestLanguageNode {
         @Child private TestLanguageNode leftChild;
         @Child private TestLanguageNode rightChild;
 

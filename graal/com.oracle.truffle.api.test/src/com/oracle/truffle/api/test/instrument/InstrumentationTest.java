@@ -35,6 +35,11 @@ import com.oracle.truffle.api.instrument.ProbeFailure.Reason;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestLanguageWrapperNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
 
 /**
  * <h3>AST Instrumentation</h3>
@@ -337,142 +342,6 @@ public class InstrumentationTest {
 
         Probe.unregisterASTProber(astProber);
 
-    }
-
-    private abstract class TestLanguageNode extends Node {
-        public abstract Object execute(VirtualFrame vFrame);
-
-        @Override
-        public boolean isInstrumentable() {
-            return true;
-        }
-
-        @Override
-        public WrapperNode createWrapperNode() {
-            return new TestLanguageWrapperNode(this);
-        }
-    }
-
-    @NodeInfo(cost = NodeCost.NONE)
-    private class TestLanguageWrapperNode extends TestLanguageNode implements WrapperNode {
-        @Child private TestLanguageNode child;
-        @Child private ProbeNode probeNode;
-
-        public TestLanguageWrapperNode(TestLanguageNode child) {
-            assert !(child instanceof TestLanguageWrapperNode);
-            this.child = child;
-        }
-
-        @Override
-        public String instrumentationInfo() {
-            return "Wrapper node for testing";
-        }
-
-        @Override
-        public boolean isInstrumentable() {
-            return false;
-        }
-
-        @Override
-        public void insertProbe(ProbeNode newProbeNode) {
-            this.probeNode = newProbeNode;
-        }
-
-        @Override
-        public Probe getProbe() {
-            return probeNode.getProbe();
-        }
-
-        @Override
-        public Node getChild() {
-            return child;
-        }
-
-        @Override
-        public Object execute(VirtualFrame vFrame) {
-            probeNode.enter(child, vFrame);
-            Object result;
-
-            try {
-                result = child.execute(vFrame);
-                probeNode.returnValue(child, vFrame, result);
-            } catch (KillException e) {
-                throw (e);
-            } catch (Exception e) {
-                probeNode.returnExceptional(child, vFrame, e);
-                throw (e);
-            }
-
-            return result;
-        }
-    }
-
-    /**
-     * A simple node for our test language to store a value.
-     */
-    private class TestValueNode extends TestLanguageNode {
-        private final int value;
-
-        public TestValueNode(int value) {
-            this.value = value;
-        }
-
-        @Override
-        public Object execute(VirtualFrame vFrame) {
-            return new Integer(this.value);
-        }
-    }
-
-    /**
-     * A node for our test language that adds up two {@link TestValueNode}s.
-     */
-    private class TestAdditionNode extends TestLanguageNode {
-        @Child private TestLanguageNode leftChild;
-        @Child private TestLanguageNode rightChild;
-
-        public TestAdditionNode(TestValueNode leftChild, TestValueNode rightChild) {
-            this.leftChild = insert(leftChild);
-            this.rightChild = insert(rightChild);
-        }
-
-        @Override
-        public Object execute(VirtualFrame vFrame) {
-            return new Integer(((Integer) leftChild.execute(vFrame)).intValue() + ((Integer) rightChild.execute(vFrame)).intValue());
-        }
-    }
-
-    /**
-     * Truffle requires that all guest languages to have a {@link RootNode} which sits atop any AST
-     * of the guest language. This is necessary since creating a {@link CallTarget} is how Truffle
-     * completes an AST. The root nodes serves as our entry point into a program.
-     */
-    private class TestRootNode extends RootNode {
-        @Child private TestLanguageNode body;
-
-        /**
-         * This constructor emulates the global machinery that applies registered probers to every
-         * newly created AST. Global registry is not used, since that would interfere with other
-         * tests run in the same environment.
-         */
-        public TestRootNode(TestLanguageNode body) {
-            super(null);
-            this.body = body;
-        }
-
-        @Override
-        public Object execute(VirtualFrame vFrame) {
-            return body.execute(vFrame);
-        }
-
-        @Override
-        public boolean isCloningAllowed() {
-            return true;
-        }
-
-        @Override
-        public void applyInstrumentation() {
-            Probe.applyASTProbers(body);
-        }
     }
 
     private interface TestCounter {
