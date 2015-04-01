@@ -124,10 +124,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (b.parsingReplacement()) {
-            boolean compilingSnippet = b.getRootMethod().getAnnotation(Snippet.class) != null;
             Replacement replacement = b.getReplacement();
-            assert compilingSnippet : format("All calls in the replacement %s must be inlined or intrinsified: found call to %s", replacement.getReplacementMethod().format("%H.%n(%p)"),
-                            method.format("%h.%n(%p)"));
+            assert replacement.isCallToOriginal(method) : format("All non-recursive calls in the replacement %s must be inlined or intrinsified: found call to %s",
+                            replacement.getReplacementMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
         }
     }
 

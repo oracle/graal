@@ -58,6 +58,12 @@ public interface GraphBuilderContext {
          * intrinsic will restart the interpreter at the intrinsified call.
          */
         boolean isIntrinsic();
+
+        /**
+         * Determines if a call within the compilation scope of this replacement represents a call
+         * to the {@linkplain #getOriginalMethod() original} method.
+         */
+        boolean isCallToOriginal(ResolvedJavaMethod method);
     }
 
     /**
