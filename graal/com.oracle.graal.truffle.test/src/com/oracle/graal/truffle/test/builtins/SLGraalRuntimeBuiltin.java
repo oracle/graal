@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;

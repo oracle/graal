@@ -64,7 +64,7 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                     p.println(node.getClass().getSimpleName());
                 } else {
                     String fieldName = "unknownField";
-                    NodeFieldAccessor[] fields = NodeClass.get(parent.getClass()).getFields();
+                    NodeFieldAccessor[] fields = NodeClass.get(parent).getFields();
                     for (NodeFieldAccessor field : fields) {
                         Object value = field.loadValue(parent);
                         if (value == node) {
