@@ -171,7 +171,16 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
             if (invoke.stateAfter() == null) {
-                throw new GraalInternalError("cannot lower to invoke without state: %s", this);
+                ResolvedJavaMethod method = graph().method();
+                if (method.getAnnotation(MethodSubstitution.class) != null || method.getAnnotation(Snippet.class) != null) {
+                    // One cause for this is that a MacroNode is created for a method that
+                    // no longer needs a MacroNode. For example, Class.getComponentType()
+                    // only needs a MacroNode prior to JDK9 as it was given a non-native
+                    // implementation in JDK9.
+                    throw new GraalInternalError("%s macro created for call to %s in %s must be lowerable to a snippet or intrinsic graph. "
+                                    + "Maybe a macro node is not needed for this method in the current JDK?", getClass().getSimpleName(), targetMethod.format("%h.%n(%p)"), graph());
+                }
+                throw new GraalInternalError("%s: cannot lower to invoke without state: %s", graph(), this);
             }
             invoke.lower(tool);
         }
