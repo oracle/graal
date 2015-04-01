@@ -64,7 +64,7 @@ public abstract class SLStatementNode extends Node {
      * @param node the node to format.
      * @return a formatted source section string
      */
-    private static String formatSourceSection(Node node) {
+    public static String formatSourceSection(Node node) {
         if (node == null) {
             return "<unknown>";
         }

@@ -93,4 +93,9 @@ public final class SLRepeatingNode extends Node implements RepeatingNode {
         }
     }
 
+    @Override
+    public String toString() {
+        return SLStatementNode.formatSourceSection(this);
+    }
+
 }
