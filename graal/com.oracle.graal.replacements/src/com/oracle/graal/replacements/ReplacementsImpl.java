@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
@@ -173,7 +172,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                             for (Executable originalMethod : originalMethods) {
                                 if (originalMethod != null && (guard == null || guard.execute())) {
                                     ResolvedJavaMethod original = registerMethodSubstitution(this, originalMethod, substituteMethod);
-                                    if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
+                                    if (original != null && methodSubstitution.forced()) {
                                         forcedSubstitutions.add(original);
                                     }
                                 }

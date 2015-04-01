@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.compiler.GraalCompiler.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -74,10 +72,6 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
      * @return ConstantNode of the caller class, or null
      */
     private ConstantNode getCallerClassNode(MetaAccessProvider metaAccess) {
-        if (!shouldIntrinsify(getTargetMethod())) {
-            return null;
-        }
-
         // Walk back up the frame states to find the caller at the required depth.
         FrameState state = stateAfter();
 
