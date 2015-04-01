@@ -40,8 +40,10 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         public static final NestedBooleanOptionValue LIROptRedundantMoveElimination = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
         public static final NestedBooleanOptionValue LIROptNullCheckOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
-        @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptMoveProfiling = new OptionValue<>(false);
+        @Option(help = "Enables profiling of move types on LIR level. " +
+                       "Move types are for example stores (register to stack), " +
+                       "constant loads (constant to register) or copies (register to register).", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LIRProfileMoves = new OptionValue<>(false);
         // @formatter:on
     }
 
@@ -58,7 +60,7 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         if (Options.LIROptNullCheckOptimizer.getValue()) {
             appendPhase(new NullCheckOptimizer());
         }
-        if (Options.LIROptMoveProfiling.getValue()) {
+        if (Options.LIRProfileMoves.getValue()) {
             appendPhase(new MoveProfiling());
         }
     }
