@@ -30,9 +30,7 @@ import java.nio.*;
 import sun.misc.*;
 
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -79,16 +77,16 @@ public final class PostOrderSerializer {
         }
         Class<? extends Node> nodeClass = node.getClass();
 
-        NodeField[] nodeFields = NodeClass.get(nodeClass).getFields();
+        NodeFieldAccessor[] nodeFields = NodeClass.get(nodeClass).getFields();
         serializeChildFields(buffer, node, nodeFields);
         serializeChildrenFields(buffer, node, nodeFields);
         buffer.put(cp.putClass(node.getClass()));
         serializeDataFields(buffer, node, nodeFields);
     }
 
-    private void serializeDataFields(VariableLengthIntBuffer buffer, Node node, NodeField[] nodeFields) throws UnsupportedConstantPoolTypeException {
+    private void serializeDataFields(VariableLengthIntBuffer buffer, Node node, NodeFieldAccessor[] nodeFields) throws UnsupportedConstantPoolTypeException {
         for (int i = 0; i < nodeFields.length; i++) {
-            NodeField field = nodeFields[i];
+            NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.DATA) {
                 Class<?> fieldClass = field.getType();
                 long offset = field.getOffset();
@@ -148,9 +146,9 @@ public final class PostOrderSerializer {
         }
     }
 
-    private void serializeChildrenFields(VariableLengthIntBuffer buffer, Node nodeInstance, NodeField[] nodeFields) throws UnsupportedConstantPoolTypeException {
+    private void serializeChildrenFields(VariableLengthIntBuffer buffer, Node nodeInstance, NodeFieldAccessor[] nodeFields) throws UnsupportedConstantPoolTypeException {
         for (int i = 0; i < nodeFields.length; i++) {
-            NodeField field = nodeFields[i];
+            NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILDREN) {
                 Object childArrayObject = unsafe.getObject(nodeInstance, field.getOffset());
                 if (childArrayObject != null && !(childArrayObject instanceof Node[])) {
@@ -173,9 +171,9 @@ public final class PostOrderSerializer {
         }
     }
 
-    private void serializeChildFields(VariableLengthIntBuffer buffer, Node nodeInstance, NodeField[] nodeFields) throws UnsupportedConstantPoolTypeException {
+    private void serializeChildFields(VariableLengthIntBuffer buffer, Node nodeInstance, NodeFieldAccessor[] nodeFields) throws UnsupportedConstantPoolTypeException {
         for (int i = 0; i < nodeFields.length; i++) {
-            NodeField field = nodeFields[i];
+            NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILD) {
                 Object childObject = unsafe.getObject(nodeInstance, field.getOffset());
                 if (childObject != null && !(childObject instanceof Node)) {

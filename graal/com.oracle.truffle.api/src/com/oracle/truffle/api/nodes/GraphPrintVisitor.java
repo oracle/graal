@@ -36,9 +36,7 @@ import javax.xml.transform.stream.*;
 
 import org.w3c.dom.*;
 
-import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 
 /**
  * Utility class for creating output for the ideal graph visualizer.
@@ -264,8 +262,8 @@ public class GraphPrintVisitor {
     }
 
     private void readNodeProperties(Node node) {
-        NodeField[] fields = NodeClass.get(node.getClass()).getFields();
-        for (NodeField field : fields) {
+        NodeFieldAccessor[] fields = NodeClass.get(node.getClass()).getFields();
+        for (NodeFieldAccessor field : fields) {
             if (field.getKind() == NodeFieldKind.DATA) {
                 String key = field.getName();
                 if (getPropertyElement(node, key) == null) {
@@ -343,7 +341,7 @@ public class GraphPrintVisitor {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         NodeClass nodeClass = NodeClass.get(node.getClass());
 
-        for (NodeField field : nodeClass.getFields()) {
+        for (NodeFieldAccessor field : nodeClass.getFields()) {
             NodeFieldKind kind = field.getKind();
             if (kind == NodeFieldKind.CHILD || kind == NodeFieldKind.CHILDREN) {
                 Object value = field.loadValue(node);

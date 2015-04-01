@@ -30,9 +30,7 @@ import java.util.*;
 import sun.misc.*;
 
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -148,7 +146,7 @@ public final class PostOrderDeserializer {
 
         Node node = (Node) object;
 
-        NodeField[] nodeFields = NodeClass.get(nodeClass).getFields();
+        NodeFieldAccessor[] nodeFields = NodeClass.get(nodeClass).getFields();
         deserializeChildrenFields(node, nodeFields);
         deserializeChildFields(node, nodeFields);
         deserializeDataFields(buffer, node, nodeFields);
@@ -156,9 +154,9 @@ public final class PostOrderDeserializer {
         return node;
     }
 
-    private void deserializeDataFields(VariableLengthIntBuffer buffer, Node nodeInstance, NodeField[] nodeFields) throws UnsupportedConstantPoolTypeException {
+    private void deserializeDataFields(VariableLengthIntBuffer buffer, Node nodeInstance, NodeFieldAccessor[] nodeFields) throws UnsupportedConstantPoolTypeException {
         for (int i = 0; i < nodeFields.length; i++) {
-            NodeField field = nodeFields[i];
+            NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.DATA) {
                 Class<?> fieldClass = field.getType();
                 long offset = field.getOffset();
@@ -239,18 +237,18 @@ public final class PostOrderDeserializer {
         }
     }
 
-    private void deserializeChildFields(Node parent, NodeField[] nodeFields) {
+    private void deserializeChildFields(Node parent, NodeFieldAccessor[] nodeFields) {
         for (int i = nodeFields.length - 1; i >= 0; i--) {
-            NodeField field = nodeFields[i];
+            NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILD) {
                 unsafe.putObject(parent, field.getOffset(), popNode(parent, field.getType()));
             }
         }
     }
 
-    private void deserializeChildrenFields(Node parent, NodeField[] nodeFields) {
+    private void deserializeChildrenFields(Node parent, NodeFieldAccessor[] nodeFields) {
         for (int i = nodeFields.length - 1; i >= 0; i--) {
-            NodeField field = nodeFields[i];
+            NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILDREN) {
                 unsafe.putObject(parent, field.getOffset(), popArray(parent, field.getType()));
             }

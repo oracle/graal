@@ -29,9 +29,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
+import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -76,9 +74,9 @@ public class DefaultASTPrinter implements ASTPrinter {
 
         p.print(NodeUtil.printSyntaxTags(node));
 
-        ArrayList<NodeField> childFields = new ArrayList<>();
+        ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
 
-        for (NodeField field : NodeClass.get(node.getClass()).getFields()) {
+        for (NodeFieldAccessor field : NodeClass.get(node.getClass()).getFields()) {
             if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
                 childFields.add(field);
             } else if (field.getKind() == NodeFieldKind.DATA) {
@@ -100,7 +98,7 @@ public class DefaultASTPrinter implements ASTPrinter {
 
             if (childFields.size() != 0) {
                 p.print(" {");
-                for (NodeField field : childFields) {
+                for (NodeFieldAccessor field : childFields) {
 
                     Object value = field.loadValue(node);
                     if (value == null) {
@@ -122,7 +120,7 @@ public class DefaultASTPrinter implements ASTPrinter {
         }
     }
 
-    protected void printChildren(PrintWriter p, int maxDepth, Node markNode, int level, NodeField field, Object value) {
+    protected void printChildren(PrintWriter p, int maxDepth, Node markNode, int level, NodeFieldAccessor field, Object value) {
         printNewLine(p, level);
         p.print(field.getName());
         Node[] children = (Node[]) value;
@@ -136,7 +134,7 @@ public class DefaultASTPrinter implements ASTPrinter {
         p.print("]");
     }
 
-    protected void printChild(PrintWriter p, int maxDepth, Node markNode, int level, NodeField field, Object value) {
+    protected void printChild(PrintWriter p, int maxDepth, Node markNode, int level, NodeFieldAccessor field, Object value) {
         final Node valueNode = (Node) value;
         printNewLine(p, level, valueNode == markNode);
         p.print(field.getName());

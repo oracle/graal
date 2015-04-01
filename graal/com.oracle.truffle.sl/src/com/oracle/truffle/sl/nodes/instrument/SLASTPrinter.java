@@ -28,8 +28,6 @@ import java.util.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
 
 /**
@@ -60,9 +58,9 @@ public final class SLASTPrinter extends DefaultASTPrinter {
 
         p.print(NodeUtil.printSyntaxTags(node));
 
-        ArrayList<NodeField> childFields = new ArrayList<>();
+        ArrayList<NodeFieldAccessor> childFields = new ArrayList<>();
 
-        for (NodeField field : NodeClass.get(node.getClass()).getFields()) {
+        for (NodeFieldAccessor field : NodeClass.get(node.getClass()).getFields()) {
             if (field.getKind() == NodeFieldKind.CHILD || field.getKind() == NodeFieldKind.CHILDREN) {
                 childFields.add(field);
             } else if (field.getKind() == NodeFieldKind.DATA) {
@@ -84,7 +82,7 @@ public final class SLASTPrinter extends DefaultASTPrinter {
 
             if (childFields.size() != 0) {
                 p.print(" {");
-                for (NodeField field : childFields) {
+                for (NodeFieldAccessor field : childFields) {
 
                     Object value = field.loadValue(node);
                     if (value == null) {
