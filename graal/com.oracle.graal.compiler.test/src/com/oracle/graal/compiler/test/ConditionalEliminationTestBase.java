@@ -39,11 +39,11 @@ import com.oracle.graal.phases.tiers.*;
  */
 public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
-    protected void test(String snippet, String referenceSnippet) {
-        test(snippet, referenceSnippet, false);
+    protected void testConditionalElimination(String snippet, String referenceSnippet) {
+        testConditionalElimination(snippet, referenceSnippet, false);
     }
 
-    protected void test(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
+    protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());

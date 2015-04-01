@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.test.tutorial;
 
 import java.lang.reflect.*;
-import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.code.*;
@@ -122,11 +121,10 @@ public class InvokeGraal {
             CompilationResultBuilderFactory factory = CompilationResultBuilderFactory.Default;
 
             /* Advanced configuration objects that are not mandatory. */
-            Map<ResolvedJavaMethod, StructuredGraph> cache = null;
             SpeculationLog speculationLog = null;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
                             compilationResult, factory);
 
             /*

@@ -36,6 +36,11 @@ public class EconomyHighTier extends PhaseSuite<HighTierContext> {
         if (ImmutableCode.getValue()) {
             canonicalizer.disableReadCanonicalization();
         }
+
+        if (OptCanonicalizer.getValue()) {
+            appendPhase(canonicalizer);
+        }
+
         appendPhase(new CleanTypeProfileProxyPhase(canonicalizer));
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
     }

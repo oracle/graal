@@ -98,6 +98,12 @@ public class TruffleCompilerOptions {
     @Option(help = "Experimental. New splitting only: Split everything aggressively. ", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleSplittingAggressive = new OptionValue<>(false);
 
+    @Option(help = "Enable on stack replacement for Truffle loops.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> TruffleOSR = new OptionValue<>(true);
+
+    @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", type = OptionType.Debug)
+    public static final OptionValue<Integer> TruffleOSRCompilationThreshold = new OptionValue<>(10000);
+
     @Option(help = "Disable call target splitting if tree size exceeds this limit", type = OptionType.Debug)
     public static final OptionValue<Integer> TruffleSplittingMaxCalleeSize = new OptionValue<>(100);
 
@@ -137,9 +143,6 @@ public class TruffleCompilerOptions {
 
     @Option(help = "Print information for compilation queuing", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTruffleCompilationDetails = new OptionValue<>(false);
-
-    @Option(help = "Print a node count histogram after each compilation", type = OptionType.Debug)
-    public static final OptionValue<Boolean> TraceTruffleCompilationHistogram = new OptionValue<>(false);
 
     @Option(help = "Print all polymorphic and generic nodes after each compilation", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceTruffleCompilationPolymorphism = new OptionValue<>(false);
@@ -191,8 +194,5 @@ public class TruffleCompilerOptions {
 
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleCompilationStatisticDetails = new OptionValue<>(false);
-
-    @Option(help = "Experimental new version of the partial evaluator.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> FastPE = new OptionValue<>(true);
     // @formatter:on
 }

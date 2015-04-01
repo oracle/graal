@@ -23,7 +23,7 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Represents the three possibilities that an exception was seen at a specific BCI.
+ * Represents a logic value that can be either {@link #TRUE}, {@link #FALSE}, or {@link #UNKNOWN}.
  */
 public enum TriState {
     TRUE,

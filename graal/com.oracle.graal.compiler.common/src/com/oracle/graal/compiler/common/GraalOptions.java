@@ -51,9 +51,6 @@ public final class GraalOptions {
     @Option(help = "Maximum level of recursive inlining.", type = OptionType.Expert)
     public static final OptionValue<Integer> MaximumRecursiveInlining = new OptionValue<>(5);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> IterativeInlining = new OptionValue<>(false);
-
     @Option(help = "Graphs with less than this number of nodes are trivial and therefore always inlined.", type = OptionType.Expert)
     public static final OptionValue<Integer> TrivialInliningSize = new OptionValue<>(10);
 
@@ -93,9 +90,6 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Expert)
     public static final OptionValue<Integer> DeoptsToDisableOptimisticOptimization = new OptionValue<>(40);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionValue<Boolean> CacheGraphs = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> LoopPeeling = new OptionValue<>(true);

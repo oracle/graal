@@ -31,7 +31,6 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 
@@ -78,7 +77,7 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Set<F
                 }
 
                 addFloatingReadUsages(currentState, n);
-            } else if (n instanceof MemoryProxy) {
+            } else if (n instanceof MemoryNode) {
                 addFloatingReadUsages(currentState, n);
             } else if (n instanceof FloatingReadNode) {
                 FloatingReadNode floatingReadNode = (FloatingReadNode) n;

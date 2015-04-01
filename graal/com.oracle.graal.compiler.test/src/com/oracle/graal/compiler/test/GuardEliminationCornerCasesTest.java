@@ -31,7 +31,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
@@ -75,7 +74,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
 
     @Test
     public void testFloatingGuards() {
-        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        HighTierContext context = getDefaultHighTierContext();
         StructuredGraph graph = parseEager("testMethod", AllowAssumptions.YES);
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();

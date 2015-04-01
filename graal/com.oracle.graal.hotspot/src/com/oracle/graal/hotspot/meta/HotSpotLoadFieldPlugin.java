@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -42,7 +41,7 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
     static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
 
     public boolean apply(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
-        if ((InlineDuringParsing.getValue() && !ImmutableCode.getValue()) || b.parsingReplacement()) {
+        if (!ImmutableCode.getValue() || b.parsingReplacement()) {
             if (receiver.isConstant()) {
                 JavaConstant asJavaConstant = receiver.asJavaConstant();
                 return tryReadField(b, field, asJavaConstant);
@@ -65,7 +64,7 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
     }
 
     public boolean apply(GraphBuilderContext b, ResolvedJavaField staticField) {
-        if ((InlineDuringParsing.getValue() && !ImmutableCode.getValue()) || b.parsingReplacement()) {
+        if (!ImmutableCode.getValue() || b.parsingReplacement()) {
             // Javac does not allow use of "$assertionsDisabled" for a field name but
             // Eclipse does in which case a suffix is added to the generated field.
             if (b.parsingReplacement() && staticField.isSynthetic() && staticField.getName().startsWith("$assertionsDisabled")) {

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static sun.misc.Version.*;
+
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.meta.*;
@@ -35,24 +37,39 @@ import com.oracle.graal.nodes.spi.*;
 
 /**
  * A call target that replaces itself in the graph when being lowered by restoring the original
- * {@link MethodHandle} invocation target. This is required for when a {@link MethodHandle} call was
- * resolved to a constant target but the target was not inlined. In that case, the original
- * invocation must be restored with all of its original arguments. Why? HotSpot linkage for
- * {@link MethodHandle} intrinsics (see {@code MethodHandles::generate_method_handle_dispatch})
- * expects certain implicit arguments to be on the stack such as the MemberName suffix argument for
- * a call to one of the MethodHandle.linkTo* methods. An
- * {@linkplain MethodHandleNode#tryResolveTargetInvoke resolved} {@link MethodHandle} invocation
- * drops these arguments which means the interpreter won't find them.
+ * {@link MethodHandle} invocation target. Prior to
+ * https://bugs.openjdk.java.net/browse/JDK-8072008, this is required for when a
+ * {@link MethodHandle} call is resolved to a constant target but the target was not inlined. In
+ * that case, the original invocation must be restored with all of its original arguments. Why?
+ * HotSpot linkage for {@link MethodHandle} intrinsics (see
+ * {@code MethodHandles::generate_method_handle_dispatch}) expects certain implicit arguments to be
+ * on the stack such as the MemberName suffix argument for a call to one of the MethodHandle.linkTo*
+ * methods. An {@linkplain MethodHandleNode#tryResolveTargetInvoke resolved} {@link MethodHandle}
+ * invocation drops these arguments which means the interpreter won't find them.
  */
 @NodeInfo
 public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNode implements Lowerable {
 
     public static final NodeClass<ResolvedMethodHandleCallTargetNode> TYPE = NodeClass.create(ResolvedMethodHandleCallTargetNode.class);
+
+    /**
+     * Creates a call target for an invocation on a direct target derived by resolving a constant
+     * {@link MethodHandle}.
+     */
+    public static MethodCallTargetNode create(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod originalTargetMethod,
+                    ValueNode[] originalArguments, JavaType originalReturnType) {
+        if (jdkMajorVersion() >= 1 && jdkMinorVersion() >= 8 && jdkMicroVersion() >= 0 && jdkUpdateVersion() >= 60) {
+            // https://bugs.openjdk.java.net/browse/JDK-8072008 is targeted for 8u60
+            return new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
+        }
+        return new ResolvedMethodHandleCallTargetNode(invokeKind, targetMethod, arguments, returnType, originalTargetMethod, originalArguments, originalReturnType);
+    }
+
     protected final ResolvedJavaMethod originalTargetMethod;
     protected final JavaType originalReturnType;
     @Input NodeInputList<ValueNode> originalArguments;
 
-    public ResolvedMethodHandleCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod originalTargetMethod,
+    protected ResolvedMethodHandleCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod originalTargetMethod,
                     ValueNode[] originalArguments, JavaType originalReturnType) {
         super(TYPE, invokeKind, targetMethod, arguments, returnType);
         this.originalTargetMethod = originalTargetMethod;

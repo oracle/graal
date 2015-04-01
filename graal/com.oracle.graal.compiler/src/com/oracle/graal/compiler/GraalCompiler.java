@@ -141,7 +141,6 @@ public class GraalCompiler {
         public final Providers providers;
         public final Backend backend;
         public final TargetDescription target;
-        public final Map<ResolvedJavaMethod, StructuredGraph> cache;
         public final PhaseSuite<HighTierContext> graphBuilderSuite;
         public final OptimisticOptimizations optimisticOpts;
         public final ProfilingInfo profilingInfo;
@@ -159,7 +158,6 @@ public class GraalCompiler {
          * @param providers
          * @param backend
          * @param target
-         * @param cache
          * @param graphBuilderSuite
          * @param optimisticOpts
          * @param profilingInfo
@@ -170,15 +168,14 @@ public class GraalCompiler {
          * @param factory
          */
         public Request(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend, TargetDescription target,
-                        Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo,
-                        SpeculationLog speculationLog, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
+                        PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites,
+                        LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
             this.graph = graph;
             this.cc = cc;
             this.installedCodeOwner = installedCodeOwner;
             this.providers = providers;
             this.backend = backend;
             this.target = target;
-            this.cache = cache;
             this.graphBuilderSuite = graphBuilderSuite;
             this.optimisticOpts = optimisticOpts;
             this.profilingInfo = profilingInfo;
@@ -209,10 +206,10 @@ public class GraalCompiler {
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, Map<ResolvedJavaMethod, StructuredGraph> cache, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts,
-                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
-        return compile(new Request<>(graph, cc, installedCodeOwner, providers, backend, target, cache, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
-                        compilationResult, factory));
+                    TargetDescription target, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog,
+                    Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
+        return compile(new Request<>(graph, cc, installedCodeOwner, providers, backend, target, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites, compilationResult,
+                        factory));
     }
 
     /**
@@ -223,7 +220,7 @@ public class GraalCompiler {
     public static <T extends CompilationResult> T compile(Request<T> r) {
         assert !r.graph.isFrozen();
         try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache())) {
-            SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, r.cache, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
+            SchedulePhase schedule = emitFrontEnd(r.providers, r.target, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.speculationLog, r.suites);
             emitBackEnd(r.graph, null, r.cc, r.installedCodeOwner, r.backend, r.target, r.compilationResult, r.factory, schedule, null, r.lirSuites);
         } catch (Throwable e) {
             throw Debug.handle(e);
@@ -242,14 +239,14 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public static SchedulePhase emitFrontEnd(Providers providers, TargetDescription target, StructuredGraph graph, Map<ResolvedJavaMethod, StructuredGraph> cache,
-                    PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
+    public static SchedulePhase emitFrontEnd(Providers providers, TargetDescription target, StructuredGraph graph, PhaseSuite<HighTierContext> graphBuilderSuite,
+                    OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
         try (Scope s = Debug.scope("FrontEnd"); DebugCloseable a = FrontEnd.start()) {
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
 
-            HighTierContext highTierContext = new HighTierContext(providers, cache, graphBuilderSuite, optimisticOpts);
+            HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
                 new DeadCodeEliminationPhase(Optional).apply(graph);

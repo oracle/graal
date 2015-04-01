@@ -137,11 +137,11 @@ public final class IntegerLessThanNode extends CompareNode {
                     // x < y
                     long xUpperBound = xStamp.upperBound();
                     long yUpperBound = yStamp.upperBound();
-                    if (yUpperBound <= xUpperBound) {
-                        if (yUpperBound != CodeUtil.minValue(bits)) {
-                            yUpperBound--;
-                        }
-                        return new IntegerStamp(bits, xStamp.lowerBound(), yUpperBound, xStamp.downMask(), xStamp.upMask());
+                    if (yUpperBound == CodeUtil.minValue(bits)) {
+                        return null;
+                    } else if (yUpperBound <= xUpperBound) {
+                        assert yUpperBound != CodeUtil.minValue(bits);
+                        return new IntegerStamp(bits, xStamp.lowerBound(), yUpperBound - 1, xStamp.downMask(), xStamp.upMask());
                     }
                 }
             }
@@ -170,11 +170,11 @@ public final class IntegerLessThanNode extends CompareNode {
                     // y > x
                     long xLowerBound = xStamp.lowerBound();
                     long yLowerBound = yStamp.lowerBound();
-                    if (xLowerBound >= yLowerBound) {
-                        if (xLowerBound != CodeUtil.maxValue(bits)) {
-                            xLowerBound++;
-                        }
-                        return new IntegerStamp(bits, xLowerBound, yStamp.upperBound(), yStamp.downMask(), yStamp.upMask());
+                    if (xLowerBound == CodeUtil.maxValue(bits)) {
+                        return null;
+                    } else if (xLowerBound >= yLowerBound) {
+                        assert xLowerBound != CodeUtil.maxValue(bits);
+                        return new IntegerStamp(bits, xLowerBound + 1, yStamp.upperBound(), yStamp.downMask(), yStamp.upMask());
                     }
                 }
             }

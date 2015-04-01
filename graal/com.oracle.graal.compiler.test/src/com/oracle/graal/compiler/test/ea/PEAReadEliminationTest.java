@@ -30,7 +30,6 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
@@ -243,7 +242,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
 
     protected void processMethod(final String snippet) {
         graph = parseEager(snippet, AllowAssumptions.NO);
-        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
         new PartialEscapePhase(false, true, new CanonicalizerPhase(), null).apply(graph, context);
     }

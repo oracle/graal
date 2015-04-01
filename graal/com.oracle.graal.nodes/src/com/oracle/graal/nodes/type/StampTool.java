@@ -122,7 +122,7 @@ public class StampTool {
 
     /**
      * Checks whether this {@link Stamp} represents a {@linkplain Stamp#isLegal() legal} pointer
-     * stamp whose values known to be always null.
+     * stamp whose values are known to never be null.
      *
      * @param stamp the stamp to check
      * @return true if this stamp represents a legal object stamp whose values are known to be

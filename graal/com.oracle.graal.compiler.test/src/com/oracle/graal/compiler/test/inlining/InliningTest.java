@@ -233,7 +233,7 @@ public class InliningTest extends GraalCompilerTest {
             StructuredGraph graph = eagerInfopointMode ? parseDebug(method, AllowAssumptions.YES) : parseEager(method, AllowAssumptions.YES);
             PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode ? getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault(getDefaultGraphBuilderPlugins()))
                             : getDefaultGraphBuilderSuite();
-            HighTierContext context = new HighTierContext(getProviders(), null, graphBuilderSuite, OptimisticOptimizations.ALL);
+            HighTierContext context = new HighTierContext(getProviders(), graphBuilderSuite, OptimisticOptimizations.ALL);
             Debug.dump(graph, "Graph");
             new CanonicalizerPhase().apply(graph, context);
             new InliningPhase(new CanonicalizerPhase()).apply(graph, context);

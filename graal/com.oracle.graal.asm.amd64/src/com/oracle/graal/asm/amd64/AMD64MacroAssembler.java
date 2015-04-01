@@ -56,6 +56,25 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
+    public final void decrementq(AMD64Address dst, int value) {
+        if (value == Integer.MIN_VALUE) {
+            subq(dst, value);
+            return;
+        }
+        if (value < 0) {
+            incrementq(dst, -value);
+            return;
+        }
+        if (value == 0) {
+            return;
+        }
+        if (value == 1 && UseIncDec) {
+            decq(dst);
+        } else {
+            subq(dst, value);
+        }
+    }
+
     public void incrementq(Register reg, int value) {
         if (value == Integer.MIN_VALUE) {
             addq(reg, value);
@@ -72,6 +91,25 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             incq(reg);
         } else {
             addq(reg, value);
+        }
+    }
+
+    public final void incrementq(AMD64Address dst, int value) {
+        if (value == Integer.MIN_VALUE) {
+            addq(dst, value);
+            return;
+        }
+        if (value < 0) {
+            decrementq(dst, -value);
+            return;
+        }
+        if (value == 0) {
+            return;
+        }
+        if (value == 1 && UseIncDec) {
+            incq(dst);
+        } else {
+            addq(dst, value);
         }
     }
 

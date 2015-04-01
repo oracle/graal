@@ -30,7 +30,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
@@ -46,9 +45,8 @@ public final class CallSiteTargetNode extends MacroStateSplitNode implements Can
         return arguments.get(0);
     }
 
-    public static ConstantNode tryFold(ValueNode initialCallSite, MetaAccessProvider metaAccess, Assumptions assumptions) {
-        ValueNode callSite = GraphUtil.originalValue(initialCallSite);
-        if (callSite.isConstant() && !callSite.isNullConstant()) {
+    public static ConstantNode tryFold(ValueNode callSite, MetaAccessProvider metaAccess, Assumptions assumptions) {
+        if (callSite != null && callSite.isConstant() && !callSite.isNullConstant()) {
             HotSpotObjectConstant c = (HotSpotObjectConstant) callSite.asConstant();
             JavaConstant target = c.getCallSiteTarget(assumptions);
             if (target != null) {

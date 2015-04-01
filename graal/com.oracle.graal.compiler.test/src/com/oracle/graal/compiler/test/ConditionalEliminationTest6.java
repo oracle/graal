@@ -62,7 +62,7 @@ public class ConditionalEliminationTest6 extends ConditionalEliminationTestBase 
 
     @Test
     public void test1() {
-        test("test1Snippet", "reference1Snippet");
+        testConditionalElimination("test1Snippet", "reference1Snippet");
     }
 
     @SuppressWarnings("all")
@@ -79,7 +79,7 @@ public class ConditionalEliminationTest6 extends ConditionalEliminationTestBase 
 
     @Test
     public void test2() {
-        test("test2Snippet", "reference1Snippet");
+        testConditionalElimination("test2Snippet", "reference1Snippet");
     }
 
     @SuppressWarnings("all")
@@ -96,6 +96,6 @@ public class ConditionalEliminationTest6 extends ConditionalEliminationTestBase 
 
     @Test
     public void test3() {
-        test("test3Snippet", "reference1Snippet");
+        testConditionalElimination("test3Snippet", "reference1Snippet");
     }
 }

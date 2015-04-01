@@ -289,9 +289,8 @@ public class FloatingReadPhase extends Phase {
                     MemoryAccess access = (MemoryAccess) node;
                     if (access.getLastLocationAccess() == anchor) {
                         MemoryNode lastLocationAccess = state.getLastLocationAccess(access.getLocationIdentity());
-                        if (lastLocationAccess != null) {
-                            access.setLastLocationAccess(lastLocationAccess);
-                        }
+                        assert lastLocationAccess != null;
+                        access.setLastLocationAccess(lastLocationAccess);
                     }
                 }
             }

@@ -33,7 +33,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
@@ -48,7 +47,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
     protected StructuredGraph testGraph(final String snippet) {
         try (Scope s = Debug.scope("MethodSubstitutionTest", getResolvedJavaMethod(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-            HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+            HighTierContext context = getDefaultHighTierContext();
             Debug.dump(graph, "Graph");
             new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
             Debug.dump(graph, "Graph");

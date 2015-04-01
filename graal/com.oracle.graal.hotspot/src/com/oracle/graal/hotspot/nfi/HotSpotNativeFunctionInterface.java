@@ -164,7 +164,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         LIRSuites lirSuites = providers.getSuites().createLIRSuites();
         PhaseSuite<HighTierContext> phaseSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, g.method(), false);
-        CompilationResult compResult = GraalCompiler.compileGraph(g, cc, g.method(), providers, backend, backend.getTarget(), null, phaseSuite, OptimisticOptimizations.ALL,
+        CompilationResult compResult = GraalCompiler.compileGraph(g, cc, g.method(), providers, backend, backend.getTarget(), phaseSuite, OptimisticOptimizations.ALL,
                         DefaultProfilingInfo.get(TriState.UNKNOWN), null, suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {

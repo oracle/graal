@@ -45,7 +45,7 @@ public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase 
 
     @Test
     public void test1() {
-        test("test1Snippet", REFERENCE_SNIPPET);
+        testConditionalElimination("test1Snippet", REFERENCE_SNIPPET);
     }
 
     @SuppressWarnings("all")
@@ -68,7 +68,7 @@ public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase 
 
     @Test
     public void test2() {
-        test("test2Snippet", REFERENCE_SNIPPET);
+        testConditionalElimination("test2Snippet", REFERENCE_SNIPPET);
     }
 
     @SuppressWarnings("all")
@@ -88,7 +88,7 @@ public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase 
 
     @Test
     public void test3() {
-        test("test3Snippet", REFERENCE_SNIPPET);
+        testConditionalElimination("test3Snippet", REFERENCE_SNIPPET);
     }
 
     @SuppressWarnings("all")
@@ -128,7 +128,7 @@ public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase 
 
     @Test
     public void test4() {
-        test("test4Snippet", "test4Snippet");
+        testConditionalElimination("test4Snippet", "test4Snippet");
     }
 
     @SuppressWarnings("all")
@@ -151,6 +151,6 @@ public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase 
 
     @Test
     public void test5() {
-        test("test5Snippet", "test5Snippet");
+        testConditionalElimination("test5Snippet", "test5Snippet");
     }
 }

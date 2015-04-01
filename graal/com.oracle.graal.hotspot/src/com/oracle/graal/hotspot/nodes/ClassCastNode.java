@@ -29,7 +29,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
@@ -67,9 +66,8 @@ public final class ClassCastNode extends MacroStateSplitNode implements Canonica
     }
 
     public static ValueNode tryFold(ValueNode javaClass, ValueNode object, ConstantReflectionProvider constantReflection, Assumptions assumptions) {
-        ValueNode value = GraphUtil.originalValue(javaClass);
-        if (value.isConstant()) {
-            ResolvedJavaType type = constantReflection.asJavaType(value.asConstant());
+        if (javaClass != null && javaClass.isConstant()) {
+            ResolvedJavaType type = constantReflection.asJavaType(javaClass.asConstant());
             if (type != null && !type.isPrimitive()) {
                 return CheckCastNode.create(type, object, null, false, assumptions);
             }

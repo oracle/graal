@@ -73,6 +73,53 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
         assert node != null;
         metricComputeNodeProbability.increment();
 
+        FixedNode current = findBegin(node);
+        if (current == null) {
+            // this should only appear for dead code
+            return 1D;
+        }
+
+        assert current instanceof AbstractBeginNode;
+        Double cachedValue = cache.get(current);
+        if (cachedValue != null) {
+            return cachedValue;
+        }
+
+        double probability = 0.0;
+        if (current.predecessor() == null) {
+            if (current instanceof AbstractMergeNode) {
+                probability = handleMerge(current, probability);
+            } else {
+                assert current instanceof StartNode;
+                probability = 1D;
+            }
+        } else {
+            ControlSplitNode split = (ControlSplitNode) current.predecessor();
+            probability = split.probability((AbstractBeginNode) current) * applyAsDouble(split);
+        }
+        assert !Double.isNaN(probability) && !Double.isInfinite(probability) : current + " " + probability;
+        cache.put(current, probability);
+        return probability;
+    }
+
+    private double handleMerge(FixedNode current, double probability) {
+        double result = probability;
+        AbstractMergeNode currentMerge = (AbstractMergeNode) current;
+        NodeInputList<EndNode> currentForwardEnds = currentMerge.forwardEnds();
+        /*
+         * Use simple iteration instead of streams, since the stream infrastructure adds many frames
+         * which causes the recursion to overflow the stack earlier than it would otherwise.
+         */
+        for (AbstractEndNode endNode : currentForwardEnds) {
+            result += applyAsDouble(endNode);
+        }
+        if (current instanceof LoopBeginNode) {
+            result *= ((LoopBeginNode) current).loopFrequency();
+        }
+        return result;
+    }
+
+    private static FixedNode findBegin(FixedNode node) {
         FixedNode current = node;
         while (true) {
             assert current != null;
@@ -85,44 +132,11 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
                     break;
                 }
             } else if (predecessor == null) {
-                // this should only appear for dead code
-                return 1D;
+                current = null;
+                break;
             }
             current = (FixedNode) predecessor;
         }
-
-        assert current instanceof AbstractBeginNode;
-        Double cachedValue = cache.get(current);
-        if (cachedValue != null) {
-            return cachedValue;
-        }
-
-        double probability = 0.0;
-        if (current.predecessor() == null) {
-            if (current instanceof AbstractMergeNode) {
-                AbstractMergeNode currentMerge = (AbstractMergeNode) current;
-                NodeInputList<EndNode> currentForwardEnds = currentMerge.forwardEnds();
-                /*
-                 * Use simple iteration instead of streams, since the stream infrastructure adds
-                 * many frames which causes the recursion to overflow the stack earlier than it
-                 * would otherwise.
-                 */
-                for (AbstractEndNode endNode : currentForwardEnds) {
-                    probability += applyAsDouble(endNode);
-                }
-                if (current instanceof LoopBeginNode) {
-                    probability *= ((LoopBeginNode) current).loopFrequency();
-                }
-            } else {
-                assert current instanceof StartNode;
-                probability = 1D;
-            }
-        } else {
-            ControlSplitNode split = (ControlSplitNode) current.predecessor();
-            probability = split.probability((AbstractBeginNode) current) * applyAsDouble(split);
-        }
-        assert !Double.isNaN(probability) && !Double.isInfinite(probability) : current + " " + probability;
-        cache.put(current, probability);
-        return probability;
+        return current;
     }
 }

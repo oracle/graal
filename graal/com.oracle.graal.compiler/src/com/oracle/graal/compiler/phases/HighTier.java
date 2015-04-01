@@ -56,16 +56,12 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (Inline.getValue()) {
-            if (IterativeInlining.getValue()) {
-                appendPhase(new IterativeInliningPhase(canonicalizer));
-            } else {
-                appendPhase(new InliningPhase(canonicalizer));
-                appendPhase(new DeadCodeEliminationPhase(Optional));
+            appendPhase(new InliningPhase(canonicalizer));
+            appendPhase(new DeadCodeEliminationPhase(Optional));
 
-                if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-                    appendPhase(canonicalizer);
-                    appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
-                }
+            if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
+                appendPhase(canonicalizer);
+                appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
             }
         }
 

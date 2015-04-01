@@ -259,7 +259,7 @@ public class LoopEx {
         Collection<AbstractBeginNode> blocks = new LinkedList<>();
         Collection<LoopExitNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
-        ControlFlowGraph cfg = loopsData().controlFlowGraph();
+        ControlFlowGraph cfg = loopsData().getCFG();
         work.add(cfg.blockFor(branch));
         while (!work.isEmpty()) {
             Block b = work.remove();

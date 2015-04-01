@@ -30,7 +30,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
@@ -79,13 +78,12 @@ public final class ClassQueryNode extends MacroStateSplitNode implements Canonic
     }
 
     public static ValueNode tryFold(ValueNode javaClass, Query query, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        ValueNode value = GraphUtil.originalValue(javaClass);
-        if (value != null && value.isConstant()) {
+        if (javaClass != null && javaClass.isConstant()) {
             if (query.returnKind == Kind.Object) {
                 if (GraalOptions.ImmutableCode.getValue()) {
                     return null;
                 }
-                HotSpotObjectConstant c = (HotSpotObjectConstant) value.asConstant();
+                HotSpotObjectConstant c = (HotSpotObjectConstant) javaClass.asConstant();
                 JavaConstant answer;
                 switch (query) {
                     case getClassLoader0:
@@ -105,7 +103,7 @@ public final class ClassQueryNode extends MacroStateSplitNode implements Canonic
                     return ConstantNode.forConstant(answer, metaAccess);
                 }
             } else {
-                ResolvedJavaType type = constantReflection.asJavaType(value.asConstant());
+                ResolvedJavaType type = constantReflection.asJavaType(javaClass.asConstant());
                 if (type != null) {
                     switch (query) {
                         case isArray:

@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.policy.*;
@@ -115,7 +114,7 @@ public class EdgesTest extends GraalCompilerTest {
 
         ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         StructuredGraph g = parseProfiled(javaMethod, AllowAssumptions.NO);
-        HighTierContext context = new HighTierContext(getProviders(), null, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new InlineMethodSubstitutionsPolicy(), new CanonicalizerPhase()).apply(g, context);
         new CanonicalizerPhase().apply(g, context);
         Assert.assertTrue(g.getNodes().filter(CheckCastNode.class).isEmpty());

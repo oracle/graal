@@ -25,7 +25,6 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
-import java.util.function.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -49,12 +48,12 @@ public abstract class LoopPolicies {
     }
 
     // TODO (gd) change when inversion is available
-    public static boolean shouldPeel(LoopEx loop, ToDoubleFunction<FixedNode> probabilities) {
+    public static boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg) {
         if (loop.detectCounted()) {
             return false;
         }
         LoopBeginNode loopBegin = loop.loopBegin();
-        double entryProbability = probabilities.applyAsDouble(loopBegin.forwardEnd());
+        double entryProbability = cfg.blockFor(loopBegin.forwardEnd()).probability();
         if (entryProbability > MinimumPeelProbability.getValue() && loop.size() + loopBegin.graph().getNodeCount() < MaximumDesiredSize.getValue()) {
             // check whether we're allowed to peel this loop
             for (Node node : loop.inside().nodes()) {
@@ -120,7 +119,7 @@ public abstract class LoopPolicies {
                 // this may count twice because of fall-through in switches
                 inBranchTotal += loop.nodesInLoopBranch(branch).count();
             }
-            Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
+            Block postDomBlock = loop.loopsData().getCFG().blockFor(controlSplit).getPostdominator();
             if (postDomBlock != null) {
                 IsolatedInitialization.UNSWITCH_SPLIT_WITH_PHIS.increment();
                 phis += ((MergeNode) postDomBlock.getBeginNode()).phis().count();

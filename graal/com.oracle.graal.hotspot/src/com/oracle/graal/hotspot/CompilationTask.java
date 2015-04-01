@@ -35,14 +35,12 @@ import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.inlining.InliningUtil.*;
 
 import java.lang.management.*;
-import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
@@ -195,11 +193,6 @@ public class CompilationTask {
                 // Begin the compilation event.
                 compilationEvent.begin();
 
-                Map<ResolvedJavaMethod, StructuredGraph> graphCache = null;
-                if (GraalOptions.CacheGraphs.getValue()) {
-                    graphCache = new HashMap<>();
-                }
-
                 boolean recordEvolMethodDeps = graalEnv == 0 || unsafe.getByte(graalEnv + config.graalEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0;
 
                 HotSpotProviders providers = backend.getProviders();
@@ -225,8 +218,8 @@ public class CompilationTask {
                     // all code after the OSR loop is never executed.
                     optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
                 }
-                result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, getGraphBuilderSuite(providers), optimisticOpts, profilingInfo,
-                                method.getSpeculationLog(), suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers), optimisticOpts, profilingInfo, method.getSpeculationLog(), suites,
+                                lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
                 result.setId(getId());
                 result.setEntryBCI(entryBCI);
             } catch (Throwable e) {
