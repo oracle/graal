@@ -132,7 +132,7 @@ public class EATestBase extends GraalCompilerTest {
      * @param iterativeEscapeAnalysis true if escape analysis should be run for more than one
      *            iteration
      */
-    protected void testEscapeAnalysis(String snippet, final JavaConstant expectedConstantResult, final boolean iterativeEscapeAnalysis) {
+    protected void testEscapeAnalysis(String snippet, JavaConstant expectedConstantResult, boolean iterativeEscapeAnalysis) {
         prepareGraph(snippet, iterativeEscapeAnalysis);
         if (expectedConstantResult != null) {
             for (ReturnNode returnNode : returnNodes) {
@@ -145,7 +145,7 @@ public class EATestBase extends GraalCompilerTest {
         Assert.assertEquals(0, newInstanceCount);
     }
 
-    protected void prepareGraph(String snippet, final boolean iterativeEscapeAnalysis) {
+    protected void prepareGraph(String snippet, boolean iterativeEscapeAnalysis) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         try (Scope s = Debug.scope(getClass(), method, getCodeCache())) {
             graph = parseEager(method, AllowAssumptions.YES);

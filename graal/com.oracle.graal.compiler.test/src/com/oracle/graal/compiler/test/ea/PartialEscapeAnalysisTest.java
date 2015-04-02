@@ -172,8 +172,27 @@ public class PartialEscapeAnalysisTest extends EATestBase {
         assertDeepEquals(1, graph.getNodes().filter(NewInstanceNode.class).count());
     }
 
+    public static int testCanonicalizeSnippet(int v) {
+        CacheKey key = new CacheKey(v, null);
+
+        CacheKey key2;
+        if (key.idx == v) {
+            key2 = new CacheKey(v, null);
+        } else {
+            key2 = null;
+        }
+        return key2.idx;
+    }
+
+    @Test
+    public void testCanonicalize() {
+        prepareGraph("testCanonicalizeSnippet", false);
+        assertTrue(graph.getNodes().filter(ReturnNode.class).count() == 1);
+        assertTrue(graph.getNodes().filter(ReturnNode.class).first().result() == graph.getParameter(0));
+    }
+
     @SafeVarargs
-    protected final void testPartialEscapeAnalysis(final String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
+    protected final void testPartialEscapeAnalysis(String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
         prepareGraph(snippet, false);
         for (AbstractMergeNode merge : graph.getNodes(AbstractMergeNode.TYPE)) {
             merge.setStateAfter(null);
