@@ -31,7 +31,6 @@ import sun.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.*;
@@ -93,22 +92,6 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
-        r.register1("getClass", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode rcvr = receiver.get();
-                ObjectStamp objectStamp = (ObjectStamp) rcvr.stamp();
-                ValueNode mirror;
-                if (objectStamp.isExactType() && objectStamp.nonNull() && !GraalOptions.ImmutableCode.getValue()) {
-                    mirror = ConstantNode.forConstant(objectStamp.type().getJavaClass(), b.getMetaAccess());
-                } else {
-                    StampProvider stampProvider = b.getStampProvider();
-                    LoadHubNode hub = b.add(new LoadHubNode(stampProvider, rcvr));
-                    mirror = new HubGetClassNode(b.getMetaAccess(), hub);
-                }
-                b.addPush(Kind.Object, mirror);
-                return true;
-            }
-        });
         r.register1("clone", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();

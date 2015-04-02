@@ -22,85 +22,73 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Loads an object's hub. The object is not null-checked by this operation.
+ * Loads an object's class (i.e., this node can be created for {@code object.getClass()}).
  */
 @NodeInfo
-public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
+public final class GetClassNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable {
 
-    public static final NodeClass<LoadHubNode> TYPE = NodeClass.create(LoadHubNode.class);
-    @Input ValueNode value;
+    public static final NodeClass<GetClassNode> TYPE = NodeClass.create(GetClassNode.class);
+    @Input ValueNode object;
 
-    public ValueNode getValue() {
-        return value;
+    public ValueNode getObject() {
+        return object;
     }
 
-    private static Stamp hubStamp(StampProvider stampProvider, ValueNode value) {
-        assert value.stamp() instanceof ObjectStamp;
-        return stampProvider.createHubStamp(((ObjectStamp) value.stamp()));
-    }
-
-    public LoadHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode value) {
-        this(stampProvider, value, null);
-    }
-
-    public LoadHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode value, ValueNode guard) {
-        this(hubStamp(stampProvider, value), value, guard);
-    }
-
-    public LoadHubNode(Stamp stamp, ValueNode value, ValueNode guard) {
-        super(TYPE, stamp, (GuardingNode) guard);
-        assert value != guard;
-        this.value = value;
+    public GetClassNode(Stamp stamp, ValueNode object) {
+        super(TYPE, stamp);
+        this.object = object;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            return;
-        }
         tool.getLowerer().lower(this, tool);
     }
 
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        MetaAccessProvider metaAccess = tool.getMetaAccess();
-        if (metaAccess != null && getValue().stamp() instanceof ObjectStamp) {
-            ObjectStamp objectStamp = (ObjectStamp) getValue().stamp();
+    public static ValueNode tryFold(MetaAccessProvider metaAccess, ValueNode object) {
+        if (metaAccess != null && object != null && object.stamp() instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) object.stamp();
 
             ResolvedJavaType exactType = null;
             if (objectStamp.isExactType()) {
                 exactType = objectStamp.type();
-            } else if (objectStamp.type() != null && graph().getAssumptions() != null) {
+            } else if (objectStamp.type() != null && object.graph().getAssumptions() != null) {
                 AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
                 if (leafConcreteSubtype != null) {
                     exactType = leafConcreteSubtype.getResult();
-                    graph().getAssumptions().record(leafConcreteSubtype);
+                    object.graph().getAssumptions().record(leafConcreteSubtype);
                 }
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(stamp(), exactType.getObjectHub(), metaAccess);
+                return ConstantNode.forConstant(exactType.getJavaClass(), metaAccess);
             }
         }
-        return this;
+        return null;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        ValueNode folded = tryFold(tool.getMetaAccess(), getObject());
+        return folded == null ? this : folded;
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(value);
+        State state = tool.getObjectState(object);
         if (state != null) {
-            Constant constantHub = state.getVirtualObject().type().getObjectHub();
-            tool.replaceWithValue(ConstantNode.forConstant(stamp(), constantHub, tool.getMetaAccessProvider(), graph()));
+            Constant javaClass = state.getVirtualObject().type().getJavaClass();
+            tool.replaceWithValue(ConstantNode.forConstant(stamp(), javaClass, tool.getMetaAccessProvider(), graph()));
         }
     }
 }

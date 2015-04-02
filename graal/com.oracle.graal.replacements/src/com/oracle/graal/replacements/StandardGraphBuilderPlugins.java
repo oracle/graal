@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
@@ -39,6 +40,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -364,6 +366,19 @@ public class StandardGraphBuilderPlugins {
                 ValueNode object = receiver.get();
                 if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
                     b.add(new RegisterFinalizerNode(object));
+                }
+                return true;
+            }
+        });
+        r.register1("getClass", Receiver.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode object = receiver.get();
+                ValueNode folded = GetClassNode.tryFold(b.getMetaAccess(), GraphUtil.originalValue(object));
+                if (folded != null) {
+                    b.addPush(Kind.Object, folded);
+                } else {
+                    Stamp stamp = StampFactory.declaredNonNull(b.getMetaAccess().lookupJavaType(Class.class));
+                    b.addPush(Kind.Object, new GetClassNode(stamp, object));
                 }
                 return true;
             }

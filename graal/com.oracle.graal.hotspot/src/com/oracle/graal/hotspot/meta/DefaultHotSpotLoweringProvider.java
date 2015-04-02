@@ -100,6 +100,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             lowerInvoke((Invoke) n, tool, graph);
         } else if (n instanceof LoadMethodNode) {
             lowerLoadMethodNode((LoadMethodNode) n);
+        } else if (n instanceof GetClassNode) {
+            lowerGetClassNode((GetClassNode) n, tool, graph);
         } else if (n instanceof StoreHubNode) {
             lowerStoreHubNode((StoreHubNode) n, graph);
         } else if (n instanceof OSRStartNode) {
@@ -324,6 +326,15 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) loadMethodNode.getMethod();
         ReadNode metaspaceMethod = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
         graph.replaceFixed(loadMethodNode, metaspaceMethod);
+    }
+
+    private static void lowerGetClassNode(GetClassNode getClass, LoweringTool tool, StructuredGraph graph) {
+        StampProvider stampProvider = tool.getStampProvider();
+        LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, getClass.getObject()));
+        HubGetClassNode hubGetClass = graph.unique(new HubGetClassNode(tool.getMetaAccess(), hub));
+        graph.replaceFloating(getClass, hubGetClass);
+        hub.lower(tool);
+        hubGetClass.lower(tool);
     }
 
     private void lowerStoreHubNode(StoreHubNode storeHub, StructuredGraph graph) {
