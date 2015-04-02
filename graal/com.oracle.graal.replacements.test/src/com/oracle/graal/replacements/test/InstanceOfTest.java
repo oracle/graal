@@ -396,4 +396,20 @@ public class InstanceOfTest extends TypeCheckTest {
         test("isArrayOfD", cArray);
         test("isArrayOfD", dArray);
     }
+
+    @SuppressWarnings("unchecked")
+    public static <T> String arrayCopyTypeName(T[] original) {
+        Class<? extends T[]> newType = (Class<? extends T[]>) original.getClass();
+        if (newType == (Object) Object[].class) {
+            return Object[].class.getName();
+        } else {
+            return newType.getName();
+        }
+    }
+
+    @Test
+    public void testArrayCopy() {
+        test("arrayCopyTypeName", (Object) new Object[]{"one", "two", "three"});
+        test("arrayCopyTypeName", (Object) new String[]{"one", "two", "three"});
+    }
 }

@@ -100,7 +100,8 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
             return result;
         }
         if (type().equals(inputType)) {
-            if (!nonNull) {
+            boolean mightBeNull = !nonNull;
+            if (exactType && mightBeNull) {
                 // the instanceof matches if the object is non-null, so return true
                 // depending on the null-ness.
                 return LogicNegationNode.create(new IsNullNode(forValue));
@@ -114,7 +115,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
             return null;
         }
         if (type.equals(inputType)) {
-            if (nonNull) {
+            if (nonNull && exactType) {
                 // the type matches, so return true
                 return LogicConstantNode.tautology();
             }
