@@ -41,7 +41,13 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
 
     public IntegerMulExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
+        setStamp(x.stamp().unrestricted());
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return false;
     }
 
     @Override
