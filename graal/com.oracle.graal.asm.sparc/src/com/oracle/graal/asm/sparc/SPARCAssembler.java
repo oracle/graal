@@ -29,6 +29,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.sparc.SPARC.*;
+import static java.lang.String.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -261,7 +262,9 @@ public abstract class SPARCAssembler extends Assembler {
         Fcmp  (0b11_0101, "fcmp", Op10),
 
         Ldxa  (0b01_1011, "ldxa", Op11),
-        Lduwa (0b01_0000, "lduwa", Op11);
+        Lduwa (0b01_0000, "lduwa", Op11),
+
+        Tcc(0b11_1010, "tcc", Op10);
 
         // @formatter:on
 
@@ -1098,13 +1101,13 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     private void cbcond(int cc2, int i, ConditionFlag cf, Register rs1, int rs2, Label l) {
-        int d10 = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        assert isSimm(d10, 10) && isImm(rs2, 5);
-        d10 &= (1 << 10) - 1;
+        int disp10 = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
+        assert isSimm(disp10, 10) && isImm(rs2, 5);
+        disp10 &= (1 << 10) - 1;
         final int cLo = cf.value & 0b111;
         final int cHi = cf.value >> 3;
-        final int d10Lo = d10 & ((1 << 8) - 1);
-        final int d10Hi = d10 >> 8;
+        final int d10Lo = disp10 & ((1 << 8) - 1);
+        final int d10Hi = disp10 >> 8;
         int a = cHi << 4 | 0b1000 | cLo;
         int b = cc2 << 21 | d10Hi << D10HI_SHIFT | rs1.encoding << 14 | i << 13 | d10Lo << D10LO_SHIFT | rs2;
         fmt00(a, Op2s.Bpr.value, b);
@@ -1200,6 +1203,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void movwtos(Register rs2, Register rd) {
+        assert isSingleFloatRegister(rd) && isCPURegister(rs2) : String.format("%s %s", rs2, rd);
         op3(Impdep1, Movwtos, null, rs2, rd);
     }
 
@@ -1208,22 +1212,27 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void fdtos(Register rs2, Register rd) {
+        assert isSingleFloatRegister(rd) && isDoubleFloatRegister(rs2) : String.format("%s %s", rs2, rd);
         op3(Fpop1, Fdtos, null, rs2, rd);
     }
 
     public void movstouw(Register rs2, Register rd) {
+        assert isSingleFloatRegister(rs2) && isCPURegister(rd) : String.format("%s %s", rs2, rd);
         op3(Impdep1, Movstosw, null, rs2, rd);
     }
 
     public void movstosw(Register rs2, Register rd) {
+        assert isSingleFloatRegister(rs2) && isCPURegister(rd) : String.format("%s %s", rs2, rd);
         op3(Impdep1, Movstosw, null, rs2, rd);
     }
 
     public void movdtox(Register rs2, Register rd) {
+        assert isDoubleFloatRegister(rs2) && isCPURegister(rd) : String.format("%s %s", rs2, rd);
         op3(Impdep1, Movdtox, null, rs2, rd);
     }
 
     public void movxtod(Register rs2, Register rd) {
+        assert isCPURegister(rs2) && isDoubleFloatRegister(rd) : String.format("%s %s", rs2, rd);
         op3(Impdep1, Movxtod, null, rs2, rd);
     }
 
@@ -1456,10 +1465,12 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void or(Register rs1, Register rs2, Register rd) {
+        assert isCPURegister(rs1, rs2, rd) : String.format("%s %s %s", rs1, rs2, rd);
         op3(Or, rs1, rs2, rd);
     }
 
     public void or(Register rs1, int simm13, Register rd) {
+        assert isCPURegister(rs1, rd) : String.format("%s %s", rs1, rd);
         op3(Or, rs1, simm13, rd);
     }
 
@@ -1598,8 +1609,9 @@ public abstract class SPARCAssembler extends Assembler {
     public void tcc(CC cc, ConditionFlag flag, int trap) {
         assert isImm(trap, 8);
         int b = cc.value << 11;
+        b |= 1 << 13;
         b |= trap;
-        fmt10(flag.value, trap, 0, b);
+        fmt10(flag.value, Op3s.Tcc.getValue(), 0, b);
     }
 
     public void wrccr(Register rs1, Register rs2) {
@@ -1659,46 +1671,57 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void lddf(SPARCAddress src, Register dst) {
+        assert isDoubleFloatRegister(dst) : dst;
         ld(Lddf, src, dst);
     }
 
     public void ldf(SPARCAddress src, Register dst) {
+        assert isSingleFloatRegister(dst) : dst;
         ld(Ldf, src, dst);
     }
 
     public void lduh(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Lduh, src, dst);
     }
 
     public void ldsh(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Ldsh, src, dst);
     }
 
     public void ldub(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Ldub, src, dst);
     }
 
     public void ldsb(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Ldsb, src, dst);
     }
 
     public void lduw(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Lduw, src, dst);
     }
 
     public void ldsw(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Ldsw, src, dst);
     }
 
     public void ldx(SPARCAddress src, Register dst) {
+        assert isCPURegister(dst) : dst;
         ld(Ldx, src, dst);
     }
 
     public void ldxa(Register rs1, Register rs2, Register rd, Asi asi) {
+        assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
         ld(Ldxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
     public void lduwa(Register rs1, Register rs2, Register rd, Asi asi) {
+        assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
         ld(Lduwa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
@@ -1707,26 +1730,32 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void stdf(Register rd, SPARCAddress addr) {
+        assert isDoubleFloatRegister(rd) : rd;
         st(Stdf, rd, addr);
     }
 
     public void stf(Register rd, SPARCAddress addr) {
+        assert isSingleFloatRegister(rd) : rd;
         st(Stf, rd, addr);
     }
 
     public void stb(Register rd, SPARCAddress addr) {
+        assert isCPURegister(rd) : rd;
         st(Stb, rd, addr);
     }
 
     public void sth(Register rd, SPARCAddress addr) {
+        assert isCPURegister(rd) : rd;
         st(Sth, rd, addr);
     }
 
     public void stw(Register rd, SPARCAddress addr) {
+        assert isCPURegister(rd) : rd;
         st(Stw, rd, addr);
     }
 
     public void stx(Register rd, SPARCAddress addr) {
+        assert isCPURegister(rd) : rd;
         st(Stx, rd, addr);
     }
 
@@ -1756,5 +1785,9 @@ public abstract class SPARCAssembler extends Assembler {
         inst = inst & (~((1 << 13) - 1));
         inst |= simm13 & ((1 << 12) - 1);
         emitInt(inst, position);
+    }
+
+    public void fpadd32(Register rs1, Register rs2, Register rd) {
+        op3(Impdep1, Fpadd32, rs1, rs2, rd);
     }
 }

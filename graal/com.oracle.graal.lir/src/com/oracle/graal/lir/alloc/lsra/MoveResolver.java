@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static java.lang.String.*;
 
 import java.util.*;
 
@@ -209,7 +210,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
-        assert fromOpr.getLIRKind().equals(toInterval.kind()) : "move between different types";
+        assert fromOpr.getLIRKind().equals(toInterval.kind()) : format("move between different types %s %s", fromOpr.getLIRKind(), toInterval.kind());
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;

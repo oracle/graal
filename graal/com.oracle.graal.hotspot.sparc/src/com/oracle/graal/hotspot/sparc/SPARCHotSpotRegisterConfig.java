@@ -90,6 +90,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] cpuCalleeParameterRegisters = {i0, i1, i2, i3, i4, i5};
 
     private final Register[] fpuParameterRegisters = {f0, f1, f2, f3, f4, f5, f6, f7};
+    private final Register[] fpuDoubleParameterRegisters = {d0, null, d2, null, d4, null, d6, null};
     // @formatter:off
     private final Register[] callerSaveRegisters =
                    {g1, g2, g3, g4, g5, g6, g7,
@@ -208,7 +209,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     }
 
     public Register[] getCallingConventionRegisters(Type type, Kind kind) {
-        if (architecture.canStoreValue(FPU, kind)) {
+        if (architecture.canStoreValue(FPUs, kind) || architecture.canStoreValue(FPUd, kind)) {
             return fpuParameterRegisters;
         }
         assert architecture.canStoreValue(CPU, kind);
@@ -244,7 +245,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                             // Make register number even to be a double reg
                             currentFloating++;
                         }
-                        Register register = fpuParameterRegisters[currentFloating];
+                        Register register = fpuDoubleParameterRegisters[currentFloating];
                         currentFloating += 2; // Only every second is a double register
                         locations[i] = register.asValue(target.getLIRKind(kind));
                     }
@@ -289,8 +290,9 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             case Object:
                 return type == Type.JavaCallee ? i0 : o0;
             case Float:
-            case Double:
                 return f0;
+            case Double:
+                return d0;
             case Void:
             case Illegal:
                 return null;
