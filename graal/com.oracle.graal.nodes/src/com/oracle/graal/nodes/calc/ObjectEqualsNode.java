@@ -75,7 +75,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                 }
             }
 
-            if (exactType == type) {
+            if (type.equals(exactType)) {
                 return TypeCheckNode.create(exactType, ((GetClassNode) nonConstant).getObject());
             }
         }
