@@ -32,7 +32,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
 
@@ -73,6 +75,10 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             return processArrayLength((ArrayLengthNode) node, state, effects);
         } else if (node instanceof UnboxNode) {
             return processUnbox((UnboxNode) node, state, effects);
+        } else if (node instanceof UnsafeLoadNode) {
+            return processUnsafeLoad((UnsafeLoadNode) node, state, effects);
+        } else if (node instanceof UnsafeStoreNode) {
+            return processUnsafeStore((UnsafeStoreNode) node, state, effects);
         } else if (node instanceof MemoryCheckpoint.Single) {
             METRIC_MEMORYCHECKPOINT.increment();
             LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
@@ -87,72 +93,97 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         return false;
     }
 
-    private boolean processArrayLength(ArrayLengthNode length, PEReadEliminationBlockState state, GraphEffectList effects) {
-        ValueNode array = GraphUtil.unproxify(length.array());
-        ValueNode cachedValue = state.getReadCache(array, ARRAY_LENGTH_LOCATION, -1, this);
+    private boolean processStore(FixedNode store, ValueNode object, LocationIdentity identity, int index, ValueNode value, PEReadEliminationBlockState state, GraphEffectList effects) {
+        ValueNode unproxiedObject = GraphUtil.unproxify(object);
+        ValueNode cachedValue = state.getReadCache(object, identity, index, this);
+
+        ValueNode finalValue = getScalarAlias(value);
+        boolean result = false;
+        if (GraphUtil.unproxify(finalValue) == GraphUtil.unproxify(cachedValue)) {
+            effects.deleteNode(store);
+            result = true;
+        }
+        state.killReadCache(identity, index);
+        state.addReadCache(unproxiedObject, identity, index, finalValue, this);
+        return result;
+    }
+
+    private boolean processLoad(FixedNode load, ValueNode object, LocationIdentity identity, int index, PEReadEliminationBlockState state, GraphEffectList effects) {
+        ValueNode unproxiedObject = GraphUtil.unproxify(object);
+        ValueNode cachedValue = state.getReadCache(unproxiedObject, identity, index, this);
         if (cachedValue != null) {
-            effects.replaceAtUsages(length, cachedValue);
-            addScalarAlias(length, cachedValue);
+            effects.replaceAtUsages(load, cachedValue);
+            addScalarAlias(load, cachedValue);
             return true;
         } else {
-            state.addReadCache(array, ARRAY_LENGTH_LOCATION, -1, length, this);
+            state.addReadCache(unproxiedObject, identity, index, load, this);
+            return false;
+        }
+    }
+
+    private boolean processUnsafeLoad(UnsafeLoadNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
+        if (load.offset().isConstant()) {
+            ResolvedJavaType type = StampTool.typeOrNull(load.object());
+            if (type != null && type.isArray()) {
+                long offset = load.offset().asJavaConstant().asLong();
+                int index = VirtualArrayNode.entryIndexForOffset(offset, load.accessKind(), type.getComponentType(), Integer.MAX_VALUE);
+                ValueNode object = GraphUtil.unproxify(load.object());
+                LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getKind());
+                ValueNode cachedValue = state.getReadCache(object, location, index, this);
+                if (cachedValue != null && load.stamp().isCompatible(cachedValue.stamp())) {
+                    effects.replaceAtUsages(load, cachedValue);
+                    addScalarAlias(load, cachedValue);
+                    return true;
+                } else {
+                    state.addReadCache(object, location, index, load, this);
+                }
+            }
         }
         return false;
     }
 
-    private boolean processStoreField(StoreFieldNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (!store.isVolatile()) {
-            ValueNode object = GraphUtil.unproxify(store.object());
-            ValueNode cachedValue = state.getReadCache(object, store.field().getLocationIdentity(), -1, this);
-
-            ValueNode value = getScalarAlias(store.value());
-            boolean result = false;
-            if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                effects.deleteNode(store);
-                result = true;
+    private boolean processUnsafeStore(UnsafeStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
+        ResolvedJavaType type = StampTool.typeOrNull(store.object());
+        if (type != null && type.isArray()) {
+            LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getKind());
+            if (store.offset().isConstant()) {
+                long offset = store.offset().asJavaConstant().asLong();
+                int index = VirtualArrayNode.entryIndexForOffset(offset, store.accessKind(), type.getComponentType(), Integer.MAX_VALUE);
+                return processStore(store, store.object(), location, index, store.value(), state, effects);
+            } else {
+                processIdentity(state, location);
             }
-            state.killReadCache(store.field().getLocationIdentity(), -1);
-            state.addReadCache(object, store.field().getLocationIdentity(), -1, value, this);
-            return result;
         } else {
-            processIdentity(state, any());
+            state.killReadCache();
         }
         return false;
+    }
+
+    private boolean processArrayLength(ArrayLengthNode length, PEReadEliminationBlockState state, GraphEffectList effects) {
+        return processLoad(length, length.array(), ARRAY_LENGTH_LOCATION, -1, state, effects);
+    }
+
+    private boolean processStoreField(StoreFieldNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
+        if (store.isVolatile()) {
+            state.killReadCache();
+            return false;
+        }
+        return processStore(store, store.object(), store.field().getLocationIdentity(), -1, store.value(), state, effects);
     }
 
     private boolean processLoadField(LoadFieldNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
         if (load.isVolatile()) {
-            processIdentity(state, any());
-        } else {
-            ValueNode object = GraphUtil.unproxify(load.object());
-            ValueNode cachedValue = state.getReadCache(object, load.field().getLocationIdentity(), -1, this);
-            if (cachedValue != null) {
-                effects.replaceAtUsages(load, cachedValue);
-                addScalarAlias(load, cachedValue);
-                return true;
-            } else {
-                state.addReadCache(object, load.field().getLocationIdentity(), -1, load, this);
-            }
+            state.killReadCache();
+            return false;
         }
-        return false;
+        return processLoad(load, load.object(), load.field().getLocationIdentity(), -1, state, effects);
     }
 
     private boolean processStoreIndexed(StoreIndexedNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
         LocationIdentity arrayLocation = NamedLocationIdentity.getArrayLocation(store.elementKind());
         if (store.index().isConstant()) {
             int index = ((JavaConstant) store.index().asConstant()).asInt();
-            ValueNode object = GraphUtil.unproxify(store.array());
-            ValueNode cachedValue = state.getReadCache(object, arrayLocation, index, this);
-
-            ValueNode value = getScalarAlias(store.value());
-            boolean result = false;
-            if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                effects.deleteNode(store);
-                result = true;
-            }
-            state.killReadCache(arrayLocation, index);
-            state.addReadCache(object, arrayLocation, index, value, this);
-            return result;
+            return processStore(store, store.array(), arrayLocation, index, store.value(), state, effects);
         } else {
             state.killReadCache(arrayLocation, -1);
         }
@@ -163,31 +194,13 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         if (load.index().isConstant()) {
             int index = ((JavaConstant) load.index().asConstant()).asInt();
             LocationIdentity arrayLocation = NamedLocationIdentity.getArrayLocation(load.elementKind());
-            ValueNode object = GraphUtil.unproxify(load.array());
-            ValueNode cachedValue = state.getReadCache(object, arrayLocation, index, this);
-            if (cachedValue != null) {
-                effects.replaceAtUsages(load, cachedValue);
-                addScalarAlias(load, cachedValue);
-                return true;
-            } else {
-                state.addReadCache(object, arrayLocation, index, load, this);
-            }
+            return processLoad(load, load.array(), arrayLocation, index, state, effects);
         }
         return false;
     }
 
     private boolean processUnbox(UnboxNode unbox, PEReadEliminationBlockState state, GraphEffectList effects) {
-        ValueNode object = GraphUtil.unproxify(unbox.getValue());
-        LocationIdentity identity = UNBOX_LOCATIONS.get(unbox.getBoxingKind());
-        ValueNode cachedValue = state.getReadCache(object, identity, -1, this);
-        if (cachedValue != null) {
-            effects.replaceAtUsages(unbox, cachedValue);
-            addScalarAlias(unbox, cachedValue);
-            return true;
-        } else {
-            state.addReadCache(object, identity, -1, unbox, this);
-        }
-        return false;
+        return processLoad(unbox, unbox.getValue(), UNBOX_LOCATIONS.get(unbox.getBoxingKind()), -1, state, effects);
     }
 
     private static void processIdentity(PEReadEliminationBlockState state, LocationIdentity identity) {

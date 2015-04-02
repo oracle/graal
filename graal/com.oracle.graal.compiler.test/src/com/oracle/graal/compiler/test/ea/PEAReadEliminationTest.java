@@ -22,224 +22,176 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import java.util.*;
-
 import org.junit.*;
 
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.*;
+import sun.misc.*;
+
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
-public class PEAReadEliminationTest extends GraalCompilerTest {
+public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 
-    protected StructuredGraph graph;
-
-    public static Object staticField;
-
-    public static class TestObject {
-
-        public int x;
-        public int y;
-
-        public TestObject(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
-    }
-
-    public static class TestObject2 {
-
-        public Object x;
-        public Object y;
-
-        public TestObject2(Object x, Object y) {
-            this.x = x;
-            this.y = y;
-        }
-    }
-
-    public static class TestObject3 extends TestObject {
-
-        public int z;
-
-        public TestObject3(int x, int y, int z) {
-            super(x, y);
-            this.z = z;
-        }
-    }
-
-    @SuppressWarnings("all")
-    public static int testSimpleSnippet(TestObject a) {
-        a.x = 2;
-        staticField = a;
-        return a.x;
+    public static int testIndexed1Snippet(int[] array) {
+        array[1] = 1;
+        array[2] = 2;
+        array[3] = 3;
+        array[4] = 4;
+        array[5] = 5;
+        array[6] = 6;
+        return array[1] + array[2] + array[3] + array[4] + array[5] + array[6];
     }
 
     @Test
-    public void testSimple() {
-        ValueNode result = getReturn("testSimpleSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertTrue(result.isConstant());
-        assertDeepEquals(2, result.asJavaConstant().asInt());
+    public void testIndexed1() {
+        processMethod("testIndexed1Snippet");
+        assertDeepEquals(0, graph.getNodes().filter(LoadIndexedNode.class).count());
     }
 
-    @SuppressWarnings("all")
-    public static int testSimpleConflictSnippet(TestObject a, TestObject b) {
-        a.x = 2;
-        b.x = 3;
-        staticField = a;
-        return a.x;
-    }
-
-    @Test
-    public void testSimpleConflict() {
-        ValueNode result = getReturn("testSimpleConflictSnippet").result();
-        assertFalse(result.isConstant());
-        assertTrue(result instanceof LoadFieldNode);
-    }
-
-    @SuppressWarnings("all")
-    public static int testParamSnippet(TestObject a, int b) {
-        a.x = b;
-        return a.x;
+    public static int testIndexed2Snippet(int v, int[] array) {
+        array[1] = 1;
+        array[2] = 2;
+        array[3] = 3;
+        array[v] = 0;
+        array[4] = 4;
+        array[5] = 5;
+        array[6] = 6;
+        array[4] = 4;
+        array[5] = 5;
+        array[6] = 6;
+        return array[1] + array[2] + array[3] + array[4] + array[5] + array[6];
     }
 
     @Test
-    public void testParam() {
-        ValueNode result = getReturn("testParamSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertDeepEquals(graph.getParameter(1), result);
+    public void testIndexed2() {
+        processMethod("testIndexed2Snippet");
+        assertDeepEquals(3, graph.getNodes().filter(LoadIndexedNode.class).count());
+        assertDeepEquals(7, graph.getNodes().filter(StoreIndexedNode.class).count());
     }
 
-    @SuppressWarnings("all")
-    public static int testMaterializedSnippet(int a) {
-        TestObject obj = new TestObject(a, 0);
-        staticField = obj;
-        return obj.x;
-    }
-
-    @Test
-    public void testMaterialized() {
-        ValueNode result = getReturn("testMaterializedSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertDeepEquals(graph.getParameter(0), result);
-    }
-
-    @SuppressWarnings("all")
-    public static int testSimpleLoopSnippet(TestObject obj, int a, int b) {
-        obj.x = a;
-        for (int i = 0; i < 10; i++) {
-            staticField = obj;
-        }
-        return obj.x;
+    public static int testIndexed3Snippet(int v, int[] array, short[] array2) {
+        array[1] = 1;
+        array2[1] = 1;
+        array[2] = 2;
+        array2[2] = 2;
+        array[3] = 3;
+        array2[3] = 3;
+        array[v] = 0;
+        array[4] = 4;
+        array2[4] = 4;
+        array[5] = 5;
+        array2[5] = 5;
+        array[6] = 6;
+        array2[6] = 6;
+        return array[1] + array[2] + array[3] + array[4] + array[5] + array[6] + array2[1] + array2[2] + array2[3] + array2[4] + array2[5] + array2[6];
     }
 
     @Test
-    public void testSimpleLoop() {
-        ValueNode result = getReturn("testSimpleLoopSnippet").result();
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        assertDeepEquals(graph.getParameter(1), result);
+    public void testIndexed3() {
+        processMethod("testIndexed3Snippet");
+        assertDeepEquals(3, graph.getNodes().filter(LoadIndexedNode.class).count());
     }
 
-    @SuppressWarnings("all")
-    public static int testBadLoopSnippet(TestObject obj, TestObject obj2, int a, int b) {
-        obj.x = a;
-        for (int i = 0; i < 10; i++) {
-            staticField = obj;
-            obj2.x = 10;
-            obj.x = 0;
-        }
-        return obj.x;
-    }
+    private static native void nonInlineable();
 
-    @Test
-    public void testBadLoop() {
-        ValueNode result = getReturn("testBadLoopSnippet").result();
-        assertDeepEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
-        assertTrue(result instanceof ProxyNode);
-        assertTrue(((ProxyNode) result).value() instanceof ValuePhiNode);
-    }
-
-    @SuppressWarnings("all")
-    public static int testBadLoop2Snippet(TestObject obj, TestObject obj2, int a, int b) {
-        obj.x = a;
-        for (int i = 0; i < 10; i++) {
-            obj.x = 0;
-            obj2.x = 10;
-        }
-        return obj.x;
+    public static int testIndexed4Snippet(int[] array) {
+        array[1] = 1;
+        array[2] = 2;
+        array[3] = 3;
+        nonInlineable();
+        array[4] = 4;
+        array[5] = 5;
+        array[6] = 6;
+        return array[1] + array[2] + array[3] + array[4] + array[5] + array[6];
     }
 
     @Test
-    public void testBadLoop2() {
-        ValueNode result = getReturn("testBadLoop2Snippet").result();
-        assertDeepEquals(1, graph.getNodes().filter(LoadFieldNode.class).count());
-        assertTrue(result instanceof LoadFieldNode);
+    public void testIndexed4() {
+        processMethod("testIndexed4Snippet");
+        assertDeepEquals(3, graph.getNodes().filter(LoadIndexedNode.class).count());
     }
 
-    @SuppressWarnings("all")
-    public static int testPhiSnippet(TestObject a, int b) {
-        if (b < 0) {
-            a.x = 1;
-        } else {
-            a.x = 2;
-        }
-        return a.x;
-    }
+    private static final long offsetInt1 = Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE * 1;
+    private static final long offsetInt2 = Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_INT_INDEX_SCALE * 2;
 
-    @Test
-    public void testPhi() {
-        processMethod("testPhiSnippet");
-        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
-        assertDeepEquals(2, returnNodes.size());
-        assertTrue(returnNodes.get(0).predecessor() instanceof StoreFieldNode);
-        assertTrue(returnNodes.get(1).predecessor() instanceof StoreFieldNode);
-        assertTrue(returnNodes.get(0).result().isConstant());
-        assertTrue(returnNodes.get(1).result().isConstant());
-    }
-
-    @SuppressWarnings("all")
-    public static void testSimpleStoreSnippet(TestObject a, int b) {
-        a.x = b;
-        a.x = b;
+    public static int testUnsafe1Snippet(int v, int[] array) {
+        int s = UnsafeAccess.unsafe.getInt(array, offsetInt1);
+        UnsafeAccess.unsafe.putInt(array, offsetInt1, v);
+        UnsafeAccess.unsafe.putInt(array, offsetInt2, v);
+        return s + UnsafeAccess.unsafe.getInt(array, offsetInt1) + UnsafeAccess.unsafe.getInt(array, offsetInt2);
     }
 
     @Test
-    public void testSimpleStore() {
-        processMethod("testSimpleStoreSnippet");
-        assertDeepEquals(1, graph.getNodes().filter(StoreFieldNode.class).count());
+    public void testUnsafe1() {
+        processMethod("testUnsafe1Snippet");
+        assertDeepEquals(1, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
-    public static int testValueProxySnippet(boolean b, TestObject o) {
-        int sum = 0;
-        if (b) {
-            sum += o.x;
-        } else {
-            TestObject3 p = (TestObject3) o;
-            sum += p.x;
-        }
-        sum += o.x;
-        return sum;
+    public static int testUnsafe2Snippet(int v, Object array) {
+        int s = UnsafeAccess.unsafe.getInt(array, offsetInt1);
+        UnsafeAccess.unsafe.putInt(array, offsetInt1, v);
+        UnsafeAccess.unsafe.putInt(array, offsetInt2, v);
+        return s + UnsafeAccess.unsafe.getInt(array, offsetInt1) + UnsafeAccess.unsafe.getInt(array, offsetInt2);
     }
 
     @Test
-    public void testValueProxy() {
-        processMethod("testValueProxySnippet");
-        assertDeepEquals(2, graph.getNodes().filter(LoadFieldNode.class).count());
+    public void testUnsafe2() {
+        processMethod("testUnsafe2Snippet");
+        assertDeepEquals(3, graph.getNodes().filter(UnsafeLoadNode.class).count());
     }
 
-    final ReturnNode getReturn(String snippet) {
-        processMethod(snippet);
-        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
-        return graph.getNodes(ReturnNode.TYPE).first();
+    private static final long offsetObject1 = Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * 1;
+    private static final long offsetObject2 = Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * 2;
+
+    public static int testUnsafe3Snippet(int v, Object[] array) {
+        int s = (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1);
+        UnsafeAccess.unsafe.putObject(array, offsetObject1, v);
+        UnsafeAccess.unsafe.putObject(array, offsetObject2, v);
+        return s + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1) + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject2);
     }
 
+    @Test
+    public void testUnsafe3() {
+        processMethod("testUnsafe3Snippet");
+        assertDeepEquals(1, graph.getNodes().filter(UnsafeLoadNode.class).count());
+    }
+
+    public static int testUnsafe4Snippet(int v, Object[] array) {
+        int s = (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1);
+        UnsafeAccess.unsafe.putObject(array, offsetObject1, v);
+        UnsafeAccess.unsafe.putObject(array, offsetObject2, v);
+        array[v] = null;
+        return s + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject1) + (Integer) UnsafeAccess.unsafe.getObject(array, offsetObject2);
+    }
+
+    @Test
+    public void testUnsafe4() {
+        processMethod("testUnsafe4Snippet");
+        assertDeepEquals(3, graph.getNodes().filter(UnsafeLoadNode.class).count());
+    }
+
+    private static final long offsetLong1 = Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * 1;
+    private static final long offsetLong2 = Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE * 2;
+
+    public static int testUnsafe5Snippet(int v, long[] array) {
+        int s = UnsafeAccess.unsafe.getInt(array, offsetLong1);
+        UnsafeAccess.unsafe.putInt(array, offsetLong1, v);
+        UnsafeAccess.unsafe.putInt(array, offsetLong2, v);
+        return s + UnsafeAccess.unsafe.getInt(array, offsetLong1) + UnsafeAccess.unsafe.getInt(array, offsetLong2);
+    }
+
+    @Test
+    public void testUnsafe5() {
+        processMethod("testUnsafe5Snippet");
+        assertDeepEquals(1, graph.getNodes().filter(UnsafeLoadNode.class).count());
+    }
+
+    @Override
     protected void processMethod(final String snippet) {
         graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();

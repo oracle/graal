@@ -80,6 +80,10 @@ public final class VirtualArrayNode extends VirtualObjectNode implements ArrayLe
 
     @Override
     public int entryIndexForOffset(long constantOffset, Kind expectedEntryKind) {
+        return entryIndexForOffset(constantOffset, expectedEntryKind, componentType, length);
+    }
+
+    public static int entryIndexForOffset(long constantOffset, Kind expectedEntryKind, ResolvedJavaType componentType, int length) {
         int baseOffset;
         int indexScale;
         switch (componentType.getKind()) {
