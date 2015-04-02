@@ -26,12 +26,33 @@ import java.util.*;
 
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
+    /*
+     * This flag specifies whether this path that leads to this block is unreachable.
+     */
+    private boolean dead;
+
+    public EffectsBlockState() {
+        // emtpy
+    }
+
+    public EffectsBlockState(EffectsBlockState<T> other) {
+        this.dead = other.dead;
+    }
+
     @Override
     public String toString() {
         return "";
     }
 
     protected abstract boolean equivalentTo(T other);
+
+    public boolean isDead() {
+        return dead;
+    }
+
+    public void markAsDead() {
+        this.dead = true;
+    }
 
     protected static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {
         if (left.size() != right.size()) {

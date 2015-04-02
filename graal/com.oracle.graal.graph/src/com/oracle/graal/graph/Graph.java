@@ -297,7 +297,20 @@ public class Graph {
         return add(node);
     }
 
+    public <T extends Node> void addWithoutUniqueWithInputs(T node) {
+        addInputs(node);
+        addHelper(node);
+    }
+
     public <T extends Node> T addOrUniqueWithInputs(T node) {
+        addInputs(node);
+        if (node.getNodeClass().valueNumberable()) {
+            return uniqueHelper(node, true);
+        }
+        return add(node);
+    }
+
+    private <T extends Node> void addInputs(T node) {
         NodePosIterator iterator = node.inputs().iterator();
         while (iterator.hasNext()) {
             Position pos = iterator.nextPosition();
@@ -307,10 +320,6 @@ public class Graph {
                 pos.initialize(node, addOrUniqueWithInputs(input));
             }
         }
-        if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node, true);
-        }
-        return add(node);
     }
 
     private <T extends Node> T addHelper(T node) {

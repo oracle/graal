@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
@@ -36,7 +37,7 @@ import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
-class VirtualizerToolImpl implements VirtualizerTool {
+class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
@@ -186,5 +187,17 @@ class VirtualizerToolImpl implements VirtualizerTool {
                 replaceWithValue(resultState.getMaterializedValue());
             }
         }
+    }
+
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
+    public ConstantReflectionProvider getConstantReflection() {
+        return constantReflection;
+    }
+
+    public boolean canonicalizeReads() {
+        return false;
     }
 }

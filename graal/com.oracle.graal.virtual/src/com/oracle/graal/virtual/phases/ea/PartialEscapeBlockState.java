@@ -53,6 +53,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
     }
 
     protected PartialEscapeBlockState(PartialEscapeBlockState<T> other) {
+        super(other);
         for (Map.Entry<VirtualObjectNode, ObjectState> entry : other.objectStates.entrySet()) {
             objectStates.put(entry.getKey(), entry.getValue().cloneState());
         }

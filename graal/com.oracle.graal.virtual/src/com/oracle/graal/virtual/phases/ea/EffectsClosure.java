@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.util.*;
@@ -48,6 +48,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected final BlockMap<GraphEffectList> blockEffects;
     private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newIdentityMap();
     private final Map<LoopBeginNode, BlockT> loopEntryStates = Node.newIdentityMap();
+    private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;
 
@@ -55,6 +56,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         this.schedule = schedule;
         this.cfg = cfg;
         this.aliases = cfg.graph.createNodeMap();
+        this.hasScalarReplacedInputs = cfg.graph.createNodeBitMap();
         this.blockEffects = new BlockMap<>(cfg);
         for (Block block : cfg.getBlocks()) {
             blockEffects.put(block, new GraphEffectList());
@@ -67,9 +69,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @Override
-    public void applyEffects() {
+    public final void applyEffects() {
         final StructuredGraph graph = cfg.graph;
         final ArrayList<Node> obsoleteNodes = new ArrayList<>(0);
+        final ArrayList<GraphEffectList> effectList = new ArrayList<>();
         BlockIteratorClosure<Void> closure = new BlockIteratorClosure<Void>() {
 
             @Override
@@ -77,19 +80,15 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 return null;
             }
 
-            private void apply(GraphEffectList effects, Object context) {
-                if (!effects.isEmpty()) {
-                    Debug.log(" ==== effects for %s", context);
-                    effects.apply(graph, obsoleteNodes);
-                    if (TraceEscapeAnalysis.getValue()) {
-                        Debug.dump(5, graph, "After processing EffectsList for %s", context);
-                    }
+            private void apply(GraphEffectList effects) {
+                if (effects != null && !effects.isEmpty()) {
+                    effectList.add(effects);
                 }
             }
 
             @Override
             protected Void processBlock(Block block, Void currentState) {
-                apply(blockEffects.get(block), block);
+                apply(blockEffects.get(block));
                 return currentState;
             }
 
@@ -106,11 +105,20 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             @Override
             protected List<Void> processLoop(Loop<Block> loop, Void initialState) {
                 LoopInfo<Void> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
-                apply(loopMergeEffects.get(loop), loop);
+                apply(loopMergeEffects.get(loop));
                 return info.exitStates;
             }
         };
         ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
+        for (GraphEffectList effects : effectList) {
+            Debug.log(" ==== effects");
+            effects.apply(graph, obsoleteNodes, false);
+        }
+        for (GraphEffectList effects : effectList) {
+            Debug.log(" ==== cfg kill effects");
+            effects.apply(graph, obsoleteNodes, true);
+        }
+        Debug.dump(4, graph, "After applying effects");
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
         for (Node node : obsoleteNodes) {
             if (node.isAlive()) {
@@ -122,26 +130,45 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     @Override
     protected BlockT processBlock(Block block, BlockT state) {
-        VirtualUtil.trace("\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
+        if (!state.isDead()) {
+            GraphEffectList effects = blockEffects.get(block);
 
-        GraphEffectList effects = blockEffects.get(block);
-        FixedWithNextNode lastFixedNode = block.getBeginNode().predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) block.getBeginNode().predecessor() : null;
-        Iterable<? extends Node> nodes = schedule != null ? schedule.getBlockToNodesMap().get(block) : block.getNodes();
-        for (Node node : nodes) {
-            aliases.set(node, null);
-            if (node instanceof LoopExitNode) {
-                LoopExitNode loopExit = (LoopExitNode) node;
-                for (ProxyNode proxy : loopExit.proxies()) {
-                    changed |= processNode(proxy, state, effects, lastFixedNode);
+            if (block.getBeginNode().predecessor() instanceof IfNode) {
+                IfNode ifNode = (IfNode) block.getBeginNode().predecessor();
+                LogicNode condition = ifNode.condition();
+                Node alias = getScalarAlias(condition);
+                if (alias instanceof LogicConstantNode) {
+                    LogicConstantNode constant = (LogicConstantNode) alias;
+                    boolean deadBranch = constant.getValue() != (block.getBeginNode() == ifNode.trueSuccessor());
+
+                    if (deadBranch) {
+                        state.markAsDead();
+                        effects.killIfBranch(ifNode, constant.getValue());
+                        return state;
+                    }
                 }
-                processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
             }
-            changed |= processNode(node, state, effects, lastFixedNode);
-            if (node instanceof FixedWithNextNode) {
-                lastFixedNode = (FixedWithNextNode) node;
+
+            VirtualUtil.trace("\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
+
+            FixedWithNextNode lastFixedNode = block.getBeginNode().predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) block.getBeginNode().predecessor() : null;
+            Iterable<? extends Node> nodes = schedule != null ? schedule.getBlockToNodesMap().get(block) : block.getNodes();
+            for (Node node : nodes) {
+                aliases.set(node, null);
+                if (node instanceof LoopExitNode) {
+                    LoopExitNode loopExit = (LoopExitNode) node;
+                    for (ProxyNode proxy : loopExit.proxies()) {
+                        changed |= processNode(proxy, state, effects, lastFixedNode);
+                    }
+                    processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
+                }
+                changed |= processNode(node, state, effects, lastFixedNode);
+                if (node instanceof FixedWithNextNode) {
+                    lastFixedNode = (FixedWithNextNode) node;
+                }
             }
+            VirtualUtil.trace(")\n    end state: %s\n", state);
         }
-        VirtualUtil.trace(")\n    end state: %s\n", state);
         return state;
     }
 
@@ -151,7 +178,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected BlockT merge(Block merge, List<BlockT> states) {
         assert blockEffects.get(merge).isEmpty();
         MergeProcessor processor = createMergeProcessor(merge);
-        processor.merge(states);
+        doMergeWithoutDead(processor, states);
         processor.commitEnds(states);
         blockEffects.get(merge).addAll(processor.mergeEffects);
         blockEffects.get(merge).addAll(processor.afterMergeEffects);
@@ -160,6 +187,14 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     @Override
     protected final List<BlockT> processLoop(Loop<Block> loop, BlockT initialState) {
+        if (initialState.isDead()) {
+            ArrayList<BlockT> states = new ArrayList<>();
+            for (int i = 0; i < loop.getExits().size(); i++) {
+                states.add(initialState);
+            }
+            return states;
+        }
+
         BlockT loopEntryState = initialState;
         BlockT lastMergedState = cloneState(initialState);
         MergeProcessor mergeProcessor = createMergeProcessor(loop.getHeader());
@@ -169,7 +204,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             List<BlockT> states = new ArrayList<>();
             states.add(initialState);
             states.addAll(info.endStates);
-            mergeProcessor.merge(states);
+            doMergeWithoutDead(mergeProcessor, states);
 
             Debug.log("================== %s", loop.getHeader());
             Debug.log("%s", mergeProcessor.newState);
@@ -197,6 +232,36 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         throw new GraalInternalError("too many iterations at %s", loop);
     }
 
+    private void doMergeWithoutDead(MergeProcessor mergeProcessor, List<BlockT> states) {
+        int alive = 0;
+        for (BlockT state : states) {
+            if (!state.isDead()) {
+                alive++;
+            }
+        }
+        if (alive == 0) {
+            mergeProcessor.setNewState(states.get(0));
+        } else if (alive == states.size()) {
+            int[] stateIndexes = new int[states.size()];
+            for (int i = 0; i < stateIndexes.length; i++) {
+                stateIndexes[i] = i;
+            }
+            mergeProcessor.setStateIndexes(stateIndexes);
+            mergeProcessor.merge(states);
+        } else {
+            ArrayList<BlockT> aliveStates = new ArrayList<>(alive);
+            int[] stateIndexes = new int[alive];
+            for (int i = 0; i < states.size(); i++) {
+                if (!states.get(i).isDead()) {
+                    stateIndexes[aliveStates.size()] = i;
+                    aliveStates.add(states.get(i));
+                }
+            }
+            mergeProcessor.setStateIndexes(stateIndexes);
+            mergeProcessor.merge(aliveStates);
+        }
+    }
+
     private boolean assertExitStatesNonEmpty(Loop<Block> loop, LoopInfo<BlockT> info) {
         for (int i = 0; i < loop.getExits().size(); i++) {
             assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getExits().get(i) + " / " + loop.getHeader();
@@ -210,11 +275,13 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected class MergeProcessor {
 
-        protected final Block mergeBlock;
-        protected final AbstractMergeNode merge;
+        private final Block mergeBlock;
+        private final AbstractMergeNode merge;
 
         protected final GraphEffectList mergeEffects;
         protected final GraphEffectList afterMergeEffects;
+
+        private int[] stateIndexes;
         protected BlockT newState;
 
         public MergeProcessor(Block mergeBlock) {
@@ -228,13 +295,49 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
          * @param states the states that should be merged.
          */
         protected void merge(List<BlockT> states) {
-            newState = getInitialState();
+            setNewState(getInitialState());
+        }
+
+        private void setNewState(BlockT state) {
+            newState = state;
             mergeEffects.clear();
             afterMergeEffects.clear();
         }
 
+        private void setStateIndexes(int[] stateIndexes) {
+            this.stateIndexes = stateIndexes;
+        }
+
         @SuppressWarnings("unused")
         protected void commitEnds(List<BlockT> states) {
+        }
+
+        protected final Block getPredecessor(int index) {
+            return mergeBlock.getPredecessors().get(stateIndexes[index]);
+        }
+
+        protected final NodeIterable<PhiNode> getPhis() {
+            return merge.phis();
+        }
+
+        protected final ValueNode getPhiValueAt(PhiNode phi, int index) {
+            return phi.valueAt(stateIndexes[index]);
+        }
+
+        protected final ValuePhiNode createValuePhi(Stamp stamp) {
+            return new ValuePhiNode(stamp, merge, new ValueNode[mergeBlock.getPredecessorCount()]);
+        }
+
+        protected final void setPhiInput(PhiNode phi, int index, ValueNode value) {
+            afterMergeEffects.initializePhiInput(phi, stateIndexes[index], value);
+        }
+
+        protected final int getStateIndex(int i) {
+            return stateIndexes[i];
+        }
+
+        protected final StructuredGraph graph() {
+            return merge.graph();
         }
 
         @Override
@@ -246,6 +349,15 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     public void addScalarAlias(ValueNode node, ValueNode alias) {
         assert !(alias instanceof VirtualObjectNode);
         aliases.set(node, alias);
+        for (Node usage : node.usages()) {
+            if (!hasScalarReplacedInputs.isNew(usage)) {
+                hasScalarReplacedInputs.mark(usage);
+            }
+        }
+    }
+
+    protected final boolean hasScalarReplacedInputs(Node node) {
+        return hasScalarReplacedInputs.isMarked(node);
     }
 
     public ValueNode getScalarAlias(ValueNode node) {
