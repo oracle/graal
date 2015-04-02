@@ -22,23 +22,225 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import java.util.*;
+
 import org.junit.*;
 
+import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
-public class EarlyReadEliminationTest extends PEAReadEliminationTest {
+public class EarlyReadEliminationTest extends GraalCompilerTest {
 
-    @Test
-    public void dummy() {
-        // dummy test to make the harness recognize this class as a JUnit test
+    protected StructuredGraph graph;
+
+    public static Object staticField;
+
+    public static class TestObject {
+
+        public int x;
+        public int y;
+
+        public TestObject(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
     }
 
-    @Override
-    protected void processMethod(final String snippet) {
+    public static class TestObject2 {
+
+        public Object x;
+        public Object y;
+
+        public TestObject2(Object x, Object y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public static class TestObject3 extends TestObject {
+
+        public int z;
+
+        public TestObject3(int x, int y, int z) {
+            super(x, y);
+            this.z = z;
+        }
+    }
+
+    @SuppressWarnings("all")
+    public static int testSimpleSnippet(TestObject a) {
+        a.x = 2;
+        staticField = a;
+        return a.x;
+    }
+
+    @Test
+    public void testSimple() {
+        ValueNode result = getReturn("testSimpleSnippet").result();
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertTrue(result.isConstant());
+        assertDeepEquals(2, result.asJavaConstant().asInt());
+    }
+
+    @SuppressWarnings("all")
+    public static int testSimpleConflictSnippet(TestObject a, TestObject b) {
+        a.x = 2;
+        b.x = 3;
+        staticField = a;
+        return a.x;
+    }
+
+    @Test
+    public void testSimpleConflict() {
+        ValueNode result = getReturn("testSimpleConflictSnippet").result();
+        assertFalse(result.isConstant());
+        assertTrue(result instanceof LoadFieldNode);
+    }
+
+    @SuppressWarnings("all")
+    public static int testParamSnippet(TestObject a, int b) {
+        a.x = b;
+        return a.x;
+    }
+
+    @Test
+    public void testParam() {
+        ValueNode result = getReturn("testParamSnippet").result();
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertDeepEquals(graph.getParameter(1), result);
+    }
+
+    @SuppressWarnings("all")
+    public static int testMaterializedSnippet(int a) {
+        TestObject obj = new TestObject(a, 0);
+        staticField = obj;
+        return obj.x;
+    }
+
+    @Test
+    public void testMaterialized() {
+        ValueNode result = getReturn("testMaterializedSnippet").result();
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertDeepEquals(graph.getParameter(0), result);
+    }
+
+    @SuppressWarnings("all")
+    public static int testSimpleLoopSnippet(TestObject obj, int a, int b) {
+        obj.x = a;
+        for (int i = 0; i < 10; i++) {
+            staticField = obj;
+        }
+        return obj.x;
+    }
+
+    @Test
+    public void testSimpleLoop() {
+        ValueNode result = getReturn("testSimpleLoopSnippet").result();
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
+        assertDeepEquals(graph.getParameter(1), result);
+    }
+
+    @SuppressWarnings("all")
+    public static int testBadLoopSnippet(TestObject obj, TestObject obj2, int a, int b) {
+        obj.x = a;
+        for (int i = 0; i < 10; i++) {
+            staticField = obj;
+            obj2.x = 10;
+            obj.x = 0;
+        }
+        return obj.x;
+    }
+
+    @Test
+    public void testBadLoop() {
+        ValueNode result = getReturn("testBadLoopSnippet").result();
+        assertDeepEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
+        assertTrue(result instanceof ProxyNode);
+        assertTrue(((ProxyNode) result).value() instanceof ValuePhiNode);
+    }
+
+    @SuppressWarnings("all")
+    public static int testBadLoop2Snippet(TestObject obj, TestObject obj2, int a, int b) {
+        obj.x = a;
+        for (int i = 0; i < 10; i++) {
+            obj.x = 0;
+            obj2.x = 10;
+        }
+        return obj.x;
+    }
+
+    @Test
+    public void testBadLoop2() {
+        ValueNode result = getReturn("testBadLoop2Snippet").result();
+        assertDeepEquals(1, graph.getNodes().filter(LoadFieldNode.class).count());
+        assertTrue(result instanceof LoadFieldNode);
+    }
+
+    @SuppressWarnings("all")
+    public static int testPhiSnippet(TestObject a, int b) {
+        if (b < 0) {
+            a.x = 1;
+        } else {
+            a.x = 2;
+        }
+        return a.x;
+    }
+
+    @Test
+    public void testPhi() {
+        processMethod("testPhiSnippet");
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
+        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
+        assertDeepEquals(2, returnNodes.size());
+        assertTrue(returnNodes.get(0).predecessor() instanceof StoreFieldNode);
+        assertTrue(returnNodes.get(1).predecessor() instanceof StoreFieldNode);
+        assertTrue(returnNodes.get(0).result().isConstant());
+        assertTrue(returnNodes.get(1).result().isConstant());
+    }
+
+    @SuppressWarnings("all")
+    public static void testSimpleStoreSnippet(TestObject a, int b) {
+        a.x = b;
+        a.x = b;
+    }
+
+    @Test
+    public void testSimpleStore() {
+        processMethod("testSimpleStoreSnippet");
+        assertDeepEquals(1, graph.getNodes().filter(StoreFieldNode.class).count());
+    }
+
+    public static int testValueProxySnippet(boolean b, TestObject o) {
+        int sum = 0;
+        if (b) {
+            sum += o.x;
+        } else {
+            TestObject3 p = (TestObject3) o;
+            sum += p.x;
+        }
+        sum += o.x;
+        return sum;
+    }
+
+    @Test
+    public void testValueProxy() {
+        processMethod("testValueProxySnippet");
+        assertDeepEquals(2, graph.getNodes().filter(LoadFieldNode.class).count());
+    }
+
+    ReturnNode getReturn(String snippet) {
+        processMethod(snippet);
+        assertDeepEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        return graph.getNodes(ReturnNode.TYPE).first();
+    }
+
+    protected void processMethod(String snippet) {
         graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
