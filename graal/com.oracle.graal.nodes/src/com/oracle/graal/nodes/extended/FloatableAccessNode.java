@@ -49,12 +49,18 @@ public abstract class FloatableAccessNode extends FixedAccessNode {
 
     public abstract FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess);
 
+    protected boolean forceFixed;
+
+    public void setForceFixed(boolean flag) {
+        this.forceFixed = flag;
+    }
+
     /**
      * AccessNodes can float only if their location identities are not ANY_LOCATION. Furthermore, in
      * case G1 is enabled any access (read) to the java.lang.ref.Reference.referent field which has
      * an attached write barrier with pre-semantics can not also float.
      */
     public boolean canFloat() {
-        return location().getLocationIdentity().isSingle() && getBarrierType() == BarrierType.NONE;
+        return !forceFixed && location().getLocationIdentity().isSingle() && getBarrierType() == BarrierType.NONE;
     }
 }
