@@ -72,14 +72,26 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
         return null;
     }
 
+    // Lazily initialized
+    private ResolvedJavaType wordTypesType;
+    private ResolvedJavaType runtimeType;
+    private ResolvedJavaType configType;
+
     public Object getInjectedNodeIntrinsicParameter(ResolvedJavaType type) {
-        if (type.isInstance(forObject(runtime.getHostProviders().getWordTypes()))) {
+        if (wordTypesType == null) {
+            MetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
+            wordTypesType = metaAccess.lookupJavaType(runtime.getHostProviders().getWordTypes().getClass());
+            runtimeType = metaAccess.lookupJavaType(runtime.getClass());
+            configType = metaAccess.lookupJavaType(runtime.getConfig().getClass());
+        }
+
+        if (type.isAssignableFrom(wordTypesType)) {
             return runtime.getHostProviders().getWordTypes();
         }
-        if (type.isInstance(forObject(runtime))) {
+        if (type.isAssignableFrom(runtimeType)) {
             return runtime;
         }
-        if (type.isInstance(forObject(runtime.getConfig()))) {
+        if (type.isAssignableFrom(configType)) {
             return runtime.getConfig();
         }
         return null;
