@@ -69,8 +69,9 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (length().asConstant() != null) {
-            final int constantLength = length().asJavaConstant().asInt();
+        ValueNode replacedLength = tool.getReplacedValue(length());
+        if (replacedLength.asConstant() != null) {
+            final int constantLength = replacedLength.asJavaConstant().asInt();
             if (constantLength >= 0 && constantLength < tool.getMaximumEntryCount()) {
                 ValueNode[] state = new ValueNode[constantLength];
                 ConstantNode defaultForKind = constantLength == 0 ? null : defaultElementValue();
