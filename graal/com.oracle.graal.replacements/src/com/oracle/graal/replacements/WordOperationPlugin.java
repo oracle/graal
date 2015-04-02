@@ -231,12 +231,12 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
     }
 
     public static ValueNode readOp(GraphBuilderContext b, Kind readKind, ValueNode base, LocationNode location, BarrierType barrierType, boolean compressible) {
-        JavaReadNode read = b.add(new JavaReadNode(readKind, base, location, barrierType, compressible));
         /*
-         * The read must not float outside its block otherwise it may float above an explicit zero
-         * check on its base address.
+         * A JavaReadNode lowered to a ReadNode that will not float. This means it cannot float
+         * above an explicit zero check on its base address or any other test that ensures the read
+         * is safe.
          */
-        read.setGuard(AbstractBeginNode.prevBegin(read));
+        JavaReadNode read = b.add(new JavaReadNode(readKind, base, location, barrierType, compressible));
         return read;
     }
 
