@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.debug;
 
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
@@ -87,6 +88,8 @@ public class BenchmarkCounters {
         private static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
         @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
         private static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
+        @Option(help = "Print in human readable format", type = OptionType.Debug)
+        private static final OptionValue<Boolean> DynamicCountersHumanReadable = new OptionValue<>(true);
         //@formatter:on
     }
 
@@ -168,7 +171,6 @@ public class BenchmarkCounters {
     }
 
     private static synchronized void dumpCounters(PrintStream out, double seconds, long[] counters, boolean staticCounter, String group, int maxRows) {
-        TreeMap<Long, String> sorted = new TreeMap<>();
 
         // collect the numbers
         long[] array;
@@ -183,14 +185,28 @@ public class BenchmarkCounters {
                 array[i] -= delta[i];
             }
         }
+        Set<Entry<String, Counter>> counterEntrySet = counterMap.entrySet();
+        if (Options.DynamicCountersHumanReadable.getValue()) {
+            dumpHumanReadable(out, seconds, staticCounter, group, maxRows, array, counterEntrySet);
+        } else {
+            dumpComputerReadable(out, staticCounter, group, array, counterEntrySet);
+        }
+    }
+
+    private static String getName(String nameGroup, String group) {
+        return nameGroup.substring(0, nameGroup.length() - group.length() - 1);
+    }
+
+    private static void dumpHumanReadable(PrintStream out, double seconds, boolean staticCounter, String group, int maxRows, long[] array, Set<Entry<String, Counter>> counterEntrySet) {
         // sort the counters by putting them into a sorted map
+        TreeMap<Long, String> sorted = new TreeMap<>();
         long sum = 0;
-        for (Map.Entry<String, Counter> entry : counterMap.entrySet()) {
+        for (Map.Entry<String, Counter> entry : counterEntrySet) {
             Counter counter = entry.getValue();
             int index = counter.index;
             if (counter.group.equals(group)) {
                 sum += array[index];
-                sorted.put(array[index] * array.length + index, entry.getKey().substring(0, entry.getKey().length() - group.length() - 1));
+                sorted.put(array[index] * array.length + index, getName(entry.getKey(), group));
             }
         }
 
@@ -233,6 +249,20 @@ public class BenchmarkCounters {
                     }
                     out.format(Locale.US, numFmt + " total\n", sum);
                 }
+            }
+        }
+    }
+
+    private static void dumpComputerReadable(PrintStream out, boolean staticCounter, String group, long[] array, Set<Entry<String, Counter>> counterEntrySet) {
+        String category = staticCounter ? "static counters" : "dynamic counters";
+        for (Map.Entry<String, Counter> entry : counterEntrySet) {
+            Counter counter = entry.getValue();
+            if (counter.group.equals(group)) {
+                String name = getName(entry.getKey(), group);
+                int index = counter.index;
+                long value = array[index];
+                // TODO(je): escape strings
+                out.printf("%s;%s;%s;%d\n", category, group, name, value);
             }
         }
     }
