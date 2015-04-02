@@ -261,7 +261,7 @@ public class PartialEvaluator {
 
         // Do single partial escape and canonicalization pass.
         try (Scope pe = Debug.scope("TrufflePartialEscape", graph)) {
-            new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
+            new PartialEscapePhase(false, canonicalizer).apply(graph, tierContext);
         } catch (Throwable t) {
             Debug.handle(t);
         }
