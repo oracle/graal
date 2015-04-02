@@ -258,7 +258,7 @@ public class InliningUtil {
             throw new IllegalStateException("Inlined graph is in invalid state: " + inlineGraph);
         }
         for (Node node : inlineGraph.getNodes()) {
-            if (node == entryPointNode || node == entryPointNode.stateAfter() || node instanceof ParameterNode) {
+            if (node == entryPointNode || (node == entryPointNode.stateAfter() && node.usages().count() == 1) || node instanceof ParameterNode) {
                 // Do nothing.
             } else {
                 nodes.add(node);
