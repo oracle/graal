@@ -41,7 +41,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
 
     protected final ResolvedJavaType type;
 
-    protected TypeCheckNode(ResolvedJavaType type, ValueNode object) {
+    public TypeCheckNode(ResolvedJavaType type, ValueNode object) {
         super(TYPE, object);
         this.type = type;
         assert type != null;

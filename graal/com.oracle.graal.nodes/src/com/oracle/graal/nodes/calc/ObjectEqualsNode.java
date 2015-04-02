@@ -27,8 +27,11 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "==")
@@ -53,6 +56,15 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             }
             return new ObjectEqualsNode(x, y);
         }
+    }
+
+    @Override
+    protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
+        ResolvedJavaType type = tool.getConstantReflection().asJavaType(constant);
+        if (type != null && nonConstant instanceof GetClassNode) {
+            return new TypeCheckNode(type, ((GetClassNode) nonConstant).getObject());
+        }
+        return super.canonicalizeSymmetricConstant(tool, constant, nonConstant, mirrored);
     }
 
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {
