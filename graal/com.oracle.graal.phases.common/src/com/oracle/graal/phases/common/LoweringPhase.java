@@ -357,8 +357,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             if (node instanceof FloatingNode) {
                 for (Node usage : node.usages()) {
                     if (usage instanceof ValueNode) {
-                        Block usageBlock = schedule.getCFG().blockFor(usage);
-                        if (usageBlock == null) {
+                        if (schedule.getCFG().getNodeToBlock().isNew(usage) || schedule.getCFG().blockFor(usage) == null) {
                             unscheduledUsages.add(usage);
                         }
                     }
