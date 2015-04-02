@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -62,11 +63,20 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
         ResolvedJavaType type = tool.getConstantReflection().asJavaType(constant);
         if (type != null && nonConstant instanceof GetClassNode) {
-            if (type.getKind() == Kind.Void) {
+            if (type.isPrimitive()) {
                 return LogicConstantNode.forBoolean(false);
             }
-            if (type.isConcrete() || type.isArray()) {
-                return TypeCheckNode.create(type, ((GetClassNode) nonConstant).getObject());
+            ResolvedJavaType exactType = type.asExactType();
+            if (exactType == null) {
+                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+                if (leafConcreteSubtype != null) {
+                    graph().getAssumptions().record(leafConcreteSubtype);
+                    exactType = leafConcreteSubtype.getResult();
+                }
+            }
+
+            if (exactType == type) {
+                return TypeCheckNode.create(exactType, ((GetClassNode) nonConstant).getObject());
             }
         }
         return super.canonicalizeSymmetricConstant(tool, constant, nonConstant, mirrored);
@@ -109,7 +119,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                 /*
                  * One of the two objects has identity, the other doesn't. In code, this looks like
                  * "Integer.valueOf(a) == new Integer(b)", which is always false.
-                 *
+                 * 
                  * In other words: an object created via valueOf can never be equal to one created
                  * by new in the same compilation unit.
                  */
