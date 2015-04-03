@@ -98,19 +98,19 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         return false;
     }
 
-    private InputType getInputType(ObjectStamp stamp) {
-        ResolvedJavaType type = stamp.type();
+    private InputType getInputType(ResolvedJavaType type) {
         if (type != null && structuralInputType.isAssignableFrom(type)) {
-            while (type != null) {
+            ResolvedJavaType current = type;
+            while (current != null) {
                 MarkerType markerType = type.getAnnotation(MarkerType.class);
                 if (markerType != null) {
                     return markerType.value();
                 }
 
-                type = type.getSuperclass();
+                current = current.getSuperclass();
             }
 
-            throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", stamp.type()));
+            throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
         } else {
             return InputType.Value;
         }
@@ -133,16 +133,17 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
 
         res = b.add(res);
 
-        InputType inputType = InputType.Value;
+        boolean nonValueType = false;
         if (returnKind == Kind.Object && stamp instanceof ObjectStamp) {
-            inputType = getInputType((ObjectStamp) stamp);
+            ResolvedJavaType type = ((ObjectStamp) stamp).type();
+            if (type != null && structuralInputType.isAssignableFrom(type)) {
+                assert res.isAllowedUsageType(getInputType(type));
+                nonValueType = true;
+            }
         }
 
-        if (inputType != InputType.Value) {
-            assert res.isAllowedUsageType(inputType);
-            b.push(Kind.Object, res);
-        } else if (returnKind != Kind.Void) {
-            assert res.getKind().getStackKind() != Kind.Void;
+        if (returnKind != Kind.Void) {
+            assert nonValueType || res.getKind().getStackKind() != Kind.Void;
             b.push(returnKind.getStackKind(), res);
         } else {
             assert res.getKind().getStackKind() == Kind.Void;
