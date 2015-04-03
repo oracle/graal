@@ -1327,7 +1327,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, JavaType returnType) {
                 InlineInvokePlugin plugin = graphBuilderConfig.getPlugins().getInlineInvokePlugin();
-                if (plugin == null || !invokeKind.isDirect() || !targetMethod.canBeInlined()) {
+                boolean canBeInlined = parsingReplacement() || targetMethod.canBeInlined();
+                if (plugin == null || !invokeKind.isDirect() || !canBeInlined) {
                     return false;
                 }
                 InlineInfo inlineInfo = plugin.getInlineInfo(this, targetMethod, args, returnType);
