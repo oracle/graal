@@ -126,6 +126,10 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.customMessage" value="Illegal whitespace before a comma."/>
     </module>
     <module name="RegexpSinglelineJava">
+      <property name="format" value="[^\x00-\x7F]"/>
+      <property name="message" value="Only use ASCII characters."/>
+    </module>
+     <module name="RegexpSinglelineJava">
       <property name="format" value="new (Hashtable|Vector|Stack|StringBuffer)[^\w]"/>
       <property name="message" value="Don't use old synchronized collection classes"/>
     </module>
