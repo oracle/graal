@@ -1738,6 +1738,13 @@ final class LinearScan {
         }
     }
 
+    private static final DebugTimer lifetimeTimer = Debug.timer("LinearScan_LifetimeAnalysis");
+    private static final DebugTimer registerAllocationTimer = Debug.timer("LinearScan_RegisterAllocation");
+    private static final DebugTimer optimizedSpillPositionTimer = Debug.timer("LinearScan_OptimizeSpillPosition");
+    private static final DebugTimer resolveDataFlowTimer = Debug.timer("LinearScan_ResolveDataFlow");
+    private static final DebugTimer eliminateSpillMoveTimer = Debug.timer("LinearScan_EliminateSpillMove");
+    private static final DebugTimer assignLocationsTimer = Debug.timer("LinearScan_AssignLocations");
+
     void allocate() {
 
         /*
@@ -1745,7 +1752,7 @@ final class LinearScan {
          */
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
 
-            try (Scope s = Debug.scope("LifetimeAnalysis"); DebugCloseable a = Debug.timer("LinearScan_LifetimeAnalysis").start()) {
+            try (Scope s = Debug.scope("LifetimeAnalysis"); DebugCloseable a = lifetimeTimer.start()) {
                 numberInstructions();
                 printLir("Before register allocation", true);
                 computeLocalLiveSets();
@@ -1756,7 +1763,7 @@ final class LinearScan {
                 throw Debug.handle(e);
             }
 
-            try (Scope s = Debug.scope("RegisterAllocation"); DebugCloseable a = Debug.timer("LinearScan_RegisterAllocation").start()) {
+            try (Scope s = Debug.scope("RegisterAllocation"); DebugCloseable a = registerAllocationTimer.start()) {
                 printIntervals("Before register allocation");
                 allocateRegisters();
             } catch (Throwable e) {
@@ -1764,14 +1771,14 @@ final class LinearScan {
             }
 
             if (Options.LSRAOptimizeSpillPosition.getValue()) {
-                try (Scope s = Debug.scope("OptimizeSpillPosition"); DebugCloseable a = Debug.timer("LinearScan_OptimizeSpillPosition").start()) {
+                try (Scope s = Debug.scope("OptimizeSpillPosition"); DebugCloseable a = optimizedSpillPositionTimer.start()) {
                     optimizeSpillPosition();
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
             }
 
-            try (Scope s = Debug.scope("ResolveDataFlow"); DebugCloseable a = Debug.timer("LinearScan_ResolveDataFlow").start()) {
+            try (Scope s = Debug.scope("ResolveDataFlow"); DebugCloseable a = resolveDataFlowTimer.start()) {
                 resolveDataFlow();
             } catch (Throwable e) {
                 throw Debug.handle(e);
@@ -1787,14 +1794,14 @@ final class LinearScan {
                     verify();
                 }
 
-                try (Scope s1 = Debug.scope("EliminateSpillMove"); DebugCloseable a = Debug.timer("LinearScan_EliminateSpillMove").start()) {
+                try (Scope s1 = Debug.scope("EliminateSpillMove"); DebugCloseable a = eliminateSpillMoveTimer.start()) {
                     eliminateSpillMoves();
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
                 printLir("After spill move elimination", true);
 
-                try (Scope s1 = Debug.scope("AssignLocations"); DebugCloseable a = Debug.timer("LinearScan_AssignLocations").start()) {
+                try (Scope s1 = Debug.scope("AssignLocations"); DebugCloseable a = assignLocationsTimer.start()) {
                     assignLocations();
                 } catch (Throwable e) {
                     throw Debug.handle(e);
