@@ -189,7 +189,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             return opcodeConstant;
         }
         assert opcodeIndex != -1;
-        return data.getObject(obj, opcodeIndex).toString();
+        return String.valueOf(data.getObject(obj, opcodeIndex));
     }
 
     final boolean hasOperands() {
