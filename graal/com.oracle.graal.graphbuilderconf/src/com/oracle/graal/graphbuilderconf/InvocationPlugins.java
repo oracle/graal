@@ -58,7 +58,9 @@ public class InvocationPlugins {
         /**
          * Determines if the receiver is constant.
          */
-        boolean isConstant();
+        default boolean isConstant() {
+            return false;
+        }
     }
 
     /**

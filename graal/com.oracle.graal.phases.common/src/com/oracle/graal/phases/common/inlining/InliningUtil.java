@@ -574,7 +574,7 @@ public class InliningUtil {
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target) {
-        return replacements.getMethodSubstitutionMethod(target) != null;
+        return replacements.hasMethodSubstitution(target);
     }
 
     public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target) {

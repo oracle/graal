@@ -68,11 +68,29 @@ public interface Replacements {
     void notifyAfterConstantsBound(StructuredGraph specializedSnippet);
 
     /**
-     * Gets the graph that is a substitution for a given method.
+     * Gets a graph that is a substitution for a given method.
      *
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getMethodSubstitution(ResolvedJavaMethod method);
+    default StructuredGraph getMethodSubstitution(ResolvedJavaMethod method) {
+        return getMethodSubstitution(method, false);
+    }
+
+    /**
+     * Gets a graph that is a substitution for a given method.
+     *
+     * @param fromBytecodeOnly only return a graph created by parsing the bytecode of another method
+     * @return the graph, if any, that is a substitution for {@code method}
+     */
+    StructuredGraph getMethodSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly);
+
+    /**
+     * Determines if there is a {@linkplain #getMethodSubstitution(ResolvedJavaMethod) substitution
+     * graph} for a given method.
+     *
+     * @return true iff there is a substitution graph available for {@code method}
+     */
+    boolean hasMethodSubstitution(ResolvedJavaMethod method);
 
     /**
      * Gets the method that is a substitution for a given method.

@@ -108,7 +108,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
      * lowered}.
      */
     protected StructuredGraph getLoweredSubstitutionGraph(LoweringTool tool) {
-        StructuredGraph methodSubstitution = tool.getReplacements().getMethodSubstitution(getTargetMethod());
+        StructuredGraph methodSubstitution = tool.getReplacements().getMethodSubstitution(getTargetMethod(), true);
         if (methodSubstitution != null) {
             methodSubstitution = methodSubstitution.copy();
             if (stateAfter() == null || stateAfter().bci == BytecodeFrame.AFTER_BCI) {
