@@ -170,7 +170,7 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            if (replacements != null && replacements.getMethodSubstitutionMethod(original) != null) {
+            if (replacements != null && replacements.hasSubstitution(original)) {
                 return null;
             }
             assert !builder.parsingReplacement();
@@ -248,7 +248,7 @@ public class PartialEvaluator {
         new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
+            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod());
             if (inlineGraph != null) {
                 InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, null);
             }

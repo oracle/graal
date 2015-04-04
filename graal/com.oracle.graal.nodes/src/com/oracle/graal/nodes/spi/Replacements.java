@@ -72,8 +72,8 @@ public interface Replacements {
      *
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    default StructuredGraph getMethodSubstitution(ResolvedJavaMethod method) {
-        return getMethodSubstitution(method, false);
+    default StructuredGraph getSubstitution(ResolvedJavaMethod method) {
+        return getSubstitution(method, false);
     }
 
     /**
@@ -82,22 +82,27 @@ public interface Replacements {
      * @param fromBytecodeOnly only return a graph created by parsing the bytecode of another method
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getMethodSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly);
+    StructuredGraph getSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly);
 
     /**
-     * Determines if there is a {@linkplain #getMethodSubstitution(ResolvedJavaMethod) substitution
-     * graph} for a given method.
+     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod) substitution graph}
+     * for a given method.
      *
      * @return true iff there is a substitution graph available for {@code method}
      */
-    boolean hasMethodSubstitution(ResolvedJavaMethod method);
+    default boolean hasSubstitution(ResolvedJavaMethod method) {
+        return hasSubstitution(method, false);
+    }
 
     /**
-     * Gets the method that is a substitution for a given method.
+     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod) substitution graph}
+     * for a given method.
      *
-     * @return the method, if any, that is a substitution for {@code method}
+     * @param fromBytecodeOnly only consider graphs created by parsing the bytecode of another
+     *            method
+     * @return true iff there is a substitution graph available for {@code method}
      */
-    ResolvedJavaMethod getMethodSubstitutionMethod(ResolvedJavaMethod method);
+    boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly);
 
     /**
      * Registers all the {@linkplain MethodSubstitution method} substitutions defined by a given

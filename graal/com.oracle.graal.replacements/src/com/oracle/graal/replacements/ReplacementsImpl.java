@@ -93,7 +93,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      *         inlined based on substitution related criteria
      */
     public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
-        ResolvedJavaMethod subst = getMethodSubstitutionMethod(method);
+        ResolvedJavaMethod subst = getSubstitutionMethod(method);
         if (subst != null) {
             if (b.parsingReplacement() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
                 // Forced inlining of intrinsics
@@ -336,7 +336,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original, boolean fromBytecodeOnly) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod original, boolean fromBytecodeOnly) {
         if (!fromBytecodeOnly) {
             InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
             if (plugin != null) {
@@ -800,12 +800,16 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         return cr != null && cr.forcedSubstitutions.contains(method);
     }
 
-    public boolean hasMethodSubstitution(ResolvedJavaMethod method) {
-        return graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method) != null || getMethodSubstitutionMethod(method) != null;
+    public boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly) {
+        if (!fromBytecodeOnly) {
+            if (graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method) != null) {
+                return true;
+            }
+        }
+        return getSubstitutionMethod(method) != null;
     }
 
-    @Override
-    public ResolvedJavaMethod getMethodSubstitutionMethod(ResolvedJavaMethod original) {
+    public ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod original) {
         ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
         return cr == null ? null : cr.methodSubstitutions.get(original);
     }

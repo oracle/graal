@@ -47,7 +47,7 @@ public class ReplaceIntrinsicsPhase extends Phase {
             if (methodCallTarget.isAlive()) {
                 InvokeKind invokeKind = methodCallTarget.invokeKind();
                 if (invokeKind.isDirect()) {
-                    StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTarget.targetMethod());
+                    StructuredGraph inlineGraph = replacements.getSubstitution(methodCallTarget.targetMethod());
                     if (inlineGraph != null) {
                         InliningUtil.inline(methodCallTarget.invoke(), inlineGraph, true, null);
                         Debug.dump(graph, "After inlining %s", methodCallTarget.targetMethod().toString());

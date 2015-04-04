@@ -88,7 +88,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
                 }
                 if (BootstrapReplacements.getValue()) {
                     for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
-                        replacements.getMethodSubstitution(method);
+                        replacements.getSubstitution(method);
                     }
                 }
             } catch (Throwable e) {

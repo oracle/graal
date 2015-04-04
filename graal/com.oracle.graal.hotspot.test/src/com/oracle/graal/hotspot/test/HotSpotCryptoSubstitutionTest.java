@@ -125,7 +125,8 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
             Method method = lookup(className, methodName);
             if (method != null) {
                 ResolvedJavaMethod installedCodeOwner = getMetaAccess().lookupJavaMethod(method);
-                ResolvedJavaMethod substMethod = getReplacements().getMethodSubstitutionMethod(installedCodeOwner);
+                StructuredGraph subst = getReplacements().getSubstitution(installedCodeOwner, true);
+                ResolvedJavaMethod substMethod = subst == null ? null : subst.method();
                 if (substMethod != null) {
                     StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
                     Plugins plugins = new Plugins(((HotSpotProviders) getProviders()).getGraphBuilderPlugins());
