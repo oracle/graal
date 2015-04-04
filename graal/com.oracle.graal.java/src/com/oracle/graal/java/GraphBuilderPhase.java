@@ -2429,10 +2429,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return metaAccess;
             }
 
-            public Assumptions getAssumptions() {
-                return graph.getAssumptions();
-            }
-
             public void push(Kind kind, ValueNode value) {
                 assert value.isAlive();
                 assert kind == kind.getStackKind();
@@ -2466,16 +2462,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return parent;
             }
 
-            public int getDepth() {
-                return parent == null ? 0 : 1 + parent.getDepth();
-            }
-
             public Replacement getReplacement() {
                 return replacementContext;
-            }
-
-            public boolean eagerResolving() {
-                return graphBuilderConfig.eagerResolving();
             }
 
             @Override

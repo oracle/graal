@@ -153,7 +153,7 @@ public interface GraphBuilderContext {
     /**
      * Handles an invocation that a plugin determines can replace the original invocation (i.e., the
      * one for which the plugin was applied). This applies all standard graph builder processing to
-     * the replaced invocation including applying any relevant plugins to it.
+     * the replaced invocation including applying any relevant plugins.
      *
      * @param invokeKind the kind of the replacement invocation
      * @param targetMethod the target of the replacement invocation
@@ -165,12 +165,17 @@ public interface GraphBuilderContext {
 
     MetaAccessProvider getMetaAccess();
 
-    Assumptions getAssumptions();
+    default Assumptions getAssumptions() {
+        return getGraph().getAssumptions();
+    }
 
     ConstantReflectionProvider getConstantReflection();
 
     SnippetReflectionProvider getSnippetReflection();
 
+    /**
+     * Gets the graph being constructed.
+     */
     StructuredGraph getGraph();
 
     /**
@@ -208,7 +213,10 @@ public interface GraphBuilderContext {
      * Gets the inline depth of this context. 0 implies this is the context for the compilation root
      * method.
      */
-    int getDepth();
+    default int getDepth() {
+        GraphBuilderContext parent = getParent();
+        return parent == null ? 0 : 1 + parent.getDepth();
+    }
 
     /**
      * Determines if the current parsing context is a snippet or method substitution.
@@ -222,8 +230,6 @@ public interface GraphBuilderContext {
      * {@link #parsingReplacement() parsing a replacement}.
      */
     Replacement getReplacement();
-
-    boolean eagerResolving();
 
     BailoutException bailout(String string);
 }

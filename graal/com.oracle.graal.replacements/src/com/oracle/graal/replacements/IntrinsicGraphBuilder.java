@@ -142,10 +142,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return providers.getMetaAccess();
     }
 
-    public Assumptions getAssumptions() {
-        return graph.getAssumptions();
-    }
-
     public ConstantReflectionProvider getConstantReflection() {
         return providers.getConstantReflection();
     }
@@ -192,10 +188,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     public Replacement getReplacement() {
         throw GraalInternalError.shouldNotReachHere();
-    }
-
-    public boolean eagerResolving() {
-        return true;
     }
 
     public BailoutException bailout(String string) {
