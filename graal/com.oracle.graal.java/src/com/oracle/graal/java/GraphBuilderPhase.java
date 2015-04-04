@@ -95,13 +95,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private ResolvedJavaMethod rootMethod;
 
-        /**
-         * If not null, then this indicates {@link #rootMethod} is a replacement or a snippet.
-         * Furthermore, if it is non-null and not equal to {@link #rootMethod} then this is the
-         * original method for which a snippet exists (e.g., System.arraycopy()).
-         */
-        // private final ResolvedJavaMethod rootMethodIsReplacement;
-
         private final ReplacementContext initialReplacementContext;
 
         private final GraphBuilderConfiguration graphBuilderConfig;
