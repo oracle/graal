@@ -166,10 +166,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return null;
     }
 
-    public ResolvedJavaMethod getRootMethod() {
-        return method;
-    }
-
     public ResolvedJavaMethod getMethod() {
         return method;
     }

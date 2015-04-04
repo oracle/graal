@@ -161,7 +161,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
 
     protected ValueNode createNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Stamp stamp) {
         ValueNode res = nodeIntrinsification.createIntrinsicNode(args, stamp, method, b.getGraph(), intrinsic);
-        assert res != null || b.getRootMethod().getAnnotation(Snippet.class) != null : String.format(
+        assert res != null || b.getGraph().method().getAnnotation(Snippet.class) != null : String.format(
                         "Could not create node intrinsic for call to %s as one of the arguments expected to be constant isn't: arguments=%s", method.format("%H.%n(%p)"), args);
         return res;
     }

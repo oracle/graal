@@ -441,7 +441,7 @@ public class StandardGraphBuilderPlugins {
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
             if (b.parsingReplacement()) {
-                ResolvedJavaMethod rootMethod = b.getRootMethod();
+                ResolvedJavaMethod rootMethod = b.getGraph().method();
                 if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for boxing snippets so that the
                     // original JDK methods are inlined
@@ -468,7 +468,7 @@ public class StandardGraphBuilderPlugins {
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
             if (b.parsingReplacement()) {
-                ResolvedJavaMethod rootMethod = b.getRootMethod();
+                ResolvedJavaMethod rootMethod = b.getGraph().method();
                 if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for unboxing snippets so that the
                     // original JDK methods are inlined

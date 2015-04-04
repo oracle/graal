@@ -185,11 +185,6 @@ public interface GraphBuilderContext {
     GraphBuilderContext getParent();
 
     /**
-     * Gets the root method for the graph building process.
-     */
-    ResolvedJavaMethod getRootMethod();
-
-    /**
      * Gets the method currently being parsed.
      */
     ResolvedJavaMethod getMethod();
@@ -210,8 +205,8 @@ public interface GraphBuilderContext {
     JavaType getInvokeReturnType();
 
     /**
-     * Gets the inline depth of this context. 0 implies this is the context for the
-     * {@linkplain #getRootMethod() root method}.
+     * Gets the inline depth of this context. 0 implies this is the context for the compilation root
+     * method.
      */
     int getDepth();
 

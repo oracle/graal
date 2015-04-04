@@ -89,11 +89,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     // Fully qualified name is a workaround for JDK-8056066
     public static class Instance extends com.oracle.graal.phases.Phase {
 
-        protected StructuredGraph currentGraph;
+        protected StructuredGraph graph;
 
         private final MetaAccessProvider metaAccess;
-
-        private ResolvedJavaMethod rootMethod;
 
         private final ReplacementContext initialReplacementContext;
 
@@ -122,12 +120,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         @Override
-        protected void run(StructuredGraph graph) {
+        protected void run(@SuppressWarnings("hiding") StructuredGraph graph) {
             ResolvedJavaMethod method = graph.method();
-            this.rootMethod = method;
             int entryBCI = graph.getEntryBCI();
             assert method.getCode() != null : "method must contain bytecodes: " + method;
-            this.currentGraph = graph;
+            this.graph = graph;
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
                 ReplacementContext replacementContext = initialReplacementContext;
@@ -139,7 +136,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 parser.connectLoopEndToBegin();
 
                 // Remove dead parameters.
-                for (ParameterNode param : currentGraph.getNodes(ParameterNode.TYPE)) {
+                for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                     if (param.hasNoUsages()) {
                         assert param.inputs().isEmpty();
                         param.safeDelete();
@@ -148,7 +145,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 // Remove redundant begin nodes.
                 Debug.dump(graph, "Before removing redundant begins");
-                for (BeginNode beginNode : currentGraph.getNodes(BeginNode.TYPE)) {
+                for (BeginNode beginNode : graph.getNodes(BeginNode.TYPE)) {
                     Node predecessor = beginNode.predecessor();
                     if (predecessor instanceof ControlSplitNode) {
                         // The begin node is necessary.
@@ -199,7 +196,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         @Override
         protected String getDetailedName() {
-            return getName() + " " + rootMethod.format("%H.%n(%p):%r");
+            return getName() + " " + graph.method().format("%H.%n(%p):%r");
         }
 
         private static class Target {
@@ -371,8 +368,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     stream.setBCI(0);
 
                     BciBlock startBlock = blockMap.getStartBlock();
-                    if (startInstruction == currentGraph.start()) {
-                        StartNode startNode = currentGraph.start();
+                    if (startInstruction == graph.start()) {
+                        StartNode startNode = graph.start();
                         if (method.isSynchronized()) {
                             startNode.setStateAfter(createFrameState(BytecodeFrame.BEFORE_BCI));
                         } else {
@@ -410,12 +407,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     if (this.mergeExplosions) {
-                        Debug.dump(currentGraph, "Before loop detection");
+                        Debug.dump(graph, "Before loop detection");
                         detectLoops(startInstruction);
                     }
 
                     if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue() && this.beforeReturnNode != startInstruction) {
-                        Debug.dump(currentGraph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
+                        Debug.dump(graph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
             }
@@ -426,11 +423,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              */
             ValueNode nullCheckedValue(ValueNode value) {
                 if (!StampTool.isPointerNonNull(value.stamp())) {
-                    IsNullNode condition = currentGraph.unique(new IsNullNode(value));
+                    IsNullNode condition = graph.unique(new IsNullNode(value));
                     ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
                     Stamp stamp = receiverStamp.join(objectNonNull());
                     FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-                    PiNode nonNullReceiver = currentGraph.unique(new PiNode(value, stamp));
+                    PiNode nonNullReceiver = graph.unique(new PiNode(value, stamp));
                     nonNullReceiver.setGuard(fixedGuard);
                     // TODO: Propogating the non-null into the frame state would
                     // remove subsequent null-checks on the same value. However,
@@ -443,8 +440,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void detectLoops(FixedNode startInstruction) {
-                NodeBitMap visited = currentGraph.createNodeBitMap();
-                NodeBitMap active = currentGraph.createNodeBitMap();
+                NodeBitMap visited = graph.createNodeBitMap();
+                NodeBitMap active = graph.createNodeBitMap();
                 Deque<Node> stack = new ArrayDeque<>();
                 stack.add(startInstruction);
                 visited.mark(startInstruction);
@@ -473,7 +470,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                     newLoopBegin.setNext(afterMerge);
                                 }
                                 LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
-                                LoopEndNode loopEnd = currentGraph.add(new LoopEndNode(loopBegin));
+                                LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
                                 endNode.replaceAndDelete(loopEnd);
                             } else if (visited.contains(n)) {
                                 // Normal merge into a branch we are already exploring.
@@ -485,12 +482,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
                 }
 
-                Debug.dump(currentGraph, "After loops detected");
+                Debug.dump(graph, "After loops detected");
                 insertLoopEnds(startInstruction);
             }
 
             private void insertLoopEnds(FixedNode startInstruction) {
-                NodeBitMap visited = currentGraph.createNodeBitMap();
+                NodeBitMap visited = graph.createNodeBitMap();
                 Deque<Node> stack = new ArrayDeque<>();
                 stack.add(startInstruction);
                 visited.mark(startInstruction);
@@ -516,7 +513,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     LoopBeginNode loopBegin = loopBegins.get(i);
                     insertLoopExits(loopBegin, innerLoopsMap);
                     if (DumpDuringGraphBuilding.getValue()) {
-                        Debug.dump(currentGraph, "After building loop exits for %s.", loopBegin);
+                        Debug.dump(graph, "After building loop exits for %s.", loopBegin);
                     }
                 }
 
@@ -530,7 +527,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void insertLoopExits(LoopBeginNode loopBegin, IdentityHashMap<LoopBeginNode, List<LoopBeginNode>> innerLoopsMap) {
-                NodeBitMap visited = currentGraph.createNodeBitMap();
+                NodeBitMap visited = graph.createNodeBitMap();
                 Deque<Node> stack = new ArrayDeque<>();
                 for (LoopEndNode loopEnd : loopBegin.loopEnds()) {
                     stack.push(loopEnd);
@@ -571,7 +568,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 for (ControlSplitNode controlSplit : controlSplits) {
                     for (Node succ : controlSplit.cfgSuccessors()) {
                         if (!visited.isMarked(succ)) {
-                            LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                            LoopExitNode loopExit = graph.add(new LoopExitNode(loopBegin));
                             FixedNode next = ((FixedWithNextNode) succ).next();
                             next.replaceAtPredecessor(loopExit);
                             loopExit.setNext(next);
@@ -582,7 +579,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 for (LoopBeginNode inner : innerLoopBegins) {
                     addLoopExits(loopBegin, inner, innerLoopsMap, visited);
                     if (DumpDuringGraphBuilding.getValue()) {
-                        Debug.dump(currentGraph, "After adding loop exits for %s.", inner);
+                        Debug.dump(graph, "After adding loop exits for %s.", inner);
                     }
                 }
 
@@ -592,7 +589,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void addLoopExits(LoopBeginNode loopBegin, LoopBeginNode inner, IdentityHashMap<LoopBeginNode, List<LoopBeginNode>> innerLoopsMap, NodeBitMap visited) {
                 for (LoopExitNode exit : inner.loopExits()) {
                     if (!visited.isMarked(exit)) {
-                        LoopExitNode newLoopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                        LoopExitNode newLoopExit = graph.add(new LoopExitNode(loopBegin));
                         FixedNode next = exit.next();
                         next.replaceAtPredecessor(newLoopExit);
                         newLoopExit.setNext(next);
@@ -626,7 +623,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 explodeLoopsContext.push(context);
                 if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
-                    Debug.dump(currentGraph, "before loop explosion dimension " + context.peelIteration);
+                    Debug.dump(graph, "before loop explosion dimension " + context.peelIteration);
                 }
                 peelIteration(blocks, header, context);
                 explodeLoopsContext.pop();
@@ -656,7 +653,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             context.peelIteration = targets[i];
                             context.targetPeelIteration = null;
                             if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
-                                Debug.dump(currentGraph, "next loop explosion iteration " + context.peelIteration);
+                                Debug.dump(graph, "next loop explosion iteration " + context.peelIteration);
                             }
                             if (i < targets.length - 1) {
                                 peelIteration(blocks, header, context);
@@ -685,7 +682,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
                 assert !graphBuilderConfig.eagerResolving();
-                append(new FixedGuardNode(currentGraph.unique(new IsNullNode(object)), Unresolved, InvalidateRecompile));
+                append(new FixedGuardNode(graph.unique(new IsNullNode(object)), Unresolved, InvalidateRecompile));
                 frameState.apush(appendConstant(JavaConstant.NULL_POINTER));
             }
 
@@ -696,9 +693,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
                 assert !graphBuilderConfig.eagerResolving();
-                AbstractBeginNode successor = currentGraph.add(new BeginNode());
-                DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-                append(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
+                AbstractBeginNode successor = graph.add(new BeginNode());
+                DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                append(new IfNode(graph.unique(new IsNullNode(object)), successor, deopt, 1));
                 lastInstr = successor;
                 frameState.ipush(appendConstant(JavaConstant.INT_0));
             }
@@ -792,12 +789,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 DispatchBeginNode dispatchBegin;
                 if (exceptionObject == null) {
-                    dispatchBegin = currentGraph.add(new ExceptionObjectNode(metaAccess));
+                    dispatchBegin = graph.add(new ExceptionObjectNode(metaAccess));
                     dispatchState.apush(dispatchBegin);
                     dispatchState.setRethrowException(true);
                     dispatchBegin.setStateAfter(dispatchState.create(bci));
                 } else {
-                    dispatchBegin = currentGraph.add(new DispatchBeginNode());
+                    dispatchBegin = graph.add(new DispatchBeginNode());
                     dispatchState.apush(exceptionObject);
                     dispatchBegin.setStateAfter(dispatchState.create(bci));
                     dispatchState.setRethrowException(true);
@@ -952,7 +949,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected ValueNode genUnique(ValueNode x) {
-                return (ValueNode) currentGraph.unique((Node & ValueNumberable) x);
+                return (ValueNode) graph.unique((Node & ValueNumberable) x);
             }
 
             protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
@@ -962,13 +959,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected void genThrow() {
                 ValueNode exception = frameState.apop();
-                append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
+                append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
                 lastInstr.setNext(handleException(exception, bci()));
             }
 
             @Override
             protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
-                return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck, currentGraph.getAssumptions());
+                return CheckCastNode.create(type, object, profileForTypeCheck, forStoreCheck, graph.getAssumptions());
             }
 
             @Override
@@ -1006,11 +1003,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (StampTool.isPointerNonNull(receiver.stamp())) {
                     return receiver;
                 }
-                BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
-                AbstractBeginNode falseSucc = currentGraph.add(new BeginNode());
-                PiNode nonNullReceiver = currentGraph.unique(new PiNode(receiver, receiver.stamp().join(objectNonNull())));
+                BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
+                AbstractBeginNode falseSucc = graph.add(new BeginNode());
+                PiNode nonNullReceiver = graph.unique(new PiNode(receiver, receiver.stamp().join(objectNonNull())));
                 nonNullReceiver.setGuard(falseSucc);
-                append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
+                append(new IfNode(graph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
                 exception.setStateAfter(createFrameState(bci()));
@@ -1020,9 +1017,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void emitExplicitBoundsCheck(ValueNode index, ValueNode length) {
-                AbstractBeginNode trueSucc = currentGraph.add(new BeginNode());
-                BytecodeExceptionNode exception = currentGraph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
-                append(new IfNode(currentGraph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
+                AbstractBeginNode trueSucc = graph.add(new BeginNode());
+                BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
+                append(new IfNode(graph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
 
                 exception.setStateAfter(createFrameState(bci()));
@@ -1088,7 +1085,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (target instanceof ResolvedJavaMethod) {
                     JavaConstant appendix = constantPool.lookupAppendix(stream.readCPI4(), Bytecodes.INVOKEDYNAMIC);
                     if (appendix != null) {
-                        frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
+                        frameState.apush(ConstantNode.forConstant(appendix, metaAccess, graph));
                     }
                     ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(false));
                     appendInvoke(InvokeKind.Static, (ResolvedJavaMethod) target, args);
@@ -1110,7 +1107,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     boolean hasReceiver = !((ResolvedJavaMethod) target).isStatic();
                     JavaConstant appendix = constantPool.lookupAppendix(stream.readCPI(), Bytecodes.INVOKEVIRTUAL);
                     if (appendix != null) {
-                        frameState.apush(ConstantNode.forConstant(appendix, metaAccess, currentGraph));
+                        frameState.apush(ConstantNode.forConstant(appendix, metaAccess, graph));
                     }
                     ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
                     if (hasReceiver) {
@@ -1166,7 +1163,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 Kind resultType = targetMethod.getSignature().getReturnKind();
                 if (DeoptALot.getValue()) {
                     append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
-                    frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, currentGraph));
+                    frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
                     return;
                 }
 
@@ -1212,7 +1209,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     currentInvokeKind = null;
                 }
 
-                MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
+                MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
 
                 // be conservative if information was not recorded (could result in endless
                 // recompiles otherwise)
@@ -1221,7 +1218,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     invoke = createInvoke(callTarget, resultType);
                 } else {
                     invoke = createInvokeWithException(callTarget, resultType);
-                    AbstractBeginNode beginNode = currentGraph.add(new KillingBeginNode(LocationIdentity.any()));
+                    AbstractBeginNode beginNode = graph.add(new KillingBeginNode(LocationIdentity.any()));
                     invoke.setNext(beginNode);
                     lastInstr = beginNode;
                 }
@@ -1257,8 +1254,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     this.resultType = resultType;
                     this.beforeStackSize = frameState.stackSize;
                     this.needsNullCheck = !targetMethod.isStatic() && args[0].getKind() == Kind.Object && !StampTool.isPointerNonNull(args[0].stamp());
-                    this.nodeCount = currentGraph.getNodeCount();
-                    this.mark = currentGraph.getMark();
+                    this.nodeCount = graph.getNodeCount();
+                    this.mark = graph.getMark();
                 }
 
                 String error(String format, Object... a) {
@@ -1269,7 +1266,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (pluginResult == true) {
                         int expectedStackSize = beforeStackSize + resultType.getSlotCount();
                         assert expectedStackSize == frameState.stackSize : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize);
-                        NodeIterable<Node> newNodes = currentGraph.getNewNodes(mark);
+                        NodeIterable<Node> newNodes = graph.getNewNodes(mark);
                         assert !needsNullCheck || isPointerNonNull(args[0].stamp()) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
                         for (Node n : newNodes) {
                             if (n instanceof StateSplit) {
@@ -1284,7 +1281,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             throw new AssertionError(error("Error in plugin"), t);
                         }
                     } else {
-                        assert nodeCount == currentGraph.getNodeCount() : error("plugin that returns false must not create new nodes");
+                        assert nodeCount == graph.getNodeCount() : error("plugin that returns false must not create new nodes");
                         assert beforeStackSize == frameState.stackSize : error("plugin that returns false must modify the stack");
                     }
                     return true;
@@ -1349,7 +1346,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             // A root compiled intrinsic needs to deoptimize
                             // if the slow path is taken
                             DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
-                            deopt.setStateBefore(intrinsic.getInvokeStateBefore(currentGraph, null));
+                            deopt.setStateBefore(intrinsic.getInvokeStateBefore(graph, null));
                             return true;
                         } else {
                             // Otherwise inline the original method. Any frame state created
@@ -1424,7 +1421,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, ReplacementContext calleeReplacementContext) {
                 BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeReplacementContext);
-                HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, currentGraph);
+                HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, graph);
                 if (!targetMethod.isStatic()) {
                     args[0] = nullCheckedValue(args[0]);
                 }
@@ -1448,8 +1445,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 // Record inlined method dependency in the graph
-                if (currentGraph.isInlinedMethodRecordingEnabled()) {
-                    currentGraph.getInlinedMethods().add(targetMethod);
+                if (graph.isInlinedMethodRecordingEnabled()) {
+                    graph.getInlinedMethods().add(targetMethod);
                 }
             }
 
@@ -1512,7 +1509,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genMonitorEnter(ValueNode x, int bci) {
-                MonitorIdNode monitorId = currentGraph.add(new MonitorIdNode(frameState.lockDepth()));
+                MonitorIdNode monitorId = graph.add(new MonitorIdNode(frameState.lockDepth()));
                 MonitorEnterNode monitorEnter = append(new MonitorEnterNode(x, monitorId));
                 frameState.pushLock(x, monitorId);
                 monitorEnter.setStateAfter(createFrameState(bci));
@@ -1554,7 +1551,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 int retAddress = scope.nextReturnAddress();
                 ConstantNode returnBciNode = getJsrConstant(retAddress);
                 LogicNode guard = IntegerEqualsNode.create(local, returnBciNode, constantReflection);
-                guard = currentGraph.unique(guard);
+                guard = graph.unique(guard);
                 append(new FixedGuardNode(guard, JavaSubroutineMismatch, InvalidateReprofile));
                 if (!successor.getJsrScope().equals(scope.pop())) {
                     throw new JsrNotSupportedBailout("unstructured control flow (ret leaves more than one scope)");
@@ -1566,7 +1563,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 JavaConstant nextBciConstant = new RawConstant(bci);
                 Stamp nextBciStamp = StampFactory.forConstant(nextBciConstant);
                 ConstantNode nextBciNode = new ConstantNode(nextBciConstant, nextBciStamp);
-                return currentGraph.unique(nextBciNode);
+                return graph.unique(nextBciNode);
             }
 
             @Override
@@ -1594,7 +1591,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             @Override
             protected ConstantNode appendConstant(JavaConstant constant) {
                 assert constant != null;
-                return ConstantNode.forConstant(constant, metaAccess, currentGraph);
+                return ConstantNode.forConstant(constant, metaAccess, graph);
             }
 
             @Override
@@ -1602,7 +1599,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (v.graph() != null) {
                     return v;
                 }
-                T added = currentGraph.addOrUnique(v);
+                T added = graph.addOrUnique(v);
                 if (added == v) {
                     updateLastInstruction(v);
                 }
@@ -1613,7 +1610,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (v.graph() != null) {
                     return v;
                 }
-                T added = currentGraph.addOrUniqueWithInputs(v);
+                T added = graph.addOrUniqueWithInputs(v);
                 if (added == v) {
                     updateLastInstruction(v);
                 }
@@ -1667,7 +1664,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         HIRFrameStateBuilder newState = state.copy();
                         for (BciBlock loop : exitLoops) {
                             LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(loop, this.getCurrentDimension());
-                            LoopExitNode loopExit = currentGraph.add(new LoopExitNode(loopBegin));
+                            LoopExitNode loopExit = graph.add(new LoopExitNode(loopBegin));
                             if (lastLoopExit != null) {
                                 lastLoopExit.setNext(loopExit);
                             }
@@ -1782,7 +1779,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private FixedNode createTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
                 assert probability >= 0 && probability <= 1.01 : probability;
                 if (isNeverExecutedCode(probability)) {
-                    return currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    return graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                 } else {
                     assert block != null;
                     return createTarget(block, stateAfter);
@@ -1810,7 +1807,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         setFirstInstruction(block, operatingDimension, lastInstr);
                         lastInstr = null;
                     } else {
-                        setFirstInstruction(block, operatingDimension, currentGraph.add(new BeginNode()));
+                        setFirstInstruction(block, operatingDimension, graph.add(new BeginNode()));
                     }
                     targetNode = getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
@@ -1835,7 +1832,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      * the loop begin node created before.
                      */
                     LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block, operatingDimension);
-                    LoopEndNode loopEnd = currentGraph.add(new LoopEndNode(loopBegin));
+                    LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
                     if (parsingReplacement()) {
                         loopEnd.disableSafepoint();
                     }
@@ -1857,9 +1854,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     AbstractBeginNode beginNode = (AbstractBeginNode) getFirstInstruction(block, operatingDimension);
 
                     // The EndNode for the already existing edge.
-                    EndNode end = currentGraph.add(new EndNode());
+                    EndNode end = graph.add(new EndNode());
                     // The MergeNode that replaces the placeholder.
-                    AbstractMergeNode mergeNode = currentGraph.add(new MergeNode());
+                    AbstractMergeNode mergeNode = graph.add(new MergeNode());
                     FixedNode next = beginNode.next();
 
                     if (beginNode.predecessor() instanceof ControlSplitNode) {
@@ -1878,7 +1875,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) getFirstInstruction(block, operatingDimension);
 
                 // The EndNode for the newly merged edge.
-                EndNode newEnd = currentGraph.add(new EndNode());
+                EndNode newEnd = graph.add(new EndNode());
                 Target target = checkLoopExit(newEnd, block, state);
                 FixedNode result = target.fixed;
                 getEntryState(block, operatingDimension).merge(mergeNode, target.state);
@@ -2040,10 +2037,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * </pre>
              */
             private void connectLoopEndToBegin() {
-                for (LoopBeginNode begin : currentGraph.getNodes(LoopBeginNode.TYPE)) {
+                for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
                     if (begin.loopEnds().isEmpty()) {
                         assert begin.forwardEndCount() == 1;
-                        currentGraph.reduceDegenerateLoopBegin(begin);
+                        graph.reduceDegenerateLoopBegin(begin);
                     } else {
                         GraphUtil.normalizeLoopBegin(begin);
                     }
@@ -2086,9 +2083,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         if (skippedType.isAssignableFrom(resolvedCatchType)) {
                             BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
                             ValueNode exception = frameState.stackAt(0);
-                            FixedNode trueSuccessor = currentGraph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                            FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                             FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                            append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                            append(new IfNode(graph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
                             return;
                         }
                     }
@@ -2097,7 +2094,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (initialized) {
                     BciBlock nextBlock = block.getSuccessorCount() == 1 ? blockMap.getUnwindBlock() : block.getSuccessor(1);
                     ValueNode exception = frameState.stackAt(0);
-                    CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
+                    CheckCastNode checkCast = graph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
                     frameState.apop();
                     frameState.push(Kind.Object, checkCast);
                     FixedNode catchSuccessor = createTarget(block.getSuccessor(0), frameState);
@@ -2105,7 +2102,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     frameState.push(Kind.Object, exception);
                     FixedNode nextDispatch = createTarget(nextBlock, frameState);
                     checkCast.setNext(catchSuccessor);
-                    append(new IfNode(currentGraph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5));
+                    append(new IfNode(graph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), checkCast, nextDispatch, 0.5));
                 } else {
                     handleUnresolvedExceptionType(catchType);
                 }
@@ -2209,8 +2206,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext) {
-                EndNode preLoopEnd = currentGraph.add(new EndNode());
-                LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
+                EndNode preLoopEnd = graph.add(new EndNode());
+                LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
                 fixedWithNext.setNext(preLoopEnd);
                 // Add the single non-loop predecessor of the loop header.
                 loopBegin.addForwardEnd(preLoopEnd);
@@ -2292,7 +2289,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     genConstantTargetIf(trueBlock, falseBlock, negate, condition);
                 } else {
                     if (condition.graph() == null) {
-                        condition = currentGraph.unique(condition);
+                        condition = graph.unique(condition);
                     }
 
                     // Need to get probability based on current bci.
@@ -2353,11 +2350,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void genConditionalForIf(BciBlock trueBlock, LogicNode condition, int oldBci, int trueBlockInt, int falseBlockInt, boolean genReturn) {
-                ConstantNode trueValue = currentGraph.unique(ConstantNode.forInt(trueBlockInt));
-                ConstantNode falseValue = currentGraph.unique(ConstantNode.forInt(falseBlockInt));
+                ConstantNode trueValue = graph.unique(ConstantNode.forInt(trueBlockInt));
+                ConstantNode falseValue = graph.unique(ConstantNode.forInt(falseBlockInt));
                 ValueNode conditionalNode = ConditionalNode.create(condition, trueValue, falseValue);
                 if (conditionalNode.graph() == null) {
-                    conditionalNode = currentGraph.addOrUnique(conditionalNode);
+                    conditionalNode = graph.addOrUnique(conditionalNode);
                 }
                 if (genReturn) {
                     Kind returnKind = method.getSignature().getReturnKind().getStackKind();
@@ -2433,7 +2430,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public Assumptions getAssumptions() {
-                return currentGraph.getAssumptions();
+                return graph.getAssumptions();
             }
 
             public void push(Kind kind, ValueNode value) {
@@ -2462,7 +2459,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * Gets the graph being processed by this builder.
              */
             public StructuredGraph getGraph() {
-                return currentGraph;
+                return graph;
             }
 
             public BytecodeParser getParent() {
@@ -2475,10 +2472,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public Replacement getReplacement() {
                 return replacementContext;
-            }
-
-            public ResolvedJavaMethod getRootMethod() {
-                return rootMethod;
             }
 
             public boolean eagerResolving() {
