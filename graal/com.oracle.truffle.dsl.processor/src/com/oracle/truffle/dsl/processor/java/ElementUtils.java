@@ -934,6 +934,20 @@ public class ElementUtils {
         }
     }
 
+    public static boolean typeCompatible(TypeMirror type1, TypeMirror type2) {
+        if (typeEquals(type1, type2)) {
+            return true;
+        } else if (kindIsIntegral(type1.getKind())) {
+            return kindIsIntegral(type2.getKind());
+        } else {
+            return false;
+        }
+    }
+
+    private static boolean kindIsIntegral(TypeKind kind) {
+        return kind == TypeKind.BYTE || kind == TypeKind.SHORT || kind == TypeKind.INT || kind == TypeKind.LONG;
+    }
+
     public static List<String> getUniqueIdentifiers(List<TypeMirror> typeMirror) {
         List<String> ids = new ArrayList<>();
         for (TypeMirror type : typeMirror) {

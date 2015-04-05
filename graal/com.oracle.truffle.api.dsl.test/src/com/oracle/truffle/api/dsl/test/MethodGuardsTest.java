@@ -34,6 +34,8 @@ import com.oracle.truffle.api.dsl.test.LimitTestFactory.LocalLimitTestFactory;
 import com.oracle.truffle.api.dsl.test.LimitTestFactory.MethodLimitTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardCompareWithFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardComplexTestFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualIntLongTestFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualLongIntTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardGreaterEqualTestFactory;
@@ -69,6 +71,48 @@ public class MethodGuardsTest {
 
         @Specialization
         static String do2(int value) {
+            return "do2";
+        }
+    }
+
+    @Test
+    public void testGuardEqualIntLong() {
+        CallTarget root = createCallTarget(GuardEqualIntLongTestFactory.getInstance());
+        assertEquals("do1", root.call(1));
+        assertEquals("do2", root.call(2));
+        assertEquals("do1", root.call(1));
+    }
+
+    @NodeChild
+    static class GuardEqualIntLongTest extends ValueNode {
+        @Specialization(guards = "value == 1")
+        static String do1(long value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(long value) {
+            return "do2";
+        }
+    }
+
+    @Test
+    public void testGuardEqualLongInt() {
+        CallTarget root = createCallTarget(GuardEqualLongIntTestFactory.getInstance());
+        assertEquals("do1", root.call(1));
+        assertEquals("do2", root.call(2));
+        assertEquals("do1", root.call(1));
+    }
+
+    @NodeChild
+    static class GuardEqualLongIntTest extends ValueNode {
+        @Specialization(guards = "1 == value")
+        static String do1(long value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(long value) {
             return "do2";
         }
     }
