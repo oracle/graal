@@ -49,7 +49,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
@@ -123,15 +124,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         return true;
     }
 
-    private static boolean substitutionsInstalled;
-
-    private void installSubstitutions() {
-        if (!substitutionsInstalled) {
-            this.providers.getReplacements().registerSubstitutions(GraalCompilerTest.class, GraalCompilerTestSubstitutions.class);
-            substitutionsInstalled = true;
-        }
-    }
-
     protected static void breakpoint() {
     }
 
@@ -180,7 +172,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.providers = getBackend().getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
         this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
-        installSubstitutions();
     }
 
     /**
@@ -201,7 +192,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         this.providers = backend.getProviders();
         this.suites = new DerivedOptionValue<>(this::createSuites);
         this.lirSuites = new DerivedOptionValue<>(this::createLIRSuites);
-        installSubstitutions();
     }
 
     @BeforeClass
@@ -855,6 +845,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
+        invocationPlugins.register(new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new BreakpointNode());
+                return true;
+            }
+        }, GraalCompilerTest.class, "breakpoint");
         return conf;
     }
 
