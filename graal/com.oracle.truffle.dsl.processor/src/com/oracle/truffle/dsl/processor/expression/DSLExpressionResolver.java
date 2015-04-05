@@ -226,7 +226,25 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     public void visitIntLiteral(IntLiteral binary) {
         try {
             binary.setResolvedType(context.getType(int.class));
-            binary.setResolvedValueInt(Integer.parseInt(binary.getLiteral()));
+
+            final int base;
+            final String literal;
+
+            if (binary.getLiteral().startsWith("0x")) {
+                base = 16;
+                literal = binary.getLiteral().substring(2);
+            } else if (binary.getLiteral().startsWith("0b")) {
+                base = 2;
+                literal = binary.getLiteral().substring(2);
+            } else if (binary.getLiteral().startsWith("0")) {
+                base = 8;
+                literal = binary.getLiteral();
+            } else {
+                base = 10;
+                literal = binary.getLiteral();
+            }
+
+            binary.setResolvedValueInt(Integer.parseInt(literal, base));
         } catch (NumberFormatException e) {
             throw new InvalidExpressionException(String.format("Type mismatch: cannot convert from String '%s' to int", binary.getLiteral()));
         }

@@ -34,11 +34,14 @@ CHARACTERS
 letter = 'A' .. 'Z' + 'a' .. 'z' + '_' + '$'.
 nonZeroDigit = "123456789".
 digit = '0' + nonZeroDigit .
+hexDigit = "0123456789abcdefABCDEF".
+octDigit = "01234567".
+binaryDigit = "01".
 
 TOKENS
 
 identifier = letter {letter | digit}.
-numericLiteral = "0" | nonZeroDigit { digit }.
+numericLiteral = "0" ( "x" { hexDigit } | "b" { binaryDigit } | { octDigit } ) | nonZeroDigit { digit }.
 
 PRAGMAS
 
