@@ -340,7 +340,10 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (!fromBytecodeOnly) {
             InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
             if (plugin != null) {
-                return new IntrinsicGraphBuilder(providers, snippetReflection, original).buildGraph(plugin);
+                StructuredGraph graph = new IntrinsicGraphBuilder(providers, snippetReflection, original).buildGraph(plugin);
+                if (graph != null) {
+                    return graph;
+                }
             }
         }
         ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
