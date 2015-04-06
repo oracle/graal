@@ -104,7 +104,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         String operator = binary.getOperator();
         TypeMirror leftType = binary.getLeft().getResolvedType();
         TypeMirror rightType = binary.getRight().getResolvedType();
-        if (!ElementUtils.typeCompatible(leftType, rightType)) {
+        if (!ElementUtils.areTypesCompatible(leftType, rightType)) {
             throw new InvalidExpressionException(String.format("Incompatible operand types %s and %s.", ElementUtils.getSimpleName(leftType), ElementUtils.getSimpleName(rightType)));
         }
 

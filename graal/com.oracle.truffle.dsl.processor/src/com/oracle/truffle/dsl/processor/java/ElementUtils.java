@@ -934,7 +934,7 @@ public class ElementUtils {
         }
     }
 
-    public static boolean typeCompatible(TypeMirror type1, TypeMirror type2) {
+    public static boolean areTypesCompatible(TypeMirror type1, TypeMirror type2) {
         if (typeEquals(type1, type2)) {
             return true;
         } else if (kindIsIntegral(type1.getKind())) {
