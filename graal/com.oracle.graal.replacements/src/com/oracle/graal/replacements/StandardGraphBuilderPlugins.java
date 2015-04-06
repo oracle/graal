@@ -104,6 +104,10 @@ public class StandardGraphBuilderPlugins {
             }
         }
 
+        // Accesses to native memory addresses.
+        r.register2("getAddress", Receiver.class, long.class, new UnsafeGetPlugin(Kind.Long, false));
+        r.register3("putAddress", Receiver.class, long.class, long.class, new UnsafePutPlugin(Kind.Long, false));
+
         for (Kind kind : new Kind[]{Kind.Int, Kind.Long, Kind.Object}) {
             Class<?> javaClass = kind == Kind.Object ? Object.class : kind.toJavaClass();
             r.register5("compareAndSwap" + kind.name(), Receiver.class, Object.class, long.class, javaClass, javaClass, new InvocationPlugin() {

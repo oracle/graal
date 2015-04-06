@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,9 +101,13 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("unsafePutShort");
         testGraph("unsafePutChar");
         testGraph("unsafePutInt");
+        testGraph("unsafePutLong");
         testGraph("unsafePutFloat");
         testGraph("unsafePutDouble");
         testGraph("unsafePutObject");
+
+        testGraph("unsafeGetAddress");
+        testGraph("unsafePutAddress");
 
         testGraph("unsafeDirectMemoryRead");
         testGraph("unsafeDirectMemoryWrite");
@@ -129,12 +133,16 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
             test("unsafePutShort", unsafeArg, supply(() -> new Foo()), fooOffset("s"), (short) -93);
             test("unsafePutChar", unsafeArg, supply(() -> new Foo()), fooOffset("c"), 'A');
             test("unsafePutInt", unsafeArg, supply(() -> new Foo()), fooOffset("i"), 42);
+            test("unsafePutLong", unsafeArg, supply(() -> new Foo()), fooOffset("l"), 4711L);
             test("unsafePutFloat", unsafeArg, supply(() -> new Foo()), fooOffset("f"), 58.0F);
             test("unsafePutDouble", unsafeArg, supply(() -> new Foo()), fooOffset("d"), -28736.243465D);
             test("unsafePutObject", unsafeArg, supply(() -> new Foo()), fooOffset("i"), "value1", "value2", "value3");
 
+            test("unsafeGetAddress", unsafeArg, address);
+            test("unsafePutAddress", unsafeArg, address, 0xDEAD_BEEF_DEAD_BABEL);
+
             test("unsafeDirectMemoryRead", unsafeArg, address);
-            test("unsafeDirectMemoryWrite", unsafeArg, address, 0xCAFEBABEDEADBABEL);
+            test("unsafeDirectMemoryWrite", unsafeArg, address, 0xCAFE_BABE_DEAD_BABEL);
         }
         unsafe.freeMemory(address);
     }
@@ -300,6 +308,19 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         res[1] = unsafe.getObject(obj, offset);
         unsafe.putOrderedObject(obj, offset, value3);
         res[2] = unsafe.getObject(obj, offset);
+        return res;
+    }
+
+    @SuppressWarnings("all")
+    public static long unsafeGetAddress(Unsafe unsafe, long offset) {
+        return unsafe.getAddress(offset);
+    }
+
+    @SuppressWarnings("all")
+    public static long unsafePutAddress(Unsafe unsafe, long offset, long value) {
+        long res = 1;
+        unsafe.putAddress(offset, value);
+        res += unsafe.getAddress(offset);
         return res;
     }
 
