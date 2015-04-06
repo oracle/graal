@@ -200,7 +200,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     public StructuredGraph buildGraph(InvocationPlugin plugin) {
         Receiver receiver = method.isStatic() ? null : this;
-        if (InvocationPlugin.execute(this, method, plugin, receiver, arguments)) {
+        if (plugin.execute(this, method, receiver, arguments)) {
             assert (returnValue != null) == (method.getSignature().getReturnKind() != Kind.Void) : method;
             append(new ReturnNode(returnValue));
             return graph;

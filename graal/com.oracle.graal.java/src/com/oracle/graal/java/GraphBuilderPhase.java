@@ -1243,7 +1243,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     InvocationPluginAssertions assertions = assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-                    if (InvocationPlugin.execute(this, targetMethod, plugin, invocationPluginReceiver.init(targetMethod, args), args)) {
+                    if (plugin.execute(this, targetMethod, invocationPluginReceiver.init(targetMethod, args), args)) {
                         assert assertions.check(true);
                         return true;
                     }
