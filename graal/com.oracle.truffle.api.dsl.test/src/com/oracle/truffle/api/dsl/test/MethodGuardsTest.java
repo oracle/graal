@@ -34,8 +34,10 @@ import com.oracle.truffle.api.dsl.test.LimitTestFactory.LocalLimitTestFactory;
 import com.oracle.truffle.api.dsl.test.LimitTestFactory.MethodLimitTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardCompareWithFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardComplexTestFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualByteIntTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualIntLongTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualLongIntTestFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualShortIntTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardGreaterEqualTestFactory;
@@ -85,13 +87,55 @@ public class MethodGuardsTest {
 
     @NodeChild
     static class GuardEqualIntLongTest extends ValueNode {
-        @Specialization(guards = "value == 1")
+        @Specialization(guards = "1 == value")
         static String do1(long value) {
             return "do1";
         }
 
         @Specialization
         static String do2(long value) {
+            return "do2";
+        }
+    }
+
+    @Test
+    public void testGuardEqualByteInt() {
+        CallTarget root = createCallTarget(GuardEqualByteIntTestFactory.getInstance());
+        assertEquals("do1", root.call((byte) 1));
+        assertEquals("do2", root.call((byte) 2));
+        assertEquals("do1", root.call((byte) 1));
+    }
+
+    @NodeChild
+    static class GuardEqualByteIntTest extends ValueNode {
+        @Specialization(guards = "value == 1")
+        static String do1(byte value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(byte value) {
+            return "do2";
+        }
+    }
+
+    @Test
+    public void testGuardEqualShortInt() {
+        CallTarget root = createCallTarget(GuardEqualShortIntTestFactory.getInstance());
+        assertEquals("do1", root.call((short) 1));
+        assertEquals("do2", root.call((short) 2));
+        assertEquals("do1", root.call((short) 1));
+    }
+
+    @NodeChild
+    static class GuardEqualShortIntTest extends ValueNode {
+        @Specialization(guards = "value == 1")
+        static String do1(short value) {
+            return "do1";
+        }
+
+        @Specialization
+        static String do2(short value) {
             return "do2";
         }
     }
@@ -106,7 +150,7 @@ public class MethodGuardsTest {
 
     @NodeChild
     static class GuardEqualLongIntTest extends ValueNode {
-        @Specialization(guards = "1 == value")
+        @Specialization(guards = "value == 1")
         static String do1(long value) {
             return "do1";
         }

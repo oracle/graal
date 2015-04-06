@@ -33,8 +33,8 @@ import com.oracle.truffle.api.source.*;
 
 public class TypeSystemTest {
 
-    @TypeSystem({int.class, long.class, double.class, boolean.class, BigInteger.class, String.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class, Abstract.class, Interface.class,
-                    Object[].class})
+    @TypeSystem({byte.class, short.class, int.class, long.class, double.class, boolean.class, BigInteger.class, String.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class,
+                    Abstract.class, Interface.class, Object[].class})
     @DSLOptions(useNewLayout = true)
     static class SimpleTypes {
 
