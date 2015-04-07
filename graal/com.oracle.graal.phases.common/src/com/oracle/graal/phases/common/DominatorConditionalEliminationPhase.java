@@ -395,8 +395,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     node.replaceAndDelete(guard);
                 } else {
                     DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.action(), node.reason()));
-                    Block block = nodeToBlock.apply(node);
-                    AbstractBeginNode beginNode = block.getBeginNode();
+                    AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
                     FixedNode next = beginNode.next();
                     beginNode.setNext(deopt);
                     GraphUtil.killCFG(next);
