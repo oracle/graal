@@ -327,11 +327,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Stamp loadStamp = loadStamp(read.stamp(), valueKind, read.isCompressible());
 
         ReadNode memoryRead = graph.add(new ReadNode(read.object(), read.location(), loadStamp, read.getBarrierType()));
-        // An unsafe read must not float otherwise it may float above
-        // a test guaranteeing the read is safe.
-        memoryRead.setForceFixed(true);
+        GuardingNode guard = read.getGuard();
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead, read.isCompressible());
-        memoryRead.setGuard(read.getGuard());
+        if (guard == null) {
+            // An unsafe read must not float otherwise it may float above
+            // a test guaranteeing the read is safe.
+            memoryRead.setForceFixed(true);
+        } else {
+            memoryRead.setGuard(guard);
+        }
         read.replaceAtUsages(readValue);
         graph.replaceFixed(read, memoryRead);
     }
