@@ -678,6 +678,9 @@ public class TestResolvedJavaType extends TypeUniverse {
         if (f.getDeclaringClass().equals(metaAccess.lookupJavaType(ConstantPool.class)) && f.getName().equals("constantPoolOop")) {
             return true;
         }
+        if (f.getDeclaringClass().equals(metaAccess.lookupJavaType(Class.class)) && f.getName().equals("classLoader")) {
+            return true;
+        }
         return false;
     }
 
@@ -693,7 +696,7 @@ public class TestResolvedJavaType extends TypeUniverse {
                 }
                 for (ResolvedJavaField rf : actual) {
                     if (!isHiddenFromReflection(rf)) {
-                        assertEquals(lookupField(expected, rf) != null, !rf.isInternal());
+                        assertEquals(rf.toString(), lookupField(expected, rf) != null, !rf.isInternal());
                     }
                 }
 
