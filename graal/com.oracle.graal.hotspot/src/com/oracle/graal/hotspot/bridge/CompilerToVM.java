@@ -23,11 +23,14 @@
 
 package com.oracle.graal.hotspot.bridge;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspotvmconfig.*;
 
 /**
  * Calls from Java into HotSpot.
@@ -290,7 +293,19 @@ public interface CompilerToVM {
 
     long readUnsafeKlassPointer(Object o);
 
-    Object readUnsafeOop(Object base, long displacement, boolean compressed);
+    /**
+     * Reads an object pointer within a VM data structures. That is, any {@link HotSpotVMField}
+     * whose {@link HotSpotVMField#type() type} is {@code "oop"} (e.g.,
+     * {@code ArrayKlass::_component_mirror}, {@code Klass::_java_mirror},
+     * {@code JavaThread::_threadObj}).
+     *
+     * Note that {@link Unsafe#getObject(Object, long)} cannot be used for this since it does a
+     * {@code narrowOop} read if the VM is using compressed oops whereas oops within VM data
+     * structures are (currently) always uncompressed.
+     *
+     * @param address address of an oop field within a VM data structure
+     */
+    Object readUncompressedOop(long address);
 
     void doNotInlineOrCompile(long metaspaceMethod);
 

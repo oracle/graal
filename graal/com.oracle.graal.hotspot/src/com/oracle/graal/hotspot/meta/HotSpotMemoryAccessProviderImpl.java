@@ -133,13 +133,17 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
     private Object readRawObject(Constant baseConstant, long initialDisplacement, boolean compressed) {
         long displacement = initialDisplacement;
 
+        Object ret;
         Object base = asObject(baseConstant);
         if (base == null) {
+            assert !compressed;
             displacement += asRawPointer(baseConstant);
+            ret = runtime.getCompilerToVM().readUncompressedOop(displacement);
+        } else {
+            assert runtime.getConfig().useCompressedOops == compressed;
+            ret = unsafe.getObject(base, displacement);
         }
-        Object ret = runtime.getCompilerToVM().readUnsafeOop(base, displacement, compressed);
         assert verifyReadRawObject(ret, baseConstant, initialDisplacement, compressed);
-
         return ret;
     }
 
