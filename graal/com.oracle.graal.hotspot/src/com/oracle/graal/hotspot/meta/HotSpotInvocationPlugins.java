@@ -61,19 +61,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 return;
             }
         }
-        if (!config.useCountLeadingZerosInstruction) {
-            if (name.equals("numberOfLeadingZeros")) {
-                assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
-                return;
-            }
-        }
-        if (!config.useCountTrailingZerosInstruction) {
-            if (name.equals("numberOfTrailingZeros")) {
-                assert declaringClass.equals(Integer.class);
-                return;
-            }
-        }
-
         if (config.useHeapProfiler) {
             if (plugin instanceof BoxPlugin) {
                 // The heap profiler wants to see all allocations related to boxing

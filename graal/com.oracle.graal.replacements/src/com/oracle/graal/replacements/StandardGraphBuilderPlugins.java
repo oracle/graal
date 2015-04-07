@@ -645,7 +645,7 @@ public class StandardGraphBuilderPlugins {
         String[] names = {"org.openjdk.jmh.infra.Blackhole", "org.openjdk.jmh.logic.BlackHole"};
         for (String name : names) {
             Class<?> blackholeClass;
-            blackholeClass = ReplacementsImpl.resolveClass(name, true);
+            blackholeClass = MethodSubstitutionPlugin.resolveClass(name, true);
             if (blackholeClass != null) {
                 Registration r = new Registration(plugins, blackholeClass);
                 for (Kind kind : Kind.values()) {

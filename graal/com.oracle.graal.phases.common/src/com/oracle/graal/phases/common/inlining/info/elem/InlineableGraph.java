@@ -71,6 +71,9 @@ public class InlineableGraph implements Inlineable {
      * modification.
      */
     private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
+        if (method.getName().equals("hashCode")) {
+            System.console();
+        }
         StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
         if (result != null) {
             return result;

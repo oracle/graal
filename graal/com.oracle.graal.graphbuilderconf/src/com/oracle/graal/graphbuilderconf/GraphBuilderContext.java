@@ -168,6 +168,16 @@ public interface GraphBuilderContext {
      */
     void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args);
 
+    /**
+     * Intrinsifies an invocation of a given method by inlining the bytecodes of a given
+     * substitution method.
+     *
+     * @param targetMethod the method being intrinsified
+     * @param substitute the intrinsic implementation
+     * @param args the arguments with which to inline the invocation
+     */
+    void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args);
+
     StampProvider getStampProvider();
 
     MetaAccessProvider getMetaAccess();

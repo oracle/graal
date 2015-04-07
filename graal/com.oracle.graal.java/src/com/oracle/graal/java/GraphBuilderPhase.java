@@ -1265,14 +1265,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
                 InlineInfo inlineInfo = plugin.getInlineInfo(this, targetMethod, args, returnType);
                 if (inlineInfo != null) {
-                    return inline(plugin, targetMethod, inlineInfo, args);
+                    return inline(plugin, targetMethod, inlineInfo.methodToInline, inlineInfo.isReplacement, inlineInfo.isIntrinsic, args);
                 }
                 return false;
             }
 
-            public boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, InlineInfo inlineInfo, ValueNode[] args) {
+            public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
+                boolean res = inline(null, targetMethod, substitute, true, true, args);
+                assert res : "failed to inline " + substitute;
+            }
+
+            private boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isReplacement, boolean isIntrinsic, ValueNode[] args) {
                 int bci = bci();
-                ResolvedJavaMethod inlinedMethod = inlineInfo.methodToInline;
                 if (TraceInlineDuringParsing.getValue() || TraceParserPlugins.getValue()) {
                     if (targetMethod.equals(inlinedMethod)) {
                         traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
@@ -1308,9 +1312,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 } else {
-                    if (context == null && inlineInfo.isReplacement) {
+                    if (context == null && isReplacement) {
                         assert !inlinedMethod.equals(targetMethod);
-                        if (inlineInfo.isIntrinsic) {
+                        if (isIntrinsic) {
                             context = new IntrinsicContext(targetMethod, inlinedMethod, args, bci);
                         } else {
                             context = new ReplacementContext(targetMethod, inlinedMethod);

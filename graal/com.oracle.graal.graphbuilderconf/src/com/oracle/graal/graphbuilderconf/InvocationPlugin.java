@@ -97,10 +97,6 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5);
     }
 
-    default ResolvedJavaMethod getSubstitute() {
-        return null;
-    }
-
     /**
      * Executes this plugin against a set of invocation arguments.
      *

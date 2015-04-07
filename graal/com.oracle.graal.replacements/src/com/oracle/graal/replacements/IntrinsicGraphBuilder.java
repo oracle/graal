@@ -207,4 +207,8 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         }
         return null;
     }
+
+    public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
+        throw GraalInternalError.shouldNotReachHere();
+    }
 }

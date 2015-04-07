@@ -29,16 +29,17 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.replacements.*;
 
 public class AMD64GraphBuilderPlugins {
 
     public static void register(Plugins plugins, AMD64 arch) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        registerIntegerLongPlugins(invocationPlugins, Kind.Int, arch);
-        registerIntegerLongPlugins(invocationPlugins, Kind.Long, arch);
+        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, Kind.Int, arch);
+        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, Kind.Long, arch);
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Kind kind, AMD64 arch) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, Kind kind, AMD64 arch) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
@@ -54,6 +55,8 @@ public class AMD64GraphBuilderPlugins {
                     return true;
                 }
             });
+        } else {
+            r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
         }
         if (arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
             r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
@@ -67,6 +70,8 @@ public class AMD64GraphBuilderPlugins {
                     return true;
                 }
             });
+        } else {
+            r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
         }
     }
 

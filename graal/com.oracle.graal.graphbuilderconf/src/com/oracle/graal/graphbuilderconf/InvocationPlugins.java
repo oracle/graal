@@ -181,6 +181,18 @@ public class InvocationPlugins {
         public void register5(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, Class<?> arg5, InvocationPlugin plugin) {
             plugins.register(plugin, declaringClass, name, arg1, arg2, arg3, arg4, arg5);
         }
+
+        /**
+         * Registers a plugin that implements a method based on the bytecode of a substitute method.
+         *
+         * @param substituteDeclaringClass the class declaring the substitute method
+         * @param name the name of both the original and substitute method
+         * @param argumentTypes the parameter types of the substitute
+         */
+        public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Class<?>... argumentTypes) {
+            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, name, argumentTypes);
+            plugins.register(plugin, declaringClass, name, argumentTypes);
+        }
     }
 
     static final class MethodInfo {
@@ -404,6 +416,11 @@ public class InvocationPlugins {
         }
 
         public static boolean check(InvocationPlugins plugins, MethodInfo method, InvocationPlugin plugin) {
+            if (plugin instanceof MethodSubstitutionPlugin) {
+                MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
+                msplugin.getJavaSubstitute();
+                return true;
+            }
             InvocationPlugins p = plugins;
             while (p != null) {
                 assert !p.registrations.contains(method) : "a plugin is already registered for " + method;
