@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+import java.util.function.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
@@ -87,6 +88,7 @@ public class SnippetTemplate {
     public abstract static class SnippetInfo {
 
         protected final ResolvedJavaMethod method;
+        protected final LocationIdentity[] privateLocations;
 
         /**
          * Lazily constructed parts of {@link SnippetInfo}.
@@ -147,8 +149,9 @@ public class SnippetTemplate {
 
         protected abstract Lazy lazy();
 
-        protected SnippetInfo(ResolvedJavaMethod method) {
+        protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
             this.method = method;
+            this.privateLocations = privateLocations;
             instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method);
             instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method);
             assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
@@ -193,8 +196,8 @@ public class SnippetTemplate {
     protected static class LazySnippetInfo extends SnippetInfo {
         protected final AtomicReference<Lazy> lazy = new AtomicReference<>(null);
 
-        protected LazySnippetInfo(ResolvedJavaMethod method) {
-            super(method);
+        protected LazySnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
+            super(method, privateLocations);
         }
 
         @Override
@@ -209,8 +212,8 @@ public class SnippetTemplate {
     protected static class EagerSnippetInfo extends SnippetInfo {
         protected final Lazy lazy;
 
-        protected EagerSnippetInfo(ResolvedJavaMethod method) {
-            super(method);
+        protected EagerSnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
+            super(method, privateLocations);
             lazy = new Lazy(method);
         }
 
@@ -497,7 +500,7 @@ public class SnippetTemplate {
          * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
          * exactly one snippet method in {@code declaringClass}.
          */
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName) {
+        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... privateLocations) {
             assert methodName != null;
             Method method = findMethod(declaringClass, methodName, null);
             assert method != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
@@ -506,9 +509,9 @@ public class SnippetTemplate {
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
             if (LAZY_SNIPPETS) {
-                return new LazySnippetInfo(javaMethod);
+                return new LazySnippetInfo(javaMethod, privateLocations);
             } else {
-                return new EagerSnippetInfo(javaMethod);
+                return new EagerSnippetInfo(javaMethod, privateLocations);
             }
         }
 
@@ -555,6 +558,8 @@ public class SnippetTemplate {
      */
     protected SnippetTemplate(final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
         this.snippetReflection = snippetReflection;
+        this.info = args.info;
+
         Object[] constantArgs = getConstantArgs(args);
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, constantArgs);
         instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
@@ -819,6 +824,8 @@ public class SnippetTemplate {
      * The graph built from the snippet method.
      */
     private final StructuredGraph snippet;
+
+    private final SnippetInfo info;
 
     /**
      * The named parameters of this template that must be bound to values during instantiation. For
@@ -1097,21 +1104,23 @@ public class SnippetTemplate {
     }
 
     private void rewireMemoryGraph(ValueNode replacee, Map<Node, Node> duplicates) {
-        // rewire outgoing memory edges
-        replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
+        if (replacee.graph().isAfterFloatingReadPhase()) {
+            // rewire outgoing memory edges
+            replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
 
-        ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
-        MemoryMapNode memoryMap = ret.getMemoryMap();
-        ret.setMemoryMap(null);
-        memoryMap.safeDelete();
+            ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
+            MemoryMapNode memoryMap = ret.getMemoryMap();
+            ret.setMemoryMap(null);
+            memoryMap.safeDelete();
 
-        if (memoryAnchor != null) {
-            // rewire incoming memory edges
-            MemoryAnchorNode memoryDuplicate = (MemoryAnchorNode) duplicates.get(memoryAnchor);
-            replaceMemoryUsages(memoryDuplicate, new MemoryInputMap(replacee));
+            if (memoryAnchor != null) {
+                // rewire incoming memory edges
+                MemoryAnchorNode memoryDuplicate = (MemoryAnchorNode) duplicates.get(memoryAnchor);
+                replaceMemoryUsages(memoryDuplicate, new MemoryInputMap(replacee));
 
-            if (memoryDuplicate.hasNoUsages()) {
-                memoryDuplicate.graph().removeFixed(memoryDuplicate);
+                if (memoryDuplicate.hasNoUsages()) {
+                    memoryDuplicate.graph().removeFixed(memoryDuplicate);
+                }
             }
         }
     }
@@ -1128,7 +1137,7 @@ public class SnippetTemplate {
         }
     }
 
-    private static void replaceMemoryUsages(ValueNode node, MemoryMap map) {
+    private void replaceMemoryUsages(ValueNode node, MemoryMap map) {
         for (Node usage : node.usages().snapshot()) {
             if (usage instanceof MemoryMapNode) {
                 continue;
@@ -1141,7 +1150,10 @@ public class SnippetTemplate {
                     Position pos = iter.nextPosition();
                     if (pos.getInputType() == InputType.Memory && pos.get(usage) == node) {
                         MemoryNode replacement = map.getLastLocationAccess(location);
-                        if (replacement != null) {
+                        if (replacement == null) {
+                            assert LocationIdentity.any().equals(location) || Arrays.stream(info.privateLocations).anyMatch(Predicate.isEqual(location)) : "Snippet " + info.method.format("%h.%n") +
+                                            " contains access to the non-private location " + location + ", but replacee doesn't access this location.";
+                        } else {
                             pos.set(usage, replacement.asNode());
                         }
                     }
