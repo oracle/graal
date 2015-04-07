@@ -23,6 +23,9 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
+
+import java.util.*;
+
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
@@ -67,6 +70,7 @@ public class StandardGraphBuilderPlugins {
         registerIntegerLongPlugins(plugins, Kind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
+        registerArraysPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
@@ -76,6 +80,18 @@ public class StandardGraphBuilderPlugins {
         if (Options.UseBlackholeSubstitution.getValue()) {
             registerJMHBlackholePlugins(plugins);
         }
+    }
+
+    private static void registerArraysPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Arrays.class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", boolean[].class, boolean[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", byte[].class, byte[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", short[].class, short[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", char[].class, char[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", int[].class, int[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", float[].class, float[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", long[].class, long[].class);
+        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", double[].class, double[].class);
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins) {
