@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.arithmetic;
+package com.oracle.graal.replacements.nodes.arithmetic;
 
 import java.util.function.*;
 
@@ -33,7 +33,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.truffle.api.*;
 
 @NodeInfo(shortName = "|*H|")
 public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {
@@ -66,7 +65,7 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
         long max = Long.MIN_VALUE;
         for (long a : xExtremes) {
             for (long b : yExtremes) {
-                long result = kind == Kind.Int ? ExactMath.multiplyHighUnsigned((int) a, (int) b) : ExactMath.multiplyHighUnsigned(a, b);
+                long result = kind == Kind.Int ? multiplyHighUnsigned((int) a, (int) b) : multiplyHighUnsigned(a, b);
                 min = Math.min(min, result);
                 max = Math.max(max, result);
             }
@@ -92,5 +91,33 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
         Value a = builder.operand(getX());
         Value b = builder.operand(getY());
         builder.setResult(this, gen.emitUMulHigh(a, b));
+    }
+
+    public static int multiplyHighUnsigned(int x, int y) {
+        long xl = x & 0xFFFFFFFFL;
+        long yl = y & 0xFFFFFFFFL;
+        long r = xl * yl;
+        return (int) (r >> 32);
+    }
+
+    public static long multiplyHighUnsigned(long x, long y) {
+        // Checkstyle: stop
+        long x0, y0, z0;
+        long x1, y1, z1, z2, t;
+        // Checkstyle: resume
+
+        x0 = x & 0xFFFFFFFFL;
+        x1 = x >>> 32;
+
+        y0 = y & 0xFFFFFFFFL;
+        y1 = y >>> 32;
+
+        z0 = x0 * y0;
+        t = x1 * y0 + (z0 >>> 32);
+        z1 = t & 0xFFFFFFFFL;
+        z2 = t >>> 32;
+        z1 += x0 * y1;
+
+        return x1 * y1 + z2 + (z1 >>> 32);
     }
 }

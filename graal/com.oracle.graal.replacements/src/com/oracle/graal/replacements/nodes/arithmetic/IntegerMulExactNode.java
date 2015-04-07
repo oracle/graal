@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.arithmetic;
+package com.oracle.graal.replacements.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -30,54 +30,49 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.truffle.api.*;
 
 /**
- * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
- * case the addition would overflow the 32 bit range.
+ * Node representing an exact integer multiplication that will throw an {@link ArithmeticException}
+ * in case the addition would overflow the 32 bit range.
  */
 @NodeInfo
-public final class IntegerSubExactNode extends SubNode implements IntegerExactArithmeticNode {
-    public static final NodeClass<IntegerSubExactNode> TYPE = NodeClass.create(IntegerSubExactNode.class);
+public final class IntegerMulExactNode extends MulNode implements IntegerExactArithmeticNode {
+    public static final NodeClass<IntegerMulExactNode> TYPE = NodeClass.create(IntegerMulExactNode.class);
 
-    public IntegerSubExactNode(ValueNode x, ValueNode y) {
+    public IntegerMulExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
-    public boolean inferStamp() {
-        // TODO Should probably use a specialized version which understands that it can't overflow
-        return super.inferStamp();
-    }
-
-    @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
-            return ConstantNode.forIntegerStamp(stamp(), 0);
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new IntegerMulExactNode(forY, forX);
         }
-        if (forX.isConstant() && forY.isConstant()) {
-            return canonicalXYconstant(forX, forY);
+        if (forX.isConstant()) {
+            return canonicalXconstant(forX, forY);
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
-            if (c == 0) {
+            if (c == 1) {
                 return forX;
+            }
+            if (c == 0) {
+                return ConstantNode.forIntegerStamp(stamp(), 0);
             }
         }
         return this;
     }
 
-    private ValueNode canonicalXYconstant(ValueNode forX, ValueNode forY) {
+    private ValueNode canonicalXconstant(ValueNode forX, ValueNode forY) {
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
         assert xConst.getKind() == yConst.getKind();
         try {
             if (xConst.getKind() == Kind.Int) {
-                return ConstantNode.forInt(ExactMath.subtractExact(xConst.asInt(), yConst.asInt()));
+                return ConstantNode.forInt(Math.multiplyExact(xConst.asInt(), yConst.asInt()));
             } else {
                 assert xConst.getKind() == Kind.Long;
-                return ConstantNode.forLong(ExactMath.subtractExact(xConst.asLong(), yConst.asLong()));
+                return ConstantNode.forLong(Math.multiplyExact(xConst.asLong(), yConst.asLong()));
             }
         } catch (ArithmeticException ex) {
             // The operation will result in an overflow exception, so do not canonicalize.
@@ -87,7 +82,7 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt) {
-        return graph().add(new IntegerSubExactSplitNode(stamp(), getX(), getY(), next, deopt));
+        return graph().add(new IntegerMulExactSplitNode(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

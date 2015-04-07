@@ -43,6 +43,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.replacements.nodes.arithmetic.*;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.
@@ -243,6 +244,27 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerMathPlugins(Architecture arch, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Math.class);
+        for (Kind kind : new Kind[]{Kind.Int, Kind.Long}) {
+            Class<?> type = kind.toJavaClass();
+            r.register2("addExact", type, type, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.addPush(kind.getStackKind(), new IntegerAddExactNode(x, y));
+                    return true;
+                }
+            });
+            r.register2("subtractExact", type, type, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.addPush(kind.getStackKind(), new IntegerSubExactNode(x, y));
+                    return true;
+                }
+            });
+            r.register2("multiplyExact", type, type, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.addPush(kind.getStackKind(), new IntegerMulExactNode(x, y));
+                    return true;
+                }
+            });
+        }
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(Kind.Float, b.recursiveAppend(new AbsNode(value).canonical(null, value)));

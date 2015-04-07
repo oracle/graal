@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.arithmetic;
+package com.oracle.graal.replacements.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -30,17 +30,17 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.truffle.api.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
- * Node representing an exact integer addition that will throw an {@link ArithmeticException} in
+ * Node representing an exact integer substraction that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
 @NodeInfo
-public final class IntegerAddExactNode extends AddNode implements IntegerExactArithmeticNode {
-    public static final NodeClass<IntegerAddExactNode> TYPE = NodeClass.create(IntegerAddExactNode.class);
+public final class IntegerSubExactNode extends SubNode implements IntegerExactArithmeticNode {
+    public static final NodeClass<IntegerSubExactNode> TYPE = NodeClass.create(IntegerSubExactNode.class);
 
-    public IntegerAddExactNode(ValueNode x, ValueNode y) {
+    public IntegerSubExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
@@ -53,54 +53,40 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode result = findSynonym(forX, forY);
-        if (result == null) {
-            return this;
-        } else {
-            return result;
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forIntegerStamp(stamp(), 0);
         }
-    }
-
-    private static ValueNode findSynonym(ValueNode forX, ValueNode forY) {
-        if (forX.isConstant() && !forY.isConstant()) {
-            return new IntegerAddExactNode(forY, forX);
-        }
-        if (forX.isConstant()) {
-            ConstantNode constantNode = canonicalXconstant(forX, forY);
-            if (constantNode != null) {
-                return constantNode;
-            }
+        if (forX.isConstant() && forY.isConstant()) {
+            return canonicalXYconstant(forX, forY);
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
             if (c == 0) {
                 return forX;
             }
         }
-        return null;
+        return this;
     }
 
-    private static ConstantNode canonicalXconstant(ValueNode forX, ValueNode forY) {
+    private ValueNode canonicalXYconstant(ValueNode forX, ValueNode forY) {
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
-        if (xConst != null && yConst != null) {
-            assert xConst.getKind() == yConst.getKind();
-            try {
-                if (xConst.getKind() == Kind.Int) {
-                    return ConstantNode.forInt(ExactMath.addExact(xConst.asInt(), yConst.asInt()));
-                } else {
-                    assert xConst.getKind() == Kind.Long;
-                    return ConstantNode.forLong(ExactMath.addExact(xConst.asLong(), yConst.asLong()));
-                }
-            } catch (ArithmeticException ex) {
-                // The operation will result in an overflow exception, so do not canonicalize.
+        assert xConst.getKind() == yConst.getKind();
+        try {
+            if (xConst.getKind() == Kind.Int) {
+                return ConstantNode.forInt(Math.subtractExact(xConst.asInt(), yConst.asInt()));
+            } else {
+                assert xConst.getKind() == Kind.Long;
+                return ConstantNode.forLong(Math.subtractExact(xConst.asLong(), yConst.asLong()));
             }
+        } catch (ArithmeticException ex) {
+            // The operation will result in an overflow exception, so do not canonicalize.
         }
-        return null;
+        return this;
     }
 
     @Override
     public IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt) {
-        return graph().add(new IntegerAddExactSplitNode(stamp(), getX(), getY(), next, deopt));
+        return graph().add(new IntegerSubExactSplitNode(stamp(), getX(), getY(), next, deopt));
     }
 
     @Override

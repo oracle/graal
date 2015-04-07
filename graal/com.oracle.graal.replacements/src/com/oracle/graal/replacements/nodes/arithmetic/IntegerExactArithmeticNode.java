@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.arithmetic;
+package com.oracle.graal.replacements.nodes.arithmetic;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-@NodeInfo
-public final class IntegerSubExactSplitNode extends IntegerExactArithmeticSplitNode {
-    public static final NodeClass<IntegerSubExactSplitNode> TYPE = NodeClass.create(IntegerSubExactSplitNode.class);
+interface IntegerExactArithmeticNode extends Lowerable {
 
-    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
-        super(TYPE, stamp, x, y, next, overflowSuccessor);
-    }
-
-    @Override
-    protected Value generateArithmetic(NodeLIRBuilderTool gen) {
-        return gen.getLIRGeneratorTool().emitSub(gen.operand(getX()), gen.operand(getY()), true);
-    }
+    IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt);
 }
