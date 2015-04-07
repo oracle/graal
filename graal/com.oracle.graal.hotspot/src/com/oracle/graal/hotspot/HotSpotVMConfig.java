@@ -1255,8 +1255,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMType(name = "BasicLock", get = HotSpotVMType.Type.SIZE) @Stable public int basicLockSize;
     @HotSpotVMField(name = "BasicLock::_displaced_header", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int basicLockDisplacedHeaderOffset;
 
-    @HotSpotVMValue(expression = "Universe::heap()->end_addr()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long heapEndAddress;
-    @HotSpotVMValue(expression = "Universe::heap()->top_addr()", get = HotSpotVMValue.Type.ADDRESS) @Stable public long heapTopAddress;
+    @HotSpotVMValue(expression = "Universe::heap()->supports_inline_contig_alloc() ? Universe::heap()->end_addr() : (HeapWord**)-1", get = HotSpotVMValue.Type.ADDRESS) @Stable public long heapEndAddress;
+    @HotSpotVMValue(expression = "Universe::heap()->supports_inline_contig_alloc() ? Universe::heap()->top_addr() : (HeapWord**)-1", get = HotSpotVMValue.Type.ADDRESS) @Stable public long heapTopAddress;
 
     @HotSpotVMField(name = "Thread::_allocated_bytes", type = "jlong", get = HotSpotVMField.Type.OFFSET) @Stable public int threadAllocatedBytesOffset;
 
