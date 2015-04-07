@@ -58,14 +58,13 @@ public class HotSpotGraphBuilderPlugins {
 
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
-     *
      * @param constantReflection
      * @param snippetReflection
      * @param foreignCalls
      * @param stampProvider
      */
     public static Plugins create(HotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
-                    SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, StampProvider stampProvider, ReplacementsImpl replacements, Architecture arch) {
+                    SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, StampProvider stampProvider, ReplacementsImpl replacements) {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess, constantReflection.getMethodHandleAccess());
 
         Plugins plugins = new Plugins(invocationPlugins);
@@ -85,7 +84,7 @@ public class HotSpotGraphBuilderPlugins {
         registerCallSitePlugins(invocationPlugins);
         registerReflectionPlugins(invocationPlugins);
         registerStableOptionPlugins(invocationPlugins);
-        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, arch, invocationPlugins, !config.useHeapProfiler);
+        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
 
         return plugins;
     }

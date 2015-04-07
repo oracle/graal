@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
@@ -57,10 +56,10 @@ public class StandardGraphBuilderPlugins {
     }
     // @formatter:on
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, Architecture arch, InvocationPlugins plugins, boolean useBoxingPlugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean useBoxingPlugins) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
-        registerMathPlugins(arch, plugins);
+        registerMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
@@ -68,7 +67,7 @@ public class StandardGraphBuilderPlugins {
         registerIntegerLongPlugins(plugins, Kind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
-        registerUnsafePlugins(arch, plugins);
+        registerUnsafePlugins(plugins);
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
         if (useBoxingPlugins) {
@@ -79,7 +78,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerUnsafePlugins(Architecture arch, InvocationPlugins plugins) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Unsafe.class);
         for (Kind kind : Kind.values()) {
             if ((kind.isPrimitive() && kind != Kind.Void) || kind == Kind.Object) {
@@ -119,37 +118,7 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
             });
-
-            if (getAndSetEnabled(arch)) {
-                r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
-                        // Emits a null-check for the otherwise unused receiver
-                        unsafe.get();
-                        b.addPush(kind.getStackKind(), new AtomicReadAndWriteNode(object, offset, value, kind, LocationIdentity.any()));
-                        return true;
-                    }
-                });
-                if (kind != Kind.Object) {
-                    r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
-                        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
-                            // Emits a null-check for the otherwise unused receiver
-                            unsafe.get();
-                            b.addPush(kind.getStackKind(), new AtomicReadAndAddNode(object, offset, delta, LocationIdentity.any()));
-                            return true;
-                        }
-                    });
-                }
-            }
         }
-    }
-
-    /**
-     * Determines if the platform includes such for intrinsifying the {@link Unsafe#getAndSetInt}
-     * method family.
-     */
-    public static boolean getAndSetEnabled(Architecture arch) {
-        // FIXME should return whether the current compilation target supports these
-        return arch.getName().equals("AMD64");
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, Kind kind) {
@@ -242,7 +211,7 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(Architecture arch, InvocationPlugins plugins) {
+    private static void registerMathPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Math.class);
         for (Kind kind : new Kind[]{Kind.Int, Kind.Long}) {
             Class<?> type = kind.toJavaClass();
@@ -294,20 +263,6 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        if (getAndSetEnabled(arch)) {
-            r.register1("log", Double.TYPE, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    b.push(Kind.Double, b.recursiveAppend(MathIntrinsicNode.create(value, LOG)));
-                    return true;
-                }
-            });
-            r.register1("log10", Double.TYPE, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    b.push(Kind.Double, b.recursiveAppend(MathIntrinsicNode.create(value, LOG10)));
-                    return true;
-                }
-            });
-        }
     }
 
     public static class UnsignedMathPlugin implements InvocationPlugin {

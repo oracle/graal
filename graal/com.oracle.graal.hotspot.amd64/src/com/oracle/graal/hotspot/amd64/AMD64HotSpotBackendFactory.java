@@ -188,7 +188,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
     protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider runtime, TargetDescription target, HotSpotConstantReflectionProvider constantReflection,
                     HotSpotHostForeignCallsProvider foreignCalls, HotSpotMetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements,
                     HotSpotWordTypes wordTypes, HotSpotStampProvider stampProvider) {
-        Plugins plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements, target.arch);
+        Plugins plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
         AMD64GraphBuilderPlugins.register(plugins, (AMD64) target.arch);
         return plugins;
     }

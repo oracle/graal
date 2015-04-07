@@ -69,7 +69,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), target);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
         HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
-        Plugins plugins = createGraphBuilderPlugins(runtime, target, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
+        Plugins plugins = createGraphBuilderPlugins(runtime, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(runtime, plugins);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection,
@@ -78,10 +78,10 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         return createBackend(runtime, providers);
     }
 
-    protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider runtime, TargetDescription target, HotSpotMetaAccessProvider metaAccess,
-                    HotSpotConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls, HotSpotStampProvider stampProvider,
-                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes) {
-        Plugins plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements, target.arch);
+    protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotConstantReflectionProvider constantReflection,
+                    HotSpotForeignCallsProvider foreignCalls, HotSpotStampProvider stampProvider, HotSpotSnippetReflectionProvider snippetReflection,
+                    HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes) {
+        Plugins plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
         SPARCGraphBuilderPlugins.register(plugins);
         return plugins;
     }
