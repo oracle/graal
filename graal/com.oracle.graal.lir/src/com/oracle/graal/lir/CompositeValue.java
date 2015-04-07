@@ -59,10 +59,6 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
         return valueClass.forEachComponent(inst, this, mode, proc);
     }
 
-    final void forEachComponent(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
-        valueClass.forEachComponent(inst, this, mode, proc, outerPosition);
-    }
-
     @Override
     public String toString() {
         return valueClass.toString(this);

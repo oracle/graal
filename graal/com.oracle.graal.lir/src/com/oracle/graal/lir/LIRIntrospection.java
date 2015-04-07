@@ -284,33 +284,6 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         return newCompValue != null ? newCompValue : obj;
     }
 
-    protected static void forEach(LIRInstruction inst, Object obj, Values values, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
-        for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
-
-            if (i < values.getDirectCount()) {
-                Value value = values.getValue(obj, i);
-                doForValue(inst, values, mode, proc, outerPosition, i, ValuePosition.NO_SUBINDEX, value);
-            } else {
-                Value[] valueArray = values.getValueArray(obj, i);
-                for (int j = 0; j < valueArray.length; j++) {
-                    Value value = valueArray[j];
-                    doForValue(inst, values, mode, proc, outerPosition, i, j, value);
-                }
-            }
-        }
-    }
-
-    private static void doForValue(LIRInstruction inst, Values values, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition, int index, int subIndex, Value value) {
-        ValuePosition position = new ValuePosition(values, index, subIndex, outerPosition);
-        if (value instanceof CompositeValue) {
-            CompositeValue composite = (CompositeValue) value;
-            composite.forEachComponent(inst, mode, proc, position);
-        } else {
-            proc.doValue(inst, position);
-        }
-    }
-
     protected void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
         int total = 0;
         for (Fields fields : fieldsList) {

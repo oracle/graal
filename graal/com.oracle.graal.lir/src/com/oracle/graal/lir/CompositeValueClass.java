@@ -92,10 +92,6 @@ public class CompositeValueClass<T> extends LIRIntrospection<T> {
         return super.forEachComponent(inst, obj, values, mode, proc);
     }
 
-    final void forEachComponent(LIRInstruction inst, CompositeValue obj, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
-        forEach(inst, obj, values, mode, proc, outerPosition);
-    }
-
     public String toString(CompositeValue obj) {
         StringBuilder result = new StringBuilder();
 
