@@ -213,6 +213,7 @@ public class InvocationPlugins {
             if (!isStatic) {
                 argumentTypes[0] = declaringClass;
             }
+            assert resolveJava() != null;
         }
 
         @Override
@@ -233,16 +234,20 @@ public class InvocationPlugins {
         }
 
         ResolvedJavaMethod resolve(MetaAccessProvider metaAccess) {
+            return metaAccess.lookupJavaMethod(resolveJava());
+        }
+
+        Executable resolveJava() {
             try {
-                ResolvedJavaMethod method;
+                Executable res;
                 Class<?>[] parameterTypes = isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length);
                 if (name.equals("<init>")) {
-                    method = metaAccess.lookupJavaMethod(declaringClass.getDeclaredConstructor(parameterTypes));
+                    res = declaringClass.getDeclaredConstructor(parameterTypes);
                 } else {
-                    method = metaAccess.lookupJavaMethod(declaringClass.getDeclaredMethod(name, parameterTypes));
+                    res = declaringClass.getDeclaredMethod(name, parameterTypes);
                 }
-                assert method.isStatic() == isStatic;
-                return method;
+                assert Modifier.isStatic(res.getModifiers()) == isStatic;
+                return res;
             } catch (NoSuchMethodException | SecurityException e) {
                 throw new GraalInternalError(e);
             }
