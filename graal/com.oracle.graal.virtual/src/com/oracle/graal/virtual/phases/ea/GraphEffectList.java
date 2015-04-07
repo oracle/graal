@@ -152,6 +152,19 @@ public class GraphEffectList extends EffectList {
         });
     }
 
+    public void replaceWithSink(FixedWithNextNode node, ControlSinkNode sink) {
+        add("kill if branch", new Effect() {
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                node.replaceAtPredecessor(sink);
+                GraphUtil.killCFG(node);
+            }
+
+            public boolean isCfgKill() {
+                return true;
+            }
+        });
+    }
+
     /**
      * Replaces the given node at its usages without deleting it. If the current node is a fixed
      * node it will be disconnected from the control flow, so that it will be deleted by a

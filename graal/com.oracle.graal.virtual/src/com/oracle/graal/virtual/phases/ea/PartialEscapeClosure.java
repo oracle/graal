@@ -206,9 +206,14 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     VirtualUtil.trace("replacement via canonicalization too complex: %s -> %s", node, canonicalizedValue);
                     return false;
                 }
-                effects.ensureAdded(canonicalizedValue, insertBefore);
-                effects.replaceAtUsages(node, canonicalizedValue);
-                addScalarAlias(node, canonicalizedValue);
+                if (canonicalizedValue instanceof ControlSinkNode) {
+                    effects.replaceWithSink((FixedWithNextNode) node, (ControlSinkNode) canonicalizedValue);
+                    state.markAsDead();
+                } else {
+                    effects.ensureAdded(canonicalizedValue, insertBefore);
+                    effects.replaceAtUsages(node, canonicalizedValue);
+                    addScalarAlias(node, canonicalizedValue);
+                }
             }
             VirtualUtil.trace("replaced via canonicalization: %s -> %s", node, canonicalizedValue);
             return true;

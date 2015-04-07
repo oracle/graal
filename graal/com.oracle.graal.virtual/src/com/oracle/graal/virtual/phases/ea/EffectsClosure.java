@@ -166,6 +166,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 if (node instanceof FixedWithNextNode) {
                     lastFixedNode = (FixedWithNextNode) node;
                 }
+                if (state.isDead()) {
+                    break;
+                }
             }
             VirtualUtil.trace(")\n    end state: %s\n", state);
         }
