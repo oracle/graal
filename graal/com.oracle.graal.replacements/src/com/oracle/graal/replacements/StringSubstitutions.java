@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.nodes.*;
 
 import edu.umd.cs.findbugs.annotations.*;
@@ -37,20 +34,6 @@ import edu.umd.cs.findbugs.annotations.*;
  */
 @ClassSubstitution(value = java.lang.String.class)
 public class StringSubstitutions {
-
-    /**
-     * Offset of the {@link String#value} field.
-     */
-    @java.lang.SuppressWarnings("javadoc") private static final long valueOffset;
-
-    static {
-        try {
-            Field valueField = String.class.getDeclaredField("value");
-            valueOffset = unsafe.objectFieldOffset(valueField);
-        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException e) {
-            throw new GraalInternalError(e);
-        }
-    }
 
     @MethodSubstitution(isStatic = false)
     @SuppressFBWarnings(value = "ES_COMPARING_PARAMETER_STRING_WITH_EQ", justification = "reference equality on the receiver is what we want")
@@ -69,9 +52,14 @@ public class StringSubstitutions {
             return true;
         }
 
-        final char[] array1 = (char[]) unsafe.getObject(thisString, valueOffset);
-        final char[] array2 = (char[]) unsafe.getObject(thatString, valueOffset);
+        final char[] array1 = getValue(thisString);
+        final char[] array2 = getValue(thatString);
 
         return ArrayEqualsNode.equals(array1, array2, array1.length);
     }
+
+    /**
+     * Will be intrinsified with an {@link InvocationPlugin} to a {@link LoadFieldNode}.
+     */
+    private static native char[] getValue(String s);
 }

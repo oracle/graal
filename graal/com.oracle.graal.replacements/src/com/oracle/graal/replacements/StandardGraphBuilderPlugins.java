@@ -32,6 +32,7 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -71,6 +72,7 @@ public class StandardGraphBuilderPlugins {
         registerIntegerLongPlugins(plugins, Kind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
+        registerStringPlugins(plugins);
         registerArraysPlugins(plugins);
         registerArrayPlugins(plugins);
         registerUnsafePlugins(plugins);
@@ -82,6 +84,26 @@ public class StandardGraphBuilderPlugins {
         if (Options.UseBlackholeSubstitution.getValue()) {
             registerJMHBlackholePlugins(plugins);
         }
+    }
+
+    private static final Field STRING_VALUE_FIELD;
+    static {
+        try {
+            STRING_VALUE_FIELD = String.class.getDeclaredField("value");
+        } catch (NoSuchFieldException e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
+    private static void registerStringPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, StringSubstitutions.class);
+        r.register1("getValue", String.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                b.addPush(new LoadFieldNode(value, field));
+                return true;
+            }
+        });
     }
 
     private static void registerArraysPlugins(InvocationPlugins plugins) {
