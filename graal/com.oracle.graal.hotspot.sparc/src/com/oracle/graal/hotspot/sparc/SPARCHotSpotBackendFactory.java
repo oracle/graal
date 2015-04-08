@@ -79,10 +79,10 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotConstantReflectionProvider constantReflection,
-                    HotSpotForeignCallsProvider foreignCalls, HotSpotStampProvider stampProvider, HotSpotSnippetReflectionProvider snippetReflection,
-                    HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes) {
+                    HotSpotForeignCallsProvider foreignCalls, HotSpotStampProvider stampProvider, HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements,
+                    HotSpotWordTypes wordTypes) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(runtime.getConfig(), wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
-        SPARCGraphBuilderPlugins.register(plugins);
+        SPARCGraphBuilderPlugins.register(plugins, foreignCalls);
         return plugins;
     }
 
