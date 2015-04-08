@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
 /**
  * Substitutions for {@link java.lang.Object} methods.
@@ -44,10 +43,5 @@ public class ObjectSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static int hashCode(final Object thisObj) {
         return computeHashCode(thisObj);
-    }
-
-    @MethodSubstitution(value = "<init>", isStatic = false, forced = true)
-    public static void init(Object thisObj) {
-        RegisterFinalizerNode.register(thisObj);
     }
 }
