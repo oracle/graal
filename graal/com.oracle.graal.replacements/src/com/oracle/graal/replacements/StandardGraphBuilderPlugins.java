@@ -24,6 +24,7 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
@@ -71,6 +72,7 @@ public class StandardGraphBuilderPlugins {
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
         registerArraysPlugins(plugins);
+        registerArrayPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
@@ -92,6 +94,12 @@ public class StandardGraphBuilderPlugins {
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", float[].class, float[].class);
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", long[].class, long[].class);
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", double[].class, double[].class);
+    }
+
+    private static void registerArrayPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Array.class);
+        r.registerMethodSubstitution(ArraySubstitutions.class, "newInstance", Class.class, int.class);
+        r.registerMethodSubstitution(ArraySubstitutions.class, "getLength", Object.class);
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins) {
