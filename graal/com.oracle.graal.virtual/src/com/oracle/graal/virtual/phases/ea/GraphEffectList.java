@@ -65,7 +65,7 @@ public class GraphEffectList extends EffectList {
             assert position.isAlive();
             if (!node.isAlive()) {
                 graph.addWithoutUniqueWithInputs(node);
-                if (node instanceof FixedNode) {
+                if (node instanceof FixedWithNextNode) {
                     graph.addBeforeFixed(position, (FixedWithNextNode) node);
                 }
             }
