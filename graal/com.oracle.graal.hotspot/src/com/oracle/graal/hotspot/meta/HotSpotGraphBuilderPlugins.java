@@ -58,6 +58,7 @@ public class HotSpotGraphBuilderPlugins {
 
     /**
      * Creates a {@link Plugins} object that should be used when running on HotSpot.
+     *
      * @param constantReflection
      * @param snippetReflection
      * @param foreignCalls
@@ -84,6 +85,7 @@ public class HotSpotGraphBuilderPlugins {
         registerCallSitePlugins(invocationPlugins);
         registerReflectionPlugins(invocationPlugins);
         registerStableOptionPlugins(invocationPlugins);
+        registerAESPlugins(invocationPlugins, config);
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
 
         return plugins;
@@ -216,5 +218,26 @@ public class HotSpotGraphBuilderPlugins {
                 return false;
             }
         });
+    }
+
+    private static void registerAESPlugins(InvocationPlugins plugins, HotSpotVMConfig config) {
+        if (config.useAESIntrinsics) {
+            assert config.aescryptEncryptBlockStub != 0L;
+            assert config.aescryptDecryptBlockStub != 0L;
+            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
+            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+            Class<?> c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.CipherBlockChaining", true);
+            if (c != null) {
+                Registration r = new Registration(plugins, c);
+                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "encrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "decrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+            }
+            c = MethodSubstitutionPlugin.resolveClass("com.sun.crypto.provider.AESCrypt", true);
+            if (c != null) {
+                Registration r = new Registration(plugins, c);
+                r.registerMethodSubstitution(AESCryptSubstitutions.class, "encryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+                r.registerMethodSubstitution(AESCryptSubstitutions.class, "decryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
+            }
+        }
     }
 }

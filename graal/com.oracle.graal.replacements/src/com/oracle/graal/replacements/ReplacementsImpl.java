@@ -667,12 +667,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
                         OptimisticOptimizations optimisticOpts) {
             ReplacementContext initialReplacementContext = null;
-            if (method.getAnnotation(MethodSubstitution.class) != null) {
+            if (method.getAnnotation(Snippet.class) == null) {
                 // Late inlined intrinsic
                 initialReplacementContext = new IntrinsicContext(substitutedMethod, method, null, -1);
             } else {
                 // Snippet
-                assert method.getAnnotation(Snippet.class) != null;
                 ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
                 initialReplacementContext = new ReplacementContext(original, method);
             }

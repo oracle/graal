@@ -28,11 +28,9 @@ import static com.oracle.graal.word.Word.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -41,26 +39,7 @@ import com.oracle.graal.word.*;
 /**
  * Substitutions for {@code com.sun.crypto.provider.AESCrypt} methods.
  */
-@ClassSubstitution(className = "com.sun.crypto.provider.AESCrypt", optional = true, defaultGuard = AESCryptSubstitutions.Guard.class)
 public class AESCryptSubstitutions {
-
-    public static class Guard implements SubstitutionGuard {
-        private HotSpotVMConfig config;
-
-        public Guard(HotSpotVMConfig config) {
-            this.config = config;
-        }
-
-        public boolean execute() {
-            if (config.useAESIntrinsics) {
-                assert config.aescryptEncryptBlockStub != 0L;
-                assert config.aescryptDecryptBlockStub != 0L;
-                assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
-                assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
-            }
-            return config.useAESIntrinsics;
-        }
-    }
 
     static final long kOffset;
     static final Class<?> AESCryptClass;
@@ -77,12 +56,10 @@ public class AESCryptSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false)
     static void encryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, true);
     }
 
-    @MethodSubstitution(isStatic = false)
     static void decryptBlock(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset) {
         crypt(rcvr, in, inOffset, out, outOffset, false);
     }

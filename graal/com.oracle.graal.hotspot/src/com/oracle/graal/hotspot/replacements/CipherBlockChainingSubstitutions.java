@@ -39,7 +39,6 @@ import com.oracle.graal.word.*;
 /**
  * Substitutions for {@code com.sun.crypto.provider.CipherBlockChaining} methods.
  */
-@ClassSubstitution(className = "com.sun.crypto.provider.CipherBlockChaining", optional = true, defaultGuard = AESCryptSubstitutions.Guard.class)
 public class CipherBlockChainingSubstitutions {
 
     private static final long embeddedCipherOffset;
@@ -67,7 +66,6 @@ public class CipherBlockChainingSubstitutions {
         return AESCryptSubstitutions.AESCryptClass;
     }
 
-    @MethodSubstitution(isStatic = false)
     static int encrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, Kind.Object, LocationIdentity.any());
@@ -80,7 +78,6 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false)
     static int decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object embeddedCipher = UnsafeLoadNode.load(realReceiver, embeddedCipherOffset, Kind.Object, LocationIdentity.any());
