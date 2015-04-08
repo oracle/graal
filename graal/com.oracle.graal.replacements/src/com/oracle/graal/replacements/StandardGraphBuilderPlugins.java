@@ -96,7 +96,10 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, StringSubstitutions.class);
+        Registration r = new Registration(plugins, String.class);
+        r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+
+        r = new Registration(plugins, StringSubstitutions.class);
         r.register1("getValue", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -32,10 +31,8 @@ import edu.umd.cs.findbugs.annotations.*;
 /**
  * Substitutions for {@link java.lang.String} methods.
  */
-@ClassSubstitution(value = java.lang.String.class)
 public class StringSubstitutions {
 
-    @MethodSubstitution(isStatic = false)
     @SuppressFBWarnings(value = "ES_COMPARING_PARAMETER_STRING_WITH_EQ", justification = "reference equality on the receiver is what we want")
     public static boolean equals(final String thisString, Object obj) {
         if (thisString == obj) {

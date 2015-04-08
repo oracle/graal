@@ -38,7 +38,6 @@ public class GraalMethodSubstitutions implements ReplacementsProvider {
 
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
         if (Intrinsify.getValue()) {
-            replacements.registerSubstitutions(String.class, StringSubstitutions.class);
             replacements.registerSubstitutions(Math.class, MathSubstitutionsX86.class);
         }
     }

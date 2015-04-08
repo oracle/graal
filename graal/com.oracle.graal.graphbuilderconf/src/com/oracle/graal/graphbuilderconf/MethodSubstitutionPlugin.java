@@ -149,7 +149,20 @@ public class MethodSubstitutionPlugin implements InvocationPlugin {
     @Override
     public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] argsIncludingReceiver) {
         ResolvedJavaMethod subst = getSubstitute(b.getMetaAccess());
+        if (receiver != null) {
+            receiver.get();
+        }
         b.intrinsify(targetMethod, subst, argsIncludingReceiver);
         return true;
+    }
+
+    public StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
+        Class<?> c = getClass();
+        for (Method m : c.getDeclaredMethods()) {
+            if (m.getName().equals("execute")) {
+                return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
+            }
+        }
+        throw new GraalInternalError("could not find method named \"execute\" in " + c.getName());
     }
 }
