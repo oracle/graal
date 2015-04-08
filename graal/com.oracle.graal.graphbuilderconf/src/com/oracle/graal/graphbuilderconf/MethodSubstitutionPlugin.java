@@ -23,11 +23,12 @@
 package com.oracle.graal.graphbuilderconf;
 
 import java.lang.reflect.*;
+import java.util.*;
+import java.util.stream.*;
 
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
 import com.oracle.graal.nodes.*;
@@ -43,6 +44,7 @@ public class MethodSubstitutionPlugin implements InvocationPlugin {
     private final Class<?> declaringClass;
     private final String name;
     private final Class<?>[] parameters;
+    private final boolean originalIsStatic;
 
     /**
      * Creates a method substitution plugin.
@@ -57,6 +59,7 @@ public class MethodSubstitutionPlugin implements InvocationPlugin {
         this.declaringClass = declaringClass;
         this.name = name;
         this.parameters = parameters;
+        this.originalIsStatic = parameters.length == 0 || parameters[0] != Receiver.class;
     }
 
     /**
@@ -65,7 +68,6 @@ public class MethodSubstitutionPlugin implements InvocationPlugin {
     public ResolvedJavaMethod getSubstitute(MetaAccessProvider metaAccess) {
         if (cachedSubstitute == null) {
             cachedSubstitute = metaAccess.lookupJavaMethod(getJavaSubstitute());
-            assert cachedSubstitute.getAnnotation(MethodSubstitution.class) != null;
         }
         return cachedSubstitute;
     }
@@ -74,19 +76,53 @@ public class MethodSubstitutionPlugin implements InvocationPlugin {
      * Gets the reflection API version of the substitution method.
      */
     Method getJavaSubstitute() throws GraalInternalError {
-        try {
-            Method substituteMethod = declaringClass.getDeclaredMethod(name, parameters);
-            int modifiers = substituteMethod.getModifiers();
-            if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
-            }
-            if (!Modifier.isStatic(modifiers)) {
-                throw new GraalInternalError("Substitution method must be static: " + substituteMethod);
-            }
-            return substituteMethod;
-        } catch (NoSuchMethodException e) {
-            throw new GraalInternalError(e);
+        Method substituteMethod = lookupSubstitute();
+        int modifiers = substituteMethod.getModifiers();
+        if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
+            throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
         }
+        if (!Modifier.isStatic(modifiers)) {
+            throw new GraalInternalError("Substitution method must be static: " + substituteMethod);
+        }
+        return substituteMethod;
+    }
+
+    /**
+     * Determines if a given method is the substitute method of this plugin.
+     */
+    private boolean isSubstitute(Method m) {
+        if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(name)) {
+            if (parameters.length == m.getParameterCount()) {
+                Class<?>[] mparams = m.getParameterTypes();
+                int start = 0;
+                if (!originalIsStatic) {
+                    start = 1;
+                    if (!mparams[0].isAssignableFrom(parameters[0])) {
+                        return false;
+                    }
+                }
+                for (int i = start; i < mparams.length; i++) {
+                    if (mparams[i] != parameters[i]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Gets the substitute method of this plugin.
+     */
+    private Method lookupSubstitute() {
+        for (Method m : declaringClass.getDeclaredMethods()) {
+            if (isSubstitute(m)) {
+                return m;
+            }
+        }
+        throw new GraalInternalError("No method found in %s compatible with the signature (%s)", declaringClass.getName(), Arrays.asList(parameters).stream().map(c -> c.getSimpleName()).collect(
+                        Collectors.joining(",")));
     }
 
     /**
