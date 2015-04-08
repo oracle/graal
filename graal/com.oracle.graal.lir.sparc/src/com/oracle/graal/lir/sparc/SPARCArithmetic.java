@@ -264,9 +264,11 @@ public enum SPARCArithmetic {
             case IMULCC:
                 throw GraalInternalError.unimplemented();
             case IDIV:
+                masm.sra(asRegister(src1), 0, asRegister(src1));
                 masm.sdivx(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IUDIV:
+                masm.srl(asRegister(src1), 0, asRegister(src1));
                 masm.udivx(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IAND:
@@ -398,8 +400,8 @@ public enum SPARCArithmetic {
                 masm.sdivx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IUDIV:
-                masm.signx(asIntReg(src1), asIntReg(src1));
-                masm.signx(asIntReg(src2), asIntReg(src2));
+                masm.srl(asIntReg(src1), 0, asIntReg(src1));
+                masm.srl(asIntReg(src2), 0, asIntReg(src2));
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
                 masm.udivx(asIntReg(src1), asIntReg(src2), asIntReg(dst));
@@ -874,6 +876,8 @@ public enum SPARCArithmetic {
             assert isRegister(x) && isRegister(y) && isRegister(result) && isRegister(scratch);
             switch (opcode) {
                 case IMUL:
+                    masm.sra(asRegister(x), 0, asRegister(x));
+                    masm.sra(asRegister(y), 0, asRegister(y));
                     masm.mulx(asIntReg(x), asIntReg(y), asIntReg(result));
                     masm.srax(asIntReg(result), 32, asIntReg(result));
                     break;
