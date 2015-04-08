@@ -20,13 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.replacements.amd64;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,9 +35,9 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public final class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
+public final class AMD64MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {
 
-    public static final NodeClass<MathIntrinsicNode> TYPE = NodeClass.create(MathIntrinsicNode.class);
+    public static final NodeClass<AMD64MathIntrinsicNode> TYPE = NodeClass.create(AMD64MathIntrinsicNode.class);
     protected final Operation operation;
 
     public enum Operation {
@@ -56,7 +57,7 @@ public final class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRL
         if (c != null) {
             return c;
         }
-        return new MathIntrinsicNode(value, op);
+        return new AMD64MathIntrinsicNode(value, op);
     }
 
     protected static ValueNode tryConstantFold(ValueNode value, Operation op) {
@@ -67,14 +68,15 @@ public final class MathIntrinsicNode extends UnaryNode implements ArithmeticLIRL
         return null;
     }
 
-    protected MathIntrinsicNode(ValueNode value, Operation op) {
+    protected AMD64MathIntrinsicNode(ValueNode value, Operation op) {
         super(TYPE, StampFactory.forKind(Kind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator lirGen) {
+        AMD64ArithmeticLIRGenerator gen = (AMD64ArithmeticLIRGenerator) lirGen;
         Value input = builder.operand(getValue());
         Value result;
         switch (operation()) {

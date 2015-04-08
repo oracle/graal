@@ -73,7 +73,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
  */
-public abstract class AMD64LIRGenerator extends LIRGenerator {
+public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64ArithmeticLIRGenerator {
 
     private static final RegisterValue RCX_I = AMD64.rcx.asValue(LIRKind.value(Kind.Int));
 

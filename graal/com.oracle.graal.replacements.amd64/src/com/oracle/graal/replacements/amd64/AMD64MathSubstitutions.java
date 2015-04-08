@@ -20,28 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.replacements.amd64;
+
+import static com.oracle.graal.compiler.target.Backend.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.replacements.nodes.*;
-import com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation;
+import com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation;
 
 /**
- * Substitutions for {@link java.lang.Math} methods.
+ * Substitutions for some {@link java.lang.Math} methods that leverage AMD64 instructions for
+ * selected input values.
  */
-@ClassSubstitution(value = java.lang.Math.class)
-public class MathSubstitutionsX86 {
+public class AMD64MathSubstitutions {
 
     private static final double PI_4 = Math.PI / 4;
 
     /**
      * Special cases from {@link Math#pow} and __ieee754_pow (in sharedRuntimeTrans.cpp).
      */
-    @MethodSubstitution(guard = MathGuard.class)
     public static double pow(double x, double y) {
         // If the second argument is positive or negative zero, then the result is 1.0.
         if (y == 0.0D) {
@@ -86,45 +85,29 @@ public class MathSubstitutionsX86 {
     // accurate within [-pi/4, pi/4]. Examine the passed value and provide
     // a slow path for inputs outside of that interval.
 
-    @MethodSubstitution(guard = MathGuard.class)
     public static double sin(double x) {
         if (Math.abs(x) < PI_4) {
-            return MathIntrinsicNode.compute(x, Operation.SIN);
+            return AMD64MathIntrinsicNode.compute(x, Operation.SIN);
         } else {
             return callDouble1(ARITHMETIC_SIN, x);
         }
     }
 
-    @MethodSubstitution(guard = MathGuard.class)
     public static double cos(double x) {
         if (Math.abs(x) < PI_4) {
-            return MathIntrinsicNode.compute(x, Operation.COS);
+            return AMD64MathIntrinsicNode.compute(x, Operation.COS);
         } else {
             return callDouble1(ARITHMETIC_COS, x);
         }
     }
 
-    @MethodSubstitution(guard = MathGuard.class)
     public static double tan(double x) {
         if (Math.abs(x) < PI_4) {
-            return MathIntrinsicNode.compute(x, Operation.TAN);
+            return AMD64MathIntrinsicNode.compute(x, Operation.TAN);
         } else {
             return callDouble1(ARITHMETIC_TAN, x);
         }
     }
-
-    public static class MathGuard implements SubstitutionGuard {
-        public boolean execute() {
-            // FIXME should return whether the current compilation target supports these
-            String arch = System.getProperty("os.arch");
-            return arch.equals("amd64") || arch.equals("x86_64");
-        }
-    }
-
-    public static final ForeignCallDescriptor ARITHMETIC_SIN = new ForeignCallDescriptor("arithmeticSin", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_COS = new ForeignCallDescriptor("arithmeticCos", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_TAN = new ForeignCallDescriptor("arithmeticTan", double.class, double.class);
-    public static final ForeignCallDescriptor ARITHMETIC_POW = new ForeignCallDescriptor("arithmeticPow", double.class, double.class, double.class);
 
     @NodeIntrinsic(value = ForeignCallNode.class, setStampFromReturnType = true)
     private static native double callDouble1(@ConstantNodeParameter ForeignCallDescriptor descriptor, double value);

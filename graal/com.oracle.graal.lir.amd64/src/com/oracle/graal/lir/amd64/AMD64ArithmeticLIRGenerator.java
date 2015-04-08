@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
- * Method substitutions that are VM-independent.
+ * This interface can be used to generate AMD64 LIR for arithmetic operations.
  */
-@ServiceProvider(ReplacementsProvider.class)
-public class GraalMethodSubstitutions implements ReplacementsProvider {
+public interface AMD64ArithmeticLIRGenerator {
 
-    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
-        if (Intrinsify.getValue()) {
-            replacements.registerSubstitutions(Math.class, MathSubstitutionsX86.class);
-        }
-    }
+    Value emitMathLog(Value input, boolean base10);
+
+    Value emitMathCos(Value input);
+
+    Value emitMathSin(Value input);
+
+    Value emitMathTan(Value input);
 }

@@ -44,7 +44,6 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
 import static com.oracle.graal.replacements.Log.*;
-import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
 
 import java.util.*;
 

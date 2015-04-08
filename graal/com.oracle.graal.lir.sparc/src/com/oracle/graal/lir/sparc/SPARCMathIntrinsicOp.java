@@ -35,11 +35,6 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
 
     public enum IntrinsicOpcode {
         SQRT,
-        SIN,
-        COS,
-        TAN,
-        LOG,
-        LOG10,
         ABS
     }
 
@@ -83,11 +78,6 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
                         GraalInternalError.shouldNotReachHere();
                 }
                 break;
-            case LOG:
-            case LOG10:
-            case SIN:
-            case COS:
-            case TAN:
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

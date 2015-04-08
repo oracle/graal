@@ -301,17 +301,6 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register2("pow", Double.TYPE, Double.TYPE, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                ValueNode folded = MathPowNode.tryFold(x, y);
-                if (folded != null) {
-                    b.addPush(Kind.Double, folded);
-                } else {
-                    b.addPush(Kind.Double, new MathPowNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), x, y));
-                }
-                return true;
-            }
-        });
     }
 
     public static class UnsignedMathPlugin implements InvocationPlugin {

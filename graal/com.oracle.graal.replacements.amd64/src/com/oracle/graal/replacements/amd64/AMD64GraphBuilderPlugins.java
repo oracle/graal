@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import static com.oracle.graal.replacements.nodes.MathIntrinsicNode.Operation.*;
+import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.*;
 import sun.misc.*;
 
 import com.oracle.graal.amd64.*;
@@ -34,7 +34,6 @@ import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.nodes.*;
 
 public class AMD64GraphBuilderPlugins {
 
@@ -86,16 +85,20 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, Math.class);
         r.register1("log", Double.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(Kind.Double, b.recursiveAppend(MathIntrinsicNode.create(value, LOG)));
+                b.push(Kind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG)));
                 return true;
             }
         });
         r.register1("log10", Double.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(Kind.Double, b.recursiveAppend(MathIntrinsicNode.create(value, LOG10)));
+                b.push(Kind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG10)));
                 return true;
             }
         });
+        r.registerMethodSubstitution(AMD64MathSubstitutions.class, "sin", double.class);
+        r.registerMethodSubstitution(AMD64MathSubstitutions.class, "cos", double.class);
+        r.registerMethodSubstitution(AMD64MathSubstitutions.class, "tan", double.class);
+        r.registerMethodSubstitution(AMD64MathSubstitutions.class, "pow", double.class, double.class);
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins) {

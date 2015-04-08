@@ -87,12 +87,4 @@ public interface ArithmeticLIRGenerator {
     Value emitMathAbs(Value input);
 
     Value emitMathSqrt(Value input);
-
-    Value emitMathLog(Value input, boolean base10);
-
-    Value emitMathCos(Value input);
-
-    Value emitMathSin(Value input);
-
-    Value emitMathTan(Value input);
 }
