@@ -53,6 +53,9 @@ public class SPARCGraphBuilderPlugins {
         r.register1("sin", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_SIN));
         r.register1("cos", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_COS));
         r.register1("tan", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_TAN));
+        r.register1("exp", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_EXP));
+        r.register1("log", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_LOG));
+        r.register1("log10", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_LOG10));
         r.register2("pow", Double.TYPE, Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_POW));
     }
 }

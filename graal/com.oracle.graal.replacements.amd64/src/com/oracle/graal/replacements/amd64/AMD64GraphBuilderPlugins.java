@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.compiler.target.Backend.*;
 import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.*;
 import sun.misc.*;
 
 import com.oracle.graal.amd64.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.*;
@@ -37,12 +39,12 @@ import com.oracle.graal.replacements.*;
 
 public class AMD64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, AMD64 arch) {
+    public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, AMD64 arch) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, Kind.Int, arch);
         registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, Kind.Long, arch);
         registerUnsafePlugins(invocationPlugins);
-        registerMathPlugins(invocationPlugins);
+        registerMathPlugins(invocationPlugins, foreignCalls);
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, Kind kind, AMD64 arch) {
@@ -81,7 +83,7 @@ public class AMD64GraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins) {
+    private static void registerMathPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, Math.class);
         r.register1("log", Double.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -99,6 +101,7 @@ public class AMD64GraphBuilderPlugins {
         r.registerMethodSubstitution(AMD64MathSubstitutions.class, "cos", double.class);
         r.registerMethodSubstitution(AMD64MathSubstitutions.class, "tan", double.class);
         r.registerMethodSubstitution(AMD64MathSubstitutions.class, "pow", double.class, double.class);
+        r.register1("exp", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_EXP));
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins) {
