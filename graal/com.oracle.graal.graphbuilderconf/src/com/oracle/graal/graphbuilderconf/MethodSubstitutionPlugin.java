@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.*;
  * {@linkplain #getSubstitute(MetaAccessProvider) substitute} method. A substitute method must be
  * static even if the substituted method is not.
  */
-public class MethodSubstitutionPlugin implements InvocationPlugin {
+public final class MethodSubstitutionPlugin implements InvocationPlugin {
 
     private ResolvedJavaMethod cachedSubstitute;
     private final Class<?> declaringClass;

@@ -28,10 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 
 public class SPARCGraphBuilderPlugins {
@@ -51,31 +48,11 @@ public class SPARCGraphBuilderPlugins {
         r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
     }
 
-    static class MathRuntimeCallPlugin implements InvocationPlugin {
-        private final ForeignCallsProvider foreignCalls;
-        private final ForeignCallDescriptor descriptor;
-
-        public MathRuntimeCallPlugin(ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor) {
-            this.foreignCalls = foreignCalls;
-            this.descriptor = descriptor;
-        }
-
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-            b.addPush(new ForeignCallNode(foreignCalls, descriptor, value));
-            return true;
-        }
-
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-            b.addPush(new ForeignCallNode(foreignCalls, descriptor, x, y));
-            return true;
-        }
-    }
-
     private static void registerMathPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, Math.class);
-        r.register1("sin", Double.TYPE, new MathRuntimeCallPlugin(foreignCalls, ARITHMETIC_SIN));
-        r.register1("cos", Double.TYPE, new MathRuntimeCallPlugin(foreignCalls, ARITHMETIC_COS));
-        r.register1("tan", Double.TYPE, new MathRuntimeCallPlugin(foreignCalls, ARITHMETIC_TAN));
-        r.register2("pow", Double.TYPE, Double.TYPE, new MathRuntimeCallPlugin(foreignCalls, ARITHMETIC_POW));
+        r.register1("sin", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_SIN));
+        r.register1("cos", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_COS));
+        r.register1("tan", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_TAN));
+        r.register2("pow", Double.TYPE, Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_POW));
     }
 }

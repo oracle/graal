@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 
 import java.lang.invoke.*;
 
@@ -31,9 +32,8 @@ import sun.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.hotspot.*;
@@ -163,18 +163,8 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerSystemPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, System.class);
-        r.register0("currentTimeMillis", new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(Kind.Long, new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_MILLIS, StampFactory.forKind(Kind.Long)));
-                return true;
-            }
-        });
-        r.register0("nanoTime", new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(Kind.Long, new ForeignCallNode(foreignCalls, SystemSubstitutions.JAVA_TIME_NANOS, StampFactory.forKind(Kind.Long)));
-                return true;
-            }
-        });
+        r.register0("currentTimeMillis", new ForeignCallPlugin(foreignCalls, JAVA_TIME_MILLIS));
+        r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(new SystemIdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));

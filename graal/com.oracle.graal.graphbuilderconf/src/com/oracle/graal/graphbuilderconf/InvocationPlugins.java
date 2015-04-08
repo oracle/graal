@@ -421,6 +421,9 @@ public class InvocationPlugins {
         }
 
         public static boolean check(InvocationPlugins plugins, MethodInfo method, InvocationPlugin plugin) {
+            if (plugin instanceof ForeignCallPlugin) {
+                return true;
+            }
             if (plugin instanceof MethodSubstitutionPlugin) {
                 MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
                 msplugin.getJavaSubstitute();
