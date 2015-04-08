@@ -268,6 +268,42 @@ public class PartialEvaluator {
 
         // recompute loop frequencies now that BranchProbabilities have had time to canonicalize
         ComputeLoopFrequenciesClosure.compute(graph);
+
+        if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
+            reportPerformanceWarnings(graph);
+        }
+    }
+
+    private static void reportPerformanceWarnings(StructuredGraph graph) {
+        ArrayList<ValueNode> warnings = new ArrayList<>();
+        for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
+                TracePerformanceWarningsListener.logPerformanceWarning(String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
+                warnings.add(call);
+            }
+        }
+
+        for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
+            if (cast.type().findLeafConcreteSubtype() == null) {
+                TracePerformanceWarningsListener.logPerformanceWarning(String.format("non-leaf type checkcast: %s (%s)", cast.type().getName(), cast), null);
+                warnings.add(cast);
+            }
+        }
+
+        for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
+            if (instanceOf.type().findLeafConcreteSubtype() == null) {
+                TracePerformanceWarningsListener.logPerformanceWarning(String.format("non-leaf type instanceof: %s (%s)", instanceOf.type().getName(), instanceOf), null);
+                warnings.add(instanceOf);
+            }
+        }
+
+        if (Debug.isEnabled() && !warnings.isEmpty()) {
+            try (Scope s = Debug.scope("TrufflePerformanceWarnings", graph)) {
+                Debug.dump(graph, "performance warnings %s", warnings);
+            } catch (Throwable t) {
+                Debug.handle(t);
+            }
+        }
     }
 
     public StructuredGraph createRootGraph(StructuredGraph graph) {
