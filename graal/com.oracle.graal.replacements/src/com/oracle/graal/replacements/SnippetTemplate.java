@@ -1003,13 +1003,13 @@ public class SnippetTemplate {
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
             if (locationIdentity.isAny()) {
                 assert !(memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
+                // if the replacee kills ANY_LOCATION, the snippet can kill arbitrary locations
+                return true;
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
-            return true;
+            kills.remove(locationIdentity);
         }
         assert !(replacee instanceof MemoryCheckpoint.Multi) : replacee + " multi not supported (yet)";
-
-        Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). You might want %s to be a MemoryCheckpoint", replacee, kills, replacee);
 
         // remove ANY_LOCATION if it's just a kill by the start node
         if (memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) {
@@ -1019,24 +1019,26 @@ public class SnippetTemplate {
         // node can only lower to a ANY_LOCATION kill if the replacee also kills ANY_LOCATION
         assert !kills.contains(any()) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
 
-        /*
-         * kills to other locations than ANY_LOCATION can be still inserted if there aren't any
-         * floating reads accessing this locations. Example: In HotSpot, InstanceOfNode is lowered
-         * to a snippet containing a write to SECONDARY_SUPER_CACHE_LOCATION. This is runtime
-         * specific, so the runtime independent InstanceOfNode can not kill this location. However,
-         * if no FloatingReadNode is reading from this location, the kill to this location is fine.
-         */
-        for (FloatingReadNode frn : replacee.graph().getNodes().filter(FloatingReadNode.class)) {
-            LocationIdentity locationIdentity = frn.location().getLocationIdentity();
-            if (SnippetCounters.getValue()) {
-                // accesses to snippet counters are artificially introduced and violate the memory
-                // semantics.
-                if (locationIdentity.equals(SnippetCounter.SNIPPET_COUNTER_LOCATION)) {
-                    continue;
-                }
-            }
-            assert !kills.contains(locationIdentity) : frn + " reads from location \"" + locationIdentity + "\" but " + replacee + " does not kill this location";
+        if (SnippetCounters.getValue()) {
+            /*
+             * accesses to snippet counters are artificially introduced and violate the memory
+             * semantics.
+             */
+            kills.remove(SnippetCounter.SNIPPET_COUNTER_LOCATION);
         }
+
+        /*
+         * Kills to private locations are safe, since there can be no floating read to these
+         * locations except reads that are introduced by the snippet itself or related snippets in
+         * the same lowering round. These reads are anchored to a MemoryAnchor at the beginning of
+         * their snippet, so they can not float above a kill in another instance of the same
+         * snippet.
+         */
+        for (LocationIdentity p : this.info.privateLocations) {
+            kills.remove(p);
+        }
+
+        assert kills.isEmpty() : "snippet graph kills non-private locations " + Arrays.toString(kills.toArray()) + " that replacee (" + replacee + ") doesn't kill";
         return true;
     }
 

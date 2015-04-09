@@ -407,7 +407,7 @@ public class NewObjectSnippets implements Snippets {
                         TLAB_END_LOCATION);
         private final SnippetInfo allocateInstanceDynamic = snippet(NewObjectSnippets.class, "allocateInstanceDynamic", INIT_LOCATION, MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                         TLAB_END_LOCATION);
-        private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray", INIT_LOCATION);
+        private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray", INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo verifyHeap = snippet(NewObjectSnippets.class, "verifyHeap");
 
         public Templates(HotSpotProviders providers, TargetDescription target) {
