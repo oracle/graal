@@ -170,6 +170,10 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
+            if (invoke.bci() < 0) {
+                throw new GraalInternalError("%s: cannot lower to invoke with invalid BCI: %s", graph(), this);
+            }
+
             if (invoke.stateAfter() == null) {
                 ResolvedJavaMethod method = graph().method();
                 if (method.getAnnotation(MethodSubstitution.class) != null || method.getAnnotation(Snippet.class) != null) {
