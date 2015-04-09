@@ -219,7 +219,7 @@ public class PartialEvaluator {
                         GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
                     }
 
-                    Object callNode = builder.getSnippetReflection().asObject(Object.class, (JavaConstant) arg1.asConstant());
+                    Object callNode = snippetReflection.asObject(Object.class, (JavaConstant) arg1.asConstant());
                     if (callNode instanceof OptimizedDirectCallNode) {
                         OptimizedDirectCallNode directCallNode = (OptimizedDirectCallNode) callNode;
                         lastDirectCallNode = directCallNode;

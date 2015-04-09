@@ -27,6 +27,8 @@ import static java.lang.Character.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -49,9 +51,9 @@ import com.oracle.truffle.api.frame.*;
  * Provides {@link InvocationPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
 
-        registerOptimizedAssumptionPlugins(plugins, canDelayIntrinsification);
+        registerOptimizedAssumptionPlugins(plugins, canDelayIntrinsification, snippetReflection);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
@@ -66,13 +68,13 @@ public class TruffleGraphBuilderPlugins {
 
     }
 
-    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
+    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
         InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
                     Constant constant = receiver.get().asConstant();
-                    OptimizedAssumption assumption = b.getSnippetReflection().asObject(OptimizedAssumption.class, (JavaConstant) constant);
+                    OptimizedAssumption assumption = snippetReflection.asObject(OptimizedAssumption.class, (JavaConstant) constant);
                     if (assumption.isValid()) {
                         if (targetMethod.getName().equals("isValid")) {
                             b.addPush(ConstantNode.forBoolean(true));

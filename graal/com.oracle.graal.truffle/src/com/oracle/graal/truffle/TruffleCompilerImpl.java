@@ -76,7 +76,7 @@ public class TruffleCompilerImpl {
         StringIndexOutOfBoundsException.class,
         ClassCastException.class
     };
-    // @formatter:off
+    // @formatter:on
 
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
@@ -97,10 +97,12 @@ public class TruffleCompilerImpl {
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         InvocationPlugins invocationPlugins = new InvocationPlugins(phase.getGraphBuilderConfig().getPlugins().getInvocationPlugins());
         Plugins plugins = new Plugins(invocationPlugins);
+        SnippetReflectionProvider snippetReflection = Graal.getRequiredCapability(SnippetReflectionProvider.class);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, snippetReflection);
 
         this.config = GraphBuilderConfiguration.getDefault(plugins).withSkippedExceptionTypes(skippedExceptionTypes);
 
-        this.partialEvaluator = new PartialEvaluator(providers, config, Graal.getRequiredCapability(SnippetReflectionProvider.class));
+        this.partialEvaluator = new PartialEvaluator(providers, config, snippetReflection);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
@@ -161,8 +163,8 @@ public class TruffleCompilerImpl {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), graphBuilderSuite, Optimizations, getProfilingInfo(graph), speculationLog, suites,
-                            lirSuites, compilationResult, CompilationResultBuilderFactory.Default);
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), graphBuilderSuite, Optimizations, getProfilingInfo(graph), speculationLog, suites, lirSuites,
+                            compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
