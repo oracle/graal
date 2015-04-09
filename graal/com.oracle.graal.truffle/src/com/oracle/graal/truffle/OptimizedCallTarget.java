@@ -163,12 +163,23 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public final Object callDirect(Object... args) {
         compilationProfile.reportDirectCall();
         profileArguments(args);
-        Object result = doInvoke(args);
-        Class<?> klass = profiledReturnType;
-        if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
-            result = FrameWithoutBoxing.unsafeCast(result, klass, true, true);
+        try {
+            Object result = doInvoke(args);
+            Class<?> klass = profiledReturnType;
+            if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
+                result = FrameWithoutBoxing.unsafeCast(result, klass, true, true);
+            }
+            return result;
+        } catch (Throwable t) {
+            t = exceptionProfile.profile(t);
+            if (t instanceof RuntimeException) {
+                throw (RuntimeException) t;
+            } else if (t instanceof Error) {
+                throw (Error) t;
+            } else {
+                throw new RuntimeException(t);
+            }
         }
-        return result;
     }
 
     public final Object callInlined(Object... arguments) {
@@ -238,18 +249,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     protected Object doInvoke(Object[] args) {
-        try {
-            return callBoundary(args);
-        } catch (Throwable t) {
-            t = exceptionProfile.profile(t);
-            if (t instanceof RuntimeException) {
-                throw (RuntimeException) t;
-            } else if (t instanceof Error) {
-                throw (Error) t;
-            } else {
-                throw new RuntimeException(t);
-            }
-        }
+        return callBoundary(args);
     }
 
     @TruffleCallBoundary
