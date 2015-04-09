@@ -181,7 +181,7 @@ public class PartialEvaluator {
             this.loopExplosionPlugin = loopExplosionPlugin;
         }
 
-        private boolean hasMethodHandleArgument(GraphBuilderContext builder, ValueNode[] arguments) {
+        private boolean hasMethodHandleArgument(ValueNode[] arguments) {
             /*
              * We want to process invokes that have a constant MethodHandle parameter. And the
              * method must be statically bound, otherwise we do not have a single target method.
@@ -189,7 +189,7 @@ public class PartialEvaluator {
             for (ValueNode argument : arguments) {
                 if (argument.isConstant()) {
                     JavaConstant constant = argument.asJavaConstant();
-                    if (constant.getKind() == Kind.Object && builder.getSnippetReflection().asObject(MethodHandle.class, constant) != null) {
+                    if (constant.getKind() == Kind.Object && snippetReflection.asObject(MethodHandle.class, constant) != null) {
                         return true;
                     }
                 }
@@ -239,7 +239,7 @@ public class PartialEvaluator {
             }
 
             if (duringParsing && (!original.hasBytecodes() || original.getCode().length >= TrivialInliningSize.getValue() || builder.getDepth() >= InlineDuringParsingMaxDepth.getValue()) &&
-                            !hasMethodHandleArgument(builder, arguments)) {
+                            !hasMethodHandleArgument(arguments)) {
                 return null;
             }
             return new InlineInfo(original, false, false);
@@ -271,7 +271,7 @@ public class PartialEvaluator {
     protected void doFastPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, false);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, false, snippetReflection);
 
         newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
@@ -285,8 +285,7 @@ public class PartialEvaluator {
         }
         plugins.setInlineInvokePlugin(inlinePlugin);
         plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig,
-                        TruffleCompilerImpl.Optimizations, null).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig, TruffleCompilerImpl.Optimizations, null).apply(graph);
         if (PrintTruffleExpansionHistogram.getValue()) {
             ((HistogramInlineInvokePlugin) inlinePlugin).print(callTarget, System.out);
         }
@@ -295,7 +294,7 @@ public class PartialEvaluator {
     protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), parsingInvocationPlugins, true);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), parsingInvocationPlugins, true, snippetReflection);
 
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
 
@@ -306,12 +305,12 @@ public class PartialEvaluator {
         plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         plugins.setInlineInvokePlugin(new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements(), true, parsingInvocationPlugins, loopExplosionPlugin));
 
-        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, snippetReflection, newConfig, AllowAssumptions.from(graph.getAssumptions() != null));
+        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, AllowAssumptions.from(graph.getAssumptions() != null));
 
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
 
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(providers.getMetaAccess());
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false);
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false, snippetReflection);
         InlineInvokePlugin decodingInlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements(), false, decodingInvocationPlugins, loopExplosionPlugin);
         if (PrintTruffleExpansionHistogram.getValue()) {
             decodingInlinePlugin = new HistogramInlineInvokePlugin(graph, decodingInlinePlugin);

@@ -29,7 +29,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -62,7 +61,6 @@ public abstract class PEGraphDecoder extends GraphDecoder {
     protected final MetaAccessProvider metaAccess;
     protected final ConstantReflectionProvider constantReflection;
     protected final StampProvider stampProvider;
-    protected final SnippetReflectionProvider snippetReflection;
 
     protected class PEMethodScope extends MethodScope {
         protected final ResolvedJavaMethod method;
@@ -143,11 +141,6 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         }
 
         @Override
-        public SnippetReflectionProvider getSnippetReflection() {
-            return snippetReflection;
-        }
-
-        @Override
         public StructuredGraph getGraph() {
             return methodScope.graph;
         }
@@ -179,6 +172,11 @@ public abstract class PEGraphDecoder extends GraphDecoder {
 
         @Override
         public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+            throw unimplemented();
+        }
+
+        @Override
+        public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
             throw unimplemented();
         }
 
@@ -276,11 +274,10 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         }
     }
 
-    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, SnippetReflectionProvider snippetReflection) {
+    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.stampProvider = stampProvider;
-        this.snippetReflection = snippetReflection;
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -377,7 +374,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
 
         PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(methodScope, invoke, invokePredecessor);
         InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
-        if (InvocationPlugin.execute(graphBuilderContext, targetMethod, invocationPlugin, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
+        if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
 
             if (graphBuilderContext.lastInstr != null) {
                 registerNode(loopScope, invokeOrderId, graphBuilderContext.pushedNode, true, true);
