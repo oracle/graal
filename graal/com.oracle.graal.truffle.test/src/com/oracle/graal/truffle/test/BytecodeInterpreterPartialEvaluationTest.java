@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.truffle.api.*;
@@ -155,11 +157,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         return 42;
     }
 
-    private static void assertReturns42(Program program) {
+    private static void assertReturns42(RootNode program) {
         Assert.assertEquals(Integer.valueOf(42), Truffle.getRuntime().createCallTarget(program).call());
     }
 
-    private void assertPartialEvalEqualsAndRunsCorrect(Program program) {
+    private void assertPartialEvalEqualsAndRunsCorrect(RootNode program) {
         assertReturns42(program);
         assertPartialEvalEquals("constant42", program);
     }
@@ -316,5 +318,214 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         /* 43: */42,
         /* 44: */Bytecode.RETURN};
         assertPartialEvalEqualsAndRunsCorrect(new Program("manyIfsProgram", bytecodes, 0, 3));
+    }
+
+    public abstract static class Inst {
+        public abstract boolean execute(VirtualFrame frame);
+
+        public abstract int getTrueSucc();
+
+        public abstract int getFalseSucc();
+
+        public static class Const extends Inst {
+            private final FrameSlot slot;
+            private final int value;
+            private final int next;
+
+            public Const(FrameSlot slot, int value, int next) {
+                this.slot = slot;
+                this.value = value;
+                this.next = next;
+            }
+
+            @Override
+            public boolean execute(VirtualFrame frame) {
+                frame.setInt(slot, value);
+                return true;
+            }
+
+            @Override
+            public int getTrueSucc() {
+                return next;
+            }
+
+            @Override
+            public int getFalseSucc() {
+                return next;
+            }
+        }
+
+        public static class Return extends Inst {
+            public Return() {
+            }
+
+            @Override
+            public boolean execute(VirtualFrame frame) {
+                return true;
+            }
+
+            @Override
+            public int getTrueSucc() {
+                return -1;
+            }
+
+            @Override
+            public int getFalseSucc() {
+                return -1;
+            }
+        }
+
+        public static class IfZero extends Inst {
+            private final FrameSlot slot;
+            private final int thenInst;
+            private final int elseInst;
+
+            public IfZero(FrameSlot slot, int thenInst, int elseInst) {
+                this.slot = slot;
+                this.thenInst = thenInst;
+                this.elseInst = elseInst;
+            }
+
+            @Override
+            public boolean execute(VirtualFrame frame) {
+                return (FrameUtil.getIntSafe(frame, slot) == 0);
+            }
+
+            @Override
+            public int getTrueSucc() {
+                return thenInst;
+            }
+
+            @Override
+            public int getFalseSucc() {
+                return elseInst;
+            }
+        }
+
+        public static class IfLt extends Inst {
+            private final FrameSlot slot1;
+            private final FrameSlot slot2;
+            private final int thenInst;
+            private final int elseInst;
+
+            public IfLt(FrameSlot slot1, FrameSlot slot2, int thenInst, int elseInst) {
+                this.slot1 = slot1;
+                this.slot2 = slot2;
+                this.thenInst = thenInst;
+                this.elseInst = elseInst;
+            }
+
+            @Override
+            public boolean execute(VirtualFrame frame) {
+                return (FrameUtil.getIntSafe(frame, slot1) < FrameUtil.getIntSafe(frame, slot2));
+            }
+
+            @Override
+            public int getTrueSucc() {
+                return thenInst;
+            }
+
+            @Override
+            public int getFalseSucc() {
+                return elseInst;
+            }
+        }
+    }
+
+    public static class InstArrayProgram extends RootNode {
+        private final String name;
+        @CompilationFinal protected final Inst[] inst;
+        protected final FrameSlot returnSlot;
+
+        public InstArrayProgram(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
+            super(null, fd);
+            this.name = name;
+            this.inst = inst;
+            this.returnSlot = returnSlot;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+
+        @Override
+        @ExplodeLoop(merge = true)
+        public Object execute(VirtualFrame frame) {
+            int ip = 0;
+            while (ip != -1) {
+                CompilerAsserts.partialEvaluationConstant(ip);
+                if (inst[ip].execute(frame)) {
+                    ip = inst[ip].getTrueSucc();
+                } else {
+                    ip = inst[ip].getFalseSucc();
+                }
+            }
+            return FrameUtil.getIntSafe(frame, returnSlot);
+        }
+    }
+
+    @Test
+    public void instArraySimpleIfProgram() {
+        FrameDescriptor fd = new FrameDescriptor();
+        FrameSlot valueSlot = fd.addFrameSlot("value", FrameSlotKind.Int);
+        FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
+        Inst[] inst = new Inst[]{
+        /* 0: */new Inst.Const(valueSlot, 1, 1),
+        /* 1: */new Inst.IfZero(valueSlot, 2, 4),
+        /* 2: */new Inst.Const(returnSlot, 41, 3),
+        /* 3: */new Inst.Return(),
+        /* 4: */new Inst.Const(returnSlot, 42, 5),
+        /* 5: */new Inst.Return()};
+        assertPartialEvalEqualsAndRunsCorrect(new InstArrayProgram("instArraySimpleIfProgram", inst, returnSlot, fd));
+    }
+
+    /**
+     * Slightly modified version to expose a partial evaluation bug with ExplodeLoop(merge=true).
+     */
+    public static class InstArrayProgram2 extends InstArrayProgram {
+        public InstArrayProgram2(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
+            super(name, inst, returnSlot, fd);
+        }
+
+        @Override
+        @ExplodeLoop(merge = true)
+        public Object execute(VirtualFrame frame) {
+            int ip = 0;
+            while (ip != -1) {
+                CompilerAsserts.partialEvaluationConstant(ip);
+                if (inst[ip].execute(frame)) {
+                    ip = inst[ip].getTrueSucc();
+                } else {
+                    ip = inst[ip].getFalseSucc();
+                }
+            }
+            if (frame.getArguments().length > 0) {
+                return new Random();
+            } else {
+                return FrameUtil.getIntSafe(frame, returnSlot);
+            }
+        }
+    }
+
+    @Ignore("produces a bad graph")
+    @Test
+    public void instArraySimpleIfProgram2() {
+        FrameDescriptor fd = new FrameDescriptor();
+        FrameSlot value1Slot = fd.addFrameSlot("value1", FrameSlotKind.Int);
+        FrameSlot value2Slot = fd.addFrameSlot("value2", FrameSlotKind.Int);
+        FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
+        Inst[] inst = new Inst[]{
+        /* 0: */new Inst.Const(value1Slot, 100, 1),
+        /* 1: */new Inst.Const(value2Slot, 100, 2),
+        /* 2: */new Inst.IfLt(value1Slot, value2Slot, 3, 5),
+        /* 3: */new Inst.Const(returnSlot, 41, 4),
+        /* 4: */new Inst.Return(),
+        /* 5: */new Inst.Const(returnSlot, 42, 6),
+        /* 6: */new Inst.Return()};
+        InstArrayProgram program = new InstArrayProgram2("instArraySimpleIfProgram2", inst, returnSlot, fd);
+        program.execute(Truffle.getRuntime().createVirtualFrame(new Object[0], fd));
+        program.execute(Truffle.getRuntime().createVirtualFrame(new Object[1], fd));
+        assertPartialEvalEqualsAndRunsCorrect(program);
     }
 }
