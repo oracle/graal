@@ -48,6 +48,10 @@ public class GraalInternalError extends Error {
         throw new GraalInternalError("should not reach here: %s", msg);
     }
 
+    public static RuntimeException shouldNotReachHere(Throwable cause) {
+        throw new GraalInternalError(cause);
+    }
+
     /**
      * Checks a given condition and throws a {@link GraalInternalError} if it is false. Guarantees
      * are stronger than assertions in that they are always checked. Error messages for guarantee
