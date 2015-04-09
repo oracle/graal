@@ -725,7 +725,7 @@ public class SnippetTemplate {
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        new FloatingReadPhase(false, true).apply(snippetCopy);
+        new FloatingReadPhase(true, true).apply(snippetCopy);
 
         MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode());
         snippetCopy.start().replaceAtUsages(InputType.Memory, anchor);
