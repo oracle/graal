@@ -100,12 +100,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), receiver.get()));
-                return true;
-            }
-        });
+        r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 
     private static void registerClassPlugins(InvocationPlugins plugins) {
