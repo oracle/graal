@@ -322,6 +322,10 @@ public final class CompileTheWorld {
                         continue;
                     }
 
+                    if (dottedClassName.startsWith("jdk.management.") || dottedClassName.startsWith("jdk.internal.cmm.*")) {
+                        continue;
+                    }
+
                     try {
                         // Load and initialize class
                         Class<?> javaClass = Class.forName(dottedClassName, true, loader);
