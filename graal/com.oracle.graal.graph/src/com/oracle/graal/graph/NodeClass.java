@@ -23,6 +23,7 @@
 package com.oracle.graal.graph;
 
 import static com.oracle.graal.compiler.common.Fields.*;
+import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.graph.Edges.*;
 import static com.oracle.graal.graph.InputEdges.*;
 import static com.oracle.graal.graph.Node.*;
@@ -663,22 +664,16 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     /**
-     * Initializes a fresh allocated node for which no constructor is called yet. Needed to
-     * implement node factories in svm.
+     * Returns a newly allocated node for which no subclass-specific constructor has been called.
      */
-    public void initRawNode(Node node) {
-        node.init();
-        initNullEdgeLists(node, Edges.Type.Inputs);
-        initNullEdgeLists(node, Edges.Type.Successors);
-    }
-
-    private void initNullEdgeLists(Node node, Edges.Type type) {
-        Edges edges = getEdges(type);
-        final long[] curOffsets = edges.getOffsets();
-        for (int inputPos = edges.getDirectCount(); inputPos < edges.getCount(); inputPos++) {
-            if (Edges.getNodeList(node, curOffsets, inputPos) == null) {
-                Edges.initializeList(node, curOffsets, inputPos, type == Edges.Type.Inputs ? new NodeInputList<>(node) : new NodeSuccessorList<>(node));
-            }
+    @SuppressWarnings("unchecked")
+    public Node allocateInstance() {
+        try {
+            Node node = (Node) UnsafeAccess.unsafe.allocateInstance(getJavaClass());
+            node.init((NodeClass<? extends Node>) this);
+            return node;
+        } catch (InstantiationException ex) {
+            throw shouldNotReachHere(ex);
         }
     }
 

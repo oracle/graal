@@ -63,6 +63,42 @@ public class InvocationPlugins {
         }
     }
 
+    public static class InvocationPluginReceiver implements Receiver {
+        private final GraphBuilderContext parser;
+        private ValueNode[] args;
+        private ValueNode value;
+
+        public InvocationPluginReceiver(GraphBuilderContext parser) {
+            this.parser = parser;
+        }
+
+        @Override
+        public ValueNode get() {
+            assert args != null : "Cannot get the receiver of a static method";
+            if (value == null) {
+                value = parser.nullCheckedValue(args[0]);
+                if (value != args[0]) {
+                    args[0] = value;
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public boolean isConstant() {
+            return args[0].isConstant();
+        }
+
+        public InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
+            if (!targetMethod.isStatic()) {
+                this.args = newArgs;
+                this.value = null;
+                return this;
+            }
+            return null;
+        }
+    }
+
     /**
      * Utility for
      * {@linkplain InvocationPlugins#register(InvocationPlugin, Class, String, Class...)

@@ -61,9 +61,9 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (SourceStackTrace t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            Assert.assertEquals("com.oracle.truffle.api.nodes.RootNode.getFrameDescriptor(RootNode.java)", trace[0].toString());
-            String secondString = trace[1].toString();
-            Assert.assertEquals("com.oracle.graal.truffle.OptimizedCallTarget.callRoot(OptimizedCallTarget.java:" /* "259)" */, secondString.substring(0, secondString.length() - 4));
+            Assert.assertTrue(trace[0].toString().startsWith("com.oracle.truffle.api.CompilerAsserts.neverPartOfCompilation(CompilerAsserts.java:"));
+            Assert.assertTrue(trace[1].toString().startsWith("com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode.execute(NeverPartOfCompilationTestNode.java:"));
+            Assert.assertTrue(trace[2].toString().startsWith("com.oracle.graal.truffle.test.nodes.RootTestNode.execute(RootTestNode.java:"));
         }
     }
 
@@ -71,6 +71,13 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void nestedLoopExplosion() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new AddTestNode(new NestedExplodedLoopTestNode(5), new ConstantTestNode(17));
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "nestedLoopExplosion", result));
+    }
+
+    @Test
+    public void twoMergesLoopExplosion() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new AddTestNode(new TwoMergesExplodedLoopTestNode(5), new ConstantTestNode(37));
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "nestedLoopExplosion", result));
     }
 

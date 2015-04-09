@@ -60,7 +60,7 @@ public final class InputEdges extends Edges {
     }
 
     @Override
-    protected void update(Node node, Node oldValue, Node newValue) {
+    public void update(Node node, Node oldValue, Node newValue) {
         node.updateUsages(oldValue, newValue);
     }
 }

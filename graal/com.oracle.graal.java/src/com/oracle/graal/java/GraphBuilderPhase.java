@@ -50,7 +50,7 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import com.oracle.graal.java.AbstractBytecodeParser.ReplacementContext;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
@@ -133,7 +133,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || replacementContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
                 parser.build(graph.start(), frameState);
 
-                parser.connectLoopEndToBegin();
+                connectLoopEndToBegin(graph);
 
                 // Remove dead parameters.
                 for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
@@ -225,42 +225,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public BytecodeParserError(String msg, Object... args) {
                 super(msg, args);
-            }
-        }
-
-        static class InvocationPluginReceiver implements Receiver {
-            final BytecodeParser parser;
-            ValueNode[] args;
-            ValueNode value;
-
-            public InvocationPluginReceiver(BytecodeParser parser) {
-                this.parser = parser;
-            }
-
-            @Override
-            public ValueNode get() {
-                assert args != null : "Cannot get the receiver of a static method";
-                if (value == null) {
-                    value = parser.nullCheckedValue(args[0]);
-                    if (value != args[0]) {
-                        args[0] = value;
-                    }
-                }
-                return value;
-            }
-
-            @Override
-            public boolean isConstant() {
-                return args[0].isConstant();
-            }
-
-            InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
-                if (!targetMethod.isStatic()) {
-                    this.args = newArgs;
-                    this.value = null;
-                    return this;
-                }
-                return null;
             }
         }
 
@@ -415,28 +379,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         Debug.dump(graph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
-            }
-
-            /**
-             * Gets a version of a given value that has a
-             * {@linkplain StampTool#isPointerNonNull(ValueNode) non-null} stamp.
-             */
-            ValueNode nullCheckedValue(ValueNode value) {
-                if (!StampTool.isPointerNonNull(value.stamp())) {
-                    IsNullNode condition = graph.unique(new IsNullNode(value));
-                    ObjectStamp receiverStamp = (ObjectStamp) value.stamp();
-                    Stamp stamp = receiverStamp.join(objectNonNull());
-                    FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-                    PiNode nonNullReceiver = graph.unique(new PiNode(value, stamp));
-                    nonNullReceiver.setGuard(fixedGuard);
-                    // TODO: Propogating the non-null into the frame state would
-                    // remove subsequent null-checks on the same value. However,
-                    // it currently causes an assertion failure when merging states.
-                    //
-                    // frameState.replace(value, nonNullReceiver);
-                    return nonNullReceiver;
-                }
-                return value;
             }
 
             private void detectLoops(FixedNode startInstruction) {
@@ -2023,30 +1965,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            /**
-             * Remove loop header without loop ends. This can happen with degenerated loops like
-             * this one:
-             *
-             * <pre>
-             * for (;;) {
-             *     try {
-             *         break;
-             *     } catch (UnresolvedException iioe) {
-             *     }
-             * }
-             * </pre>
-             */
-            private void connectLoopEndToBegin() {
-                for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
-                    if (begin.loopEnds().isEmpty()) {
-                        assert begin.forwardEndCount() == 1;
-                        graph.reduceDegenerateLoopBegin(begin);
-                    } else {
-                        GraphUtil.normalizeLoopBegin(begin);
-                    }
-                }
-            }
-
             private void createUnwind() {
                 assert frameState.stackSize() == 1 : frameState;
                 ValueNode exception = frameState.apop();
@@ -2512,5 +2430,28 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
         return assertionsEnabled;
+    }
+
+    /**
+     * Remove loop header without loop ends. This can happen with degenerated loops like this one:
+     *
+     * <pre>
+     * for (;;) {
+     *     try {
+     *         break;
+     *     } catch (UnresolvedException iioe) {
+     *     }
+     * }
+     * </pre>
+     */
+    public static void connectLoopEndToBegin(StructuredGraph graph) {
+        for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
+            if (begin.loopEnds().isEmpty()) {
+                assert begin.forwardEndCount() == 1;
+                graph.reduceDegenerateLoopBegin(begin);
+            } else {
+                GraphUtil.normalizeLoopBegin(begin);
+            }
+        }
     }
 }

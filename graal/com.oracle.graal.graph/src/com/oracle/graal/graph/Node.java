@@ -209,12 +209,12 @@ public abstract class Node implements Cloneable, Formattable {
     public static final int NOT_ITERABLE = -1;
 
     public Node(NodeClass<? extends Node> c) {
-        init();
-        assert c.getJavaClass() == this.getClass();
-        this.nodeClass = c;
+        init(c);
     }
 
-    final void init() {
+    final void init(NodeClass<? extends Node> c) {
+        assert c.getJavaClass() == this.getClass();
+        this.nodeClass = c;
         id = INITIAL_ID;
         extraUsages = NO_NODES;
     }

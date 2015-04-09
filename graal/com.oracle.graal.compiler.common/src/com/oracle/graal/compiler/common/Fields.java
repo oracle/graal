@@ -178,6 +178,38 @@ public class Fields {
     }
 
     /**
+     * Gets the value of a field for a given object.
+     *
+     * @param object the object whose field is to be read
+     * @param index the index of the field (between 0 and {@link #getCount()})
+     * @return the value of the specified field which will be boxed if the field type is primitive
+     */
+    public long getRawPrimitive(Object object, int index) {
+        long offset = offsets[index];
+        Class<?> type = types[index];
+
+        if (type == Integer.TYPE) {
+            return unsafe.getInt(object, offset);
+        } else if (type == Long.TYPE) {
+            return unsafe.getLong(object, offset);
+        } else if (type == Boolean.TYPE) {
+            return unsafe.getBoolean(object, offset) ? 1 : 0;
+        } else if (type == Float.TYPE) {
+            return Float.floatToRawIntBits(unsafe.getFloat(object, offset));
+        } else if (type == Double.TYPE) {
+            return Double.doubleToRawLongBits(unsafe.getDouble(object, offset));
+        } else if (type == Short.TYPE) {
+            return unsafe.getShort(object, offset);
+        } else if (type == Character.TYPE) {
+            return unsafe.getChar(object, offset);
+        } else if (type == Byte.TYPE) {
+            return unsafe.getByte(object, offset);
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    /**
      * Determines if a field in the domain of this object is the same as the field denoted by the
      * same index in another {@link Fields} object.
      */
@@ -241,6 +273,30 @@ public class Fields {
         } else {
             assert checkAssignableFrom(object, index, value);
             unsafe.putObject(object, offset, value);
+        }
+    }
+
+    public void setRawPrimitive(Object object, int index, long value) {
+        long offset = offsets[index];
+        Class<?> type = types[index];
+        if (type == Integer.TYPE) {
+            unsafe.putInt(object, offset, (int) value);
+        } else if (type == Long.TYPE) {
+            unsafe.putLong(object, offset, value);
+        } else if (type == Boolean.TYPE) {
+            unsafe.putBoolean(object, offset, value != 0);
+        } else if (type == Float.TYPE) {
+            unsafe.putFloat(object, offset, Float.intBitsToFloat((int) value));
+        } else if (type == Double.TYPE) {
+            unsafe.putDouble(object, offset, Double.longBitsToDouble(value));
+        } else if (type == Short.TYPE) {
+            unsafe.putShort(object, offset, (short) value);
+        } else if (type == Character.TYPE) {
+            unsafe.putChar(object, offset, (char) value);
+        } else if (type == Byte.TYPE) {
+            unsafe.putByte(object, offset, (byte) value);
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 

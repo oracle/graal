@@ -27,7 +27,6 @@ import static java.lang.Character.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -50,24 +49,24 @@ import com.oracle.truffle.api.frame.*;
  * Provides {@link InvocationPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification) {
 
-        registerOptimizedAssumptionPlugins(plugins);
+        registerOptimizedAssumptionPlugins(plugins, canDelayIntrinsification);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
-        registerCompilerAssertsPlugins(plugins);
+        registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(metaAccess, plugins);
-        registerUnsafeAccessImplPlugins(plugins);
+        registerUnsafeAccessImplPlugins(plugins, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
-            registerFrameWithoutBoxingPlugins(plugins);
+            registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification);
         } else {
-            registerFrameWithBoxingPlugins(plugins);
+            registerFrameWithBoxingPlugins(plugins, canDelayIntrinsification);
         }
 
     }
 
-    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins) {
+    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
         InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -89,10 +88,12 @@ public class TruffleGraphBuilderPlugins {
                             b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None));
                         }
                     }
+                    return true;
+                } else if (canDelayIntrinsification) {
+                    return false;
                 } else {
                     throw b.bailout("assumption could not be reduced to a constant");
                 }
-                return true;
             }
         };
         r.register1("isValid", Receiver.class, plugin);
@@ -204,7 +205,7 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerCompilerAssertsPlugins(InvocationPlugins plugins) {
+    public static void registerCompilerAssertsPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, CompilerAsserts.class);
         r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -215,6 +216,8 @@ public class TruffleGraphBuilderPlugins {
                 }
                 if (curValue.isConstant()) {
                     return true;
+                } else if (canDelayIntrinsification) {
+                    return false;
                 } else {
                     StringBuilder sb = new StringBuilder();
                     sb.append(curValue);
@@ -235,10 +238,13 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 if (message.isConstant()) {
                     String messageString = message.asConstant().toValueString();
-                    b.add(new NeverPartOfCompilationNode(messageString));
+                    b.add(new NeverPartOfCompilationNode(messageString, b.createStateAfter()));
                     return true;
+                } else if (canDelayIntrinsification) {
+                    return false;
+                } else {
+                    throw b.bailout("message for never part of compilation is non-constant");
                 }
-                throw b.bailout("message for never part of compilation is non-constant");
             }
         });
     }
@@ -260,22 +266,22 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins) {
+    public static void registerFrameWithoutBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, FrameWithoutBoxing.class);
         registerMaterialize(r);
-        registerUnsafeCast(r);
+        registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
-    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins) {
+    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, FrameWithBoxing.class);
         registerMaterialize(r);
-        registerUnsafeCast(r);
+        registerUnsafeCast(r, canDelayIntrinsification);
     }
 
-    public static void registerUnsafeAccessImplPlugins(InvocationPlugins plugins) {
+    public static void registerUnsafeAccessImplPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, UnsafeAccessImpl.class);
-        registerUnsafeCast(r);
+        registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
@@ -288,7 +294,7 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafeCast(Registration r) {
+    private static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification) {
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
                 if (clazz.isConstant() && nonNull.isConstant()) {
@@ -322,8 +328,11 @@ public class TruffleGraphBuilderPlugins {
                         b.addPush(Kind.Object, new PiNode(object, piStamp, valueAnchorNode));
                     }
                     return true;
+                } else if (canDelayIntrinsification) {
+                    return false;
+                } else {
+                    throw b.bailout("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
                 }
-                throw GraalInternalError.shouldNotReachHere("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
             }
         });
     }
@@ -359,7 +368,7 @@ public class TruffleGraphBuilderPlugins {
                 b.addPush(returnKind.getStackKind(), b.add(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
                 return true;
             }
-            // TODO: should we throw GraalInternalError.shouldNotReachHere() here?
+            // TODO: should we throw b.bailout() here?
             return false;
         }
     }
@@ -385,7 +394,7 @@ public class TruffleGraphBuilderPlugins {
                 b.add(new UnsafeStoreNode(object, offset, value, kind, locationIdentity, null));
                 return true;
             }
-            // TODO: should we throw GraalInternalError.shouldNotReachHere() here?
+            // TODO: should we throw b.bailout() here?
             return false;
         }
     }

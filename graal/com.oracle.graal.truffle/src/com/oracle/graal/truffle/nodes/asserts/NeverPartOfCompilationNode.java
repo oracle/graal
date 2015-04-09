@@ -29,13 +29,13 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo
-public final class NeverPartOfCompilationNode extends FixedWithNextNode implements IterableNodeType {
+public final class NeverPartOfCompilationNode extends AbstractStateSplit implements IterableNodeType {
 
     public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.create(NeverPartOfCompilationNode.class);
     protected final String message;
 
-    public NeverPartOfCompilationNode(String message) {
-        super(TYPE, StampFactory.forVoid());
+    public NeverPartOfCompilationNode(String message, FrameState stateAfter) {
+        super(TYPE, StampFactory.forVoid(), stateAfter);
         this.message = message;
     }
 

@@ -263,7 +263,7 @@ public abstract class Edges extends Fields {
         update(node, old, value);
     }
 
-    protected abstract void update(Node node, Node oldValue, Node newValue);
+    public abstract void update(Node node, Node oldValue, Node newValue);
 
     public boolean contains(Node node, Node value) {
         final long[] curOffsets = this.offsets;

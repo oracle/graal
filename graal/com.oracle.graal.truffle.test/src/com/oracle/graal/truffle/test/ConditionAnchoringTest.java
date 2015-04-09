@@ -137,7 +137,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         // get UnsafeAccessImpl.unsafeGetInt intrinsified
-        TruffleGraphBuilderPlugins.registerUnsafeAccessImplPlugins(conf.getPlugins().getInvocationPlugins());
+        TruffleGraphBuilderPlugins.registerUnsafeAccessImplPlugins(conf.getPlugins().getInvocationPlugins(), false);
         // get UnsafeAccess.getInt inlined
         conf.getPlugins().setInlineInvokePlugin(new InlineEverythingPlugin());
         conf.getPlugins().setLoadFieldPlugin(new FoldLoadsPlugins(getMetaAccess(), getConstantReflection()));

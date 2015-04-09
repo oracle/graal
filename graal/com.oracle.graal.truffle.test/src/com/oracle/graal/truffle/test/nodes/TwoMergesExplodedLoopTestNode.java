@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package com.oracle.graal.truffle.test.nodes;
 
-import static com.oracle.graal.graph.Edges.Type.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
-import java.util.*;
+@NodeInfo
+public class TwoMergesExplodedLoopTestNode extends AbstractTestNode {
 
-import com.oracle.graal.graph.NodeClass.EdgeInfo;
-
-public final class SuccessorEdges extends Edges {
-
-    public SuccessorEdges(int directCount, ArrayList<EdgeInfo> edges) {
-        super(Successors, directCount, edges);
+    static class Flag {
+        boolean flag = true;
     }
 
+    private final int count;
+
+    public TwoMergesExplodedLoopTestNode(int count) {
+        this.count = count;
+    }
+
+    @ExplodeLoop(merge = false)
     @Override
-    public void update(Node node, Node oldValue, Node newValue) {
-        node.updatePredecessor(oldValue, newValue);
+    public int execute(VirtualFrame frame) {
+        Flag flag = new Flag();
+        int result = 0;
+        int i = 0;
+        while (i < count) {
+            i++;
+
+            CompilerAsserts.partialEvaluationConstant(result);
+
+            if (flag.flag) {
+                result++;
+                continue;
+            } else {
+                result--;
+                continue;
+            }
+        }
+        return result;
     }
 }
