@@ -33,11 +33,11 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public final class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
+public final class IdentityHashCodeNode extends PureFunctionMacroNode {
 
-    public static final NodeClass<SystemIdentityHashCodeNode> TYPE = NodeClass.create(SystemIdentityHashCodeNode.class);
+    public static final NodeClass<IdentityHashCodeNode> TYPE = NodeClass.create(IdentityHashCodeNode.class);
 
-    public SystemIdentityHashCodeNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode object) {
+    public IdentityHashCodeNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode object) {
         super(TYPE, invokeKind, targetMethod, bci, returnType, object);
     }
 

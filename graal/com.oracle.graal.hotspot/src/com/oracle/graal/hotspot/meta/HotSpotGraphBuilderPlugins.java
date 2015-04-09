@@ -100,7 +100,12 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
+        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), receiver.get()));
+                return true;
+            }
+        });
     }
 
     private static void registerClassPlugins(InvocationPlugins plugins) {
@@ -168,7 +173,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(new SystemIdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
+                b.addPush(new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
                 return true;
             }
         });
