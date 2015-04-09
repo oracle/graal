@@ -421,6 +421,11 @@ public class InvocationPlugins {
         }
 
         public static boolean check(InvocationPlugins plugins, MethodInfo method, InvocationPlugin plugin) {
+            InvocationPlugins p = plugins;
+            while (p != null) {
+                assert !p.registrations.contains(method) : "a plugin is already registered for " + method;
+                p = p.parent;
+            }
             if (plugin instanceof ForeignCallPlugin) {
                 return true;
             }
@@ -428,11 +433,6 @@ public class InvocationPlugins {
                 MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
                 msplugin.getJavaSubstitute();
                 return true;
-            }
-            InvocationPlugins p = plugins;
-            while (p != null) {
-                assert !p.registrations.contains(method) : "a plugin is already registered for " + method;
-                p = p.parent;
             }
             int arguments = method.isStatic ? method.argumentTypes.length : method.argumentTypes.length - 1;
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, method);
