@@ -91,7 +91,9 @@ public class OptionUtils {
             } else if (optionType == Double.class) {
                 value = Double.parseDouble(valueString);
             } else if (optionType == Integer.class) {
-                value = Integer.parseInt(valueString);
+                value = Integer.valueOf((int) parseLong(valueString));
+            } else if (optionType == Long.class) {
+                value = Long.valueOf(parseLong(valueString));
             } else if (optionType == String.class) {
                 value = valueString;
             }
@@ -116,6 +118,27 @@ public class OptionUtils {
         }
 
         return true;
+    }
+
+    private static long parseLong(String v) {
+        String valueString = v.toLowerCase();
+        long scale = 1;
+        if (valueString.endsWith("k")) {
+            scale = 1024L;
+        } else if (valueString.endsWith("m")) {
+            scale = 1024L * 1024L;
+        } else if (valueString.endsWith("g")) {
+            scale = 1024L * 1024L * 1024L;
+        } else if (valueString.endsWith("t")) {
+            scale = 1024L * 1024L * 1024L * 1024L;
+        }
+
+        if (scale != 1) {
+            /* Remove trailing scale character. */
+            valueString = valueString.substring(0, valueString.length() - 1);
+        }
+
+        return Long.parseLong(valueString) * scale;
     }
 
     public static void printNoMatchMessage(SortedMap<String, OptionDescriptor> options, String optionName, String prefix) {
