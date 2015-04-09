@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.common.util;
 
+import java.nio.*;
+
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -41,23 +43,44 @@ public class UnsafeArrayTypeReader implements TypeReader {
     }
 
     public static int getS2(byte[] data, long byteIndex) {
-        return UnsafeAccess.unsafe.getShort(data, readOffset(data, byteIndex, Short.BYTES));
+        if (byteIndex % Short.BYTES == 0) {
+            return UnsafeAccess.unsafe.getShort(data, readOffset(data, byteIndex, Short.BYTES));
+        } else {
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]);
+            buf.put((byte) getU1(data, byteIndex));
+            buf.put((byte) getU1(data, byteIndex + Byte.BYTES));
+            return buf.getShort(0);
+        }
     }
 
     public static int getU2(byte[] data, long byteIndex) {
-        return UnsafeAccess.unsafe.getShort(data, readOffset(data, byteIndex, Short.BYTES)) & 0xFFFF;
+        return getS2(data, byteIndex) & 0xFFFF;
     }
 
     public static int getS4(byte[] data, long byteIndex) {
-        return UnsafeAccess.unsafe.getInt(data, readOffset(data, byteIndex, Integer.BYTES));
+        if (byteIndex % Integer.BYTES == 0) {
+            return UnsafeAccess.unsafe.getInt(data, readOffset(data, byteIndex, Integer.BYTES));
+        } else {
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]);
+            buf.putShort((short) getS2(data, byteIndex));
+            buf.putShort((short) getS2(data, byteIndex + Short.BYTES));
+            return buf.getInt(0);
+        }
     }
 
     public static long getU4(byte[] data, long byteIndex) {
-        return UnsafeAccess.unsafe.getInt(data, readOffset(data, byteIndex, Integer.BYTES)) & 0xFFFFFFFFL;
+        return getS4(data, byteIndex) & 0xFFFFFFFFL;
     }
 
     public static long getLong(byte[] data, long byteIndex) {
-        return UnsafeAccess.unsafe.getLong(data, readOffset(data, byteIndex, Long.BYTES));
+        if (byteIndex % Long.BYTES == 0) {
+            return UnsafeAccess.unsafe.getLong(data, readOffset(data, byteIndex, Long.BYTES));
+        } else {
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]);
+            buf.putInt(getS4(data, byteIndex));
+            buf.putInt(getS4(data, byteIndex + Integer.BYTES));
+            return buf.getLong(0);
+        }
     }
 
     private static long readOffset(byte[] data, long byteIndex, int numBytes) {
