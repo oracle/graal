@@ -41,7 +41,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nfi.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -50,7 +49,6 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.nfi.api.*;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -324,20 +322,6 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 assert !frameMap.accessesCallerFrame();
             }
         }
-    }
-
-    /**
-     * Called from the VM.
-     */
-    public static NativeFunctionInterface createNativeFunctionInterface() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
-        RawNativeCallNodeFactory factory = new RawNativeCallNodeFactory() {
-            public FixedWithNextNode createRawCallNode(Kind returnType, JavaConstant functionPointer, ValueNode... args) {
-                return new AMD64RawNativeCallNode(returnType, functionPointer, args);
-            }
-        };
-        Backend backend = HotSpotGraalRuntime.runtime().getHostBackend();
-        return new HotSpotNativeFunctionInterface(HotSpotGraalRuntime.runtime().getHostProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 
 }
