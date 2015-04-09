@@ -137,7 +137,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
         if (GraalOptions.ImmutableCode.getValue()) {
             for (Node node : newNodes) {
-                if (node instanceof ConstantNode) {
+                if (node.hasUsages() && node instanceof ConstantNode) {
                     ConstantNode c = (ConstantNode) node;
                     if (c.getKind() == Kind.Object && !AheadOfTimeVerificationPhase.isLegalObjectConstant(c)) {
                         throw new AssertionError("illegal constant node in AOT: " + node);
