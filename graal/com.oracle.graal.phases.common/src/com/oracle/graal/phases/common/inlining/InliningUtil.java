@@ -243,8 +243,6 @@ public class InliningUtil {
         assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
         assert !invokeNode.graph().isAfterFloatingReadPhase() : "inline isn't handled correctly after floating reads phase";
 
-        FrameState stateAfter = invoke.stateAfter();
-        assert stateAfter == null || stateAfter.isAlive();
         if (receiverNullCheck && !((MethodCallTargetNode) invoke.callTarget()).isStatic()) {
             nonNullReceiver(invoke);
         }
@@ -288,22 +286,69 @@ public class InliningUtil {
         assert invokeNode.predecessor() != null;
 
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        invokeNode.replaceAtPredecessor(firstCFGNodeDuplicate);
+
+        FrameState stateAfter = invoke.stateAfter();
+        assert stateAfter == null || stateAfter.isAlive();
 
         FrameState stateAtExceptionEdge = null;
+        if (invoke instanceof InvokeWithExceptionNode) {
+            InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
+            if (unwindNode != null) {
+                ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
+                stateAtExceptionEdge = obj.stateAfter();
+            }
+        }
+
+        processSimpleInfopoints(invoke, inlineGraph, duplicates);
+        if (stateAfter != null) {
+            processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
+            int callerLockDepth = stateAfter.nestedLockDepth();
+            if (callerLockDepth != 0) {
+                for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.TYPE)) {
+                    MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
+                    processMonitorId(invoke, monitor);
+                }
+            }
+        } else {
+            assert checkContainsOnlyInvalidOrAfterFrameState(duplicates);
+        }
+
+        firstCFGNode = (FixedNode) duplicates.get(firstCFGNode);
+        for (int i = 0; i < returnNodes.size(); i++) {
+            returnNodes.set(i, (ReturnNode) duplicates.get(returnNodes.get(i)));
+        }
+        if (unwindNode != null) {
+            unwindNode = (UnwindNode) duplicates.get(unwindNode);
+        }
+
+        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph.getInlinedMethods(), canonicalizedNodes);
+
+        GraphUtil.killCFG(invokeNode);
+
+        return duplicates;
+    }
+
+    public static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
+                    Set<ResolvedJavaMethod> inlinedMethods, List<Node> canonicalizedNodes) {
+        FixedNode invokeNode = invoke.asNode();
+        FrameState stateAfter = invoke.stateAfter();
+        assert stateAfter == null || stateAfter.isAlive();
+
+        invokeNode.replaceAtPredecessor(firstNode);
+
         if (invoke instanceof InvokeWithExceptionNode) {
             InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
             if (unwindNode != null) {
                 assert unwindNode.predecessor() != null;
                 assert invokeWithException.exceptionEdge().successors().count() == 1;
                 ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
-                stateAtExceptionEdge = obj.stateAfter();
-                UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
-                obj.replaceAtUsages(unwindDuplicate.exception());
+                obj.replaceAtUsages(unwindNode.exception());
                 Node n = obj.next();
                 obj.setNext(null);
-                unwindDuplicate.replaceAndDelete(n);
+                unwindNode.replaceAndDelete(n);
+
+                obj.replaceAtPredecessor(null);
+                obj.safeDelete();
             } else {
                 invokeWithException.killExceptionEdge();
             }
@@ -317,66 +362,50 @@ public class InliningUtil {
                 graph.removeFixed(begin);
             }
         } else {
-            if (unwindNode != null) {
-                UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
+            if (unwindNode != null && !unwindNode.isDeleted()) {
                 DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
-                unwindDuplicate.replaceAndDelete(deoptimizeNode);
+                unwindNode.replaceAndDelete(deoptimizeNode);
             }
         }
 
-        processSimpleInfopoints(invoke, inlineGraph, duplicates);
-        if (stateAfter != null) {
-            processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
-            int callerLockDepth = stateAfter.nestedLockDepth();
-            if (callerLockDepth != 0) {
-                for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.TYPE)) {
-                    MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
-                    monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
-                }
-            }
-        } else {
-            assert checkContainsOnlyInvalidOrAfterFrameState(duplicates);
-        }
+        ValueNode returnValue;
         if (!returnNodes.isEmpty()) {
             FixedNode n = invoke.next();
             invoke.setNext(null);
             if (returnNodes.size() == 1) {
-                ReturnNode returnNode = (ReturnNode) duplicates.get(returnNodes.get(0));
-                Node returnValue = returnNode.result();
+                ReturnNode returnNode = returnNodes.get(0);
+                returnValue = returnNode.result();
                 invokeNode.replaceAtUsages(returnValue);
                 returnNode.replaceAndDelete(n);
             } else {
-                ArrayList<ReturnNode> returnDuplicates = new ArrayList<>(returnNodes.size());
-                for (ReturnNode returnNode : returnNodes) {
-                    returnDuplicates.add((ReturnNode) duplicates.get(returnNode));
-                }
                 AbstractMergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
-                ValueNode returnValue = mergeReturns(merge, returnDuplicates, canonicalizedNodes);
+                returnValue = mergeReturns(merge, returnNodes, canonicalizedNodes);
                 invokeNode.replaceAtUsages(returnValue);
                 merge.setNext(n);
             }
+        } else {
+            returnValue = null;
+            invokeNode.replaceAtUsages(null);
+            GraphUtil.killCFG(invoke.next());
         }
-
-        invokeNode.replaceAtUsages(null);
-        GraphUtil.killCFG(invokeNode);
 
         // Copy assumptions from inlinee to caller
         Assumptions assumptions = graph.getAssumptions();
         if (assumptions != null) {
-            if (inlineGraph.getAssumptions() != null) {
-                assumptions.record(inlineGraph.getAssumptions());
+            if (inlinedAssumptions != null) {
+                assumptions.record(inlinedAssumptions);
             }
         } else {
-            assert inlineGraph.getAssumptions() == null : "cannot inline graph which makes assumptions into a graph that doesn't: " + inlineGraph + " -> " + graph;
+            assert inlinedAssumptions == null : "cannot inline graph which makes assumptions into a graph that doesn't";
         }
 
         // Copy inlined methods from inlinee to caller
-        if (inlineGraph.isInlinedMethodRecordingEnabled() && graph.isInlinedMethodRecordingEnabled()) {
-            graph.getInlinedMethods().addAll(inlineGraph.getInlinedMethods());
+        if (inlinedMethods != null && graph.getInlinedMethods() != null) {
+            graph.getInlinedMethods().addAll(inlinedMethods);
         }
 
-        return duplicates;
+        return returnValue;
     }
 
     private static String formatGraph(StructuredGraph graph) {
@@ -390,10 +419,24 @@ public class InliningUtil {
         if (inlineGraph.getNodes(SimpleInfopointNode.TYPE).isEmpty()) {
             return;
         }
-        BytecodePosition pos = new BytecodePosition(toBytecodePosition(invoke.stateAfter()), invoke.asNode().graph().method(), invoke.bci());
+        BytecodePosition pos = null;
         for (SimpleInfopointNode original : inlineGraph.getNodes(SimpleInfopointNode.TYPE)) {
             SimpleInfopointNode duplicate = (SimpleInfopointNode) duplicates.get(original);
-            duplicate.addCaller(pos);
+            pos = processSimpleInfopoint(invoke, duplicate, pos);
+        }
+    }
+
+    public static BytecodePosition processSimpleInfopoint(Invoke invoke, SimpleInfopointNode infopointNode, BytecodePosition incomingPos) {
+        BytecodePosition pos = incomingPos != null ? incomingPos : new BytecodePosition(toBytecodePosition(invoke.stateAfter()), invoke.asNode().graph().method(), invoke.bci());
+        infopointNode.addCaller(pos);
+        return pos;
+    }
+
+    public static void processMonitorId(Invoke invoke, MonitorIdNode monitorIdNode) {
+        FrameState stateAfter = invoke.stateAfter();
+        if (stateAfter != null) {
+            int callerLockDepth = stateAfter.nestedLockDepth();
+            monitorIdNode.setLockDepth(monitorIdNode.getLockDepth() + callerLockDepth);
         }
     }
 
@@ -411,57 +454,70 @@ public class InliningUtil {
         for (FrameState original : inlineGraph.getNodes(FrameState.TYPE)) {
             FrameState frameState = (FrameState) duplicates.get(original);
             if (frameState != null && frameState.isAlive()) {
-                if (frameState.bci == BytecodeFrame.AFTER_BCI) {
-                    /*
-                     * pop return kind from invoke's stateAfter and replace with this frameState's
-                     * return value (top of stack)
-                     */
-                    FrameState stateAfterReturn = stateAtReturn;
-                    if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || (frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)))) {
-                        stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
-                    }
-                    frameState.replaceAndDelete(stateAfterReturn);
-                } else if (stateAtExceptionEdge != null && isStateAfterException(frameState)) {
-                    /*
-                     * pop exception object from invoke's stateAfter and replace with this
-                     * frameState's exception object (top of stack)
-                     */
-                    FrameState stateAfterException = stateAtExceptionEdge;
-                    if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
-                        stateAfterException = stateAtExceptionEdge.duplicateModified(Kind.Object, frameState.stackAt(0));
-                    }
-                    frameState.replaceAndDelete(stateAfterException);
-                } else if (frameState.bci == BytecodeFrame.UNWIND_BCI || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
-                    handleMissingAfterExceptionFrameState(frameState);
-                } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
-                    // This is an intrinsic. Deoptimizing within an intrinsic
-                    // must re-execute the intrinsified invocation
-                    assert frameState.outerFrameState() == null;
-                    NodeInputList<ValueNode> invokeArgsList = invoke.callTarget().arguments();
-                    ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
-                    FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeArgs);
-                    frameState.replaceAndDelete(stateBeforeCall);
-                } else {
-                    // only handle the outermost frame states
-                    if (frameState.outerFrameState() == null) {
-                        assert checkInlineeFrameState(invoke, inlineGraph, frameState);
-                        if (outerFrameState == null) {
-                            outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
-                        }
-                        frameState.setOuterFrameState(outerFrameState);
-                    }
+                if (outerFrameState == null) {
+                    outerFrameState = stateAtReturn.duplicateModifiedDuringCall(invoke.bci(), invokeReturnKind);
                 }
+                processFrameState(frameState, invoke, inlineGraph.method(), stateAtExceptionEdge, outerFrameState, alwaysDuplicateStateAfter);
             }
         }
     }
 
-    static boolean checkInlineeFrameState(Invoke invoke, StructuredGraph inlineGraph, FrameState frameState) {
+    public static FrameState processFrameState(FrameState frameState, Invoke invoke, ResolvedJavaMethod inlinedMethod, FrameState stateAtExceptionEdge, FrameState outerFrameState,
+                    boolean alwaysDuplicateStateAfter) {
+
+        FrameState stateAtReturn = invoke.stateAfter();
+        Kind invokeReturnKind = invoke.asNode().getKind();
+
+        if (frameState.bci == BytecodeFrame.AFTER_BCI) {
+            /*
+             * pop return kind from invoke's stateAfter and replace with this frameState's return
+             * value (top of stack)
+             */
+            FrameState stateAfterReturn = stateAtReturn;
+            if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || (frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)))) {
+                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
+            }
+            frameState.replaceAndDelete(stateAfterReturn);
+            return stateAfterReturn;
+        } else if (stateAtExceptionEdge != null && isStateAfterException(frameState)) {
+            /*
+             * pop exception object from invoke's stateAfter and replace with this frameState's
+             * exception object (top of stack)
+             */
+            FrameState stateAfterException = stateAtExceptionEdge;
+            if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
+                stateAfterException = stateAtExceptionEdge.duplicateModified(Kind.Object, frameState.stackAt(0));
+            }
+            frameState.replaceAndDelete(stateAfterException);
+            return stateAfterException;
+        } else if (frameState.bci == BytecodeFrame.UNWIND_BCI || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            return handleMissingAfterExceptionFrameState(frameState);
+        } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
+            // This is an intrinsic. Deoptimizing within an intrinsic
+            // must re-execute the intrinsified invocation
+            assert frameState.outerFrameState() == null;
+            NodeInputList<ValueNode> invokeArgsList = invoke.callTarget().arguments();
+            ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
+            FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeArgs);
+            frameState.replaceAndDelete(stateBeforeCall);
+            return stateBeforeCall;
+        } else {
+            // only handle the outermost frame states
+            if (frameState.outerFrameState() == null) {
+                assert checkInlineeFrameState(invoke, inlinedMethod, frameState);
+                frameState.setOuterFrameState(outerFrameState);
+            }
+            return frameState;
+        }
+    }
+
+    static boolean checkInlineeFrameState(Invoke invoke, ResolvedJavaMethod inlinedMethod, FrameState frameState) {
         assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI : frameState;
         assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
         assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
         assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
         if (frameState.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            if (frameState.method().equals(inlineGraph.method())) {
+            if (frameState.method().equals(inlinedMethod)) {
                 // Normal inlining expects all outermost inlinee frame states to
                 // denote the inlinee method
             } else if (frameState.method().equals(invoke.callTarget().targetMethod())) {
@@ -470,7 +526,7 @@ public class InliningUtil {
                 // partial intrinsic, these calls are given frame states
                 // that exclude the outer frame state denoting a position
                 // in the intrinsic code.
-                assert inlineGraph.method().getAnnotation(MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
+                assert inlinedMethod.getAnnotation(MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
                                 frameState;
             } else {
                 throw new AssertionError(frameState.toString());
@@ -485,7 +541,7 @@ public class InliningUtil {
         return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized());
     }
 
-    protected static void handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState) {
+    protected static FrameState handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState) {
         Graph graph = nonReplaceableFrameState.graph();
         NodeWorkList workList = graph.createNodeWorkList();
         workList.add(nonReplaceableFrameState);
@@ -519,6 +575,7 @@ public class InliningUtil {
                 }
             }
         }
+        return null;
     }
 
     public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
