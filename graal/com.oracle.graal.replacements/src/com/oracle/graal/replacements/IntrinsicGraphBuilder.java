@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.util.*;
 
 /**
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
@@ -42,7 +41,9 @@ import com.oracle.graal.phases.util.*;
  */
 public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
-    private final Providers providers;
+    private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
+    private final StampProvider stampProvider;
     private final SnippetReflectionProvider snippetReflection;
     private final StructuredGraph graph;
     private final ResolvedJavaMethod method;
@@ -50,8 +51,11 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     private ValueNode[] arguments;
     private ValueNode returnValue;
 
-    public IntrinsicGraphBuilder(Providers providers, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod method) {
-        this.providers = providers;
+    public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    ResolvedJavaMethod method) {
+        this.metaAccess = metaAccess;
+        this.constantReflection = constantReflection;
+        this.stampProvider = stampProvider;
         this.snippetReflection = snippetReflection;
         this.graph = new StructuredGraph(method, AllowAssumptions.YES);
         this.method = method;
@@ -135,15 +139,15 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     public StampProvider getStampProvider() {
-        return providers.getStampProvider();
+        return stampProvider;
     }
 
     public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
+        return metaAccess;
     }
 
     public ConstantReflectionProvider getConstantReflection() {
-        return providers.getConstantReflection();
+        return constantReflection;
     }
 
     public SnippetReflectionProvider getSnippetReflection() {
