@@ -46,7 +46,7 @@ public class UnsafeArrayTypeReader implements TypeReader {
         if (byteIndex % Short.BYTES == 0) {
             return UnsafeAccess.unsafe.getShort(data, readOffset(data, byteIndex, Short.BYTES));
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]);
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]).order(ByteOrder.nativeOrder());
             buf.put((byte) getU1(data, byteIndex));
             buf.put((byte) getU1(data, byteIndex + Byte.BYTES));
             return buf.getShort(0);
@@ -61,7 +61,7 @@ public class UnsafeArrayTypeReader implements TypeReader {
         if (byteIndex % Integer.BYTES == 0) {
             return UnsafeAccess.unsafe.getInt(data, readOffset(data, byteIndex, Integer.BYTES));
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]);
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]).order(ByteOrder.nativeOrder());
             buf.putShort((short) getS2(data, byteIndex));
             buf.putShort((short) getS2(data, byteIndex + Short.BYTES));
             return buf.getInt(0);
@@ -76,7 +76,7 @@ public class UnsafeArrayTypeReader implements TypeReader {
         if (byteIndex % Long.BYTES == 0) {
             return UnsafeAccess.unsafe.getLong(data, readOffset(data, byteIndex, Long.BYTES));
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]);
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]).order(ByteOrder.nativeOrder());
             buf.putInt(getS4(data, byteIndex));
             buf.putInt(getS4(data, byteIndex + Integer.BYTES));
             return buf.getLong(0);

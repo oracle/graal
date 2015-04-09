@@ -94,7 +94,7 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
             UnsafeAccess.unsafe.putShort(writeChunk.data, offset, asS2(value));
             commitWrite(Short.BYTES);
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]);
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]).order(ByteOrder.nativeOrder());
             buf.putShort(asS2(value));
             putS1(buf.get(0));
             putS1(buf.get(Byte.BYTES));
@@ -113,7 +113,7 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
             UnsafeAccess.unsafe.putInt(writeChunk.data, offset, asS4(value));
             commitWrite(Integer.BYTES);
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]);
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]).order(ByteOrder.nativeOrder());
             buf.putInt(asS4(value));
             if (offset % Short.BYTES == 0) {
                 putS2(buf.getShort(0));
@@ -138,7 +138,7 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
             UnsafeAccess.unsafe.putLong(writeChunk.data, offset, value);
             commitWrite(Long.BYTES);
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]);
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]).order(ByteOrder.nativeOrder());
             buf.putLong(value);
             if (offset % Integer.BYTES == 0) {
                 putS4(buf.getInt(0));
