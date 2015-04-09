@@ -100,6 +100,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+        r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 
     private static void registerClassPlugins(InvocationPlugins plugins) {

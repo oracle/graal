@@ -40,7 +40,6 @@ public class HotSpotSubstitutions implements ReplacementsProvider {
 
     @Override
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
-        replacements.registerSubstitutions(Object.class, ObjectSubstitutions.class);
         replacements.registerSubstitutions(System.class, SystemSubstitutions.class);
         replacements.registerSubstitutions(Thread.class, ThreadSubstitutions.class);
         replacements.registerSubstitutions(Unsafe.class, UnsafeSubstitutions.class);
