@@ -198,12 +198,18 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         return null;
     }
 
+    private Field toJavaCache;
+
     private Field toJava() {
+        if (toJavaCache != null) {
+            return toJavaCache;
+        }
+
         if (isInternal()) {
             return null;
         }
         try {
-            return holder.mirror().getDeclaredField(name);
+            return toJavaCache = holder.mirror().getDeclaredField(name);
         } catch (NoSuchFieldException | NoClassDefFoundError e) {
             return null;
         }
