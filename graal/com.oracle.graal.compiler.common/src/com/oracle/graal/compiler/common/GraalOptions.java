@@ -202,7 +202,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(false);
 
     // Register allocator debugging
-    @Option(help = "Comma separated list of register that the allocation is limited to.", type = OptionType.Debug)
+    @Option(help = "Comma separated list of registers that register allocation is limited to.", type = OptionType.Debug)
     public static final OptionValue<String> RegisterPressure = new OptionValue<>(null);
 
     @Option(help = "", type = OptionType.Debug)
