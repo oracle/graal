@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.compiler.common.util;
 
+import static com.oracle.graal.compiler.common.util.TypeConversion.*;
+
+import java.nio.*;
+
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -72,43 +76,79 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
     @Override
     public void putS1(long value) {
         long offset = writeOffset(Byte.BYTES);
-        UnsafeAccess.unsafe.putByte(writeChunk.data, offset, TypeConversion.asS1(value));
+        UnsafeAccess.unsafe.putByte(writeChunk.data, offset, asS1(value));
+        commitWrite(Byte.BYTES);
     }
 
     @Override
     public void putU1(long value) {
         long offset = writeOffset(Byte.BYTES);
-        UnsafeAccess.unsafe.putByte(writeChunk.data, offset, TypeConversion.asU1(value));
+        UnsafeAccess.unsafe.putByte(writeChunk.data, offset, asU1(value));
+        commitWrite(Byte.BYTES);
     }
 
     @Override
     public void putS2(long value) {
         long offset = writeOffset(Short.BYTES);
-        UnsafeAccess.unsafe.putShort(writeChunk.data, offset, TypeConversion.asS2(value));
+        if (offset % Short.BYTES == 0) {
+            UnsafeAccess.unsafe.putShort(writeChunk.data, offset, asS2(value));
+            commitWrite(Short.BYTES);
+        } else {
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]).order(ByteOrder.nativeOrder());
+            buf.putShort(asS2(value));
+            putS1(buf.get(0));
+            putS1(buf.get(Byte.BYTES));
+        }
     }
 
     @Override
     public void putU2(long value) {
-        long offset = writeOffset(Short.BYTES);
-        UnsafeAccess.unsafe.putShort(writeChunk.data, offset, TypeConversion.asU2(value));
+        putS2(asU2(value));
     }
 
     @Override
     public void putS4(long value) {
         long offset = writeOffset(Integer.BYTES);
-        UnsafeAccess.unsafe.putInt(writeChunk.data, offset, TypeConversion.asS4(value));
+        if (offset % Integer.BYTES == 0) {
+            UnsafeAccess.unsafe.putInt(writeChunk.data, offset, asS4(value));
+            commitWrite(Integer.BYTES);
+        } else {
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]).order(ByteOrder.nativeOrder());
+            buf.putInt(asS4(value));
+            if (offset % Short.BYTES == 0) {
+                putS2(buf.getShort(0));
+                putS2(buf.getShort(2));
+            } else {
+                putS1(buf.get(0));
+                putS2(buf.getShort(1));
+                putS1(buf.get(3));
+            }
+        }
     }
 
     @Override
     public void putU4(long value) {
-        long offset = writeOffset(Integer.BYTES);
-        UnsafeAccess.unsafe.putInt(writeChunk.data, offset, TypeConversion.asU4(value));
+        putS4(asU4(value));
     }
 
     @Override
     public void putS8(long value) {
         long offset = writeOffset(Long.BYTES);
-        UnsafeAccess.unsafe.putLong(writeChunk.data, offset, value);
+        if (offset % Long.BYTES == 0) {
+            UnsafeAccess.unsafe.putLong(writeChunk.data, offset, value);
+            commitWrite(Long.BYTES);
+        } else {
+            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]).order(ByteOrder.nativeOrder());
+            buf.putLong(value);
+            if (offset % Integer.BYTES == 0) {
+                putS4(buf.getInt(0));
+                putS4(buf.getInt(4));
+            } else {
+                putS2(buf.getShort(0));
+                putS4(buf.getInt(2));
+                putS2(buf.getShort(6));
+            }
+        }
     }
 
     private long writeOffset(int writeBytes) {
@@ -121,10 +161,12 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
         assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1;
         long result = writeChunk.size + Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
+        return result;
+    }
+
+    private void commitWrite(int writeBytes) {
         totalSize += writeBytes;
         writeChunk.size += writeBytes;
         assert writeChunk.size <= writeChunk.data.length;
-
-        return result;
     }
 }
