@@ -60,7 +60,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
-        if (hasNoUsages() && !isVolatile() && (isStatic() || StampTool.isPointerNonNull(forObject.stamp()))) {
+        if (tool.allUsagesAvailable() && hasNoUsages() && !isVolatile() && (isStatic() || StampTool.isPointerNonNull(forObject.stamp()))) {
             return null;
         }
         MetaAccessProvider metaAccess = tool.getMetaAccess();

@@ -45,7 +45,7 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
     @Override
     public void simplify(SimplifierTool tool) {
         Node prev = this.predecessor();
-        while (prev instanceof BeginNode && prev.hasNoUsages()) {
+        while (tool.allUsagesAvailable() && prev instanceof BeginNode && prev.hasNoUsages()) {
             AbstractBeginNode begin = (AbstractBeginNode) prev;
             prev = prev.predecessor();
             graph().removeFixed(begin);

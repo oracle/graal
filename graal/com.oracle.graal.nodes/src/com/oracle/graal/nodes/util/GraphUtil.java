@@ -521,6 +521,11 @@ public class GraphUtil {
             return canonicalizeReads;
         }
 
+        @Override
+        public boolean allUsagesAvailable() {
+            return true;
+        }
+
         public void deleteBranch(Node branch) {
             branch.predecessor().replaceFirstSuccessor(branch, null);
             GraphUtil.killCFG(branch, this);

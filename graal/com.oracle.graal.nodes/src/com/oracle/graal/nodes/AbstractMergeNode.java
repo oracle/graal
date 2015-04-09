@@ -227,7 +227,7 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
                 end.safeDelete();
             }
             for (PhiNode phi : phis) {
-                if (phi.isAlive() && phi.hasNoUsages()) {
+                if (tool.allUsagesAvailable() && phi.isAlive() && phi.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(phi);
                 }
             }

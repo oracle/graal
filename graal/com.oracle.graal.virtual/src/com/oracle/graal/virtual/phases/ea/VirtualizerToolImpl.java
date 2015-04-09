@@ -200,4 +200,9 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     public boolean canonicalizeReads() {
         return false;
     }
+
+    @Override
+    public boolean allUsagesAvailable() {
+        return true;
+    }
 }

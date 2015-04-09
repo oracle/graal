@@ -79,7 +79,7 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        if (hasNoUsages() && StampTool.isPointerNonNull(forValue)) {
+        if (tool.allUsagesAvailable() && hasNoUsages() && StampTool.isPointerNonNull(forValue)) {
             return null;
         }
         ValueNode synonym = findSynonym(tool.getMetaAccess(), tool.getConstantReflection(), forValue, boxingKind);

@@ -67,7 +67,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
                 break;
             }
         }
-        if (hasNoUsages() && next() instanceof FixedAccessNode) {
+        if (tool.allUsagesAvailable() && hasNoUsages() && next() instanceof FixedAccessNode) {
             FixedAccessNode currentNext = (FixedAccessNode) next();
             if (currentNext.getGuard() == anchored) {
                 GraphUtil.removeFixedWithUnusedInputs(this);

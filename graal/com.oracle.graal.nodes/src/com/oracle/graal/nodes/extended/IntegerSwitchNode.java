@@ -98,6 +98,15 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         gen.emitSwitch(this);
     }
 
+    public AbstractBeginNode successorAtKey(int key) {
+        for (int i = 0; i < keyCount(); i++) {
+            if (keys[i] == key) {
+                return blockSuccessor(keySuccessorIndex(i));
+            }
+        }
+        return blockSuccessor(keySuccessorIndex(keyCount()));
+    }
+
     @Override
     public void simplify(SimplifierTool tool) {
         if (blockSuccessorCount() == 1) {
@@ -105,20 +114,15 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             graph().removeSplitPropagate(this, defaultSuccessor());
         } else if (value() instanceof ConstantNode) {
             int constant = value().asJavaConstant().asInt();
+            AbstractBeginNode survivingSuccessor = successorAtKey(constant);
+            for (Node successor : successors()) {
+                if (successor != survivingSuccessor) {
+                    tool.deleteBranch(successor);
+                }
+            }
+            tool.addToWorkList(survivingSuccessor);
+            graph().removeSplit(this, survivingSuccessor);
 
-            int survivingEdge = keySuccessorIndex(keyCount());
-            for (int i = 0; i < keyCount(); i++) {
-                if (keys[i] == constant) {
-                    survivingEdge = keySuccessorIndex(i);
-                }
-            }
-            for (int i = 0; i < blockSuccessorCount(); i++) {
-                if (i != survivingEdge) {
-                    tool.deleteBranch(blockSuccessor(i));
-                }
-            }
-            tool.addToWorkList(blockSuccessor(survivingEdge));
-            graph().removeSplit(this, blockSuccessor(survivingEdge));
         } else if (value().stamp() instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) value().stamp();
             if (!integerStamp.isUnrestricted()) {

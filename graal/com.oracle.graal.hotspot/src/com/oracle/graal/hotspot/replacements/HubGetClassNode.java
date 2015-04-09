@@ -53,7 +53,7 @@ public final class HubGetClassNode extends FloatingGuardedNode implements Lowera
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (hasNoUsages()) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         } else {
             MetaAccessProvider metaAccess = tool.getMetaAccess();

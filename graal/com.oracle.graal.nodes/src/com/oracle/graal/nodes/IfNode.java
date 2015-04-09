@@ -178,7 +178,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
             return;
         }
-        if (trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages()) {
+        if (tool.allUsagesAvailable() && trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages()) {
 
             pushNodesThroughIf(tool);
 

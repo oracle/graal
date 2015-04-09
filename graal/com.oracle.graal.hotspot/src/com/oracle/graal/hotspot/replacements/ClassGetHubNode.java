@@ -57,7 +57,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (hasNoUsages()) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         } else {
             if (clazz.isConstant()) {

@@ -45,7 +45,7 @@ public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowe
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        return hasNoUsages() ? null : this;
+        return tool.allUsagesAvailable() && hasNoUsages() ? null : this;
     }
 
     @NodeIntrinsic

@@ -416,6 +416,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             public boolean canonicalizeReads() {
                 return canonicalizeReads;
             }
+
+            @Override
+            public boolean allUsagesAvailable() {
+                return true;
+            }
         }
     }
 

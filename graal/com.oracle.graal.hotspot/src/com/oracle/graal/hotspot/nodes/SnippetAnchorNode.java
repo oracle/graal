@@ -42,7 +42,7 @@ public final class SnippetAnchorNode extends FixedWithNextNode implements Simpli
         AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(this);
         replaceAtUsages(InputType.Anchor, prevBegin);
         replaceAtUsages(InputType.Guard, prevBegin);
-        if (hasNoUsages()) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
             graph().removeFixed(this);
         }
     }

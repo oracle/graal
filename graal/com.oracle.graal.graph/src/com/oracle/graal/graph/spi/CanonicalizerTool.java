@@ -23,6 +23,7 @@
 package com.oracle.graal.graph.spi;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 
 public interface CanonicalizerTool {
 
@@ -31,4 +32,11 @@ public interface CanonicalizerTool {
     ConstantReflectionProvider getConstantReflection();
 
     boolean canonicalizeReads();
+
+    /**
+     * If this method returns false, not all {@link Node#usages() usages of a node} are yet
+     * available. So a node must not be canonicalized base on, e.g., information returned from
+     * {@link Node#hasNoUsages()}.
+     */
+    boolean allUsagesAvailable();
 }
