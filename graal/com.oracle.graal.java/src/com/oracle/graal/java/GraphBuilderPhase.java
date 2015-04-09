@@ -1128,15 +1128,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         return;
                     }
 
-                    if (tryInvocationPlugin(args, targetMethod, resultType)) {
-                        if (TraceParserPlugins.getValue()) {
-                            traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
+                    if (invokeKind.isDirect()) {
+                        if (tryInvocationPlugin(args, targetMethod, resultType)) {
+                            if (TraceParserPlugins.getValue()) {
+                                traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
+                            }
+                            return;
                         }
-                        return;
-                    }
 
-                    if (tryInline(args, targetMethod, invokeKind, returnType)) {
-                        return;
+                        if (tryInline(args, targetMethod, returnType)) {
+                            return;
+                        }
                     }
                 } finally {
                     currentInvokeReturnType = null;
@@ -1249,10 +1251,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return plugin != null && plugin.apply(this, targetMethod, args);
             }
 
-            private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, JavaType returnType) {
+            private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
                 InlineInvokePlugin plugin = graphBuilderConfig.getPlugins().getInlineInvokePlugin();
                 boolean canBeInlined = parsingReplacement() || targetMethod.canBeInlined();
-                if (plugin == null || !invokeKind.isDirect() || !canBeInlined) {
+                if (plugin == null || !canBeInlined) {
                     return false;
                 }
                 InlineInfo inlineInfo = plugin.getInlineInfo(this, targetMethod, args, returnType);
