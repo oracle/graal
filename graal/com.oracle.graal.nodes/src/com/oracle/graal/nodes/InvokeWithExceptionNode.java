@@ -160,7 +160,9 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        debugProperties.put("targetMethod", callTarget.targetName());
+        if (callTarget != null) {
+            debugProperties.put("targetMethod", callTarget.targetName());
+        }
         return debugProperties;
     }
 
