@@ -24,7 +24,6 @@ package com.oracle.graal.replacements;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -44,19 +43,16 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
     private final StampProvider stampProvider;
-    private final SnippetReflectionProvider snippetReflection;
     private final StructuredGraph graph;
     private final ResolvedJavaMethod method;
     private FixedWithNextNode lastInstr;
     private ValueNode[] arguments;
     private ValueNode returnValue;
 
-    public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
-                    ResolvedJavaMethod method) {
+    public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, ResolvedJavaMethod method) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.stampProvider = stampProvider;
-        this.snippetReflection = snippetReflection;
         this.graph = new StructuredGraph(method, AllowAssumptions.YES);
         this.method = method;
         this.lastInstr = graph.start();
@@ -148,10 +144,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
-    }
-
-    public SnippetReflectionProvider getSnippetReflection() {
-        return snippetReflection;
     }
 
     public StructuredGraph getGraph() {

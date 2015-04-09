@@ -285,7 +285,7 @@ public class PartialEvaluator {
         }
         plugins.setInlineInvokePlugin(inlinePlugin);
         plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), this.snippetReflection, providers.getConstantReflection(), newConfig,
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig,
                         TruffleCompilerImpl.Optimizations, null).apply(graph);
         if (PrintTruffleExpansionHistogram.getValue()) {
             ((HistogramInlineInvokePlugin) inlinePlugin).print(callTarget, System.out);

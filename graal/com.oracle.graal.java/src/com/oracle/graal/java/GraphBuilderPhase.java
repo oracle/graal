@@ -37,7 +37,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -79,7 +78,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context.getMetaAccess(), context.getStampProvider(), null, context.getConstantReflection(), graphBuilderConfig, context.getOptimisticOptimizations(), null).run(graph);
+        new Instance(context.getMetaAccess(), context.getStampProvider(), context.getConstantReflection(), graphBuilderConfig, context.getOptimisticOptimizations(), null).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
@@ -99,24 +98,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final OptimisticOptimizations optimisticOpts;
         private final StampProvider stampProvider;
         private final ConstantReflectionProvider constantReflection;
-        private final SnippetReflectionProvider snippetReflectionProvider;
 
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, SnippetReflectionProvider snippetReflectionProvider, ConstantReflectionProvider constantReflection,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, ReplacementContext initialReplacementContext) {
+        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
+                        OptimisticOptimizations optimisticOpts, ReplacementContext initialReplacementContext) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.constantReflection = constantReflection;
-            this.snippetReflectionProvider = snippetReflectionProvider;
             this.initialReplacementContext = initialReplacementContext;
 
             assert metaAccess != null;
-        }
-
-        public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
-                        OptimisticOptimizations optimisticOpts, ReplacementContext initialReplacementContext) {
-            this(metaAccess, stampProvider, null, constantReflection, graphBuilderConfig, optimisticOpts, initialReplacementContext);
         }
 
         @Override
@@ -2367,10 +2359,6 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public ConstantReflectionProvider getConstantReflection() {
                 return constantReflection;
-            }
-
-            public SnippetReflectionProvider getSnippetReflection() {
-                return snippetReflectionProvider;
             }
 
             /**

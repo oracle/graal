@@ -344,7 +344,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
                 substitute = msplugin.getSubstitute(providers.getMetaAccess());
             } else if (plugin != null) {
-                StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), snippetReflection, original).buildGraph(plugin);
+                StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original).buildGraph(plugin);
                 if (graph != null) {
                     return graph;
                 }

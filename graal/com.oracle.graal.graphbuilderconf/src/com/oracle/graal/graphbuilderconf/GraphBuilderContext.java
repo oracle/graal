@@ -188,8 +188,6 @@ public interface GraphBuilderContext {
 
     ConstantReflectionProvider getConstantReflection();
 
-    SnippetReflectionProvider getSnippetReflection();
-
     /**
      * Gets the graph being constructed.
      */
