@@ -57,6 +57,8 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.hotspot.nfi.*;
+import com.oracle.nfi.api.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -336,5 +338,28 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         } catch (Exception e) {
             throw new GraalInternalError(e);
         }
+    }
+
+    private static RawNativeCallNodeFactory getRawNativeCallNodeFactory(String arch) {
+        for (RawNativeCallNodeFactory factory : Services.load(RawNativeCallNodeFactory.class)) {
+            if (factory.getArchitecture().equals(arch)) {
+                return factory;
+            }
+        }
+        // No RawNativeCallNodeFactory on this platform.
+        return null;
+    }
+
+    /**
+     * Called from the VM.
+     */
+    public static NativeFunctionInterface createNativeFunctionInterface() {
+        HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+        Backend backend = HotSpotGraalRuntime.runtime().getHostBackend();
+        RawNativeCallNodeFactory factory = getRawNativeCallNodeFactory(backend.getTarget().arch.getName());
+        if (factory == null) {
+            return null;
+        }
+        return new HotSpotNativeFunctionInterface(HotSpotGraalRuntime.runtime().getHostProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
     }
 }

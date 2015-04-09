@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nfi;
+package com.oracle.graal.truffle.hotspot.nfi;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.nfi.NativeCallStubGraphBuilder.*;
+import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;

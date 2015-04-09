@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nfi;
+package com.oracle.graal.truffle.hotspot.nfi;
 
 import java.util.*;
 

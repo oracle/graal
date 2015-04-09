@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,14 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nfi;
+package com.oracle.graal.truffle.hotspot.amd64;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.hotspot.amd64.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.truffle.hotspot.nfi.*;
 
-/**
- * Factory for creating a node that makes a direct call to a native function pointer.
- */
-public interface RawNativeCallNodeFactory {
-    FixedWithNextNode createRawCallNode(Kind returnType, JavaConstant functionPointer, ValueNode... args);
+@ServiceProvider(RawNativeCallNodeFactory.class)
+public class AMD64RawNativeCallNodeFactory implements RawNativeCallNodeFactory {
+    public FixedWithNextNode createRawCallNode(Kind returnType, JavaConstant functionPointer, ValueNode... args) {
+        return new AMD64RawNativeCallNode(returnType, functionPointer, args);
+    }
+
+    public String getArchitecture() {
+        return "AMD64";
+    }
 }
