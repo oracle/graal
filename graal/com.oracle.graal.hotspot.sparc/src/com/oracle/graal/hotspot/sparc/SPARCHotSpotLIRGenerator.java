@@ -129,7 +129,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             assert deoptInfo != null || getStub() != null;
         }
 
-        if (hotspotLinkage.needsJavaFrameAnchor()) {
+        if (linkage.destroysRegisters() || hotspotLinkage.needsJavaFrameAnchor()) {
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
             Value threadTemp = newVariable(LIRKind.value(Kind.Long));
