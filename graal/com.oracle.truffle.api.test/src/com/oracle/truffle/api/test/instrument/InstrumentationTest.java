@@ -157,7 +157,6 @@ public class InstrumentationTest {
 
         // Check that the "probed" AST still executes correctly
         assertEquals(13, callTarget1.call());
-
     }
 
     @Test
@@ -182,7 +181,6 @@ public class InstrumentationTest {
 
         // Now try with the more complex flavor of listener
         checkCounters(probe, callTarget, rootNode, new TestASTInstrumentCounter(), new TestASTInstrumentCounter(), new TestASTInstrumentCounter());
-
     }
 
     private static void checkCounters(Probe probe, CallTarget callTarget, RootNode rootNode, TestCounter counterA, TestCounter counterB, TestCounter counterC) {
@@ -280,12 +278,10 @@ public class InstrumentationTest {
         assertEquals(counterB.leaveCount(), 8);
         assertEquals(counterC.enterCount(), 2);
         assertEquals(counterC.leaveCount(), 2);
-
     }
 
     @Test
     public void testTagging() {
-
         // Applies appropriate tags
         final TestASTProber astProber = new TestASTProber();
         Probe.registerASTProber(astProber);
@@ -341,7 +337,6 @@ public class InstrumentationTest {
         assertEquals(valueCounter.count, 2);
 
         Probe.unregisterASTProber(astProber);
-
     }
 
     private interface TestCounter {
@@ -353,12 +348,10 @@ public class InstrumentationTest {
         void attach(Probe probe);
 
         void dispose();
-
     }
 
     /**
-     * A counter for the number of times execution enters and leaves a probed AST node, using the
-     * simplest kind of listener.
+     * A counter for the number of times execution enters and leaves a probed AST node.
      */
     private class TestInstrumentCounter implements TestCounter {
 
@@ -367,42 +360,50 @@ public class InstrumentationTest {
         public final Instrument instrument;
 
         public TestInstrumentCounter() {
-            this.instrument = Instrument.create(new SimpleInstrumentListener() {
+            this.instrument = Instrument.create(new InstrumentListener() {
 
-                @Override
                 public void enter(Probe probe) {
                     enterCount++;
                 }
 
-                @Override
-                public void returnAny(Probe probe) {
+                public void returnVoid(Probe probe) {
+                    leaveCount++;
+                }
+
+                public void returnValue(Probe probe, Object result) {
+                    leaveCount++;
+                }
+
+                public void returnExceptional(Probe probe, Exception exception) {
                     leaveCount++;
                 }
 
             }, "Instrumentation Test Counter");
-
         }
 
+        @Override
         public int enterCount() {
             return enterCount;
         }
 
+        @Override
         public int leaveCount() {
             return leaveCount;
         }
 
+        @Override
         public void attach(Probe probe) {
             probe.attach(instrument);
         }
 
+        @Override
         public void dispose() {
             instrument.dispose();
         }
     }
 
     /**
-     * A counter for the number of times execution enters and leaves a probed AST node, using the
-     * simplest kind of listener.
+     * A counter for the number of times execution enters and leaves a probed AST node.
      */
     private class TestASTInstrumentCounter implements TestCounter {
 
@@ -411,34 +412,43 @@ public class InstrumentationTest {
         public final Instrument instrument;
 
         public TestASTInstrumentCounter() {
-            this.instrument = Instrument.create(new SimpleASTInstrumentListener() {
+            this.instrument = Instrument.create(new ASTInstrumentListener() {
 
-                @Override
                 public void enter(Probe probe, Node node, VirtualFrame vFrame) {
                     enterCount++;
                 }
 
-                @Override
-                public void returnAny(Probe probe, Node node, VirtualFrame vFrame) {
+                public void returnVoid(Probe probe, Node node, VirtualFrame vFrame) {
+                    leaveCount++;
+                }
+
+                public void returnValue(Probe probe, Node node, VirtualFrame vFrame, Object result) {
+                    leaveCount++;
+                }
+
+                public void returnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception) {
                     leaveCount++;
                 }
 
             }, "Instrumentation Test Counter");
-
         }
 
+        @Override
         public int enterCount() {
             return enterCount;
         }
 
+        @Override
         public int leaveCount() {
             return leaveCount;
         }
 
+        @Override
         public void attach(Probe probe) {
             probe.attach(instrument);
         }
 
+        @Override
         public void dispose() {
             instrument.dispose();
         }
@@ -483,7 +493,6 @@ public class InstrumentationTest {
         public void enter(Probe probe) {
             counter++;
         }
-
     }
 
     /**
@@ -497,7 +506,6 @@ public class InstrumentationTest {
         public void enter(Probe probe, Node node, VirtualFrame vFrame) {
             counter++;
         }
-
     }
 
     /**
@@ -539,5 +547,4 @@ public class InstrumentationTest {
             tagCount++;
         }
     }
-
 }

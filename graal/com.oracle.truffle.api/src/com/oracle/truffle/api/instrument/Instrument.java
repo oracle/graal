@@ -74,10 +74,6 @@ import com.oracle.truffle.api.source.*;
  * <li>Extend one of the <em>helper implementations</em>: {@link DefaultInstrumentListener} or
  * {@link DefaultASTInstrumentListener}. These provide no-op implementation of every listener
  * method, so only the methods of interest need to be overridden.</li>
- * <li>Extend one of the <em>helper implementations</em>: {@link SimpleInstrumentListener} or
- * {@link SimpleASTInstrumentListener}. These re-route all <em>execution returns</em> to a single
- * method, ignoring return values, so only two methods (for "enter" and "return") will notify all
- * events.</li>
  * </ol>
  * <p>
  * <h4>General guidelines for {@link ASTInstrumentListener} implementation:</h4>
