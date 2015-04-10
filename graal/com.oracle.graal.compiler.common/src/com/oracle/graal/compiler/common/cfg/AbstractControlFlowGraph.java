@@ -66,17 +66,39 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
             }
             dominator.getDominated().add(block);
         }
-        calcDominatorRanges(cfg.getStartBlock(), 0);
+        calcDominatorRanges(cfg.getStartBlock());
     }
 
-    static <T extends AbstractBlockBase<T>> int calcDominatorRanges(T block, int next) {
-        int myNumber = next;
-        int maxNumber = myNumber;
-        for (T dominated : block.getDominated()) {
-            maxNumber = calcDominatorRanges(dominated, maxNumber + 1);
+    static <T extends AbstractBlockBase<T>> void calcDominatorRanges(T block) {
+        final class Frame<T> {
+            int myNumber;
+            int maxNumber;
+            T block;
+            Iterator<T> dominated;
+            Frame<T> parent;
+
+            public Frame(int myNumber, T block, Iterator<T> dominated, Frame<T> parent) {
+                super();
+                this.myNumber = myNumber;
+                this.maxNumber = myNumber;
+                this.block = block;
+                this.dominated = dominated;
+                this.parent = parent;
+            }
         }
-        block.setDominatorNumbers(myNumber, maxNumber);
-        return maxNumber;
+        Frame<T> f = new Frame<>(0, block, block.getDominated().iterator(), null);
+        while (f != null) {
+            if (!f.dominated.hasNext()) { // Retreat
+                f.block.setDominatorNumbers(f.myNumber, f.maxNumber);
+                if (f.parent != null)
+                    f.parent.maxNumber = f.maxNumber;
+                f = f.parent;
+            } else {
+                T d = f.dominated.next();
+                List<T> dd = d.getDominated();
+                f = new Frame<>(f.maxNumber + 1, d, dd.iterator(), f);
+            }
+        }
     }
 
     /**
