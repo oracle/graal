@@ -26,12 +26,14 @@ import static java.lang.String.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graphbuilderconf.MethodIdHolder.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -270,14 +272,14 @@ public class InvocationPlugins {
     private final List<MethodInfo> registrations;
 
     /**
-     * The minimum {@linkplain InvocationPluginIdHolder#getInvocationPluginId() id} for a method
-     * associated with a plugin in {@link #plugins}.
+     * The minimum {@linkplain MethodIdHolder#getMethodId() id} for a method associated with a
+     * plugin in {@link #plugins}.
      */
     private int minId = Integer.MAX_VALUE;
 
     /**
      * Resolved methods to plugins map. The keys (i.e., indexes) are derived from
-     * {@link InvocationPluginIdHolder#getInvocationPluginId()}.
+     * {@link MethodIdHolder#getMethodId()}.
      */
     private volatile InvocationPlugin[] plugins;
 
@@ -322,8 +324,6 @@ public class InvocationPlugins {
         registrations.add(methodInfo);
     }
 
-    private static int nextInvocationPluginId = 1;
-
     /**
      * Gets the plugin for a given method.
      *
@@ -331,52 +331,49 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
-        assert method instanceof InvocationPluginIdHolder;
+        assert method instanceof MethodIdHolder;
         if (parent != null) {
             InvocationPlugin plugin = parent.lookupInvocation(method);
             if (plugin != null) {
                 return plugin;
             }
         }
-        InvocationPluginIdHolder pluggable = (InvocationPluginIdHolder) method;
+        MethodIdHolder pluggable = (MethodIdHolder) method;
         if (plugins == null) {
-            // Must synchronize across all InvocationPlugins objects to ensure thread safe
-            // allocation of InvocationPlugin identifiers
-            synchronized (InvocationPlugins.class) {
-                if (plugins == null) {
-                    if (registrations.isEmpty()) {
-                        plugins = new InvocationPlugin[0];
-                    } else {
-                        int max = Integer.MIN_VALUE;
-                        for (MethodInfo methodInfo : registrations) {
-                            InvocationPluginIdHolder p = (InvocationPluginIdHolder) methodInfo.resolve(metaAccess);
-                            int id = p.getInvocationPluginId();
-                            if (id == 0) {
-                                id = nextInvocationPluginId++;
-                                p.setInvocationPluginId(id);
+            // 'assignIds' synchronizes on a global lock which ensures thread safe
+            // allocation of identifiers across all InvocationPlugins objects
+            MethodIdHolder.assignIds(new Consumer<MethodIdAllocator>() {
+                public void accept(MethodIdAllocator idAllocator) {
+                    if (plugins == null) {
+                        if (registrations.isEmpty()) {
+                            plugins = new InvocationPlugin[0];
+                        } else {
+                            int max = Integer.MIN_VALUE;
+                            for (MethodInfo methodInfo : registrations) {
+                                MethodIdHolder p = (MethodIdHolder) methodInfo.resolve(metaAccess);
+                                int id = idAllocator.assignId(p);
+                                if (id < minId) {
+                                    minId = id;
+                                }
+                                if (id > max) {
+                                    max = id;
+                                }
+                                methodInfo.id = id;
                             }
-                            if (id < minId) {
-                                minId = id;
-                            }
-                            if (id > max) {
-                                max = id;
 
+                            int length = (max - minId) + 1;
+                            plugins = new InvocationPlugin[length];
+                            for (MethodInfo m : registrations) {
+                                int index = m.id - minId;
+                                plugins[index] = m.plugin;
                             }
-                            methodInfo.id = id;
-                        }
-
-                        int length = (max - minId) + 1;
-                        plugins = new InvocationPlugin[length];
-                        for (MethodInfo m : registrations) {
-                            int index = m.id - minId;
-                            plugins[index] = m.plugin;
                         }
                     }
                 }
-            }
+            });
         }
 
-        int id = pluggable.getInvocationPluginId();
+        int id = pluggable.getMethodId();
         int index = id - minId;
         return index >= 0 && index < plugins.length ? plugins[index] : null;
     }
