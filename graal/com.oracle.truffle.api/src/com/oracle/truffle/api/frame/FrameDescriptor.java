@@ -192,4 +192,22 @@ public final class FrameDescriptor implements Cloneable {
             }
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("FrameDescriptor@").append(Integer.toHexString(hashCode()));
+        sb.append("{");
+        boolean comma = false;
+        for (FrameSlot slot : slots) {
+            if (comma) {
+                sb.append(", ");
+            } else {
+                comma = true;
+            }
+            sb.append(slot.getIndex()).append(":").append(slot.getIdentifier());
+        }
+        sb.append("}");
+        return sb.toString();
+    }
 }
