@@ -67,7 +67,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument");
+        Instrument instrument = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument");
         probe.attach(instrument);
         assertPartialEvalEquals("constant42", root);
     }
@@ -91,7 +91,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument");
+        Instrument instrument = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument");
         probe.attach(instrument);
         instrument.dispose();
         assertPartialEvalEquals("constant42", root);
@@ -117,9 +117,9 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument1 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 1");
+        Instrument instrument1 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 1");
         probe.attach(instrument1);
-        Instrument instrument2 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 2");
+        Instrument instrument2 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 2");
         probe.attach(instrument2);
         assertPartialEvalEquals("constant42", root);
     }
@@ -145,11 +145,11 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument1 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 1");
+        Instrument instrument1 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 1");
         probe.attach(instrument1);
-        Instrument instrument2 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 2");
+        Instrument instrument2 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 2");
         probe.attach(instrument2);
-        Instrument instrument3 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 3");
+        Instrument instrument3 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 3");
         probe.attach(instrument3);
         assertPartialEvalEquals("constant42", root);
     }
@@ -177,11 +177,11 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        Instrument instrument1 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 1");
+        Instrument instrument1 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 1");
         probe.attach(instrument1);
-        Instrument instrument2 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 2");
+        Instrument instrument2 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 2");
         probe.attach(instrument2);
-        Instrument instrument3 = Instrument.create(new DefaultInstrumentListener(), "Null test Instrument 3");
+        Instrument instrument3 = Instrument.create(new DefaultSimpleInstrumentListener(), "Null test Instrument 3");
         probe.attach(instrument3);
         instrument2.dispose();
         assertPartialEvalEquals("constant42", root);
@@ -280,7 +280,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
             Assert.assertEquals(0, count[0]);           // Didn't count anything
 
             // Add a counting instrument; this changes the "Probe state" and should cause a deopt
-            final Instrument countingInstrument = Instrument.create(new DefaultInstrumentListener() {
+            final Instrument countingInstrument = Instrument.create(new DefaultSimpleInstrumentListener() {
 
                 @Override
                 public void enter(Probe p) {
