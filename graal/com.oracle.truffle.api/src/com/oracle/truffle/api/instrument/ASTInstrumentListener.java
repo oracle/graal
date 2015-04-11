@@ -32,7 +32,7 @@ import com.oracle.truffle.api.source.*;
  * A receiver of Truffle execution events that can act on behalf of an external client.
  * <p>
  * The {@link Probe} argument provides access to the {@link SourceSection} associated with the
- * event, as well as any {@link SyntaxTag}s that have been applied at that AST location.
+ * event, as well as any {@link SyntaxTag}s that have been applied at that AST node.
  * <p>
  * This listener is designed for clients that also require access to the AST execution state at the
  * time of the event. Clients that do not require access to the AST execution state should use the
@@ -40,7 +40,7 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * Clients are free, of course, to record additional information in the listener implementation that
  * carries additional information about the context and reason for the particular {@link Instrument}
- * that is to be created.
+ * that is to be created from the listener.
  */
 public interface ASTInstrumentListener {
 
