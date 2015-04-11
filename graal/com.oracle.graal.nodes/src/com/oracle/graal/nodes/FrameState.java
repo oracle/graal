@@ -227,11 +227,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * the stack.
      */
     public FrameState duplicateModifiedDuringCall(int newBci, Kind popKind) {
-        return duplicateModified(newBci, rethrowException, true, popKind);
+        return duplicateModified(graph(), newBci, rethrowException, true, popKind);
     }
 
     public FrameState duplicateModifiedBeforeCall(int newBci, Kind popKind, ValueNode... pushedValues) {
-        return duplicateModified(newBci, rethrowException, false, popKind, pushedValues);
+        return duplicateModified(graph(), newBci, rethrowException, false, popKind, pushedValues);
     }
 
     /**
@@ -241,7 +241,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * followed by a null slot.
      */
     public FrameState duplicateModified(int newBci, boolean newRethrowException, Kind popKind, ValueNode... pushedValues) {
-        return duplicateModified(newBci, newRethrowException, duringCall, popKind, pushedValues);
+        return duplicateModified(graph(), newBci, newRethrowException, duringCall, popKind, pushedValues);
     }
 
     /**
@@ -250,7 +250,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     public FrameState duplicateModified(Kind popKind, ValueNode pushedValue) {
         assert pushedValue != null && pushedValue.getKind() == popKind;
-        return duplicateModified(bci, rethrowException, duringCall, popKind, pushedValue);
+        return duplicateModified(graph(), bci, rethrowException, duringCall, popKind, pushedValue);
     }
 
     /**
@@ -259,7 +259,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * correctly in slot encoding: a long or double will be followed by a null slot. The bci will be
      * changed to newBci.
      */
-    private FrameState duplicateModified(int newBci, boolean newRethrowException, boolean newDuringCall, Kind popKind, ValueNode... pushedValues) {
+    public FrameState duplicateModified(StructuredGraph graph, int newBci, boolean newRethrowException, boolean newDuringCall, Kind popKind, ValueNode... pushedValues) {
         ArrayList<ValueNode> copy;
         if (newRethrowException && !rethrowException && popKind == Kind.Void) {
             assert popKind == Kind.Void;
@@ -285,7 +285,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
         assert checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
-        return graph().add(new FrameState(outerFrameState(), method, newBci, copy, localsSize, newStackSize, newRethrowException, newDuringCall, monitorIds, virtualObjectMappings));
+        return graph.add(new FrameState(outerFrameState(), method, newBci, copy, localsSize, newStackSize, newRethrowException, newDuringCall, monitorIds, virtualObjectMappings));
     }
 
     /**
