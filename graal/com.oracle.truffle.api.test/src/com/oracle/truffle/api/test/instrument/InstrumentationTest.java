@@ -180,7 +180,7 @@ public class InstrumentationTest {
         checkCounters(probe, callTarget, rootNode, new TestSimpleInstrumentCounter(), new TestSimpleInstrumentCounter(), new TestSimpleInstrumentCounter());
 
         // Now try with the more complex flavor of listener
-        checkCounters(probe, callTarget, rootNode, new TestASTInstrumentCounter(), new TestASTInstrumentCounter(), new TestASTInstrumentCounter());
+        checkCounters(probe, callTarget, rootNode, new TestStandardInstrumentCounter(), new TestStandardInstrumentCounter(), new TestStandardInstrumentCounter());
     }
 
     private static void checkCounters(Probe probe, CallTarget callTarget, RootNode rootNode, TestCounter counterA, TestCounter counterB, TestCounter counterC) {
@@ -405,14 +405,14 @@ public class InstrumentationTest {
     /**
      * A counter for the number of times execution enters and leaves a probed AST node.
      */
-    private class TestASTInstrumentCounter implements TestCounter {
+    private class TestStandardInstrumentCounter implements TestCounter {
 
         public int enterCount = 0;
         public int leaveCount = 0;
         public final Instrument instrument;
 
-        public TestASTInstrumentCounter() {
-            this.instrument = Instrument.create(new ASTInstrumentListener() {
+        public TestStandardInstrumentCounter() {
+            this.instrument = Instrument.create(new StandardInstrumentListener() {
 
                 public void enter(Probe probe, Node node, VirtualFrame vFrame) {
                     enterCount++;
@@ -498,7 +498,7 @@ public class InstrumentationTest {
     /**
      * Counts the number of "enter" events at probed nodes using the AST listener.
      */
-    static final class TestASTInstrumentListener extends DefaultASTInstrumentListener {
+    static final class TestASTInstrumentListener extends DefaultStandardInstrumentListener {
 
         public int counter = 0;
 

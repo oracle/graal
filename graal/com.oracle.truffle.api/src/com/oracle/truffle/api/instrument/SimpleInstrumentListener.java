@@ -34,7 +34,7 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * This is the simplest kind of listener, suitable for clients that need no other information about
  * the program's execution state at the time of the event. Clients that require access to the AST
- * execution state should use {@link ASTInstrumentListener}.
+ * execution state should use {@link StandardInstrumentListener}.
  * <p>
  * Clients are free, of course, to record additional information in the listener implementation that
  * carries additional information about the context and reason for the particular {@link Instrument}

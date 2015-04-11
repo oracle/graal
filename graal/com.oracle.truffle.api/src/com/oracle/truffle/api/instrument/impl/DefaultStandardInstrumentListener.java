@@ -29,10 +29,10 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A listener for AST {@linkplain ASTInstrumentListener execution events} that provides a no-op
+ * A listener for AST {@linkplain StandardInstrumentListener execution events} that provides a no-op
  * implementation of every event.
  */
-public class DefaultASTInstrumentListener implements ASTInstrumentListener {
+public class DefaultStandardInstrumentListener implements StandardInstrumentListener {
 
     public void enter(Probe probe, Node node, VirtualFrame vFrame) {
     }

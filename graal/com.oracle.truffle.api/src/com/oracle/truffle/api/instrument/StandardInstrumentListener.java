@@ -42,7 +42,7 @@ import com.oracle.truffle.api.source.*;
  * carries additional information about the context and reason for the particular {@link Instrument}
  * that is to be created from the listener.
  */
-public interface ASTInstrumentListener {
+public interface StandardInstrumentListener {
 
     /**
      * Receive notification that an AST node's execute method is about to be called.

@@ -41,13 +41,13 @@ import com.oracle.truffle.api.source.*;
  * and a <em>listener</em>, which consumes notifications on behalf of an external tool. There are at
  * present two kinds of listeners that be used:
  * <ol>
- * <li>{@link SimpleInstrumentListener} is the simplest and is intended for tools that require no access
- * to the <em>internal execution state</em> of the Truffle execution, only that execution has passed
- * through a particular location in the program. Information about that location is made available
- * via the {@link Probe} argument in notification methods, including the {@linkplain SourceSection
- * source location} of the node and any {@linkplain SyntaxTag tags} that have been applied to the
- * node.</li>
- * <li>{@link ASTInstrumentListener} reports the same events and {@link Probe} argument, but
+ * <li>{@link SimpleInstrumentListener} is the simplest and is intended for tools that require no
+ * access to the <em>internal execution state</em> of the Truffle execution, only that execution has
+ * passed through a particular location in the program. Information about that location is made
+ * available via the {@link Probe} argument in notification methods, including the
+ * {@linkplain SourceSection source location} of the node and any {@linkplain SyntaxTag tags} that
+ * have been applied to the node.</li>
+ * <li>{@link StandardInstrumentListener} reports the same events and {@link Probe} argument, but
  * additionally provides access to the execution state via the explicit {@link Node} and
  * {@link Frame} at the current execution site.</li>
  * </ol>
@@ -58,36 +58,36 @@ import com.oracle.truffle.api.source.*;
  * <li>Create an implementation of a <em>listener</em> interface.</li>
  * <li>Create an Instrument via factory methods
  * {@link Instrument#create(SimpleInstrumentListener, String)} or
- * {@link Instrument#create(ASTInstrumentListener, String)}.</li>
+ * {@link Instrument#create(StandardInstrumentListener, String)}.</li>
  * <li>"Attach" the Instrument to a Probe via {@link Probe#attach(Instrument)}, at which point event
  * notifications begin to arrive at the listener.</li>
- * <li>When no longer needed, "detach" the Instrument via {@link ASTInstrument#dispose()}, at which
- * point event notifications to the listener cease, and the Instrument becomes unusable.</li>
+ * <li>When no longer needed, "detach" the Instrument via {@link StandardInstrument#dispose()}, at
+ * which point event notifications to the listener cease, and the Instrument becomes unusable.</li>
  * </ol>
  * <p>
  * <h4>Options for creating listeners:</h4>
  * <p>
  * <ol>
  * <li>Implement one of the <em>listener interfaces</em>: {@link SimpleInstrumentListener} or
- * {@link ASTInstrumentListener} . Their event handling methods account for both the entry into an
+ * {@link StandardInstrumentListener} . Their event handling methods account for both the entry into an
  * AST node (about to call) and three possible kinds of <em>execution return</em> from an AST node.</li>
  * <li>Extend one of the <em>helper implementations</em>: {@link DefaultSimpleInstrumentListener} or
- * {@link DefaultASTInstrumentListener}. These provide no-op implementation of every listener
+ * {@link DefaultStandardInstrumentListener}. These provide no-op implementation of every listener
  * method, so only the methods of interest need to be overridden.</li>
  * </ol>
  * <p>
- * <h4>General guidelines for {@link ASTInstrumentListener} implementation:</h4>
+ * <h4>General guidelines for {@link StandardInstrumentListener} implementation:</h4>
  * <p>
  * Unlike the listener interface {@link SimpleInstrumentListener}, which isolates implementations
- * completely from Truffle internals (and is thus <em>Truffle-safe</em>), implementations of
- * {@link ASTInstrumentListener} can interact directly with (and potentially affect) Truffle
+ * from Truffle internals (and is thus <em>Truffle-safe</em>), implementations of
+ * {@link StandardInstrumentListener} can interact directly with (and potentially affect) Truffle
  * execution in general and Truffle optimization in particular. For example, it is possible to
  * implement a debugger with this interface.
  * </p>
  * <p>
- * As a consequence, implementations of {@link ASTInstrumentListener} effectively become part of the
- * Truffle execution and must be coded according to general guidelines for Truffle implementations.
- * For example:
+ * As a consequence, implementations of {@link StandardInstrumentListener} effectively become part of
+ * the Truffle execution and must be coded according to general guidelines for Truffle
+ * implementations. For example:
  * <ul>
  * <li>Do not store {@link Frame} or {@link Node} references in fields.</li>
  * <li>Prefer {@code final} fields and (where performance is important) short methods.</li>
@@ -110,8 +110,8 @@ import com.oracle.truffle.api.source.*;
  * <h4>Allowing for AST cloning:</h4>
  * <p>
  * Truffle routinely <em>clones</em> ASTs, which has consequences for implementations of
- * {@link ASTInstrumentListener} (but not for implementations of {@link SimpleInstrumentListener}, from
- * which cloning is hidden).
+ * {@link StandardInstrumentListener} (but not for implementations of {@link SimpleInstrumentListener},
+ * from which cloning is hidden).
  * <ul>
  * <li>Even though a {@link Probe} is uniquely associated with a particular location in the
  * executing Guest Language program, execution events at that location will in general be
@@ -122,7 +122,7 @@ import com.oracle.truffle.api.source.*;
  * be treated as equivalent for most purposes.</li>
  * </ul>
  * <p>
- * <h4>Access to execution state via {@link ASTInstrumentListener}:</h4>
+ * <h4>Access to execution state via {@link StandardInstrumentListener}:</h4>
  * <p>
  * <ul>
  * <li>Notification arguments provide primary access to the GL program's execution states:
@@ -181,13 +181,13 @@ public abstract class Instrument {
      * Creates an instrument that will route execution events to a listener, along with access to
      * internal execution state.
      *
-     * @param astListener a listener for event generated by the instrument that provides access to
+     * @param standardListener a listener for event generated by the instrument that provides access to
      *            internal execution state
      * @param instrumentInfo optional description of the instrument's role, useful for debugging.
      * @return a new instrument, ready for attachment at a probe
      */
-    public static Instrument create(ASTInstrumentListener astListener, String instrumentInfo) {
-        return new ASTInstrument(astListener, instrumentInfo);
+    public static Instrument create(StandardInstrumentListener standardListener, String instrumentInfo) {
+        return new StandardInstrument(standardListener, instrumentInfo);
     }
 
     /**
@@ -346,23 +346,23 @@ public abstract class Instrument {
     abstract AbstractInstrumentNode removeFromChain(AbstractInstrumentNode instrumentNode);
 
     /**
-     * An instrument that propagates events to an instance of {@link ASTInstrumentListener}.
+     * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
      */
-    private static final class ASTInstrument extends Instrument {
+    private static final class StandardInstrument extends Instrument {
 
         /**
          * Tool-supplied listener for AST events.
          */
-        private final ASTInstrumentListener astListener;
+        private final StandardInstrumentListener standardListener;
 
-        private ASTInstrument(ASTInstrumentListener astListener, String instrumentInfo) {
+        private StandardInstrument(StandardInstrumentListener standardListener, String instrumentInfo) {
             super(instrumentInfo);
-            this.astListener = astListener;
+            this.standardListener = standardListener;
         }
 
         @Override
         AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
-            return new ASTInstrumentNode(nextNode);
+            return new StandardInstrumentNode(nextNode);
         }
 
         @Override
@@ -374,7 +374,7 @@ public abstract class Instrument {
                     return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
-                found = instrumentNode.removeFromChain(ASTInstrument.this);
+                found = instrumentNode.removeFromChain(StandardInstrument.this);
             }
             if (!found) {
                 throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
@@ -383,35 +383,35 @@ public abstract class Instrument {
         }
 
         @NodeInfo(cost = NodeCost.NONE)
-        private final class ASTInstrumentNode extends AbstractInstrumentNode {
+        private final class StandardInstrumentNode extends AbstractInstrumentNode {
 
-            private ASTInstrumentNode(AbstractInstrumentNode nextNode) {
+            private StandardInstrumentNode(AbstractInstrumentNode nextNode) {
                 super(nextNode);
             }
 
             public void enter(Node node, VirtualFrame vFrame) {
-                ASTInstrument.this.astListener.enter(ASTInstrument.this.probe, node, vFrame);
+                standardListener.enter(StandardInstrument.this.probe, node, vFrame);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
                 }
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {
-                ASTInstrument.this.astListener.returnVoid(ASTInstrument.this.probe, node, vFrame);
+                standardListener.returnVoid(StandardInstrument.this.probe, node, vFrame);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                ASTInstrument.this.astListener.returnValue(ASTInstrument.this.probe, node, vFrame, result);
+                standardListener.returnValue(StandardInstrument.this.probe, node, vFrame, result);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-                ASTInstrument.this.astListener.returnExceptional(ASTInstrument.this.probe, node, vFrame, exception);
+                standardListener.returnExceptional(StandardInstrument.this.probe, node, vFrame, exception);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
@@ -419,14 +419,13 @@ public abstract class Instrument {
 
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
-                return info != null ? info : astListener.getClass().getSimpleName();
+                return info != null ? info : standardListener.getClass().getSimpleName();
             }
         }
-
     }
 
     /**
-     * An instrument that propagates events to an instance of {@link ASTInstrumentListener}.
+     * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
      */
     private static final class ToolNodeInstrument extends Instrument {
 
@@ -520,7 +519,6 @@ public abstract class Instrument {
                 return info != null ? info : toolNodeListener.getClass().getSimpleName();
             }
         }
-
     }
 
     public interface TruffleOptListener {
@@ -601,7 +599,6 @@ public abstract class Instrument {
                 return info != null ? info : toolOptListener.getClass().getSimpleName();
             }
         }
-
     }
 
     @NodeInfo(cost = NodeCost.NONE)
@@ -654,7 +651,5 @@ public abstract class Instrument {
         protected String getInstrumentInfo() {
             return Instrument.this.instrumentInfo;
         }
-
     }
-
 }
