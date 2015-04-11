@@ -433,7 +433,7 @@ public abstract class Node implements Cloneable, Formattable {
             this.movUsageFromEndTo(1);
             return true;
         }
-        for (int i = 0; i < this.extraUsagesCount; ++i) {
+        for (int i = this.extraUsagesCount - 1; i >= 0; i--) {
             if (extraUsages[i] == node) {
                 this.movUsageFromEndTo(i + INLINE_USAGE_COUNT);
                 return true;
@@ -683,12 +683,12 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     private void unregisterInputs() {
-        for (Node input : inputs()) {
-            removeThisFromUsages(input);
+        acceptInputs((node, input) -> {
+            node.removeThisFromUsages(input);
             if (input.hasNoUsages()) {
-                maybeNotifyZeroUsages(input);
+                node.maybeNotifyZeroUsages(input);
             }
-        }
+        });
     }
 
     public void clearInputs() {
