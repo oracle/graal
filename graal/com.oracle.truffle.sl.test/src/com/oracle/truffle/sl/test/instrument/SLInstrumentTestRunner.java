@@ -274,7 +274,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
      * attached at {@link SLWriteLocalVariableNode}, but provides no guards to protect it from being
      * attached elsewhere.
      */
-    public final class SLPrintAssigmentValueListener extends DefaultInstrumentListener {
+    public final class SLPrintAssigmentValueListener extends DefaultSimpleInstrumentListener {
 
         private PrintStream output;
 

@@ -36,7 +36,7 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * This listener is designed for clients that also require access to the AST execution state at the
  * time of the event. Clients that do not require access to the AST execution state should use the
- * simpler {@link InstrumentListener}.
+ * {@link SimpleInstrumentListener}.
  * <p>
  * Clients are free, of course, to record additional information in the listener implementation that
  * carries additional information about the context and reason for the particular {@link Instrument}

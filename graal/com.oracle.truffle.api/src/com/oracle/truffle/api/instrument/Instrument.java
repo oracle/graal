@@ -41,7 +41,7 @@ import com.oracle.truffle.api.source.*;
  * and a <em>listener</em>, which consumes notifications on behalf of an external tool. There are at
  * present two kinds of listeners that be used:
  * <ol>
- * <li>{@link InstrumentListener} is the simplest and is intended for tools that require no access
+ * <li>{@link SimpleInstrumentListener} is the simplest and is intended for tools that require no access
  * to the <em>internal execution state</em> of the Truffle execution, only that execution has passed
  * through a particular location in the program. Information about that location is made available
  * via the {@link Probe} argument in notification methods, including the {@linkplain SourceSection
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.source.*;
  * <ol>
  * <li>Create an implementation of a <em>listener</em> interface.</li>
  * <li>Create an Instrument via factory methods
- * {@link Instrument#create(InstrumentListener, String)} or
+ * {@link Instrument#create(SimpleInstrumentListener, String)} or
  * {@link Instrument#create(ASTInstrumentListener, String)}.</li>
  * <li>"Attach" the Instrument to a Probe via {@link Probe#attach(Instrument)}, at which point event
  * notifications begin to arrive at the listener.</li>
@@ -68,17 +68,17 @@ import com.oracle.truffle.api.source.*;
  * <h4>Options for creating listeners:</h4>
  * <p>
  * <ol>
- * <li>Implement one of the <em>listener interfaces</em>: {@link InstrumentListener} or
+ * <li>Implement one of the <em>listener interfaces</em>: {@link SimpleInstrumentListener} or
  * {@link ASTInstrumentListener} . Their event handling methods account for both the entry into an
  * AST node (about to call) and three possible kinds of <em>execution return</em> from an AST node.</li>
- * <li>Extend one of the <em>helper implementations</em>: {@link DefaultInstrumentListener} or
+ * <li>Extend one of the <em>helper implementations</em>: {@link DefaultSimpleInstrumentListener} or
  * {@link DefaultASTInstrumentListener}. These provide no-op implementation of every listener
  * method, so only the methods of interest need to be overridden.</li>
  * </ol>
  * <p>
  * <h4>General guidelines for {@link ASTInstrumentListener} implementation:</h4>
  * <p>
- * Unlike the listener interface {@link InstrumentListener}, which isolates implementations
+ * Unlike the listener interface {@link SimpleInstrumentListener}, which isolates implementations
  * completely from Truffle internals (and is thus <em>Truffle-safe</em>), implementations of
  * {@link ASTInstrumentListener} can interact directly with (and potentially affect) Truffle
  * execution in general and Truffle optimization in particular. For example, it is possible to
@@ -110,7 +110,7 @@ import com.oracle.truffle.api.source.*;
  * <h4>Allowing for AST cloning:</h4>
  * <p>
  * Truffle routinely <em>clones</em> ASTs, which has consequences for implementations of
- * {@link ASTInstrumentListener} (but not for implementations of {@link InstrumentListener}, from
+ * {@link ASTInstrumentListener} (but not for implementations of {@link SimpleInstrumentListener}, from
  * which cloning is hidden).
  * <ul>
  * <li>Even though a {@link Probe} is uniquely associated with a particular location in the
@@ -173,8 +173,8 @@ public abstract class Instrument {
      * @param instrumentInfo optional description of the instrument's role, useful for debugging.
      * @return a new instrument, ready for attachment at a probe
      */
-    public static Instrument create(InstrumentListener listener, String instrumentInfo) {
-        return new BasicInstrument(listener, instrumentInfo);
+    public static Instrument create(SimpleInstrumentListener listener, String instrumentInfo) {
+        return new SimpleInstrument(listener, instrumentInfo);
     }
 
     /**
@@ -262,23 +262,23 @@ public abstract class Instrument {
     abstract AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode);
 
     /**
-     * An instrument that propagates events to an instance of {@link InstrumentListener}.
+     * An instrument that propagates events to an instance of {@link SimpleInstrumentListener}.
      */
-    private static final class BasicInstrument extends Instrument {
+    private static final class SimpleInstrument extends Instrument {
 
         /**
          * Tool-supplied listener for events.
          */
-        private final InstrumentListener instrumentListener;
+        private final SimpleInstrumentListener simpleListener;
 
-        private BasicInstrument(InstrumentListener basicListener, String instrumentInfo) {
+        private SimpleInstrument(SimpleInstrumentListener simpleListener, String instrumentInfo) {
             super(instrumentInfo);
-            this.instrumentListener = basicListener;
+            this.simpleListener = simpleListener;
         }
 
         @Override
         AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
-            return new BasicInstrumentNode(nextNode);
+            return new SimpleInstrumentNode(nextNode);
         }
 
         @Override
@@ -290,7 +290,7 @@ public abstract class Instrument {
                     return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
-                found = instrumentNode.removeFromChain(BasicInstrument.this);
+                found = instrumentNode.removeFromChain(SimpleInstrument.this);
             }
             if (!found) {
                 throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
@@ -299,35 +299,35 @@ public abstract class Instrument {
         }
 
         @NodeInfo(cost = NodeCost.NONE)
-        private final class BasicInstrumentNode extends AbstractInstrumentNode {
+        private final class SimpleInstrumentNode extends AbstractInstrumentNode {
 
-            private BasicInstrumentNode(AbstractInstrumentNode nextNode) {
+            private SimpleInstrumentNode(AbstractInstrumentNode nextNode) {
                 super(nextNode);
             }
 
             public void enter(Node node, VirtualFrame vFrame) {
-                BasicInstrument.this.instrumentListener.enter(BasicInstrument.this.probe);
+                SimpleInstrument.this.simpleListener.enter(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
                 }
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {
-                BasicInstrument.this.instrumentListener.returnVoid(BasicInstrument.this.probe);
+                SimpleInstrument.this.simpleListener.returnVoid(SimpleInstrument.this.probe);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
                 }
             }
 
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                BasicInstrument.this.instrumentListener.returnValue(BasicInstrument.this.probe, result);
+                SimpleInstrument.this.simpleListener.returnValue(SimpleInstrument.this.probe, result);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
                 }
             }
 
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-                BasicInstrument.this.instrumentListener.returnExceptional(BasicInstrument.this.probe, exception);
+                SimpleInstrument.this.simpleListener.returnExceptional(SimpleInstrument.this.probe, exception);
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
                 }
@@ -335,7 +335,7 @@ public abstract class Instrument {
 
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
-                return info != null ? info : instrumentListener.getClass().getSimpleName();
+                return info != null ? info : simpleListener.getClass().getSimpleName();
             }
         }
     }

@@ -40,7 +40,7 @@ import com.oracle.truffle.api.source.*;
  * carries additional information about the context and reason for the particular {@link Instrument}
  * that is to be created from the listener.
  */
-public interface InstrumentListener {
+public interface SimpleInstrumentListener {
 
     /**
      * Receive notification that a program location is about to be executed.

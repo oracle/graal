@@ -177,7 +177,7 @@ public class InstrumentationTest {
 
         // Check instrumentation with the simplest kind of counters.
         // They should all be removed when the check is finished.
-        checkCounters(probe, callTarget, rootNode, new TestInstrumentCounter(), new TestInstrumentCounter(), new TestInstrumentCounter());
+        checkCounters(probe, callTarget, rootNode, new TestSimpleInstrumentCounter(), new TestSimpleInstrumentCounter(), new TestSimpleInstrumentCounter());
 
         // Now try with the more complex flavor of listener
         checkCounters(probe, callTarget, rootNode, new TestASTInstrumentCounter(), new TestASTInstrumentCounter(), new TestASTInstrumentCounter());
@@ -353,14 +353,14 @@ public class InstrumentationTest {
     /**
      * A counter for the number of times execution enters and leaves a probed AST node.
      */
-    private class TestInstrumentCounter implements TestCounter {
+    private class TestSimpleInstrumentCounter implements TestCounter {
 
         public int enterCount = 0;
         public int leaveCount = 0;
         public final Instrument instrument;
 
-        public TestInstrumentCounter() {
-            this.instrument = Instrument.create(new InstrumentListener() {
+        public TestSimpleInstrumentCounter() {
+            this.instrument = Instrument.create(new SimpleInstrumentListener() {
 
                 public void enter(Probe probe) {
                     enterCount++;
@@ -485,7 +485,7 @@ public class InstrumentationTest {
     /**
      * Counts the number of "enter" events at probed nodes using the simplest AST listener.
      */
-    static final class TestInstrumentListener extends DefaultInstrumentListener {
+    static final class TestSimpleInstrumentListener extends DefaultSimpleInstrumentListener {
 
         public int counter = 0;
 
@@ -522,7 +522,7 @@ public class InstrumentationTest {
             // where we want to count executions.
             // it will get copied when ASTs cloned, so
             // keep the count in this outer class.
-            probe.attach(Instrument.create(new DefaultInstrumentListener() {
+            probe.attach(Instrument.create(new DefaultSimpleInstrumentListener() {
 
                 @Override
                 public void enter(Probe p) {

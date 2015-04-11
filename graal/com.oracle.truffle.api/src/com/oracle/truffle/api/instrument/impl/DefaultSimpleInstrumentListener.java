@@ -29,7 +29,7 @@ import com.oracle.truffle.api.instrument.*;
 /**
  * A listener for Truffle execution events that provides a no-op implementation of every event.
  */
-public class DefaultInstrumentListener implements InstrumentListener {
+public class DefaultSimpleInstrumentListener implements SimpleInstrumentListener {
 
     public void enter(Probe probe) {
     }

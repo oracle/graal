@@ -48,7 +48,7 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * <ul>
  * <li>"Execution call" on a node is is defined as invocation of a node method that is instrumented
- * to produce the event {@link InstrumentListener#enter(Probe)};</li>
+ * to produce the event {@link SimpleInstrumentListener#enter(Probe)};</li>
  * <li>Execution calls are tabulated only at <em>instrumented</em> nodes, i.e. those for which
  * {@linkplain Node#isInstrumentable() isInstrumentable() == true};</li>
  * <li>Execution calls are tabulated only at nodes present in the AST when originally created;
@@ -226,7 +226,7 @@ public final class CoverageTracker extends InstrumentationTool {
      * A listener for events at each instrumented AST location. This listener counts
      * "execution calls" to the instrumented node.
      */
-    private final class CoverageRecord extends DefaultInstrumentListener {
+    private final class CoverageRecord extends DefaultSimpleInstrumentListener {
 
         private final SourceSection srcSection; // The text of the code being counted
         private Instrument instrument;  // The attached Instrument, in case need to remove.
