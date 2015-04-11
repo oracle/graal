@@ -24,31 +24,51 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.source.*;
+
 /**
- * A listener of Truffle execution events that can collect information on behalf of an external
- * tool. Contextual information about the source of the event, if not stored in the implementation
- * of the listener, can be obtained via access to the {@link Probe} that generates the event.
+ * A receiver of Truffle execution events that can act on behalf of an external client.
+ * <p>
+ * The {@link Probe} instance provides access to the {@link SourceSection} associated with the
+ * event, as well as any {@link SyntaxTag}s that have been applied at that program's location.
+ * <p>
+ * This is the simplest kind of listener, suitable for clients that need no other information about
+ * the program's execution state at the time of the event. Clients that require access to the AST
+ * execution state should use {@link ASTInstrumentListener}.
+ * <p>
+ * Clients are free, of course, to record additional information in the listener implementation that
+ * carries additional information about the context and reason for the particular {@link Instrument}
+ * that is to be created from the listener.
  */
 public interface InstrumentListener {
 
     /**
-     * Receive notification that an AST node's execute method is about to be called.
+     * Receive notification that a program location is about to be executed.
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void enter(Probe probe);
 
     /**
-     * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
+     * Receive notification that a program location's {@code void}-valued execution has just
+     * completed.
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void returnVoid(Probe probe);
 
     /**
-     * Receive notification that an AST Node's execute method has just returned a value (boxed if
-     * primitive).
+     * Receive notification that a program location's execution has just completed and returned a
+     * value (boxed if primitive).
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void returnValue(Probe probe, Object result);
 
     /**
-     * Receive notification that an AST Node's execute method has just thrown an exception.
+     * Receive notification that a program location's execution has just thrown an exception.
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void returnExceptional(Probe probe, Exception exception);
 }

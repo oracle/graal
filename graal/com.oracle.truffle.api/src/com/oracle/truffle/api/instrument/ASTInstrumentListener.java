@@ -26,32 +26,50 @@ package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.source.*;
 
 /**
- * A listener of Truffle AST runtime execution events that can collect information, examine the
- * execution state at a particular node, and possibly intervene on behalf of an external tool.
+ * A receiver of Truffle execution events that can act on behalf of an external client.
+ * <p>
+ * The {@link Probe} argument provides access to the {@link SourceSection} associated with the
+ * event, as well as any {@link SyntaxTag}s that have been applied at that AST location.
+ * <p>
+ * This listener is designed for clients that also require access to the AST execution state at the
+ * time of the event. Clients that do not require access to the AST execution state should use the
+ * simpler {@link InstrumentListener}.
+ * <p>
+ * Clients are free, of course, to record additional information in the listener implementation that
+ * carries additional information about the context and reason for the particular {@link Instrument}
+ * that is to be created.
  */
 public interface ASTInstrumentListener {
 
     /**
      * Receive notification that an AST node's execute method is about to be called.
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void enter(Probe probe, Node node, VirtualFrame vFrame);
 
     /**
      * Receive notification that an AST Node's {@code void}-valued execute method has just returned.
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void returnVoid(Probe probe, Node node, VirtualFrame vFrame);
 
     /**
      * Receive notification that an AST Node's execute method has just returned a value (boxed if
      * primitive).
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void returnValue(Probe probe, Node node, VirtualFrame vFrame, Object result);
 
     /**
      * Receive notification that an AST Node's execute method has just thrown an exception.
+     * <p>
+     * <strong>Synchronous</strong>: Truffle execution waits until the call returns.
      */
     void returnExceptional(Probe probe, Node node, VirtualFrame vFrame, Exception exception);
-
 }

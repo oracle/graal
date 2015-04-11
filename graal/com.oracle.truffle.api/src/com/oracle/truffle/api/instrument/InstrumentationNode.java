@@ -28,8 +28,9 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * A marker interface for Truffle {@linkplain Node nodes} that support <em>Instrumentation</em> and
- * are should not be part of any Guest Language execution semantics.
+ * A marker interface for Truffle {@linkplain Node nodes} that internally implement the
+ * <em>Instrumentation Framework</em>. Such nodes should not be part of any Guest Language execution
+ * semantics, and should in general not be visible to ordinary Instrumentation clients.
  */
 public interface InstrumentationNode {
 
@@ -39,7 +40,8 @@ public interface InstrumentationNode {
     String instrumentationInfo();
 
     /**
-     * Events at a Truffle node that get propagated through the Instrumentation Framework.
+     * Events that propagate through the {@linkplain InstrumentationNode implementation nodes} of
+     * the Instrumentation Framework, not visible in this form to Instrumentation clients.
      */
     interface TruffleEvents {
 
@@ -62,6 +64,5 @@ public interface InstrumentationNode {
          * An AST Node's execute method has just thrown an exception.
          */
         void returnExceptional(Node node, VirtualFrame vFrame, Exception exception);
-
     }
 }
