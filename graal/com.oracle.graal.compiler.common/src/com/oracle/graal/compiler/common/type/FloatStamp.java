@@ -176,9 +176,6 @@ public class FloatStamp extends PrimitiveStamp {
         if (otherStamp == this) {
             return this;
         }
-        if (!(otherStamp instanceof FloatStamp)) {
-            return StampFactory.illegal(Kind.Illegal);
-        }
         FloatStamp other = (FloatStamp) otherStamp;
         assert getBits() == other.getBits();
         double meetUpperBound = meetBounds(upperBound, other.upperBound, Math::max);
@@ -197,9 +194,6 @@ public class FloatStamp extends PrimitiveStamp {
     public Stamp join(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
-        }
-        if (!(otherStamp instanceof FloatStamp)) {
-            return StampFactory.illegal(Kind.Illegal);
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert getBits() == other.getBits();

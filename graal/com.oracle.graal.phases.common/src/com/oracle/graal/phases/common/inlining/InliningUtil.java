@@ -306,7 +306,7 @@ public class InliningUtil {
             if (callerLockDepth != 0) {
                 for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.TYPE)) {
                     MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
-                    processMonitorId(invoke, monitor);
+                    processMonitorId(invoke.stateAfter(), monitor);
                 }
             }
         } else {
@@ -432,8 +432,7 @@ public class InliningUtil {
         return pos;
     }
 
-    public static void processMonitorId(Invoke invoke, MonitorIdNode monitorIdNode) {
-        FrameState stateAfter = invoke.stateAfter();
+    public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
         if (stateAfter != null) {
             int callerLockDepth = stateAfter.nestedLockDepth();
             monitorIdNode.setLockDepth(monitorIdNode.getLockDepth() + callerLockDepth);
@@ -579,26 +578,43 @@ public class InliningUtil {
     }
 
     public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
+        ValueNode singleReturnValue = null;
         PhiNode returnValuePhi = null;
-
         for (ReturnNode returnNode : returnNodes) {
-            // create and wire up a new EndNode
-            EndNode endNode = merge.graph().add(new EndNode());
-            merge.addForwardEnd(endNode);
-
             if (returnNode.result() != null) {
-                if (returnValuePhi == null) {
+                if (returnValuePhi == null && (singleReturnValue == null || singleReturnValue == returnNode.result())) {
+                    /* Only one return value, so no need yet for a phi node. */
+                    singleReturnValue = returnNode.result();
+
+                } else if (returnValuePhi == null) {
+                    /* Found a second return value, so create phi node. */
                     returnValuePhi = merge.graph().addWithoutUnique(new ValuePhiNode(returnNode.result().stamp().unrestricted(), merge));
                     if (canonicalizedNodes != null) {
                         canonicalizedNodes.add(returnValuePhi);
                     }
-                }
-                returnValuePhi.addInput(returnNode.result());
-            }
-            returnNode.replaceAndDelete(endNode);
+                    for (int i = 0; i < merge.forwardEndCount(); i++) {
+                        returnValuePhi.addInput(singleReturnValue);
+                    }
+                    returnValuePhi.addInput(returnNode.result());
 
+                } else {
+                    /* Multiple return values, just add to existing phi node. */
+                    returnValuePhi.addInput(returnNode.result());
+                }
+            }
+
+            // create and wire up a new EndNode
+            EndNode endNode = merge.graph().add(new EndNode());
+            merge.addForwardEnd(endNode);
+            returnNode.replaceAndDelete(endNode);
         }
-        return returnValuePhi;
+
+        if (returnValuePhi != null) {
+            assert returnValuePhi.verify();
+            return returnValuePhi;
+        } else {
+            return singleReturnValue;
+        }
     }
 
     private static boolean checkContainsOnlyInvalidOrAfterFrameState(Map<Node, Node> duplicates) {

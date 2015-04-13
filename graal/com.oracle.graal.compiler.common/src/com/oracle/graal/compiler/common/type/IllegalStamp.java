@@ -27,7 +27,9 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 
 /**
- * This stamp represents the illegal type. Values with this type can not exist at run time.
+ * This stamp represents the type of the {@link Kind#Illegal} value in the second slot of
+ * {@link Kind#Long} and {@link Kind#Double} values. It can only appear in framestates or virtual
+ * objects.
  */
 public final class IllegalStamp extends Stamp {
 
@@ -56,7 +58,8 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
-        throw GraalInternalError.shouldNotReachHere("illegal stamp has no value");
+        assert ((PrimitiveConstant) c).getKind() == Kind.Illegal;
+        return this;
     }
 
     @Override
@@ -66,17 +69,19 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
+        assert other instanceof IllegalStamp;
         return this;
     }
 
     @Override
     public Stamp join(Stamp other) {
+        assert other instanceof IllegalStamp;
         return this;
     }
 
     @Override
     public boolean isCompatible(Stamp stamp) {
-        return false;
+        return stamp instanceof IllegalStamp;
     }
 
     @Override
@@ -91,6 +96,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp improveWith(Stamp other) {
+        assert other instanceof IllegalStamp;
         return this;
     }
 

@@ -81,6 +81,11 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         return callTarget;
     }
 
+    void setCallTarget(CallTargetNode callTarget) {
+        updateUsages(this.callTarget, callTarget);
+        this.callTarget = callTarget;
+    }
+
     public MethodCallTargetNode methodCallTarget() {
         return (MethodCallTargetNode) callTarget;
     }

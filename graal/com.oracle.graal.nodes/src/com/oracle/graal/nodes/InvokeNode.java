@@ -64,6 +64,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         return callTarget;
     }
 
+    void setCallTarget(CallTargetNode callTarget) {
+        updateUsages(this.callTarget, callTarget);
+        this.callTarget = callTarget;
+    }
+
     @Override
     public boolean isPolymorphic() {
         return polymorphic;

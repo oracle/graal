@@ -37,12 +37,17 @@ import com.oracle.graal.compiler.common.*;
  */
 public class UnsafeArrayTypeWriter implements TypeWriter {
 
-    private static final int CHUNK_SIZE = 4000;
+    private static final int MIN_CHUNK_LENGTH = 200;
+    private static final int MAX_CHUNK_LENGTH = 16000;
 
     static class Chunk {
-        protected final byte[] data = new byte[CHUNK_SIZE];
+        protected final byte[] data;
         protected int size;
         protected Chunk next;
+
+        protected Chunk(int arrayLength) {
+            data = new byte[arrayLength];
+        }
     }
 
     private Chunk firstChunk;
@@ -50,7 +55,7 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
     private int totalSize;
 
     public UnsafeArrayTypeWriter() {
-        firstChunk = new Chunk();
+        firstChunk = new Chunk(MIN_CHUNK_LENGTH);
         writeChunk = firstChunk;
     }
 
@@ -153,7 +158,7 @@ public class UnsafeArrayTypeWriter implements TypeWriter {
 
     private long writeOffset(int writeBytes) {
         if (writeChunk.size + writeBytes >= writeChunk.data.length) {
-            Chunk newChunk = new Chunk();
+            Chunk newChunk = new Chunk(Math.min(writeChunk.data.length * 2, MAX_CHUNK_LENGTH));
             writeChunk.next = newChunk;
             writeChunk = newChunk;
         }

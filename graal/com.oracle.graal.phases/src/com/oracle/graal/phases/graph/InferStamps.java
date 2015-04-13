@@ -88,7 +88,7 @@ public class InferStamps {
         for (Node n : graph.getNodes()) {
             if (n instanceof ValuePhiNode) {
                 ValueNode node = (ValueNode) n;
-                assert !(node.stamp() instanceof IllegalStamp) : "Stamp is illegal after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
+                assert node.stamp().isLegal() : "Stamp is illegal after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
             }
         }
         return true;
