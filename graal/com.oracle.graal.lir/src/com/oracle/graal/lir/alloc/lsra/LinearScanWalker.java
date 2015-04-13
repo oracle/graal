@@ -766,8 +766,7 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        RegisterConfig registerConfig = allocator.frameMapBuilder.getRegisterConfig();
-        availableRegs = registerConfig.getAllocatableRegisters(interval.kind().getPlatformKind(), registerConfig.getAllocatableRegisters());
+        availableRegs = allocator.regAllocConfig.getAllocatableRegisters(interval.kind().getPlatformKind());
     }
 
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {
