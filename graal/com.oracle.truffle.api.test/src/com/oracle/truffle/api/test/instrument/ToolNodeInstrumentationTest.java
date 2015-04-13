@@ -58,9 +58,9 @@ public class ToolNodeInstrumentationTest {
         assertEquals(13, callTarget1.call());
 
         // Attach a listener that never actually attaches a node.
-        final Instrument instrument = Instrument.create(new ToolNodeInstrumentListener() {
+        final Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
 
-            public ToolNode getToolNode(Probe p) {
+            public SplicedNode getSpliceNode(Probe p) {
                 return null;
             }
 
@@ -72,10 +72,10 @@ public class ToolNodeInstrumentationTest {
         final int[] count = new int[1];
 
         // Attach a listener that never actually attaches a node.
-        probe.attach(Instrument.create(new ToolNodeInstrumentListener() {
+        probe.attach(Instrument.create(new SpliceInstrumentListener() {
 
-            public ToolNode getToolNode(Probe p) {
-                return new ToolNode() {
+            public SplicedNode getSpliceNode(Probe p) {
+                return new SplicedNode() {
 
                     @Override
                     public void enter(Node node, VirtualFrame vFrame) {

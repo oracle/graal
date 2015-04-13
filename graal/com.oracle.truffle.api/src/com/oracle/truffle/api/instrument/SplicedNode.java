@@ -28,13 +28,13 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Root of a tool-provided AST fragment that can be attached directly into an executing AST via
- * {@link Instrument#create(ToolNodeInstrumentListener, String)}.
+ * Root of a client-provided AST fragment that can be spliced directly into an executing AST via
+ * {@link Instrument#create(SpliceInstrumentListener, String)}.
  * <p>
  * <strong>Note:</strong> Instances of this class will in some situations be cloned by the
- * instrumentation platform for attachment at equivalent locations in cloned parent ASTs.
+ * instrumentation platform for attachment at equivalent locations in cloned ASTs.
  */
-public abstract class ToolNode extends Node implements InstrumentationNode.TruffleEvents, InstrumentationNode {
+public abstract class SplicedNode extends Node implements InstrumentationNode.TruffleEvents, InstrumentationNode {
 
     public void enter(Node node, VirtualFrame vFrame) {
     }

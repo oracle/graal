@@ -128,15 +128,16 @@ public abstract class Instrument {
 
     /**
      * Creates an instrument that, when executed the first time in any particular AST location,
-     * invites the tool to provide an AST fragment for attachment/adoption into the running AST.
+     * invites the tool to provide an AST fragment for <em>splicing</em> directly into the running
+     * AST.
      *
-     * @param toolNodeListener a listener for the tool that can request an AST fragment
+     * @param spliceListener a callback to the client that requests an AST node to be splice.
      * @param instrumentInfo instrumentInfo optional description of the instrument's role, useful
      *            for debugging.
      * @return a new instrument, ready for attachment at a probe.
      */
-    public static Instrument create(ToolNodeInstrumentListener toolNodeListener, String instrumentInfo) {
-        return new ToolNodeInstrument(toolNodeListener, instrumentInfo);
+    public static Instrument create(SpliceInstrumentListener spliceListener, String instrumentInfo) {
+        return new SpliceInstrument(spliceListener, instrumentInfo);
     }
 
     // TODO (mlvdv) experimental
@@ -195,6 +196,11 @@ public abstract class Instrument {
     }
 
     abstract AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode);
+
+    /**
+     * Removes this instrument from an instrument chain.
+     */
+    abstract AbstractInstrumentNode removeFromChain(AbstractInstrumentNode instrumentNode);
 
     /**
      * An instrument that propagates events to an instance of {@link SimpleInstrumentListener}.
@@ -274,11 +280,6 @@ public abstract class Instrument {
             }
         }
     }
-
-    /**
-     * Removes this instrument from an instrument chain.
-     */
-    abstract AbstractInstrumentNode removeFromChain(AbstractInstrumentNode instrumentNode);
 
     /**
      * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
@@ -361,23 +362,24 @@ public abstract class Instrument {
 
     // TODO (mlvdv) EXPERIMENTAL- UNDER DEVELOPMENT
     /**
-     * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
+     * An instrument that allows clients to "splice" an AST fragment directly into a Probe's
+     * <em>instrumentation chain</em>, and thus directly into the executing Truffle AST.
      */
-    private static final class ToolNodeInstrument extends Instrument {
+    private static final class SpliceInstrument extends Instrument {
 
         /**
          * Tool-supplied listener for AST events.
          */
-        private final ToolNodeInstrumentListener toolNodeListener;
+        private final SpliceInstrumentListener spliceListener;
 
-        private ToolNodeInstrument(ToolNodeInstrumentListener toolNodeListener, String instrumentInfo) {
+        private SpliceInstrument(SpliceInstrumentListener spliceListener, String instrumentInfo) {
             super(instrumentInfo);
-            this.toolNodeListener = toolNodeListener;
+            this.spliceListener = spliceListener;
         }
 
         @Override
         AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
-            return new ToolInstrumentNode(nextNode);
+            return new SpliceInstrumentNode(nextNode);
         }
 
         @Override
@@ -389,7 +391,7 @@ public abstract class Instrument {
                     return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
-                found = instrumentNode.removeFromChain(ToolNodeInstrument.this);
+                found = instrumentNode.removeFromChain(SpliceInstrument.this);
             }
             if (!found) {
                 throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
@@ -398,25 +400,25 @@ public abstract class Instrument {
         }
 
         @NodeInfo(cost = NodeCost.NONE)
-        private final class ToolInstrumentNode extends AbstractInstrumentNode {
+        private final class SpliceInstrumentNode extends AbstractInstrumentNode {
 
-            @Child ToolNode toolNode;
+            @Child SplicedNode splicedNode;
 
-            private ToolInstrumentNode(AbstractInstrumentNode nextNode) {
+            private SpliceInstrumentNode(AbstractInstrumentNode nextNode) {
                 super(nextNode);
             }
 
             public void enter(Node node, VirtualFrame vFrame) {
-                if (toolNode == null) {
-                    final ToolNode newToolNode = ToolNodeInstrument.this.toolNodeListener.getToolNode(ToolNodeInstrument.this.probe);
-                    if (newToolNode != null) {
-                        toolNode = newToolNode;
+                if (splicedNode == null) {
+                    final SplicedNode newSplicedNode = SpliceInstrument.this.spliceListener.getSpliceNode(SpliceInstrument.this.probe);
+                    if (newSplicedNode != null) {
+                        splicedNode = newSplicedNode;
                         adoptChildren();
-                        ToolNodeInstrument.this.probe.invalidateProbeUnchanged();
+                        SpliceInstrument.this.probe.invalidateProbeUnchanged();
                     }
                 }
-                if (toolNode != null) {
-                    toolNode.enter(node, vFrame);
+                if (splicedNode != null) {
+                    splicedNode.enter(node, vFrame);
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
@@ -424,8 +426,8 @@ public abstract class Instrument {
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {
-                if (toolNode != null) {
-                    toolNode.returnVoid(node, vFrame);
+                if (splicedNode != null) {
+                    splicedNode.returnVoid(node, vFrame);
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnVoid(node, vFrame);
@@ -433,8 +435,8 @@ public abstract class Instrument {
             }
 
             public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-                if (toolNode != null) {
-                    toolNode.returnValue(node, vFrame, result);
+                if (splicedNode != null) {
+                    splicedNode.returnValue(node, vFrame, result);
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnValue(node, vFrame, result);
@@ -442,8 +444,8 @@ public abstract class Instrument {
             }
 
             public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-                if (toolNode != null) {
-                    toolNode.returnExceptional(node, vFrame, exception);
+                if (splicedNode != null) {
+                    splicedNode.returnExceptional(node, vFrame, exception);
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.returnExceptional(node, vFrame, exception);
@@ -452,7 +454,7 @@ public abstract class Instrument {
 
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
-                return info != null ? info : toolNodeListener.getClass().getSimpleName();
+                return info != null ? info : spliceListener.getClass().getSimpleName();
             }
         }
     }

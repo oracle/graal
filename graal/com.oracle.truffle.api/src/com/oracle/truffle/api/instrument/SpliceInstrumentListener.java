@@ -25,15 +25,15 @@
 package com.oracle.truffle.api.instrument;
 
 /**
- * Instrument listener for a tool that works by providing an AST to be attached/adopted directly
+ * Instrument listener for a tool that works by providing an AST to be <em>spliced</em> directly
  * into the AST.
  */
-public interface ToolNodeInstrumentListener {
+public interface SpliceInstrumentListener {
 
     /**
      * Receive notification that a probed AST node to which the {@link Instrument} is attached is
      * about to be executed for the first time. This is a lazy opportunity for the tool to
-     * optionally add the root of a newly created AST fragment that will be attached/adopted
+     * optionally add the root of a newly created AST fragment that will be <em>spliced</em>
      * directly into the executing AST. The new AST fragment will immediately begin receiving
      * {@link InstrumentationNode.TruffleEvents}, beginning with the current execution event.
      * <p>
@@ -53,6 +53,6 @@ public interface ToolNodeInstrumentListener {
      *
      * @see Instrument
      */
-    ToolNode getToolNode(Probe probe);
+    SplicedNode getSpliceNode(Probe probe);
 
 }
