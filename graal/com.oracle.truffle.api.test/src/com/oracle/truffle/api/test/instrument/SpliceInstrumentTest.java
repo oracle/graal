@@ -27,20 +27,20 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestSplicedCounterNode;
 
 /**
- * Tests instrumentation where a client can attach a node that gets attached into the AST.
+ * Tests the kind of instrumentation where a client can provide an AST fragment to be
+ * <em>spliced</em> directly into the AST.
  */
-public class ToolNodeInstrumentationTest {
+public class SpliceInstrumentTest {
 
     @Test
-    public void testToolNodeListener() {
+    public void testSpliceInstrumentListener() {
         // Create a simple addition AST
         final TruffleRuntime runtime = Truffle.getRuntime();
         final TestValueNode leftValueNode = new TestValueNode(6);
@@ -57,7 +57,7 @@ public class ToolNodeInstrumentationTest {
 
         assertEquals(13, callTarget1.call());
 
-        // Attach a listener that never actually attaches a node.
+        // Attach a null listener; it never actually attaches a node.
         final Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
 
             public SplicedNode getSpliceNode(Probe p) {
@@ -69,27 +69,21 @@ public class ToolNodeInstrumentationTest {
 
         assertEquals(13, callTarget1.call());
 
-        final int[] count = new int[1];
+        final TestSplicedCounterNode counter = new TestSplicedCounterNode();
 
-        // Attach a listener that never actually attaches a node.
+        // Attach a listener that splices an execution counter into the AST.
         probe.attach(Instrument.create(new SpliceInstrumentListener() {
 
             public SplicedNode getSpliceNode(Probe p) {
-                return new SplicedNode() {
-
-                    @Override
-                    public void enter(Node node, VirtualFrame vFrame) {
-                        count[0] = count[0] + 1;
-                    }
-                };
+                return counter;
             }
 
         }, null));
-        assertEquals(0, count[0]);
+        assertEquals(0, counter.getCount());
 
         assertEquals(13, callTarget1.call());
 
-        assertEquals(1, count[0]);
+        assertEquals(1, counter.getCount());
 
     }
 

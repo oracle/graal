@@ -86,7 +86,6 @@ class InstrumentationTestNodes {
         public Object execute(VirtualFrame vFrame) {
             probeNode.enter(child, vFrame);
             Object result;
-
             try {
                 result = child.execute(vFrame);
                 probeNode.returnValue(child, vFrame, result);
@@ -96,7 +95,6 @@ class InstrumentationTestNodes {
                 probeNode.returnExceptional(child, vFrame, e);
                 throw (e);
             }
-
             return result;
         }
     }
@@ -169,4 +167,17 @@ class InstrumentationTestNodes {
         }
     }
 
+    static class TestSplicedCounterNode extends SplicedNode {
+
+        private long count;
+
+        @Override
+        public void enter(Node node, VirtualFrame vFrame) {
+            count++;
+        }
+
+        public long getCount() {
+            return count;
+        }
+    }
 }
