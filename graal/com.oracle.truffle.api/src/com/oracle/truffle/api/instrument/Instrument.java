@@ -30,8 +30,9 @@ import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
-// TODO (mlvdv) move all this to a factory implemented in .impl (together with Probe),
-// then break out some of the nested classes into package privates.
+// TODO (mlvdv) these statics should not be global.  Move them to some kind of context.
+// TODO (mlvdv) migrate factory into .impl (together with Probe)? break out nested classes?
+
 /**
  * A <em>binding</em> between:
  * <ol>
@@ -41,8 +42,8 @@ import com.oracle.truffle.api.source.*;
  * </ol>
  * <p>
  * Client-oriented documentation for the use of Instruments is available online at <a
- * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events">Listening for
- * Execution Events</a>
+ * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events"
+ * >https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  * <p>
  * The implementation of Instruments is complicated by the requirement that Truffle be able to clone
  * ASTs at any time. In particular, any instrumentation-supporting Nodes that have been attached to
@@ -62,29 +63,38 @@ import com.oracle.truffle.api.source.*;
  * <ul>
  * <li>A new Instrument is created in permanent association with a client-provided
  * <em>listener.</em></li>
+ *
  * <li>Multiple Instruments may share a single listener.</li>
+ *
  * <li>An Instrument does nothing until it is {@linkplain Probe#attach(Instrument) attached} to a
  * Probe, at which time the Instrument begins routing execution events from the Probe's AST location
  * to the Instrument's listener.</li>
+ *
  * <li>Neither Instruments nor Probes are {@link Node}s.</li>
+ *
  * <li>A Probe has a single source-based location in an AST, but manages a separate
  * <em>instrumentation chain</em> of Nodes at the equivalent location in each clone of the AST.</li>
  * <li>When a probed AST is cloned, the instrumentation chain associated with each Probe is cloned
  * along with the rest of the AST.</li>
+ *
  * <li>When a new Instrument (for example an instance of {@link SimpleInstrument} is attached to a
  * Probe, the Instrument inserts a new instance of its private Node type,
  * {@link SimpleInstrument.SimpleInstrumentNode}, into <em>each of the instrument chains</em>
  * managed by the Probe, i.e. one node instance per existing clone of the AST.</li>
+ *
  * <li>If an Instrument is attached to a Probe in an AST that subsequently gets cloned, then the
  * Instrument's private Node type will be cloned along with the rest of the the AST.</li>
  * <li>Each Instrument's private Node type is a dynamic inner class whose only state is in the
  * shared (outer) Instrument instance; that state includes a reference to the Instrument's listener.
  * </li>
+ *
  * <li>When an Instrument that has been attached to a Probe is {@linkplain #dispose() disposed}, the
  * Instrument searches every instrument chain associated with the Probe and removes the instance of
  * its private Node type.</li>
+ *
  * <li>Attaching and disposing an Instrument at a Probe <em>deoptimizes</em> any compilations of the
  * AST.</li>
+ *
  * </ul>
  *
  * @see Probe

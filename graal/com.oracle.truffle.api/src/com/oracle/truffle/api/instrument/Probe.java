@@ -34,38 +34,62 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
 
-//TODO (mlvdv) migrate some of this to external documentation.
+//TODO (mlvdv) these statics should not be global.  Move them to some kind of context.
+
 /**
- * A binding between a particular <em>location</em> in the Truffle AST representation of a running
- * Guest Language (GL) program (i.e. a {@link Node}) and a dynamically managed collection of
- * "attached" {@linkplain Instrument instrumentation} for use by external tools. The instrumentation
- * is intended to persist at the location, even if the specific node instance is
- * {@linkplain Node#replace(Node) replaced}.
+ * A <em>binding</em> between:
+ * <ol>
+ * <li>A program location in an executing Truffle AST (defined by a {@link SourceSection}), and</li>
+ * <li>A dynamically managed collection of "attached" {@linkplain Instrument Instruments} that
+ * receive event notifications on behalf of external clients.</li>
+ * </ol>
  * <p>
- * The effect of a binding is to intercept {@linkplain TruffleEvents execution events} arriving at
- * the node and notify each attached {@link Instrument} before execution is allowed to proceed to
- * the child.
+ * Client-oriented documentation for the use of Probes is available online at <a
+ * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes"
+ * >https://wiki.openjdk.java.net/display/Graal/Finding+Probes</a>
  * <p>
- * A Probe is "inserted" into a GL node via a call to {@link Node#probe()}. No more than one Probe
- * can be inserted at a node.
+ * <h4>Implementation notes:</h4>
  * <p>
- * The "probing" of a Truffle AST must be done after it is complete (i.e. with parent pointers
- * correctly assigned), but before any executions. This is done by creating an instance of
- * {@link ASTProber} and registering it via {@link #registerASTProber(ASTProber)}, after which it
- * will be automatically applied to newly created ASTs.
- * <p>
- * Each Probe may also have assigned to it any number of {@link SyntaxTag}s, for example identifying
- * a node as a {@linkplain StandardSyntaxTag#STATEMENT STATEMENT}. Tags can be queried by tools to
- * configure behavior relevant to each probed node.
- * <p>
- * Instrumentation is implemented by modifying ASTs, both by inserting nodes into each AST at probed
- * locations and by attaching additional nodes that implement dynamically attached instruments.
- * Attached instrumentation code become, in effect, part of the GL program, and is subject to the
- * same levels of optimization as other GL code. This implementation accounts properly for the fact
- * that Truffle frequently <em>clones</em> ASTs, along with any attached instrumentation nodes. A
- * {@link Probe}, along with attached {@link Instrument}s, represents a <em>logical</em> binding
- * with a source code location, producing event notifications that are (mostly) independent of which
- * AST clone is executing.
+ * <ul>
+ * <li>A Probe must be permanently associated with a <em>program location</em>, defined by a
+ * particular {@link SourceSection}, even though:
+ * <ul>
+ * <li>that location is represented in an AST as a {@link Node}, which might be replaced through
+ * optimizations such as specialization, and</li>
+ * <li>Truffle may <em>clone</em> the AST so that the location is actually represented by multiple
+ * Nodes in multiple ASTs.</li>
+ * </ul>
+ * </li>
+ *
+ * <li>The effect of the binding is to intercept {@linkplain TruffleEvents execution events}
+ * arriving at the "probed" AST node and notify each attached {@link Instrument} before execution is
+ * allowed to proceed to the child and again after execution completes.</li>
+ *
+ * <li>A Probe is "inserted" into a GL node via a call to {@link Node#probe()}. No more than one
+ * Probe can be inserted at a node; a redundant call returns the existing Probe<./li>
+ *
+ * <li>The "probing" of a Truffle AST must be done after the AST is complete (i.e. parent pointers
+ * correctly assigned), but before any cloning or executions. This is done by creating an instance
+ * of {@link ASTProber} and registering it via {@link #registerASTProber(ASTProber)}, after which it
+ * will be applied automatically to every newly created AST.</li>
+ *
+ * <li>An AST node becomes <em>probed</em> by insertion of a {@link ProbeNode.WrapperNode} into the
+ * AST, together with an associated {@link ProbeNode} that routes events to all the
+ * {@linkplain Instrument Instruments} attached to its <em>instrument chain</em>.</li>
+ *
+ * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
+ * together with their attached instrument chains. The {@link Probe} instance intercepts cloning
+ * events and keeps track of all copies.</li>
+ *
+ * <li>All attached {@link InstrumentationNode}s effectively become part of the running program:
+ * <ul>
+ * <li>Good News: instrumentation code implicitly benefits from every kind of Truffle optimization.</li>
+ * <li>Bad News: instrumentation code must be implemented carefully to avoid interfering with any
+ * Truffle optimizations.</li>
+ * </ul>
+ * </li>
+ *
+ * </ul>
  *
  * @see Instrument
  * @see ASTProber
@@ -173,6 +197,7 @@ public final class Probe implements SyntaxTagged {
         return taggedProbes;
     }
 
+    // TODO (mlvdv) can this be generalized to permit multiple traps without a performance hit?
     /**
      * Sets the current "tag trap"; there can be no more than one set at a time.
      * <ul>
