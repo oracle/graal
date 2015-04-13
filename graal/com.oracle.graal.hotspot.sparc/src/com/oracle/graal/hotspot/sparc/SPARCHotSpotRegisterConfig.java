@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
@@ -43,8 +41,6 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 
     private final Register[] allocatable;
 
-    private final Map<PlatformKind, Register[]> categorized = new ConcurrentHashMap<>(20);
-
     private final RegisterAttributes[] attributesMap;
 
     @Override
@@ -52,11 +48,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         return allocatable.clone();
     }
 
-    public Register[] getAllocatableRegisters(PlatformKind kind, Register[] registers) {
-        if (categorized.containsKey(kind)) {
-            return categorized.get(kind);
-        }
-
+    public Register[] filterAllocatableRegisters(PlatformKind kind, Register[] registers) {
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : registers) {
             if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
@@ -77,7 +69,6 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         }
 
         Register[] ret = list.toArray(new Register[list.size()]);
-        categorized.put(kind, ret);
         return ret;
     }
 
@@ -110,15 +101,6 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3, i4, i5, i6, i7};
 
     private final CalleeSaveLayout csl;
-
-    private static Register findRegister(String name, Register[] all) {
-        for (Register reg : all) {
-            if (reg.name.equals(name)) {
-                return reg;
-            }
-        }
-        throw new IllegalArgumentException("register " + name + " is not allocatable");
-    }
 
     private static Register[] initAllocatable(boolean reserveForHeapBase) {
         Register[] registers = null;
@@ -156,15 +138,6 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                         d48, d50, d52, d54, d56, d58, d60, d62
             };
             // @formatter:on
-        }
-
-        if (RegisterPressure.getValue() != null) {
-            String[] names = RegisterPressure.getValue().split(",");
-            Register[] regs = new Register[names.length];
-            for (int i = 0; i < names.length; i++) {
-                regs[i] = findRegister(names[i], registers);
-            }
-            return regs;
         }
 
         return registers;

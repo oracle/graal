@@ -26,7 +26,6 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -52,8 +51,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final boolean allAllocatableAreCallerSaved;
 
-    private final Map<PlatformKind.Key, Register[]> categorized = new ConcurrentHashMap<>();
-
     private final RegisterAttributes[] attributesMap;
 
     public int getMaximumFrameSize() {
@@ -65,13 +62,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return allocatable.clone();
     }
 
-    public Register[] getAllocatableRegisters(PlatformKind kind, Register[] registers) {
-        PlatformKind.Key key = kind.getKey();
-        if (categorized.containsKey(key)) {
-            Register[] val = categorized.get(key);
-            return val;
-        }
-
+    public Register[] filterAllocatableRegisters(PlatformKind kind, Register[] registers) {
         ArrayList<Register> list = new ArrayList<>();
         for (Register reg : registers) {
             if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
@@ -80,7 +71,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         Register[] ret = list.toArray(new Register[list.size()]);
-        categorized.put(key, ret);
         return ret;
     }
 
@@ -101,15 +91,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final CalleeSaveLayout csl;
 
-    private static Register findRegister(String name, Register[] all) {
-        for (Register reg : all) {
-            if (reg.name.equals(name)) {
-                return reg;
-            }
-        }
-        throw new IllegalArgumentException("register " + name + " is not allocatable");
-    }
-
     private static Register[] initAllocatable(boolean reserveForHeapBase) {
         Register[] registers = null;
         // @formatter:off
@@ -127,16 +108,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
                       };
         }
        // @formatter:on
-
-        if (RegisterPressure.getValue() != null) {
-            String[] names = RegisterPressure.getValue().split(",");
-            Register[] regs = new Register[names.length];
-            for (int i = 0; i < names.length; i++) {
-                regs[i] = findRegister(names[i], registers);
-            }
-            return regs;
-        }
-
         return registers;
     }
 

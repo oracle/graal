@@ -77,7 +77,7 @@ public class RegisterAllocationConfig {
             return val;
         }
 
-        Register[] ret = registerConfig.getAllocatableRegisters(kind, getAllocatableRegisters());
+        Register[] ret = registerConfig.filterAllocatableRegisters(kind, getAllocatableRegisters());
         categorized.put(key, ret);
         return ret;
 
