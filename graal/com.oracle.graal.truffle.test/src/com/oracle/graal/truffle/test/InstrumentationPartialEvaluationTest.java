@@ -205,13 +205,13 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
     }
 
     @Test
-    public void constantValueInertToolNodeInstrumentListener() {
+    public void constantValueInertSpliceInstrumentListener() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        // A listener that could insert a "tool node" into the AST, but which never does.
+        // A listener that could insert a SplicedNode into the AST, but which never does.
         Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
 
             public SplicedNode getSpliceNode(Probe p) {
@@ -221,17 +221,18 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         }, null);
         probe.attach(instrument);
 
+        // It all gets compiled away
         assertPartialEvalEquals("constant42", root);
     }
 
     @Test
-    public void constantValueInertToolNode() {
+    public void constantValueInertSplicedNode() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe probe = result.probe();
-        // A listener that inserts a "tool node" with empty methods into the AST.
+        // A listener that inserts a SplicedNode with empty methods into the AST.
         Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
 
             public SplicedNode getSpliceNode(Probe p) {
@@ -242,6 +243,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         }, null);
         probe.attach(instrument);
 
+        // It all gets compiled away.
         assertPartialEvalEquals("constant42", root);
     }
 
