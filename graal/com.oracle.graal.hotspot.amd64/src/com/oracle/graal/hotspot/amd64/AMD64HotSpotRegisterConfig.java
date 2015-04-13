@@ -65,7 +65,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return allocatable.clone();
     }
 
-    public Register[] getAllocatableRegisters(PlatformKind kind) {
+    public Register[] getAllocatableRegisters(PlatformKind kind, Register[] registers) {
         PlatformKind.Key key = kind.getKey();
         if (categorized.containsKey(key)) {
             Register[] val = categorized.get(key);
@@ -73,7 +73,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         ArrayList<Register> list = new ArrayList<>();
-        for (Register reg : getAllocatableRegisters()) {
+        for (Register reg : registers) {
             if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
                 list.add(reg);
             }

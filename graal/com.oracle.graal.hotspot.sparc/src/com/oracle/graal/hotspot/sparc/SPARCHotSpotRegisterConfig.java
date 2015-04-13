@@ -52,13 +52,13 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         return allocatable.clone();
     }
 
-    public Register[] getAllocatableRegisters(PlatformKind kind) {
+    public Register[] getAllocatableRegisters(PlatformKind kind, Register[] registers) {
         if (categorized.containsKey(kind)) {
             return categorized.get(kind);
         }
 
         ArrayList<Register> list = new ArrayList<>();
-        for (Register reg : getAllocatableRegisters()) {
+        for (Register reg : registers) {
             if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
                 // Special treatment for double precision
                 // TODO: This is wasteful it uses only half of the registers as float.

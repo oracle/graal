@@ -79,7 +79,7 @@ public interface RegisterConfig {
      * Gets the set of registers that can be used by the register allocator for a value of a
      * particular kind.
      */
-    Register[] getAllocatableRegisters(PlatformKind kind);
+    Register[] getAllocatableRegisters(PlatformKind kind, Register[] registers);
 
     /**
      * Gets the registers whose values must be preserved by a method across any call it makes.
