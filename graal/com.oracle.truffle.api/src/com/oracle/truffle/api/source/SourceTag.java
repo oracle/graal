@@ -27,16 +27,14 @@ package com.oracle.truffle.api.source;
 /**
  * Categorical information (best implemented as enums} about particular sources of Guest Language
  * code that can be useful to configure behavior of both the language runtime and external tools.
- * These might include {@linkplain StandardSourceTag standard tags} noting, for example, whether the
- * source was read from a file and whether it should be considered library code.
- * <p>
- * An untagged {@link Source} should by default be considered application code.
+ * These might include {@linkplain Source.Tags standard tags} noting, for example,
+ * whether the source was read from a file and whether it should be considered library code.
  * <p>
  * The need for additional tags is likely to arise, in some cases because of issue specific to a
  * Guest Language, but also for help configuring the behavior of particular tools.
  *
  * @see Source
- * @see StandardSourceTag
+ * @see Source.Tags
  */
 public interface SourceTag {
 

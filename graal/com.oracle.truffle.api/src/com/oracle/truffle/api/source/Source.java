@@ -78,6 +78,51 @@ public abstract class Source {
     // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
     // TOOD (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
 
+    public enum Tags implements SourceTag {
+
+        /**
+         * From bytes.
+         */
+        FROM_BYTES("bytes", "read from bytes"),
+
+        /**
+         * Read from a file.
+         */
+        FROM_FILE("file", "read from a file"),
+
+        /**
+         * From literal text.
+         */
+        FROM_LITERAL("literal", "from literal text"),
+
+        /**
+         * From a {@linkplain java.io.Reader Reader}.
+         */
+        FROM_READER("reader", "read from a Java Reader"),
+
+        /**
+         * Read from a URL.
+         */
+        FROM_URL("URL", "read from a URL");
+
+        private final String name;
+        private final String description;
+
+        private Tags(String name, String description) {
+            this.name = name;
+            this.description = description;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+    }
+
     /**
      * All Sources that have been created.
      */
@@ -119,7 +164,7 @@ public abstract class Source {
         if (reset) {
             source.reset();
         }
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_FILE);
+        notifyNewSource(source).tagAs(Tags.FROM_FILE);
         return source;
     }
 
@@ -161,7 +206,7 @@ public abstract class Source {
                 filePathToSource.put(path, new WeakReference<>(source));
             }
         }
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_FILE);
+        notifyNewSource(source).tagAs(Tags.FROM_FILE);
         return source;
     }
 
@@ -176,7 +221,7 @@ public abstract class Source {
     public static Source fromText(CharSequence chars, String description) {
         assert chars != null;
         final LiteralSource source = new LiteralSource(description, chars.toString());
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_LITERAL);
+        notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
     }
 
@@ -190,7 +235,7 @@ public abstract class Source {
      */
     public static Source fromURL(URL url, String description) throws IOException {
         final URLSource source = URLSource.get(url, description);
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_URL);
+        notifyNewSource(source).tagAs(Tags.FROM_URL);
         return source;
     }
 
@@ -204,7 +249,7 @@ public abstract class Source {
      */
     public static Source fromReader(Reader reader, String description) throws IOException {
         final LiteralSource source = new LiteralSource(description, read(reader));
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_READER);
+        notifyNewSource(source).tagAs(Tags.FROM_READER);
         return source;
     }
 
@@ -237,7 +282,7 @@ public abstract class Source {
      */
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, BytesDecoder decoder) {
         final BytesSource source = new BytesSource(description, bytes, byteIndex, length, decoder);
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_BYTES);
+        notifyNewSource(source).tagAs(Tags.FROM_BYTES);
         return source;
     }
 
@@ -252,7 +297,7 @@ public abstract class Source {
     public static Source asPseudoFile(CharSequence chars, String pseudoFileName) {
         final Source source = new LiteralSource(pseudoFileName, chars.toString());
         filePathToSource.put(pseudoFileName, new WeakReference<>(source));
-        notifyNewSource(source).tagAs(StandardSourceTag.FROM_LITERAL);
+        notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
     }
 

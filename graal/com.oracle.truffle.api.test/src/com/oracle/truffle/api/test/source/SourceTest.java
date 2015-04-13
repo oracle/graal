@@ -54,9 +54,9 @@ public class SourceTest {
         // Initially has only the default tag
         assertEquals(source.getSourceTags().size(), 1);
 
-        assertTrue(source.getSourceTags().contains(StandardSourceTag.FROM_LITERAL));
-        assertTrue(source.isTaggedAs(StandardSourceTag.FROM_LITERAL));
-        assertTrue(Source.findSourcesTaggedAs(StandardSourceTag.FROM_LITERAL).contains(source));
+        assertTrue(source.getSourceTags().contains(Source.Tags.FROM_LITERAL));
+        assertTrue(source.isTaggedAs(Source.Tags.FROM_LITERAL));
+        assertTrue(Source.findSourcesTaggedAs(Source.Tags.FROM_LITERAL).contains(source));
 
         assertFalse(source.isTaggedAs(testTag));
         assertEquals(Source.findSourcesTaggedAs(testTag).size(), 0);
@@ -67,9 +67,9 @@ public class SourceTest {
         // Now there are exactly two tags
         assertEquals(source.getSourceTags().size(), 2);
 
-        assertTrue(source.getSourceTags().contains(StandardSourceTag.FROM_LITERAL));
-        assertTrue(source.isTaggedAs(StandardSourceTag.FROM_LITERAL));
-        assertTrue(Source.findSourcesTaggedAs(StandardSourceTag.FROM_LITERAL).contains(source));
+        assertTrue(source.getSourceTags().contains(Source.Tags.FROM_LITERAL));
+        assertTrue(source.isTaggedAs(Source.Tags.FROM_LITERAL));
+        assertTrue(Source.findSourcesTaggedAs(Source.Tags.FROM_LITERAL).contains(source));
 
         assertTrue(source.getSourceTags().contains(testTag));
         assertTrue(source.isTaggedAs(testTag));
@@ -82,9 +82,9 @@ public class SourceTest {
         // Nothing has changed
         assertEquals(source.getSourceTags().size(), 2);
 
-        assertTrue(source.getSourceTags().contains(StandardSourceTag.FROM_LITERAL));
-        assertTrue(source.isTaggedAs(StandardSourceTag.FROM_LITERAL));
-        assertTrue(Source.findSourcesTaggedAs(StandardSourceTag.FROM_LITERAL).contains(source));
+        assertTrue(source.getSourceTags().contains(Source.Tags.FROM_LITERAL));
+        assertTrue(source.isTaggedAs(Source.Tags.FROM_LITERAL));
+        assertTrue(Source.findSourcesTaggedAs(Source.Tags.FROM_LITERAL).contains(source));
 
         assertTrue(source.getSourceTags().contains(testTag));
         assertTrue(source.isTaggedAs(testTag));
@@ -135,7 +135,7 @@ public class SourceTest {
         assertEquals(newSource[0], source);
         assertEquals(newTagEvents[0], 1);
         assertEquals(taggedSource[0], source);
-        assertEquals(newTag[0], StandardSourceTag.FROM_LITERAL);
+        assertEquals(newTag[0], Source.Tags.FROM_LITERAL);
 
         // reset
         newSource[0] = null;
