@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
@@ -50,6 +49,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
@@ -166,9 +166,9 @@ public class PartialEvaluator {
 
         private Deque<TruffleInlining> inlining;
         private OptimizedDirectCallNode lastDirectCallNode;
-        private final Replacements replacements;
+        private final ReplacementsImpl replacements;
 
-        public PEInlineInvokePlugin(TruffleInlining inlining, Replacements replacements) {
+        public PEInlineInvokePlugin(TruffleInlining inlining, ReplacementsImpl replacements) {
             this.inlining = new ArrayDeque<>();
             this.inlining.push(inlining);
             this.replacements = replacements;
@@ -176,13 +176,17 @@ public class PartialEvaluator {
 
         @Override
         public InlineInfo getInlineInfo(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
+            InlineInfo inlineInfo = replacements.getInlineInfo(builder, original, arguments, returnType);
+            if (inlineInfo != null) {
+                return inlineInfo;
+            }
+
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            if (replacements != null && replacements.hasSubstitution(original)) {
-                return null;
-            }
+            assert !replacements.hasSubstitution(original) : "Replacements must have been processed by now";
             assert !builder.parsingReplacement();
+
             if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
                 if (original.equals(callSiteProxyMethod)) {
                     ValueNode arg1 = arguments[0];
@@ -219,12 +223,12 @@ public class PartialEvaluator {
 
     private class ParsingInlineInvokePlugin implements InlineInvokePlugin {
 
-        private final Replacements replacements;
+        private final ReplacementsImpl replacements;
         private final InvocationPlugins invocationPlugins;
         private final LoopExplosionPlugin loopExplosionPlugin;
         private final boolean inlineDuringParsing;
 
-        public ParsingInlineInvokePlugin(Replacements replacements, InvocationPlugins invocationPlugins, LoopExplosionPlugin loopExplosionPlugin, boolean inlineDuringParsing) {
+        public ParsingInlineInvokePlugin(ReplacementsImpl replacements, InvocationPlugins invocationPlugins, LoopExplosionPlugin loopExplosionPlugin, boolean inlineDuringParsing) {
             this.replacements = replacements;
             this.invocationPlugins = invocationPlugins;
             this.loopExplosionPlugin = loopExplosionPlugin;
@@ -245,15 +249,19 @@ public class PartialEvaluator {
 
         @Override
         public InlineInfo getInlineInfo(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
+            InlineInfo inlineInfo = replacements.getInlineInfo(builder, original, arguments, returnType);
+            if (inlineInfo != null) {
+                return inlineInfo;
+            }
+
             if (invocationPlugins.lookupInvocation(original) != null || loopExplosionPlugin.shouldExplodeLoops(original)) {
                 return null;
             }
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            if (replacements != null && replacements.hasSubstitution(original)) {
-                return null;
-            }
+            assert !replacements.hasSubstitution(original) : "Replacements must have been processed by now";
+
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
                 return null;
             }
@@ -298,7 +306,7 @@ public class PartialEvaluator {
         plugins.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
 
-        InlineInvokePlugin inlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements());
+        InlineInvokePlugin inlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), (ReplacementsImpl) providers.getReplacements());
         if (PrintTruffleExpansionHistogram.getValue()) {
             inlinePlugin = new HistogramInlineInvokePlugin(graph, inlinePlugin);
         }
@@ -322,15 +330,16 @@ public class PartialEvaluator {
         newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
         plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
-        plugins.setInlineInvokePlugin(new ParsingInlineInvokePlugin(providers.getReplacements(), parsingInvocationPlugins, loopExplosionPlugin, !PrintTruffleExpansionHistogram.getValue()));
+        plugins.setInlineInvokePlugin(new ParsingInlineInvokePlugin((ReplacementsImpl) providers.getReplacements(), parsingInvocationPlugins, loopExplosionPlugin,
+                        !PrintTruffleExpansionHistogram.getValue()));
 
         CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, AllowAssumptions.from(graph.getAssumptions() != null));
 
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
 
-        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(providers.getMetaAccess());
+        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(parsingInvocationPlugins.getParent());
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false, snippetReflection);
-        InlineInvokePlugin decodingInlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), providers.getReplacements());
+        InlineInvokePlugin decodingInlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), (ReplacementsImpl) providers.getReplacements());
         if (PrintTruffleExpansionHistogram.getValue()) {
             decodingInlinePlugin = new HistogramInlineInvokePlugin(graph, decodingInlinePlugin);
         }
@@ -450,7 +459,9 @@ public class PartialEvaluator {
         if (!TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary.getValue()) {
             // Do not inline across Truffle boundaries.
             for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                mct.invoke().setUseForInlining(false);
+                if (mct.targetMethod().getAnnotation(TruffleBoundary.class) != null) {
+                    mct.invoke().setUseForInlining(false);
+                }
             }
         }
     }

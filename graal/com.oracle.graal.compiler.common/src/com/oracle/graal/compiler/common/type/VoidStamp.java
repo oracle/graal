@@ -46,10 +46,8 @@ public final class VoidStamp extends Stamp {
 
     @Override
     public Stamp improveWith(Stamp other) {
-        if (other instanceof VoidStamp) {
-            return this;
-        }
-        return StampFactory.illegal(Kind.Illegal);
+        assert other instanceof VoidStamp;
+        return this;
     }
 
     @Override
@@ -74,29 +72,19 @@ public final class VoidStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        if (other instanceof IllegalStamp) {
-            return other.join(this);
-        }
-        if (this == other) {
-            return this;
-        }
-        return StampFactory.illegal(Kind.Illegal);
+        assert other instanceof VoidStamp;
+        return this;
     }
 
     @Override
     public Stamp join(Stamp other) {
-        if (other instanceof IllegalStamp) {
-            return other.join(this);
-        }
-        if (this == other) {
-            return this;
-        }
-        return StampFactory.illegal(Kind.Illegal);
+        assert other instanceof VoidStamp;
+        return this;
     }
 
     @Override
     public boolean isCompatible(Stamp stamp) {
-        return this == stamp;
+        return stamp instanceof VoidStamp;
     }
 
     @Override

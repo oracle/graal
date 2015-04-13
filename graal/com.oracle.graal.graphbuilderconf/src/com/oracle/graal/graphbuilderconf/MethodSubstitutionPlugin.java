@@ -30,7 +30,7 @@ import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
+import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -121,8 +121,8 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                 return m;
             }
         }
-        throw new GraalInternalError("No method found in %s compatible with the signature (%s)", declaringClass.getName(), Arrays.asList(parameters).stream().map(c -> c.getSimpleName()).collect(
-                        Collectors.joining(",")));
+        throw new GraalInternalError("No method found in %s compatible with \"%s(%s)\"", declaringClass.getName(), name, Arrays.asList(parameters).stream().map(c -> c.getSimpleName()).collect(
+                        Collectors.joining(", ")));
     }
 
     /**

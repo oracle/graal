@@ -50,7 +50,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
-import com.oracle.graal.java.AbstractBytecodeParser.ReplacementContext;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
 import com.oracle.graal.nodeinfo.*;

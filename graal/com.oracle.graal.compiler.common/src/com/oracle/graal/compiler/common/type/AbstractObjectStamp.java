@@ -98,9 +98,6 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         if (this == otherStamp) {
             return this;
         }
-        if (!isCompatible(otherStamp)) {
-            return StampFactory.illegal(Kind.Illegal);
-        }
         AbstractObjectStamp other = (AbstractObjectStamp) otherStamp;
         if (isIllegal()) {
             return other;
@@ -169,9 +166,6 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     private Stamp join0(Stamp otherStamp, boolean improve) {
         if (this == otherStamp) {
             return this;
-        }
-        if (!isCompatible(otherStamp)) {
-            return StampFactory.illegal(Kind.Illegal);
         }
         AbstractObjectStamp other = (AbstractObjectStamp) otherStamp;
         if (isIllegal()) {
