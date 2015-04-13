@@ -36,6 +36,8 @@ import com.oracle.graal.compiler.common.*;
  */
 public class RegisterAllocationConfig {
 
+    public static final String ALL_REGISTERS = "<all>";
+
     private static Register findRegister(String name, Register[] all) {
         for (Register reg : all) {
             if (reg.name.equals(name)) {
@@ -46,7 +48,7 @@ public class RegisterAllocationConfig {
     }
 
     private static Register[] initAllocatable(Register[] registers) {
-        if (RegisterPressure.getValue() != null) {
+        if (RegisterPressure.getValue() != null && !RegisterPressure.getValue().equals(ALL_REGISTERS)) {
             String[] names = RegisterPressure.getValue().split(",");
             Register[] regs = new Register[names.length];
             for (int i = 0; i < names.length; i++) {

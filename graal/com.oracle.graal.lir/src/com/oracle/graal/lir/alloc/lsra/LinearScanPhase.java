@@ -43,7 +43,7 @@ public final class LinearScanPhase extends AllocationPhase {
             new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
         } catch (OutOfRegistersException e) {
             if (RegisterPressure.getValue() != null) {
-                try (OverrideScope s = OptionValue.override(RegisterPressure, null)) {
+                try (OverrideScope s = OptionValue.override(RegisterPressure, RegisterAllocationConfig.ALL_REGISTERS)) {
                     // retry with default register set
                     new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
                 }
