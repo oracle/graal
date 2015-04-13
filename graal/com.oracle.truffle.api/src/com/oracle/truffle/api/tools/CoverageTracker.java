@@ -35,10 +35,13 @@ import com.oracle.truffle.api.source.*;
 
 /**
  * An {@link InstrumentationTool} that counts interpreter <em>execution calls</em> to AST nodes that
- * hold a specified {@linkplain SyntaxTag tag}, tabulated by source and line number associated with
- * each node. Tags are presumed to be applied external to the tool. If no tag is specified,
- * {@linkplain StandardSyntaxTag#STATEMENT STATEMENT} is used, corresponding to conventional
- * behavior for code coverage tools.
+ * hold a specified {@linkplain SyntaxTag syntax tag}, tabulated by source and line number
+ * associated with each node. Syntax tags are presumed to be applied external to the tool. If no tag
+ * is specified, {@linkplain StandardSyntaxTag#STATEMENT STATEMENT} is used, corresponding to
+ * conventional behavior for code coverage tools.
+ * <p>
+ * No counts will be kept for execution in sources that hold the {@link SourceTag}
+ * {@link Tags#NO_COVERAGE}.
  * <p>
  * <b>Tool Life Cycle</b>
  * <p>
@@ -69,6 +72,30 @@ import com.oracle.truffle.api.source.*;
  * @see SyntaxTag
  */
 public final class CoverageTracker extends InstrumentationTool {
+
+    public enum Tags implements SourceTag {
+
+        /**
+         * Report no counts for sources holding this tag.
+         */
+        NO_COVERAGE("No Coverage", "Coverage Tracker will igore");
+
+        private final String name;
+        private final String description;
+
+        private Tags(String name, String description) {
+            this.name = name;
+            this.description = description;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+    }
 
     /** Counting data. */
     private final Map<LineLocation, CoverageRecord> coverageMap = new HashMap<>();
@@ -264,7 +291,7 @@ public final class CoverageTracker extends InstrumentationTool {
                 final SourceSection srcSection = probe.getProbedSourceSection();
                 if (srcSection == null) {
                     // TODO (mlvdv) report this?
-                } else {
+                } else if (!srcSection.getSource().isTaggedAs(Tags.NO_COVERAGE)) {
                     // Get the source line where the
                     final LineLocation lineLocation = srcSection.getLineLocation();
                     CoverageRecord record = coverageMap.get(lineLocation);
