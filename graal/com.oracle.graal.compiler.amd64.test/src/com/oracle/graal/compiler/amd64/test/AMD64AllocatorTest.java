@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.amd64.test;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assume.*;
 
 import org.junit.*;
@@ -34,6 +35,7 @@ public class AMD64AllocatorTest extends AllocatorTest {
     @Before
     public void checkAMD64() {
         assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
+        assumeTrue("RegisterPressure is set -> skip", RegisterPressure.getValue() == null);
     }
 
     @Test
