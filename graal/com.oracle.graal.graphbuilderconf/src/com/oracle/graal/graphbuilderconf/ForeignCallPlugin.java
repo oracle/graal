@@ -24,7 +24,7 @@ package com.oracle.graal.graphbuilderconf;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Receiver;
+import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 

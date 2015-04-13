@@ -29,7 +29,7 @@ import com.oracle.graal.api.meta.*;
 
 /**
  * {@link ResolvedJavaMethod}s that can be assigned a globally unique identifier for use as keys in
- * an array based map. This should only be used where the cost of a {@link Map} with
+ * a {@link MethodIdMap}. This should only be used where the cost of a {@link Map} with
  * {@link ResolvedJavaMethod}s as keys is too high.
  */
 public interface MethodIdHolder extends ResolvedJavaMethod {
