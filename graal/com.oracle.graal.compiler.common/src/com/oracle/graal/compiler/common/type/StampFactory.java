@@ -76,10 +76,9 @@ public class StampFactory {
         for (Kind k : Kind.values()) {
             if (stampCache[k.ordinal()] != null) {
                 illegalStampCache[k.ordinal()] = stampCache[k.ordinal()].illegal();
-            } else {
-                illegalStampCache[k.ordinal()] = IllegalStamp.getInstance();
             }
         }
+        illegalStampCache[Kind.Illegal.ordinal()] = IllegalStamp.getInstance();
     }
 
     public static Stamp tautology() {
@@ -120,10 +119,6 @@ public class StampFactory {
 
     public static Stamp positiveInt() {
         return positiveInt;
-    }
-
-    public static Stamp illegal() {
-        return illegal(Kind.Illegal);
     }
 
     public static Stamp illegal(Kind kind) {
