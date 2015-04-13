@@ -25,142 +25,67 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
-import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
-// TODO (mlvdv) migrate some of this to external documentation.
 // TODO (mlvdv) move all this to a factory implemented in .impl (together with Probe),
 // then break out some of the nested classes into package privates.
 /**
- * A dynamically added/removed binding between a {@link Probe}, which provides notification of
- * <em>execution events</em> taking place at a {@link Node} in a Guest Language (GL) Truffle AST,
- * and a <em>listener</em>, which consumes notifications on behalf of an external tool. There are at
- * present two kinds of listeners that be used:
+ * A <em>binding</em> between:
  * <ol>
- * <li>{@link SimpleInstrumentListener} is the simplest and is intended for tools that require no
- * access to the <em>internal execution state</em> of the Truffle execution, only that execution has
- * passed through a particular location in the program. Information about that location is made
- * available via the {@link Probe} argument in notification methods, including the
- * {@linkplain SourceSection source location} of the node and any {@linkplain SyntaxTag tags} that
- * have been applied to the node.</li>
- * <li>{@link StandardInstrumentListener} reports the same events and {@link Probe} argument, but
- * additionally provides access to the execution state via the explicit {@link Node} and
- * {@link Frame} at the current execution site.</li>
+ * <li>A {@link Probe}: a source of <em>execution events</em> taking place at a program location in
+ * an executing Truffle AST, and</li>
+ * <li>A <em>listener</em>: a consumer of execution events on behalf of an external client.
  * </ol>
  * <p>
- * <h4>Summary: How to "instrument" an AST location:</h4>
+ * Client-oriented documentation for the use of Instruments is available online at <a
+ * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events">Listening for
+ * Execution Events</a>
  * <p>
- * <ol>
- * <li>Create an implementation of a <em>listener</em> interface.</li>
- * <li>Create an Instrument via factory methods
- * {@link Instrument#create(SimpleInstrumentListener, String)} or
- * {@link Instrument#create(StandardInstrumentListener, String)}.</li>
- * <li>"Attach" the Instrument to a Probe via {@link Probe#attach(Instrument)}, at which point event
- * notifications begin to arrive at the listener.</li>
- * <li>When no longer needed, "detach" the Instrument via {@link StandardInstrument#dispose()}, at
- * which point event notifications to the listener cease, and the Instrument becomes unusable.</li>
- * </ol>
+ * The implementation of Instruments is complicated by the requirement that Truffle be able to clone
+ * ASTs at any time. In particular, any instrumentation-supporting Nodes that have been attached to
+ * an AST must be cloned along with the AST: AST clones are not permitted to share Nodes.
  * <p>
- * <h4>Options for creating listeners:</h4>
+ * AST cloning is intended to be as <em>transparent</em> as possible to clients. This is encouraged
+ * by providing the {@link SimpleInstrumentListener} for clients that need know nothing more than
+ * the properties associated with a Probe: it's {@link SourceSection} and any associated instances
+ * of {@link SyntaxTag}.
  * <p>
- * <ol>
- * <li>Implement one of the <em>listener interfaces</em>: {@link SimpleInstrumentListener} or
- * {@link StandardInstrumentListener} . Their event handling methods account for both the entry into
- * an AST node (about to call) and three possible kinds of <em>execution return</em> from an AST
- * node.</li>
- * <li>Extend one of the <em>helper implementations</em>: {@link DefaultSimpleInstrumentListener} or
- * {@link DefaultStandardInstrumentListener}. These provide no-op implementation of every listener
- * method, so only the methods of interest need to be overridden.</li>
- * </ol>
+ * AST cloning is <em>not transparent</em> to clients that use the
+ * {@link StandardInstrumentListener}, since those event methods identify the concrete Node instance
+ * (and thus the AST instance) where the event takes place.
  * <p>
- * <h4>General guidelines for {@link StandardInstrumentListener} implementation:</h4>
- * <p>
- * Unlike the listener interface {@link SimpleInstrumentListener}, which isolates implementations
- * from Truffle internals (and is thus <em>Truffle-safe</em>), implementations of
- * {@link StandardInstrumentListener} can interact directly with (and potentially affect) Truffle
- * execution in general and Truffle optimization in particular. For example, it is possible to
- * implement a debugger with this interface.
- * </p>
- * <p>
- * As a consequence, implementations of {@link StandardInstrumentListener} effectively become part
- * of the Truffle execution and must be coded according to general guidelines for Truffle
- * implementations. For example:
- * <ul>
- * <li>Do not store {@link Frame} or {@link Node} references in fields.</li>
- * <li>Prefer {@code final} fields and (where performance is important) short methods.</li>
- * <li>If needed, pass along the {@link VirtualFrame} reference from an event notification as far as
- * possible through code that is expected to be inlined, since this incurs no runtime overhead. When
- * access to frame data is needed, substitute a more expensive {@linkplain Frame#materialize()
- * materialized} representation of the frame.</li>
- * <li>If a listener calls back to its tool during event handling, and if performance is an issue,
- * then this should be through a final "callback" field in the instrument, and the called methods
- * should be minimal.</li>
- * <li>On the other hand, implementations should prevent Truffle from inlining beyond a reasonable
- * point with the method annotation {@link TruffleBoundary}.</li>
- * <li>The implicit "outer" pointer in a non-static inner class is a useful (and
- * Truffle-optimizable) way to implement callbacks to owner tools.</li>
- * <li>Primitive-valued return events are boxed for event notification, but Truffle will eliminate
- * the boxing if they are cast back to their primitive values quickly (in particular before crossing
- * any {@link TruffleBoundary} annotations).
- * </ul>
- * <p>
- * <h4>Allowing for AST cloning:</h4>
- * <p>
- * Truffle routinely <em>clones</em> ASTs, which has consequences for implementations of
- * {@link StandardInstrumentListener} (but not for implementations of
- * {@link SimpleInstrumentListener}, from which cloning is hidden).
- * <ul>
- * <li>Even though a {@link Probe} is uniquely associated with a particular location in the
- * executing Guest Language program, execution events at that location will in general be
- * implemented by different {@link Node} instances, i.e. <em>clones</em> of the originally probed
- * node.</li>
- * <li>Because of <em>cloning</em> the {@link Node} supplied with notifications to a particular
- * listener will vary, but because they all represent the same GL program location the events should
- * be treated as equivalent for most purposes.</li>
- * </ul>
- * <p>
- * <h4>Access to execution state via {@link StandardInstrumentListener}:</h4>
+ * <h4>Implementation Notes: the Life Cycle of an {@link Instrument} at a {@link Probe}</h4>
  * <p>
  * <ul>
- * <li>Notification arguments provide primary access to the GL program's execution states:
- * <ul>
- * <li>{@link Node}: the concrete node (in one of the AST's clones) from which the event originated.
+ * <li>A new Instrument is created in permanent association with a client-provided
+ * <em>listener.</em></li>
+ * <li>Multiple Instruments may share a single listener.</li>
+ * <li>An Instrument does nothing until it is {@linkplain Probe#attach(Instrument) attached} to a
+ * Probe, at which time the Instrument begins routing execution events from the Probe's AST location
+ * to the Instrument's listener.</li>
+ * <li>Neither Instruments nor Probes are {@link Node}s.</li>
+ * <li>A Probe has a single source-based location in an AST, but manages a separate
+ * <em>instrumentation chain</em> of Nodes at the equivalent location in each clone of the AST.</li>
+ * <li>When a probed AST is cloned, the instrumentation chain associated with each Probe is cloned
+ * along with the rest of the AST.</li>
+ * <li>When a new Instrument (for example an instance of {@link SimpleInstrument} is attached to a
+ * Probe, the Instrument inserts a new instance of its private Node type,
+ * {@link SimpleInstrument.SimpleInstrumentNode}, into <em>each of the instrument chains</em>
+ * managed by the Probe, i.e. one node instance per existing clone of the AST.</li>
+ * <li>If an Instrument is attached to a Probe in an AST that subsequently gets cloned, then the
+ * Instrument's private Node type will be cloned along with the rest of the the AST.</li>
+ * <li>Each Instrument's private Node type is a dynamic inner class whose only state is in the
+ * shared (outer) Instrument instance; that state includes a reference to the Instrument's listener.
  * </li>
- * <li>{@link VirtualFrame}: the current execution frame.
+ * <li>When an Instrument that has been attached to a Probe is {@linkplain #dispose() disposed}, the
+ * Instrument searches every instrument chain associated with the Probe and removes the instance of
+ * its private Node type.</li>
+ * <li>Attaching and disposing an Instrument at a Probe <em>deoptimizes</em> any compilations of the
+ * AST.</li>
  * </ul>
- * <li>Truffle global information is available, for example the execution
- * {@linkplain TruffleRuntime#iterateFrames(FrameInstanceVisitor) stack}.</li>
- * <li>Additional API access to execution state may be added in the future.</li>
- * </ul>
- * <p>
- * <h4>Activating and deactivating Instruments:</h4>
- * <p>
- * Instruments are <em>single-use</em>:
- * <ul>
- * <li>An instrument becomes active only when <em>attached</em> to a Probe via
- * {@link Probe#attach(Instrument)}, and it may only be attached to a single Probe. It is a runtime
- * error to attempt attaching a previously attached instrument.</li>
- * <li>Attaching an instrument modifies every existing clone of the AST to which it is being
- * attached, which can trigger deoptimization.</li>
- * <li>The method {@link Instrument#dispose()} makes an instrument inactive by removing it from the
- * Probe to which it was attached and rendering it permanently inert.</li>
- * <li>Disposal removes the implementation of an instrument from all ASTs to which it was attached,
- * which can trigger deoptimization.</li>
- * </ul>
- * <p>
- * <h4>Sharing listeners:</h4>
- * <p>
- * Although an Instrument may only be attached to a single Probe, a listener can be shared among
- * multiple Instruments. This can be useful for observing events that might happen at different
- * locations in a single AST, for example all assignments to a particular variable. In this case a
- * new Instrument would be created and attached at each assignment node, but all the Instruments
- * would be created with the same listener.
- * <p>
- * <strong>Disclaimer:</strong> experimental; under development.
  *
  * @see Probe
  * @see TruffleEvents
@@ -229,8 +154,7 @@ public abstract class Instrument {
     }
 
     /**
-     * Removes this instrument (and any clones) from the probe to which it attached and renders the
-     * instrument inert.
+     * Removes this instrument from the probe to which it attached and renders the instrument inert.
      *
      * @throws IllegalStateException if this instrument has already been disposed
      */
@@ -425,6 +349,7 @@ public abstract class Instrument {
         }
     }
 
+    // TODO (mlvdv) EXPERIMENTAL- UNDER DEVELOPMENT
     /**
      * An instrument that propagates events to an instance of {@link StandardInstrumentListener}.
      */
