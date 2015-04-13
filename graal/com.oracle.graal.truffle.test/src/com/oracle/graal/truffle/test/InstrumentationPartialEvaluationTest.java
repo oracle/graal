@@ -212,9 +212,9 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         root.adoptChildren();
         Probe probe = result.probe();
         // A listener that could insert a "tool node" into the AST, but which never does.
-        Instrument instrument = Instrument.create(new ToolNodeInstrumentListener() {
+        Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
 
-            public ToolNode getToolNode(Probe p) {
+            public SplicedNode getSpliceNode(Probe p) {
                 return null;
             }
 
@@ -232,10 +232,10 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         root.adoptChildren();
         Probe probe = result.probe();
         // A listener that inserts a "tool node" with empty methods into the AST.
-        Instrument instrument = Instrument.create(new ToolNodeInstrumentListener() {
+        Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
 
-            public ToolNode getToolNode(Probe p) {
-                return new ToolNode() {
+            public SplicedNode getSpliceNode(Probe p) {
+                return new SplicedNode() {
                 };
             }
 
