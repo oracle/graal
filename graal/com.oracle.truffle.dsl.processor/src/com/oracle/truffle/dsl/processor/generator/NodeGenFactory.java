@@ -406,7 +406,7 @@ public class NodeGenFactory {
     // create specialization
 
     private CodeTypeElement createBaseSpecialization() {
-        CodeTypeElement clazz = createClass(node, null, modifiers(PRIVATE, ABSTRACT, STATIC), specializationTypeName(null), TypeSystemNodeFactory.nodeType(typeSystem));
+        CodeTypeElement clazz = createClass(node, null, modifiers(PRIVATE, ABSTRACT, STATIC), specializationTypeName(null), typeSystem.getContext().getType(SpecializationNode.class));
 
         clazz.addOptional(createSpecializationConstructor(clazz, null, null));
         clazz.add(new CodeVariableElement(modifiers(PROTECTED, FINAL), nodeType(node), "root"));

@@ -95,7 +95,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
 
         TypeCastData cast = typeSystem.getCast(type);
         if (cast == null) {
-            builder.cast(type, content);
+            builder.cast(ElementUtils.fillInGenericWildcards(type), content);
         } else {
             builder.startStaticCall(typeSystem.getTemplateType().asType(), cast.getMethodName()).tree(content).end();
         }
@@ -116,10 +116,13 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
-    public static CodeExecutableElement createExpectMethod(Modifier visibility, TypeSystemData typeSystem, TypeMirror sourceType, TypeMirror expectedType) {
+    public static CodeExecutableElement createExpectMethod(Modifier visibility, TypeSystemData typeSystem, TypeMirror sourceTypeOriginal, TypeMirror expectedTypeOriginal) {
+        TypeMirror expectedType = ElementUtils.fillInGenericWildcards(expectedTypeOriginal);
+        TypeMirror sourceType = ElementUtils.fillInGenericWildcards(sourceTypeOriginal);
         if (ElementUtils.isObject(expectedType) || ElementUtils.isVoid(expectedType)) {
             return null;
         }
+
         CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), expectedType, TypeSystemCodeGenerator.expectTypeMethodName(typeSystem, expectedType));
         method.setVisibility(visibility);
         method.addParameter(new CodeVariableElement(sourceType, LOCAL_VALUE));
@@ -208,8 +211,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
     @Override
     public CodeTypeElement create(ProcessorContext context, TypeSystemData typeSystem) {
         CodeTypeElement clazz = new TypeClassFactory(context, typeSystem).create();
-
-        clazz.add(new TypeSystemNodeFactory(context, typeSystem).create());
 
         if (typeSystem.getOptions().implicitCastOptimization().isMergeCasts()) {
             for (TypeMirror type : typeSystem.lookupTargetTypes()) {

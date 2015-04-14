@@ -88,6 +88,10 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
         }
 
         List<TypeMirror> legacyTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, typeSystem.getTemplateTypeAnnotation(), "value");
+        for (int i = 0; i < legacyTypes.size(); i++) {
+            legacyTypes.set(i, ElementUtils.fillInGenericWildcards(legacyTypes.get(i)));
+        }
+
         typeSystem.getLegacyTypes().addAll(legacyTypes);
         verifyTypes(typeSystem);
         typeSystem.getLegacyTypes().add(context.getType(Object.class));
