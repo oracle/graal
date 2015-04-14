@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -116,7 +116,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         Stamp newStamp = StampFactory.declaredTrusted(type).improveWith(object().stamp());
         ValueNode condition;
         ValueNode theValue = object;
-        if (newStamp.isIllegal()) {
+        if (newStamp.isEmpty()) {
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
             newStamp = StampFactory.declaredTrusted(type);

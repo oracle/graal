@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public abstract class Stamp {
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
     public boolean alwaysDistinct(Stamp other) {
-        return join(other).isIllegal();
+        return join(other).isEmpty();
     }
 
     /**
@@ -82,9 +82,9 @@ public abstract class Stamp {
     /**
      * Returns a stamp of the same kind, but with no allowed values.
      *
-     * {@link #illegal()} is the neutral element of the {@link #meet(Stamp)} operation.
+     * {@link #empty()} is the neutral element of the {@link #meet(Stamp)} operation.
      */
-    public abstract Stamp illegal();
+    public abstract Stamp empty();
 
     /**
      * If it is possible to represent single value stamps of this kind, this method returns the
@@ -103,13 +103,13 @@ public abstract class Stamp {
     /**
      * Test whether this stamp has legal values.
      */
-    public abstract boolean isLegal();
+    public abstract boolean hasValues();
 
     /**
      * Tests whether this stamp represents an illegal value.
      */
-    public final boolean isIllegal() {
-        return !isLegal();
+    public final boolean isEmpty() {
+        return !hasValues();
     }
 
     /**

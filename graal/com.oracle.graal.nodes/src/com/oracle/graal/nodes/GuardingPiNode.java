@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,7 +107,7 @@ public final class GuardingPiNode extends FixedWithNextNode implements Lowerable
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (stamp().isIllegal()) {
+        if (stamp().isEmpty()) {
             // The guard always fails
             return new DeoptimizeNode(action, reason);
         }
