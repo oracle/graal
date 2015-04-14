@@ -70,14 +70,14 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     }
 
     static <T extends AbstractBlockBase<T>> void calcDominatorRanges(T block) {
-        final class Frame<T> {
+        final class Frame {
             int myNumber;
             int maxNumber;
             T block;
             Iterator<T> dominated;
-            Frame<T> parent;
+            Frame parent;
 
-            public Frame(int myNumber, T block, Iterator<T> dominated, Frame<T> parent) {
+            public Frame(int myNumber, T block, Iterator<T> dominated, Frame parent) {
                 super();
                 this.myNumber = myNumber;
                 this.maxNumber = myNumber;
@@ -86,7 +86,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
                 this.parent = parent;
             }
         }
-        Frame<T> f = new Frame<>(0, block, block.getDominated().iterator(), null);
+        Frame f = new Frame(0, block, block.getDominated().iterator(), null);
         while (f != null) {
             if (!f.dominated.hasNext()) { // Retreat
                 f.block.setDominatorNumbers(f.myNumber, f.maxNumber);
@@ -97,7 +97,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
             } else {
                 T d = f.dominated.next();
                 List<T> dd = d.getDominated();
-                f = new Frame<>(f.maxNumber + 1, d, dd.iterator(), f);
+                f = new Frame(f.maxNumber + 1, d, dd.iterator(), f);
             }
         }
     }
