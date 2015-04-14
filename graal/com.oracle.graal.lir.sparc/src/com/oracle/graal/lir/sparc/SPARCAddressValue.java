@@ -25,31 +25,44 @@ package com.oracle.graal.lir.sparc;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 public final class SPARCAddressValue extends CompositeValue {
-    public static final CompositeValueClass<SPARCAddressValue> TYPE = CompositeValueClass.create(SPARCAddressValue.class);
-
     private static final long serialVersionUID = -3583286416638228207L;
 
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;
     protected final int displacement;
 
+    private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG, OperandFlag.ILLEGAL);
+
     public SPARCAddressValue(LIRKind kind, AllocatableValue base, int displacement) {
         this(kind, base, Value.ILLEGAL, displacement);
     }
 
     public SPARCAddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index, int displacement) {
-        super(TYPE, kind);
+        super(kind);
         assert isIllegal(index) || displacement == 0;
         this.base = base;
         this.index = index;
         this.displacement = displacement;
+    }
+
+    @Override
+    public CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
+        AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
+        AllocatableValue newIndex = (AllocatableValue) proc.doValue(inst, index, mode, flags);
+        if (!base.identityEquals(newBase) || !index.identityEquals(newIndex)) {
+            return new SPARCAddressValue(getLIRKind(), newBase, newIndex, displacement);
+        }
+        return this;
     }
 
     private static Register toRegister(AllocatableValue value) {

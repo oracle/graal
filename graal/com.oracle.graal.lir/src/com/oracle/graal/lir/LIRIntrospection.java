@@ -235,56 +235,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         }
     }
 
-    protected static CompositeValue forEachComponent(LIRInstruction inst, CompositeValue obj, Values values, OperandMode mode, InstructionValueProcedure proc) {
-        CompositeValue newCompValue = null;
-        for (int i = 0; i < values.getCount(); i++) {
-            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
-
-            if (i < values.getDirectCount()) {
-                Value value = values.getValue(obj, i);
-                Value newValue;
-                if (value instanceof CompositeValue) {
-                    CompositeValue composite = (CompositeValue) value;
-                    newValue = composite.forEachComponent(inst, mode, proc);
-                } else {
-                    newValue = proc.doValue(inst, value, mode, values.getFlags(i));
-                }
-                if (!value.identityEquals(newValue)) {
-                    // lazy initialize
-                    if (newCompValue == null) {
-                        newCompValue = obj.clone();
-                    }
-                    values.setValue(newCompValue, i, newValue);
-                }
-            } else {
-                Value[] valueArray = values.getValueArray(obj, i);
-                Value[] newValues = null;
-                for (int j = 0; j < valueArray.length; j++) {
-                    Value value = valueArray[j];
-                    Value newValue;
-                    if (value instanceof CompositeValue) {
-                        CompositeValue composite = (CompositeValue) value;
-                        newValue = composite.forEachComponent(inst, mode, proc);
-                    } else {
-                        newValue = proc.doValue(inst, value, mode, values.getFlags(i));
-                    }
-                    if (!value.identityEquals(newValue)) {
-                        // lazy initialize
-                        if (newValues == null) {
-                            if (newCompValue == null) {
-                                newCompValue = obj.clone();
-                            }
-                            newValues = values.getValueArray(newCompValue, i);
-                        }
-                        newValues[j] = newValue;
-                    }
-                }
-            }
-        }
-        return newCompValue != null ? newCompValue : obj;
-    }
-
-    protected void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
+    protected static void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
         int total = 0;
         for (Fields fields : fieldsList) {
             total += fields.getCount();
@@ -316,7 +267,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         sb.append(end);
     }
 
-    protected String getFieldString(Object obj, int index, Fields fields) {
+    protected static String getFieldString(Object obj, int index, Fields fields) {
         Object value = fields.get(obj, index);
         Class<?> type = fields.getType(index);
         if (value == null || type.isPrimitive() || !type.isArray()) {
