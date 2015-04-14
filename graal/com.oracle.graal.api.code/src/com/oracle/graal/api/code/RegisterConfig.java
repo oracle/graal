@@ -71,15 +71,19 @@ public interface RegisterConfig {
     Register[] getCallingConventionRegisters(Type type, Kind kind);
 
     /**
-     * Gets the set of registers that can be used by the register allocator.
+     * Gets the set of all registers that might be used by the register allocator.
+     *
+     * To get the set of registers the register allocator is allowed to use see
+     * {@link RegisterAllocationConfig#getAllocatableRegisters()}
      */
+    @SuppressWarnings("javadoc")
     Register[] getAllocatableRegisters();
 
     /**
-     * Gets the set of registers that can be used by the register allocator for a value of a
-     * particular kind.
+     * Filters a set of registers and returns only those that can be used by the register allocator
+     * for a value of a particular kind.
      */
-    Register[] getAllocatableRegisters(PlatformKind kind);
+    Register[] filterAllocatableRegisters(PlatformKind kind, Register[] registers);
 
     /**
      * Gets the registers whose values must be preserved by a method across any call it makes.

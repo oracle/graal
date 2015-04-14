@@ -22,20 +22,45 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.phases.*;
 
-public final class LinearScanPhase extends AllocationPhase {
+public class OutOfRegistersException extends BailoutException {
 
-    @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
-        new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
+    private static final long serialVersionUID = -3479786650143432195L;
+
+    private final String description;
+
+    public OutOfRegistersException(String msg) {
+        super(msg);
+        this.description = "";
     }
 
+    public OutOfRegistersException(Throwable cause, String msg) {
+        super(cause, msg);
+        this.description = "";
+    }
+
+    public OutOfRegistersException(boolean permanent, String msg) {
+        super(permanent, msg);
+        this.description = "";
+    }
+
+    public OutOfRegistersException(String msg, String description) {
+        super(msg);
+        this.description = description;
+    }
+
+    public OutOfRegistersException(Throwable cause, String msg, String description) {
+        super(cause, msg);
+        this.description = description;
+    }
+
+    public OutOfRegistersException(boolean permanent, String msg, String description) {
+        super(permanent, msg);
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }

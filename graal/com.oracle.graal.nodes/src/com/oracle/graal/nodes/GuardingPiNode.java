@@ -107,7 +107,7 @@ public final class GuardingPiNode extends FixedWithNextNode implements Lowerable
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (stamp() == StampFactory.illegal(object.getKind())) {
+        if (stamp().isIllegal()) {
             // The guard always fails
             return new DeoptimizeNode(action, reason);
         }

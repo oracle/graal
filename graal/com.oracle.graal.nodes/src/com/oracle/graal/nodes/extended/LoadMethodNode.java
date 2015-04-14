@@ -101,7 +101,7 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
              * This really represent a misuse of LoadMethod since we're loading from a class which
              * isn't known to implement the original method but for now at least fold it away.
              */
-            return ConstantNode.forConstant(JavaConstant.NULL_POINTER, null);
+            return ConstantNode.forConstant(stamp(), JavaConstant.NULL_POINTER, null);
         } else {
             return ConstantNode.forConstant(stamp(), newMethod.getEncoding(), tool.getMetaAccess());
         }

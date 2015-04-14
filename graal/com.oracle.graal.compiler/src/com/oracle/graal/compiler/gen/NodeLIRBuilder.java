@@ -304,7 +304,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected void emitNode(ValueNode node) {
-        if (Debug.isLogEnabled() && node.stamp() instanceof IllegalStamp) {
+        if (Debug.isLogEnabled() && node.stamp().isIllegal()) {
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
         if (node instanceof LIRLowerable) {

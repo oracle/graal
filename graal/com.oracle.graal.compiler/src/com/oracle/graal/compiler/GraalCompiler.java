@@ -23,6 +23,8 @@
 package com.oracle.graal.compiler;
 
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import java.util.*;
@@ -38,6 +40,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
@@ -49,6 +52,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
@@ -240,6 +244,22 @@ public class GraalCompiler {
     }
 
     public static LIRGenerationResult emitLIR(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc,
+                    RegisterConfig registerConfig, LIRSuites lirSuites) {
+        try {
+            return emitLIR0(backend, target, schedule, graph, stub, cc, registerConfig, lirSuites);
+        } catch (OutOfRegistersException e) {
+            if (RegisterPressure.getValue() != null && !RegisterPressure.getValue().equals(ALL_REGISTERS)) {
+                try (OverrideScope s = OptionValue.override(RegisterPressure, ALL_REGISTERS)) {
+                    // retry with default register set
+                    return emitLIR0(backend, target, schedule, graph, stub, cc, registerConfig, lirSuites);
+                }
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private static LIRGenerationResult emitLIR0(Backend backend, TargetDescription target, SchedulePhase schedule, StructuredGraph graph, Object stub, CallingConvention cc,
                     RegisterConfig registerConfig, LIRSuites lirSuites) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
             List<Block> blocks = schedule.getCFG().getBlocks();

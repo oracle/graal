@@ -40,9 +40,7 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        if (!isCompatible(other)) {
-            return StampFactory.illegal();
-        }
+        assert isCompatible(other);
         return this;
     }
 
@@ -53,9 +51,7 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
     @Override
     public Stamp join(Stamp other) {
-        if (!isCompatible(other)) {
-            return StampFactory.illegal();
-        }
+        assert isCompatible(other);
         return this;
     }
 

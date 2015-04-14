@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.java.AbstractBytecodeParser.IntrinsicContext.*;
+import static com.oracle.graal.java.IntrinsicContext.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -39,7 +39,6 @@ import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.AbstractBytecodeParser.IntrinsicContext;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.*;

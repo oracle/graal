@@ -41,6 +41,12 @@ public class EncodedGraph {
     private final Assumptions assumptions;
     private final Set<ResolvedJavaMethod> inlinedMethods;
 
+    /**
+     * The "table of contents" of the encoded graph, i.e., the mapping from orderId numbers to the
+     * offset in the encoded byte[] array. Used as a cache during decoding.
+     */
+    protected long[] nodeStartOffsets;
+
     public EncodedGraph(byte[] encoding, long startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, Set<ResolvedJavaMethod> inlinedMethods) {
         this.encoding = encoding;
         this.startOffset = startOffset;

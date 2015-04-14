@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -77,7 +78,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     @Override
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
         if (methodHandleClass == null) {
-            methodHandleClass = metaAccess.lookupJavaType(MethodHandle.class);
+            methodHandleClass = plugins.getMetaAccess().lookupJavaType(MethodHandle.class);
         }
         if (method.getDeclaringClass().equals(methodHandleClass)) {
             HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;

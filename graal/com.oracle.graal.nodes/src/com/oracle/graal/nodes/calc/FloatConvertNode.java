@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -43,8 +45,16 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
 
     protected final FloatConvert op;
 
+    private static final EnumMap<FloatConvert, SerializableUnaryFunction<FloatConvertOp>> getOps;
+    static {
+        getOps = new EnumMap<>(FloatConvert.class);
+        for (FloatConvert op : FloatConvert.values()) {
+            getOps.put(op, table -> table.getFloatConvert(op));
+        }
+    }
+
     public FloatConvertNode(FloatConvert op, ValueNode input) {
-        super(TYPE, table -> table.getFloatConvert(op), input);
+        super(TYPE, getOps.get(op), input);
         this.op = op;
     }
 

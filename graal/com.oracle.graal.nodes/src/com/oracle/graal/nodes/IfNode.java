@@ -140,6 +140,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return super.verify();
     }
 
+    public void eliminateNegation() {
+        AbstractBeginNode oldTrueSuccessor = trueSuccessor;
+        AbstractBeginNode oldFalseSuccessor = falseSuccessor;
+        trueSuccessor = oldFalseSuccessor;
+        falseSuccessor = oldTrueSuccessor;
+        trueSuccessorProbability = 1 - trueSuccessorProbability;
+        setCondition(((LogicNegationNode) condition).getValue());
+    }
+
     @Override
     public void simplify(SimplifierTool tool) {
         if (trueSuccessor().next() instanceof DeoptimizeNode) {
@@ -155,15 +164,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         if (condition() instanceof LogicNegationNode) {
-            AbstractBeginNode trueSucc = trueSuccessor();
-            AbstractBeginNode falseSucc = falseSuccessor();
-            setTrueSuccessor(null);
-            setFalseSuccessor(null);
-            LogicNegationNode negation = (LogicNegationNode) condition();
-            IfNode newIfNode = graph().add(new IfNode(negation.getValue(), falseSucc, trueSucc, 1 - trueSuccessorProbability));
-            predecessor().replaceFirstSuccessor(this, newIfNode);
-            GraphUtil.killWithUnusedFloatingInputs(this);
-            return;
+            eliminateNegation();
         }
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();

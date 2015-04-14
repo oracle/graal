@@ -713,10 +713,12 @@ class LinearScanWalker extends IntervalWalker {
                 Debug.log("able to spill current interval. firstUsage(register): %d, usePos: %d", firstUsage, regUsePos);
 
                 if (firstUsage <= interval.from() + 1) {
-                    assert false : "cannot spill interval that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage + ", interval.from()=" + interval.from();
+                    String description = "cannot spill interval that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage + ", interval.from()=" +
+                                    interval.from();
                     // assign a reasonable register and do a bailout in product mode to avoid errors
                     allocator.assignSpillSlot(interval);
-                    throw new BailoutException("LinearScan: no register found");
+                    allocator.printIntervals(description);
+                    throw new OutOfRegistersException("LinearScan: no register found", description);
                 }
 
                 splitAndSpillInterval(interval);
@@ -766,7 +768,7 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        availableRegs = allocator.frameMapBuilder.getRegisterConfig().getAllocatableRegisters(interval.kind().getPlatformKind());
+        availableRegs = allocator.regAllocConfig.getAllocatableRegisters(interval.kind().getPlatformKind());
     }
 
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {

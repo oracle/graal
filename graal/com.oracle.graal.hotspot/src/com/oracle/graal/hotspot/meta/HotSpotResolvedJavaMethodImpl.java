@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.*;
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
  */
-public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod, HotSpotProxified, InvocationPluginIdHolder {
+public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod, HotSpotProxified, MethodIdHolder {
 
     private static final long serialVersionUID = -5486975070147586588L;
 
@@ -742,14 +742,14 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
         return runtime().getCompilerToVM().hasCompiledCodeForOSR(metaspaceMethod, entryBCI, level);
     }
 
-    private int invocationPluginId;
+    private int methodId;
 
-    public void setInvocationPluginId(int id) {
-        assert invocationPluginId == 0;
-        invocationPluginId = id;
+    public void setMethodId(int id) {
+        assert methodId == 0;
+        methodId = id;
     }
 
-    public int getInvocationPluginId() {
-        return invocationPluginId;
+    public int getMethodId() {
+        return methodId;
     }
 }

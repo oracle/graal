@@ -150,11 +150,11 @@ public class GraphUtil {
 
     public static void killWithUnusedFloatingInputs(Node node) {
         node.safeDelete();
-        for (Node in : node.inputs()) {
+        node.acceptInputs((n, in) -> {
             if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
                 killWithUnusedFloatingInputs(in);
             }
-        }
+        });
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {

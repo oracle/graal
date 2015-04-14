@@ -192,7 +192,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     private Register findPollOnReturnScratchRegister() {
         RegisterConfig regConfig = getProviders().getCodeCache().getRegisterConfig();
-        for (Register r : regConfig.getAllocatableRegisters(Kind.Long)) {
+        for (Register r : regConfig.getAllocatableRegisters()) {
             if (!r.equals(regConfig.getReturnRegister(Kind.Long)) && !r.equals(AMD64.rbp)) {
                 return r;
             }

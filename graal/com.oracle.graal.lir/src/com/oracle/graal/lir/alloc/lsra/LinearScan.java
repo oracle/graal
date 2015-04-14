@@ -66,6 +66,7 @@ final class LinearScan {
     final SpillMoveFactory spillMoveFactory;
     final RegisterAttributes[] registerAttributes;
     final Register[] registers;
+    final RegisterAllocationConfig regAllocConfig;
 
     final boolean callKillsRegisters;
 
@@ -163,14 +164,15 @@ final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory) {
+    LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig) {
         this.target = target;
         this.res = res;
         this.ir = res.getLIR();
         this.spillMoveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
         this.sortedBlocks = ir.linearScanOrder();
-        this.registerAttributes = frameMapBuilder.getRegisterConfig().getAttributesMap();
+        this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
+        this.regAllocConfig = regAllocConfig;
 
         this.registers = target.arch.getRegisters();
         this.firstVariableNumber = registers.length;
@@ -178,7 +180,7 @@ final class LinearScan {
 
         // If all allocatable registers are caller saved, then no registers are live across a call
         // site. The register allocator can save time not trying to find a register at a call site.
-        this.callKillsRegisters = this.frameMapBuilder.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
+        this.callKillsRegisters = regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
     int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -1169,7 +1171,7 @@ final class LinearScan {
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
-            Register[] callerSaveRegs = frameMapBuilder.getRegisterConfig().getCallerSaveRegisters();
+            Register[] callerSaveRegs = regAllocConfig.getRegisterConfig().getCallerSaveRegisters();
 
             // iterate all blocks in reverse order
             for (int i = blockCount() - 1; i >= 0; i--) {
