@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,8 @@ public class InferStamps {
             if (n instanceof ValuePhiNode) {
                 ValueNode node = (ValueNode) n;
                 if (node.stamp() instanceof ObjectStamp) {
-                    assert node.stamp().isLegal() : "We assume all Phi and Proxy stamps are legal before the analysis";
-                    node.setStamp(node.stamp().illegal());
+                    assert node.stamp().hasValues() : "We assume all Phi and Proxy stamps are legal before the analysis";
+                    node.setStamp(node.stamp().empty());
                 }
             }
         }
@@ -81,14 +81,14 @@ public class InferStamps {
          * Check that all the illegal stamps we introduced above are correctly replaced with real
          * stamps again.
          */
-        assert checkNoIllegalStamp(graph);
+        assert checkNoEmptyStamp(graph);
     }
 
-    private static boolean checkNoIllegalStamp(StructuredGraph graph) {
+    private static boolean checkNoEmptyStamp(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
             if (n instanceof ValuePhiNode) {
                 ValueNode node = (ValueNode) n;
-                assert node.stamp().isLegal() : "Stamp is illegal after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
+                assert node.stamp().hasValues() : "Stamp is empty after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
             }
         }
         return true;
