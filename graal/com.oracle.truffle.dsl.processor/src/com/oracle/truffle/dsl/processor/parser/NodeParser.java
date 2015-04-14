@@ -1355,6 +1355,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             if (genericParameter.getLocalName().equals(TemplateMethod.FRAME_NAME)) {
                 continue;
             }
+            boolean isReturnParameter = genericParameter == generic.getReturnType();
             if (!genericParameter.getSpecification().isSignature()) {
                 polymorphicType = genericParameter.getType();
             } else {
@@ -1376,18 +1377,14 @@ public class NodeParser extends AbstractParser<NodeData> {
                 if (usedTypes.size() == 1) {
                     polymorphicType = usedTypes.iterator().next();
 
-                    if (node.getTypeSystem().hasImplicitSourceTypes(polymorphicType)) {
+                    if (!isReturnParameter && node.getTypeSystem().hasImplicitSourceTypes(polymorphicType)) {
                         polymorphicType = context.getType(Object.class);
                     }
                 } else {
-                    if (generic.getFrame() == genericParameter) {
-                        polymorphicType = context.getType(Frame.class);
-                    } else {
-                        polymorphicType = context.getType(Object.class);
-                    }
+                    polymorphicType = context.getType(Object.class);
                 }
             }
-            if (genericParameter == generic.getReturnType()) {
+            if (isReturnParameter) {
                 returnType = polymorphicType;
             } else {
                 types.add(new CodeVariableElement(polymorphicType, "param" + index));
