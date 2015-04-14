@@ -1293,7 +1293,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         if (allowedTypes.size() == 1) {
             return allowedTypes.iterator().next();
         } else {
-            return ElementUtils.getCommonSuperType(context, allowedTypes.toArray(new TypeMirror[allowedTypes.size()]));
+            return ElementUtils.getCommonSuperType(context, allowedTypes);
         }
     }
 

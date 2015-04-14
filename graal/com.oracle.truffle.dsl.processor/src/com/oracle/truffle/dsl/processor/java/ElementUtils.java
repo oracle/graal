@@ -147,13 +147,14 @@ public class ElementUtils {
         return result;
     }
 
-    public static TypeMirror getCommonSuperType(ProcessorContext context, TypeMirror[] types) {
-        if (types.length == 0) {
+    public static TypeMirror getCommonSuperType(ProcessorContext context, Collection<TypeMirror> types) {
+        if (types.isEmpty()) {
             return context.getType(Object.class);
         }
-        TypeMirror prev = types[0];
-        for (int i = 1; i < types.length; i++) {
-            prev = getCommonSuperType(context, prev, types[i]);
+        Iterator<TypeMirror> typesIterator = types.iterator();
+        TypeMirror prev = typesIterator.next();
+        while (typesIterator.hasNext()) {
+            prev = getCommonSuperType(context, prev, typesIterator.next());
         }
         return prev;
     }

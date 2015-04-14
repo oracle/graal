@@ -60,7 +60,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     protected Collection<TypeMirror> getPossibleReturnTypes() {
         List<TypeMirror> possibleTypes = getNode().getGenericTypes(getNode().getThisExecution());
         if (possibleTypes.size() > 1) {
-            return Arrays.asList(ElementUtils.getCommonSuperType(getContext(), possibleTypes.toArray(new TypeMirror[0])));
+            return Arrays.asList(ElementUtils.getCommonSuperType(getContext(), possibleTypes));
         } else {
             return possibleTypes;
         }
