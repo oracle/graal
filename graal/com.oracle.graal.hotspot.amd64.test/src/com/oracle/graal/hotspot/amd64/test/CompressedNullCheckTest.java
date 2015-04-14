@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64.test;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -44,6 +45,7 @@ public class CompressedNullCheckTest extends GraalCompilerTest {
 
     @Test
     public void test() {
+        Assume.assumeTrue(HotSpotGraalRuntime.runtime().getConfig().useCompressedOops);
         test("testSnippet", new Container());
     }
 
