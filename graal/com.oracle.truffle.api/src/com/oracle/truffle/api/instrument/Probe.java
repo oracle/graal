@@ -62,24 +62,25 @@ import com.oracle.truffle.api.utilities.*;
  * </li>
  *
  * <li>The effect of the binding is to intercept {@linkplain TruffleEvents execution events}
- * arriving at the "probed" AST node and notify each attached {@link Instrument} before execution is
+ * arriving at the "probed" AST Node and notify each attached {@link Instrument} before execution is
  * allowed to proceed to the child and again after execution completes.</li>
  *
- * <li>A Probe is "inserted" into a GL node via a call to {@link Node#probe()}. No more than one
- * Probe can be inserted at a node; a redundant call returns the existing Probe<./li>
+ * <li>The method {@link Node#probe()} creates a Probe on an AST Node; redundant calls return the
+ * same Probe.</li>
  *
  * <li>The "probing" of a Truffle AST must be done after the AST is complete (i.e. parent pointers
  * correctly assigned), but before any cloning or executions. This is done by creating an instance
- * of {@link ASTProber} and registering it via {@link #registerASTProber(ASTProber)}, after which it
- * will be applied automatically to every newly created AST.</li>
+ * of {@link ASTProber} and registering it via {@link #registerASTProber(ASTProber)}. Once
+ * registered, it will be applied automatically to every newly created AST.</li>
  *
- * <li>An AST node becomes <em>probed</em> by insertion of a {@link ProbeNode.WrapperNode} into the
- * AST, together with an associated {@link ProbeNode} that routes events to all the
- * {@linkplain Instrument Instruments} attached to its <em>instrument chain</em>.</li>
+ * <li>The "probing" of an AST Node is implemented by insertion of a {@link ProbeNode.WrapperNode}
+ * into the AST (as new parent of the Node being probed), together with an associated
+ * {@link ProbeNode} that routes execution events at the probed Node to all the
+ * {@linkplain Instrument Instruments} attached to the Probe's <em>instrument chain</em>.</li>
  *
  * <li>When Truffle clones an AST, any attached WrapperNodes and ProbeNodes are cloned as well,
- * together with their attached instrument chains. The {@link Probe} instance intercepts cloning
- * events and keeps track of all copies.</li>
+ * together with their attached instrument chains. Each Probe instance intercepts cloning events and
+ * keeps track of all AST copies.</li>
  *
  * <li>All attached {@link InstrumentationNode}s effectively become part of the running program:
  * <ul>

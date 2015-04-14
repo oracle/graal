@@ -42,8 +42,9 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * When Truffle clones an AST, the chain, including all attached {@linkplain Instrument instruments}
  * will be cloned along with the {@link WrapperNode} to which it is attached. An instance of
- * {@link Probe} represents abstractly the instrumentation at a particular location in a GL AST,
- * tracks the clones of the chain, and keeps the instrumentation attached to the clones consistent.
+ * {@link Probe} represents abstractly the instrumentation at a particular location in a Guest
+ * Language AST, tracks the clones of the chain, and keeps the instrumentation attached to the
+ * clones consistent.
  */
 @NodeInfo(cost = NodeCost.NONE)
 public final class ProbeNode extends Node implements TruffleEvents, InstrumentationNode {
