@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -304,8 +304,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected void emitNode(ValueNode node) {
-        if (Debug.isLogEnabled() && node.stamp().isIllegal()) {
-            Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
+        if (Debug.isLogEnabled() && node.stamp().isEmpty()) {
+            Debug.log("This node has an empty stamp, we are emitting dead code(?): %s", node);
         }
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);

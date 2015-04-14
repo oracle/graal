@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ public class StampFactory {
     // JaCoCo Exclude
 
     private static final Stamp[] stampCache = new Stamp[Kind.values().length];
-    private static final Stamp[] illegalStampCache = new Stamp[Kind.values().length];
+    private static final Stamp[] emptyStampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false);
     private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true);
@@ -72,13 +72,13 @@ public class StampFactory {
 
         setCache(Kind.Object, objectStamp);
         setCache(Kind.Void, VoidStamp.getInstance());
+        setCache(Kind.Illegal, IllegalStamp.getInstance());
 
         for (Kind k : Kind.values()) {
             if (stampCache[k.ordinal()] != null) {
-                illegalStampCache[k.ordinal()] = stampCache[k.ordinal()].illegal();
+                emptyStampCache[k.ordinal()] = stampCache[k.ordinal()].empty();
             }
         }
-        illegalStampCache[Kind.Illegal.ordinal()] = IllegalStamp.getInstance();
     }
 
     public static Stamp tautology() {
@@ -121,8 +121,8 @@ public class StampFactory {
         return positiveInt;
     }
 
-    public static Stamp illegal(Kind kind) {
-        return illegalStampCache[kind.ordinal()];
+    public static Stamp empty(Kind kind) {
+        return emptyStampCache[kind.ordinal()];
     }
 
     public static IntegerStamp forInteger(Kind kind, long lowerBound, long upperBound, long downMask, long upMask) {
@@ -188,7 +188,7 @@ public class StampFactory {
             case Double:
                 return forFloat(kind, value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
             case Illegal:
-                return illegal(Kind.Illegal);
+                return forKind(Kind.Illegal);
             case Object:
                 if (value.isNull()) {
                     return alwaysNull();
@@ -271,7 +271,7 @@ public class StampFactory {
         if (ObjectStamp.isConcreteType(type)) {
             return new ObjectStamp(type, true, false, false);
         } else {
-            return illegal(Kind.Object);
+            return empty(Kind.Object);
         }
     }
 
@@ -282,7 +282,7 @@ public class StampFactory {
         if (ObjectStamp.isConcreteType(type)) {
             return new ObjectStamp(type, true, true, false);
         } else {
-            return illegal(Kind.Object);
+            return empty(Kind.Object);
         }
     }
 

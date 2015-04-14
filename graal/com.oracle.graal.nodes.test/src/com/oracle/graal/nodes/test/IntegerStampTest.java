@@ -306,8 +306,8 @@ public class IntegerStampTest {
 
     @Test
     public void testIllegalJoin() {
-        assertFalse(new IntegerStamp(32, 0, 0xff00, 0, 0xff00).join(new IntegerStamp(32, 1, 0xff, 0x00, 0xff)).isLegal());
-        assertFalse(new IntegerStamp(32, 0x100, 0xff00, 0, 0xff00).join(new IntegerStamp(32, 0, 0xff, 0x00, 0xff)).isLegal());
+        assertFalse(new IntegerStamp(32, 0, 0xff00, 0, 0xff00).join(new IntegerStamp(32, 1, 0xff, 0x00, 0xff)).hasValues());
+        assertFalse(new IntegerStamp(32, 0x100, 0xff00, 0, 0xff00).join(new IntegerStamp(32, 0, 0xff, 0x00, 0xff)).hasValues());
     }
 
     @Test
