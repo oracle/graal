@@ -365,6 +365,8 @@ public class ElementUtils {
                 return getTypeId(((ArrayType) mirror).getComponentType()) + "Array";
             case VOID:
                 return "Void";
+            case NULL:
+                return "Null";
             case WILDCARD:
                 StringBuilder b = new StringBuilder();
                 WildcardType type = (WildcardType) mirror;
@@ -411,6 +413,8 @@ public class ElementUtils {
                 return getSimpleName(((ArrayType) mirror).getComponentType()) + "[]";
             case VOID:
                 return "void";
+            case NULL:
+                return "null";
             case WILDCARD:
                 return getWildcardName((WildcardType) mirror);
             case TYPEVAR:
@@ -501,6 +505,8 @@ public class ElementUtils {
                 return getQualifiedName(((ArrayType) mirror).getComponentType());
             case VOID:
                 return "void";
+            case NULL:
+                return "null";
             case TYPEVAR:
                 return getSimpleName(mirror);
             case ERROR:
@@ -662,6 +668,7 @@ public class ElementUtils {
             case INT:
             case LONG:
             case VOID:
+            case NULL:
             case TYPEVAR:
                 return null;
             case DECLARED:
@@ -945,6 +952,13 @@ public class ElementUtils {
             return true;
         } else if (kindIsIntegral(type1.getKind())) {
             return kindIsIntegral(type2.getKind());
+        } else if (type1.getKind() == TypeKind.NULL) {
+            if (type2.getKind() == TypeKind.NULL) {
+                return false;
+            }
+            return true;
+        } else if (type2.getKind() == TypeKind.NULL) {
+            return true;
         } else {
             return false;
         }
