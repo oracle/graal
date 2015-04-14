@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
@@ -43,6 +44,9 @@ public abstract class SLLogicalAndNode extends SLBinaryNode {
     public SLLogicalAndNode(SourceSection src) {
         super(src);
     }
+
+    @Override
+    public abstract boolean executeBoolean(VirtualFrame frame);
 
     /**
      * This method is called after the left child was evaluated, but before the right child is

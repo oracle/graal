@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.sl.nodes.instrument;
 
-import java.math.*;
-
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
@@ -101,18 +99,8 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
     }
 
     @Override
-    public BigInteger executeBigInteger(VirtualFrame vFrame) throws UnexpectedResultException {
-        return SLTypesGen.expectBigInteger(executeGeneric(vFrame));
-    }
-
-    @Override
     public boolean executeBoolean(VirtualFrame vFrame) throws UnexpectedResultException {
         return SLTypesGen.expectBoolean(executeGeneric(vFrame));
-    }
-
-    @Override
-    public String executeString(VirtualFrame vFrame) throws UnexpectedResultException {
-        return SLTypesGen.expectString(executeGeneric(vFrame));
     }
 
     @Override
@@ -130,8 +118,4 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
         return result;
     }
 
-    @Override
-    public SLNull executeNull(VirtualFrame vFrame) throws UnexpectedResultException {
-        return SLTypesGen.expectSLNull(executeGeneric(vFrame));
-    }
 }

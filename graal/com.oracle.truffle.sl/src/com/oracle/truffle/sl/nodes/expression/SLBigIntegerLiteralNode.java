@@ -44,12 +44,7 @@ public final class SLBigIntegerLiteralNode extends SLExpressionNode {
     }
 
     @Override
-    public BigInteger executeBigInteger(VirtualFrame frame) {
-        return value;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public BigInteger executeGeneric(VirtualFrame frame) {
         return value;
     }
 }

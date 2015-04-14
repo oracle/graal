@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.math.*;
-
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
@@ -70,24 +68,12 @@ public abstract class SLExpressionNode extends SLStatementNode {
         return SLTypesGen.expectLong(executeGeneric(frame));
     }
 
-    public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectBigInteger(executeGeneric(frame));
-    }
-
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectBoolean(executeGeneric(frame));
-    }
-
-    public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectString(executeGeneric(frame));
-    }
-
     public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
         return SLTypesGen.expectSLFunction(executeGeneric(frame));
     }
 
-    public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
-        return SLTypesGen.expectSLNull(executeGeneric(frame));
+    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.expectBoolean(executeGeneric(frame));
     }
 
     @Override
