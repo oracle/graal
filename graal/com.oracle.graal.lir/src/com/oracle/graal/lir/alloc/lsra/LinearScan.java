@@ -554,7 +554,9 @@ final class LinearScan {
                             // move target is a stack slot that is always correct, so eliminate
                             // instruction
                             if (Debug.isLogEnabled()) {
-                                Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
+                                if (Debug.isLogEnabled()) {
+                                    Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
+                                }
                             }
                             // null-instructions are deleted by assignRegNum
                             instructions.set(j, null);
@@ -582,7 +584,9 @@ final class LinearScan {
 
                                 insertionBuffer.append(j + 1, getSpillMoveFactory().createMove(toLocation, fromLocation));
 
-                                Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
+                                if (Debug.isLogEnabled()) {
+                                    Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
+                                }
                             }
                             interval = interval.next;
                         }
@@ -612,7 +616,9 @@ final class LinearScan {
             assert temp.spillDefinitionPos() >= temp.from() : "invalid order";
             assert temp.spillDefinitionPos() <= temp.from() + 2 : "only intervals defined once at their start-pos can be optimized";
 
-            Debug.log("interval %d (from %d to %d) must be stored at %d", temp.operandNumber, temp.from(), temp.to(), temp.spillDefinitionPos());
+            if (Debug.isLogEnabled()) {
+                Debug.log("interval %d (from %d to %d) must be stored at %d", temp.operandNumber, temp.from(), temp.to(), temp.spillDefinitionPos());
+            }
 
             prev = temp;
             temp = temp.next;
@@ -695,7 +701,9 @@ final class LinearScan {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
-                            Debug.log("liveGen for operand %d", operandNum);
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("liveGen for operand %d", operandNum);
+                            }
                         }
                         if (block.getLoop() != null) {
                             intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
@@ -711,7 +719,9 @@ final class LinearScan {
                         int operandNum = operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
-                            Debug.log("liveGen in state for operand %d", operandNum);
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("liveGen in state for operand %d", operandNum);
+                            }
                         }
                     }
                 };
@@ -719,7 +729,9 @@ final class LinearScan {
                     if (isVariable(operand)) {
                         int varNum = operandNumber(operand);
                         liveKill.set(varNum);
-                        Debug.log("liveKill for operand %d", varNum);
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("liveKill for operand %d", varNum);
+                        }
                         if (block.getLoop() != null) {
                             intervalInLoop.setBit(varNum, block.getLoop().getIndex());
                         }
@@ -754,8 +766,10 @@ final class LinearScan {
                 blockSets.liveIn = new BitSet(liveSize);
                 blockSets.liveOut = new BitSet(liveSize);
 
-                Debug.log("liveGen  B%d %s", block.getId(), blockSets.liveGen);
-                Debug.log("liveKill B%d %s", block.getId(), blockSets.liveKill);
+                if (Debug.isLogEnabled()) {
+                    Debug.log("liveGen  B%d %s", block.getId(), blockSets.liveGen);
+                    Debug.log("liveKill B%d %s", block.getId(), blockSets.liveKill);
+                }
 
             }
         } // end of block iteration
@@ -845,7 +859,9 @@ final class LinearScan {
                             liveIn.andNot(blockSets.liveKill);
                             liveIn.or(blockSets.liveGen);
 
-                            Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
+                            }
                         }
                     }
                     iterationCount++;
@@ -983,7 +999,9 @@ final class LinearScan {
         // Register use position at even instruction id.
         interval.addUsePos(to & ~1, registerPriority);
 
-        Debug.log("add use: %s, from %d to %d (%s)", interval, from, to, registerPriority.name());
+        if (Debug.isLogEnabled()) {
+            Debug.log("add use: %s, from %d to %d (%s)", interval, from, to, registerPriority.name());
+        }
     }
 
     void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
@@ -1000,7 +1018,9 @@ final class LinearScan {
         interval.addUsePos(tempPos, registerPriority);
         interval.addMaterializationValue(null);
 
-        Debug.log("add temp: %s tempPos %d (%s)", interval, tempPos, RegisterPriority.MustHaveRegister.name());
+        if (Debug.isLogEnabled()) {
+            Debug.log("add temp: %s tempPos %d (%s)", interval, tempPos, RegisterPriority.MustHaveRegister.name());
+        }
     }
 
     boolean isProcessed(Value operand) {
@@ -1030,7 +1050,9 @@ final class LinearScan {
             // also add register priority for dead intervals
             interval.addRange(defPos, defPos + 1);
             interval.addUsePos(defPos, registerPriority);
-            Debug.log("Warning: def of operand %s at %d occurs without use", operand, defPos);
+            if (Debug.isLogEnabled()) {
+                Debug.log("Warning: def of operand %s at %d occurs without use", operand, defPos);
+            }
         }
 
         changeSpillDefinitionPos(interval, defPos);
@@ -1040,7 +1062,9 @@ final class LinearScan {
         }
         interval.addMaterializationValue(LinearScan.getMaterializedValue(op, operand, interval));
 
-        Debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
+        if (Debug.isLogEnabled()) {
+            Debug.log("add def: %s defPos %d (%s)", interval, defPos, registerPriority.name());
+        }
     }
 
     /**
@@ -1092,7 +1116,9 @@ final class LinearScan {
                     assert blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
                     assert isVariable(move.getResult()) : "result of move must be a variable";
 
-                    Debug.log("found move from stack slot %s to %s", slot, move.getResult());
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("found move from stack slot %s to %s", slot, move.getResult());
+                    }
                 }
 
                 Interval interval = intervalFor(move.getResult());
@@ -1116,7 +1142,9 @@ final class LinearScan {
                     } else {
                         from.setLocationHint(to);
                     }
-                    Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), from.operandNumber, to.operandNumber);
+                    }
 
                     return registerHint;
                 }
@@ -1191,7 +1219,9 @@ final class LinearScan {
                     for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                         assert live.get(operandNum) : "should not stop here otherwise";
                         AllocatableValue operand = intervalFor(operandNum).operand;
-                        Debug.log("live in %d: %s", operandNum, operand);
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("live in %d: %s", operandNum, operand);
+                        }
 
                         addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, LIRKind.Illegal);
 
@@ -1220,7 +1250,9 @@ final class LinearScan {
                                         addTemp(r.asValue(), opId, RegisterPriority.None, LIRKind.Illegal);
                                     }
                                 }
-                                Debug.log("operation destroys all caller-save registers");
+                                if (Debug.isLogEnabled()) {
+                                    Debug.log("operation destroys all caller-save registers");
+                                }
                             }
 
                             op.visitEachOutput(outputConsumer);
@@ -1413,7 +1445,9 @@ final class LinearScan {
         Interval result = interval.getSplitChildAtOpId(opId, mode, this);
 
         if (result != null) {
-            Debug.log("Split child at pos %d of interval %s is %s", opId, interval, result);
+            if (Debug.isLogEnabled()) {
+                Debug.log("Split child at pos %d of interval %s is %s", opId, interval, result);
+            }
             return result;
         }
 
@@ -1445,7 +1479,9 @@ final class LinearScan {
 
     void resolveFindInsertPos(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, MoveResolver moveResolver) {
         if (fromBlock.getSuccessorCount() <= 1) {
-            Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
+            if (Debug.isLogEnabled()) {
+                Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
+            }
 
             List<LIRInstruction> instructions = ir.getLIRforBlock(fromBlock);
             LIRInstruction instr = instructions.get(instructions.size() - 1);
@@ -1457,7 +1493,9 @@ final class LinearScan {
             }
 
         } else {
-            Debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
+            if (Debug.isLogEnabled()) {
+                Debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
+            }
 
             if (DetailedAsserts.getValue()) {
                 assert ir.getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
@@ -1502,7 +1540,9 @@ final class LinearScan {
 
                         // prevent optimization of two consecutive blocks
                         if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
-                            Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
+                            if (Debug.isLogEnabled()) {
+                                Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
+                            }
 
                             blockCompleted.set(block.getLinearScanNumber());
 
@@ -1529,7 +1569,9 @@ final class LinearScan {
                         // check for duplicate edges between the same blocks (can happen with switch
                         // blocks)
                         if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
-                            Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
+                            }
 
                             alreadyResolved.set(toBlock.getLinearScanNumber());
 
@@ -1835,7 +1877,9 @@ final class LinearScan {
                             // iterate all blocks where the interval has use positions
                             for (AbstractBlockBase<?> splitBlock : blocksForInterval(splitChild)) {
                                 if (dominates(defBlock, splitBlock)) {
-                                    Debug.log("Split interval %s, block %s", splitChild, splitBlock);
+                                    if (Debug.isLogEnabled()) {
+                                        Debug.log("Split interval %s, block %s", splitChild, splitBlock);
+                                    }
                                     if (spillBlock == null) {
                                         spillBlock = splitBlock;
                                     } else {
@@ -1862,14 +1906,18 @@ final class LinearScan {
                         assert firstSpillChild != null;
                         if (!defBlock.equals(spillBlock) && spillBlock.equals(blockForId(firstSpillChild.from()))) {
                             AbstractBlockBase<?> dom = spillBlock.getDominator();
-                            Debug.log("Spill block (%s) is the beginning of a spill child -> use dominator (%s)", spillBlock, dom);
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("Spill block (%s) is the beginning of a spill child -> use dominator (%s)", spillBlock, dom);
+                            }
                             spillBlock = dom;
                         }
 
                         if (!defBlock.equals(spillBlock)) {
                             assert dominates(defBlock, spillBlock);
                             betterSpillPos.increment();
-                            Debug.log("Better spill position found (Block %s)", spillBlock);
+                            if (Debug.isLogEnabled()) {
+                                Debug.log("Better spill position found (Block %s)", spillBlock);
+                            }
 
                             if (defBlock.probability() <= spillBlock.probability()) {
                                 // better spill block has the same probability -> do nothing
