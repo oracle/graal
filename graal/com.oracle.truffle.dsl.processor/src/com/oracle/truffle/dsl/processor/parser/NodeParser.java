@@ -1345,13 +1345,16 @@ public class NodeParser extends AbstractParser<NodeData> {
             } else {
                 frameType = context.getType(Frame.class);
             }
-            types.add(new CodeVariableElement(frameType, "frameValue"));
+            types.add(new CodeVariableElement(frameType, TemplateMethod.FRAME_NAME));
         }
 
         TypeMirror returnType = null;
         int index = 0;
         for (Parameter genericParameter : generic.getReturnTypeAndParameters()) {
             TypeMirror polymorphicType;
+            if (genericParameter.getLocalName().equals(TemplateMethod.FRAME_NAME)) {
+                continue;
+            }
             if (!genericParameter.getSpecification().isSignature()) {
                 polymorphicType = genericParameter.getType();
             } else {
@@ -1377,7 +1380,11 @@ public class NodeParser extends AbstractParser<NodeData> {
                         polymorphicType = context.getType(Object.class);
                     }
                 } else {
-                    polymorphicType = context.getType(Object.class);
+                    if (generic.getFrame() == genericParameter) {
+                        polymorphicType = context.getType(Frame.class);
+                    } else {
+                        polymorphicType = context.getType(Object.class);
+                    }
                 }
             }
             if (genericParameter == generic.getReturnType()) {
