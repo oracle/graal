@@ -1501,7 +1501,7 @@ public class NodeGenFactory {
     }
 
     private CodeTree expectOrCast(TypeMirror sourceType, ExecutableTypeData targetType, CodeTree content) {
-        if (targetType.hasUnexpectedValue(context)) {
+        if (needsUnexpectedResultException(targetType)) {
             return expect(sourceType, targetType.getReturnType(), content);
         } else {
             return cast(sourceType, targetType.getReturnType(), content);
@@ -1543,7 +1543,7 @@ public class NodeGenFactory {
         return executableType;
     }
 
-    private boolean hasUnexpectedResult(NodeExecutionData execution, TypeMirror type) {
+    private boolean hasChildUnexpectedResult(NodeExecutionData execution, TypeMirror type) {
         for (ExecutableTypeData executableType : findSpecializedExecutableTypes(execution, type)) {
             if (executableType != null && (executableType.hasUnexpectedValue(context) || needsCastTo(executableType.getReturnType(), type))) {
                 return true;
@@ -1636,11 +1636,24 @@ public class NodeGenFactory {
         }
         executable.getThrownTypes().clear();
 
-        if (executedType.hasUnexpectedValue(context)) {
+        if (needsUnexpectedResultException(executedType)) {
             executable.getThrownTypes().add(context.getDeclaredType(UnexpectedResultException.class));
         }
 
         return executable;
+    }
+
+    private boolean needsUnexpectedResultException(ExecutableTypeData executedType) {
+        if (!executedType.hasUnexpectedValue(context)) {
+            return false;
+        }
+
+        SpecializationData polymorphicSpecialization = node.getPolymorphicSpecialization();
+        if (polymorphicSpecialization != null && isSubtypeBoxed(context, polymorphicSpecialization.getReturnType().getType(), executedType.getReturnType())) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     private CodeTree createFastPath(CodeTreeBuilder parent, SpecializationData specialization, final ExecutableTypeData executableType, List<ExecutableTypeData> allTypes, LocalContext currentLocals) {
@@ -1736,7 +1749,7 @@ public class NodeGenFactory {
 
         CodeTreeBuilder builder = parent.create();
 
-        if (!source.hasUnexpectedValue(context) && delegate.hasUnexpectedValue(context)) {
+        if (!needsUnexpectedResultException(source) && needsUnexpectedResultException(delegate)) {
             builder.startTryBlock();
             builder.tree(returnBuilder.build());
             builder.end().startCatchBlock(context.getType(UnexpectedResultException.class), "ex");
@@ -2011,7 +2024,7 @@ public class NodeGenFactory {
         LocalContext locals = LocalContext.load(this, 0, varArgsThreshold);
 
         CodeExecutableElement method = locals.createMethod(modifiers(PROTECTED, FINAL), targetType, executeChildMethodName(execution, targetType), FRAME_VALUE);
-        if (hasUnexpectedResult(execution, targetType)) {
+        if (hasChildUnexpectedResult(execution, targetType)) {
             method.getThrownTypes().add(getType(UnexpectedResultException.class));
         }
 
@@ -2084,7 +2097,7 @@ public class NodeGenFactory {
     private CodeTree createAssignExecuteChild(CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData type, LocalVariable targetValue, LocalVariable shortCircuit,
                     LocalContext currentValues) {
         CodeTreeBuilder builder = parent.create();
-        boolean hasUnexpected = hasUnexpectedResult(execution, targetValue.getTypeMirror());
+        boolean hasUnexpected = hasChildUnexpectedResult(execution, targetValue.getTypeMirror());
 
         CodeTree executeChild;
         if (isExecuteChildShared(execution, targetValue.getTypeMirror())) {
