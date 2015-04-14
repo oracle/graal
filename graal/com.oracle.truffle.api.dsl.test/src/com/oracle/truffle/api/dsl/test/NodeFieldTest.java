@@ -123,7 +123,7 @@ public class NodeFieldTest {
         }
 
         @Specialization(contains = "alwaysRewrite")
-        String returnField() {
+        Object returnField() {
             return getField();
         }
     }

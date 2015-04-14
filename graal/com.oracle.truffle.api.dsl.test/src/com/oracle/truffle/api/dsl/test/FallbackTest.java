@@ -32,6 +32,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback4Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 public class FallbackTest {
@@ -52,6 +53,9 @@ public class FallbackTest {
     @SuppressWarnings("unused")
     @NodeChild("a")
     abstract static class Fallback1 extends ValueNode {
+
+        @Override
+        public abstract String executeString(VirtualFrame frame);
 
         @Specialization
         String f1(int a) {

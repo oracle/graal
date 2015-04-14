@@ -50,12 +50,7 @@ public class TypeSystemNodeFactory {
     }
 
     public static TypeMirror nodeType(TypeSystemData typeSystem) {
-        if (typeSystem.isDefault()) {
-            return typeSystem.getContext().getType(SpecializationNode.class);
-        } else {
-            TypeMirror parentType = TypeSystemCodeGenerator.createTypeSystemGen(typeSystem);
-            return new GeneratedTypeMirror(getQualifiedName(parentType), typeName(typeSystem));
-        }
+        return typeSystem.getContext().getType(SpecializationNode.class);
     }
 
     public static String typeName(TypeSystemData typeSystem) {

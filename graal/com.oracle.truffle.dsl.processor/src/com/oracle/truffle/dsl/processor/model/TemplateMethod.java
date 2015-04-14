@@ -73,6 +73,18 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return findParameter(FRAME_NAME);
     }
 
+    public void removeParameter(Parameter p) {
+        this.parameters.remove(p);
+        this.parameterCache.remove(p.getLocalName());
+        p.setMethod(this);
+    }
+
+    public void addParameter(int index, Parameter p) {
+        this.parameters.add(index, p);
+        this.parameterCache.put(p.getLocalName(), p);
+        p.setMethod(this);
+    }
+
     public String createReferenceName() {
         if (getMethod() == null) {
             return "-";
@@ -132,12 +144,13 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     public void replaceParameter(String localName, Parameter newParameter) {
         if (returnType.getLocalName().equals(localName)) {
             returnType = newParameter;
-            returnType.setMethod(this);
         } else {
             Parameter local = findParameter(localName);
             int index = parameters.indexOf(local);
             parameters.set(index, newParameter);
         }
+        parameterCache.put(newParameter.getLocalName(), newParameter);
+        newParameter.setMethod(this);
     }
 
     public Iterable<Parameter> getSignatureParameters() {

@@ -48,7 +48,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final List<SpecializationData> specializations = new ArrayList<>();
     private final List<ShortCircuitData> shortCircuits = new ArrayList<>();
     private final List<CreateCastData> casts = new ArrayList<>();
-    private Map<Integer, List<ExecutableTypeData>> executableTypes;
+    private final List<ExecutableTypeData> executableTypes = new ArrayList<>();
 
     private final NodeExecutionData thisExecution;
     private final boolean generateFactory;
@@ -135,10 +135,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public int getSignatureSize() {
-        if (getSpecializations() != null && !getSpecializations().isEmpty()) {
-            return getSpecializations().get(0).getSignatureSize();
-        }
-        return 0;
+        return getChildExecutions().size();
     }
 
     public boolean isFrameUsedByAnyGuard() {
@@ -292,9 +289,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
 
         for (ExecutableTypeData execType : getExecutableTypes()) {
-            methods.add(execType.getMethod());
+            if (execType.getMethod() != null) {
+                methods.add(execType.getMethod());
+            }
         }
-
         for (ShortCircuitData shortcircuit : getShortCircuits()) {
             methods.add(shortcircuit.getMethod());
         }
@@ -329,21 +327,16 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public List<ExecutableTypeData> getExecutableTypes(int evaluatedCount) {
-        if (executableTypes == null) {
-            return Collections.emptyList();
-        }
         if (evaluatedCount == -1) {
-            List<ExecutableTypeData> typeData = new ArrayList<>();
-            for (int currentEvaluationCount : executableTypes.keySet()) {
-                typeData.addAll(executableTypes.get(currentEvaluationCount));
-            }
-            return typeData;
+            return executableTypes;
         } else {
-            List<ExecutableTypeData> types = executableTypes.get(evaluatedCount);
-            if (types == null) {
-                return Collections.emptyList();
+            List<ExecutableTypeData> filteredTypes = new ArrayList<>();
+            for (ExecutableTypeData type : executableTypes) {
+                if (type.getEvaluatedCount() == evaluatedCount) {
+                    filteredTypes.add(type);
+                }
             }
-            return types;
+            return filteredTypes;
         }
     }
 
@@ -496,6 +489,25 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return specializations;
     }
 
+    public ExecutableTypeData getGenericExecutableType(ExecutableTypeData typeHint) {
+        ExecutableTypeData polymorphicDelegate = null;
+        if (typeHint != null) {
+            polymorphicDelegate = typeHint;
+            while (polymorphicDelegate.getDelegatedTo() != null && polymorphicDelegate.getEvaluatedCount() != getSignatureSize()) {
+                polymorphicDelegate = polymorphicDelegate.getDelegatedTo();
+            }
+        }
+        if (polymorphicDelegate == null) {
+            for (ExecutableTypeData type : getExecutableTypes()) {
+                if (type.getDelegatedTo() == null && type.getEvaluatedCount() == getSignatureSize()) {
+                    polymorphicDelegate = type;
+                    break;
+                }
+            }
+        }
+        return polymorphicDelegate;
+    }
+
     public List<ExecutableTypeData> getExecutableTypes() {
         return getExecutableTypes(-1);
     }
@@ -510,10 +522,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
             minimalEvaluatedParameters = Math.min(minimalEvaluatedParameters, type.getEvaluatedCount());
         }
         return minimalEvaluatedParameters;
-    }
-
-    public void setExecutableTypes(Map<Integer, List<ExecutableTypeData>> executableTypes) {
-        this.executableTypes = executableTypes;
     }
 
     @Override
@@ -536,7 +544,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return getNodeId().compareTo(o.getNodeId());
     }
 
-    public List<TypeMirror> getPossibleTypes(NodeExecutionData execution) {
+    public List<TypeMirror> getGenericTypes(NodeExecutionData execution) {
         List<TypeMirror> types = new ArrayList<>();
 
         // add types possible through return types and evaluated parameters in execute methods

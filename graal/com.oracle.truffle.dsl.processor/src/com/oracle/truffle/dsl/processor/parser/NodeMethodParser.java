@@ -48,7 +48,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected Collection<TypeMirror> getPossibleParameterTypes(NodeExecutionData execution) {
-        return getNode().getPossibleTypes(execution);
+        return getNode().getGenericTypes(execution);
     }
 
     protected ParameterSpec createReturnParameterSpec() {
@@ -58,7 +58,12 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected Collection<TypeMirror> getPossibleReturnTypes() {
-        return getNode().getPossibleTypes(getNode().getThisExecution());
+        List<TypeMirror> possibleTypes = getNode().getGenericTypes(getNode().getThisExecution());
+        if (possibleTypes.size() > 1) {
+            return Arrays.asList(ElementUtils.getCommonSuperType(getContext(), possibleTypes.toArray(new TypeMirror[0])));
+        } else {
+            return possibleTypes;
+        }
     }
 
     @Override

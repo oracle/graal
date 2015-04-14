@@ -41,7 +41,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     private final NodeData node;
-    private final SpecializationKind kind;
+    private SpecializationKind kind;
     private final List<SpecializationThrowsData> exceptions;
     private List<GuardExpression> guards = Collections.emptyList();
     private List<CacheExpression> caches = Collections.emptyList();
@@ -90,6 +90,10 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
         return false;
+    }
+
+    public void setKind(SpecializationKind kind) {
+        this.kind = kind;
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression) {

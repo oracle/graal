@@ -137,7 +137,6 @@ public class ExecuteMethodTest {
 
     @TypeSystemReference(ExecuteMethodTypes.class)
     @NodeChild(value = "a", type = ChildNoFrame.class)
-    @ExpectError("Multiple accessible and overridable generic execute methods found [executeInt(), executeObject()]. Remove all but one or mark all but one as final.")
     abstract static class ExecuteThis8 extends Node {
 
         abstract int executeInt();
@@ -196,7 +195,6 @@ public class ExecuteMethodTest {
 
     @TypeSystemReference(ExecuteMethodTypes.class)
     @NodeChild(value = "a", type = ChildNoFrame.class)
-    @ExpectError("Multiple accessible and overridable generic execute methods found [executeVoid1(), executeVoid2()]. Remove all but one or mark all but one as final.")
     abstract static class ExecuteThisVoid3 extends Node {
 
         // allow only one execute void

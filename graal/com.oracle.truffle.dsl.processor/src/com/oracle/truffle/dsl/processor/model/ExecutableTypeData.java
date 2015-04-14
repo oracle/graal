@@ -24,6 +24,8 @@ package com.oracle.truffle.dsl.processor.model;
 
 import java.util.*;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
+
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
@@ -34,11 +36,25 @@ import com.oracle.truffle.dsl.processor.java.*;
 public class ExecutableTypeData extends MessageContainer implements Comparable<ExecutableTypeData> {
 
     private final ExecutableElement method;
+    private final TypeMirror returnType;
     private final TypeMirror frameParameter;
     private final List<TypeMirror> evaluatedParameters;
+    private ExecutableTypeData delegatedTo;
+    private final List<ExecutableTypeData> delegatedFrom = new ArrayList<>();
+
+    private String uniqueName;
+
+    public ExecutableTypeData(TypeMirror returnType, String uniqueName, TypeMirror frameParameter, List<TypeMirror> evaluatedParameters) {
+        this.returnType = returnType;
+        this.frameParameter = frameParameter;
+        this.evaluatedParameters = evaluatedParameters;
+        this.uniqueName = uniqueName;
+        this.method = null;
+    }
 
     public ExecutableTypeData(ExecutableElement method, int signatureSize, List<TypeMirror> frameTypes) {
         this.method = method;
+        this.returnType = method.getReturnType();
         TypeMirror foundFrameParameter = null;
         List<? extends VariableElement> parameters = method.getParameters();
 
@@ -70,14 +86,32 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
             evaluatedParameters.add(parameter);
         }
         this.frameParameter = foundFrameParameter;
+        this.uniqueName = "execute" + (ElementUtils.isObject(getReturnType()) ? "" : ElementUtils.getTypeId(getReturnType()));
+    }
+
+    public void addDelegatedFrom(ExecutableTypeData child) {
+        this.delegatedFrom.add(child);
+        child.delegatedTo = this;
+    }
+
+    public List<ExecutableTypeData> getDelegatedFrom() {
+        return delegatedFrom;
+    }
+
+    public ExecutableTypeData getDelegatedTo() {
+        return delegatedTo;
     }
 
     public ExecutableElement getMethod() {
         return method;
     }
 
-    public String getName() {
-        return method.getSimpleName().toString();
+    public String getUniqueName() {
+        return uniqueName;
+    }
+
+    public void setUniqueName(String name) {
+        this.uniqueName = name;
     }
 
     @Override
@@ -106,27 +140,198 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     }
 
     public TypeMirror getReturnType() {
-        return method.getReturnType();
+        return returnType;
     }
 
     public boolean hasUnexpectedValue(ProcessorContext context) {
-        return ElementUtils.canThrowType(method.getThrownTypes(), context.getType(UnexpectedResultException.class));
+        return method == null ? false : ElementUtils.canThrowType(method.getThrownTypes(), context.getType(UnexpectedResultException.class));
     }
 
     public boolean isFinal() {
-        return method.getModifiers().contains(Modifier.FINAL);
+        return method == null ? false : method.getModifiers().contains(Modifier.FINAL);
     }
 
     public boolean isAbstract() {
-        return method.getModifiers().contains(Modifier.ABSTRACT);
+        return method == null ? false : method.getModifiers().contains(Modifier.ABSTRACT);
     }
 
     public int getEvaluatedCount() {
         return evaluatedParameters.size();
     }
 
-    public int compareTo(ExecutableTypeData o) {
-        return ElementUtils.compareMethod(method, o.getMethod());
+    public boolean canDelegateTo(NodeData node, ExecutableTypeData to) {
+        ExecutableTypeData from = this;
+        if (to.getEvaluatedCount() < from.getEvaluatedCount()) {
+            return false;
+        }
+
+        ProcessorContext context = node.getContext();
+
+        // we cannot delegate from generic to unexpected
+        if (!from.hasUnexpectedValue(context) && to.hasUnexpectedValue(context)) {
+            return false;
+        }
+
+        // we can skip the return type check for void. everything is assignable to void.
+        if (!isVoid(from.getReturnType())) {
+            if (!isSubtypeBoxed(context, from.getReturnType(), to.getReturnType()) && !isSubtypeBoxed(context, to.getReturnType(), from.getReturnType())) {
+                return false;
+            }
+        }
+        if (from.getFrameParameter() != to.getFrameParameter() && from.getFrameParameter() != null && to.getFrameParameter() != null &&
+                        !isSubtypeBoxed(context, from.getFrameParameter(), to.getFrameParameter())) {
+            return false;
+        }
+
+        for (int i = 0; i < from.getEvaluatedCount(); i++) {
+            if (!isSubtypeBoxed(context, from.getEvaluatedParameters().get(i), to.getEvaluatedParameters().get(i))) {
+                return false;
+            }
+        }
+
+        for (int i = from.getEvaluatedCount(); i < to.getEvaluatedCount(); i++) {
+            TypeMirror delegateToParameter = to.getEvaluatedParameters().get(i);
+            if (i < node.getChildExecutions().size()) {
+                List<TypeMirror> genericTypes = node.getGenericTypes(node.getChildExecutions().get(i));
+
+                boolean typeFound = false;
+                for (TypeMirror generic : genericTypes) {
+                    if (isSubtypeBoxed(context, generic, delegateToParameter)) {
+                        typeFound = true;
+                    }
+                }
+                if (!typeFound) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
+    public int compareTo(ExecutableTypeData o2) {
+        ExecutableTypeData o1 = this;
+        ProcessorContext context = ProcessorContext.getInstance();
+
+        int result = Integer.compare(o2.getEvaluatedCount(), o1.getEvaluatedCount());
+        if (result != 0) {
+            return result;
+        }
+
+        result = Boolean.compare(o1.hasUnexpectedValue(context), o2.hasUnexpectedValue(context));
+        if (result != 0) {
+            return result;
+        }
+
+        result = compareType(context, o1.getReturnType(), o2.getReturnType());
+        if (result != 0) {
+            return result;
+        }
+        result = compareType(context, o1.getFrameParameter(), o2.getFrameParameter());
+        if (result != 0) {
+            return result;
+        }
+
+        for (int i = 0; i < o1.getEvaluatedCount(); i++) {
+            result = compareType(context, o1.getEvaluatedParameters().get(i), o2.getEvaluatedParameters().get(i));
+            if (result != 0) {
+                return result;
+            }
+        }
+
+        result = o1.getUniqueName().compareTo(o2.getUniqueName());
+        if (result != 0) {
+            return result;
+        }
+
+        if (o1.getMethod() != null && o2.getMethod() != null) {
+            result = ElementUtils.compareMethod(o1.getMethod(), o2.getMethod());
+            if (result != 0) {
+                return result;
+            }
+        }
+        return 0;
+    }
+
+    public static int compareType(ProcessorContext context, TypeMirror signature1, TypeMirror signature2) {
+        if (signature1 == null) {
+            if (signature2 == null) {
+                return 0;
+            }
+            return -1;
+        } else if (signature2 == null) {
+            return 1;
+        }
+        if (ElementUtils.typeEquals(signature1, signature2)) {
+            return 0;
+        }
+        if (isVoid(signature1)) {
+            if (isVoid(signature2)) {
+                return 0;
+            }
+            return 1;
+        } else if (isVoid(signature2)) {
+            return -1;
+        }
+
+        TypeMirror boxedType1 = ElementUtils.boxType(context, signature1);
+        TypeMirror boxedType2 = ElementUtils.boxType(context, signature2);
+
+        if (ElementUtils.isSubtype(boxedType1, boxedType2)) {
+            if (ElementUtils.isSubtype(boxedType2, boxedType1)) {
+                return 0;
+            }
+            return 1;
+        } else if (ElementUtils.isSubtype(boxedType2, boxedType1)) {
+            return -1;
+        } else {
+            return ElementUtils.getSimpleName(signature1).compareTo(ElementUtils.getSimpleName(signature2));
+        }
+    }
+
+    @Override
+    public String toString() {
+        return method != null ? ElementUtils.createReferenceName(method) : getUniqueName() + evaluatedParameters.toString();
+    }
+
+    public boolean sameParameters(ExecutableTypeData other) {
+        if (!typeEquals(other.getFrameParameter(), getFrameParameter())) {
+            return false;
+        }
+
+        if (getEvaluatedCount() != other.getEvaluatedCount()) {
+            return false;
+        }
+
+        for (int i = 0; i < getEvaluatedCount(); i++) {
+            if (!typeEquals(getEvaluatedParameters().get(i), other.getEvaluatedParameters().get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean sameSignature(ExecutableTypeData other) {
+        if (!typeEquals(other.getReturnType(), getReturnType())) {
+            return false;
+        }
+
+        if (other.getFrameParameter() != null) {
+            if (!typeEquals(getFrameParameter(), other.getFrameParameter())) {
+                return false;
+            }
+        }
+
+        if (getEvaluatedCount() != other.getEvaluatedCount()) {
+            return false;
+        }
+
+        for (int i = 0; i < getEvaluatedCount(); i++) {
+            if (!typeEquals(getEvaluatedParameters().get(i), other.getEvaluatedParameters().get(i))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

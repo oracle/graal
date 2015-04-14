@@ -81,7 +81,7 @@ public final class MethodSpecParser {
         ParameterSpec returnTypeSpec = methodSpecification.getReturnType();
         Parameter returnTypeMirror = matchParameter(returnTypeSpec, new CodeVariableElement(returnType, "returnType"), -1, -1);
         if (returnTypeMirror == null) {
-            if (emitErrors) {
+            if (isEmitErrors() && method != null) {
                 TemplateMethod invalidMethod = new TemplateMethod(id, naturalOrder, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<Parameter> emptyList());
                 String expectedReturnType = returnTypeSpec.toSignatureString(true);
                 String actualReturnType = ElementUtils.getSimpleName(returnType);

@@ -120,6 +120,9 @@ public class ElementUtils {
     }
 
     public static TypeMirror boxType(ProcessorContext context, TypeMirror primitiveType) {
+        if (primitiveType == null) {
+            return null;
+        }
         TypeMirror boxedType = primitiveType;
         if (boxedType.getKind().isPrimitive()) {
             boxedType = context.getEnvironment().getTypeUtils().boxedClass((PrimitiveType) boxedType).asType();
@@ -215,6 +218,10 @@ public class ElementUtils {
             default:
                 throw new RuntimeException("Unknown type specified " + mirror.getKind() + " mirror: " + mirror);
         }
+    }
+
+    public static boolean isSubtypeBoxed(ProcessorContext context, TypeMirror from, TypeMirror to) {
+        return isSubtype(boxType(context, from), boxType(context, to));
     }
 
     public static boolean isSubtype(TypeMirror type1, TypeMirror type2) {
@@ -1178,7 +1185,7 @@ public class ElementUtils {
 
     public static List<TypeMirror> uniqueSortedTypes(Collection<TypeMirror> types) {
         if (types.isEmpty()) {
-            return Collections.emptyList();
+            return new ArrayList<>(0);
         } else if (types.size() <= 1) {
             if (types instanceof List) {
                 return (List<TypeMirror>) types;

@@ -37,6 +37,10 @@ import com.oracle.truffle.api.nodes.*;
 
 public class NoTypeSystemTest {
 
+    abstract static class DummyChild extends Node {
+        abstract Object execute();
+    }
+
     abstract static class NoParameterTestNode extends Node {
         abstract void execute();
 
@@ -138,9 +142,9 @@ public class NoTypeSystemTest {
 
         abstract int[] executeIntArray(Object primitive) throws UnexpectedResultException;
 
-        abstract void executeVoid(Object primitive) throws UnexpectedResultException;
+        abstract void executeVoid(Object primitive);
 
-        abstract void executeChar(Object primitive) throws UnexpectedResultException;
+        abstract void executeChar(Object primitive);
 
         abstract int executeInt(int primitive) throws UnexpectedResultException;
 
@@ -150,7 +154,7 @@ public class NoTypeSystemTest {
 
         abstract int[] executeIntArray(int[] primitive) throws UnexpectedResultException;
 
-        abstract void executeChar(char primitive) throws UnexpectedResultException;
+        abstract void executeChar(char primitive);
 
         @Specialization
         int s1(int primitive) {
@@ -176,19 +180,6 @@ public class NoTypeSystemTest {
         void s5(@SuppressWarnings("unused") char object) {
         }
 
-    }
-
-    // make nodes replacable
-    private static <T extends Node> T createRoot(final T node) {
-        new RootNode() {
-            @Child T child = node;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        }.adoptChildren();
-        return node;
     }
 
     @Test
@@ -232,7 +223,7 @@ public class NoTypeSystemTest {
     }
 
     private static TypesNotInTypeSystemTest createTypesNotInTypeSystem() {
-        return createRoot(TypesNotInTypeSystemTestNodeGen.create());
+        return TestHelper.createRoot(TypesNotInTypeSystemTestNodeGen.create());
     }
 
     abstract static class ErrorImpossibleTypes1 extends Node {
@@ -281,7 +272,7 @@ public class NoTypeSystemTest {
 
     @ExpectError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. "
                     + "The following execute methods do not provide all evaluated values for the expected signature size 2: [execute(int)].")
-    @NodeChild
+    @NodeChild(type = DummyChild.class)
     abstract static class ErrorMissingNodeChild2 extends Node {
 
         abstract int execute(int arg0);
@@ -308,7 +299,7 @@ public class NoTypeSystemTest {
     }
 
     @ExpectError("Unnecessary @NodeChild declaration. All evaluated child values are provided as parameters in execute methods.")
-    @NodeChild
+    @NodeChild(type = DummyChild.class)
     abstract static class ErrorAdditionalNodeChild1 extends Node {
 
         abstract int execute(int arg0);
@@ -319,7 +310,7 @@ public class NoTypeSystemTest {
         }
     }
 
-    @NodeChild
+    @NodeChild(type = DummyChild.class)
     @ExpectError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. "
                     + "The following execute methods do not provide all evaluated values for the expected signature size 2: [execute(int)].")
     abstract static class ErrorAdditionalNodeChild2 extends Node {

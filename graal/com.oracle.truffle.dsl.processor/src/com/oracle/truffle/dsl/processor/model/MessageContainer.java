@@ -106,7 +106,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         visitedSinks.add(this);
 
         List<Message> foundMessages = new ArrayList<>();
-        if (ElementUtils.typeEquals(getMessageElement().asType(), e.asType())) {
+        if (getMessageElement() != null && ElementUtils.typeEquals(getMessageElement().asType(), e.asType())) {
             foundMessages.addAll(getMessages());
         }
         for (MessageContainer sink : findChildContainers()) {
@@ -119,14 +119,16 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         TypeElement expectError = context.getTruffleTypes().getExpectError();
         if (expectError != null) {
             Element element = getMessageElement();
-            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), expectError.asType());
-            if (mirror != null) {
-                List<String> values = ElementUtils.getAnnotationValueList(String.class, mirror, "value");
-                if (values == null) {
-                    values = Collections.emptyList();
-                }
-                if (values.size() != msgs.size()) {
-                    log.message(Kind.ERROR, element, mirror, ElementUtils.getAnnotationValue(mirror, "value"), String.format("Error count expected %s but was %s.", values.size(), msgs.size()));
+            if (element != null) {
+                AnnotationMirror mirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), expectError.asType());
+                if (mirror != null) {
+                    List<String> values = ElementUtils.getAnnotationValueList(String.class, mirror, "value");
+                    if (values == null) {
+                        values = Collections.emptyList();
+                    }
+                    if (values.size() != msgs.size()) {
+                        log.message(Kind.ERROR, element, mirror, ElementUtils.getAnnotationValue(mirror, "value"), String.format("Error count expected %s but was %s.", values.size(), msgs.size()));
+                    }
                 }
             }
         }
