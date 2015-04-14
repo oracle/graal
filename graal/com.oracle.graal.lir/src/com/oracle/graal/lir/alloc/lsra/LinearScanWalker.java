@@ -357,8 +357,9 @@ class LinearScanWalker extends IntervalWalker {
                             Debug.log("interval is used in loop that ends in block B%d, so trying to move maxBlock back from B%d to B%d", loopBlock.getId(), maxBlock.getId(), loopBlock.getId());
                             assert loopBlock != minBlock : "loopBlock and minBlock must be different because block boundary is needed between";
 
-                            optimalSplitPos = findOptimalSplitPos(minBlock, loopBlock, allocator.getLastLirInstructionId(loopBlock) + 2);
-                            if (optimalSplitPos == allocator.getLastLirInstructionId(loopBlock) + 2) {
+                            int maxSpillPos = allocator.getLastLirInstructionId(loopBlock) + 2;
+                            optimalSplitPos = findOptimalSplitPos(minBlock, loopBlock, maxSpillPos);
+                            if (optimalSplitPos == maxSpillPos) {
                                 optimalSplitPos = -1;
                                 Debug.log("loop optimization not necessary");
                             } else {

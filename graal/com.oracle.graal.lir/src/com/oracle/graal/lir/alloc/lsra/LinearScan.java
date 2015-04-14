@@ -1420,17 +1420,11 @@ final class LinearScan {
         throw new BailoutException("LinearScan: interval is null");
     }
 
-    Interval intervalAtBlockBegin(AbstractBlockBase<?> block, int operandNumber) {
-        return splitChildAtOpId(intervalFor(operandNumber), getFirstLirInstructionId(block), LIRInstruction.OperandMode.DEF);
-    }
-
-    Interval intervalAtBlockEnd(AbstractBlockBase<?> block, int operandNumber) {
-        return splitChildAtOpId(intervalFor(operandNumber), getLastLirInstructionId(block) + 1, LIRInstruction.OperandMode.DEF);
-    }
-
     void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
 
+        int toBlockFirstInstructionId = getFirstLirInstructionId(toBlock);
+        int fromBlockLastInstructionId = getLastLirInstructionId(fromBlock) + 1;
         int numOperands = operandSize();
         BitSet liveAtEdge = blockData.get(toBlock).liveIn;
 
@@ -1439,8 +1433,8 @@ final class LinearScan {
             assert operandNum < numOperands : "live information set for not exisiting interval";
             assert blockData.get(fromBlock).liveOut.get(operandNum) && blockData.get(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
-            Interval fromInterval = intervalAtBlockEnd(fromBlock, operandNum);
-            Interval toInterval = intervalAtBlockBegin(toBlock, operandNum);
+            Interval fromInterval = splitChildAtOpId(intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
+            Interval toInterval = splitChildAtOpId(intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
 
             if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
                 // need to insert move instruction
