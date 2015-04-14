@@ -161,7 +161,11 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
     }
 
     public void markBlocks() {
-        stream(Flags.USAGE).forEach(block -> setDominatorPath(Flags.SUBTREE, block));
+        for (AbstractBlockBase<?> block : getBlocks()) {
+            if (get(Flags.USAGE, block)) {
+                setDominatorPath(Flags.SUBTREE, block);
+            }
+        }
     }
 
     public boolean isMarked(AbstractBlockBase<?> block) {
@@ -169,7 +173,12 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
     }
 
     public boolean isLeafBlock(AbstractBlockBase<?> block) {
-        return block.getDominated().stream().noneMatch(this::isMarked);
+        for (AbstractBlockBase<?> dom : block.getDominated()) {
+            if (isMarked(dom)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void setSolution(AbstractBlockBase<?> block) {
