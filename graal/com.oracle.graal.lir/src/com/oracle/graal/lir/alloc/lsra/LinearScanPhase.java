@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -32,25 +30,12 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 
 public final class LinearScanPhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
-        try {
-            new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
-        } catch (OutOfRegistersException e) {
-            if (RegisterPressure.getValue() != null) {
-                try (OverrideScope s = OptionValue.override(RegisterPressure, RegisterAllocationConfig.ALL_REGISTERS)) {
-                    // retry with default register set
-                    new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
-                }
-            } else {
-                throw e;
-            }
-        }
+        new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
     }
 
 }
