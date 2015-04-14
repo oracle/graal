@@ -52,6 +52,12 @@ public class NativeFunctionInterfaceTest {
         return buf;
     }
 
+    @Before
+    public void setUp() {
+        // Ignore on SPARC
+        Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("SPARC"));
+    }
+
     @After
     public void cleanup() {
         for (long buf : allocations) {
