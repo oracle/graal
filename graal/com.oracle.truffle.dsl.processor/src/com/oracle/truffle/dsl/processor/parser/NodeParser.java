@@ -163,7 +163,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         node.getSpecializations().addAll(new SpecializationMethodParser(context, node).parse(members));
-        node.getSpecializations().addAll(new GenericParser(context, node).parse(members));
+        node.getSpecializations().addAll(new FallbackParser(context, node).parse(members));
         node.getCasts().addAll(new CreateCastParser(context, node).parse(members));
         node.getShortCircuits().addAll(new ShortCircuitParser(context, node).parse(members));
 
@@ -1261,7 +1261,7 @@ public class NodeParser extends AbstractParser<NodeData> {
     }
 
     private SpecializationData createGenericSpecialization(final NodeData node) {
-        GenericParser parser = new GenericParser(context, node);
+        FallbackParser parser = new FallbackParser(context, node);
         MethodSpec specification = parser.createDefaultMethodSpec(node.getSpecializations().iterator().next().getMethod(), null, true, null);
 
         List<VariableElement> parameterTypes = new ArrayList<>();
