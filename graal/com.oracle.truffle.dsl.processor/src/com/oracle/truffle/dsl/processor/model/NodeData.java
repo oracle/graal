@@ -143,8 +143,18 @@ public class NodeData extends Template implements Comparable<NodeData> {
             if (!specialization.isReachable()) {
                 continue;
             }
-            if (specialization.isFrameUsed()) {
-                return true;
+            Parameter frame = specialization.getFrame();
+            if (frame != null) {
+                for (GuardExpression guard : specialization.getGuards()) {
+                    if (guard.getExpression().findBoundVariableElements().contains(frame.getVariableElement())) {
+                        return true;
+                    }
+                }
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (cache.getExpression().findBoundVariableElements().contains(frame.getVariableElement())) {
+                        return true;
+                    }
+                }
             }
         }
         return false;

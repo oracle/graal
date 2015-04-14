@@ -1792,7 +1792,11 @@ public class NodeGenFactory {
         if (specialization.isFallback()) {
             builder.startIf().startCall("guardFallback");
             if (node.isFrameUsedByAnyGuard()) {
-                builder.string(FRAME_VALUE);
+                if (currentValues.get(FRAME_VALUE) != null) {
+                    builder.string(FRAME_VALUE);
+                } else {
+                    builder.nullLiteral();
+                }
             }
             currentValues.addReferencesTo(builder);
 
