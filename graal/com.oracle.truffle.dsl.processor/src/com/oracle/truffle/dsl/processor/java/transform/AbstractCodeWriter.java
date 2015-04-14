@@ -258,7 +258,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             init = ((CodeVariableElement) f).getInit();
         }
 
-        if (parent.getKind() == ElementKind.ENUM && f.getModifiers().contains(Modifier.STATIC)) {
+        if (parent != null && parent.getKind() == ElementKind.ENUM && f.getModifiers().contains(Modifier.STATIC)) {
             write(f.getSimpleName());
             if (init != null) {
                 write("(");
@@ -266,12 +266,11 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 write(")");
             }
         } else {
-            Element enclosing = f.getEnclosingElement();
             writeModifiers(f.getModifiers(), true);
 
             boolean varArgs = false;
-            if (enclosing.getKind() == ElementKind.METHOD) {
-                ExecutableElement method = (ExecutableElement) enclosing;
+            if (parent != null && parent.getKind() == ElementKind.METHOD) {
+                ExecutableElement method = (ExecutableElement) parent;
                 if (method.isVarArgs() && method.getParameters().indexOf(f) == method.getParameters().size() - 1) {
                     varArgs = true;
                 }

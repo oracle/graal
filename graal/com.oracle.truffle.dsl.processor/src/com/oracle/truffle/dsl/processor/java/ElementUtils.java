@@ -165,6 +165,9 @@ public class ElementUtils {
         TypeElement element1 = fromTypeMirror(type1);
         TypeElement element2 = fromTypeMirror(type2);
         if (element1 == null || element2 == null) {
+            if (element1 != null) {
+                return type1;
+            }
             return context.getType(Object.class);
         }
 
