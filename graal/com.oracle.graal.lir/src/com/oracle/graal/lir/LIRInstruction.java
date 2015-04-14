@@ -37,8 +37,6 @@ import com.oracle.graal.lir.asm.*;
  * The base class for an {@code LIRInstruction}.
  */
 public abstract class LIRInstruction {
-    public static final Value[] NO_OPERANDS = {};
-
     /**
      * Constants denoting how a LIR instruction uses an operand.
      */
