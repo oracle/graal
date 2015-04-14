@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -97,23 +96,17 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins) {
-        /*
-         * AMD64's String.equals substitution needs about 8 registers so we disable it if there is
-         * some artificial register pressure.
-         */
-        if (RegisterPressure.getValue() == null) {
-            Registration r = new Registration(plugins, String.class);
-            r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+        Registration r = new Registration(plugins, String.class);
+        r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
 
-            r = new Registration(plugins, StringSubstitutions.class);
-            r.register1("getValue", String.class, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                    b.addPush(new LoadFieldNode(value, field));
-                    return true;
-                }
-            });
-        }
+        r = new Registration(plugins, StringSubstitutions.class);
+        r.register1("getValue", String.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                b.addPush(new LoadFieldNode(value, field));
+                return true;
+            }
+        });
     }
 
     private static void registerArraysPlugins(InvocationPlugins plugins) {

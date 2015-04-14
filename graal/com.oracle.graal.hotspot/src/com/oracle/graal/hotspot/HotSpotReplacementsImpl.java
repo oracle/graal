@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
@@ -66,14 +65,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             }
         } else if (substituteClass == CRC32Substitutions.class) {
             if (!config.useCRC32Intrinsics) {
-                return null;
-            }
-        } else if (substituteClass == StringSubstitutions.class) {
-            /*
-             * AMD64's String.equals substitution needs about 8 registers so we better disable the
-             * substitution if there is some register pressure.
-             */
-            if (GraalOptions.RegisterPressure.getValue() != null) {
                 return null;
             }
         }
