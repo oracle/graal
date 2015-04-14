@@ -144,7 +144,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
         public void processBlock(Block startBlock) {
             LoweringPhase.processBlock(new InstanceFrame(startBlock, null));
-
         }
 
         public class InstanceFrame extends LoweringPhase.Frame<InstanceFrame> {

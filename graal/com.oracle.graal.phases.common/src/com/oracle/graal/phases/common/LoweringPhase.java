@@ -396,7 +396,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     * 
+     *
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {
@@ -421,7 +421,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 f.preprocess();
                 nextState = state == ST_PROCESS_ALWAYS_REACHED ? ST_ENTER : ST_ENTER_ALWAYS_REACHED;
             } else if (state == ST_ENTER_ALWAYS_REACHED) {
-                if (f.alwaysReachedBlock != null && f.alwaysReachedBlock == f.block) {
+                if (f.alwaysReachedBlock != null && f.alwaysReachedBlock.getDominator() == f.block) {
                     f = f.enterAlwaysReached(f.alwaysReachedBlock);
                     nextState = ST_PROCESS;
                 } else {
