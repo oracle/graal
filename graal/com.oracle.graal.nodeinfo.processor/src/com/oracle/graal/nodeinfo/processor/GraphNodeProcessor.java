@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodeinfo.processor;
 
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
 import static java.util.Collections.*;
 
 import java.io.*;
@@ -69,6 +68,21 @@ public class GraphNodeProcessor extends AbstractProcessor {
         } else {
             processingEnv.getMessager().printMessage(kind, String.format(format, args), element);
         }
+    }
+
+    private static List<Element> getElementHierarchy(Element e) {
+        List<Element> elements = new ArrayList<>();
+        elements.add(e);
+
+        Element enclosing = e.getEnclosingElement();
+        while (enclosing != null && enclosing.getKind() != ElementKind.PACKAGE) {
+            elements.add(enclosing);
+            enclosing = enclosing.getEnclosingElement();
+        }
+        if (enclosing != null) {
+            elements.add(enclosing);
+        }
+        return elements;
     }
 
     /**
