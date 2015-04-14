@@ -119,14 +119,6 @@ public final class LocationMarker extends AllocationPhase {
         private static final EnumSet<OperandFlag> REGISTER_FLAG_SET = EnumSet.of(OperandFlag.REG);
         private static final LIRKind REFERENCE_KIND = LIRKind.reference(Kind.Object);
 
-        private void forEachDestroyedCallerSavedRegister(LIRInstruction op, ValueConsumer consumer) {
-            if (op.destroysCallerSavedRegisters()) {
-                for (Register reg : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
-                    consumer.visitValue(reg.asValue(REFERENCE_KIND), OperandMode.TEMP, REGISTER_FLAG_SET);
-                }
-            }
-        }
-
         private final class BlockClosure {
             private final ReferenceMap currentSet;
 
@@ -145,50 +137,53 @@ public final class LocationMarker extends AllocationPhase {
             private void processInstructionBottomUp(LIRInstruction op) {
                 try (Indent indent = Debug.logAndIndent("handle op %d, %s", op.id(), op)) {
                     // kills
-                    op.visitEachTemp(this::defConsumer);
-                    op.visitEachOutput(this::defConsumer);
-                    forEachDestroyedCallerSavedRegister(op, this::defConsumer);
+
+                    op.visitEachTemp(defConsumer);
+                    op.visitEachOutput(defConsumer);
+                    if (op.destroysCallerSavedRegisters()) {
+                        for (Register reg : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
+                            defConsumer.visitValue(reg.asValue(REFERENCE_KIND), OperandMode.TEMP, REGISTER_FLAG_SET);
+                        }
+                    }
 
                     // gen - values that are considered alive for this state
-                    op.visitEachAlive(this::useConsumer);
-                    op.visitEachState(this::useConsumer);
+                    op.visitEachAlive(useConsumer);
+                    op.visitEachState(useConsumer);
                     // mark locations
-                    op.forEachState((inst, info) -> markLocation(inst, info, this.getCurrentSet()));
+                    op.forEachState(stateConsumer);
                     // gen
-                    op.visitEachInput(this::useConsumer);
+                    op.visitEachInput(useConsumer);
                 }
             }
 
-            /**
-             * @see InstructionValueConsumer
-             * @param operand
-             * @param mode
-             * @param flags
-             */
-            private void useConsumer(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                LIRKind kind = operand.getLIRKind();
-                if (shouldProcessValue(operand) && !kind.isValue() && !kind.isDerivedReference()) {
-                    // no need to insert values and derived reference
-                    Debug.log("set operand: %s", operand);
-                    frameMap.setReference(operand, currentSet);
+            InstructionStateProcedure stateConsumer = new InstructionStateProcedure() {
+                public void doState(LIRInstruction inst, LIRFrameState info) {
+                    markLocation(inst, info, getCurrentSet());
                 }
-            }
+            };
 
-            /**
-             * @see InstructionValueConsumer
-             * @param operand
-             * @param mode
-             * @param flags
-             */
-            private void defConsumer(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (shouldProcessValue(operand)) {
-                    Debug.log("clear operand: %s", operand);
-                    frameMap.clearReference(operand, currentSet);
-                } else {
-                    assert isIllegal(operand) || operand.getPlatformKind() != Kind.Illegal || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
-                                    operand, mode);
+            ValueConsumer useConsumer = new ValueConsumer() {
+                public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    LIRKind kind = operand.getLIRKind();
+                    if (shouldProcessValue(operand) && !kind.isValue() && !kind.isDerivedReference()) {
+                        // no need to insert values and derived reference
+                        Debug.log("set operand: %s", operand);
+                        frameMap.setReference(operand, currentSet);
+                    }
                 }
-            }
+            };
+
+            ValueConsumer defConsumer = new ValueConsumer() {
+                public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
+                    if (shouldProcessValue(operand)) {
+                        Debug.log("clear operand: %s", operand);
+                        frameMap.clearReference(operand, currentSet);
+                    } else {
+                        assert isIllegal(operand) || operand.getPlatformKind() != Kind.Illegal || mode == OperandMode.TEMP : String.format(
+                                        "Illegal PlatformKind is only allowed for TEMP mode: %s, %s", operand, mode);
+                    }
+                }
+            };
 
             protected boolean shouldProcessValue(Value operand) {
                 return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getPlatformKind() != Kind.Illegal;
