@@ -67,6 +67,8 @@ public class NodeGenFactory {
     private final int varArgsThreshold;
     private final Set<TypeMirror> expectedTypes = new HashSet<>();
     private boolean nextUsed;
+    private List<ExecutableTypeData> usedTypes;
+    private List<SpecializationData> reachableSpecializations;
 
     public NodeGenFactory(ProcessorContext context, NodeData node) {
         this.context = context;
@@ -74,8 +76,10 @@ public class NodeGenFactory {
         this.typeSystem = node.getTypeSystem();
         this.genericType = context.getType(Object.class);
         this.options = typeSystem.getOptions();
-        this.singleSpecializable = isSingleSpecializableImpl();
         this.varArgsThreshold = calculateVarArgsThreshold();
+        this.reachableSpecializations = calculateReachableSpecializations();
+        this.singleSpecializable = isSingleSpecializableImpl();
+        this.usedTypes = filterBaseExecutableTypes(node.getExecutableTypes(), reachableSpecializations);
     }
 
     private int calculateVarArgsThreshold() {
@@ -205,7 +209,6 @@ public class NodeGenFactory {
             }
         }
 
-        List<ExecutableTypeData> usedTypes = filterBaseExecutableTypes(node.getExecutableTypes(), getReachableSpecializations());
         for (ExecutableTypeData execType : usedTypes) {
             if (execType.getMethod() == null) {
                 continue;
@@ -356,8 +359,6 @@ public class NodeGenFactory {
     }
 
     private SpecializationData createSpecializations(CodeTypeElement clazz) {
-        List<SpecializationData> reachableSpecializations = getReachableSpecializations();
-
         CodeTypeElement baseSpecialization = clazz.add(createBaseSpecialization());
         TypeMirror baseSpecializationType = baseSpecialization.asType();
 
@@ -384,7 +385,6 @@ public class NodeGenFactory {
     }
 
     private boolean needsPolymorphic() {
-        List<SpecializationData> reachableSpecializations = getReachableSpecializations();
         if (reachableSpecializations.size() != 1) {
             return true;
         }
@@ -416,7 +416,6 @@ public class NodeGenFactory {
         clazz.add(createGetNext(clazz));
         clazz.add(createAcceptAndExecute());
 
-        List<ExecutableTypeData> usedTypes = filterBaseExecutableTypes(node.getExecutableTypes(), getReachableSpecializations());
         for (ExecutableTypeData type : usedTypes) {
             clazz.add(createFastPathExecuteMethod(null, type, usedTypes));
         }
@@ -460,12 +459,12 @@ public class NodeGenFactory {
             return true;
         }
 
-        if (!isSubtypeBoxed(context, specialization.getReturnType().getType(), executableType.getReturnType())) {
+        // specializations with more parameters are just ignored
+        if (executableType.getEvaluatedCount() > node.getSignatureSize()) {
             return false;
         }
 
-        // specializations with more parameters are just ignored
-        if (executableType.getEvaluatedCount() > node.getSignatureSize()) {
+        if (!isSubtypeBoxed(context, specialization.getReturnType().getType(), executableType.getReturnType())) {
             return false;
         }
 
@@ -529,11 +528,33 @@ public class NodeGenFactory {
     }
 
     private List<ExecutableTypeData> filterBaseExecutableTypes(List<ExecutableTypeData> executableTypes, List<SpecializationData> specializations) {
-        Set<ExecutableTypeData> usedTypes = new HashSet<>();
-        type: for (ExecutableTypeData type : executableTypes) {
+        Set<TypeMirror> returnTypes = new HashSet<>();
+        for (SpecializationData specialization : node.getSpecializations()) {
+            returnTypes.add(specialization.getReturnType().getType());
+        }
+
+        List<ExecutableTypeData> prefilteredTypes = new ArrayList<>();
+        for (ExecutableTypeData type : executableTypes) {
+            if (type.getDelegatedTo() == null || shouldAlwaysImplementExecutableType(type)) {
+                prefilteredTypes.add(type);
+            } else {
+                boolean foundSubtype = false;
+                for (TypeMirror returnType : returnTypes) {
+                    if (isSubtypeBoxed(context, returnType, type.getReturnType())) {
+                        foundSubtype = true;
+                    }
+                }
+                if (foundSubtype) {
+                    prefilteredTypes.add(type);
+                }
+            }
+        }
+
+        Set<ExecutableTypeData> types = new HashSet<>();
+        type: for (ExecutableTypeData type : prefilteredTypes) {
             for (SpecializationData specialization : specializations) {
-                if (shouldImplementExecutableType(specialization, type) || type.isAbstract() || !(type.hasUnexpectedValue(context) && type.getMethod() != null)) {
-                    usedTypes.add(type);
+                if (shouldImplementExecutableType(specialization, type) || shouldAlwaysImplementExecutableType(type)) {
+                    types.add(type);
                     continue type;
                 }
             }
@@ -541,17 +562,21 @@ public class NodeGenFactory {
         Set<ExecutableTypeData> delegatesToAdd = new HashSet<>();
         do {
             delegatesToAdd.clear();
-            for (ExecutableTypeData type : usedTypes) {
+            for (ExecutableTypeData type : types) {
                 ExecutableTypeData delegate = type.getDelegatedTo();
-                if (delegate != null && !usedTypes.contains(delegate)) {
+                if (delegate != null && !types.contains(delegate)) {
                     delegatesToAdd.add(delegate);
                 }
             }
-            usedTypes.addAll(delegatesToAdd);
+            types.addAll(delegatesToAdd);
         } while (!delegatesToAdd.isEmpty());
-        List<ExecutableTypeData> newUsedTypes = new ArrayList<>(usedTypes);
+        List<ExecutableTypeData> newUsedTypes = new ArrayList<>(types);
         Collections.sort(newUsedTypes);
         return newUsedTypes;
+    }
+
+    private boolean shouldAlwaysImplementExecutableType(ExecutableTypeData type) {
+        return type.isAbstract() || !(type.hasUnexpectedValue(context) && type.getMethod() != null);
     }
 
     private CodeTypeElement createSpecialization(SpecializationData specialization, TypeMirror baseType) {
@@ -876,7 +901,6 @@ public class NodeGenFactory {
     }
 
     private boolean isSingleSpecializableImpl() {
-        List<SpecializationData> reachableSpecializations = getReachableSpecializations();
         if (reachableSpecializations.size() != 1) {
             return false;
         }
@@ -902,7 +926,7 @@ public class NodeGenFactory {
         return true;
     }
 
-    private List<SpecializationData> getReachableSpecializations() {
+    private List<SpecializationData> calculateReachableSpecializations() {
         List<SpecializationData> specializations = new ArrayList<>();
         for (SpecializationData specialization : node.getSpecializations()) {
             if (specialization.isReachable() && //
@@ -933,7 +957,7 @@ public class NodeGenFactory {
 
         CodeTreeBuilder builder = method.createBuilder();
         if (singleSpecializable) {
-            SpecializationData specialization = getReachableSpecializations().iterator().next();
+            SpecializationData specialization = reachableSpecializations.iterator().next();
             builder.tree(createFastPath(builder, specialization, execType, usedExecutables, locals));
         } else {
             // create acceptAndExecute
@@ -1076,7 +1100,7 @@ public class NodeGenFactory {
     }
 
     private SpecializationGroup createSpecializationGroups() {
-        return SpecializationGroup.create(getReachableSpecializations());
+        return SpecializationGroup.create(reachableSpecializations);
     }
 
     private CodeTree createSlowPathExecute(SpecializationData specialization, LocalContext currentValues) {
@@ -1609,9 +1633,11 @@ public class NodeGenFactory {
             }
         } else {
             executable = currentLocals.createMethod(modifiers(PUBLIC), returnType, methodName, FRAME_VALUE);
-            if (executedType.hasUnexpectedValue(context)) {
-                executable.getThrownTypes().add(context.getDeclaredType(UnexpectedResultException.class));
-            }
+        }
+        executable.getThrownTypes().clear();
+
+        if (executedType.hasUnexpectedValue(context)) {
+            executable.getThrownTypes().add(context.getDeclaredType(UnexpectedResultException.class));
         }
 
         return executable;
