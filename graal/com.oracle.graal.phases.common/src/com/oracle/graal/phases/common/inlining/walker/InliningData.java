@@ -108,10 +108,10 @@ public class InliningData {
         return (arg instanceof AbstractNewObjectNode) || (arg instanceof AllocatedObjectNode) || (arg instanceof VirtualObjectNode);
     }
 
-    private String checkTargetConditionsHelper(ResolvedJavaMethod method) {
+    private String checkTargetConditionsHelper(ResolvedJavaMethod method, int invokeBci) {
         if (method == null) {
             return "the method is not resolved";
-        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(context.getReplacements(), method))) {
+        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(context.getReplacements(), method, invokeBci))) {
             return "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
             return "it is an abstract method";
@@ -129,7 +129,7 @@ public class InliningData {
     }
 
     private boolean checkTargetConditions(Invoke invoke, ResolvedJavaMethod method) {
-        final String failureMessage = checkTargetConditionsHelper(method);
+        final String failureMessage = checkTargetConditionsHelper(method, invoke.bci());
         if (failureMessage == null) {
             return true;
         } else {

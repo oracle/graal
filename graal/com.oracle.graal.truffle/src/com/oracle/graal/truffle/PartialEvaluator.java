@@ -184,7 +184,7 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            assert !replacements.hasSubstitution(original) : "Replacements must have been processed by now";
+            assert !replacements.hasSubstitution(original, builder.bci()) : "Replacements must have been processed by now";
             assert !builder.parsingReplacement();
 
             if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
@@ -260,7 +260,7 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            assert !replacements.hasSubstitution(original) : "Replacements must have been processed by now";
+            assert !replacements.hasSubstitution(original, builder.bci()) : "Replacements must have been processed by now";
 
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
                 return null;
@@ -366,7 +366,7 @@ public class PartialEvaluator {
         new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod());
+            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci());
             if (inlineGraph != null) {
                 InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, null);
             }
