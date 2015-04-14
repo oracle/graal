@@ -563,7 +563,9 @@ public class NodeData extends Template implements Comparable<NodeData> {
                 if (executable.hasUnexpectedValue(getContext())) {
                     continue;
                 }
-                types.add(executable.getReturnType());
+                if (!typeSystem.hasImplicitSourceTypes(executable.getReturnType())) {
+                    types.add(executable.getReturnType());
+                }
             }
         }
 
@@ -571,7 +573,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
         if (executionIndex >= 0) {
             for (ExecutableTypeData typeData : getExecutableTypes()) {
                 if (executionIndex < typeData.getEvaluatedCount()) {
-                    types.add(typeData.getEvaluatedParameters().get(executionIndex));
+                    TypeMirror genericType = typeData.getEvaluatedParameters().get(executionIndex);
+                    if (!typeSystem.hasImplicitSourceTypes(genericType)) {
+                        types.add(genericType);
+                    }
                 }
             }
         }
