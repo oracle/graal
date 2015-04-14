@@ -375,11 +375,10 @@ public class NodeGenFactory {
             generated.put(specialization, clazz.add(createSpecialization(specialization, baseSpecializationType)));
         }
 
-        if (nextUsed) {
-            baseSpecialization.addOptional(createCreateNext(generated));
-        }
+        baseSpecialization.addOptional(createCreateNext(generated));
         baseSpecialization.addOptional(createCreateFallback(generated));
         baseSpecialization.addOptional(createCreatePolymorphic(generated));
+        baseSpecialization.addOptional(createGetNext(baseSpecialization));
 
         return node.getUninitializedSpecialization();
     }
@@ -413,7 +412,6 @@ public class NodeGenFactory {
 
         clazz.addOptional(createUnsupported());
         clazz.add(createGetSuppliedChildrenMethod());
-        clazz.add(createGetNext(clazz));
         clazz.add(createAcceptAndExecute());
 
         for (ExecutableTypeData type : usedTypes) {
@@ -1249,7 +1247,10 @@ public class NodeGenFactory {
         return false;
     }
 
-    private static Element createGetNext(CodeTypeElement type) {
+    private Element createGetNext(CodeTypeElement type) {
+        if (!nextUsed) {
+            return null;
+        }
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), type.asType(), "getNext");
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn().cast(type.asType(), CodeTreeBuilder.singleString("this.next")).end();
