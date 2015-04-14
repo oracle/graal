@@ -1728,7 +1728,7 @@ public class NodeGenFactory {
     private CodeTree createCallDelegateExecute(final CodeTreeBuilder parent, CodeTree receiver, LocalContext currentLocals, ExecutableTypeData source, ExecutableTypeData delegate) {
         CodeTreeBuilder callBuilder = parent.create();
 
-        if (singleSpecializable) {
+        if (singleSpecializable && delegate.getMethod() != null) {
             callBuilder.startCall(receiver, delegate.getMethod().getSimpleName().toString());
         } else {
             callBuilder.startCall(receiver, delegate.getUniqueName());
