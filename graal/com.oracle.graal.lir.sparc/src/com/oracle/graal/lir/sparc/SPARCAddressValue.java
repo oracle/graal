@@ -65,6 +65,12 @@ public final class SPARCAddressValue extends CompositeValue {
         return this;
     }
 
+    @Override
+    protected void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
+        proc.visitValue(inst, base, mode, flags);
+        proc.visitValue(inst, index, mode, flags);
+    }
+
     private static Register toRegister(AllocatableValue value) {
         if (isIllegal(value)) {
             return Register.None;

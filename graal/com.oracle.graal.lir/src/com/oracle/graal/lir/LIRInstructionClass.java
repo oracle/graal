@@ -221,7 +221,32 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         forEach(obj, defs, OperandMode.DEF, proc);
     }
 
+    final void forEachUse(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, uses, OperandMode.USE, proc);
+    }
+
+    final void forEachAlive(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, alives, OperandMode.ALIVE, proc);
+    }
+
+    final void forEachTemp(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, temps, OperandMode.TEMP, proc);
+    }
+
+    final void forEachDef(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, defs, OperandMode.DEF, proc);
+    }
+
     final void forEachState(LIRInstruction obj, InstructionValueProcedure proc) {
+        for (int i = 0; i < states.getCount(); i++) {
+            LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
+            if (state != null) {
+                state.forEachState(obj, proc);
+            }
+        }
+    }
+
+    final void forEachState(LIRInstruction obj, InstructionValueConsumer proc) {
         for (int i = 0; i < states.getCount(); i++) {
             LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {

@@ -68,6 +68,12 @@ public final class AMD64AddressValue extends CompositeValue {
         return this;
     }
 
+    @Override
+    protected void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
+        proc.visitValue(inst, base, mode, flags);
+        proc.visitValue(inst, index, mode, flags);
+    }
+
     private static Register toRegister(AllocatableValue value) {
         if (value.equals(Value.ILLEGAL)) {
             return Register.None;

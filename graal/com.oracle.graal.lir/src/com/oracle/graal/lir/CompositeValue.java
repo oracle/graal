@@ -91,6 +91,8 @@ public abstract class CompositeValue extends AbstractValue {
         return newValues != null ? newValues : values;
     }
 
+    protected abstract void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc);
+
     @Override
     public String toString() {
         return CompositeValueClass.format(this);

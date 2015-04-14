@@ -61,6 +61,11 @@ public class CompositeValueReplacementTest1 {
             }
             return this;
         }
+
+        @Override
+        protected void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
+            proc.visitValue(inst, value, mode, flags);
+        }
     }
 
     private static class DummyValue extends AbstractValue {

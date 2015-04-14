@@ -214,8 +214,8 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     // set instruction id to the index in the lir instruction list
                     inst.setId(opId++);
                     inst.visitEachOutput(loadConsumer);
-                    inst.forEachInput(useConsumer);
-                    inst.forEachAlive(useConsumer);
+                    inst.visitEachInput(useConsumer);
+                    inst.visitEachAlive(useConsumer);
 
                 }
             }

@@ -235,6 +235,33 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         }
     }
 
+    protected static void forEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueConsumer proc) {
+        for (int i = 0; i < values.getCount(); i++) {
+            assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
+
+            if (i < values.getDirectCount()) {
+                Value value = values.getValue(inst, i);
+                if (value instanceof CompositeValue) {
+                    CompositeValue composite = (CompositeValue) value;
+                    composite.forEachComponent(inst, mode, proc);
+                } else {
+                    proc.visitValue(inst, value, mode, values.getFlags(i));
+                }
+            } else {
+                Value[] valueArray = values.getValueArray(inst, i);
+                for (int j = 0; j < valueArray.length; j++) {
+                    Value value = valueArray[j];
+                    if (value instanceof CompositeValue) {
+                        CompositeValue composite = (CompositeValue) value;
+                        composite.forEachComponent(inst, mode, proc);
+                    } else {
+                        proc.visitValue(inst, value, mode, values.getFlags(i));
+                    }
+                }
+            }
+        }
+    }
+
     protected static void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
         int total = 0;
         for (Fields fields : fieldsList) {
