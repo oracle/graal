@@ -90,8 +90,9 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
         while (f != null) {
             if (!f.dominated.hasNext()) { // Retreat
                 f.block.setDominatorNumbers(f.myNumber, f.maxNumber);
-                if (f.parent != null)
+                if (f.parent != null) {
                     f.parent.maxNumber = f.maxNumber;
+                }
                 f = f.parent;
             } else {
                 T d = f.dominated.next();

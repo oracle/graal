@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.LoweringPhase.*;
 import com.oracle.graal.phases.schedule.*;
 
 public class DominatorConditionalEliminationPhase extends Phase {
@@ -141,27 +142,32 @@ public class DominatorConditionalEliminationPhase extends Phase {
             this.nodeToBlock = nodeToBlock;
         }
 
-        private void processBlock(Block block) {
+        public void processBlock(Block startBlock) {
+            LoweringPhase.processBlock(new InstanceFrame(startBlock, null));
 
+        }
+
+        public class InstanceFrame extends LoweringPhase.Frame<InstanceFrame> {
             List<Runnable> undoOperations = new ArrayList<>();
 
-            preprocess(block, undoOperations);
-
-            // Process always reached block first.
-            Block postdominator = block.getPostdominator();
-            if (postdominator != null && postdominator.getDominator() == block) {
-                processBlock(postdominator);
+            public InstanceFrame(Block block, InstanceFrame parent) {
+                super(block, parent);
             }
 
-            // Now go for the other dominators.
-            for (Block dominated : block.getDominated()) {
-                if (dominated != postdominator) {
-                    assert dominated.getDominator() == block;
-                    processBlock(dominated);
-                }
+            @Override
+            public Frame<?> enter(Block b) {
+                return new InstanceFrame(b, this);
             }
 
-            postprocess(undoOperations);
+            @Override
+            public void preprocess() {
+                Instance.this.preprocess(block, undoOperations);
+            }
+
+            @Override
+            public void postprocess() {
+                Instance.postprocess(undoOperations);
+            }
         }
 
         private static void postprocess(List<Runnable> undoOperations) {
