@@ -24,6 +24,8 @@ package com.oracle.truffle.dsl.processor.parser;
 
 import java.util.*;
 
+import javax.lang.model.type.*;
+
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
 
@@ -299,9 +301,9 @@ public final class SpecializationGroup {
     public static final class TypeGuard {
 
         private final int signatureIndex;
-        private final TypeData type;
+        private final TypeMirror type;
 
-        public TypeGuard(TypeData type, int signatureIndex) {
+        public TypeGuard(TypeMirror type, int signatureIndex) {
             this.type = type;
             this.signatureIndex = signatureIndex;
         }
@@ -338,7 +340,7 @@ public final class SpecializationGroup {
             return signatureIndex;
         }
 
-        public TypeData getType() {
+        public TypeMirror getType() {
             return type;
         }
     }

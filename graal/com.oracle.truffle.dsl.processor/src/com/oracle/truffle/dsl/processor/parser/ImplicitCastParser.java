@@ -23,13 +23,13 @@
 package com.oracle.truffle.dsl.processor.parser;
 
 import java.lang.annotation.*;
-import java.util.*;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.*;
 
 public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData> {
@@ -45,10 +45,8 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        List<TypeMirror> types = getTypeSystem().getPrimitiveTypeMirrors();
-        Set<String> identifiers = getTypeSystem().getTypeIdentifiers();
-        MethodSpec spec = new MethodSpec(new ParameterSpec("target", types, identifiers));
-        spec.addRequired(new ParameterSpec("source", types, identifiers)).setSignature(true);
+        MethodSpec spec = new MethodSpec(new ParameterSpec("target", getContext().getType(Object.class)));
+        spec.addRequired(new ParameterSpec("source", getContext().getType(Object.class))).setSignature(true);
         return spec;
     }
 
@@ -61,10 +59,10 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
         Parameter target = method.findParameter("targetValue");
         Parameter source = method.findParameter("sourceValue");
 
-        TypeData targetType = target.getTypeSystemType();
-        TypeData sourceType = source.getTypeSystemType();
+        TypeMirror targetType = target.getType();
+        TypeMirror sourceType = source.getType();
 
-        if (targetType.equals(sourceType)) {
+        if (ElementUtils.typeEquals(targetType, sourceType)) {
             method.addError("Target type and source type of an @%s must not be the same type.", ImplicitCast.class.getSimpleName());
         }
 

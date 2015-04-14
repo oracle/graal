@@ -25,6 +25,7 @@ package com.oracle.truffle.dsl.processor.parser;
 import java.lang.annotation.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
@@ -39,13 +40,13 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = new MethodSpec(new ParameterSpec("returnType", getContext().getType(boolean.class)));
-        spec.addRequired(new ParameterSpec("value", getTypeSystem().getGenericType()));
+        spec.addRequired(new ParameterSpec("value", getContext().getType(Object.class)));
         return spec;
     }
 
     @Override
     public TypeCheckData create(TemplateMethod method, boolean invalid) {
-        TypeData targetType = resolveCastOrCheck(method);
+        TypeMirror targetType = resolveCastOrCheck(method);
         return new TypeCheckData(method, targetType, targetType);
     }
 

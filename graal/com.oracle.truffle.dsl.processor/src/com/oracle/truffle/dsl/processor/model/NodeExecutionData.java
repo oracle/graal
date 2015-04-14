@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.util.*;
+
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
@@ -31,17 +33,28 @@ public class NodeExecutionData {
     private final NodeChildData child;
     private final String name;
     private final int index;
+    private final int childIndex;
     private final boolean shortCircuit;
+    private final List<TypeMirror> typeRestrictions = new ArrayList<>();
 
-    public NodeExecutionData(NodeChildData child, int index, boolean shortCircuit) {
+    public NodeExecutionData(NodeChildData child, int index, int childIndex, boolean shortCircuit) {
         this.child = child;
         this.index = index;
+        this.childIndex = childIndex;
         this.shortCircuit = shortCircuit;
         this.name = createName();
     }
 
     private String createName() {
-        return createName(child.getName(), index);
+        return child != null ? createName(child.getName(), childIndex) : ("arg" + index);
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public List<TypeMirror> getTypeRestrictions() {
+        return typeRestrictions;
     }
 
     public TypeMirror getNodeType() {
@@ -62,12 +75,12 @@ public class NodeExecutionData {
         return child;
     }
 
-    public int getIndex() {
-        return index;
+    public int getChildIndex() {
+        return childIndex;
     }
 
     public boolean isIndexed() {
-        return index > -1;
+        return childIndex > -1;
     }
 
     public boolean isShortCircuit() {
@@ -75,7 +88,7 @@ public class NodeExecutionData {
     }
 
     public String getIndexedName() {
-        return createIndexedName(child, index);
+        return createIndexedName(child, childIndex);
     }
 
     public static String createIndexedName(NodeChildData child, int varArgsIndex) {

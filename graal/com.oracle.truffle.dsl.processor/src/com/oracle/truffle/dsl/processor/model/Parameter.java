@@ -28,19 +28,17 @@ import javax.lang.model.type.*;
 public final class Parameter {
 
     private final ParameterSpec specification;
-    private TypeData typeSystemType;
     private TemplateMethod method;
     private String localName;
     private final int specificationVarArgsIndex;
     private final int typeVarArgsIndex;
-
     private final VariableElement variableElement;
+    private final TypeMirror type;
 
     public Parameter(ParameterSpec specification, VariableElement variableElement, int specificationVarArgsIndex, int typeVarArgsIndex) {
         this.specification = specification;
         this.variableElement = variableElement;
-        this.typeSystemType = null;
-
+        this.type = variableElement.asType();
         this.specificationVarArgsIndex = specificationVarArgsIndex;
 
         String valueName = specification.getName() + "Value";
@@ -51,22 +49,22 @@ public final class Parameter {
         this.localName = valueName;
     }
 
-    public Parameter(ParameterSpec specification, TypeData actualType, VariableElement variableElement, int specificationIndex, int varArgsIndex) {
-        this(specification, variableElement, specificationIndex, varArgsIndex);
-        this.typeSystemType = actualType;
-    }
-
-    public Parameter(Parameter parameter, TypeData otherType) {
-        this(parameter.specification, otherType, parameter.variableElement, parameter.specificationVarArgsIndex, parameter.typeVarArgsIndex);
-    }
-
     public Parameter(Parameter parameter) {
         this.specification = parameter.specification;
-        this.typeSystemType = parameter.typeSystemType;
         this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
         this.localName = parameter.localName;
         this.typeVarArgsIndex = parameter.typeVarArgsIndex;
         this.variableElement = parameter.variableElement;
+        this.type = parameter.type;
+    }
+
+    public Parameter(Parameter parameter, TypeMirror newType) {
+        this.specification = parameter.specification;
+        this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
+        this.localName = parameter.localName;
+        this.typeVarArgsIndex = parameter.typeVarArgsIndex;
+        this.variableElement = parameter.variableElement;
+        this.type = newType;
     }
 
     public void setLocalName(String localName) {
@@ -102,11 +100,7 @@ public final class Parameter {
     }
 
     public TypeMirror getType() {
-        return variableElement.asType();
-    }
-
-    public TypeData getTypeSystemType() {
-        return typeSystemType;
+        return type;
     }
 
     public boolean isTypeVarArgs() {

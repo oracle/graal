@@ -102,15 +102,6 @@ public class TypeSystemErrorsTest {
         }
     }
 
-    @TypeSystem({boolean.class})
-    public static class CastError3 {
-        @ExpectError("The type 'int' is not declared in the @TypeSystem.")
-        @TypeCast(int.class)
-        public static int asInt(Object value) {
-            return (int) value;
-        }
-    }
-
     @TypeSystem({int.class})
     public static class CastError4 {
         @ExpectError("@TypeCast annotated method asInt must be public and static.")
@@ -126,15 +117,6 @@ public class TypeSystemErrorsTest {
         @TypeCast(int.class)
         static int asInt(Object value) {
             return (int) value;
-        }
-    }
-
-    @TypeSystem({boolean.class})
-    public static class CheckError1 {
-        @ExpectError("The type 'int' is not declared in the @TypeSystem.")
-        @TypeCheck(int.class)
-        public static boolean isInt(Object value) {
-            return value instanceof Integer;
         }
     }
 

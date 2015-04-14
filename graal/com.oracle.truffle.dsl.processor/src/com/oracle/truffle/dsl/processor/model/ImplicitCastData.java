@@ -22,35 +22,29 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import javax.lang.model.type.*;
+
 public class ImplicitCastData extends TemplateMethod {
 
-    private final TypeData sourceType;
-    private final TypeData targetType;
+    private final TypeMirror sourceType;
+    private final TypeMirror targetType;
 
-    public ImplicitCastData(TemplateMethod method, TypeData sourceType, TypeData targetType) {
+    public ImplicitCastData(TemplateMethod method, TypeMirror sourceType, TypeMirror targetType) {
         super(method);
         this.sourceType = sourceType;
         this.targetType = targetType;
     }
 
-    public TypeData getSourceType() {
+    public TypeMirror getSourceType() {
         return sourceType;
     }
 
-    public TypeData getTargetType() {
+    public TypeMirror getTargetType() {
         return targetType;
     }
 
     @Override
     public int compareTo(TemplateMethod o) {
-        if (o instanceof ImplicitCastData && sourceType != null) {
-            // implicit casts are ordered by source type since
-            // its also the order in which they are checked.
-            TypeData otherSourceType = ((ImplicitCastData) o).getSourceType();
-            if (otherSourceType != null) {
-                return this.sourceType.compareTo(otherSourceType);
-            }
-        }
         return super.compareTo(o);
     }
 }

@@ -85,14 +85,14 @@ public class GeneratorUtils {
         return method;
     }
 
-    public static boolean isTypeBoxingOptimized(TypeBoxingOptimization boxing, TypeData type) {
+    public static boolean isTypeBoxingOptimized(TypeBoxingOptimization boxing, TypeMirror type) {
         switch (boxing) {
             case NONE:
                 return false;
             case ALWAYS:
-                return !type.isGeneric() && !type.isVoid();
+                return !ElementUtils.isObject(type) && !ElementUtils.isVoid(type);
             case PRIMITIVE:
-                return type.isPrimitive();
+                return ElementUtils.isPrimitive(type);
             default:
                 throw new AssertionError();
         }

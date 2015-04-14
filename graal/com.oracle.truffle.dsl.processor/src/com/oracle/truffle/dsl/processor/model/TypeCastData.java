@@ -22,26 +22,24 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import javax.lang.model.type.*;
+
 public class TypeCastData extends TemplateMethod {
 
-    private final TypeData targetType;
-    private final TypeData sourceType;
+    private final TypeMirror targetType;
+    private final TypeMirror sourceType;
 
-    public TypeCastData(TemplateMethod method, TypeData sourceType, TypeData targetType) {
+    public TypeCastData(TemplateMethod method, TypeMirror sourceType, TypeMirror targetType) {
         super(method);
         this.sourceType = sourceType;
         this.targetType = targetType;
     }
 
-    public boolean isGeneric() {
-        return sourceType.isGeneric();
-    }
-
-    public TypeData getSourceType() {
+    public TypeMirror getSourceType() {
         return sourceType;
     }
 
-    public TypeData getTargetType() {
+    public TypeMirror getTargetType() {
         return targetType;
     }
 }

@@ -175,8 +175,7 @@ public class ExecuteMethodTest {
         abstract void executeVoid();
 
         @Specialization
-        int doInt(int a) {
-            return a;
+        void doInt(@SuppressWarnings("unused") int a) {
         }
     }
 

@@ -50,8 +50,12 @@ public class TypeSystemNodeFactory {
     }
 
     public static TypeMirror nodeType(TypeSystemData typeSystem) {
-        TypeMirror parentType = TypeSystemCodeGenerator.createTypeSystemGen(typeSystem);
-        return new GeneratedTypeMirror(getQualifiedName(parentType), typeName(typeSystem));
+        if (typeSystem.isDefault()) {
+            return typeSystem.getContext().getType(SpecializationNode.class);
+        } else {
+            TypeMirror parentType = TypeSystemCodeGenerator.createTypeSystemGen(typeSystem);
+            return new GeneratedTypeMirror(getQualifiedName(parentType), typeName(typeSystem));
+        }
     }
 
     public static String typeName(TypeSystemData typeSystem) {
@@ -62,17 +66,17 @@ public class TypeSystemNodeFactory {
         return "acceptAndExecute";
     }
 
-    public static String executeName(TypeData type) {
+    public static String executeName(TypeMirror type) {
         if (type == null) {
             return acceptAndExecuteName();
-        } else if (type.isGeneric()) {
+        } else if (ElementUtils.isObject(type)) {
             return "executeGeneric";
         } else {
-            return "execute" + getTypeId(type.getBoxedType());
+            return "execute" + getTypeId(type);
         }
     }
 
-    public static String voidBoxingExecuteName(TypeData type) {
+    public static String voidBoxingExecuteName(TypeMirror type) {
         return executeName(type) + "Void";
     }
 
@@ -85,7 +89,7 @@ public class TypeSystemNodeFactory {
             clazz.add(GeneratorUtils.createSuperConstructor(context, clazz, constructor));
         }
 
-        for (TypeData type : typeSystem.getTypes()) {
+        for (TypeMirror type : typeSystem.getLegacyTypes()) {
             clazz.add(createExecuteMethod(type));
             if (GeneratorUtils.isTypeBoxingOptimized(options.voidBoxingOptimization(), type)) {
                 clazz.add(createVoidBoxingExecuteMethod(type));
@@ -94,10 +98,10 @@ public class TypeSystemNodeFactory {
         return clazz;
     }
 
-    private Element createVoidBoxingExecuteMethod(TypeData type) {
-        TypeData voidType = typeSystem.getVoidType();
+    private Element createVoidBoxingExecuteMethod(TypeMirror type) {
+        TypeMirror voidType = context.getType(void.class);
         String methodName = voidBoxingExecuteName(type);
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), voidType.getPrimitiveType(), methodName);
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), voidType, methodName);
         method.addParameter(new CodeVariableElement(context.getType(Frame.class), "frame"));
 
         CodeTreeBuilder builder = method.createBuilder();
@@ -110,21 +114,21 @@ public class TypeSystemNodeFactory {
         return method;
     }
 
-    private Element createExecuteMethod(TypeData type) {
-        TypeData genericType = typeSystem.getGenericTypeData();
+    private Element createExecuteMethod(TypeMirror type) {
+        TypeMirror genericType = context.getType(Object.class);
         String methodName = executeName(type);
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), type.getPrimitiveType(), methodName);
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), type, methodName);
         method.addParameter(new CodeVariableElement(context.getType(Frame.class), "frame"));
 
-        if (type.isGeneric()) {
+        if (ElementUtils.isObject(type)) {
             method.getModifiers().add(ABSTRACT);
         } else {
             CodeTreeBuilder builder = method.createBuilder();
             CodeTree executeGeneric = builder.create().startCall(executeName(genericType)).string("frame").end().build();
-            if (!type.isVoid()) {
+            if (!ElementUtils.isVoid(type)) {
                 method.getThrownTypes().add(context.getType(UnexpectedResultException.class));
             }
-            builder.startReturn().tree(TypeSystemCodeGenerator.expect(type, executeGeneric)).end();
+            builder.startReturn().tree(TypeSystemCodeGenerator.expect(typeSystem, type, executeGeneric)).end();
         }
 
         return method;

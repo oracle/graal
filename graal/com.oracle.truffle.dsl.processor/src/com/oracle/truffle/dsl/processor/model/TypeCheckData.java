@@ -22,26 +22,24 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import javax.lang.model.type.*;
+
 public class TypeCheckData extends TemplateMethod {
 
-    private final TypeData checkedType;
-    private final TypeData valueType;
+    private final TypeMirror checkedType;
+    private final TypeMirror valueType;
 
-    public TypeCheckData(TemplateMethod method, TypeData checkedType, TypeData valueType) {
+    public TypeCheckData(TemplateMethod method, TypeMirror checkedType, TypeMirror valueType) {
         super(method);
         this.checkedType = checkedType;
         this.valueType = valueType;
     }
 
-    public boolean isGeneric() {
-        return valueType.isGeneric();
-    }
-
-    public TypeData getCheckedType() {
+    public TypeMirror getCheckedType() {
         return checkedType;
     }
 
-    public TypeData getValueType() {
+    public TypeMirror getValueType() {
         return valueType;
     }
 

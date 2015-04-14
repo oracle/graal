@@ -48,10 +48,6 @@ public final class MethodSpecParser {
         return template;
     }
 
-    public TypeSystemData getTypeSystem() {
-        return template.getTypeSystem();
-    }
-
     public boolean isEmitErrors() {
         return emitErrors;
     }
@@ -135,7 +131,7 @@ public final class MethodSpecParser {
      * end matching the required arguments, parsing fails. Parameters prior to the parsed required
      * ones are cut and used to parse the optional parameters.
      */
-    private List<Parameter> parseParameters(MethodSpec spec, List<? extends VariableElement> parameterTypes, boolean varArgs) {
+    private static List<Parameter> parseParameters(MethodSpec spec, List<? extends VariableElement> parameterTypes, boolean varArgs) {
         List<Parameter> parsedRequired = null;
         int offset = 0;
         for (; offset <= parameterTypes.size(); offset++) {
@@ -166,7 +162,7 @@ public final class MethodSpecParser {
         return finalParameters;
     }
 
-    private List<Parameter> parseParametersOptional(MethodSpec spec, List<? extends VariableElement> types) {
+    private static List<Parameter> parseParametersOptional(MethodSpec spec, List<? extends VariableElement> types) {
         List<Parameter> parsedParams = new ArrayList<>();
 
         int typeStartIndex = 0;
@@ -191,7 +187,7 @@ public final class MethodSpecParser {
         return parsedParams;
     }
 
-    private List<Parameter> parseParametersRequired(MethodSpec spec, List<VariableElement> types, boolean typeVarArgs) {
+    private static List<Parameter> parseParametersRequired(MethodSpec spec, List<VariableElement> types, boolean typeVarArgs) {
         List<Parameter> parsedParams = new ArrayList<>();
         List<ParameterSpec> specifications = spec.getRequired();
         boolean specVarArgs = spec.isVariableRequiredParameters();
@@ -248,7 +244,7 @@ public final class MethodSpecParser {
         return parsedParams;
     }
 
-    private Parameter matchAnnotatedParameter(MethodSpec spec, VariableElement variable) {
+    private static Parameter matchAnnotatedParameter(MethodSpec spec, VariableElement variable) {
         for (ParameterSpec parameterSpec : spec.getAnnotations()) {
             if (parameterSpec.matches(variable)) {
                 Parameter matchedParameter = matchParameter(parameterSpec, variable, -1, -1);
@@ -286,7 +282,7 @@ public final class MethodSpecParser {
         }
     }
 
-    private Parameter matchParameter(ParameterSpec specification, VariableElement variable, int specificationIndex, int varArgsIndex) {
+    private static Parameter matchParameter(ParameterSpec specification, VariableElement variable, int specificationIndex, int varArgsIndex) {
         TypeMirror resolvedType = variable.asType();
         if (hasError(resolvedType)) {
             return null;
@@ -296,12 +292,6 @@ public final class MethodSpecParser {
             return null;
         }
 
-        TypeData resolvedTypeData = getTypeSystem().findTypeData(resolvedType);
-        if (resolvedTypeData != null) {
-            return new Parameter(specification, resolvedTypeData, variable, specificationIndex, varArgsIndex);
-        } else {
-            return new Parameter(specification, variable, specificationIndex, varArgsIndex);
-        }
+        return new Parameter(specification, variable, specificationIndex, varArgsIndex);
     }
-
 }

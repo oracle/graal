@@ -88,6 +88,10 @@ public class ProcessorContext {
         return (DeclaredType) ElementUtils.getType(environment, element);
     }
 
+    public boolean isType(TypeMirror type, Class<?> clazz) {
+        return ElementUtils.typeEquals(type, getType(clazz));
+    }
+
     public TypeMirror getType(Class<?> element) {
         return ElementUtils.getType(environment, element);
     }

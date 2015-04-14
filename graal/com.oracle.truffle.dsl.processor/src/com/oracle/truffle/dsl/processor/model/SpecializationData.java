@@ -25,6 +25,7 @@ package com.oracle.truffle.dsl.processor.model;
 import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.expression.*;
@@ -201,17 +202,18 @@ public final class SpecializationData extends TemplateMethod {
 
         for (Parameter parameter : getSignatureParameters()) {
             NodeChildData child = parameter.getSpecification().getExecution().getChild();
-            ExecutableTypeData type = child.findExecutableType(parameter.getTypeSystemType());
-            if (type == null) {
-                type = child.findAnyGenericExecutableType(context);
+            if (child != null) {
+                ExecutableTypeData type = child.findExecutableType(parameter.getType());
+                if (type == null) {
+                    type = child.findAnyGenericExecutableType(context);
+                }
+                if (type.hasUnexpectedValue(context)) {
+                    return true;
+                }
+                if (ElementUtils.needsCastTo(type.getReturnType(), parameter.getType())) {
+                    return true;
+                }
             }
-            if (type.hasUnexpectedValue(context)) {
-                return true;
-            }
-            if (type.getReturnType().getTypeSystemType().needsCastTo(parameter.getTypeSystemType())) {
-                return true;
-            }
-
         }
         return false;
     }
@@ -356,11 +358,12 @@ public final class SpecializationData extends TemplateMethod {
         Iterator<Parameter> currentSignature = getSignatureParameters().iterator();
         Iterator<Parameter> prevSignature = prev.getSignatureParameters().iterator();
 
+        TypeSystemData typeSystem = prev.getNode().getTypeSystem();
         while (currentSignature.hasNext() && prevSignature.hasNext()) {
-            TypeData currentType = currentSignature.next().getTypeSystemType();
-            TypeData prevType = prevSignature.next().getTypeSystemType();
+            TypeMirror currentType = currentSignature.next().getType();
+            TypeMirror prevType = prevSignature.next().getType();
 
-            if (!currentType.isImplicitSubtypeOf(prevType)) {
+            if (!typeSystem.isImplicitSubtypeOf(currentType, prevType)) {
                 return true;
             }
         }

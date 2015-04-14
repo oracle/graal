@@ -74,7 +74,7 @@ public class NodeChildData extends MessageContainer {
         this.executeWith = executeWith;
     }
 
-    public ExecutableTypeData findExecutableType(TypeData targetType) {
+    public ExecutableTypeData findExecutableType(TypeMirror targetType) {
         return childNode.findExecutableType(targetType, getExecuteWith().size());
     }
 

@@ -33,24 +33,24 @@ import com.oracle.truffle.dsl.processor.java.*;
 
 public class TypeSystemData extends Template {
 
-    private List<TypeData> types;
-    private List<TypeMirror> primitiveTypeMirrors = new ArrayList<>();
-    private List<TypeMirror> boxedTypeMirrors = new ArrayList<>();
-    private Map<String, TypeData> cachedTypes = new HashMap<>();
+    private final List<ImplicitCastData> implicitCasts = new ArrayList<>();
+    private final List<TypeCastData> casts = new ArrayList<>();
+    private final List<TypeCheckData> checks = new ArrayList<>();
+    private final List<TypeMirror> legacyTypes = new ArrayList<>();
 
-    private List<ImplicitCastData> implicitCasts;
-    private List<TypeCastData> casts;
-    private List<TypeCheckData> checks;
+    private Set<String> legacyTypeIds;
 
-    private TypeMirror genericType;
-    private TypeData booleanType;
-    private TypeData voidType;
+    private final boolean isDefault;
+    private final DSLOptions options;
 
-    private DSLOptions options;
-
-    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, DSLOptions options) {
+    public TypeSystemData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, DSLOptions options, boolean isDefault) {
         super(context, templateType, annotation);
         this.options = options;
+        this.isDefault = isDefault;
+    }
+
+    public boolean isDefault() {
+        return isDefault;
     }
 
     public DSLOptions getOptions() {
@@ -62,48 +62,43 @@ public class TypeSystemData extends Template {
         return this;
     }
 
-    public void setTypes(List<TypeData> types) {
-        this.types = types;
-        if (types != null) {
-            for (TypeData typeData : types) {
-                primitiveTypeMirrors.add(typeData.getPrimitiveType());
-                boxedTypeMirrors.add(typeData.getBoxedType());
-                cachedTypes.put(ElementUtils.getUniqueIdentifier(typeData.getPrimitiveType()), typeData);
-                cachedTypes.put(ElementUtils.getUniqueIdentifier(typeData.getBoxedType()), typeData);
-            }
-        }
+    public List<TypeMirror> getLegacyTypes() {
+        return legacyTypes;
     }
 
-    public void setImplicitCasts(List<ImplicitCastData> implicitCasts) {
-        this.implicitCasts = implicitCasts;
+    public TypeCastData getCast(TypeMirror targetType) {
+        for (TypeCastData cast : casts) {
+            if (ElementUtils.typeEquals(cast.getTargetType(), targetType)) {
+                return cast;
+            }
+        }
+        return null;
+    }
+
+    public TypeCheckData getCheck(TypeMirror type) {
+        for (TypeCheckData check : checks) {
+            if (ElementUtils.typeEquals(check.getCheckedType(), type)) {
+                return check;
+            }
+        }
+        return null;
     }
 
     public List<ImplicitCastData> getImplicitCasts() {
         return implicitCasts;
     }
 
-    public void setCasts(List<TypeCastData> casts) {
-        this.casts = casts;
+    public List<TypeCastData> getCasts() {
+        return casts;
     }
 
-    public void setChecks(List<TypeCheckData> checks) {
-        this.checks = checks;
-    }
-
-    public void setGenericType(TypeMirror genericType) {
-        this.genericType = genericType;
-    }
-
-    public void setVoidType(TypeData voidType) {
-        this.voidType = voidType;
+    public List<TypeCheckData> getChecks() {
+        return checks;
     }
 
     @Override
     protected List<MessageContainer> findChildContainers() {
         List<MessageContainer> sinks = new ArrayList<>();
-        if (types != null) {
-            sinks.addAll(types);
-        }
         if (checks != null) {
             sinks.addAll(checks);
         }
@@ -116,75 +111,25 @@ public class TypeSystemData extends Template {
         return sinks;
     }
 
-    public TypeData getVoidType() {
-        return voidType;
-    }
-
-    public List<TypeMirror> getBoxedTypeMirrors() {
-        return boxedTypeMirrors;
-    }
-
-    public List<TypeMirror> getPrimitiveTypeMirrors() {
-        return primitiveTypeMirrors;
-    }
-
-    public Set<String> getTypeIdentifiers() {
-        return cachedTypes.keySet();
-    }
-
-    public List<TypeData> getTypes() {
-        return types;
-    }
-
-    public TypeMirror getGenericType() {
-        return genericType;
-    }
-
-    public TypeData getGenericTypeData() {
-        TypeData result = types.get(types.size() - 2);
-        assert result.getBoxedType() == genericType;
-        return result;
-    }
-
-    public TypeData findTypeData(TypeMirror type) {
-        if (ElementUtils.typeEquals(voidType.getPrimitiveType(), type)) {
-            return voidType;
-        }
-
-        int index = findType(type);
-        if (index == -1) {
-            return null;
-        }
-        return types.get(index);
-    }
-
-    public int findType(TypeMirror type) {
-        TypeData data = cachedTypes.get(ElementUtils.getUniqueIdentifier(type));
-        if (data != null) {
-            return data.getIndex();
-        }
-        return -1;
-    }
-
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[template = " + ElementUtils.getSimpleName(getTemplateType()) + ", types = " + types + "]";
+        return getClass().getSimpleName() + "[template = " + ElementUtils.getSimpleName(getTemplateType()) + "]";
     }
 
-    public List<ImplicitCastData> lookupByTargetType(TypeData targetType) {
+    public List<ImplicitCastData> lookupByTargetType(TypeMirror targetType) {
         if (getImplicitCasts() == null) {
             return Collections.emptyList();
         }
         List<ImplicitCastData> foundCasts = new ArrayList<>();
         for (ImplicitCastData cast : getImplicitCasts()) {
-            if (cast.getTargetType().equals(targetType)) {
+            if (ElementUtils.typeEquals(cast.getTargetType(), targetType)) {
                 foundCasts.add(cast);
             }
         }
         return foundCasts;
     }
 
-    public ImplicitCastData lookupCast(TypeData sourceType, TypeData targetType) {
+    public ImplicitCastData lookupCast(TypeMirror sourceType, TypeMirror targetType) {
         if (getImplicitCasts() == null) {
             return null;
         }
@@ -196,38 +141,59 @@ public class TypeSystemData extends Template {
         return null;
     }
 
-    public boolean hasImplicitSourceTypes(TypeData targetType) {
+    public boolean hasImplicitSourceTypes(TypeMirror targetType) {
         if (getImplicitCasts() == null) {
             return false;
         }
         for (ImplicitCastData cast : getImplicitCasts()) {
-            if (cast.getTargetType() == targetType) {
+            if (ElementUtils.typeEquals(cast.getTargetType(), targetType)) {
                 return true;
             }
         }
         return false;
     }
 
-    public List<TypeData> lookupSourceTypes(TypeData type) {
-        List<TypeData> sourceTypes = new ArrayList<>();
-        sourceTypes.add(type);
-        if (getImplicitCasts() != null) {
-            for (ImplicitCastData cast : getImplicitCasts()) {
-                if (cast.getTargetType() == type) {
-                    sourceTypes.add(cast.getSourceType());
-                }
+    public List<TypeMirror> lookupTargetTypes() {
+        List<TypeMirror> sourceTypes = new ArrayList<>();
+        for (ImplicitCastData cast : getImplicitCasts()) {
+            sourceTypes.add(cast.getTargetType());
+        }
+        return ElementUtils.uniqueSortedTypes(sourceTypes);
+    }
+
+    public List<TypeMirror> lookupSourceTypes(TypeMirror targetType) {
+        List<TypeMirror> sourceTypes = new ArrayList<>();
+        sourceTypes.add(targetType);
+        for (ImplicitCastData cast : getImplicitCasts()) {
+            if (ElementUtils.typeEquals(cast.getTargetType(), targetType)) {
+                sourceTypes.add(cast.getSourceType());
             }
         }
-        Collections.sort(sourceTypes);
         return sourceTypes;
     }
 
-    public TypeData getBooleanType() {
-        return booleanType;
+    public boolean isImplicitSubtypeOf(TypeMirror source, TypeMirror target) {
+        List<ImplicitCastData> targetCasts = lookupByTargetType(target);
+        for (ImplicitCastData cast : targetCasts) {
+            if (ElementUtils.isSubtype(boxType(source), boxType(cast.getSourceType()))) {
+                return true;
+            }
+        }
+        return ElementUtils.isSubtype(boxType(source), boxType(target));
     }
 
-    public void setBooleanType(TypeData booleanType) {
-        this.booleanType = booleanType;
+    public TypeMirror boxType(TypeMirror type) {
+        return ElementUtils.boxType(getContext(), type);
+    }
+
+    public boolean hasType(TypeMirror type) {
+        if (legacyTypeIds == null) {
+            legacyTypeIds = new HashSet<>();
+            for (TypeMirror legacyType : legacyTypes) {
+                legacyTypeIds.add(ElementUtils.getTypeId(legacyType));
+            }
+        }
+        return legacyTypeIds.contains(ElementUtils.getTypeId(type));
     }
 
 }
