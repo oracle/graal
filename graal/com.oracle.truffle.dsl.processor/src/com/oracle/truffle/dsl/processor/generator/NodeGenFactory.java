@@ -2151,7 +2151,11 @@ public class NodeGenFactory {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(targetValue.createReference()).string(" = ");
         builder.startCall(executeChildMethodName(execution, targetValue.getTypeMirror()));
-        builder.string(FRAME_VALUE);
+        if (currentValues.get(FRAME_VALUE) == null) {
+            builder.nullLiteral();
+        } else {
+            builder.string(FRAME_VALUE);
+        }
 
         CodeVariableElement implicitProfile = createImplicitProfileParameter(execution, targetValue.getTypeMirror());
         if (implicitProfile != null) {
