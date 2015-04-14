@@ -86,7 +86,7 @@ import com.oracle.truffle.sl.runtime.*;
  * {@link SLWhileNode while} with {@link SLBreakNode break} and {@link SLContinueNode continue},
  * {@link SLReturnNode return}.
  * <li>Function calls: {@link SLInvokeNode invocations} are efficiently implemented with
- * {@link SLAbstractDispatchNode polymorphic inline caches}.
+ * {@link SLDispatchNode polymorphic inline caches}.
  * </ul>
  *
  * <p>
