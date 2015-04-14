@@ -1332,13 +1332,14 @@ public class NodeParser extends AbstractParser<NodeData> {
 
         List<VariableElement> types = new ArrayList<>();
 
-        Set<TypeMirror> frameTypes = new HashSet<>();
+        Collection<TypeMirror> frameTypes = new HashSet<>();
         for (SpecializationData specialization : node.getSpecializations()) {
             if (specialization.getFrame() != null) {
                 frameTypes.add(specialization.getFrame().getType());
             }
         }
         if (!frameTypes.isEmpty()) {
+            frameTypes = ElementUtils.uniqueSortedTypes(frameTypes);
             TypeMirror frameType;
             if (frameTypes.size() == 1) {
                 frameType = frameTypes.iterator().next();
@@ -1359,7 +1360,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             if (!genericParameter.getSpecification().isSignature()) {
                 polymorphicType = genericParameter.getType();
             } else {
-                Set<TypeMirror> usedTypes = new HashSet<>();
+                Collection<TypeMirror> usedTypes = new HashSet<>();
                 for (SpecializationData specialization : node.getSpecializations()) {
                     if (specialization.isUninitialized()) {
                         continue;
@@ -1373,6 +1374,7 @@ public class NodeParser extends AbstractParser<NodeData> {
                     }
                     usedTypes.add(parameter.getType());
                 }
+                usedTypes = ElementUtils.uniqueSortedTypes(usedTypes);
 
                 if (usedTypes.size() == 1) {
                     polymorphicType = usedTypes.iterator().next();
