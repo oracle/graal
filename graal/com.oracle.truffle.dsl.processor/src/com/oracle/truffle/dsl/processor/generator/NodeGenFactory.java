@@ -1696,7 +1696,6 @@ public class NodeGenFactory {
                 var = currentLocals.createValue(execution, targetType).nextName();
                 builder.tree(createAssignExecuteChild(builder, execution, executableType, var, shortCircuit, currentLocals));
                 currentLocals.setValue(execution, var);
-
             }
         }
 
@@ -1719,7 +1718,7 @@ public class NodeGenFactory {
             };
             builder.tree(createGuardAndCast(group, returnType, currentLocals, executionFactory));
             if (hasFallthrough(group, returnType, originalValues, true, null) || group.getSpecialization().isFallback()) {
-                builder.tree(createCallNext(builder, executableType, executableType, originalValues));
+                builder.tree(createCallNext(builder, executableType, node.getGenericExecutableType(executableType), originalValues));
             }
         }
         return builder.build();
