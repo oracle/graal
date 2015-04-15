@@ -1790,4 +1790,8 @@ public abstract class SPARCAssembler extends Assembler {
     public void fpadd32(Register rs1, Register rs2, Register rd) {
         op3(Impdep1, Fpadd32, rs1, rs2, rd);
     }
+
+    public boolean isCbcond(int i) {
+        return (i & 0xC1C00000) == 0xC00000;
+    }
 }
