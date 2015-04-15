@@ -334,17 +334,21 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod original, boolean fromBytecodeOnly) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod original, boolean fromBytecodeOnly, int invokeBci) {
         ResolvedJavaMethod substitute = null;
         if (!fromBytecodeOnly) {
             InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
-            if (plugin instanceof MethodSubstitutionPlugin) {
-                MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
-                substitute = msplugin.getSubstitute(providers.getMetaAccess());
-            } else if (plugin != null) {
-                StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original).buildGraph(plugin);
-                if (graph != null) {
-                    return graph;
+            if (plugin != null) {
+                if (!plugin.inlineOnly() || invokeBci >= 0) {
+                    if (plugin instanceof MethodSubstitutionPlugin) {
+                        MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
+                        substitute = msplugin.getSubstitute(providers.getMetaAccess());
+                    } else {
+                        StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original, invokeBci).buildGraph(plugin);
+                        if (graph != null) {
+                            return graph;
+                        }
+                    }
                 }
             }
         }
@@ -806,10 +810,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         return cr != null && cr.forcedSubstitutions.contains(method);
     }
 
-    public boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly) {
+    public boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int callerBci) {
         if (!fromBytecodeOnly) {
-            if (graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method) != null) {
-                return true;
+            InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+            if (plugin != null) {
+                if (!plugin.inlineOnly() || callerBci >= 0) {
+                    return true;
+                }
             }
         }
         return getSubstitutionMethod(method) != null;

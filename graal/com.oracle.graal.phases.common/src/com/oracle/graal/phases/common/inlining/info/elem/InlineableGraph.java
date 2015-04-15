@@ -59,7 +59,7 @@ public class InlineableGraph implements Inlineable {
     private FixedNodeProbabilityCache probabilites = new FixedNodeProbabilityCache();
 
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph original = getOriginalGraph(method, context, canonicalizer, invoke.asNode().graph());
+        StructuredGraph original = getOriginalGraph(method, context, canonicalizer, invoke.asNode().graph(), invoke.bci());
         // TODO copying the graph is only necessary if it is modified or if it contains any invokes
         this.graph = original.copy();
         specializeGraphToArguments(invoke, context, canonicalizer);
@@ -70,8 +70,8 @@ public class InlineableGraph implements Inlineable {
      * The graph thus obtained is returned, ie the caller is responsible for cloning before
      * modification.
      */
-    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
-        StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method);
+    private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, int callerBci) {
+        StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method, callerBci);
         if (result != null) {
             return result;
         }

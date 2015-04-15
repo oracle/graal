@@ -225,8 +225,12 @@ public class SPARCControlFlow {
                     SPARCMove.move(crb, masm, scratchValue, actualY, SPARCDelayedControlTransfer.DUMMY);
                     actualY = scratchValue;
                 }
+                // Test if the previous instruction was cbcond, if so, put a nop inbetween (See
+                // SPARC Architecture 2011 manual)
+                if (masm.isCbcond(masm.getInt(masm.position() - 1))) {
+                    masm.nop();
+                }
                 emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
-                masm.nop();
             }
             if (needJump) {
                 masm.jmp(actualFalseTarget);

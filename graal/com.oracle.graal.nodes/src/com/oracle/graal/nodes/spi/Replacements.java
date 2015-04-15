@@ -70,39 +70,47 @@ public interface Replacements {
     /**
      * Gets a graph that is a substitution for a given method.
      *
+     * @param invokeBci the call site BCI if this request is made for inlining a substitute
+     *            otherwise {@code -1}
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    default StructuredGraph getSubstitution(ResolvedJavaMethod method) {
-        return getSubstitution(method, false);
+    default StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci) {
+        return getSubstitution(method, false, invokeBci);
     }
 
     /**
      * Gets a graph that is a substitution for a given method.
      *
      * @param fromBytecodeOnly only return a graph created by parsing the bytecode of another method
+     * @param invokeBci the call site BCI if this request is made for inlining a substitute
+     *            otherwise {@code -1}
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly);
+    StructuredGraph getSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int invokeBci);
 
     /**
-     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod) substitution graph}
-     * for a given method.
+     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod, int) substitution
+     * graph} for a given method.
      *
+     * @param invokeBci the call site BCI if this request is made for inlining a substitute
+     *            otherwise {@code -1}
      * @return true iff there is a substitution graph available for {@code method}
      */
-    default boolean hasSubstitution(ResolvedJavaMethod method) {
-        return hasSubstitution(method, false);
+    default boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
+        return hasSubstitution(method, false, invokeBci);
     }
 
     /**
-     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod) substitution graph}
-     * for a given method.
+     * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod, int) substitution
+     * graph} for a given method.
      *
      * @param fromBytecodeOnly only consider graphs created by parsing the bytecode of another
      *            method
+     * @param invokeBci the call site BCI if this request is made for inlining a substitute
+     *            otherwise {@code -1}
      * @return true iff there is a substitution graph available for {@code method}
      */
-    boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly);
+    boolean hasSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int invokeBci);
 
     /**
      * Registers all the {@linkplain MethodSubstitution method} substitutions defined by a given

@@ -36,6 +36,10 @@ This changelog summarizes major changes between Graal versions relevant to langu
 * Changed syntax and semantics of Specialization#assumptions and Specialization#guards. They now use a Java like expression syntax.
 * Changed guard expressions that do not bind any dynamic parameter are invoked just once per specialization instantiation. They are now asserted to be true on the fast path.
 * Renamed @ImportGuards to @ImportStatic.
+* Changed declaring a @TypeSystemReference for a node that contains specializations is not mandatory anymore.
+* Changed types used in specializations are not restricted on types declared in the type system anymore.
+* Changed nodes that declare all execute methods with the same number of evaluated arguments as specialization arguments do not require @NodeChild annotations anymore.
+* Changed types used in checks and casts are not mandatory to be declared in the type system.
 
 ## Version 0.6
 19-Dec-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.6)

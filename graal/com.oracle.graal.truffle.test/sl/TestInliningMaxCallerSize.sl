@@ -2,11 +2,11 @@
  * This test verifies that CallTargets cannot exceed the TruffleInliningMaxCallerSize limit when inlining.
  */
 function inlinableFunction() { 
-    generateDummyNodes(getOption("TruffleInliningMaxCallerSize") - 8);
+    generateDummyNodes(getOption("TruffleInliningMaxCallerSize") - 7);
 }
 
 function notInlinableFunction() { 
-    generateDummyNodes(getOption("TruffleInliningMaxCallerSize") - 7);
+    generateDummyNodes(getOption("TruffleInliningMaxCallerSize") - 6);
 }
 
 function test1() {

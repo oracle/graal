@@ -99,6 +99,10 @@ public class HotSpotGraphBuilderPlugins {
                 b.addPush(Kind.Object, new ObjectCloneNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
                 return true;
             }
+
+            public boolean inlineOnly() {
+                return true;
+            }
         });
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
@@ -118,6 +122,10 @@ public class HotSpotGraphBuilderPlugins {
                     }
                     return true;
                 }
+
+                public boolean inlineOnly() {
+                    return true;
+                }
             });
         }
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
@@ -129,6 +137,10 @@ public class HotSpotGraphBuilderPlugins {
                 } else {
                     b.addPush(Kind.Object, new ClassCastNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), javaClass, object));
                 }
+                return true;
+            }
+
+            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -146,6 +158,10 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
+
+            public boolean inlineOnly() {
+                return true;
+            }
         };
         plugins.register(plugin, ConstantCallSite.class, "getTarget", Receiver.class);
         plugins.register(plugin, MutableCallSite.class, "getTarget", Receiver.class);
@@ -157,6 +173,10 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("getCallerClass", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType()));
+                return true;
+            }
+
+            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -171,10 +191,18 @@ public class HotSpotGraphBuilderPlugins {
                 b.addPush(new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
                 return true;
             }
+
+            public boolean inlineOnly() {
+                return true;
+            }
         });
         r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
                 b.add(new ArrayCopyNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), src, srcPos, dst, dstPos, length));
+                return true;
+            }
+
+            public boolean inlineOnly() {
                 return true;
             }
         });

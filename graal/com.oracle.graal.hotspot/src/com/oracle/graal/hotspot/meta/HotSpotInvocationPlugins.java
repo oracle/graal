@@ -40,6 +40,7 @@ import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
+import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Extension of {@link InvocationPlugins} that disables plugins based on runtime configuration.
@@ -136,6 +137,14 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     @Override
     public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
+        for (Node node : newNodes) {
+            if (node instanceof MacroNode) {
+                // MacroNode based plugins can only be used for inlining since they
+                // require a valid bci should they need to replace themselves with
+                // an InvokeNode during lowering.
+                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroNode.class.getSimpleName(), node, plugin);
+            }
+        }
         if (GraalOptions.ImmutableCode.getValue()) {
             for (Node node : newNodes) {
                 if (node.hasUsages() && node instanceof ConstantNode) {

@@ -70,6 +70,8 @@ public final class CompileTheWorld {
         public static final OptionValue<Integer> CompileTheWorldIterations = new OptionValue<>(1);
         @Option(help = "Only compile methods matching this filter", type = OptionType.Debug)
         public static final OptionValue<String> CompileTheWorldMethodFilter = new OptionValue<>(null);
+        @Option(help = "Exclude methods matching this filter from compilation", type = OptionType.Debug)
+        public static final OptionValue<String> CompileTheWorldExcludeMethodFilter = new OptionValue<>(null);
         @Option(help = "First class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
         public static final OptionValue<Integer> CompileTheWorldStartAt = new OptionValue<>(1);
         @Option(help = "Last class to consider when using -XX:+CompileTheWorld", type = OptionType.Debug)
@@ -158,6 +160,9 @@ public final class CompileTheWorld {
     /** Only compile methods matching one of the filters in this array if the array is non-null. */
     private final MethodFilter[] methodFilters;
 
+    /** Exclude methods matching one of the filters in this array if the array is non-null. */
+    private final MethodFilter[] excludeMethodFilters;
+
     // Counters
     private int classFileCounter = 0;
     private AtomicLong compiledMethodsCounter = new AtomicLong();
@@ -180,12 +185,15 @@ public final class CompileTheWorld {
      * @param files {@link File#pathSeparator} separated list of Zip/Jar files to compile
      * @param startAt index of the class file to start compilation at
      * @param stopAt index of the class file to stop compilation at
+     * @param methodFilters
+     * @param excludeMethodFilters
      */
-    public CompileTheWorld(String files, Config config, int startAt, int stopAt, String methodFilters, boolean verbose) {
+    public CompileTheWorld(String files, Config config, int startAt, int stopAt, String methodFilters, String excludeMethodFilters, boolean verbose) {
         this.files = files;
         this.startAt = startAt;
         this.stopAt = stopAt;
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
+        this.excludeMethodFilters = excludeMethodFilters == null || excludeMethodFilters.isEmpty() ? null : MethodFilter.parse(excludeMethodFilters);
         this.verbose = verbose;
         this.config = config;
 
@@ -292,8 +300,12 @@ public final class CompileTheWorld {
                 if (methodFilters == null || methodFilters.length == 0) {
                     println("CompileTheWorld : Compiling all classes in " + entry);
                 } else {
-                    println("CompileTheWorld : Compiling all methods in " + entry + " matching one of the following filters: " +
-                                    Arrays.asList(methodFilters).stream().map(MethodFilter::toString).collect(Collectors.joining(", ")));
+                    String include = Arrays.asList(methodFilters).stream().map(MethodFilter::toString).collect(Collectors.joining(", "));
+                    println("CompileTheWorld : Compiling all methods in " + entry + " matching one of the following filters: " + include);
+                }
+                if (excludeMethodFilters != null && excludeMethodFilters.length > 0) {
+                    String exclude = Arrays.asList(excludeMethodFilters).stream().map(MethodFilter::toString).collect(Collectors.joining(", "));
+                    println("CompileTheWorld : Excluding all methods matching one of the follwing filters: " + exclude);
                 }
                 println();
 
@@ -319,6 +331,9 @@ public final class CompileTheWorld {
                     classFileCounter++;
 
                     if (methodFilters != null && !MethodFilter.matchesClassName(methodFilters, dottedClassName)) {
+                        continue;
+                    }
+                    if (excludeMethodFilters != null && MethodFilter.matchesClassName(excludeMethodFilters, dottedClassName)) {
                         continue;
                     }
 
@@ -425,6 +440,9 @@ public final class CompileTheWorld {
 
     private void compileMethod(HotSpotResolvedJavaMethod method) throws InterruptedException, ExecutionException {
         if (methodFilters != null && !MethodFilter.matches(methodFilters, method)) {
+            return;
+        }
+        if (excludeMethodFilters != null && MethodFilter.matches(excludeMethodFilters, method)) {
             return;
         }
         Future<?> task = threadPool.submit(new Runnable() {
