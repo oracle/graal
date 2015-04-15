@@ -134,8 +134,19 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return types;
     }
 
-    public int getSignatureSize() {
+    public int getExecutionCount() {
         return getChildExecutions().size();
+    }
+
+    public int getSignatureSize() {
+        int count = 0;
+        for (NodeExecutionData execution : getChildExecutions()) {
+            if (execution.isShortCircuit()) {
+                count++;
+            }
+            count++;
+        }
+        return count;
     }
 
     public boolean isFrameUsedByAnyGuard() {
@@ -567,20 +578,17 @@ public class NodeData extends Template implements Comparable<NodeData> {
                 if (executable.hasUnexpectedValue(getContext())) {
                     continue;
                 }
-                if (!typeSystem.hasImplicitSourceTypes(executable.getReturnType())) {
-                    types.add(executable.getReturnType());
-                }
+                types.add(executable.getReturnType());
             }
         }
 
         int executionIndex = execution.getIndex();
         if (executionIndex >= 0) {
             for (ExecutableTypeData typeData : getExecutableTypes()) {
-                if (executionIndex < typeData.getEvaluatedCount()) {
-                    TypeMirror genericType = typeData.getEvaluatedParameters().get(executionIndex);
-                    if (!typeSystem.hasImplicitSourceTypes(genericType)) {
-                        types.add(genericType);
-                    }
+                List<TypeMirror> signatureParameters = typeData.getSignatureParameters();
+                if (executionIndex < signatureParameters.size()) {
+                    TypeMirror genericType = signatureParameters.get(executionIndex);
+                    types.add(genericType);
                 }
             }
         }

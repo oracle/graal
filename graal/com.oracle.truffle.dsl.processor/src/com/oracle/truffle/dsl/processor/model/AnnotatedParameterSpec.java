@@ -43,6 +43,11 @@ public final class AnnotatedParameterSpec extends ParameterSpec {
     }
 
     @Override
+    public boolean isAnnotated() {
+        return true;
+    }
+
+    @Override
     public boolean matches(VariableElement variable) {
         if (ElementUtils.findAnnotationMirror(variable.getAnnotationMirrors(), annotationType) != null) {
             return true;

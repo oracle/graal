@@ -144,18 +144,18 @@ public class ExecuteGroupingTest {
         }
 
         @Specialization(rewriteOn = RuntimeException.class)
-        int s1() {
+        double s1() {
             return 42;
         }
 
         @Specialization
-        int s2() {
+        double s2() {
             return 42;
         }
 
     }
 
-    @ExpectError("Incompatible abstract execute methods found [executeDouble(), executeInt()].%")
+    @ExpectError("Incompatible abstract execute methods found %")
     abstract static class IncompatibleAbstract1 extends Node {
 
         // we don't know how to implement executeDouble
@@ -164,7 +164,7 @@ public class ExecuteGroupingTest {
         abstract int executeInt();
 
         @Specialization
-        int s1() {
+        double s1() {
             return 42;
         }
 

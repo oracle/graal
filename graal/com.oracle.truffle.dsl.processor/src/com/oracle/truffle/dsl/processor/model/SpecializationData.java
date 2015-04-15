@@ -167,14 +167,6 @@ public final class SpecializationData extends TemplateMethod {
         return kind == SpecializationKind.POLYMORPHIC;
     }
 
-    public List<Parameter> getDynamicParameters() {
-        List<Parameter> uncachedParameters = new ArrayList<>(getParameters());
-        for (CacheExpression cacheExpression : getCaches()) {
-            uncachedParameters.remove(cacheExpression.getParameter());
-        }
-        return uncachedParameters;
-    }
-
     @Override
     protected List<MessageContainer> findChildContainers() {
         List<MessageContainer> sinks = new ArrayList<>();
@@ -304,7 +296,7 @@ public final class SpecializationData extends TemplateMethod {
 
     @Override
     public String toString() {
-        return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getTypeSignature());
+        return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getDynamicTypes());
     }
 
     public boolean isFrameUsed() {

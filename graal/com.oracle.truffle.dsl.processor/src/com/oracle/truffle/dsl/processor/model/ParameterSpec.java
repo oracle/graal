@@ -59,6 +59,10 @@ public class ParameterSpec {
         this.anyType = anyTypeTemp;
     }
 
+    public boolean isAnnotated() {
+        return false;
+    }
+
     public ParameterSpec(ParameterSpec original, TypeMirror newType) {
         this(original.name, newType);
         this.local = original.local;

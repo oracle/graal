@@ -163,21 +163,36 @@ public class ElementUtils {
         if (typeEquals(type1, type2)) {
             return type1;
         }
-        TypeElement element1 = fromTypeMirror(type1);
-        TypeElement element2 = fromTypeMirror(type2);
-        if (element1 == null || element2 == null) {
-            if (element1 != null) {
-                return type1;
-            } else if (element2 != null) {
-                return type2;
-            }
+        if (isVoid(type1)) {
+            return type2;
+        } else if (isVoid(type2)) {
+            return type1;
+        }
+        if (isObject(type1)) {
+            return type1;
+        } else if (isObject(type2)) {
+            return type2;
+        }
+
+        if (isPrimitive(type1) || isPrimitive(type2)) {
             return context.getType(Object.class);
         }
 
-        List<TypeElement> element1Types = getDirectSuperTypes(element1);
-        element1Types.add(0, element1);
-        List<TypeElement> element2Types = getDirectSuperTypes(element2);
-        element2Types.add(0, element2);
+        if (isSubtype(type1, type2)) {
+            return type2;
+        } else if (isSubtype(type2, type1)) {
+            return type1;
+        }
+
+        TypeElement element1 = fromTypeMirror(type1);
+        TypeElement element2 = fromTypeMirror(type2);
+
+        if (element1 == null || element2 == null) {
+            return context.getType(Object.class);
+        }
+
+        List<TypeElement> element1Types = getSuperTypes(element1);
+        List<TypeElement> element2Types = getSuperTypes(element2);
 
         for (TypeElement superType1 : element1Types) {
             for (TypeElement superType2 : element2Types) {
@@ -186,6 +201,7 @@ public class ElementUtils {
                 }
             }
         }
+
         return context.getType(Object.class);
     }
 
