@@ -180,7 +180,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         compileAndTime("complex");
         if (CompileTheWorldClasspath.getValue() != SUN_BOOT_CLASS_PATH) {
             CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
-                            CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
+                            CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
             try {
                 ctw.compile();
             } catch (Throwable e) {
