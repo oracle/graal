@@ -24,12 +24,13 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Guard}, nameTemplate = "Proxy({i#value})")
-public final class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy, LIRLowerable {
+public final class GuardProxyNode extends ProxyNode implements GuardingNode, Proxy, LIRLowerable, Canonicalizable {
 
     public static final NodeClass<GuardProxyNode> TYPE = NodeClass.create(GuardProxyNode.class);
     @OptionalInput(InputType.Guard) GuardingNode value;
@@ -55,5 +56,12 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode, Pro
 
     public Node getOriginalNode() {
         return (value == null ? null : value.asNode());
+    }
+
+    public Node canonical(CanonicalizerTool tool) {
+        if (value == null) {
+            return null;
+        }
+        return this;
     }
 }
