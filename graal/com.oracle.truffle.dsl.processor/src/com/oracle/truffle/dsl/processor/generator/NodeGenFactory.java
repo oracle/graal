@@ -1683,12 +1683,7 @@ public class NodeGenFactory {
             if (var == null) {
                 TypeMirror targetType;
                 if (specialization == null) {
-                    List<TypeMirror> genericTypes = node.getGenericTypes(execution);
-                    if (genericTypes.isEmpty()) {
-                        targetType = genericType;
-                    } else {
-                        targetType = genericTypes.get(0);
-                    }
+                    targetType = node.getGenericType(execution);
                 } else {
                     targetType = specialization.findParameterOrDie(execution).getType();
                 }

@@ -1288,7 +1288,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         if (execution == null) {
             allowedTypes = spec.getAllowedTypes();
         } else {
-            allowedTypes = node.getGenericTypes(execution);
+            allowedTypes = Arrays.asList(node.getGenericType(execution));
         }
         if (allowedTypes.size() == 1) {
             return allowedTypes.iterator().next();

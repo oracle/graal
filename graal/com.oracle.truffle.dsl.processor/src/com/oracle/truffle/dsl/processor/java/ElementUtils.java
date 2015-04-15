@@ -168,6 +168,8 @@ public class ElementUtils {
         if (element1 == null || element2 == null) {
             if (element1 != null) {
                 return type1;
+            } else if (element2 != null) {
+                return type2;
             }
             return context.getType(Object.class);
         }

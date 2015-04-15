@@ -554,6 +554,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return getNodeId().compareTo(o.getNodeId());
     }
 
+    public TypeMirror getGenericType(NodeExecutionData execution) {
+        return ElementUtils.getCommonSuperType(getContext(), getGenericTypes(execution));
+    }
+
     public List<TypeMirror> getGenericTypes(NodeExecutionData execution) {
         List<TypeMirror> types = new ArrayList<>();
 

@@ -192,9 +192,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         for (int i = from.getEvaluatedCount(); i < to.getEvaluatedCount(); i++) {
             TypeMirror delegateToParameter = to.getEvaluatedParameters().get(i);
             if (i < node.getChildExecutions().size()) {
-                List<TypeMirror> genericTypes = node.getGenericTypes(node.getChildExecutions().get(i));
-
-                TypeMirror genericType = ElementUtils.getCommonSuperType(context, genericTypes);
+                TypeMirror genericType = node.getGenericType(node.getChildExecutions().get(i));
                 if (!isSubtypeBoxed(context, genericType, delegateToParameter)) {
                     return false;
                 }
