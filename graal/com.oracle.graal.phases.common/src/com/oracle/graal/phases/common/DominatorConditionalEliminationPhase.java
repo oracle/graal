@@ -208,18 +208,23 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         private void processCheckCast(CheckCastNode node) {
-            tryProofCondition(node, (guard, result) -> {
-                if (result) {
-                    PiNode piNode = node.graph().unique(new PiNode(node.object(), node.stamp(), guard));
-                    node.replaceAtUsages(piNode);
-                    GraphUtil.unlinkFixedNode(node);
-                    node.safeDelete();
-                } else {
-                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    node.replaceAtPredecessor(deopt);
-                    GraphUtil.killCFG(node);
+            for (InfoElement infoElement : getInfoElements(node.object())) {
+                TriState result = node.tryFold(infoElement.getStamp());
+                if (result.isKnown()) {
+                    rewireGuards(infoElement.getGuard(), result.toBoolean(), (guard, checkCastResult) -> {
+                        if (checkCastResult) {
+                            PiNode piNode = node.graph().unique(new PiNode(node.object(), node.stamp(), guard));
+                            node.replaceAtUsages(piNode);
+                            GraphUtil.unlinkFixedNode(node);
+                            node.safeDelete();
+                        } else {
+                            DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                            node.replaceAtPredecessor(deopt);
+                            GraphUtil.killCFG(node);
+                        }
+                    });
                 }
-            });
+            }
         }
 
         private void processIf(IfNode node, List<Runnable> undoOperations) {
@@ -301,7 +306,14 @@ public class DominatorConditionalEliminationPhase extends Phase {
             return proxiedGuard;
         }
 
-        private boolean tryProofCondition(Node node, BiConsumer<ValueNode, Boolean> rewireGuardFunction) {
+        private boolean tryProofCondition(LogicNode node, BiConsumer<ValueNode, Boolean> rewireGuardFunction) {
+            for (InfoElement infoElement : getInfoElements(node)) {
+                Stamp stamp = infoElement.getStamp();
+                JavaConstant constant = (JavaConstant) stamp.asConstant();
+                if (constant != null) {
+                    return rewireGuards(infoElement.getGuard(), constant.asBoolean(), rewireGuardFunction);
+                }
+            }
             if (node instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) node;
                 ValueNode value = unaryLogicNode.getValue();
@@ -333,14 +345,6 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
                 for (InfoElement infoElement : getInfoElements(y)) {
                     TriState result = binaryOpLogicNode.tryFold(x.stamp(), infoElement.getStamp());
-                    if (result.isKnown()) {
-                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
-                    }
-                }
-            } else if (node instanceof CheckCastNode) {
-                CheckCastNode checkCastNode = (CheckCastNode) node;
-                for (InfoElement infoElement : getInfoElements(checkCastNode.object())) {
-                    TriState result = checkCastNode.tryFold(infoElement.getStamp());
                     if (result.isKnown()) {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), rewireGuardFunction);
                     }
