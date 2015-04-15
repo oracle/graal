@@ -25,28 +25,29 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
 
-public interface ReferenceMap extends Cloneable {
+public abstract class ReferenceMap implements Cloneable {
 
-    void setRegister(int idx, LIRKind kind);
+    public abstract void setRegister(int idx, LIRKind kind);
 
-    void clearRegister(int idx, LIRKind kind);
+    public abstract void clearRegister(int idx, LIRKind kind);
 
-    void setStackSlot(int offset, LIRKind kind);
+    public abstract void setStackSlot(int offset, LIRKind kind);
 
-    void clearStackSlot(int offset, LIRKind kind);
+    public abstract void clearStackSlot(int offset, LIRKind kind);
 
-    boolean hasRegisterRefMap();
+    public abstract boolean hasRegisterRefMap();
 
-    boolean hasFrameRefMap();
+    public abstract boolean hasFrameRefMap();
 
-    void appendRegisterMap(StringBuilder sb, RefMapFormatter formatterArg);
+    public abstract void appendRegisterMap(StringBuilder sb, RefMapFormatter formatterArg);
 
-    void appendFrameMap(StringBuilder sb, RefMapFormatter formatterArg);
+    public abstract void appendFrameMap(StringBuilder sb, RefMapFormatter formatterArg);
 
-    ReferenceMap clone();
+    @Override
+    public abstract ReferenceMap clone();
 
     /**
      * Updates this map with all references marked in {@code other}.
      */
-    void updateUnion(ReferenceMap other);
+    public abstract void updateUnion(ReferenceMap other);
 }
