@@ -22,13 +22,10 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import java.math.*;
-
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.runtime.*;
 
 /**
  * A {@link SLExpressionNode} that represents a parenthesized expression; it simply returns the
@@ -57,27 +54,8 @@ public class SLParenExpressionNode extends SLExpressionNode {
     }
 
     @Override
-    public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return expression.executeBigInteger(frame);
-    }
-
-    @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
         return expression.executeBoolean(frame);
     }
 
-    @Override
-    public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return expression.executeString(frame);
-    }
-
-    @Override
-    public SLFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        return expression.executeFunction(frame);
-    }
-
-    @Override
-    public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
-        return expression.executeNull(frame);
-    }
 }

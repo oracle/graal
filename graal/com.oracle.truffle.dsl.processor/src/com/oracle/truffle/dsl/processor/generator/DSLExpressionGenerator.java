@@ -25,6 +25,7 @@ package com.oracle.truffle.dsl.processor.generator;
 import java.util.*;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.expression.*;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -97,7 +98,9 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
     public void visitVariable(Variable variable) {
         VariableElement resolvedVariable = variable.getResolvedVariable();
         CodeTree tree;
-        if (variable.getReceiver() == null) {
+        if (variable.getResolvedType().getKind() == TypeKind.NULL) {
+            tree = CodeTreeBuilder.singleString("null");
+        } else if (variable.getReceiver() == null) {
 
             if (isStatic(resolvedVariable)) {
                 tree = staticReference(resolvedVariable);

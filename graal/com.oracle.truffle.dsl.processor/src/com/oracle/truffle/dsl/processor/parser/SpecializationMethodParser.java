@@ -58,55 +58,59 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     }
 
     private SpecializationData parseSpecialization(TemplateMethod method) {
-        AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
-        List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
-        List<TypeMirror> rewriteOnTypes = new ArrayList<>();
-        for (TypeMirror exceptionType : exceptionTypes) {
-            SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMarkerAnnotation(), rewriteValue, exceptionType);
-            if (!ElementUtils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
-                method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
-                                Specialization.class.getSimpleName(), ElementUtils.getQualifiedName(exceptionType));
+        if (method.getMethod() != null) {
+            AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
+            List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
+            List<TypeMirror> rewriteOnTypes = new ArrayList<>();
+            for (TypeMirror exceptionType : exceptionTypes) {
+                SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMarkerAnnotation(), rewriteValue, exceptionType);
+                if (!ElementUtils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
+                    method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
+                                    Specialization.class.getSimpleName(), ElementUtils.getQualifiedName(exceptionType));
+                }
+                rewriteOnTypes.add(throwsData.getJavaClass());
+                exceptionData.add(throwsData);
             }
-            rewriteOnTypes.add(throwsData.getJavaClass());
-            exceptionData.add(throwsData);
-        }
 
-        for (TypeMirror typeMirror : method.getMethod().getThrownTypes()) {
-            if (!ElementUtils.canThrowType(rewriteOnTypes, typeMirror)) {
-                method.addError(rewriteValue,
-                                "A checked exception '%s' is thrown but is not specified using the rewriteOn property. Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
-                                ElementUtils.getQualifiedName(typeMirror));
-            }
-        }
-
-        Collections.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
-
-            @Override
-            public int compare(SpecializationThrowsData o1, SpecializationThrowsData o2) {
-                return ElementUtils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
-            }
-        });
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData);
-
-        String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
-        if (!insertBeforeName.equals("")) {
-            specialization.setInsertBeforeName(insertBeforeName);
-        }
-
-        List<String> containsDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
-        Set<String> containsNames = specialization.getContainsNames();
-        containsNames.clear();
-        if (containsDefs != null) {
-            for (String include : containsDefs) {
-                if (!containsNames.contains(include)) {
-                    specialization.getContainsNames().add(include);
-                } else {
-                    AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
-                    specialization.addError(value, "Duplicate contains declaration '%s'.", include);
+            for (TypeMirror typeMirror : method.getMethod().getThrownTypes()) {
+                if (!ElementUtils.canThrowType(rewriteOnTypes, typeMirror)) {
+                    method.addError(rewriteValue, "A checked exception '%s' is thrown but is not specified using the rewriteOn property. "
+                                    + "Checked exceptions that are not used for rewriting are not handled by the DSL. Use RuntimeExceptions for this purpose instead.",
+                                    ElementUtils.getQualifiedName(typeMirror));
                 }
             }
 
+            Collections.sort(exceptionData, new Comparator<SpecializationThrowsData>() {
+
+                @Override
+                public int compare(SpecializationThrowsData o1, SpecializationThrowsData o2) {
+                    return ElementUtils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
+                }
+            });
+        }
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData);
+
+        if (method.getMethod() != null) {
+            String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
+            if (!insertBeforeName.equals("")) {
+                specialization.setInsertBeforeName(insertBeforeName);
+            }
+
+            List<String> containsDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
+            Set<String> containsNames = specialization.getContainsNames();
+            containsNames.clear();
+            if (containsDefs != null) {
+                for (String include : containsDefs) {
+                    if (!containsNames.contains(include)) {
+                        specialization.getContainsNames().add(include);
+                    } else {
+                        AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
+                        specialization.addError(value, "Duplicate contains declaration '%s'.", include);
+                    }
+                }
+
+            }
         }
 
         return specialization;

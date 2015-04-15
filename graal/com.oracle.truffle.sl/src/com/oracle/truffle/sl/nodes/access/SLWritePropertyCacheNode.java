@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,276 +23,120 @@
 package com.oracle.truffle.sl.nodes.access;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
 
-/**
- * The node for accessing a property of an object. When executed, this node first evaluates the
- * object expression on the left side of the dot operator and then reads the named property.
- */
 public abstract class SLWritePropertyCacheNode extends Node {
 
-    public static SLWritePropertyCacheNode create(String propertyName) {
-        return new SLUninitializedWritePropertyNode(propertyName);
+    protected final String propertyName;
+
+    public SLWritePropertyCacheNode(String propertyName) {
+        this.propertyName = propertyName;
     }
 
     public abstract void executeObject(DynamicObject receiver, Object value);
 
-    public abstract void executeLong(DynamicObject receiver, long value);
+    @Specialization(guards = "location.isValid(receiver, value)", assumptions = "location.getAssumptions()")
+    public void writeCached(DynamicObject receiver, Object value, //
+                    @Cached("createCachedWrite(receiver, value)") CachedWriteLocation location) {
+        if (location.writeUnchecked(receiver, value)) {
+            // write successful
+        } else {
+            executeObject(receiver, value);
+        }
+    }
 
-    public abstract void executeBoolean(DynamicObject receiver, boolean value);
+    @Specialization(contains = "writeCached")
+    @TruffleBoundary
+    public void writeGeneric(DynamicObject receiver, Object value, //
+                    @Cached("new(createCachedWrite(receiver, value))") LRUCachedWriteLocation lru) {
+        CachedWriteLocation location = lru.location;
+        if (!location.isValid(receiver, value) || !location.areAssumptionsValid()) {
+            location = createCachedWrite(receiver, value);
+            lru.location = location;
+        }
+        if (location.writeUnchecked(receiver, value)) {
+            // write successful
+        } else {
+            executeObject(receiver, value);
+        }
+    }
 
-    protected abstract static class SLWritePropertyCacheChainNode extends SLWritePropertyCacheNode {
-        protected final Shape oldShape;
-        protected final Shape newShape;
-        @Child protected SLWritePropertyCacheNode next;
+    protected CachedWriteLocation createCachedWrite(DynamicObject receiver, Object value) {
+        while (receiver.updateShape()) {
+            // multiple shape updates might be needed.
+        }
 
-        public SLWritePropertyCacheChainNode(Shape oldShape, Shape newShape, SLWritePropertyCacheNode next) {
+        Shape oldShape = receiver.getShape();
+        Shape newShape;
+        Property property = oldShape.getProperty(propertyName);
+
+        if (property != null && property.getLocation().canSet(receiver, value)) {
+            newShape = oldShape;
+        } else {
+            receiver.define(propertyName, value, 0);
+            newShape = receiver.getShape();
+            property = newShape.getProperty(propertyName);
+        }
+
+        if (!oldShape.check(receiver)) {
+            return createCachedWrite(receiver, value);
+        }
+
+        return new CachedWriteLocation(oldShape, newShape, property.getLocation());
+
+    }
+
+    protected static final class CachedWriteLocation {
+
+        private final Shape oldShape;
+        private final Shape newShape;
+        private final Location location;
+        private final Assumption validLocation = Truffle.getRuntime().createAssumption();
+
+        public CachedWriteLocation(Shape oldShape, Shape newShape, Location location) {
             this.oldShape = oldShape;
             this.newShape = newShape;
-            this.next = next;
-        }
-
-        @Override
-        public final void executeObject(DynamicObject receiver, Object value) {
-            try {
-                // if this assumption fails, the object needs to be updated to a valid shape
-                oldShape.getValidAssumption().check();
-                newShape.getValidAssumption().check();
-            } catch (InvalidAssumptionException e) {
-                this.replace(next).executeObject(receiver, value);
-                return;
-            }
-
-            boolean condition = oldShape.check(receiver) && checkValue(receiver, value);
-
-            if (condition) {
-                executeObjectUnchecked(receiver, value);
-            } else {
-                next.executeObject(receiver, value);
-            }
-        }
-
-        @Override
-        public final void executeLong(DynamicObject receiver, long value) {
-            try {
-                // if this assumption fails, the object needs to be updated to a valid shape
-                oldShape.getValidAssumption().check();
-                newShape.getValidAssumption().check();
-            } catch (InvalidAssumptionException e) {
-                this.replace(next).executeLong(receiver, value);
-                return;
-            }
-
-            boolean condition = oldShape.check(receiver) && checkValue(receiver, value);
-
-            if (condition) {
-                executeLongUnchecked(receiver, value);
-            } else {
-                next.executeLong(receiver, value);
-            }
-        }
-
-        @Override
-        public final void executeBoolean(DynamicObject receiver, boolean value) {
-            try {
-                // if this assumption fails, the object needs to be updated to a valid shape
-                oldShape.getValidAssumption().check();
-                newShape.getValidAssumption().check();
-            } catch (InvalidAssumptionException e) {
-                this.replace(next).executeBoolean(receiver, value);
-                return;
-            }
-
-            boolean condition = oldShape.check(receiver) && checkValue(receiver, value);
-
-            if (condition) {
-                executeBooleanUnchecked(receiver, value);
-            } else {
-                next.executeBoolean(receiver, value);
-            }
-        }
-
-        @SuppressWarnings("unused")
-        protected boolean checkValue(DynamicObject receiver, Object value) {
-            return true;
-        }
-
-        protected abstract void executeObjectUnchecked(DynamicObject receiver, Object value);
-
-        protected void executeLongUnchecked(DynamicObject receiver, long value) {
-            executeObjectUnchecked(receiver, value);
-        }
-
-        protected void executeBooleanUnchecked(DynamicObject receiver, boolean value) {
-            executeObjectUnchecked(receiver, value);
-        }
-    }
-
-    protected static class SLWriteObjectPropertyNode extends SLWritePropertyCacheChainNode {
-        private final Location location;
-
-        protected SLWriteObjectPropertyNode(Shape oldShape, Shape newShape, Location location, SLWritePropertyCacheNode next) {
-            super(oldShape, newShape, next);
             this.location = location;
         }
 
-        @Override
-        protected void executeObjectUnchecked(DynamicObject receiver, Object value) {
+        public boolean areAssumptionsValid() {
+            return validLocation.isValid() && oldShape.getValidAssumption().isValid() && newShape.getValidAssumption().isValid();
+        }
+
+        public Assumption[] getAssumptions() {
+            return new Assumption[]{oldShape.getValidAssumption(), newShape.getValidAssumption(), validLocation};
+        }
+
+        public boolean isValid(DynamicObject receiver, Object value) {
+            return oldShape.check(receiver) && location.canSet(receiver, value);
+        }
+
+        public boolean writeUnchecked(DynamicObject receiver, Object value) {
             try {
                 if (oldShape == newShape) {
                     location.set(receiver, value, oldShape);
                 } else {
                     location.set(receiver, value, oldShape, newShape);
                 }
+                return true;
             } catch (IncompatibleLocationException | FinalLocationException e) {
-                replace(next).executeObject(receiver, value);
+                validLocation.invalidate();
+                return false;
             }
-        }
-
-        @Override
-        protected boolean checkValue(DynamicObject receiver, Object value) {
-            return location.canSet(receiver, value);
         }
     }
 
-    protected static class SLWriteBooleanPropertyNode extends SLWritePropertyCacheChainNode {
-        private final BooleanLocation location;
+    protected static final class LRUCachedWriteLocation {
 
-        protected SLWriteBooleanPropertyNode(Shape oldShape, Shape newShape, BooleanLocation location, SLWritePropertyCacheNode next) {
-            super(oldShape, newShape, next);
+        private CachedWriteLocation location;
+
+        public LRUCachedWriteLocation(CachedWriteLocation location) {
             this.location = location;
         }
 
-        @Override
-        protected void executeObjectUnchecked(DynamicObject receiver, Object value) {
-            try {
-                if (oldShape == newShape) {
-                    location.set(receiver, value, oldShape);
-                } else {
-                    location.set(receiver, value, oldShape, newShape);
-                }
-            } catch (IncompatibleLocationException | FinalLocationException e) {
-                replace(next).executeObject(receiver, value);
-            }
-        }
-
-        @Override
-        protected void executeBooleanUnchecked(DynamicObject receiver, boolean value) {
-            try {
-                if (oldShape == newShape) {
-                    location.setBoolean(receiver, value, oldShape);
-                } else {
-                    location.setBoolean(receiver, value, oldShape, newShape);
-                }
-            } catch (FinalLocationException e) {
-                replace(next).executeBoolean(receiver, value);
-            }
-        }
-
-        @Override
-        protected boolean checkValue(DynamicObject receiver, Object value) {
-            return value instanceof Boolean;
-        }
     }
 
-    protected static class SLWriteLongPropertyNode extends SLWritePropertyCacheChainNode {
-        private final LongLocation location;
-
-        protected SLWriteLongPropertyNode(Shape oldShape, Shape newShape, LongLocation location, SLWritePropertyCacheNode next) {
-            super(oldShape, newShape, next);
-            this.location = location;
-        }
-
-        @Override
-        protected void executeObjectUnchecked(DynamicObject receiver, Object value) {
-            try {
-                if (oldShape == newShape) {
-                    location.set(receiver, value, oldShape);
-                } else {
-                    location.set(receiver, value, oldShape, newShape);
-                }
-            } catch (IncompatibleLocationException | FinalLocationException e) {
-                replace(next).executeObject(receiver, value);
-            }
-        }
-
-        @Override
-        protected void executeLongUnchecked(DynamicObject receiver, long value) {
-            try {
-                if (oldShape == newShape) {
-                    location.setLong(receiver, value, oldShape);
-                } else {
-                    location.setLong(receiver, value, oldShape, newShape);
-                }
-            } catch (FinalLocationException e) {
-                replace(next).executeLong(receiver, value);
-            }
-        }
-
-        @Override
-        protected boolean checkValue(DynamicObject receiver, Object value) {
-            return value instanceof Long;
-        }
-    }
-
-    protected static class SLUninitializedWritePropertyNode extends SLWritePropertyCacheNode {
-        protected final String propertyName;
-
-        protected SLUninitializedWritePropertyNode(String propertyName) {
-            this.propertyName = propertyName;
-        }
-
-        @Override
-        public void executeObject(DynamicObject receiver, Object value) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            if (receiver.updateShape()) {
-                // shape changed, retry cache again
-                getTopNode().executeObject(receiver, value);
-                return;
-            }
-
-            Shape oldShape = receiver.getShape();
-            Shape newShape;
-            Property property = oldShape.getProperty(propertyName);
-
-            final SLWritePropertyCacheNode resolvedNode;
-            if (property != null && property.getLocation().canSet(receiver, value)) {
-                newShape = oldShape;
-            } else {
-                receiver.define(propertyName, value, 0);
-                newShape = receiver.getShape();
-                property = newShape.getProperty(propertyName);
-            }
-
-            if (property.getLocation() instanceof LongLocation) {
-                resolvedNode = new SLWriteLongPropertyNode(oldShape, newShape, (LongLocation) property.getLocation(), this);
-            } else if (property.getLocation() instanceof BooleanLocation) {
-                resolvedNode = new SLWriteBooleanPropertyNode(oldShape, newShape, (BooleanLocation) property.getLocation(), this);
-            } else {
-                resolvedNode = new SLWriteObjectPropertyNode(oldShape, newShape, property.getLocation(), this);
-            }
-
-            this.replace(resolvedNode, "resolved '" + propertyName + "'").executeObject(receiver, value);
-        }
-
-        private SLWritePropertyCacheNode getTopNode() {
-            SLWritePropertyCacheNode top = this;
-            while (top.getParent() instanceof SLWritePropertyCacheNode) {
-                top = (SLWritePropertyCacheNode) top.getParent();
-            }
-            return top;
-        }
-
-        @Override
-        public void executeLong(DynamicObject receiver, long value) {
-            executeObject(receiver, value);
-        }
-
-        @Override
-        public void executeBoolean(DynamicObject receiver, boolean value) {
-            executeObject(receiver, value);
-        }
-    }
 }

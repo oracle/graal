@@ -197,27 +197,32 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     public void visitVariable(Variable variable) {
         List<VariableElement> lookupVariables;
         DSLExpression receiver = variable.getReceiver();
-        if (receiver == null) {
-            lookupVariables = this.variables;
+        if (variable.getName().equals("null")) {
+            variable.setResolvedVariable(new CodeVariableElement(new CodeTypeMirror(TypeKind.NULL), "null"));
         } else {
-            TypeMirror type = receiver.getResolvedType();
-            if (type.getKind() == TypeKind.DECLARED) {
-                type = context.reloadType(type); // ensure ECJ has the type loaded
-                lookupVariables = new ArrayList<>();
-                variablesIn(lookupVariables, context.getEnvironment().getElementUtils().getAllMembers((TypeElement) ((DeclaredType) type).asElement()), true);
-            } else if (type.getKind() == TypeKind.ARRAY) {
-                lookupVariables = Arrays.<VariableElement> asList(new CodeVariableElement(context.getType(int.class), "length"));
+            if (receiver == null) {
+                lookupVariables = this.variables;
             } else {
-                lookupVariables = Collections.emptyList();
+                TypeMirror type = receiver.getResolvedType();
+                if (type.getKind() == TypeKind.DECLARED) {
+                    type = context.reloadType(type); // ensure ECJ has the type loaded
+                    lookupVariables = new ArrayList<>();
+                    variablesIn(lookupVariables, context.getEnvironment().getElementUtils().getAllMembers((TypeElement) ((DeclaredType) type).asElement()), true);
+                } else if (type.getKind() == TypeKind.ARRAY) {
+                    lookupVariables = Arrays.<VariableElement> asList(new CodeVariableElement(context.getType(int.class), "length"));
+                } else {
+                    lookupVariables = Collections.emptyList();
+                }
+            }
+
+            for (VariableElement variableElement : lookupVariables) {
+                if (variableElement.getSimpleName().toString().equals(variable.getName())) {
+                    variable.setResolvedVariable(variableElement);
+                    break;
+                }
             }
         }
 
-        for (VariableElement variableElement : lookupVariables) {
-            if (variableElement.getSimpleName().toString().equals(variable.getName())) {
-                variable.setResolvedVariable(variableElement);
-                break;
-            }
-        }
         if (variable.getResolvedVariable() == null) {
             throw new InvalidExpressionException(String.format("%s cannot be resolved.", variable.getName()));
         }

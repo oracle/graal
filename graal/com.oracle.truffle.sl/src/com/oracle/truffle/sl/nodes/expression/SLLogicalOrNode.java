@@ -39,6 +39,9 @@ public abstract class SLLogicalOrNode extends SLBinaryNode {
         super(src);
     }
 
+    @Override
+    public abstract boolean executeBoolean(VirtualFrame frame);
+
     @ShortCircuit("rightNode")
     protected boolean needsRightNode(boolean left) {
         return !left;

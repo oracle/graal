@@ -26,7 +26,6 @@ import org.junit.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.api.dsl.test.ArrayTestFactory.TestNode1NodeGen;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -97,7 +96,6 @@ public class ArrayTest {
     }
 
     @TypeSystem({int.class, int[].class, double[].class, String[].class, Object[].class})
-    @DSLOptions(useNewLayout = true)
     public static class ArrayTypeSystem {
 
         @ImplicitCast

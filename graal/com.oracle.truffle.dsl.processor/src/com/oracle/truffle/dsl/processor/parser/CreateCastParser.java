@@ -59,7 +59,7 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
             baseType = foundChild.getOriginalType();
         }
 
-        MethodSpec spec = new MethodSpec(new InheritsParameterSpec("child", baseType));
+        MethodSpec spec = new MethodSpec(new ParameterSpec("child", baseType));
         addDefaultFieldMethodSpec(spec);
         ParameterSpec childSpec = new ParameterSpec("castedChild", baseType);
         childSpec.setSignature(true);
@@ -96,22 +96,4 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
         return cast;
     }
 
-    private static class InheritsParameterSpec extends ParameterSpec {
-
-        public InheritsParameterSpec(String name, TypeMirror... allowedTypes) {
-            super(name, Arrays.asList(allowedTypes), null);
-        }
-
-        @Override
-        public boolean matches(VariableElement variable) {
-            boolean found = false;
-            for (TypeMirror specType : getAllowedTypes()) {
-                if (ElementUtils.isAssignable(variable.asType(), specType)) {
-                    found = true;
-                    break;
-                }
-            }
-            return found;
-        }
-    }
 }

@@ -316,6 +316,13 @@ public class CodeTreeBuilder {
         }
     }
 
+    public CodeTreeBuilder trees(CodeTree... trees) {
+        for (CodeTree tree : trees) {
+            tree(tree);
+        }
+        return this;
+    }
+
     public CodeTreeBuilder string(String chunk1, String chunk2, String chunk3, String chunk4, String... chunks) {
         push(GROUP).string(chunk1).string(chunk2).string(chunk3).string(chunk4);
         for (int i = 0; i < chunks.length; i++) {
@@ -859,6 +866,17 @@ public class CodeTreeBuilder {
                 b.append("    ");
             }
         }
+    }
+
+    public CodeTreeBuilder returnDefault() {
+        ExecutableElement method = findMethod();
+        if (ElementUtils.isVoid(method.getReturnType())) {
+            returnStatement();
+        } else {
+            startReturn().defaultValue(method.getReturnType()).end();
+        }
+        return this;
+
     }
 
 }

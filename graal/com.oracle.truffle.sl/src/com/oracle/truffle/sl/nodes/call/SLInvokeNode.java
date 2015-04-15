@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,24 +35,24 @@ import com.oracle.truffle.sl.runtime.*;
  * {@link SLFunction target function} can be computed by an {@link #functionNode arbitrary
  * expression}. This node is responsible for evaluating this expression, as well as evaluating the
  * {@link #argumentNodes arguments}. The actual dispatch is then delegated to a chain of
- * {@link SLAbstractDispatchNode}s that form a polymorphic inline cache.
+ * {@link SLDispatchNode} that form a polymorphic inline cache.
  */
 @NodeInfo(shortName = "invoke")
 public final class SLInvokeNode extends SLExpressionNode {
 
     public static SLInvokeNode create(SourceSection src, SLExpressionNode function, SLExpressionNode[] arguments) {
-        return new SLInvokeNode(src, function, arguments, new SLUninitializedDispatchNode());
+        return new SLInvokeNode(src, function, arguments);
     }
 
-    @Child protected SLExpressionNode functionNode;
-    @Children protected final SLExpressionNode[] argumentNodes;
-    @Child protected SLAbstractDispatchNode dispatchNode;
+    @Child private SLExpressionNode functionNode;
+    @Children private final SLExpressionNode[] argumentNodes;
+    @Child private SLDispatchNode dispatchNode;
 
-    private SLInvokeNode(SourceSection src, SLExpressionNode functionNode, SLExpressionNode[] argumentNodes, SLAbstractDispatchNode dispatchNode) {
+    private SLInvokeNode(SourceSection src, SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
         super(src);
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
-        this.dispatchNode = dispatchNode;
+        this.dispatchNode = SLDispatchNodeGen.create();
     }
 
     @Override

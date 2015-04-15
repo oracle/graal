@@ -41,12 +41,7 @@ public final class SLStringLiteralNode extends SLExpressionNode {
     }
 
     @Override
-    public String executeString(VirtualFrame frame) {
-        return value;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public String executeGeneric(VirtualFrame frame) {
         return value;
     }
 }

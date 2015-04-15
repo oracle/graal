@@ -152,7 +152,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             }
             prev = child.getNodeType();
         }
-        TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(context, nodeTypesList.toArray(new TypeMirror[nodeTypesList.size()]));
+        TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(context, nodeTypesList);
 
         Types types = context.getEnvironment().getTypeUtils();
         TypeMirror factoryType = context.getType(NodeFactory.class);

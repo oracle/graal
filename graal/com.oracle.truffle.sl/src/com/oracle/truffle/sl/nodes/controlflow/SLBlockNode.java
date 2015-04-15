@@ -55,8 +55,7 @@ public final class SLBlockNode extends SLStatementNode {
     @ExplodeLoop
     public void executeVoid(VirtualFrame frame) {
         /*
-         * This assertion illustrates that the arryay length is really a constant during
-         * compilation.
+         * This assertion illustrates that the array length is really a constant during compilation.
          */
         CompilerAsserts.compilationConstant(bodyNodes.length);
 

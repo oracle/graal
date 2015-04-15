@@ -25,7 +25,6 @@ package com.oracle.truffle.dsl.processor.parser;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
-import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.*;
@@ -41,18 +40,13 @@ abstract class TypeSystemMethodParser<E extends TemplateMethod> extends Template
         return ElementUtils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
     }
 
-    protected final TypeData resolveCastOrCheck(TemplateMethod method) {
+    protected final TypeMirror resolveCastOrCheck(TemplateMethod method) {
         Class<?> annotationType = getAnnotationType();
         TypeMirror targetTypeMirror = ElementUtils.getAnnotationValue(TypeMirror.class, method.getMessageAnnotation(), "value");
-        TypeData targetType = getTypeSystem().findTypeData(targetTypeMirror);
-        if (targetType == null) {
-            method.addError("The type '%s' is not declared in the @%s.", ElementUtils.getSimpleName(targetTypeMirror), TypeSystem.class.getSimpleName());
-            return null;
-        }
         if (!method.getMethod().getModifiers().contains(Modifier.PUBLIC) || !method.getMethod().getModifiers().contains(Modifier.STATIC)) {
             method.addError("@%s annotated method %s must be public and static.", annotationType.getSimpleName(), method.getMethodName());
         }
-        return targetType;
+        return targetTypeMirror;
     }
 
 }

@@ -103,8 +103,8 @@ public class MethodSpec {
 
         int defIndex = 0;
         for (ParameterSpec spec : getAll()) {
-            List<TypeMirror> allowedTypes = spec.getAllowedTypes();
-            List<TypeMirror> types = spec.getAllowedTypes();
+            Collection<TypeMirror> allowedTypes = spec.getAllowedTypes();
+            Collection<TypeMirror> types = spec.getAllowedTypes();
             if (types != null && allowedTypes.size() > 1) {
                 TypeDef foundDef = null;
                 for (TypeDef def : typeDefs) {
@@ -189,7 +189,7 @@ public class MethodSpec {
         if (foundTypeDef != null) {
             builder.append("<" + foundTypeDef.getName() + ">");
         } else if (spec.getAllowedTypes().size() >= 1) {
-            builder.append(ElementUtils.getSimpleName(spec.getAllowedTypes().get(0)));
+            builder.append(ElementUtils.getSimpleName(spec.getAllowedTypes().iterator().next()));
         } else {
             builder.append("void");
         }
@@ -207,15 +207,15 @@ public class MethodSpec {
 
     static final class TypeDef {
 
-        private final List<TypeMirror> types;
+        private final Collection<TypeMirror> types;
         private final String name;
 
-        private TypeDef(List<TypeMirror> types, String name) {
+        private TypeDef(Collection<TypeMirror> types, String name) {
             this.types = types;
             this.name = name;
         }
 
-        public List<TypeMirror> getTypes() {
+        public Collection<TypeMirror> getTypes() {
             return types;
         }
 

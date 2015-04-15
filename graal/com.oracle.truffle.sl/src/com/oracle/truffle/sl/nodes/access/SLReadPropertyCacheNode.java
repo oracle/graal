@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,170 +22,90 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
-/**
- * The node for accessing a property of an object. When executed, this node first evaluates the
- * object expression on the left side of the dot operator and then reads the named property.
- */
 public abstract class SLReadPropertyCacheNode extends Node {
 
+    protected static final int CACHE_LIMIT = 3;
+
+    protected final String propertyName;
+
+    public SLReadPropertyCacheNode(String propertyName) {
+        this.propertyName = propertyName;
+    }
+
     public static SLReadPropertyCacheNode create(String propertyName) {
-        return new SLUninitializedReadObjectPropertyNode(propertyName);
+        return SLReadPropertyCacheNodeGen.create(propertyName);
     }
 
     public abstract Object executeObject(DynamicObject receiver);
 
     public abstract long executeLong(DynamicObject receiver) throws UnexpectedResultException;
 
-    protected abstract static class SLReadPropertyCacheChainNode extends SLReadPropertyCacheNode {
-        protected final Shape shape;
-        @Child protected SLReadPropertyCacheNode next;
+    /*
+     * We use a separate long specialization to avoid boxing for long.
+     */
+    @Specialization(limit = "CACHE_LIMIT", guards = {"longLocation != null", "shape.check(receiver)"}, assumptions = "shape.getValidAssumption()")
+    @SuppressWarnings("unused")
+    protected long doCachedLong(DynamicObject receiver, //
+                    @Cached("receiver.getShape()") Shape shape, //
+                    @Cached("getLongLocation(shape)") LongLocation longLocation) {
+        return longLocation.getLong(receiver, true);
+    }
 
-        public SLReadPropertyCacheChainNode(Shape shape, SLReadPropertyCacheNode next) {
-            this.shape = shape;
-            this.next = next;
+    protected LongLocation getLongLocation(Shape shape) {
+        Property property = shape.getProperty(propertyName);
+        if (property != null && property.getLocation() instanceof LongLocation) {
+            return (LongLocation) property.getLocation();
         }
+        return null;
+    }
 
-        @Override
-        public final Object executeObject(DynamicObject receiver) {
-            try {
-                // if this assumption fails, the object needs to be updated to a valid shape
-                shape.getValidAssumption().check();
-            } catch (InvalidAssumptionException e) {
-                return this.replace(next).executeObject(receiver);
-            }
-
-            boolean condition = shape.check(receiver);
-
-            if (condition) {
-                return executeObjectUnchecked(receiver, condition);
-            } else {
-                return next.executeObject(receiver);
-            }
-        }
-
-        @Override
-        public final long executeLong(DynamicObject receiver) throws UnexpectedResultException {
-            try {
-                // if this assumption fails, the object needs to be updated to a valid shape
-                shape.getValidAssumption().check();
-            } catch (InvalidAssumptionException e) {
-                return this.replace(next).executeLong(receiver);
-            }
-
-            boolean condition = shape.check(receiver);
-
-            if (condition) {
-                return executeLongUnchecked(receiver, condition);
-            } else {
-                return next.executeLong(receiver);
-            }
-        }
-
-        protected abstract Object executeObjectUnchecked(DynamicObject receiver, boolean condition);
-
-        protected long executeLongUnchecked(DynamicObject receiver, boolean condition) throws UnexpectedResultException {
-            return SLTypesGen.expectLong(executeObjectUnchecked(receiver, condition));
+    /*
+     * As soon as we have seen an object read, we cannot avoid boxing long anymore therefore we can
+     * contain all long cache entries.
+     */
+    @Specialization(limit = "CACHE_LIMIT", contains = "doCachedLong", guards = "shape.check(receiver)", assumptions = "shape.getValidAssumption()")
+    protected static Object doCachedObject(DynamicObject receiver, //
+                    @Cached("receiver.getShape()") Shape shape, //
+                    @Cached("shape.getProperty(propertyName)") Property property) {
+        if (property == null) {
+            return SLNull.SINGLETON;
+        } else {
+            return property.get(receiver, shape);
         }
     }
 
-    protected static class SLReadObjectPropertyNode extends SLReadPropertyCacheChainNode {
-        private final Location location;
-
-        protected SLReadObjectPropertyNode(Shape shape, Location location, SLReadPropertyCacheNode next) {
-            super(shape, next);
-            this.location = location;
+    /*
+     * The generic case is used if the number of shapes accessed overflows the limit.
+     */
+    @Specialization(contains = "doCachedObject")
+    @TruffleBoundary
+    protected Object doGeneric(DynamicObject receiver, @Cached("new()") LRUPropertyLookup lruCache) {
+        if (!lruCache.shape.check(receiver)) {
+            Shape receiverShape = receiver.getShape();
+            lruCache.shape = receiverShape;
+            lruCache.property = receiverShape.getProperty(propertyName);
         }
-
-        @Override
-        protected Object executeObjectUnchecked(DynamicObject receiver, boolean condition) {
-            return location.get(receiver, condition);
-        }
-    }
-
-    protected static class SLReadBooleanPropertyNode extends SLReadPropertyCacheChainNode {
-        private final BooleanLocation location;
-
-        protected SLReadBooleanPropertyNode(Shape shape, BooleanLocation location, SLReadPropertyCacheNode next) {
-            super(shape, next);
-            this.location = location;
-        }
-
-        @Override
-        protected Object executeObjectUnchecked(DynamicObject receiver, boolean condition) {
-            return location.getBoolean(receiver, condition);
-        }
-    }
-
-    protected static class SLReadLongPropertyNode extends SLReadPropertyCacheChainNode {
-        private final LongLocation location;
-
-        protected SLReadLongPropertyNode(Shape shape, LongLocation location, SLReadPropertyCacheNode next) {
-            super(shape, next);
-            this.location = location;
-        }
-
-        @Override
-        protected Object executeObjectUnchecked(DynamicObject receiver, boolean condition) {
-            return location.getLong(receiver, condition);
-        }
-
-        @Override
-        protected long executeLongUnchecked(DynamicObject receiver, boolean condition) throws UnexpectedResultException {
-            return location.getLong(receiver, condition);
-        }
-    }
-
-    protected static class SLReadMissingPropertyNode extends SLReadPropertyCacheChainNode {
-        protected SLReadMissingPropertyNode(Shape shape, SLReadPropertyCacheNode next) {
-            super(shape, next);
-        }
-
-        @Override
-        protected Object executeObjectUnchecked(DynamicObject receiver, boolean condition) {
-            // The property was not found in the object, return null
+        if (lruCache.property != null) {
+            return lruCache.property.get(receiver, true);
+        } else {
             return SLNull.SINGLETON;
         }
     }
 
-    protected static class SLUninitializedReadObjectPropertyNode extends SLReadPropertyCacheNode {
-        protected final String propertyName;
+    protected static class LRUPropertyLookup {
 
-        protected SLUninitializedReadObjectPropertyNode(String propertyName) {
-            this.propertyName = propertyName;
+        private Shape shape;
+        private Property property;
+
+        public LRUPropertyLookup() {
         }
 
-        @Override
-        public Object executeObject(DynamicObject receiver) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            receiver.updateShape();
-
-            Shape shape = receiver.getShape();
-            Property property = shape.getProperty(propertyName);
-
-            final SLReadPropertyCacheNode resolvedNode;
-            if (property == null) {
-                resolvedNode = new SLReadMissingPropertyNode(shape, this);
-            } else if (property.getLocation() instanceof LongLocation) {
-                resolvedNode = new SLReadLongPropertyNode(shape, (LongLocation) property.getLocation(), this);
-            } else if (property.getLocation() instanceof BooleanLocation) {
-                resolvedNode = new SLReadBooleanPropertyNode(shape, (BooleanLocation) property.getLocation(), this);
-            } else {
-                resolvedNode = new SLReadObjectPropertyNode(shape, property.getLocation(), this);
-            }
-
-            return this.replace(resolvedNode, "resolved '" + propertyName + "'").executeObject(receiver);
-        }
-
-        @Override
-        public long executeLong(DynamicObject receiver) throws UnexpectedResultException {
-            return SLTypesGen.expectLong(executeObject(receiver));
-        }
     }
+
 }

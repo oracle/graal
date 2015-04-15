@@ -73,6 +73,18 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return findParameter(FRAME_NAME);
     }
 
+    public void removeParameter(Parameter p) {
+        this.parameters.remove(p);
+        this.parameterCache.remove(p.getLocalName());
+        p.setMethod(this);
+    }
+
+    public void addParameter(int index, Parameter p) {
+        this.parameters.add(index, p);
+        this.parameterCache.put(p.getLocalName(), p);
+        p.setMethod(this);
+    }
+
     public String createReferenceName() {
         if (getMethod() == null) {
             return "-";
@@ -132,12 +144,13 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     public void replaceParameter(String localName, Parameter newParameter) {
         if (returnType.getLocalName().equals(localName)) {
             returnType = newParameter;
-            returnType.setMethod(this);
         } else {
             Parameter local = findParameter(localName);
             int index = parameters.indexOf(local);
             parameters.set(index, newParameter);
         }
+        parameterCache.put(newParameter.getLocalName(), newParameter);
+        newParameter.setMethod(this);
     }
 
     public Iterable<Parameter> getSignatureParameters() {
@@ -228,9 +241,9 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
 
     public TypeSignature getTypeSignature() {
         TypeSignature signature = new TypeSignature();
-        signature.types.add(getReturnType().getTypeSystemType());
+        signature.types.add(getReturnType().getType());
         for (Parameter parameter : getSignatureParameters()) {
-            TypeData typeData = parameter.getTypeSystemType();
+            TypeMirror typeData = parameter.getType();
             if (typeData != null) {
                 signature.types.add(typeData);
             }
@@ -250,8 +263,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             if (signatureIndex >= signature.size()) {
                 break;
             }
-            TypeData newType = signature.get(signatureIndex++);
-            if (!parameter.getTypeSystemType().equals(newType)) {
+            TypeMirror newType = signature.get(signatureIndex++);
+            if (!ElementUtils.typeEquals(newType, parameter.getType())) {
                 replaceParameter(parameter.getLocalName(), new Parameter(parameter, newType));
             }
         }
@@ -278,11 +291,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     }
 
     public int compareBySignature(TemplateMethod compareMethod) {
-        final TypeSystemData typeSystem = getTemplate().getTypeSystem();
-        if (typeSystem != compareMethod.getTemplate().getTypeSystem()) {
-            throw new IllegalStateException("Cannot compare two methods with different type systems.");
-        }
-
         List<TypeMirror> signature1 = getSignatureTypes(this);
         List<TypeMirror> signature2 = getSignatureTypes(compareMethod);
 
@@ -290,44 +298,13 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         for (int i = 0; i < Math.max(signature1.size(), signature2.size()); i++) {
             TypeMirror t1 = i < signature1.size() ? signature1.get(i) : null;
             TypeMirror t2 = i < signature2.size() ? signature2.get(i) : null;
-            result = compareParameter(typeSystem, t1, t2);
+            result = ElementUtils.compareType(t1, t2);
             if (result != 0) {
                 break;
             }
         }
 
         return result;
-    }
-
-    protected static int compareParameter(TypeSystemData data, TypeMirror signature1, TypeMirror signature2) {
-        if (signature1 == null) {
-            return 1;
-        } else if (signature2 == null) {
-            return -1;
-        }
-
-        if (ElementUtils.typeEquals(signature1, signature2)) {
-            return 0;
-        }
-
-        int index1 = data.findType(signature1);
-        int index2 = data.findType(signature2);
-        if (index1 != -1 && index2 != -1) {
-            return index1 - index2;
-        }
-
-        // TODO this version if subclass of should be improved.
-        if (signature1.getKind() == TypeKind.DECLARED && signature2.getKind() == TypeKind.DECLARED) {
-            TypeElement element1 = ElementUtils.fromTypeMirror(signature1);
-            TypeElement element2 = ElementUtils.fromTypeMirror(signature2);
-
-            if (ElementUtils.getDirectSuperTypes(element1).contains(element2)) {
-                return -1;
-            } else if (ElementUtils.getDirectSuperTypes(element2).contains(element1)) {
-                return 1;
-            }
-        }
-        return ElementUtils.getSimpleName(signature1).compareTo(ElementUtils.getSimpleName(signature2));
     }
 
     public static List<TypeMirror> getSignatureTypes(TemplateMethod method) {
@@ -338,15 +315,15 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return types;
     }
 
-    public static class TypeSignature implements Iterable<TypeData>, Comparable<TypeSignature> {
+    public static class TypeSignature implements Iterable<TypeMirror> {
 
-        private final List<TypeData> types;
+        private final List<TypeMirror> types;
 
         public TypeSignature() {
             this.types = new ArrayList<>();
         }
 
-        public TypeSignature(List<TypeData> signature) {
+        public TypeSignature(List<TypeMirror> signature) {
             this.types = signature;
         }
 
@@ -359,30 +336,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return types.size();
         }
 
-        public TypeData get(int index) {
+        public TypeMirror get(int index) {
             return types.get(index);
-        }
-
-        public int compareTo(TypeSignature other) {
-            if (this == other) {
-                return 0;
-            } else if (types.size() != other.types.size()) {
-                return types.size() - other.types.size();
-            } else if (types.isEmpty()) {
-                return 0;
-            }
-
-            for (int i = 0; i < types.size(); i++) {
-                TypeData type1 = types.get(i);
-                TypeData type2 = other.types.get(i);
-
-                int comparison = type1.compareTo(type2);
-                if (comparison != 0) {
-                    return comparison;
-                }
-            }
-
-            return 0;
         }
 
         @Override
@@ -393,7 +348,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return super.equals(obj);
         }
 
-        public Iterator<TypeData> iterator() {
+        public Iterator<TypeMirror> iterator() {
             return types.iterator();
         }
 

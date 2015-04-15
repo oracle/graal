@@ -58,6 +58,14 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         }
     }
 
+    public void setVisibility(Modifier visibility) {
+        ElementUtils.setVisibility(getModifiers(), visibility);
+    }
+
+    public Modifier getVisibility() {
+        return ElementUtils.getVisibility(getModifiers());
+    }
+
     /* Support JDK8 langtools. */
     public boolean isDefault() {
         return false;

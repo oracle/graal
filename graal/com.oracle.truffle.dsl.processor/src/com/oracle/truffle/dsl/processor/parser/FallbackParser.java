@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +23,17 @@
 package com.oracle.truffle.dsl.processor.parser;
 
 import java.lang.annotation.*;
-import java.util.*;
 
 import javax.lang.model.element.*;
-import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.*;
 import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationKind;
 
-public class GenericParser extends NodeMethodParser<SpecializationData> {
+public class FallbackParser extends NodeMethodParser<SpecializationData> {
 
-    public GenericParser(ProcessorContext context, NodeData node) {
+    public FallbackParser(ProcessorContext context, NodeData node) {
         super(context, node);
     }
 
@@ -47,17 +44,9 @@ public class GenericParser extends NodeMethodParser<SpecializationData> {
 
     @Override
     protected ParameterSpec createValueParameterSpec(NodeExecutionData execution) {
-        List<ExecutableTypeData> execTypes = execution.getChild().findGenericExecutableTypes(getContext());
-        List<TypeMirror> types = new ArrayList<>();
-        Set<String> typeIds = new HashSet<>();
-        for (ExecutableTypeData type : execTypes) {
-            TypeMirror typeMirror = type.getType().getPrimitiveType();
-            types.add(typeMirror);
-            typeIds.add(ElementUtils.getUniqueIdentifier(typeMirror));
-        }
-        ParameterSpec spec = new ParameterSpec(execution.getName(), types, typeIds);
-        spec.setExecution(execution);
-        return spec;
+        ParameterSpec parameterSpec = super.createValueParameterSpec(execution);
+        parameterSpec.setAllowSubclasses(false);
+        return parameterSpec;
     }
 
     @Override

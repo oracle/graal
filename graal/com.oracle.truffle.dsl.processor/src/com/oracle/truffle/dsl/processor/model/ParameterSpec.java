@@ -27,51 +27,53 @@ import java.util.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.model.MethodSpec.TypeDef;
 
 public class ParameterSpec {
 
     private final String name;
-    private final List<TypeMirror> allowedTypes;
-    private final Set<String> allowedTypesIdentifier;
+    private final Collection<TypeMirror> allowedTypes;
+    private final boolean anyType;
 
     /** Type is bound to local final variable. */
     private boolean local;
     private boolean signature;
+    private boolean allowSubclasses = true;
 
     /** Optional bound execution of node. */
     private NodeExecutionData execution;
     private TypeDef typeDefinition;
 
-    public ParameterSpec(String name, List<TypeMirror> allowedTypes, Set<String> typeIdentifiers) {
+    public ParameterSpec(String name, Collection<TypeMirror> allowedTypes) {
         this.name = name;
         this.allowedTypes = allowedTypes;
-        this.allowedTypesIdentifier = typeIdentifiers;
+        boolean anyTypeTemp = false;
+        for (TypeMirror type : allowedTypes) {
+            if (ElementUtils.isObject(type)) {
+                anyTypeTemp = true;
+                break;
+            }
+        }
+        this.anyType = anyTypeTemp;
     }
 
-    public ParameterSpec(String name, List<TypeMirror> allowedTypes) {
-        this.name = name;
-        this.allowedTypes = allowedTypes;
-        Set<String> typeIdentifiers = new HashSet<>();
-        for (TypeMirror type : allowedTypes) {
-            typeIdentifiers.add(ElementUtils.getUniqueIdentifier(type));
-        }
-        this.allowedTypesIdentifier = typeIdentifiers;
+    public ParameterSpec(ParameterSpec original, TypeMirror newType) {
+        this(original.name, newType);
+        this.local = original.local;
+        this.signature = original.signature;
+        this.execution = original.execution;
+        this.typeDefinition = original.typeDefinition;
+        this.allowSubclasses = original.allowSubclasses;
     }
 
     public ParameterSpec(String name, TypeMirror type) {
-        this(name, Arrays.asList(type), new HashSet<>(Arrays.asList(ElementUtils.getUniqueIdentifier(type))));
+        this(name, Arrays.asList(type));
     }
 
-    public ParameterSpec(ParameterSpec o, List<TypeMirror> allowedTypes, Set<String> typeIdentifiers) {
-        this.name = o.name;
-        this.local = o.local;
-        this.typeDefinition = o.typeDefinition;
-        this.execution = o.execution;
-        this.signature = o.signature;
-        this.allowedTypes = allowedTypes;
-        this.allowedTypesIdentifier = typeIdentifiers;
+    public void setAllowSubclasses(boolean allowSubclasses) {
+        this.allowSubclasses = allowSubclasses;
     }
 
     public NodeExecutionData getExecution() {
@@ -111,15 +113,28 @@ public class ParameterSpec {
         return name;
     }
 
-    public List<TypeMirror> getAllowedTypes() {
+    public Collection<TypeMirror> getAllowedTypes() {
         return allowedTypes;
     }
 
     public boolean matches(VariableElement variable) {
-        if (allowedTypesIdentifier != null) {
-            return allowedTypesIdentifier.contains(ElementUtils.getUniqueIdentifier(variable.asType()));
+        if (anyType) {
+            return true;
+        } else {
+            for (TypeMirror type : allowedTypes) {
+                if (ElementUtils.typeEquals(variable.asType(), type)) {
+                    return true;
+                }
+            }
+            if (allowSubclasses) {
+                for (TypeMirror type : allowedTypes) {
+                    if (ElementUtils.isSubtypeBoxed(ProcessorContext.getInstance(), variable.asType(), type)) {
+                        return true;
+                    }
+                }
+            }
         }
-        return true;
+        return false;
     }
 
     @Override
@@ -132,7 +147,7 @@ public class ParameterSpec {
         if (typeDefinition != null) {
             builder.append("<" + typeDefinition.getName() + ">");
         } else if (getAllowedTypes().size() >= 1) {
-            builder.append(ElementUtils.getSimpleName(getAllowedTypes().get(0)));
+            builder.append(ElementUtils.getSimpleName(getAllowedTypes().iterator().next()));
         } else {
             builder.append("void");
         }

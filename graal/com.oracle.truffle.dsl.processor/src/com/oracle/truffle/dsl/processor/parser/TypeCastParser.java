@@ -41,15 +41,17 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         TypeMirror targetTypeMirror = ElementUtils.getAnnotationValue(TypeMirror.class, mirror, "value");
-        MethodSpec spec = new MethodSpec(new ParameterSpec("returnType", targetTypeMirror));
-        spec.addRequired(new ParameterSpec("value", getTypeSystem().getGenericType()));
+        ParameterSpec returnTypeSpec = new ParameterSpec("returnType", targetTypeMirror);
+        returnTypeSpec.setAllowSubclasses(false);
+        MethodSpec spec = new MethodSpec(returnTypeSpec);
+        spec.addRequired(new ParameterSpec("value", getContext().getType(Object.class)));
         return spec;
     }
 
     @Override
     public TypeCastData create(TemplateMethod method, boolean invalid) {
-        TypeData targetType = resolveCastOrCheck(method);
-        TypeData sourceType = getTypeSystem().getGenericTypeData();
+        TypeMirror targetType = resolveCastOrCheck(method);
+        TypeMirror sourceType = getContext().getType(Object.class);
         return new TypeCastData(method, sourceType, targetType);
     }
 

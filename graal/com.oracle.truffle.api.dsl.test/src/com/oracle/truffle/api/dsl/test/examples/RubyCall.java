@@ -96,12 +96,12 @@ public class RubyCall {
 
     public static class RubyHeadNode extends ExampleNode {
 
-        @Child private RubyLookupNode lookup = RubyLookupNodeGen.create(null);
-        @Child private RubyDispatchNode dispatch = RubyDispatchNodeGen.create(null);
+        @Child private RubyLookupNode lookup = RubyLookupNodeGen.create();
+        @Child private RubyDispatchNode dispatch = RubyDispatchNodeGen.create();
 
         @Specialization
-        public Object doCall(VirtualFrame frame, Object receiverObject, Object methodName, Object blockObject, Object... argumentsObjects) {
-            InternalMethod method = lookup.executeLookup(frame, receiverObject, methodName);
+        public Object doCall(VirtualFrame frame, RubyObject receiverObject, Object methodName, Object blockObject, Object... argumentsObjects) {
+            InternalMethod method = lookup.executeLookup(receiverObject, methodName);
 
             Object[] packedArguments = new Object[argumentsObjects.length + 3];
             packedArguments[0] = method;
@@ -113,9 +113,9 @@ public class RubyCall {
         }
     }
 
-    public abstract static class RubyLookupNode extends ExampleNode {
+    public abstract static class RubyLookupNode extends Node {
 
-        public abstract InternalMethod executeLookup(VirtualFrame frame, Object receiverObject, Object methodName);
+        public abstract InternalMethod executeLookup(RubyObject receiver, Object method);
 
         @Specialization(guards = "receiver.getRubyClass() == cachedClass", assumptions = "cachedClass.getDependentAssumptions()")
         protected static InternalMethod cachedLookup(RubyObject receiver, Object name, //
@@ -132,7 +132,7 @@ public class RubyCall {
     }
 
     @ImportStatic(InternalMethod.class)
-    public abstract static class RubyDispatchNode extends ExampleNode {
+    public abstract static class RubyDispatchNode extends Node {
 
         public abstract Object executeDispatch(VirtualFrame frame, InternalMethod function, Object[] packedArguments);
 
