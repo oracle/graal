@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package com.oracle.graal.truffle.test.builtins;
 
-import java.util.*;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
 /**
- * Non-modifying version of {@link ValueProcedure}.
+ * Forces a deoptimization as soon as the method runs in compiled code.
  */
-@FunctionalInterface
-public interface ValueConsumer extends InstructionValueConsumer {
+@NodeInfo(shortName = "deoptimizeWhenCompiled")
+public abstract class SLDeoptimizeWhenCompiledBuiltin extends SLGraalRuntimeBuiltin {
 
-    /**
-     * Iterator method to be overwritten.
-     *
-     * @param value The value that is iterated.
-     * @param mode The operand mode for the value.
-     * @param flags A set of flags for the value.
-     */
-    void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags);
+    @Specialization
+    public SLNull deoptimzeWhenCompiled(boolean condition) {
+        if (CompilerDirectives.inCompiledCode()) {
+            if (condition) {
+                printMessage();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+        }
+        return SLNull.SINGLETON;
+    }
 
-    default void visitValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-        visitValue(value, mode, flags);
+    @TruffleBoundary
+    private void printMessage() {
+        getContext().getOutput().println("[deoptimizeWhenCompiled]");
     }
 }

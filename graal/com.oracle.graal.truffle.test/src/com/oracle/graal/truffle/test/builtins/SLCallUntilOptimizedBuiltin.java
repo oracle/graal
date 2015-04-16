@@ -49,7 +49,12 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function) {
+    public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function, @SuppressWarnings("unused") SLNull checkTarget) {
+        return callUntilCompiled(frame, function, false);
+    }
+
+    @Specialization
+    public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function, boolean checkTarget) {
         OptimizedCallTarget target = ((OptimizedCallTarget) function.getCallTarget());
         for (int i = 0; i < MAX_CALLS; i++) {
             if (isCompiling(target)) {
@@ -63,7 +68,9 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
         // call one more in compiled
         indirectCall.call(frame, target, EMPTY_ARGS);
 
-        checkTarget(target);
+        if (checkTarget) {
+            checkTarget(target);
+        }
 
         return function;
     }

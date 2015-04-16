@@ -23,17 +23,19 @@
 package com.oracle.graal.lir;
 
 import java.lang.annotation.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 /**
- * Base class to represent values that need to be stored in more than one register.
+ * Base class to represent values that need to be stored in more than one register. This is mainly
+ * intended to support addresses and not general arbitrary nesting of composite values. Because of
+ * the possibility of sharing of CompositeValues they should be immutable.
  */
-public abstract class CompositeValue extends AbstractValue implements Cloneable {
+public abstract class CompositeValue extends AbstractValue {
 
     private static final long serialVersionUID = -169180052684126180L;
 
@@ -44,61 +46,69 @@ public abstract class CompositeValue extends AbstractValue implements Cloneable 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
-    private final CompositeValueClass<?> valueClass;
-
     private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
 
-    public CompositeValue(CompositeValueClass<? extends CompositeValue> c, LIRKind kind) {
+    public CompositeValue(LIRKind kind) {
         super(kind);
         COMPOSITE_VALUE_COUNT.increment();
-        valueClass = c;
-        assert c.getClazz() == this.getClass();
+        assert CompositeValueClass.get(getClass()) != null;
     }
 
-    final CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
-        return valueClass.forEachComponent(inst, this, mode, proc);
+    /**
+     * Invoke {@code proc} on each {@link Value} element of this {@link CompositeValue}. If
+     * {@code proc} replaces any value then a new CompositeValue should be returned.
+     *
+     * @param inst
+     * @param mode
+     * @param proc
+     * @return the original CompositeValue or a copy with any modified values
+     */
+    public abstract CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc);
+
+    /**
+     * A helper method to visit {@link Value}[] ensuring that a copy of the array is made if it's
+     * needed.
+     *
+     * @param inst
+     * @param values
+     * @param mode
+     * @param proc
+     * @param flags
+     * @return the original {@code values} array or a copy if values changed
+     */
+    protected Value[] visitValueArray(LIRInstruction inst, Value[] values, OperandMode mode, InstructionValueProcedure proc, EnumSet<OperandFlag> flags) {
+        Value[] newValues = null;
+        for (int i = 0; i < values.length; i++) {
+            Value value = values[i];
+            Value newValue = proc.doValue(inst, value, mode, flags);
+            if (!value.identityEquals(newValue)) {
+                if (newValues == null) {
+                    newValues = values.clone();
+                }
+                newValues[i] = value;
+            }
+        }
+        return newValues != null ? newValues : values;
     }
 
-    final void forEachComponent(LIRInstruction inst, OperandMode mode, ValuePositionProcedure proc, ValuePosition outerPosition) {
-        valueClass.forEachComponent(inst, this, mode, proc, outerPosition);
-    }
+    protected abstract void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc);
 
     @Override
     public String toString() {
-        return valueClass.toString(this);
+        return CompositeValueClass.format(this);
     }
 
     @Override
     public int hashCode() {
-        return 53 * super.hashCode() + valueClass.hashCode();
+        return 53 * super.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof CompositeValue) {
             CompositeValue other = (CompositeValue) obj;
-            return super.equals(other) && valueClass.equals(other.valueClass);
+            return super.equals(other);
         }
         return false;
     }
-
-    CompositeValueClass<?> getValueClass() {
-        return valueClass;
-    }
-
-    @Override
-    public final CompositeValue clone() {
-        CompositeValue compositeValue = null;
-        try {
-            compositeValue = (CompositeValue) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new GraalInternalError(e);
-        }
-
-        // copy value arrays
-        getValueClass().copyValueArrays(compositeValue);
-
-        return compositeValue;
-    }
-
 }

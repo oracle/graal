@@ -252,11 +252,12 @@ public class GraphDecoder {
     public final void decode(StructuredGraph graph, EncodedGraph encodedGraph) {
         MethodScope methodScope = new MethodScope(graph, encodedGraph, LoopExplosionKind.NONE);
         decode(methodScope, null);
-        cleanupGraph(methodScope);
+        cleanupGraph(methodScope, null);
         methodScope.graph.verify();
     }
 
     protected final void decode(MethodScope methodScope, FixedWithNextNode startNode) {
+        Graph.Mark start = methodScope.graph.getMark();
         LoopScope loopScope = new LoopScope(methodScope);
         FixedNode firstNode;
         if (startNode != null) {
@@ -284,9 +285,14 @@ public class GraphDecoder {
         }
 
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
-            cleanupGraph(methodScope);
+            /*
+             * The startNode can get deleted during graph cleanup, so we use its predecessor (if
+             * available) as the starting point for loop detection.
+             */
+            FixedNode detectLoopsStart = startNode.predecessor() != null ? (FixedNode) startNode.predecessor() : startNode;
+            cleanupGraph(methodScope, start);
             Debug.dump(methodScope.graph, "Before loop detection");
-            detectLoops(methodScope.graph, firstNode);
+            detectLoops(methodScope.graph, detectLoopsStart);
         }
     }
 
@@ -1111,18 +1117,21 @@ public class GraphDecoder {
         }
     }
 
-    protected void cleanupGraph(MethodScope methodScope) {
+    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
         assert verifyEdges(methodScope);
 
         Debug.dump(methodScope.graph, "Before removing redundant merges");
-        for (MergeNode mergeNode : methodScope.graph.getNodes(MergeNode.TYPE)) {
-            if (mergeNode.forwardEndCount() == 1) {
-                methodScope.graph.reduceTrivialMerge(mergeNode);
+        for (Node node : methodScope.graph.getNewNodes(start)) {
+            if (node instanceof MergeNode) {
+                MergeNode mergeNode = (MergeNode) node;
+                if (mergeNode.forwardEndCount() == 1) {
+                    methodScope.graph.reduceTrivialMerge(mergeNode);
+                }
             }
         }
 
         Debug.dump(methodScope.graph, "Before removing redundant begins");
-        for (Node node : methodScope.graph.getNodes()) {
+        for (Node node : methodScope.graph.getNewNodes(start)) {
             if (node instanceof BeginNode || node instanceof KillingBeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
                     GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
@@ -1132,7 +1141,7 @@ public class GraphDecoder {
         }
 
         Debug.dump(methodScope.graph, "Before removing unused non-fixed nodes");
-        for (Node node : methodScope.graph.getNodes()) {
+        for (Node node : methodScope.graph.getNewNodes(start)) {
             if (!(node instanceof FixedNode) && node.hasNoUsages()) {
                 GraphUtil.killCFG(node);
             }

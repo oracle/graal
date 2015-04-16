@@ -37,8 +37,6 @@ import com.oracle.graal.lir.asm.*;
  * The base class for an {@code LIRInstruction}.
  */
 public abstract class LIRInstruction {
-    public static final Value[] NO_OPERANDS = {};
-
     /**
      * Constants denoting how a LIR instruction uses an operand.
      */
@@ -209,23 +207,6 @@ public abstract class LIRInstruction {
 
     public boolean destroysCallerSavedRegisters() {
         return false;
-    }
-
-    // ValuePositionProcedures
-    public final void forEachInputPos(ValuePositionProcedure proc) {
-        instructionClass.forEachUsePos(this, proc);
-    }
-
-    public final void forEachAlivePos(ValuePositionProcedure proc) {
-        instructionClass.forEachAlivePos(this, proc);
-    }
-
-    public final void forEachTempPos(ValuePositionProcedure proc) {
-        instructionClass.forEachTempPos(this, proc);
-    }
-
-    public final void forEachOutputPos(ValuePositionProcedure proc) {
-        instructionClass.forEachDefPos(this, proc);
     }
 
     // InstructionValueProcedures

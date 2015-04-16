@@ -363,30 +363,26 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
 
         private void assignStackSlots(Set<LIRInstruction> usePos) {
             for (LIRInstruction op : usePos) {
-                op.forEachInput(this::assignSlot);
-                op.forEachAlive(this::assignSlot);
-                op.forEachState(this::assignSlot);
+                op.forEachInput(assignSlot);
+                op.forEachAlive(assignSlot);
+                op.forEachState(assignSlot);
 
-                op.forEachTemp(this::assignSlot);
-                op.forEachOutput(this::assignSlot);
+                op.forEachTemp(assignSlot);
+                op.forEachOutput(assignSlot);
             }
         }
 
-        /**
-         * @see ValueProcedure
-         * @param value
-         * @param mode
-         * @param flags
-         */
-        private Value assignSlot(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-            if (isVirtualStackSlot(value)) {
-                VirtualStackSlot slot = asVirtualStackSlot(value);
-                StackInterval interval = get(slot);
-                assert interval != null;
-                return interval.location();
+        ValueProcedure assignSlot = new ValueProcedure() {
+            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (isVirtualStackSlot(value)) {
+                    VirtualStackSlot slot = asVirtualStackSlot(value);
+                    StackInterval interval = get(slot);
+                    assert interval != null;
+                    return interval.location();
+                }
+                return value;
             }
-            return value;
-        }
+        };
 
         // ====================
         //

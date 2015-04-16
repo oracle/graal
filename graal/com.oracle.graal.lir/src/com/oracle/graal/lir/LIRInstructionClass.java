@@ -205,22 +205,6 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         return false;
     }
 
-    final void forEachUsePos(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, uses, OperandMode.USE, proc, ValuePosition.ROOT_VALUE_POSITION);
-    }
-
-    final void forEachAlivePos(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, alives, OperandMode.ALIVE, proc, ValuePosition.ROOT_VALUE_POSITION);
-    }
-
-    final void forEachTempPos(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, temps, OperandMode.TEMP, proc, ValuePosition.ROOT_VALUE_POSITION);
-    }
-
-    final void forEachDefPos(LIRInstruction obj, ValuePositionProcedure proc) {
-        forEach(obj, obj, defs, OperandMode.DEF, proc, ValuePosition.ROOT_VALUE_POSITION);
-    }
-
     final void forEachUse(LIRInstruction obj, InstructionValueProcedure proc) {
         forEach(obj, uses, OperandMode.USE, proc);
     }
@@ -237,7 +221,32 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         forEach(obj, defs, OperandMode.DEF, proc);
     }
 
+    final void forEachUse(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, uses, OperandMode.USE, proc);
+    }
+
+    final void forEachAlive(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, alives, OperandMode.ALIVE, proc);
+    }
+
+    final void forEachTemp(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, temps, OperandMode.TEMP, proc);
+    }
+
+    final void forEachDef(LIRInstruction obj, InstructionValueConsumer proc) {
+        forEach(obj, defs, OperandMode.DEF, proc);
+    }
+
     final void forEachState(LIRInstruction obj, InstructionValueProcedure proc) {
+        for (int i = 0; i < states.getCount(); i++) {
+            LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
+            if (state != null) {
+                state.forEachState(obj, proc);
+            }
+        }
+    }
+
+    final void forEachState(LIRInstruction obj, InstructionValueConsumer proc) {
         for (int i = 0; i < states.getCount(); i++) {
             LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {

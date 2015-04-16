@@ -23,17 +23,11 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 
 public class HotSpotTargetDescription extends TargetDescription {
 
     public HotSpotTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects) {
         super(arch, isMP, stackAlignment, implicitNullCheckLimit, inlineObjects);
-    }
-
-    @Override
-    public int getSizeInBytes(PlatformKind kind) {
-        return super.getSizeInBytes(kind);
     }
 
     @Override
