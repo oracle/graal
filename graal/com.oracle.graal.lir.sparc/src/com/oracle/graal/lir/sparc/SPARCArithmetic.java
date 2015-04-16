@@ -39,6 +39,7 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
@@ -724,6 +725,7 @@ public enum SPARCArithmetic {
                 masm.fcmp(Fcc0, Fcmps, asFloatReg(src), asFloatReg(src));
                 masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
                 masm.fstox(asFloatReg(src), asDoubleReg(dst));
+                masm.fxtod(asRegister(dst), asRegister(dst));
                 masm.fsubd(asDoubleReg(dst), asDoubleReg(dst), asDoubleReg(dst));
                 masm.bind(notOrdered);
                 break;
@@ -747,8 +749,8 @@ public enum SPARCArithmetic {
                 masm.fcmp(Fcc0, Fcmpd, asDoubleReg(src), asDoubleReg(src));
                 masm.fbpcc(F_Ordered, ANNUL, notOrdered, Fcc0, PREDICT_TAKEN);
                 masm.fdtoi(asDoubleReg(src), asFloatReg(dst));
+                masm.fitos(asFloatReg(dst), asFloatReg(dst));
                 masm.fsubs(asFloatReg(dst), asFloatReg(dst), asFloatReg(dst));
-                masm.fstoi(asFloatReg(dst), asFloatReg(dst));
                 masm.bind(notOrdered);
                 break;
             case FNEG:
