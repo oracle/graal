@@ -593,7 +593,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
             }
         }
 
-        return ElementUtils.uniqueSortedTypes(types);
+        return ElementUtils.uniqueSortedTypes(types, false);
     }
 
 }

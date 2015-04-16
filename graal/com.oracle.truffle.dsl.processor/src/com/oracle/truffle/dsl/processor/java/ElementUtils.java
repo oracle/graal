@@ -1172,10 +1172,14 @@ public class ElementUtils {
         }
     }
 
-    public static List<TypeMirror> sortTypes(List<TypeMirror> list) {
+    public static List<TypeMirror> sortTypes(List<TypeMirror> list, final boolean reverse) {
         Collections.sort(list, new Comparator<TypeMirror>() {
             public int compare(TypeMirror o1, TypeMirror o2) {
-                return compareType(o1, o2);
+                if (reverse) {
+                    return compareType(o2, o1);
+                } else {
+                    return compareType(o1, o2);
+                }
             }
         });
         return list;
@@ -1205,7 +1209,7 @@ public class ElementUtils {
         return ElementUtils.getSimpleName(signature1).compareTo(ElementUtils.getSimpleName(signature2));
     }
 
-    public static List<TypeMirror> uniqueSortedTypes(Collection<TypeMirror> types) {
+    public static List<TypeMirror> uniqueSortedTypes(Collection<TypeMirror> types, boolean reverse) {
         if (types.isEmpty()) {
             return new ArrayList<>(0);
         } else if (types.size() <= 1) {
@@ -1219,7 +1223,7 @@ public class ElementUtils {
         for (TypeMirror type : types) {
             sourceTypes.put(ElementUtils.getTypeId(type), type);
         }
-        return sortTypes(new ArrayList<>(sourceTypes.values()));
+        return sortTypes(new ArrayList<>(sourceTypes.values()), reverse);
     }
 
     public static int compareMethod(ExecutableElement method1, ExecutableElement method2) {

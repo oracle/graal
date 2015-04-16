@@ -158,7 +158,7 @@ public class TypeSystemData extends Template {
         for (ImplicitCastData cast : getImplicitCasts()) {
             sourceTypes.add(cast.getTargetType());
         }
-        return ElementUtils.uniqueSortedTypes(sourceTypes);
+        return ElementUtils.uniqueSortedTypes(sourceTypes, true);
     }
 
     public List<TypeMirror> lookupSourceTypes(TypeMirror targetType) {
@@ -169,7 +169,7 @@ public class TypeSystemData extends Template {
                 sourceTypes.add(cast.getSourceType());
             }
         }
-        return sourceTypes;
+        return ElementUtils.uniqueSortedTypes(sourceTypes, true);
     }
 
     public boolean isImplicitSubtypeOf(TypeMirror source, TypeMirror target) {
