@@ -714,7 +714,7 @@ class LinearScanWalker extends IntervalWalker {
 
                 if (firstUsage <= interval.from() + 1) {
                     String description = "cannot spill interval that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage + ", interval.from()=" +
-                                    interval.from();
+                                    interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
                     // assign a reasonable register and do a bailout in product mode to avoid errors
                     allocator.assignSpillSlot(interval);
                     allocator.printIntervals(description);
