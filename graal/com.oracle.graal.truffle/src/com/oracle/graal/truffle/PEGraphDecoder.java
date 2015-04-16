@@ -128,9 +128,11 @@ public abstract class PEGraphDecoder extends GraphDecoder {
 
     protected class PENonAppendGraphBuilderContext implements GraphBuilderContext {
         protected final PEMethodScope methodScope;
+        protected final Invoke invoke;
 
-        public PENonAppendGraphBuilderContext(PEMethodScope methodScope) {
+        public PENonAppendGraphBuilderContext(PEMethodScope methodScope, Invoke invoke) {
             this.methodScope = methodScope;
+            this.invoke = invoke;
         }
 
         @Override
@@ -210,7 +212,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
 
         @Override
         public int bci() {
-            throw unimplemented();
+            return invoke.bci();
         }
 
         @Override
@@ -228,8 +230,8 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         protected FixedWithNextNode lastInstr;
         protected ValueNode pushedNode;
 
-        public PEAppendGraphBuilderContext(PEMethodScope methodScope, FixedWithNextNode lastInstr) {
-            super(methodScope);
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
+            super(inlineScope, inlineScope.invokeData.invoke);
             this.lastInstr = lastInstr;
         }
 
@@ -319,14 +321,14 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugin,
                         parameterPlugin, null);
         decode(methodScope, null);
-        cleanupGraph(methodScope);
+        cleanupGraph(methodScope, null);
         methodScope.graph.verify();
     }
 
     @Override
-    protected void cleanupGraph(MethodScope methodScope) {
+    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
         GraphBuilderPhase.connectLoopEndToBegin(methodScope.graph);
-        super.cleanupGraph(methodScope);
+        super.cleanupGraph(methodScope, start);
     }
 
     @Override
@@ -378,7 +380,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         }
 
         if (methodScope.inlineInvokePlugin != null) {
-            methodScope.inlineInvokePlugin.notifyOfNoninlinedInvoke(new PENonAppendGraphBuilderContext(methodScope), callTarget.targetMethod(), invokeData.invoke);
+            methodScope.inlineInvokePlugin.notifyOfNoninlinedInvoke(new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke), callTarget.targetMethod(), invokeData.invoke);
         }
         return false;
     }
@@ -439,7 +441,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         }
 
         ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
-        GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope);
+        GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke);
         InlineInfo inlineInfo = methodScope.inlineInvokePlugin.getInlineInfo(graphBuilderContext, targetMethod, arguments, callTarget.returnType());
         if (inlineInfo == null) {
             return false;
@@ -619,7 +621,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
                 return result;
 
             } else if (methodScope.parameterPlugin != null) {
-                GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope);
+                GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, null);
                 Node result = methodScope.parameterPlugin.interceptParameter(graphBuilderContext, ((ParameterNode) node).index(), ((ParameterNode) node).stamp());
                 if (result != null) {
                     return result;
@@ -657,7 +659,11 @@ public abstract class PEGraphDecoder extends GraphDecoder {
             Kind invokeReturnKind = methodScope.invokeData.invoke.asNode().getKind();
             FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind);
 
-            if (methodScope.caller != null) {
+            /*
+             * When the encoded graph has methods inlining, we can already have a proper caller
+             * state. If not, we set the caller state here.
+             */
+            if (outerState.outerFrameState() == null && methodScope.caller != null) {
                 ensureOuterStateDecoded(methodScope.caller);
                 outerState.setOuterFrameState(methodScope.caller.outerState);
             }
@@ -680,7 +686,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
             registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, methodScope.exceptionPlaceholderNode, false, false);
             FrameState exceptionState = (FrameState) ensureNodeCreated(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionStateOrderId);
 
-            if (methodScope.caller != null) {
+            if (exceptionState.outerFrameState() == null && methodScope.caller != null) {
                 ensureOuterStateDecoded(methodScope.caller);
                 exceptionState.setOuterFrameState(methodScope.caller.outerState);
             }

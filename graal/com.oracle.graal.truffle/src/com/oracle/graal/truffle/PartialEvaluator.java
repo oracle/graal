@@ -184,7 +184,9 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            assert !replacements.hasSubstitution(original, builder.bci()) : "Replacements must have been processed by now";
+            if (replacements.hasSubstitution(original, builder.bci())) {
+                return null;
+            }
             assert !builder.parsingReplacement();
 
             if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
@@ -260,7 +262,9 @@ public class PartialEvaluator {
             if (original.getAnnotation(TruffleBoundary.class) != null) {
                 return null;
             }
-            assert !replacements.hasSubstitution(original, builder.bci()) : "Replacements must have been processed by now";
+            if (replacements.hasSubstitution(original, builder.bci())) {
+                return null;
+            }
 
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
                 return null;
@@ -337,7 +341,7 @@ public class PartialEvaluator {
 
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
 
-        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(parsingInvocationPlugins.getParent());
+        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(providers.getMetaAccess());
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false, snippetReflection);
         InlineInvokePlugin decodingInlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), (ReplacementsImpl) providers.getReplacements());
         if (PrintTruffleExpansionHistogram.getValue()) {

@@ -49,6 +49,7 @@ public class SLTruffleGraalTestSuite {
         SLTestRunner.installBuiltin(SLGenerateDummyNodesBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallFunctionsWithBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsCompilationConstantBuiltinFactory.getInstance());
+        SLTestRunner.installBuiltin(SLDeoptimizeWhenCompiledBuiltinFactory.getInstance());
 
         /* test specific builtins */
         SLTestRunner.installBuiltin(SLTestTruffleBoundary01BuiltinFactory.getInstance());
