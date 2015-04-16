@@ -134,7 +134,7 @@ public class TypeSystemData extends Template {
             return null;
         }
         for (ImplicitCastData cast : getImplicitCasts()) {
-            if (cast.getSourceType().equals(sourceType) && cast.getTargetType().equals(targetType)) {
+            if (ElementUtils.typeEquals(cast.getSourceType(), sourceType) && ElementUtils.typeEquals(cast.getTargetType(), targetType)) {
                 return cast;
             }
         }
