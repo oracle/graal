@@ -26,7 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.compiler.common.util.*;
 
-public class TypeWriterTest {
+public class TypeWriterTest extends GraalCompilerTest {
 
     private static void putValue(TypeWriter writer, long value) {
         if (TypeConversion.isS1(value)) {
@@ -114,15 +114,24 @@ public class TypeWriterTest {
         }
     }
 
-    @Test
-    public void test01() {
-        UnsafeArrayTypeWriter writer = new UnsafeArrayTypeWriter();
+    private static void test01(boolean supportsUnalignedMemoryAccess) {
+        UnsafeArrayTypeWriter writer = UnsafeArrayTypeWriter.create(supportsUnalignedMemoryAccess);
         putValues(writer);
 
         byte[] array = new byte[(int) writer.getBytesWritten()];
         writer.toArray(array);
-        UnsafeArrayTypeReader reader = new UnsafeArrayTypeReader(array, 0);
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(array, 0, supportsUnalignedMemoryAccess);
         checkValues(reader);
+    }
+
+    @Test
+    public void test01a() {
+        test01(getTarget().arch.supportsUnalignedMemoryAccess());
+    }
+
+    @Test
+    public void test01b() {
+        test01(false);
     }
 
     private static void checkSignedSize(TypeWriter writer, long value, int expectedSize) {
@@ -159,7 +168,12 @@ public class TypeWriterTest {
     }
 
     @Test
-    public void test02() {
-        checkSizes(new UnsafeArrayTypeWriter());
+    public void test02a() {
+        checkSizes(UnsafeArrayTypeWriter.create(getTarget().arch.supportsUnalignedMemoryAccess()));
+    }
+
+    @Test
+    public void test02b() {
+        checkSizes(UnsafeArrayTypeWriter.create(false));
     }
 }

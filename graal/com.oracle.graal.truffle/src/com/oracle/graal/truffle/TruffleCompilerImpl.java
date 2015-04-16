@@ -99,7 +99,7 @@ public class TruffleCompilerImpl {
         Plugins plugins = new Plugins(phase.getGraphBuilderConfig().getPlugins());
         this.config = GraphBuilderConfiguration.getDefault(plugins).withSkippedExceptionTypes(skippedExceptionTypes);
 
-        this.partialEvaluator = new PartialEvaluator(providers, config, Graal.getRequiredCapability(SnippetReflectionProvider.class));
+        this.partialEvaluator = new PartialEvaluator(providers, config, Graal.getRequiredCapability(SnippetReflectionProvider.class), backend.getTarget().arch);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);

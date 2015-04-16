@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.common.util;
 
-import java.nio.*;
-
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -31,8 +29,16 @@ import com.oracle.graal.compiler.common.*;
 /**
  * Provides low-level read access from a byte[] array for signed and unsigned values of size 1, 2,
  * 4, and 8 bytes.
+ *
+ * The class can either be instantiated for sequential access to the byte[] array; or static methods
+ * can be used to read values without the overhead of creating an instance.
+ *
+ * The flag {@code supportsUnalignedMemoryAccess} must be set according to the capabilities of the
+ * hardware architecture: the value {@code true} allows more efficient memory access on
+ * architectures that support unaligned memory accesses; the value {@code false} is the safe
+ * fallback that works on every hardware.
  */
-public class UnsafeArrayTypeReader implements TypeReader {
+public abstract class UnsafeArrayTypeReader implements TypeReader {
 
     public static int getS1(byte[] data, long byteIndex) {
         return UnsafeAccess.unsafe.getByte(data, readOffset(data, byteIndex, Byte.BYTES));
@@ -42,48 +48,39 @@ public class UnsafeArrayTypeReader implements TypeReader {
         return UnsafeAccess.unsafe.getByte(data, readOffset(data, byteIndex, Byte.BYTES)) & 0xFF;
     }
 
-    public static int getS2(byte[] data, long byteIndex) {
-        if (byteIndex % Short.BYTES == 0) {
-            return UnsafeAccess.unsafe.getShort(data, readOffset(data, byteIndex, Short.BYTES));
+    public static int getS2(byte[] data, long byteIndex, boolean supportsUnalignedMemoryAccess) {
+        if (supportsUnalignedMemoryAccess) {
+            return UnalignedUnsafeArrayTypeReader.getS2(data, byteIndex);
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Short.BYTES]).order(ByteOrder.nativeOrder());
-            buf.put((byte) getU1(data, byteIndex));
-            buf.put((byte) getU1(data, byteIndex + Byte.BYTES));
-            return buf.getShort(0);
+            return AlignedUnsafeArrayTypeReader.getS2(data, byteIndex);
         }
     }
 
-    public static int getU2(byte[] data, long byteIndex) {
-        return getS2(data, byteIndex) & 0xFFFF;
+    public static int getU2(byte[] data, long byteIndex, boolean supportsUnalignedMemoryAccess) {
+        return getS2(data, byteIndex, supportsUnalignedMemoryAccess) & 0xFFFF;
     }
 
-    public static int getS4(byte[] data, long byteIndex) {
-        if (byteIndex % Integer.BYTES == 0) {
-            return UnsafeAccess.unsafe.getInt(data, readOffset(data, byteIndex, Integer.BYTES));
+    public static int getS4(byte[] data, long byteIndex, boolean supportsUnalignedMemoryAccess) {
+        if (supportsUnalignedMemoryAccess) {
+            return UnalignedUnsafeArrayTypeReader.getS4(data, byteIndex);
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Integer.BYTES]).order(ByteOrder.nativeOrder());
-            buf.putShort((short) getS2(data, byteIndex));
-            buf.putShort((short) getS2(data, byteIndex + Short.BYTES));
-            return buf.getInt(0);
+            return AlignedUnsafeArrayTypeReader.getS4(data, byteIndex);
         }
     }
 
-    public static long getU4(byte[] data, long byteIndex) {
-        return getS4(data, byteIndex) & 0xFFFFFFFFL;
+    public static long getU4(byte[] data, long byteIndex, boolean supportsUnalignedMemoryAccess) {
+        return getS4(data, byteIndex, supportsUnalignedMemoryAccess) & 0xFFFFFFFFL;
     }
 
-    public static long getLong(byte[] data, long byteIndex) {
-        if (byteIndex % Long.BYTES == 0) {
-            return UnsafeAccess.unsafe.getLong(data, readOffset(data, byteIndex, Long.BYTES));
+    public static long getS8(byte[] data, long byteIndex, boolean supportsUnalignedMemoryAccess) {
+        if (supportsUnalignedMemoryAccess) {
+            return UnalignedUnsafeArrayTypeReader.getS8(data, byteIndex);
         } else {
-            ByteBuffer buf = ByteBuffer.wrap(new byte[Long.BYTES]).order(ByteOrder.nativeOrder());
-            buf.putInt(getS4(data, byteIndex));
-            buf.putInt(getS4(data, byteIndex + Integer.BYTES));
-            return buf.getLong(0);
+            return AlignedUnsafeArrayTypeReader.getS8(data, byteIndex);
         }
     }
 
-    private static long readOffset(byte[] data, long byteIndex, int numBytes) {
+    protected static long readOffset(byte[] data, long byteIndex, int numBytes) {
         assert byteIndex >= 0;
         assert numBytes > 0;
         assert byteIndex + numBytes <= data.length;
@@ -92,10 +89,18 @@ public class UnsafeArrayTypeReader implements TypeReader {
         return byteIndex + Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }
 
-    private final byte[] data;
-    private long byteIndex;
+    public static UnsafeArrayTypeReader create(byte[] data, long byteIndex, boolean supportsUnalignedMemoryAccess) {
+        if (supportsUnalignedMemoryAccess) {
+            return new UnalignedUnsafeArrayTypeReader(data, byteIndex);
+        } else {
+            return new AlignedUnsafeArrayTypeReader(data, byteIndex);
+        }
+    }
 
-    public UnsafeArrayTypeReader(byte[] data, long byteIndex) {
+    protected final byte[] data;
+    protected long byteIndex;
+
+    protected UnsafeArrayTypeReader(byte[] data, long byteIndex) {
         this.data = data;
         this.byteIndex = byteIndex;
     }
@@ -111,29 +116,50 @@ public class UnsafeArrayTypeReader implements TypeReader {
     }
 
     @Override
-    public int getS1() {
+    public final int getS1() {
         int result = getS1(data, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }
 
     @Override
-    public int getU1() {
+    public final int getU1() {
         int result = getU1(data, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }
 
     @Override
-    public int getS2() {
-        int result = getS2(data, byteIndex);
-        byteIndex += Short.BYTES;
-        return result;
+    public final int getU2() {
+        return getS2() & 0xFFFF;
     }
 
     @Override
-    public int getU2() {
-        int result = getU2(data, byteIndex);
+    public final long getU4() {
+        return getS4() & 0xFFFFFFFFL;
+    }
+}
+
+final class UnalignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
+    protected static int getS2(byte[] data, long byteIndex) {
+        return UnsafeAccess.unsafe.getShort(data, readOffset(data, byteIndex, Short.BYTES));
+    }
+
+    protected static int getS4(byte[] data, long byteIndex) {
+        return UnsafeAccess.unsafe.getInt(data, readOffset(data, byteIndex, Integer.BYTES));
+    }
+
+    protected static long getS8(byte[] data, long byteIndex) {
+        return UnsafeAccess.unsafe.getLong(data, readOffset(data, byteIndex, Long.BYTES));
+    }
+
+    protected UnalignedUnsafeArrayTypeReader(byte[] data, long byteIndex) {
+        super(data, byteIndex);
+    }
+
+    @Override
+    public int getS2() {
+        int result = getS2(data, byteIndex);
         byteIndex += Short.BYTES;
         return result;
     }
@@ -146,15 +172,61 @@ public class UnsafeArrayTypeReader implements TypeReader {
     }
 
     @Override
-    public long getU4() {
-        long result = getU4(data, byteIndex);
+    public long getS8() {
+        long result = getS8(data, byteIndex);
+        byteIndex += Long.BYTES;
+        return result;
+    }
+}
+
+class AlignedUnsafeArrayTypeReader extends UnsafeArrayTypeReader {
+    protected static int getS2(byte[] data, long byteIndex) {
+        long offset = readOffset(data, byteIndex, Short.BYTES);
+        return ((UnsafeAccess.unsafe.getByte(data, offset + 0) & 0xFF) << 0) | //
+                        (UnsafeAccess.unsafe.getByte(data, offset + 1) << 8);
+    }
+
+    protected static int getS4(byte[] data, long byteIndex) {
+        long offset = readOffset(data, byteIndex, Integer.BYTES);
+        return ((UnsafeAccess.unsafe.getByte(data, offset + 0) & 0xFF) << 0) | //
+                        ((UnsafeAccess.unsafe.getByte(data, offset + 1) & 0xFF) << 8) | //
+                        ((UnsafeAccess.unsafe.getByte(data, offset + 2) & 0xFF) << 16) | //
+                        (UnsafeAccess.unsafe.getByte(data, offset + 3) << 24);
+    }
+
+    protected static long getS8(byte[] data, long byteIndex) {
+        long offset = readOffset(data, byteIndex, Long.BYTES);
+        return ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 0) & 0xFF)) << 0) | //
+                        ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 1) & 0xFF)) << 8) | //
+                        ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 2) & 0xFF)) << 16) | //
+                        ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 3) & 0xFF)) << 24) | //
+                        ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 4) & 0xFF)) << 32) | //
+                        ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 5) & 0xFF)) << 40) | //
+                        ((long) ((UnsafeAccess.unsafe.getByte(data, offset + 6) & 0xFF)) << 48) | //
+                        ((long) (UnsafeAccess.unsafe.getByte(data, offset + 7)) << 56);
+    }
+
+    protected AlignedUnsafeArrayTypeReader(byte[] data, long byteIndex) {
+        super(data, byteIndex);
+    }
+
+    @Override
+    public int getS2() {
+        int result = getS2(data, byteIndex);
+        byteIndex += Short.BYTES;
+        return result;
+    }
+
+    @Override
+    public int getS4() {
+        int result = getS4(data, byteIndex);
         byteIndex += Integer.BYTES;
         return result;
     }
 
     @Override
     public long getS8() {
-        long result = getLong(data, byteIndex);
+        long result = getS8(data, byteIndex);
         byteIndex += Long.BYTES;
         return result;
     }

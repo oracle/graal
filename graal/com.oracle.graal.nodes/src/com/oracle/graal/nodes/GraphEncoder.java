@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.graph.*;
@@ -106,6 +107,8 @@ public class GraphEncoder {
      */
     protected static final int BEGIN_NEXT_ORDER_ID_OFFSET = 1;
 
+    protected final Architecture architecture;
+
     /**
      * Collects all non-primitive data referenced from nodes. The encoding uses an index into an
      * array for decoding. Because of the variable-length encoding, it is beneficial that frequently
@@ -128,18 +131,19 @@ public class GraphEncoder {
     /**
      * Utility method that does everything necessary to encode a single graph.
      */
-    public static EncodedGraph encodeSingleGraph(StructuredGraph graph) {
-        GraphEncoder encoder = new GraphEncoder();
+    public static EncodedGraph encodeSingleGraph(StructuredGraph graph, Architecture architecture) {
+        GraphEncoder encoder = new GraphEncoder(architecture);
         encoder.prepare(graph);
         encoder.finishPrepare();
         long startOffset = encoder.encode(graph);
         return new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph.getAssumptions(), graph.getInlinedMethods());
     }
 
-    public GraphEncoder() {
+    public GraphEncoder(Architecture architecture) {
+        this.architecture = architecture;
         objects = FrequencyEncoder.createEqualityEncoder();
         nodeClasses = FrequencyEncoder.createIdentityEncoder();
-        writer = new UnsafeArrayTypeWriter();
+        writer = UnsafeArrayTypeWriter.create(architecture.supportsUnalignedMemoryAccess());
     }
 
     /**
@@ -262,7 +266,7 @@ public class GraphEncoder {
         }
 
         /* Check that the decoding of the encode graph is the same as the input. */
-        assert verifyEncoding(graph, new EncodedGraph(getEncoding(), nodeTableStart, getObjects(), getNodeClasses(), graph.getAssumptions(), graph.getInlinedMethods()));
+        assert verifyEncoding(graph, new EncodedGraph(getEncoding(), nodeTableStart, getObjects(), getNodeClasses(), graph.getAssumptions(), graph.getInlinedMethods()), architecture);
 
         return nodeTableStart;
     }
@@ -378,9 +382,9 @@ public class GraphEncoder {
      * Verification code that checks that the decoding of an encode graph is the same as the
      * original graph.
      */
-    public static boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph) {
+    public static boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph, Architecture architecture) {
         StructuredGraph decodedGraph = new StructuredGraph(originalGraph.method(), AllowAssumptions.YES);
-        GraphDecoder decoder = new GraphDecoder();
+        GraphDecoder decoder = new GraphDecoder(architecture);
         decoder.decode(decodedGraph, encodedGraph);
 
         decodedGraph.verify();

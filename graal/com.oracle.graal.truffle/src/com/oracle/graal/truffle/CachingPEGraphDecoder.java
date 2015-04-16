@@ -24,6 +24,7 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -45,8 +46,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final AllowAssumptions allowAssumptions;
     private final Map<ResolvedJavaMethod, EncodedGraph> graphCache;
 
-    public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, AllowAssumptions allowAssumptions) {
-        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider());
+    public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, AllowAssumptions allowAssumptions, Architecture architecture) {
+        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), architecture);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
@@ -63,7 +64,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             PhaseContext context = new PhaseContext(providers);
             new CanonicalizerPhase().apply(graph, context);
 
-            EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph);
+            EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, architecture);
             graphCache.put(method, encodedGraph);
             return encodedGraph;
 

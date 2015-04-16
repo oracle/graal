@@ -29,6 +29,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.lang.invoke.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
@@ -71,6 +72,7 @@ public class PartialEvaluator {
     public static final StableOptionValue<Boolean> GraphPE = new StableOptionValue<>(false);
 
     private final Providers providers;
+    private final Architecture architecture;
     private final CanonicalizerPhase canonicalizer;
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
@@ -79,8 +81,9 @@ public class PartialEvaluator {
     private final ResolvedJavaMethod callRootMethod;
     private final GraphBuilderConfiguration configForRoot;
 
-    public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection) {
+    public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
         this.providers = providers;
+        this.architecture = architecture;
         this.canonicalizer = new CanonicalizerPhase();
         this.snippetReflection = snippetReflection;
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
@@ -337,7 +340,7 @@ public class PartialEvaluator {
         plugins.setInlineInvokePlugin(new ParsingInlineInvokePlugin((ReplacementsImpl) providers.getReplacements(), parsingInvocationPlugins, loopExplosionPlugin,
                         !PrintTruffleExpansionHistogram.getValue()));
 
-        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, AllowAssumptions.from(graph.getAssumptions() != null));
+        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, AllowAssumptions.from(graph.getAssumptions() != null), architecture);
 
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
 

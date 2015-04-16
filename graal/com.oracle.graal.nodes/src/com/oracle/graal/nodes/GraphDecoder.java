@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalInternalError.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
@@ -68,7 +69,7 @@ public class GraphDecoder {
     }
 
     /** Decoding state maintained for each encoded graph. */
-    protected static class MethodScope {
+    protected class MethodScope {
         /** The target graph where decoded nodes are added to. */
         public final StructuredGraph graph;
         /** The encode graph that is decoded. */
@@ -90,7 +91,7 @@ public class GraphDecoder {
             this.returnNodes = new ArrayList<>();
 
             if (encodedGraph != null) {
-                reader = new UnsafeArrayTypeReader(encodedGraph.getEncoding(), encodedGraph.getStartOffset());
+                reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
                 if (encodedGraph.nodeStartOffsets == null) {
                     int nodeCount = reader.getUVInt();
                     long[] nodeStartOffsets = new long[nodeCount];
@@ -247,6 +248,12 @@ public class GraphDecoder {
             this.exceptionStateOrderId = exceptionStateOrderId;
             this.exceptionNextOrderId = exceptionNextOrderId;
         }
+    }
+
+    protected final Architecture architecture;
+
+    public GraphDecoder(Architecture architecture) {
+        this.architecture = architecture;
     }
 
     public final void decode(StructuredGraph graph, EncodedGraph encodedGraph) {

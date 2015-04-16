@@ -298,7 +298,8 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         }
     }
 
-    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider) {
+    public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, Architecture architecture) {
+        super(architecture);
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.stampProvider = stampProvider;
