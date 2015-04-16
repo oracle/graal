@@ -211,22 +211,46 @@ public class NodeGenFactory {
             }
         }
 
-        for (ExecutableTypeData execType : usedTypes) {
-            if (!singleSpecializable && execType.getMethod() == null) {
-                continue;
-            }
-            clazz.add(createExecutableTypeOverride(usedTypes, execType));
-        }
-
         clazz.add(createGetCostMethod());
 
         avoidFindbugsProblems(clazz);
 
         if (singleSpecializable) {
+            SpecializationData specialization = reachableSpecializations.iterator().next();
+
+            for (ExecutableTypeData execType : usedTypes) {
+                if (execType.getMethod() == null) {
+                    boolean foundDelegate = false;
+                    for (ExecutableTypeData type : usedTypes) {
+                        if (type == execType) {
+                            continue;
+                        }
+                        if (findFastPathDelegate(specialization.getReturnType().getType(), type, usedTypes) == execType) {
+                            foundDelegate = true;
+                            break;
+                        }
+                    }
+                    // just exclude synthetic execute methods that were not delegated to
+                    if (!foundDelegate) {
+                        continue;
+                    }
+                }
+
+                clazz.add(createExecutableTypeOverride(usedTypes, execType));
+            }
+
             if (node.needsRewrites(context)) {
                 clazz.add(createUnsupportedMethod());
             }
         } else {
+
+            for (ExecutableTypeData execType : usedTypes) {
+                if (execType.getMethod() == null) {
+                    continue;
+                }
+                clazz.add(createExecutableTypeOverride(usedTypes, execType));
+            }
+
             clazz.getImplements().add(getType(SpecializedNode.class));
             clazz.add(createMethodGetSpecializationNode());
             clazz.add(createDeepCopyMethod());
@@ -242,7 +266,7 @@ public class NodeGenFactory {
             }
         }
 
-        for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes)) {
+        for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes, false)) {
             if (!typeSystem.hasType(type)) {
                 clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem, context.getType(Object.class), type));
             }
