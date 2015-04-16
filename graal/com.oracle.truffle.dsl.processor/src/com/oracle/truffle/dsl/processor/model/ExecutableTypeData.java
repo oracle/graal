@@ -89,7 +89,11 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
             evaluatedParameters.add(parameter);
         }
         this.frameParameter = foundFrameParameter;
-        this.uniqueName = "execute" + (ElementUtils.isObject(getReturnType()) ? "" : ElementUtils.getTypeId(getReturnType()));
+        this.uniqueName = createName(this);
+    }
+
+    public static String createName(ExecutableTypeData type) {
+        return "execute" + (ElementUtils.isObject(type.getReturnType()) ? "" : ElementUtils.getTypeId(type.getReturnType()));
     }
 
     public void addDelegatedFrom(ExecutableTypeData child) {

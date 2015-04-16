@@ -195,6 +195,9 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
 
             ExecutableTypeData polymorphicType = new ExecutableTypeData(node, polymorphic.getReturnType().getType(), "execute", frame, dynamicTypes);
+            String genericName = ExecutableTypeData.createName(polymorphicType) + "_";
+            polymorphicType.setUniqueName(genericName);
+
             for (ExecutableTypeData type : node.getExecutableTypes()) {
                 if (polymorphicType.sameSignature(type)) {
                     polymorphicSignatureFound = true;
