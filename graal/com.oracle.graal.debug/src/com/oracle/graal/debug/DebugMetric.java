@@ -55,4 +55,11 @@ public interface DebugMetric {
      * Gets the current value of this metric.
      */
     long getCurrentValue();
+
+    /**
+     * Determines if this counter is enabled (either conditionally or unconditionally).
+     */
+    default boolean isEnabled() {
+        return !isConditional() || Debug.isMeterEnabled();
+    }
 }
