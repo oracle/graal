@@ -179,6 +179,17 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         return v - 1;
     }
 
+    @Test
+    public void test9() {
+        testCombinedIf("test9Snippet", 2);
+        test("test9Snippet", -1);
+        test("test9Snippet", 1025);
+    }
+
+    public static int test9Snippet(int n) {
+        return (n < 0) ? 1 : (n >= 1024) ? 1024 : n + 1;
+    }
+
     private void testCombinedIf(String snippet, int count) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         PhaseContext context = new PhaseContext(getProviders());

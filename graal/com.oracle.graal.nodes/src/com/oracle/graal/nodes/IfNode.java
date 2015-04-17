@@ -340,7 +340,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             EndNode end1 = (EndNode) next1;
             EndNode end2 = (EndNode) next2;
             if (end1.merge() == end2.merge()) {
-                // They go to the same MergeNode
+                for (PhiNode phi : end1.merge().phis()) {
+                    if (phi.valueAt(end1) != phi.valueAt(end2)) {
+                        return false;
+                    }
+                }
+                // They go to the same MergeNode and merge the same values
                 return true;
             }
         } else if (next1 instanceof DeoptimizeNode && next2 instanceof DeoptimizeNode) {
