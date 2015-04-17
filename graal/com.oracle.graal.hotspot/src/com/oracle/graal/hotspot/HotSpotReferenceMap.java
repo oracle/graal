@@ -165,8 +165,8 @@ public final class HotSpotReferenceMap extends ReferenceMap implements Serializa
             return new HotSpotOopMap(this);
         }
 
-        private void setNarrowOop(int offset, int index) {
-            setNarrowEntry(offset + index, OOP32);
+        private void setNarrowOop(int offset) {
+            setNarrowEntry(offset, OOP32);
         }
 
         private void setEntry(int regIdx, int value) {
@@ -356,62 +356,44 @@ public final class HotSpotReferenceMap extends ReferenceMap implements Serializa
     }
 
     // setters
-
-    private static void setOop(HotSpotOopMap map, int startIdx, LIRKind kind) {
-        int length = kind.getPlatformKind().getVectorLength();
-        for (int i = 0, idx = startIdx; i < length; i++, idx += 1) {
-            if (kind.isReference(i)) {
-                map.setOop(idx);
-            }
-
-        }
-    }
-
-    private static void setNarrowOop(HotSpotOopMap map, int offset, LIRKind kind) {
-        int length = kind.getPlatformKind().getVectorLength();
-        for (int i = 0; i < length; i++) {
-            if (kind.isReference(i)) {
-                map.setNarrowOop(offset, i);
-            }
-        }
-    }
-
     @Override
     public void setRegister(int idx, LIRKind kind) {
-        if (kind.isDerivedReference()) {
-            throw GraalInternalError.shouldNotReachHere("derived reference cannot be inserted in ReferenceMap");
-        }
-
-        PlatformKind platformKind = kind.getPlatformKind();
-        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
-
-        if (bytesPerElement == 8) {
-            setOop(registerRefMap, idx * 2, kind);
-        } else if (bytesPerElement == 4) {
-            setNarrowOop(registerRefMap, idx * 2, kind);
-        } else {
-            assert kind.isValue() : "unsupported reference kind " + kind;
-        }
+        set(registerRefMap, idx * 2, kind);
     }
 
     @Override
     public void setStackSlot(int offset, LIRKind kind) {
+        assert offset % bytesPerElement(kind) == 0 : "unaligned value in ReferenceMap";
+        set(frameRefMap, offset / 4, kind);
+    }
+
+    private void set(HotSpotOopMap refMap, int index, LIRKind kind) {
         if (kind.isDerivedReference()) {
             throw GraalInternalError.shouldNotReachHere("derived reference cannot be inserted in ReferenceMap");
         }
 
-        PlatformKind platformKind = kind.getPlatformKind();
-        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
-        assert offset % bytesPerElement == 0 : "unaligned value in ReferenceMap";
-
-        int index = offset / 4; // Addressing is done in increments of 4 bytes
+        int bytesPerElement = bytesPerElement(kind);
+        int length = kind.getPlatformKind().getVectorLength();
         if (bytesPerElement == 8) {
-            setOop(frameRefMap, index, kind);
+            for (int i = 0; i < length; i++) {
+                if (kind.isReference(i)) {
+                    refMap.setOop(index + i * 2);
+                }
+            }
         } else if (bytesPerElement == 4) {
-            setNarrowOop(frameRefMap, index, kind);
+            for (int i = 0; i < length; i++) {
+                if (kind.isReference(i)) {
+                    refMap.setNarrowOop(index + i);
+                }
+            }
         } else {
             assert kind.isValue() : "unknown reference kind " + kind;
         }
+    }
+
+    private int bytesPerElement(LIRKind kind) {
+        PlatformKind platformKind = kind.getPlatformKind();
+        return target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
     }
 
     public HotSpotOopMap getFrameMap() {
@@ -423,47 +405,28 @@ public final class HotSpotReferenceMap extends ReferenceMap implements Serializa
     }
 
     // clear
-
-    private static void clearOop(HotSpotOopMap map, int offset, PlatformKind platformKind) {
-        int length = platformKind.getVectorLength();
-        for (int i = 0; i < length; i++) {
-            map.clearOop(offset + i * 2);
-        }
-    }
-
-    private static void clearNarrowOop(HotSpotOopMap map, int offset, PlatformKind platformKind) {
-        int length = platformKind.getVectorLength();
-        for (int i = 0; i < length; i++) {
-            map.clearNarrowOop(offset + i);
-        }
-    }
-
     @Override
     public void clearRegister(int idx, LIRKind kind) {
-        PlatformKind platformKind = kind.getPlatformKind();
-        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
-
-        if (bytesPerElement == 8) {
-            clearOop(registerRefMap, idx * 2, platformKind);
-        } else if (bytesPerElement == 4) {
-            clearNarrowOop(registerRefMap, idx * 2, platformKind);
-        } else {
-            assert kind.isValue() : "unsupported reference kind " + kind;
-        }
+        clear(registerRefMap, idx * 2, kind);
     }
 
     @Override
     public void clearStackSlot(int offset, LIRKind kind) {
+        assert offset % bytesPerElement(kind) == 0 : "unaligned value in ReferenceMap";
+        clear(frameRefMap, offset / 4, kind);
+    }
 
-        PlatformKind platformKind = kind.getPlatformKind();
-        int bytesPerElement = target.getSizeInBytes(platformKind) / platformKind.getVectorLength();
-        assert offset % bytesPerElement == 0 : "unaligned value in ReferenceMap";
-
-        int index = offset / 4; // Addressing is done in increments of 4 bytes
+    private void clear(HotSpotOopMap refMap, int index, LIRKind kind) {
+        int bytesPerElement = bytesPerElement(kind);
+        int length = kind.getPlatformKind().getVectorLength();
         if (bytesPerElement == 8) {
-            clearOop(frameRefMap, index, platformKind);
+            for (int i = 0; i < length; i++) {
+                refMap.clearOop(index + i * 2);
+            }
         } else if (bytesPerElement == 4) {
-            clearNarrowOop(frameRefMap, index, platformKind);
+            for (int i = 0; i < length; i++) {
+                refMap.clearNarrowOop(index + i);
+            }
         } else {
             assert kind.isValue() : "unknown reference kind " + kind;
         }
