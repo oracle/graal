@@ -504,7 +504,15 @@ public abstract class SpecializationNode extends Node {
         if (merged == generated) {
             // new node
             if (start.count() == 2) {
-                insertAt(start, start.createPolymorphic(), "insert polymorphic");
+                SpecializationNode polymorphic = start.createPolymorphic();
+                /*
+                 * For nodes with all parameters evaluated in the execute method we do not need a
+                 * polymorphic node. the generated code returns null in createPolymorphic in this
+                 * case.
+                 */
+                if (polymorphic != null) {
+                    insertAt(start, polymorphic, "insert polymorphic");
+                }
             }
             SpecializationNode current = start;
             while (current != null && current.index < generated.index) {

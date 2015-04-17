@@ -420,6 +420,17 @@ public class NodeGenFactory {
     }
 
     private boolean needsPolymorphic() {
+        int signatureSize = node.getSignatureSize();
+        boolean allEvaluated = true;
+        for (ExecutableTypeData type : usedTypes) {
+            if (type.getEvaluatedCount() != signatureSize) {
+                allEvaluated = false;
+            }
+        }
+        if (allEvaluated) {
+            return false;
+        }
+
         if (reachableSpecializations.size() != 1) {
             return true;
         }
