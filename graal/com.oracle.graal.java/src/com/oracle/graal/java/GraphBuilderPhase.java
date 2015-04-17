@@ -404,6 +404,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 }
                                 LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
                                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
+                                if (parsingReplacement()) {
+                                    loopEnd.disableSafepoint();
+                                }
                                 endNode.replaceAndDelete(loopEnd);
                             } else if (visited.contains(n)) {
                                 // Normal merge into a branch we are already exploring.

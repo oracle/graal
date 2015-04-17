@@ -592,20 +592,15 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
 
         private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, Object[] args) {
-            StructuredGraph graph = args == null ? replacements.graphCache.get(methodToParse) : null;
+            assert methodToParse.hasBytecodes() : methodToParse;
+            if (args != null) {
+                return buildInitialGraph(methodToParse, args);
+            }
+            StructuredGraph graph = replacements.graphCache.get(methodToParse);
             if (graph == null) {
-                StructuredGraph newGraph = null;
-                try (Scope s = Debug.scope("ParseGraph", methodToParse)) {
-                    newGraph = buildGraph(methodToParse, args);
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-                if (args == null) {
-                    replacements.graphCache.putIfAbsent(methodToParse, newGraph);
-                    graph = replacements.graphCache.get(methodToParse);
-                } else {
-                    graph = newGraph;
-                }
+                StructuredGraph newGraph = buildInitialGraph(methodToParse, args);
+                replacements.graphCache.putIfAbsent(methodToParse, newGraph);
+                graph = replacements.graphCache.get(methodToParse);
                 assert graph != null;
             }
             return graph;
@@ -668,22 +663,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
         protected Object beforeInline(@SuppressWarnings("unused") MethodCallTargetNode callTarget, @SuppressWarnings("unused") StructuredGraph callee) {
             return null;
-        }
-
-        private StructuredGraph buildGraph(final ResolvedJavaMethod methodToParse, Object[] args) {
-            assert methodToParse.hasBytecodes() : methodToParse;
-            final StructuredGraph graph = buildInitialGraph(methodToParse, args);
-            try (Scope s = Debug.scope("buildGraph", graph)) {
-
-                for (LoopEndNode end : graph.getNodes(LoopEndNode.TYPE)) {
-                    end.disableSafepoint();
-                }
-
-                new DeadCodeEliminationPhase(Required).apply(graph);
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-            return graph;
         }
     }
 
