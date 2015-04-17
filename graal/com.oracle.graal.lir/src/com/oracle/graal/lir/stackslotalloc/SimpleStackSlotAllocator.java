@@ -46,7 +46,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase implements StackSl
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
         StackSlot[] mapping = new StackSlot[builder.getNumberOfStackSlots()];
-        long currentFrameSize = Debug.isMeterEnabled() ? builder.getFrameMap().currentFrameSize() : 0;
+        long currentFrameSize = allocatedFramesize.isEnabled() ? builder.getFrameMap().currentFrameSize() : 0;
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
@@ -63,7 +63,9 @@ public class SimpleStackSlotAllocator extends AllocationPhase implements StackSl
             mapping[virtualSlot.getId()] = slot;
         }
         updateLIR(res, mapping);
-        allocatedFramesize.add(builder.getFrameMap().currentFrameSize() - currentFrameSize);
+        if (allocatedFramesize.isEnabled()) {
+            allocatedFramesize.add(builder.getFrameMap().currentFrameSize() - currentFrameSize);
+        }
     }
 
     protected void updateLIR(LIRGenerationResult res, StackSlot[] mapping) {
