@@ -38,7 +38,6 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -475,20 +474,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     /**
-     * Calls in snippets to methods matching one of these filters are elided. Only void methods are
-     * considered for elision.
-     */
-    private static final MethodFilter[] MethodsElidedInSnippets = getMethodsElidedInSnippets();
-
-    private static MethodFilter[] getMethodsElidedInSnippets() {
-        String commaSeparatedPatterns = System.getProperty("graal.MethodsElidedInSnippets");
-        if (commaSeparatedPatterns != null) {
-            return MethodFilter.parse(commaSeparatedPatterns);
-        }
-        return null;
-    }
-
-    /**
      * Creates and preprocesses a graph for a replacement.
      */
     public static class GraphMaker {
@@ -620,17 +605,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
 
-                if (MethodsElidedInSnippets != null && methodToParse.getSignature().getReturnKind() == Kind.Void && MethodFilter.matches(MethodsElidedInSnippets, methodToParse)) {
-                    graph.addAfterFixed(graph.start(), graph.add(new ReturnNode(null)));
-                } else {
-                    Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
-                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-                    if (args != null) {
-                        plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));
-                    }
-                    createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE).apply(graph);
+                Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
+                GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+                if (args != null) {
+                    plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));
                 }
-                afterParsing(graph);
+                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE).apply(graph);
 
                 if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
@@ -653,16 +633,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 initialReplacementContext = new ReplacementContext(original, method);
             }
             return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, graphBuilderConfig, optimisticOpts, initialReplacementContext);
-        }
-
-        /**
-         * @param graph
-         */
-        protected void afterParsing(StructuredGraph graph) {
-        }
-
-        protected Object beforeInline(@SuppressWarnings("unused") MethodCallTargetNode callTarget, @SuppressWarnings("unused") StructuredGraph callee) {
-            return null;
         }
     }
 

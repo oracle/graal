@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -54,6 +55,21 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         this.wordOperationPlugin = wordOperationPlugin;
 
         this.structuralInputType = metaAccess.lookupJavaType(StructuralInput.class);
+    }
+
+    /**
+     * Calls in replacements to methods matching one of these filters are elided. Only void methods
+     * are considered for elision. The use of "snippets" in name of the variable and system property
+     * is purely for legacy reasons.
+     */
+    private static final MethodFilter[] MethodsElidedInSnippets = getMethodsElidedInSnippets();
+
+    private static MethodFilter[] getMethodsElidedInSnippets() {
+        String commaSeparatedPatterns = System.getProperty("graal.MethodsElidedInSnippets");
+        if (commaSeparatedPatterns != null) {
+            return MethodFilter.parse(commaSeparatedPatterns);
+        }
+        return null;
     }
 
     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
@@ -90,6 +106,13 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
                     } else {
                         // This must be a void invoke
                         assert method.getSignature().getReturnKind() == Kind.Void;
+                    }
+                    return true;
+                }
+            } else if (MethodsElidedInSnippets != null) {
+                if (MethodFilter.matches(MethodsElidedInSnippets, method)) {
+                    if (method.getSignature().getReturnKind() != Kind.Void) {
+                        throw new GraalInternalError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
                     }
                     return true;
                 }
