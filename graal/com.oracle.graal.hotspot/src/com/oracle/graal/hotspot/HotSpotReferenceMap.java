@@ -128,15 +128,6 @@ public final class HotSpotReferenceMap extends ReferenceMap implements Serializa
             return getEntry(i);
         }
 
-        private boolean isEmpty() {
-            for (int i = 0; i < words.length; i++) {
-                if (words[i] != 0) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         public void or(HotSpotOopMap src) {
             if (words.length < src.words.length) {
                 long[] newWords = new long[src.words.length];
@@ -222,14 +213,6 @@ public final class HotSpotReferenceMap extends ReferenceMap implements Serializa
             int wordIndex = bitIndex / BITS_PER_ELEMENT;
             int shift = bitIndex - wordIndex * BITS_PER_ELEMENT;
             return ((int) (words[wordIndex] >>> shift)) & 0b1111;
-        }
-
-        private void clearOop(int offset) {
-            setEntry(offset, 0);
-        }
-
-        private void clearNarrowOop(int offset) {
-            setNarrowEntry(offset, 0);
         }
 
         @Override
@@ -402,58 +385,6 @@ public final class HotSpotReferenceMap extends ReferenceMap implements Serializa
 
     public HotSpotOopMap getRegisterMap() {
         return registerRefMap == null ? null : (HotSpotOopMap) registerRefMap.clone();
-    }
-
-    // clear
-    @Override
-    public void clearRegister(int idx, LIRKind kind) {
-        clear(registerRefMap, idx * 2, kind);
-    }
-
-    @Override
-    public void clearStackSlot(int offset, LIRKind kind) {
-        assert offset % bytesPerElement(kind) == 0 : "unaligned value in ReferenceMap";
-        clear(frameRefMap, offset / 4, kind);
-    }
-
-    private void clear(HotSpotOopMap refMap, int index, LIRKind kind) {
-        int bytesPerElement = bytesPerElement(kind);
-        int length = kind.getPlatformKind().getVectorLength();
-        if (bytesPerElement == 8) {
-            for (int i = 0; i < length; i++) {
-                refMap.clearOop(index + i * 2);
-            }
-        } else if (bytesPerElement == 4) {
-            for (int i = 0; i < length; i++) {
-                refMap.clearNarrowOop(index + i);
-            }
-        } else {
-            assert kind.isValue() : "unknown reference kind " + kind;
-        }
-    }
-
-    @Override
-    public void updateUnion(ReferenceMap otherArg) {
-        HotSpotReferenceMap other = (HotSpotReferenceMap) otherArg;
-        if (registerRefMap != null) {
-            assert other.registerRefMap != null;
-            updateUnionOopMapRaw(registerRefMap, other.registerRefMap);
-        } else {
-            assert other.registerRefMap == null || other.registerRefMap.isEmpty() : "Target register reference map is empty but the source is not: " + other.registerRefMap;
-        }
-        updateUnionOopMapRaw(frameRefMap, other.frameRefMap);
-    }
-
-    /**
-     * Update {@code src} with the union of {@code src} and {@code dst}.
-     *
-     * @see HotSpotReferenceMap#registerRefMap
-     * @see HotSpotReferenceMap#frameRefMap
-     */
-    private static void updateUnionOopMapRaw(HotSpotOopMap dst, HotSpotOopMap src) {
-        assert verifyUpdate(dst, src);
-        dst.or(src);
-        assert verifyUpdate(dst, dst);
     }
 
     static MapEntry[] entries(HotSpotOopMap fixedMap) {

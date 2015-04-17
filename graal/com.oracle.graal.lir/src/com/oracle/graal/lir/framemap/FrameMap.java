@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -343,18 +343,6 @@ public abstract class FrameMap {
         } else if (isStackSlot(location)) {
             int offset = offsetForStackSlot(asStackSlot(location));
             refMap.setStackSlot(offset, kind);
-        } else {
-            assert isConstant(location);
-        }
-    }
-
-    public void clearReference(Value location, ReferenceMap refMap) {
-        LIRKind kind = location.getLIRKind();
-        if (isRegister(location)) {
-            refMap.clearRegister(asRegister(location).getReferenceMapIndex(), kind);
-        } else if (isStackSlot(location)) {
-            int offset = offsetForStackSlot(asStackSlot(location));
-            refMap.clearStackSlot(offset, kind);
         } else {
             assert isConstant(location);
         }

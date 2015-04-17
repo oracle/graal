@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,20 +162,13 @@ public class LIRFrameState {
     }
 
     /**
-     * Called by the register allocator before {@link #updateUnion} to initialize the frame state.
+     * Called by the register allocator to initialize the frame state.
      *
      * @param frameMap The frame map.
      * @param canHaveRegisters True if there can be any register map entries.
      */
     public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
         debugInfo = new DebugInfo(topFrame, frameMap.initReferenceMap(canHaveRegisters), virtualObjects);
-    }
-
-    /**
-     * Updates this reference map with all references that are marked in {@code refMap}.
-     */
-    public void updateUnion(ReferenceMap refMap) {
-        debugInfo.getReferenceMap().updateUnion(refMap);
     }
 
     @Override

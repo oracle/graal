@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,7 @@ public abstract class ReferenceMap implements Cloneable {
 
     public abstract void setRegister(int idx, LIRKind kind);
 
-    public abstract void clearRegister(int idx, LIRKind kind);
-
     public abstract void setStackSlot(int offset, LIRKind kind);
-
-    public abstract void clearStackSlot(int offset, LIRKind kind);
 
     public abstract boolean hasRegisterRefMap();
 
@@ -42,12 +38,4 @@ public abstract class ReferenceMap implements Cloneable {
     public abstract void appendRegisterMap(StringBuilder sb, RefMapFormatter formatterArg);
 
     public abstract void appendFrameMap(StringBuilder sb, RefMapFormatter formatterArg);
-
-    @Override
-    public abstract ReferenceMap clone();
-
-    /**
-     * Updates this map with all references marked in {@code other}.
-     */
-    public abstract void updateUnion(ReferenceMap other);
 }
