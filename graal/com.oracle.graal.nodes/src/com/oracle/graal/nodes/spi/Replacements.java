@@ -59,15 +59,6 @@ public interface Replacements {
     void registerSnippet(ResolvedJavaMethod method);
 
     /**
-     * Notifies this object during snippet specialization once the specialized snippet's constant
-     * parameters have been replaced with constant values.
-     *
-     * @param specializedSnippet the snippet in the process of being specialized. This is a copy of
-     *            the unspecialized snippet graph created during snippet preparation.
-     */
-    void notifyAfterConstantsBound(StructuredGraph specializedSnippet);
-
-    /**
      * Gets a graph that is a substitution for a given method.
      *
      * @param invokeBci the call site BCI if this request is made for inlining a substitute

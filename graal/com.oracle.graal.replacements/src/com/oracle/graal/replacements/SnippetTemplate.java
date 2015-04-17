@@ -612,9 +612,6 @@ public class SnippetTemplate {
         snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
 
         Debug.dump(snippetCopy, "Before specialization");
-        if (!nodeReplacements.isEmpty()) {
-            providers.getReplacements().notifyAfterConstantsBound(snippetCopy);
-        }
 
         // Gather the template parameters
         parameters = new Object[parameterCount];

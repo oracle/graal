@@ -49,7 +49,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.policy.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.replacements.*;
 
 /**
  * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.
@@ -251,7 +250,6 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
             HighTierContext highContext = getDefaultHighTierContext();
             MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
-            new NodeIntrinsificationPhase(getMetaAccess(), getConstantReflection(), getSnippetReflection(), getProviders().getForeignCalls(), getProviders().getStampProvider()).apply(graph);
             new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase()).apply(graph, highContext);
             new CanonicalizerPhase().apply(graph, highContext);
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);
