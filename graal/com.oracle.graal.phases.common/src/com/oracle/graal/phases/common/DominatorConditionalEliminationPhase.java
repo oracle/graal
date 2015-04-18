@@ -222,6 +222,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                             node.replaceAtPredecessor(deopt);
                             GraphUtil.killCFG(node);
                         }
+                        return true;
                     });
                 }
             }
@@ -237,6 +238,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 if (survivingSuccessor instanceof BeginNode) {
                     undoOperations.add(() -> ((BeginNode) survivingSuccessor).trySimplify());
                 }
+                return true;
             });
         }
 
@@ -276,12 +278,11 @@ public class DominatorConditionalEliminationPhase extends Phase {
             }
         }
 
-        private boolean rewireGuards(ValueNode guard, boolean result, BiConsumer<ValueNode, Boolean> rewireGuardFunction) {
+        private boolean rewireGuards(ValueNode guard, boolean result, GuardRewirer rewireGuardFunction) {
             assert guard instanceof GuardingNode;
             metricStampsFound.increment();
             ValueNode proxiedGuard = proxyGuard(guard);
-            rewireGuardFunction.accept(proxiedGuard, result);
-            return true;
+            return rewireGuardFunction.rewire(proxiedGuard, result);
         }
 
         private ValueNode proxyGuard(ValueNode guard) {
@@ -306,7 +307,18 @@ public class DominatorConditionalEliminationPhase extends Phase {
             return proxiedGuard;
         }
 
-        private boolean tryProofCondition(LogicNode node, BiConsumer<ValueNode, Boolean> rewireGuardFunction) {
+        @FunctionalInterface
+        private interface GuardRewirer {
+            /**
+             * Called if the condition could be proven to have a constant value ({@code result})
+             * under {@code guard}.
+             *
+             * Return whether a transformation could be applied.
+             */
+            boolean rewire(ValueNode guard, boolean result);
+        }
+
+        private boolean tryProofCondition(LogicNode node, GuardRewirer rewireGuardFunction) {
             for (InfoElement infoElement : getInfoElements(node)) {
                 Stamp stamp = infoElement.getStamp();
                 JavaConstant constant = (JavaConstant) stamp.asConstant();
@@ -352,14 +364,15 @@ public class DominatorConditionalEliminationPhase extends Phase {
             } else if (node instanceof ShortCircuitOrNode) {
                 final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
                 if (this.loopExits.isEmpty()) {
-                    tryProofCondition(shortCircuitOrNode.getX(), (guard, result) -> {
+                    return tryProofCondition(shortCircuitOrNode.getX(), (guard, result) -> {
                         if (result == !shortCircuitOrNode.isXNegated()) {
-                            rewireGuards(guard, result, rewireGuardFunction);
+                            return rewireGuards(guard, result, rewireGuardFunction);
                         } else {
-                            tryProofCondition(shortCircuitOrNode.getY(), (innerGuard, innerResult) -> {
+                            return tryProofCondition(shortCircuitOrNode.getY(), (innerGuard, innerResult) -> {
                                 if (innerGuard == guard) {
-                                    rewireGuards(guard, shortCircuitOrNode.isYNegated() ? !innerResult : innerResult, rewireGuardFunction);
+                                    return rewireGuards(guard, shortCircuitOrNode.isYNegated() ? !innerResult : innerResult, rewireGuardFunction);
                                 }
+                                return false;
                             });
                         }
                     });
@@ -395,6 +408,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     node.replaceAtUsages(valueAnchor);
                     node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
+                return true;
             });
         }
 
@@ -409,6 +423,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     beginNode.setNext(deopt);
                     GraphUtil.killCFG(next);
                 }
+                return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node, undoOperations);
             }
@@ -426,6 +441,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
                     node.replaceAtPredecessor(deopt);
                     GraphUtil.killCFG(node);
                 }
+                return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node, undoOperations);
             }
