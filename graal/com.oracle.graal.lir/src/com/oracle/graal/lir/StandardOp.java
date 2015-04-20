@@ -90,6 +90,18 @@ public class StandardOp {
             incomingValues = values;
         }
 
+        public int getIncomingSize() {
+            return incomingValues.length;
+        }
+
+        public Value getIncomingValue(int idx) {
+            return incomingValues[idx];
+        }
+
+        public void clearIncomingValues() {
+            incomingValues = NO_VALUES;
+        }
+
         @Override
         public void emitCode(CompilationResultBuilder crb) {
             if (align) {
@@ -128,6 +140,18 @@ public class StandardOp {
         public void setOutgoingValues(Value[] values) {
             assert outgoingValues.length == 0;
             outgoingValues = values;
+        }
+
+        public int getOutgoingSize() {
+            return outgoingValues.length;
+        }
+
+        public Value getOutgoingValue(int idx) {
+            return outgoingValues[idx];
+        }
+
+        public void clearOutgoingValues() {
+            outgoingValues = NO_VALUES;
         }
 
         @Override
