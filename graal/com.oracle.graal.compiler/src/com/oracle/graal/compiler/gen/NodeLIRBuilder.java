@@ -45,6 +45,7 @@ import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.debug.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGenerator.Options;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.BlockScope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -192,71 +193,71 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
-        gen.doBlockStart(block);
+        try (BlockScope blockScope = gen.getBlockScope(block)) {
 
-        if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
-            assert block.getPredecessorCount() == 0;
-            emitPrologue(graph);
-        } else {
-            assert block.getPredecessorCount() > 0;
-        }
+            if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
+                assert block.getPredecessorCount() == 0;
+                emitPrologue(graph);
+            } else {
+                assert block.getPredecessorCount() > 0;
+            }
 
-        List<Node> nodes = blockMap.get(block);
+            List<Node> nodes = blockMap.get(block);
 
-        // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
-        // of instructions
-        matchComplexExpressions(nodes);
+            // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
+            // of instructions
+            matchComplexExpressions(nodes);
 
-        for (int i = 0; i < nodes.size(); i++) {
-            Node node = nodes.get(i);
-            if (node instanceof ValueNode) {
-                ValueNode valueNode = (ValueNode) node;
-                if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
-                    TTY.println("LIRGen for " + valueNode);
-                }
-                Value operand = getOperand(valueNode);
-                if (operand == null) {
-                    if (!peephole(valueNode)) {
-                        try {
-                            doRoot(valueNode);
-                        } catch (GraalInternalError e) {
-                            throw GraalGraphInternalError.transformAndAddContext(e, valueNode);
-                        } catch (Throwable e) {
-                            throw new GraalGraphInternalError(e).addContext(valueNode);
+            for (int i = 0; i < nodes.size(); i++) {
+                Node node = nodes.get(i);
+                if (node instanceof ValueNode) {
+                    ValueNode valueNode = (ValueNode) node;
+                    if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
+                        TTY.println("LIRGen for " + valueNode);
+                    }
+                    Value operand = getOperand(valueNode);
+                    if (operand == null) {
+                        if (!peephole(valueNode)) {
+                            try {
+                                doRoot(valueNode);
+                            } catch (GraalInternalError e) {
+                                throw GraalGraphInternalError.transformAndAddContext(e, valueNode);
+                            } catch (Throwable e) {
+                                throw new GraalGraphInternalError(e).addContext(valueNode);
+                            }
                         }
+                    } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
+                        // Doesn't need to be evaluated
+                        Debug.log("interior match for %s", valueNode);
+                    } else if (operand instanceof ComplexMatchValue) {
+                        Debug.log("complex match for %s", valueNode);
+                        ComplexMatchValue match = (ComplexMatchValue) operand;
+                        operand = match.evaluate(this);
+                        if (operand != null) {
+                            setResult(valueNode, operand);
+                        }
+                    } else {
+                        // There can be cases in which the result of an instruction is already set
+                        // before by other instructions.
                     }
-                } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
-                    // Doesn't need to be evaluated
-                    Debug.log("interior match for %s", valueNode);
-                } else if (operand instanceof ComplexMatchValue) {
-                    Debug.log("complex match for %s", valueNode);
-                    ComplexMatchValue match = (ComplexMatchValue) operand;
-                    operand = match.evaluate(this);
-                    if (operand != null) {
-                        setResult(valueNode, operand);
-                    }
-                } else {
-                    // There can be cases in which the result of an instruction is already set
-                    // before by other instructions.
                 }
             }
-        }
 
-        if (!gen.hasBlockEnd(block)) {
-            NodeClassIterable successors = block.getEndNode().successors();
-            assert successors.count() == block.getSuccessorCount();
-            if (block.getSuccessorCount() != 1) {
-                /*
-                 * If we have more than one successor, we cannot just use the first one. Since
-                 * successors are unordered, this would be a random choice.
-                 */
-                throw new GraalInternalError("Block without BlockEndOp: " + block.getEndNode());
+            if (!gen.hasBlockEnd(block)) {
+                NodeClassIterable successors = block.getEndNode().successors();
+                assert successors.count() == block.getSuccessorCount();
+                if (block.getSuccessorCount() != 1) {
+                    /*
+                     * If we have more than one successor, we cannot just use the first one. Since
+                     * successors are unordered, this would be a random choice.
+                     */
+                    throw new GraalInternalError("Block without BlockEndOp: " + block.getEndNode());
+                }
+                gen.emitJump(getLIRBlock((FixedNode) successors.first()));
             }
-            gen.emitJump(getLIRBlock((FixedNode) successors.first()));
-        }
 
-        assert verifyBlock(gen.getResult().getLIR(), block);
-        gen.doBlockEnd(block);
+            assert verifyBlock(gen.getResult().getLIR(), block);
+        }
     }
 
     protected void matchComplexExpressions(List<Node> nodes) {

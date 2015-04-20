@@ -183,7 +183,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        res.getLIR().getLIRforBlock(currentBlock).add(op);
+        res.getLIR().getLIRforBlock(getCurrentBlock()).add(op);
         return op;
     }
 
@@ -195,35 +195,55 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return ops.get(ops.size() - 1) instanceof BlockEndOp;
     }
 
-    public final void doBlockStart(AbstractBlockBase<?> block) {
-        if (Options.PrintIRWithLIR.getValue()) {
-            TTY.print(block.toString());
+    private final class BlockScopeImpl extends BlockScope {
+
+        private BlockScopeImpl(AbstractBlockBase<?> block) {
+            currentBlock = block;
         }
 
-        currentBlock = block;
+        private void doBlockStart() {
+            if (Options.PrintIRWithLIR.getValue()) {
+                TTY.print(currentBlock.toString());
+            }
 
-        // set up the list of LIR instructions
-        assert res.getLIR().getLIRforBlock(block) == null : "LIR list already computed for this block";
-        res.getLIR().setLIRforBlock(block, new ArrayList<LIRInstruction>());
+            // set up the list of LIR instructions
+            assert res.getLIR().getLIRforBlock(currentBlock) == null : "LIR list already computed for this block";
+            res.getLIR().setLIRforBlock(currentBlock, new ArrayList<LIRInstruction>());
 
-        append(new LabelOp(new Label(block.getId()), block.isAligned()));
+            append(new LabelOp(new Label(currentBlock.getId()), currentBlock.isAligned()));
 
-        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
-            TTY.println("BEGIN Generating LIR for block B" + block.getId());
+            if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
+                TTY.println("BEGIN Generating LIR for block B" + currentBlock.getId());
+            }
         }
+
+        private void doBlockEnd() {
+            if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
+                TTY.println("END Generating LIR for block B" + currentBlock.getId());
+            }
+
+            if (Options.PrintIRWithLIR.getValue()) {
+                TTY.println();
+            }
+            currentBlock = null;
+        }
+
+        @Override
+        public AbstractBlockBase<?> getCurrentBlock() {
+            return currentBlock;
+        }
+
+        @Override
+        public void close() {
+            doBlockEnd();
+        }
+
     }
 
-    public final void doBlockEnd(AbstractBlockBase<?> block) {
-
-        if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
-            TTY.println("END Generating LIR for block B" + block.getId());
-        }
-
-        currentBlock = null;
-
-        if (Options.PrintIRWithLIR.getValue()) {
-            TTY.println();
-        }
+    public final BlockScope getBlockScope(AbstractBlockBase<?> block) {
+        BlockScopeImpl blockScope = new BlockScopeImpl(block);
+        blockScope.doBlockStart();
+        return blockScope;
     }
 
     public void emitIncomingValues(Value[] params) {

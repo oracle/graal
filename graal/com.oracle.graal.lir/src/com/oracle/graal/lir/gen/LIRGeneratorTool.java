@@ -37,6 +37,14 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
         LIRInstruction createMove(AllocatableValue result, Value input);
     }
 
+    public abstract class BlockScope implements AutoCloseable {
+
+        public abstract AbstractBlockBase<?> getCurrentBlock();
+
+        public abstract void close();
+
+    }
+
     CodeGenProviders getProviders();
 
     TargetDescription target();
@@ -55,9 +63,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
     SpillMoveFactory getSpillMoveFactory();
 
-    void doBlockStart(AbstractBlockBase<?> block);
-
-    void doBlockEnd(AbstractBlockBase<?> block);
+    BlockScope getBlockScope(AbstractBlockBase<?> block);
 
     Value emitLoadConstant(LIRKind kind, Constant constant);
 
