@@ -433,6 +433,7 @@ public class StructuredGraph extends Graph {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
         assert newNode.next() == null : newNode;
+        assert !(node instanceof AbstractMergeNode);
         FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
         pred.setNext(newNode);
         newNode.setNext(node);

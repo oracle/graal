@@ -1152,7 +1152,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 // be conservative if information was not recorded (could result in endless
                 // recompiles otherwise)
                 Invoke invoke;
-                if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
+                if (!StressInvokeWithExceptionNode.getValue() &&
+                                (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE))) {
                     invoke = createInvoke(callTarget, resultType);
                 } else {
                     invoke = createInvokeWithException(callTarget, resultType);

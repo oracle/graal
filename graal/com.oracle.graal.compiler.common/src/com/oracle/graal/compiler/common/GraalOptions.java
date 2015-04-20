@@ -122,6 +122,9 @@ public final class GraalOptions {
     @Option(help = "Stressed the code emitting explicit exception throwing code.", type = OptionType.Debug)
     public static final StableOptionValue<Boolean> StressExplicitExceptionCode = new StableOptionValue<>(false);
 
+    @Option(help = "Stressed the code emitting explicit exception throwing code.", type = OptionType.Debug)
+    public static final StableOptionValue<Boolean> StressInvokeWithExceptionNode = new StableOptionValue<>(false);
+
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> VerifyPhases = new OptionValue<>(false);
 
