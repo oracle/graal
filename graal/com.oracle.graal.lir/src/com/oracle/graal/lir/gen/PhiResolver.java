@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
@@ -30,11 +30,9 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
 
 /**
- * Converts {@link ValuePhiNode} instructions into moves.
+ * Converts phi instructions into moves.
  *
  * Resolves cycles:
  *
