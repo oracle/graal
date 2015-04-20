@@ -296,7 +296,7 @@ public final class PropertyMap implements Map<Object, Property> {
     }
 
     public PropertyMap removeCopy(Property value) {
-        LinkedList<Property> shelve = new LinkedList<>();
+        Deque<Property> shelve = new ArrayDeque<>();
         PropertyMap current = this;
         while (!current.isEmpty()) {
             if (current.getLastProperty().equals(value)) {
@@ -314,7 +314,7 @@ public final class PropertyMap implements Map<Object, Property> {
     }
 
     public PropertyMap replaceCopy(Property oldValue, Property newValue) {
-        LinkedList<Property> shelve = new LinkedList<>();
+        Deque<Property> shelve = new ArrayDeque<>();
         PropertyMap current = this;
         while (!current.isEmpty()) {
             if (current.getLastProperty().equals(oldValue)) {

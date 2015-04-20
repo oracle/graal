@@ -276,14 +276,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     @TruffleBoundary
     public Property getProperty(Object key) {
-        PropertyMap current = this.propertyMap;
-        while (current.getLastProperty() != null) {
-            if (current.getLastProperty().getKey().equals(key)) {
-                return current.getLastProperty();
-            }
-            current = current.getParentMap();
-        }
-        return null;
+        return propertyMap.get(key);
     }
 
     protected final void addDirectTransition(Transition transition, ShapeImpl next) {

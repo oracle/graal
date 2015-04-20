@@ -25,10 +25,8 @@
 package com.oracle.truffle.api.object;
 
 /**
- * Property objects represent the mapping between low-level stores and high-level data. The simplest
- * Property could be nothing more than a map of one index to one property's value, but abstracting
- * the interface allows for getter/setter methods, type-checked properties, and other such
- * specialized and language-specific behavior. ECMAScript[8.6.1]
+ * Property objects represent the mapping between property identifiers (keys) and storage locations.
+ * Optionally, properties may have metadata attached to them.
  */
 public abstract class Property {
     protected Property() {
