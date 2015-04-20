@@ -40,8 +40,10 @@ import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.debug.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGenerator.Options;
@@ -192,6 +194,31 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         gen.append(op);
     }
 
+    private static NodeIterable<ValuePhiNode> valuePhis(AbstractMergeNode merge) {
+        return merge.usages().filter(ValuePhiNode.class).filter(merge::isPhiAtMerge);
+    }
+
+    protected Value[] createPhiIn(AbstractMergeNode merge) {
+        List<Value> values = new ArrayList<>();
+        for (ValuePhiNode phi : valuePhis(merge)) {
+            assert getOperand(phi) == null;
+            Variable value = gen.newVariable(getPhiKind(phi));
+            values.add(value);
+            setResult(phi, value);
+        }
+        return values.toArray(new Value[values.size()]);
+    }
+
+    private Value[] createPhiOut(AbstractMergeNode merge, AbstractEndNode pred) {
+        List<Value> values = new ArrayList<>();
+        for (PhiNode phi : valuePhis(merge)) {
+            Value value = operand(phi.valueAt(pred));
+            assert value != null;
+            values.add(value);
+        }
+        return values.toArray(new Value[values.size()]);
+    }
+
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         try (BlockScope blockScope = gen.getBlockScope(block)) {
 
@@ -200,6 +227,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 emitPrologue(graph);
             } else {
                 assert block.getPredecessorCount() > 0;
+                if (SSA_LIR.getValue()) {
+                    // create phi-in value array
+                    AbstractBeginNode begin = block.getBeginNode();
+                    if (begin instanceof AbstractMergeNode) {
+                        AbstractMergeNode merge = (AbstractMergeNode) begin;
+                        LabelOp label = (LabelOp) gen.getResult().getLIR().getLIRforBlock(block).get(0);
+                        label.setIncomingValues(createPhiIn(merge));
+                    }
+                }
             }
 
             List<Node> nodes = blockMap.get(block);
@@ -211,6 +247,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             for (int i = 0; i < nodes.size(); i++) {
                 Node node = nodes.get(i);
                 if (node instanceof ValueNode) {
+                    if (node instanceof ValuePhiNode) {
+                        assert node != null;
+                    }
                     ValueNode valueNode = (ValueNode) node;
                     if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
                         TTY.println("LIRGen for " + valueNode);
@@ -347,8 +386,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     public void visitEndNode(AbstractEndNode end) {
         AbstractMergeNode merge = end.merge();
-        moveToPhi(merge, end);
-        append(newJumpOp(getLIRBlock(merge)));
+        JumpOp jump = newJumpOp(getLIRBlock(merge));
+        if (SSA_LIR.getValue()) {
+            jump.setOutgoingValues(createPhiOut(merge, end));
+        } else {
+            moveToPhi(merge, end);
+        }
+        append(jump);
     }
 
     /**

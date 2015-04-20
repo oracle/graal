@@ -109,15 +109,25 @@ public class StandardOp {
     public static class JumpOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
 
+        private static final Value[] NO_VALUES = new Value[0];
+
+        @Alive({REG, STACK, CONST}) private Value[] outgoingValues;
+
         private final LabelRef destination;
 
         public JumpOp(LabelRef destination) {
             this(TYPE, destination);
+            this.outgoingValues = NO_VALUES;
         }
 
         protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
             super(c);
             this.destination = destination;
+        }
+
+        public void setOutgoingValues(Value[] values) {
+            assert outgoingValues.length == 0;
+            outgoingValues = values;
         }
 
         @Override

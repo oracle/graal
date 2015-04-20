@@ -315,6 +315,9 @@ public final class GraalOptions {
     @Option(help = "Mark well-known stable fields as such.", type = OptionType.Debug)
     public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
 
+    @Option(help = "Generate SSA LIR.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(false);
+
     /**
      * Counts the various paths taken through snippets.
      */
