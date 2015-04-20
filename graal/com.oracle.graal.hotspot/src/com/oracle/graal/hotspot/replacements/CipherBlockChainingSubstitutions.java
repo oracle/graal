@@ -36,6 +36,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for {@code com.sun.crypto.provider.CipherBlockChaining} methods.
  */

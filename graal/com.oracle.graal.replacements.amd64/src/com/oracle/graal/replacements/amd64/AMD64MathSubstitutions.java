@@ -30,6 +30,8 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for some {@link java.lang.Math} methods that leverage AMD64 instructions for
  * selected input values.

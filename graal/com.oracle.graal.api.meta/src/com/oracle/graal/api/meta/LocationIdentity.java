@@ -24,6 +24,8 @@ package com.oracle.graal.api.meta;
 
 import java.util.*;
 
+// JaCoCo Exclude
+
 /**
  * Marker interface for location identities. Apart from the special values {@link #ANY_LOCATION} and
  * {@link #FINAL_LOCATION}, a different location identity of two memory accesses guarantees that the
