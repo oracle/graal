@@ -518,8 +518,6 @@ public class SPARCControlFlow {
     public static final class CondMoveOp extends SPARCLIRInstruction {
         public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
 
-        private final Kind kind;
-
         @Def({REG, HINT}) protected Value result;
         @Use({REG, CONST}) protected Value trueValue;
         @Use({REG, CONST}) protected Value falseValue;
@@ -527,9 +525,8 @@ public class SPARCControlFlow {
         private final ConditionFlag condition;
         private final CC cc;
 
-        public CondMoveOp(Kind kind, Variable result, CC cc, ConditionFlag condition, Value trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, CC cc, ConditionFlag condition, Value trueValue, Value falseValue) {
             super(TYPE);
-            this.kind = kind;
             this.result = result;
             this.condition = condition;
             this.trueValue = trueValue;
@@ -540,9 +537,9 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             if (result.equals(trueValue)) { // We have the true value in place, do he opposite
-                cmove(masm, cc, kind, result, condition.negate(), falseValue);
+                cmove(masm, cc, result, condition.negate(), falseValue);
             } else if (result.equals(falseValue)) {
-                cmove(masm, cc, kind, result, condition, trueValue);
+                cmove(masm, cc, result, condition, trueValue);
             } else { // We have to move one of the input values to the result
                 ConditionFlag actualCondition = condition;
                 Value actualTrueValue = trueValue;
@@ -553,12 +550,12 @@ public class SPARCControlFlow {
                     actualFalseValue = trueValue;
                 }
                 SPARCMove.move(crb, masm, result, actualFalseValue, SPARCDelayedControlTransfer.DUMMY);
-                cmove(masm, cc, kind, result, actualCondition, actualTrueValue);
+                cmove(masm, cc, result, actualCondition, actualTrueValue);
             }
         }
     }
 
-    private static void cmove(SPARCMacroAssembler masm, CC cc, Kind kind, Value result, ConditionFlag cond, Value other) {
+    private static void cmove(SPARCMacroAssembler masm, CC cc, Value result, ConditionFlag cond, Value other) {
         switch (other.getKind()) {
             case Int:
                 if (isConstant(other)) {

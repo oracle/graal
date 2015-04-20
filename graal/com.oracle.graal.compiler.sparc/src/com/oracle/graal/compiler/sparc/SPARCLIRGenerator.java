@@ -319,8 +319,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
         Variable result = newVariable(trueValue.getLIRKind());
         ConditionFlag finalCondition = ConditionFlag.fromCondtition(conditionFlags, mirrored ? cond.mirror() : cond, unorderedIsTrue);
-        Kind kind = result.getKind().getStackKind();
-        append(new CondMoveOp(kind, result, conditionFlags, finalCondition, actualTrueValue, actualFalseValue));
+        append(new CondMoveOp(result, conditionFlags, finalCondition, actualTrueValue, actualFalseValue));
         return result;
     }
 
@@ -396,7 +395,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 throw GraalInternalError.shouldNotReachHere();
         }
         ConditionFlag flag = ConditionFlag.fromCondtition(conditionCode, Condition.EQ, false);
-        append(new CondMoveOp(kind, result, conditionCode, flag, loadSimm11(trueValue), loadSimm11(falseValue)));
+        append(new CondMoveOp(result, conditionCode, flag, loadSimm11(trueValue), loadSimm11(falseValue)));
         return result;
     }
 
