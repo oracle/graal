@@ -135,6 +135,8 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
                         state = state.addSideEffect(stateSplit);
                     } else if (currentState.invalid) {
                         setStateAfter(node.graph(), stateSplit, INVALID_FRAMESTATE_BCI, false);
+                    } else if (stateSplit instanceof StartNode) {
+                        setStateAfter(node.graph(), stateSplit, BEFORE_BCI, false);
                     } else {
                         stateSplit.setStateAfter(null);
                         if (frameState.hasNoUsages()) {
@@ -219,13 +221,13 @@ public class CollapseFrameForSingleSideEffectPhase extends Phase {
          *
          * @param graph the graph context
          * @param node the node whose frame state is updated
-         * @param bci {@link BytecodeFrame#AFTER_BCI}, {@link BytecodeFrame#AFTER_EXCEPTION_BCI} or
+         * @param bci {@link BytecodeFrame#BEFORE_BCI}, {@link BytecodeFrame#AFTER_EXCEPTION_BCI} or
          *            {@link BytecodeFrame#INVALID_FRAMESTATE_BCI}
          * @param replaceOnly only perform the update if the node currently has a non-null frame
          *            state
          */
         private static void setStateAfter(StructuredGraph graph, StateSplit node, int bci, boolean replaceOnly) {
-            assert bci == AFTER_BCI || bci == AFTER_EXCEPTION_BCI || bci == INVALID_FRAMESTATE_BCI;
+            assert (bci == BEFORE_BCI && node instanceof StartNode) || bci == AFTER_BCI || bci == AFTER_EXCEPTION_BCI || bci == INVALID_FRAMESTATE_BCI;
             FrameState currentStateAfter = node.stateAfter();
             if (currentStateAfter != null || !replaceOnly) {
                 node.setStateAfter(graph.add(new FrameState(bci)));
