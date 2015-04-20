@@ -69,7 +69,7 @@ import com.oracle.truffle.api.nodes.*;
 public class PartialEvaluator {
 
     @Option(help = "New partial evaluation on Graal graphs", type = OptionType.Expert)//
-    public static final StableOptionValue<Boolean> GraphPE = new StableOptionValue<>(false);
+    public static final StableOptionValue<Boolean> GraphPE = new StableOptionValue<>(true);
 
     private final Providers providers;
     private final Architecture architecture;
