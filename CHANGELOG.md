@@ -5,10 +5,11 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## `tip`
 ### Graal
+* Merged with jdk8u40-b25.
 * Add utilities ModifiersProvider#isConcrete, ResolvedJavaMethod#hasBytecodes, ResolvedJavaMethod#hasReceiver to Graal API.
 * Add `GraalDirectives` API, containing methods to influence compiler behavior for unittests and microbenchmarks.
 * Introduce `LIRSuites`, an extensible configuration for the low-level compiler pipeline.
-* The Graal class loader now loads all lib/graal/graal*.jar jars
+* The Graal class loader now loads all lib/graal/graal*.jar jars.
 * ...
 
 ### Truffle
