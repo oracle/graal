@@ -24,10 +24,11 @@ package com.oracle.graal.hotspot.loader;
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 /**
  * Utility to create and register a separate class loader for loading Graal classes (i.e., those in
- * {@code graal.jar} and {@code graal-truffle.jar}).
+ * found in lib/graal/graal*.jar).
  */
 public class Factory {
 
@@ -47,32 +48,40 @@ public class Factory {
     }
 
     /**
-     * Creates a new class loader for loading classes in {@code graal.jar} and
-     * {@code graal-truffle.jar}.
+     * Creates a new class loader for loading graal classes.
      */
     private static ClassLoader newClassLoader() {
-        URL[] urls = {getGraalJarUrl("graal"), getGraalJarUrl("graal-truffle")};
+        URL[] urls = getGraalJarsUrls();
         ClassLoader parent = null;
         return URLClassLoader.newInstance(urls, parent);
     }
 
     /**
-     * Gets the URL for {@code base.jar}.
+     * Gets the URLs for lib/graal/graal*.jar.
      */
-    private static URL getGraalJarUrl(String base) {
-        File file = new File(System.getProperty("java.home"));
-        for (String name : new String[]{"lib", base + ".jar"}) {
-            file = new File(file, name);
+    private static URL[] getGraalJarsUrls() {
+        File javaHome = new File(System.getProperty("java.home"));
+        File lib = new File(javaHome, "lib");
+        File graal = new File(lib, "graal");
+        if (!graal.exists()) {
+            throw new InternalError(graal + " does not exist");
         }
 
-        if (!file.exists()) {
-            throw new InternalError(file + " does not exist");
+        List<URL> urls = new ArrayList<>();
+        for (String fileName : graal.list()) {
+            if (fileName.startsWith("graal") && fileName.endsWith(".jar")) {
+                File file = new File(graal, fileName);
+                if (file.isDirectory()) {
+                    continue;
+                }
+                try {
+                    urls.add(file.toURI().toURL());
+                } catch (MalformedURLException e) {
+                    throw new InternalError(e);
+                }
+            }
         }
 
-        try {
-            return file.toURI().toURL();
-        } catch (MalformedURLException e) {
-            throw new InternalError(e);
-        }
+        return urls.toArray(new URL[urls.size()]);
     }
 }

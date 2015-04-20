@@ -42,7 +42,7 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -57,9 +57,8 @@ import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
 
 /**
- * Checks that all classes in graal.jar (which must be on the class path) comply with global
- * invariants such as using {@link Object#equals(Object)} to compare certain types instead of
- * identity comparisons.
+ * Checks that all classes in graal*.jar from the boot classpath comply with global invariants such
+ * as using {@link Object#equals(Object)} to compare certain types instead of identity comparisons.
  */
 public class CheckGraalInvariants extends GraalTest {
 
@@ -82,31 +81,26 @@ public class CheckGraalInvariants extends GraalTest {
         bootclasspath.split(File.pathSeparator);
 
         final List<String> classNames = new ArrayList<>();
-        for (String jarName : new String[]{"graal.jar", "graal-truffle.jar"}) {
-
-            String jar = null;
-            for (String e : bootclasspath.split(File.pathSeparator)) {
-                if (e.endsWith(jarName)) {
-                    jar = e;
-                    break;
-                }
-            }
-            Assert.assertNotNull("Could not find graal.jar on boot class path: " + bootclasspath, jar);
-
-            try {
-                final ZipFile zipFile = new ZipFile(new File(jar));
-                for (final Enumeration<? extends ZipEntry> e = zipFile.entries(); e.hasMoreElements();) {
-                    final ZipEntry zipEntry = e.nextElement();
-                    String name = zipEntry.getName();
-                    if (name.endsWith(".class")) {
-                        String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                        classNames.add(className);
+        for (String path : bootclasspath.split(File.pathSeparator)) {
+            File file = new File(path);
+            String fileName = file.getName();
+            if (fileName.startsWith("graal") && fileName.endsWith(".jar")) {
+                try {
+                    final ZipFile zipFile = new ZipFile(file);
+                    for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
+                        final ZipEntry zipEntry = entry.nextElement();
+                        String name = zipEntry.getName();
+                        if (name.endsWith(".class")) {
+                            String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                            classNames.add(className);
+                        }
                     }
+                } catch (IOException ex) {
+                    Assert.fail(ex.toString());
                 }
-            } catch (IOException e) {
-                Assert.fail(e.toString());
             }
         }
+        Assert.assertFalse("Could not find graal jars on boot class path: " + bootclasspath, classNames.isEmpty());
 
         // Allows a subset of methods to be checked through use of a system property
         String property = System.getProperty(CheckGraalInvariants.class.getName() + ".filters");
