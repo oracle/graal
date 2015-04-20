@@ -565,7 +565,7 @@ public class SPARCControlFlow {
     }
 
     private static void cmove(SPARCMacroAssembler masm, CC cc, Kind kind, Value result, ConditionFlag cond, Value other) {
-        switch (kind) {
+        switch (other.getKind()) {
             case Int:
                 if (isConstant(other)) {
                     int constant;
