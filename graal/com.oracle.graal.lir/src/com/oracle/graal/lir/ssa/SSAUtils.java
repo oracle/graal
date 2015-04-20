@@ -53,14 +53,14 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
  *   v0|i = ...
  *   JUMP ~[v0|i, int[0|0x0]] destination: B0 -> B1
  * ________________________________________________
- * 
+ *
  * B2 -> B1
  *   ...
  *   v1|i = ...
  *   v2|i = ...
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
- * 
+ *
  * B1 <- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
@@ -97,6 +97,10 @@ public final class SSAUtils {
         for (int i = 0; i < label.getIncomingSize(); i++) {
             visitor.visit(label.getIncomingValue(i), jump.getOutgoingValue(i));
         }
+    }
+
+    public static boolean verifySSAForm(LIR lir) {
+        return new SSAVerifier(lir).verify();
     }
 
 }
