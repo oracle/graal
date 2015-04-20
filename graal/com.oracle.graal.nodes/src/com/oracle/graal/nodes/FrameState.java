@@ -293,6 +293,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * is that a stateAfter is being transformed into a stateDuring, so the stack depth may change.
      */
     private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, boolean oldRethrowException, int newBci, int newStackSize, boolean newDuringCall, boolean newRethrowException) {
+        if (BytecodeFrame.isSyntheticBci(oldBci)) {
+            return true;
+        }
         /*
          * It would be nice to have a complete check of the shape of the FrameState based on a
          * dataflow of the bytecodes but for now just check for obvious expression stack depth
