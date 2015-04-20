@@ -918,6 +918,10 @@ public abstract class SPARCAssembler extends Assembler {
         return isSimm(imm, 13);
     }
 
+    public static boolean isSimm13(JavaConstant constant) {
+        return constant.isNull() || isSimm13(constant.asLong());
+    }
+
     public static boolean isSimm13(long imm) {
         return NumUtil.isInt(imm) && isSimm(imm, 13);
     }

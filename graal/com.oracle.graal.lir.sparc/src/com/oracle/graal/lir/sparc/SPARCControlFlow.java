@@ -91,7 +91,7 @@ public class SPARCControlFlow {
         private double trueDestinationProbability;
         // This describes the maximum offset between the first emitted (load constant in to scratch,
         // if does not fit into simm5 of cbcond) instruction and the final branch instruction
-        private static int maximumSelfOffsetInstructions = 4;
+        private static int maximumSelfOffsetInstructions = 2;
 
         public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
                         double trueDestinationProbability) {
@@ -218,19 +218,9 @@ public class SPARCControlFlow {
                 actualY = tmpValue;
                 actualConditionFlag = actualConditionFlag.mirror();
             }
-            boolean isValidConstant = isConstant(actualY) && isSimm5(asConstant(actualY));
             try (ScratchRegister scratch = masm.getScratchRegister()) {
-                if (isConstant(actualY) && !isValidConstant) { // Make sure, the y value is loaded
-                    Value scratchValue = scratch.getRegister().asValue(actualY.getLIRKind());
-                    SPARCMove.move(crb, masm, scratchValue, actualY, SPARCDelayedControlTransfer.DUMMY);
-                    actualY = scratchValue;
-                }
-                // Test if the previous instruction was cbcond, if so, put a nop inbetween (See
-                // SPARC Architecture 2011 manual)
-                if (masm.isCbcond(masm.getInt(masm.position() - 1))) {
-                    masm.nop();
-                }
                 emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
+                masm.nop();
             }
             if (needJump) {
                 masm.jmp(actualFalseTarget);
@@ -289,6 +279,12 @@ public class SPARCControlFlow {
                 default:
                     return false;
             }
+            // Do not use short branch, if the y value is a constant and does not fit into simm5 but
+            // fits into simm13; this means the code with CBcond would be longer as the code without
+            // CBcond.
+            if (isConstant(y) && !isSimm5(asConstant(y)) && isSimm13(asConstant(y))) {
+                return false;
+            }
             boolean hasShortJumpTarget = false;
             if (!crb.isSuccessorEdge(trueDestination)) {
                 hasShortJumpTarget |= isShortBranch(asm, position, trueDestinationHint, trueDestination.label());
@@ -303,7 +299,6 @@ public class SPARCControlFlow {
             int disp = 0;
             if (label.isBound()) {
                 disp = label.position() - position;
-
             } else if (hint != null && hint.isValid()) {
                 disp = hint.getTarget() - hint.getPosition();
             }
@@ -370,7 +365,6 @@ public class SPARCControlFlow {
             // We cannot make use of the delay slot when we jump in true-case and false-case
             return false;
         }
-
         if (kind == Kind.Double || kind == Kind.Float) {
             masm.fbpcc(actualConditionFlag, NOT_ANNUL, actualTarget, CC.Fcc0, predictTaken);
         } else {
