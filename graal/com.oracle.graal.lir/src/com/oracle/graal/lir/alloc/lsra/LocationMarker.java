@@ -30,7 +30,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -292,17 +291,9 @@ public final class LocationMarker extends AllocationPhase {
                 info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !frameMap.getRegisterConfig().areAllAllocatableRegistersCallerSaved());
             }
 
-            try (Scope s = Debug.scope("markLocation", op)) {
-                ReferenceMap refMap = info.debugInfo().getReferenceMap();
-                for (Value v : values) {
-                    try (Scope x = Debug.scope("loop", v)) {
-                        frameMap.setReference(v, refMap);
-                    } catch (Throwable e) {
-                        throw Debug.handle(e);
-                    }
-                }
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+            ReferenceMap refMap = info.debugInfo().getReferenceMap();
+            for (Value v : values) {
+                frameMap.setReference(v, refMap);
             }
         }
 
