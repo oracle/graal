@@ -346,7 +346,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     @Override
     public void visitEndNode(AbstractEndNode end) {
-        moveToPhi(end.merge(), end);
+        AbstractMergeNode merge = end.merge();
+        moveToPhi(merge, end);
+        append(newJumpOp(getLIRBlock(merge)));
     }
 
     /**
@@ -368,8 +370,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             }
         }
         resolver.dispose();
-
-        append(newJumpOp(getLIRBlock(merge)));
     }
 
     protected JumpOp newJumpOp(LabelRef ref) {
