@@ -91,7 +91,7 @@ public class SPARCControlFlow {
         private double trueDestinationProbability;
         // This describes the maximum offset between the first emitted (load constant in to scratch,
         // if does not fit into simm5 of cbcond) instruction and the final branch instruction
-        private static int maximumSelfOffsetInstructions = 4;
+        private static int maximumSelfOffsetInstructions = 2;
 
         public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
                         double trueDestinationProbability) {
@@ -218,19 +218,9 @@ public class SPARCControlFlow {
                 actualY = tmpValue;
                 actualConditionFlag = actualConditionFlag.mirror();
             }
-            boolean isValidConstant = isConstant(actualY) && isSimm5(asConstant(actualY));
             try (ScratchRegister scratch = masm.getScratchRegister()) {
-                if (isConstant(actualY) && !isValidConstant) { // Make sure, the y value is loaded
-                    Value scratchValue = scratch.getRegister().asValue(actualY.getLIRKind());
-                    SPARCMove.move(crb, masm, scratchValue, actualY, SPARCDelayedControlTransfer.DUMMY);
-                    actualY = scratchValue;
-                }
-                // Test if the previous instruction was cbcond, if so, put a nop inbetween (See
-                // SPARC Architecture 2011 manual)
-                if (masm.isCbcond(masm.getInt(masm.position() - 1))) {
-                    masm.nop();
-                }
                 emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
+                masm.nop();
             }
             if (needJump) {
                 masm.jmp(actualFalseTarget);
@@ -289,6 +279,12 @@ public class SPARCControlFlow {
                 default:
                     return false;
             }
+            // Do not use short branch, if the y value is a constant and does not fit into simm5 but
+            // fits into simm13; this means the code with CBcond would be longer as the code without
+            // CBcond.
+            if (isConstant(y) && !isSimm5(asConstant(y)) && isSimm13(asConstant(y))) {
+                return false;
+            }
             boolean hasShortJumpTarget = false;
             if (!crb.isSuccessorEdge(trueDestination)) {
                 hasShortJumpTarget |= isShortBranch(asm, position, trueDestinationHint, trueDestination.label());
@@ -303,7 +299,6 @@ public class SPARCControlFlow {
             int disp = 0;
             if (label.isBound()) {
                 disp = label.position() - position;
-
             } else if (hint != null && hint.isValid()) {
                 disp = hint.getTarget() - hint.getPosition();
             }
@@ -370,7 +365,6 @@ public class SPARCControlFlow {
             // We cannot make use of the delay slot when we jump in true-case and false-case
             return false;
         }
-
         if (kind == Kind.Double || kind == Kind.Float) {
             masm.fbpcc(actualConditionFlag, NOT_ANNUL, actualTarget, CC.Fcc0, predictTaken);
         } else {
@@ -524,8 +518,6 @@ public class SPARCControlFlow {
     public static final class CondMoveOp extends SPARCLIRInstruction {
         public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
 
-        private final Kind kind;
-
         @Def({REG, HINT}) protected Value result;
         @Use({REG, CONST}) protected Value trueValue;
         @Use({REG, CONST}) protected Value falseValue;
@@ -533,9 +525,8 @@ public class SPARCControlFlow {
         private final ConditionFlag condition;
         private final CC cc;
 
-        public CondMoveOp(Kind kind, Variable result, CC cc, ConditionFlag condition, Value trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, CC cc, ConditionFlag condition, Value trueValue, Value falseValue) {
             super(TYPE);
-            this.kind = kind;
             this.result = result;
             this.condition = condition;
             this.trueValue = trueValue;
@@ -546,9 +537,9 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             if (result.equals(trueValue)) { // We have the true value in place, do he opposite
-                cmove(masm, cc, kind, result, condition.negate(), falseValue);
+                cmove(masm, cc, result, condition.negate(), falseValue);
             } else if (result.equals(falseValue)) {
-                cmove(masm, cc, kind, result, condition, trueValue);
+                cmove(masm, cc, result, condition, trueValue);
             } else { // We have to move one of the input values to the result
                 ConditionFlag actualCondition = condition;
                 Value actualTrueValue = trueValue;
@@ -559,13 +550,13 @@ public class SPARCControlFlow {
                     actualFalseValue = trueValue;
                 }
                 SPARCMove.move(crb, masm, result, actualFalseValue, SPARCDelayedControlTransfer.DUMMY);
-                cmove(masm, cc, kind, result, actualCondition, actualTrueValue);
+                cmove(masm, cc, result, actualCondition, actualTrueValue);
             }
         }
     }
 
-    private static void cmove(SPARCMacroAssembler masm, CC cc, Kind kind, Value result, ConditionFlag cond, Value other) {
-        switch (kind) {
+    private static void cmove(SPARCMacroAssembler masm, CC cc, Value result, ConditionFlag cond, Value other) {
+        switch (other.getKind()) {
             case Int:
                 if (isConstant(other)) {
                     int constant;
