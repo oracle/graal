@@ -28,6 +28,8 @@ import com.oracle.graal.replacements.nodes.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for {@link java.lang.String} methods.
  */

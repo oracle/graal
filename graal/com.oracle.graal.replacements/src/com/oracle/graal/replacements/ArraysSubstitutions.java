@@ -24,6 +24,8 @@ package com.oracle.graal.replacements;
 
 import com.oracle.graal.replacements.nodes.*;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for {@link java.util.Arrays} methods.
  */

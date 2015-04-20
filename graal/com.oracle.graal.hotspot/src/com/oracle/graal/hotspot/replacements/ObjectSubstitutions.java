@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for {@link java.lang.Object} methods.
  */

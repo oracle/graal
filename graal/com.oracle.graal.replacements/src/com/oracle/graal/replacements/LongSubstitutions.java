@@ -24,6 +24,8 @@ package com.oracle.graal.replacements;
 
 import com.oracle.graal.replacements.nodes.*;
 
+// JaCoCo Exclude
+
 public class LongSubstitutions {
 
     public static int numberOfLeadingZeros(long i) {
