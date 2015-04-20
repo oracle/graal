@@ -126,11 +126,24 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
     }
 
     public NodeIterable<Node> anchored() {
-        return usages().filter(isNotA(ProxyNode.class));
+        return usages().filter(n -> {
+            if (n instanceof ProxyNode) {
+                ProxyNode proxyNode = (ProxyNode) n;
+                return proxyNode.proxyPoint() != this;
+            }
+            return true;
+        });
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public NodeIterable<ProxyNode> proxies() {
-        return usages().filter(ProxyNode.class);
+        return (NodeIterable) usages().filter(n -> {
+            if (n instanceof ProxyNode) {
+                ProxyNode proxyNode = (ProxyNode) n;
+                return proxyNode.proxyPoint() == this;
+            }
+            return false;
+        });
     }
 
     public NodeIterable<FixedNode> getBlockNodes() {
