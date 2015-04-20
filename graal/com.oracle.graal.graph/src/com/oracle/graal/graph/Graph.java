@@ -725,9 +725,66 @@ public class Graph {
         return getNodes(type).iterator().hasNext();
     }
 
-    Node getStartNode(int iterableId) {
-        Node start = iterableNodesFirst.size() <= iterableId ? null : iterableNodesFirst.get(iterableId);
+    /**
+     * @param iterableId
+     * @return the first live Node with a matching iterableId
+     */
+    Node getIterableNodeStart(int iterableId) {
+        if (iterableNodesFirst.size() <= iterableId) {
+            return null;
+        }
+        Node start = iterableNodesFirst.get(iterableId);
+        if (start == null || !start.isDeleted()) {
+            return start;
+        }
+        return findFirstLiveIterable(iterableId, start);
+    }
+
+    private Node findFirstLiveIterable(int iterableId, Node node) {
+        assert iterableNodesFirst.get(iterableId) == node;
+        Node start = node;
+        while (start != null && start.isDeleted()) {
+            start = start.typeCacheNext;
+        }
+        iterableNodesFirst.set(iterableId, start);
+        if (start == null) {
+            iterableNodesLast.set(iterableId, start);
+        }
         return start;
+    }
+
+    /**
+     * @param node
+     * @return return the first live Node with a matching iterableId starting from {@code node}
+     */
+    Node getIterableNodeNext(Node node) {
+        if (node == null) {
+            return null;
+        }
+        Node n = node;
+        if (n == null || !n.isDeleted()) {
+            return n;
+        }
+
+        return findNextLiveiterable(node);
+    }
+
+    private Node findNextLiveiterable(Node start) {
+        Node n = start;
+        while (n != null && n.isDeleted()) {
+            n = n.typeCacheNext;
+        }
+        if (n == null) {
+            // Only dead nodes after this one
+            start.typeCacheNext = null;
+            int nodeClassId = start.getNodeClass().iterableId();
+            assert nodeClassId != Node.NOT_ITERABLE;
+            iterableNodesLast.set(nodeClassId, start);
+        } else {
+            // Everything in between is dead
+            start.typeCacheNext = n;
+        }
+        return n;
     }
 
     public NodeBitMap createNodeBitMap() {

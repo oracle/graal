@@ -53,8 +53,6 @@ public abstract class ProxyNode extends FloatingNode implements IterableNodeType
 
     @Override
     public boolean verify() {
-        assert value() != null;
-        assert proxyPoint != null;
         assert !(value() instanceof ProxyNode) || ((ProxyNode) value()).proxyPoint != proxyPoint;
         return super.verify();
     }

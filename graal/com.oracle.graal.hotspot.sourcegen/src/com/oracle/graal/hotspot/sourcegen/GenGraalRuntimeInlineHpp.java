@@ -30,7 +30,6 @@ import java.util.zip.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
 
 /**
@@ -38,7 +37,6 @@ import com.oracle.graal.options.*;
  * generated code is comprised of:
  * <ul>
  * <li>{@code -G} command line option parsing {@linkplain #genSetOption(PrintStream) helper}</li>
- * <li>{@link Service} loading {@linkplain #genGetServiceImpls(PrintStream) helper}</li>
  * </ul>
  *
  * The purpose of the generated code is to avoid executing Graal related Java code as much as
@@ -93,71 +91,11 @@ public class GenGraalRuntimeInlineHpp {
     public static void main(String[] args) {
         PrintStream out = System.out;
         try {
-            genGetServiceImpls(out);
             genSetOption(out);
         } catch (Throwable t) {
             t.printStackTrace(out);
         }
         out.flush();
-    }
-
-    /**
-     * Generates code for {@code GraalRuntime::get_service_impls()}.
-     */
-    private static void genGetServiceImpls(PrintStream out) throws Exception {
-        final List<Class<? extends Service>> services = new ArrayList<>();
-        for (ZipEntry zipEntry : graalJars) {
-            String name = zipEntry.getName();
-            if (name.startsWith("META-INF/services/")) {
-                String serviceName = name.substring("META-INF/services/".length());
-                Class<?> c = Class.forName(serviceName);
-                if (Service.class.isAssignableFrom(c)) {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends Service> sc = (Class<? extends Service>) c;
-
-                    services.add(sc);
-                }
-            }
-        }
-
-        Set<Integer> lengths = new TreeSet<>();
-        for (Class<?> service : services) {
-            lengths.add(toInternalName(service).length());
-        }
-
-        out.println("Handle GraalRuntime::get_service_impls(KlassHandle serviceKlass, TRAPS) {");
-        out.println("  switch (serviceKlass->name()->utf8_length()) {");
-        for (int len : lengths) {
-            boolean printedCase = false;
-            for (Class<?> service : services) {
-                String serviceName = toInternalName(service);
-                if (len == serviceName.length()) {
-                    if (!printedCase) {
-                        printedCase = true;
-                        out.println("  case " + len + ":");
-                    }
-                    out.printf("    if (serviceKlass->name()->equals(\"%s\", %d)) {%n", serviceName, serviceName.length());
-                    List<Class<?>> impls = new ArrayList<>();
-                    for (Object impl : ServiceLoader.load(service)) {
-                        impls.add(impl.getClass());
-                    }
-
-                    out.printf("      objArrayOop servicesOop = oopFactory::new_objArray(serviceKlass(), %d, CHECK_NH);%n", impls.size());
-                    out.println("      objArrayHandle services(THREAD, servicesOop);");
-                    for (int i = 0; i < impls.size(); i++) {
-                        String name = toInternalName(impls.get(i));
-                        out.printf("      %sservice = create_Service(\"%s\", CHECK_NH);%n", (i == 0 ? "Handle " : ""), name);
-                        out.printf("      services->obj_at_put(%d, service());%n", i);
-                    }
-                    out.println("      return services;");
-                    out.println("    }");
-                }
-            }
-
-        }
-        out.println("  }");
-        out.println("  return Handle();");
-        out.println("}");
     }
 
     /**

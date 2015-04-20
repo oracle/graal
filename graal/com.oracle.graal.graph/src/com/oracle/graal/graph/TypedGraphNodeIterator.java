@@ -47,7 +47,7 @@ class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> 
             forward();
         } else {
             Node c = current();
-            Node afterDeleted = skipDeleted(c);
+            Node afterDeleted = graph.getIterableNodeNext(c);
             if (afterDeleted == null) {
                 needsForward = true;
             } else if (c != afterDeleted) {
@@ -60,25 +60,16 @@ class TypedGraphNodeIterator<T extends IterableNodeType> implements Iterator<T> 
         return current();
     }
 
-    private static Node skipDeleted(Node node) {
-        Node n = node;
-        while (n != null && n.isDeleted()) {
-            n = n.typeCacheNext;
-        }
-        return n;
-    }
-
     private void forward() {
         needsForward = false;
         int startIdx = currentIdIndex;
         while (true) {
             Node next;
             if (current() == Graph.PLACE_HOLDER) {
-                next = graph.getStartNode(ids[currentIdIndex]);
+                next = graph.getIterableNodeStart(ids[currentIdIndex]);
             } else {
-                next = current().typeCacheNext;
+                next = graph.getIterableNodeNext(current().typeCacheNext);
             }
-            next = skipDeleted(next);
             if (next == null) {
                 currentIdIndex++;
                 if (currentIdIndex >= ids.length) {

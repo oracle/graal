@@ -132,6 +132,13 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
     public static final int INVALID_FRAMESTATE_BCI = -6;
 
     /**
+     * Determines if a given BCI matches one of the synthetic BCI contants defined in this class.
+     */
+    public static boolean isSyntheticBci(int bci) {
+        return bci < 0;
+    }
+
+    /**
      * Creates a new frame object.
      *
      * @param caller the caller frame (which may be {@code null})
