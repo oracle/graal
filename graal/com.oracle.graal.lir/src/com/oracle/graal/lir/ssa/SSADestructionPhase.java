@@ -31,8 +31,16 @@ import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.options.*;
 
 public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Destruct SSA LIR eagerly (before other LIR phases).", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LIREagerSSADestruction = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
