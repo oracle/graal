@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardMultipleOrMe
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardNotTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardOrTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardStaticFieldTestFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardStaticFinalFieldCompareTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardUnboundMethodTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
@@ -379,6 +380,30 @@ public class MethodGuardsTest {
         }
 
         @Specialization
+        static String do2(int value) {
+            return "do2";
+        }
+    }
+
+    @Test
+    public void testGuardStaticFinalFieldCompare() {
+        CallTarget root = createCallTarget(GuardStaticFinalFieldCompareTestFactory.getInstance());
+        GuardStaticFieldTest.field = true;
+        assertEquals("do1", root.call(1));
+        assertEquals("do2", root.call(2));
+    }
+
+    @NodeChild
+    static class GuardStaticFinalFieldCompareTest extends ValueNode {
+
+        protected static final int FIELD = 1;
+
+        @Specialization(guards = "value == FIELD")
+        static String do1(int value) {
+            return "do1";
+        }
+
+        @Specialization(guards = "value != FIELD")
         static String do2(int value) {
             return "do2";
         }
