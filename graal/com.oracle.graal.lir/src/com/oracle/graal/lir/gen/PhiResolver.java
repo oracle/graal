@@ -126,18 +126,26 @@ public class PhiResolver {
      */
     private final HashMap<Value, PhiResolverNode> operandToNodeMap = CollectionsFactory.newMap();
 
-    public PhiResolver(LIRGeneratorTool gen) {
-        this.gen = gen;
-        moveFactory = gen.getSpillMoveFactory();
-        temp = ILLEGAL;
-
+    public static PhiResolver create(LIRGeneratorTool gen) {
         AbstractBlockBase<?> block = gen.getCurrentBlock();
         assert block != null;
         List<LIRInstruction> instructions = gen.getResult().getLIR().getLIRforBlock(block);
 
-        buffer = new LIRInsertionBuffer();
-        buffer.init(instructions);
-        insertBefore = instructions.size();
+        return new PhiResolver(gen, new LIRInsertionBuffer(), instructions, instructions.size());
+    }
+
+    public static PhiResolver create(LIRGeneratorTool gen, LIRInsertionBuffer buffer, List<LIRInstruction> instructions, int insertBefore) {
+        return new PhiResolver(gen, buffer, instructions, insertBefore);
+    }
+
+    protected PhiResolver(LIRGeneratorTool gen, LIRInsertionBuffer buffer, List<LIRInstruction> instructions, int insertBefore) {
+        this.gen = gen;
+        moveFactory = gen.getSpillMoveFactory();
+        temp = ILLEGAL;
+
+        this.buffer = buffer;
+        this.buffer.init(instructions);
+        this.insertBefore = insertBefore;
 
     }
 

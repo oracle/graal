@@ -362,7 +362,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
-        PhiResolver resolver = new PhiResolver(gen);
+        PhiResolver resolver = PhiResolver.create(gen);
         for (PhiNode phi : merge.phis()) {
             if (phi instanceof ValuePhiNode) {
                 ValueNode curVal = phi.valueAt(pred);
