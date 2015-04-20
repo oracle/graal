@@ -30,6 +30,8 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 
 /**
  * Converts phi instructions into moves.
@@ -104,6 +106,7 @@ public class PhiResolver {
     }
 
     private final LIRGeneratorTool gen;
+    private final SpillMoveFactory moveFactory;
 
     /**
      * The operand loop header phi for the operand currently being process in {@link #dispose()}.
@@ -122,6 +125,7 @@ public class PhiResolver {
 
     public PhiResolver(LIRGeneratorTool gen) {
         this.gen = gen;
+        moveFactory = gen.getSpillMoveFactory();
         temp = ILLEGAL;
     }
 
@@ -187,7 +191,8 @@ public class PhiResolver {
     private void emitMove(Value dest, Value src) {
         assert isLegal(src);
         assert isLegal(dest);
-        gen.emitMove((AllocatableValue) dest, src);
+        LIRInstruction move = moveFactory.createMove((AllocatableValue) dest, src);
+        gen.append(move);
     }
 
     // Traverse assignment graph in depth first order and generate moves in post order
