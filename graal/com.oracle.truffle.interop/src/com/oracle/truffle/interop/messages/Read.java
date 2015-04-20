@@ -57,7 +57,7 @@ public final class Read implements Message {
         }
         Read m1 = this;
         Read m2 = (Read) message;
-        return MessageUtil.compareMessage(m1.getReceiver(), m2.getReceiver()) && MessageUtil.compareMessage(m1.getId(), m2.getId());
+        return MessageUtil.compareMessage(m1.getReceiver(), m2.getReceiver());
     }
 
     @Override
