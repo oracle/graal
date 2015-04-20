@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
 import java.util.*;
 
 import com.oracle.graal.compiler.common.type.*;
