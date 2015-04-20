@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
@@ -159,22 +160,13 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                 survivingSuccessor = ifNode.trueSuccessor();
             }
             graph.removeSplitPropagate(ifNode, survivingSuccessor);
-            ProxyNode proxyGuard = null;
-            for (Node n : survivingSuccessor.usages().snapshot()) {
-                if (n instanceof GuardNode || n instanceof ProxyNode) {
-                    // Keep wired to the begin node.
-                } else {
-                    // Rewire to the fixed guard.
-                    if (survivingSuccessor instanceof LoopExitNode) {
-                        if (proxyGuard == null) {
-                            proxyGuard = ProxyNode.forGuard(guard, survivingSuccessor, graph);
-                        }
-                        n.replaceFirstInput(survivingSuccessor, proxyGuard);
-                    } else {
-                        n.replaceFirstInput(survivingSuccessor, guard);
-                    }
-                }
+
+            Node newGuard = guard;
+            if (survivingSuccessor instanceof LoopExitNode) {
+                newGuard = ProxyNode.forGuard(guard, survivingSuccessor, graph);
             }
+            survivingSuccessor.replaceAtUsages(InputType.Guard, newGuard);
+
             Debug.log("Converting deopt on %-5s branch of %s to guard for remaining branch %s.", deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
             FixedNode next = pred.next();
             pred.setNext(guard);
