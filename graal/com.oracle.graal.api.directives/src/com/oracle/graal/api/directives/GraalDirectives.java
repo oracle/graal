@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.directives;
 
+// JaCoCo Exclude
+
 /**
  * Directives that influence the compilation of methods by Graal. They don't influence the semantics
  * of the code, but they are useful for unit testing and benchmarking.

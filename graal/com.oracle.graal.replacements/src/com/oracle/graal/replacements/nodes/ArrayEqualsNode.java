@@ -32,6 +32,8 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
+// JaCoCo Exclude
+
 /**
  * Compares two arrays with the same length.
  */
