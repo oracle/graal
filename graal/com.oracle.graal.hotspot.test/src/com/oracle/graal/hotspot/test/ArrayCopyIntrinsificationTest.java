@@ -251,4 +251,25 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
         return dst;
     }
 
+    /**
+     * Test case derived from assertion while compiling <a href=
+     * "https://code.google.com/r/baggiogamp-guava/source/browse/guava/src/com/google/common/collect/ArrayTable.java?r=d2e06112416223cb5437d43c12a989c0adc7345b#181"
+     * > com.google.common.collect.ArrayTable(ArrayTable other)</a>.
+     */
+    @Ignore
+    @Test
+    public void testCopyRows() {
+        mustIntrinsify = false;
+        Object[][] rows = {{"a1", "a2", "a3", "a4"}, {"b1", "b2", "b3", "b4"}, {"c1", "c2", "c3", "c4"}};
+        test("copyRows", rows, 4, new Integer(rows.length));
+        mustIntrinsify = true;
+    }
+
+    public static Object[][] copyRows(Object[][] rows, int rowSize, Integer rowCount) {
+        Object[][] copy = new Object[rows.length][rowSize];
+        for (int i = 0; i < rowCount.intValue(); i++) {
+            System.arraycopy(rows[i], 0, copy[i], 0, rows[i].length);
+        }
+        return copy;
+    }
 }
