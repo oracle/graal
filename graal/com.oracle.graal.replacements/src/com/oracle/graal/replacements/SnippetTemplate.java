@@ -152,8 +152,8 @@ public class SnippetTemplate {
         protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
             this.method = method;
             this.privateLocations = privateLocations;
-            instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method);
-            instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method);
+            instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method.getName());
+            instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method.getName());
             assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
         }
 
