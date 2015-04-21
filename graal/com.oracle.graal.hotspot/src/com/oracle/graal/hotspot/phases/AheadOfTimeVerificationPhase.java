@@ -32,7 +32,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
 /**
- * Checks for {@link #isLegalObjectConstant(ConstantNode) illegal} object constants in a graph
+ * Checks for {@link #isIllegalObjectConstant(ConstantNode) illegal} object constants in a graph
  * processed for AOT compilation.
  *
  * @see LoadJavaMirrorWithKlassPhase
@@ -42,14 +42,14 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
         for (ConstantNode node : getConstantNodes(graph)) {
-            if (isLegalObjectConstant(node)) {
+            if (isIllegalObjectConstant(node)) {
                 throw new VerificationError("illegal object constant: " + node);
             }
         }
         return true;
     }
 
-    public static boolean isLegalObjectConstant(ConstantNode node) {
+    public static boolean isIllegalObjectConstant(ConstantNode node) {
         return isObject(node) && !isNullReference(node) && !isInternedString(node) && !isDirectMethodHandle(node) && !isBoundMethodHandle(node);
     }
 

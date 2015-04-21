@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 import com.oracle.graal.replacements.nodes.*;
 
@@ -149,12 +150,21 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             for (Node node : newNodes) {
                 if (node.hasUsages() && node instanceof ConstantNode) {
                     ConstantNode c = (ConstantNode) node;
-                    if (c.getKind() == Kind.Object && !AheadOfTimeVerificationPhase.isLegalObjectConstant(c)) {
-                        throw new AssertionError("illegal constant node in AOT: " + node);
+                    if (c.getKind() == Kind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
+                        if (isClass(c)) {
+                            // This will be handled later by LoadJavaMirrorWithKlassPhase
+                        } else {
+                            throw new AssertionError("illegal constant node in AOT: " + node);
+                        }
                     }
                 }
             }
         }
         super.checkNewNodes(b, plugin, newNodes);
+    }
+
+    private static boolean isClass(ConstantNode node) {
+        ResolvedJavaType typeOrNull = StampTool.typeOrNull(node);
+        return typeOrNull != null && "Ljava/lang/Class;".equals(typeOrNull.getName());
     }
 }
