@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options;
+package com.oracle.graal.options.processor;
 
 import java.io.*;
 import java.util.*;
@@ -32,6 +32,8 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
+
+import com.oracle.graal.options.*;
 
 /**
  * Processes static fields annotated with {@link Option}. An {@link Options} service is generated
