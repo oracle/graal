@@ -79,7 +79,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
             if (result != null) {
                 return result;
             }
-            Assumptions assumptions = graph().getAssumptions();
+            Assumptions assumptions = graph() == null ? null : graph().getAssumptions();
             if (assumptions != null) {
                 AssumptionResult<ResolvedJavaType> leafConcreteSubtype = stampType.findLeafConcreteSubtype();
                 if (leafConcreteSubtype != null) {

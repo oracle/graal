@@ -340,7 +340,7 @@ public class PartialEvaluator {
         plugins.setInlineInvokePlugin(new ParsingInlineInvokePlugin((ReplacementsImpl) providers.getReplacements(), parsingInvocationPlugins, loopExplosionPlugin,
                         !PrintTruffleExpansionHistogram.getValue()));
 
-        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, AllowAssumptions.from(graph.getAssumptions() != null), architecture);
+        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.from(graph.getAssumptions() != null), architecture);
 
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
 

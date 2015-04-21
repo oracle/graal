@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.*;
 
 /**
@@ -57,11 +56,7 @@ import com.oracle.graal.phases.common.inlining.*;
  * canonicalize nodes during decoding. Additionally, {@link IfNode branches} and
  * {@link IntegerSwitchNode switches} with constant conditions are simplified.
  */
-public abstract class PEGraphDecoder extends GraphDecoder {
-
-    protected final MetaAccessProvider metaAccess;
-    protected final ConstantReflectionProvider constantReflection;
-    protected final StampProvider stampProvider;
+public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected class PEMethodScope extends MethodScope {
         /** The state of the caller method. Only non-null during method inlining. */
@@ -101,28 +96,6 @@ public abstract class PEGraphDecoder extends GraphDecoder {
 
         public boolean isInlinedMethod() {
             return caller != null;
-        }
-    }
-
-    protected class PECanonicalizerTool implements CanonicalizerTool {
-        @Override
-        public MetaAccessProvider getMetaAccess() {
-            return metaAccess;
-        }
-
-        @Override
-        public ConstantReflectionProvider getConstantReflection() {
-            return constantReflection;
-        }
-
-        @Override
-        public boolean canonicalizeReads() {
-            return true;
-        }
-
-        @Override
-        public boolean allUsagesAvailable() {
-            return false;
         }
     }
 
@@ -299,10 +272,7 @@ public abstract class PEGraphDecoder extends GraphDecoder {
     }
 
     public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, Architecture architecture) {
-        super(architecture);
-        this.metaAccess = metaAccess;
-        this.constantReflection = constantReflection;
-        this.stampProvider = stampProvider;
+        super(metaAccess, constantReflection, stampProvider, true, architecture);
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -324,12 +294,6 @@ public abstract class PEGraphDecoder extends GraphDecoder {
         decode(methodScope, null);
         cleanupGraph(methodScope, null);
         methodScope.graph.verify();
-    }
-
-    @Override
-    protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
-        GraphBuilderPhase.connectLoopEndToBegin(methodScope.graph);
-        super.cleanupGraph(methodScope, start);
     }
 
     @Override
@@ -554,64 +518,6 @@ public abstract class PEGraphDecoder extends GraphDecoder {
     protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method);
 
     @Override
-    protected void simplifyFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
-        PEMethodScope methodScope = (PEMethodScope) s;
-
-        if (node instanceof IfNode) {
-            IfNode ifNode = (IfNode) node;
-            if (ifNode.condition() instanceof LogicNegationNode) {
-                ifNode.eliminateNegation();
-            }
-            if (ifNode.condition() instanceof LogicConstantNode) {
-                boolean condition = ((LogicConstantNode) ifNode.condition()).getValue();
-                AbstractBeginNode survivingSuccessor = ifNode.getSuccessor(condition);
-                AbstractBeginNode deadSuccessor = ifNode.getSuccessor(!condition);
-
-                methodScope.graph.removeSplit(ifNode, survivingSuccessor);
-                assert deadSuccessor.next() == null : "must not be parsed yet";
-                deadSuccessor.safeDelete();
-            }
-
-        } else if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
-            IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
-            int value = switchNode.value().asJavaConstant().asInt();
-            AbstractBeginNode survivingSuccessor = switchNode.successorAtKey(value);
-            List<Node> allSuccessors = switchNode.successors().snapshot();
-
-            methodScope.graph.removeSplit(switchNode, survivingSuccessor);
-            for (Node successor : allSuccessors) {
-                if (successor != survivingSuccessor) {
-                    assert ((AbstractBeginNode) successor).next() == null : "must not be parsed yet";
-                    successor.safeDelete();
-                }
-            }
-
-        } else if (node instanceof Canonicalizable) {
-            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool());
-            if (canonical == null) {
-                /*
-                 * This is a possible return value of canonicalization. However, we might need to
-                 * add additional usages later on for which we need a node. Therefore, we just do
-                 * nothing and leave the node in place.
-                 */
-            } else if (canonical != node) {
-                if (!canonical.isAlive()) {
-                    assert !canonical.isDeleted();
-                    canonical = methodScope.graph.addOrUniqueWithInputs(canonical);
-                    if (canonical instanceof FixedWithNextNode) {
-                        methodScope.graph.addBeforeFixed(node, (FixedWithNextNode) canonical);
-                    }
-                }
-                GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
-                node.replaceAtUsages(canonical);
-                node.safeDelete();
-                assert lookupNode(loopScope, nodeOrderId) == node;
-                registerNode(loopScope, nodeOrderId, canonical, true, false);
-            }
-        }
-    }
-
-    @Override
     protected Node handleFloatingNodeBeforeAdd(MethodScope s, LoopScope loopScope, Node node) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
@@ -629,25 +535,9 @@ public abstract class PEGraphDecoder extends GraphDecoder {
                 }
             }
 
-        } else if (node instanceof Canonicalizable) {
-            Node canonical = ((Canonicalizable) node).canonical(new PECanonicalizerTool());
-            if (canonical == null) {
-                /*
-                 * This is a possible return value of canonicalization. However, we might need to
-                 * add additional usages later on for which we need a node. Therefore, we just do
-                 * nothing and leave the node in place.
-                 */
-            } else if (canonical != node) {
-                if (!canonical.isAlive()) {
-                    assert !canonical.isDeleted();
-                    canonical = methodScope.graph.addOrUniqueWithInputs(canonical);
-                }
-                assert node.hasNoUsages();
-                // methodScope.graph.replaceFloating((FloatingNode) node, canonical);
-                return canonical;
-            }
         }
-        return node;
+
+        return super.handleFloatingNodeBeforeAdd(methodScope, loopScope, node);
     }
 
     protected void ensureOuterStateDecoded(PEMethodScope methodScope) {

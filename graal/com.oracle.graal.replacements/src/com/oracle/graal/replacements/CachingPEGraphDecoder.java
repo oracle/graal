@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package com.oracle.graal.replacements;
 
 import java.util.*;
 
@@ -31,6 +31,7 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
@@ -43,14 +44,16 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     private final Providers providers;
     private final GraphBuilderConfiguration graphBuilderConfig;
+    private final OptimisticOptimizations optimisticOpts;
     private final AllowAssumptions allowAssumptions;
     private final Map<ResolvedJavaMethod, EncodedGraph> graphCache;
 
-    public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, AllowAssumptions allowAssumptions, Architecture architecture) {
+    public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions, Architecture architecture) {
         super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), architecture);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
+        this.optimisticOpts = optimisticOpts;
         this.allowAssumptions = allowAssumptions;
         this.graphCache = new HashMap<>();
     }
@@ -59,7 +62,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         StructuredGraph graph = new StructuredGraph(method, allowAssumptions);
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {
 
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig, TruffleCompilerImpl.Optimizations, null).apply(graph);
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, null).apply(graph);
 
             PhaseContext context = new PhaseContext(providers);
             new CanonicalizerPhase().apply(graph, context);

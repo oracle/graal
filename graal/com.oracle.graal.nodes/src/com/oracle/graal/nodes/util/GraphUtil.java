@@ -225,7 +225,30 @@ public class GraphUtil {
         }
     }
 
-    public static void normalizeLoopBegin(LoopBeginNode begin) {
+    /**
+     * Remove loop header without loop ends. This can happen with degenerated loops like this one:
+     *
+     * <pre>
+     * for (;;) {
+     *     try {
+     *         break;
+     *     } catch (UnresolvedException iioe) {
+     *     }
+     * }
+     * </pre>
+     */
+    public static void normalizeLoops(StructuredGraph graph) {
+        for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
+            if (begin.loopEnds().isEmpty()) {
+                assert begin.forwardEndCount() == 1;
+                graph.reduceDegenerateLoopBegin(begin);
+            } else {
+                normalizeLoopBegin(begin);
+            }
+        }
+    }
+
+    private static void normalizeLoopBegin(LoopBeginNode begin) {
         // Delete unnecessary loop phi functions, i.e., phi functions where all inputs are either
         // the same or the phi itself.
         for (PhiNode phi : begin.phis().snapshot()) {
