@@ -89,12 +89,7 @@ final class SSAVerifier {
         visited.set(block.getId());
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
             op.visitEachAlive(this::useConsumer);
-            /*
-             * TODO(je) we are currently skipping LIRFrameStates because there are problems with
-             * eliminated StackLockValue. (The slot is not defined but we can't tell that the lock
-             * is eliminated.)
-             */
-            // op.visitEachState(this::useConsumer);
+            op.visitEachState(this::useConsumer);
             op.visitEachInput(this::useConsumer);
 
             op.visitEachTemp(this::defConsumer);
@@ -131,7 +126,7 @@ final class SSAVerifier {
     }
 
     private static boolean shouldProcess(Value value) {
-        return !value.equals(Value.ILLEGAL) && !isConstant(value) && !isRegister(value);
+        return !value.equals(Value.ILLEGAL) && !isConstant(value) && !isRegister(value) && !isStackSlotValue(value);
     }
 
 }
