@@ -45,6 +45,7 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
 
     /**
      * Determines if this plugin can only be used when inlining the method is it associated with.
+     * That is, this plugin cannot be used when the associated method is the compilation root.
      */
     default boolean inlineOnly() {
         return isSignaturePolymorphic();
