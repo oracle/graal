@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.api.code.BytecodeFrame.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -60,7 +62,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
 
     @Override
     protected BytecodeFrame computeFrameForState(FrameState state) {
-        assert state.bci >= 0 || state.bci == BytecodeFrame.BEFORE_BCI : state.bci;
+        assert !isPlaceholderBci(state.bci) || state.bci == BytecodeFrame.BEFORE_BCI : state.bci;
         return super.computeFrameForState(state);
     }
 }

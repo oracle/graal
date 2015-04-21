@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.api.code.BytecodeFrame.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -293,7 +295,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * is that a stateAfter is being transformed into a stateDuring, so the stack depth may change.
      */
     private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, boolean oldRethrowException, int newBci, int newStackSize, boolean newDuringCall, boolean newRethrowException) {
-        if (BytecodeFrame.isSyntheticBci(oldBci)) {
+        if (BytecodeFrame.isPlaceholderBci(oldBci)) {
             return true;
         }
         /*
@@ -449,18 +451,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 properties.put("sourceLine", ste.getLineNumber());
             }
         }
-        if (bci == BytecodeFrame.AFTER_BCI) {
-            properties.put("bci", "AFTER_BCI");
-        } else if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
-            properties.put("bci", "AFTER_EXCEPTION_BCI");
-        } else if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            properties.put("bci", "INVALID_FRAMESTATE_BCI");
-        } else if (bci == BytecodeFrame.BEFORE_BCI) {
-            properties.put("bci", "BEFORE_BCI");
-        } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
-            properties.put("bci", "UNKNOWN_BCI");
-        } else if (bci == BytecodeFrame.UNWIND_BCI) {
-            properties.put("bci", "UNWIND_BCI");
+        if (isPlaceholderBci(bci)) {
+            properties.put("bci", getPlaceholderBciName(bci));
         }
         properties.put("locksSize", values.size() - stackSize - localsSize);
         return properties;

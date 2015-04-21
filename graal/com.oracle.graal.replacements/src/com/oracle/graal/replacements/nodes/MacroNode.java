@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.api.code.BytecodeFrame.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -74,7 +76,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         this.targetMethod = targetMethod;
         this.returnType = returnType;
         this.invokeKind = invokeKind;
-        assert bci >= 0;
+        assert !isPlaceholderBci(bci);
     }
 
     public int getBci() {
@@ -171,8 +173,8 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
             InliningUtil.inline(invoke, replacementGraph, false, null);
             Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
         } else {
-            if (invoke.bci() < 0) {
-                throw new GraalInternalError("%s: cannot lower to invoke with invalid BCI: %s", graph(), this);
+            if (isPlaceholderBci(invoke.bci())) {
+                throw new GraalInternalError("%s: cannot lower to invoke with placeholder BCI: %s", graph(), this);
             }
 
             if (invoke.stateAfter() == null) {
