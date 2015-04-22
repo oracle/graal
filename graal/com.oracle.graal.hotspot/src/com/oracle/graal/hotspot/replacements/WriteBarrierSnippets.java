@@ -112,8 +112,8 @@ public class WriteBarrierSnippets implements Snippets {
     @Snippet
     public static void g1PreWriteBarrier(Object object, Object expectedObject, Object location, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
                     @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
-        if (nullCheck && object == null) {
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
+        if (nullCheck) {
+            NullCheckNode.nullCheck(object);
         }
         Word thread = registerAsWord(threadRegister);
         Object fixedObject = FixedValueAnchorNode.getObject(object);
