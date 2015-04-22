@@ -109,7 +109,17 @@ public final class Probe {
      */
     private static final List<WeakReference<Probe>> probes = new ArrayList<>();
 
-    @CompilationFinal private static SyntaxTagTrap tagTrap = null;
+    /**
+     * A global trap that triggers notification just before executing any Node that is Probed with a
+     * matching tag.
+     */
+    @CompilationFinal private static SyntaxTagTrap beforeTagTrap = null;
+
+    /**
+     * A global trap that triggers notification just after executing any Node that is Probed with a
+     * matching tag.
+     */
+    @CompilationFinal private static SyntaxTagTrap afterTagTrap = null;
 
     private static final class FindSourceVisitor implements NodeVisitor {
 
@@ -199,24 +209,50 @@ public final class Probe {
         return taggedProbes;
     }
 
-    // TODO (mlvdv) can this be generalized to permit multiple traps without a performance hit?
+    // TODO (mlvdv) generalize to permit multiple "before traps" without a performance hit?
     /**
-     * Sets the current "tag trap"; there can be no more than one set at a time.
+     * Sets the current "<em>before</em> tag trap"; there can be no more than one in effect.
      * <ul>
-     * <li>A non-null trap sets a callback to be triggered whenever execution reaches a
-     * {@link Probe} (either existing or subsequently created) with the specified tag.</li>
-     * <li>Setting the trap to null clears the existing trap.</li>
-     * <li>Setting a non-null trap when one is already set will clear the previously set trap.</li>
+     * <li>The before-trap triggers a callback just <strong><em>before</em></strong> execution
+     * reaches <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created)
+     * with the specified {@link SyntaxTag}.</li>
+     * <li>Setting the before-trap to {@code null} clears an existing before-trap.</li>
+     * <li>Setting a non{@code -null} before-trap when one is already set clears the previously set
+     * before-trap.</li>
      * </ul>
      *
-     * @param newTagTrap The {@link SyntaxTagTrap} to set.
+     * @param newBeforeTagTrap The new "before" {@link SyntaxTagTrap} to set.
      */
-    public static void setTagTrap(SyntaxTagTrap newTagTrap) {
-        tagTrap = newTagTrap;
+    public static void setBeforeTagTrap(SyntaxTagTrap newBeforeTagTrap) {
+        beforeTagTrap = newBeforeTagTrap;
         for (WeakReference<Probe> ref : probes) {
             final Probe probe = ref.get();
             if (probe != null) {
-                probe.notifyTrapSet();
+                probe.notifyTrapsChanged();
+            }
+        }
+    }
+
+    // TODO (mlvdv) generalize to permit multiple "after traps" without a performance hit?
+    /**
+     * Sets the current "<em>after</em> tag trap"; there can be no more than one in effect.
+     * <ul>
+     * <li>The after-trap triggers a callback just <strong><em>after</em></strong> execution leaves
+     * <strong><em>any</em></strong> {@link Probe} (either existing or subsequently created) with
+     * the specified {@link SyntaxTag}.</li>
+     * <li>Setting the after-trap to {@code null} clears an existing after-trap.</li>
+     * <li>Setting a non{@code -null} after-trap when one is already set clears the previously set
+     * after-trap.</li>
+     * </ul>
+     *
+     * @param newAfterTagTrap The new "after" {@link SyntaxTagTrap} to set.
+     */
+    public static void setAfterTagTrap(SyntaxTagTrap newAfterTagTrap) {
+        afterTagTrap = newAfterTagTrap;
+        for (WeakReference<Probe> ref : probes) {
+            final Probe probe = ref.get();
+            if (probe != null) {
+                probe.notifyTrapsChanged();
             }
         }
     }
@@ -237,8 +273,11 @@ public final class Probe {
      */
     @CompilationFinal private Assumption probeStateUnchangedAssumption = probeStateUnchangedCyclic.getAssumption();
 
-    // Must invalidate whenever this changes.
-    @CompilationFinal private boolean isTrapActive = false;
+    // Must invalidate whenever changed
+    @CompilationFinal private boolean isBeforeTrapActive = false;
+
+    // Must invalidate whenever changed
+    @CompilationFinal private boolean isAfterTrapActive = false;
 
     /**
      * Intended for use only by {@link ProbeNode}.
@@ -279,8 +318,18 @@ public final class Probe {
             for (ProbeListener listener : probeListeners) {
                 listener.probeTaggedAs(this, tag, tagValue);
             }
-            if (tagTrap != null && tag == tagTrap.getTag()) {
-                this.isTrapActive = true;
+
+            // Update the status of this Probe with respect to global tag traps
+            boolean tagTrapsChanged = false;
+            if (beforeTagTrap != null && tag == beforeTagTrap.getTag()) {
+                this.isBeforeTrapActive = true;
+                tagTrapsChanged = true;
+            }
+            if (afterTagTrap != null && tag == afterTagTrap.getTag()) {
+                this.isAfterTrapActive = true;
+                tagTrapsChanged = true;
+            }
+            if (tagTrapsChanged) {
                 invalidateProbeUnchanged();
             }
         }
@@ -349,11 +398,25 @@ public final class Probe {
     }
 
     /**
-     * Gets the currently active {@linkplain SyntaxTagTrap tagTrap}; {@code null} if not set.
+     * Gets the currently active <strong><em>before</em></strong> {@linkplain SyntaxTagTrap Tag
+     * Trap} at this Probe. Non{@code -null} if the global
+     * {@linkplain Probe#setBeforeTagTrap(SyntaxTagTrap) Before Tag Trap} is set and if this Probe
+     * holds the {@link SyntaxTag} specified in the trap.
      */
-    SyntaxTagTrap getTrap() {
+    SyntaxTagTrap getBeforeTrap() {
         checkProbeUnchanged();
-        return isTrapActive ? tagTrap : null;
+        return isBeforeTrapActive ? beforeTagTrap : null;
+    }
+
+    /**
+     * Gets the currently active <strong><em>after</em></strong> {@linkplain SyntaxTagTrap Tag Trap}
+     * at this Probe. Non{@code -null} if the global
+     * {@linkplain Probe#setAfterTagTrap(SyntaxTagTrap) After Tag Trap} is set and if this Probe
+     * holds the {@link SyntaxTag} specified in the trap.
+     */
+    SyntaxTagTrap getAfterTrap() {
+        checkProbeUnchanged();
+        return isAfterTrapActive ? afterTagTrap : null;
     }
 
     /**
@@ -374,8 +437,9 @@ public final class Probe {
         probeStateUnchangedCyclic.invalidate();
     }
 
-    private void notifyTrapSet() {
-        this.isTrapActive = tagTrap != null && this.isTaggedAs(tagTrap.getTag());
+    private void notifyTrapsChanged() {
+        this.isBeforeTrapActive = beforeTagTrap != null && this.isTaggedAs(beforeTagTrap.getTag());
+        this.isAfterTrapActive = afterTagTrap != null && this.isTaggedAs(afterTagTrap.getTag());
         invalidateProbeUnchanged();
     }
 

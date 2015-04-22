@@ -45,7 +45,7 @@ public abstract class SyntaxTagTrap {
     }
 
     /**
-     * Callback that will be received whenever execution enters a node with the specified tag.
+     * Notifies that execution is halted at a node with the specified tag.
      */
     public abstract void tagTrappedAt(Node node, MaterializedFrame frame);
 }

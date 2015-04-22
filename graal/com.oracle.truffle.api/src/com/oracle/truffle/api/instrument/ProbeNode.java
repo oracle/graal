@@ -153,9 +153,9 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
 
     public void enter(Node node, VirtualFrame vFrame) {
         this.probe.checkProbeUnchanged();
-        final SyntaxTagTrap trap = probe.getTrap();
-        if (trap != null) {
-            trap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        final SyntaxTagTrap beforeTagTrap = probe.getBeforeTrap();
+        if (beforeTagTrap != null) {
+            beforeTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
         }
         if (firstInstrumentNode != null) {
             firstInstrumentNode.enter(node, vFrame);
@@ -167,6 +167,10 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
         if (firstInstrumentNode != null) {
             firstInstrumentNode.returnVoid(node, vFrame);
         }
+        final SyntaxTagTrap afterTagTrap = probe.getAfterTrap();
+        if (afterTagTrap != null) {
+            afterTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        }
     }
 
     public void returnValue(Node node, VirtualFrame vFrame, Object result) {
@@ -174,12 +178,20 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
         if (firstInstrumentNode != null) {
             firstInstrumentNode.returnValue(node, vFrame, result);
         }
+        final SyntaxTagTrap afterTagTrap = probe.getAfterTrap();
+        if (afterTagTrap != null) {
+            afterTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
+        }
     }
 
     public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
         this.probe.checkProbeUnchanged();
         if (firstInstrumentNode != null) {
             firstInstrumentNode.returnExceptional(node, vFrame, exception);
+        }
+        final SyntaxTagTrap afterTagTrap = probe.getAfterTrap();
+        if (afterTagTrap != null) {
+            afterTagTrap.tagTrappedAt(((WrapperNode) this.getParent()).getChild(), vFrame.materialize());
         }
     }
 
