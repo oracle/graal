@@ -52,4 +52,7 @@ public final class NullCheckNode extends DeoptimizingFixedWithNextNode implement
     public boolean canDeoptimize() {
         return true;
     }
+
+    @NodeIntrinsic
+    public static native void nullCheck(Object object);
 }
