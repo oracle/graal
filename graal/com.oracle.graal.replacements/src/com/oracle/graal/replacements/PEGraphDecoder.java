@@ -169,7 +169,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public FrameState createStateAfter() {
+        public void setStateAfter(StateSplit stateSplit) {
             throw unimplemented();
         }
 
@@ -217,10 +217,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public FrameState createStateAfter() {
+        public void setStateAfter(StateSplit stateSplit) {
             Node stateAfter = decodeFloatingNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.stateAfterOrderId);
             getGraph().add(stateAfter);
-            return (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
+            FrameState fs = (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
+            stateSplit.setStateAfter(fs);
         }
 
         @Override

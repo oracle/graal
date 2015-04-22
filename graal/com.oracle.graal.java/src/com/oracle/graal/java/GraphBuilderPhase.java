@@ -2422,8 +2422,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return frameState.create(bci);
             }
 
-            public FrameState createStateAfter() {
-                return createFrameState(stream.nextBCI());
+            public void setStateAfter(StateSplit stateSplit) {
+                FrameState stateAfter = createFrameState(stream.nextBCI());
+                stateSplit.setStateAfter(stateAfter);
             }
         }
     }

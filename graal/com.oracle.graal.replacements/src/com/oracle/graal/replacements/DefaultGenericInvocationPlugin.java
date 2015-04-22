@@ -170,7 +170,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         if (res instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) res;
             if (stateSplit.stateAfter() == null) {
-                stateSplit.setStateAfter(b.createStateAfter());
+                b.setStateAfter(stateSplit);
             }
         }
 

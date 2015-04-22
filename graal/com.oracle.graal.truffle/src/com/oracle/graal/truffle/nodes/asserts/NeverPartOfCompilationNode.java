@@ -34,8 +34,8 @@ public final class NeverPartOfCompilationNode extends AbstractStateSplit impleme
     public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.create(NeverPartOfCompilationNode.class);
     protected final String message;
 
-    public NeverPartOfCompilationNode(String message, FrameState stateAfter) {
-        super(TYPE, StampFactory.forVoid(), stateAfter);
+    public NeverPartOfCompilationNode(String message) {
+        super(TYPE, StampFactory.forVoid());
         this.message = message;
     }
 
