@@ -40,6 +40,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCached
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.nodes.*;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -259,6 +260,26 @@ public class CachedTest {
         static boolean dynamicMethod(int value) {
             dynamicMethodInvocations++;
             return true;
+        }
+
+    }
+
+    /*
+     * Node should not produce any warnings in isIdentical of the generated code. Unnecessary casts
+     * were generated for isIdentical on the fast path.
+     */
+    @NodeChildren({@NodeChild, @NodeChild})
+    static class RegressionTestWarningInIsIdentical extends ValueNode {
+
+        @Specialization(guards = {"cachedName == name"})
+        protected Object directAccess(String receiver, String name, //
+                        @Cached("name") String cachedName, //
+                        @Cached("create(receiver, name)") Object callHandle) {
+            return receiver;
+        }
+
+        protected static Object create(String receiver, String name) {
+            return receiver;
         }
 
     }

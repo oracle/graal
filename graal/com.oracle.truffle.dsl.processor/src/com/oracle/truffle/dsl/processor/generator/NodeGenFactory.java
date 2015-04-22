@@ -1981,7 +1981,7 @@ public class NodeGenFactory {
         } else {
             castGuards = new HashSet<>();
             for (TypeGuard castGuard : group.getTypeGuards()) {
-                if (isTypeGuardUsedInAnyGuardOrCacheBelow(group, currentValues, castGuard)) {
+                if (isTypeGuardUsedInAnyGuardOrCacheBelow(group, currentValues, castGuard, execution.isFastPath())) {
                     castGuards.add(castGuard);
                 }
             }
@@ -2059,7 +2059,7 @@ public class NodeGenFactory {
         return true;
     }
 
-    private boolean isTypeGuardUsedInAnyGuardOrCacheBelow(SpecializationGroup group, LocalContext currentValues, TypeGuard typeGuard) {
+    private boolean isTypeGuardUsedInAnyGuardOrCacheBelow(SpecializationGroup group, LocalContext currentValues, TypeGuard typeGuard, boolean fastPath) {
         String localName = currentValues.getValue(typeGuard.getSignatureIndex()).getName();
 
         SpecializationData specialization = group.getSpecialization();
@@ -2068,7 +2068,7 @@ public class NodeGenFactory {
                 return true;
             }
         }
-        if (specialization != null) {
+        if (!fastPath && specialization != null) {
             for (CacheExpression cache : specialization.getCaches()) {
                 if (isVariableBoundIn(specialization, cache.getExpression(), localName, currentValues)) {
                     return true;
@@ -2077,7 +2077,7 @@ public class NodeGenFactory {
         }
 
         for (SpecializationGroup child : group.getChildren()) {
-            if (isTypeGuardUsedInAnyGuardOrCacheBelow(child, currentValues, typeGuard)) {
+            if (isTypeGuardUsedInAnyGuardOrCacheBelow(child, currentValues, typeGuard, fastPath)) {
                 return true;
             }
         }
