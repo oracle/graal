@@ -46,6 +46,7 @@ public class FrequencyEncoder<T> {
     }
 
     protected final Map<T, Entry<T>> map;
+    protected boolean containsNull;
 
     /**
      * Creates an encoder that uses object identity.
@@ -69,17 +70,17 @@ public class FrequencyEncoder<T> {
      * Adds an object to the array.
      */
     public void addObject(T object) {
+        if (object == null) {
+            containsNull = true;
+            return;
+        }
+
         Entry<T> entry = map.get(object);
         if (entry == null) {
             entry = new Entry<>(object);
             map.put(object, entry);
         }
-        if (object == null) {
-            /* null must get index 0, so sort it up. */
-            entry.frequency = Integer.MAX_VALUE;
-        } else {
-            entry.frequency++;
-        }
+        entry.frequency++;
     }
 
     /**
@@ -87,6 +88,10 @@ public class FrequencyEncoder<T> {
      * {@link #addObject(Object) added} before.
      */
     public int getIndex(Object object) {
+        if (object == null) {
+            assert containsNull;
+            return 0;
+        }
         Entry<T> entry = map.get(object);
         assert entry != null && entry.index >= 0;
         return entry.index;
@@ -96,7 +101,7 @@ public class FrequencyEncoder<T> {
      * Returns the number of distinct objects that have been added, i.e., the length of the array.
      */
     public int getLength() {
-        return map.size();
+        return map.size() + (containsNull ? 1 : 0);
     }
 
     /**
@@ -104,14 +109,21 @@ public class FrequencyEncoder<T> {
      * correct length}.
      */
     public T[] encodeAll(T[] allObjects) {
-        assert allObjects.length == map.size();
+        assert allObjects.length == getLength();
         List<Entry<T>> sortedEntries = new ArrayList<>(map.values());
         sortedEntries.sort((e1, e2) -> -Integer.compare(e1.frequency, e2.frequency));
+
+        int offset = 0;
+        if (containsNull) {
+            allObjects[0] = null;
+            offset = 1;
+        }
         for (int i = 0; i < sortedEntries.size(); i++) {
             Entry<T> entry = sortedEntries.get(i);
-            entry.index = i;
-            allObjects[i] = entry.object;
-            assert entry.object != null || entry.index == 0;
+            int index = i + offset;
+            entry.index = index;
+            allObjects[index] = entry.object;
+            assert entry.object != null;
         }
         return allObjects;
     }
