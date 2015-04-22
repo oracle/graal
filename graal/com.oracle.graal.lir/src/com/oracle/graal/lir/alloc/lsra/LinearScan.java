@@ -1611,14 +1611,17 @@ final class LinearScan {
             if (DetailedAsserts.getValue()) {
                 AbstractBlockBase<?> block = blockForId(opId);
                 if (block.getSuccessorCount() <= 1 && opId == getLastLirInstructionId(block)) {
-                    // check if spill moves could have been appended at the end of this block, but
-                    // before the branch instruction. So the split child information for this branch
-                    // would
-                    // be incorrect.
+                    /*
+                     * Check if spill moves could have been appended at the end of this block, but
+                     * before the branch instruction. So the split child information for this branch
+                     * would be incorrect.
+                     */
                     LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                            assert false : "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow)";
+                            assert false : String.format(
+                                            "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow) block=%s, instruction=%s, operand=%s",
+                                            block, instr, operand);
                         }
                     }
                 }
