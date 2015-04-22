@@ -34,7 +34,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
@@ -134,32 +133,30 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     private boolean processNodeInternal(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         FixedNode nextFixedNode = lastFixedNode == null ? null : lastFixedNode.next();
-        boolean significantChange = false;
         VirtualUtil.trace("%s", node);
 
         if (node instanceof VirtualizableAllocation) {
-            significantChange |= processVirtualizable((ValueNode) node, nextFixedNode, state, effects);
-            if (tool.isDeleted()) {
+            if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects)) {
                 VirtualUtil.trace("deleted virtualizable allocation %s", node);
-                return significantChange;
+                return true;
             }
         }
-
         if (hasVirtualInputs.isMarked(node) && node instanceof ValueNode) {
             if (node instanceof Virtualizable) {
-                significantChange |= processVirtualizable((ValueNode) node, nextFixedNode, state, effects);
-                if (tool.isDeleted()) {
+                if (processVirtualizable((ValueNode) node, nextFixedNode, state, effects)) {
                     VirtualUtil.trace("deleted virtualizable node %s", node);
-                    return significantChange;
+                    return true;
                 }
             }
             processNodeInputs((ValueNode) node, nextFixedNode, state, effects);
         }
 
         if (hasScalarReplacedInputs(node) && node instanceof ValueNode) {
-            significantChange |= processNodeWithScalarReplacedInputs((ValueNode) node, nextFixedNode, state, effects);
+            if (processNodeWithScalarReplacedInputs((ValueNode) node, nextFixedNode, state, effects)) {
+                return true;
+            }
         }
-        return significantChange;
+        return false;
     }
 
     private boolean processNodeWithScalarReplacedInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
@@ -268,10 +265,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     private boolean processVirtualizable(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
         tool.reset(state, node, insertBefore, effects);
         ((Virtualizable) node).virtualize(tool);
-        if (tool.isDeleted()) {
-            return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode || node instanceof BoxNode);
-        }
-        return false;
+        return tool.isDeleted();
     }
 
     private void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {

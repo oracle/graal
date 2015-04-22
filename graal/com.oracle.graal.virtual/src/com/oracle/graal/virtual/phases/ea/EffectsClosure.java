@@ -32,6 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
@@ -158,11 +159,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 if (node instanceof LoopExitNode) {
                     LoopExitNode loopExit = (LoopExitNode) node;
                     for (ProxyNode proxy : loopExit.proxies()) {
-                        changed |= processNode(proxy, state, effects, lastFixedNode);
+                        changed |= processNode(proxy, state, effects, lastFixedNode) && isSignificantNode(node);
                     }
                     processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
                 }
-                changed |= processNode(node, state, effects, lastFixedNode);
+                changed |= processNode(node, state, effects, lastFixedNode) && isSignificantNode(node);
                 if (node instanceof FixedWithNextNode) {
                     lastFixedNode = (FixedWithNextNode) node;
                 }
@@ -175,6 +176,15 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         return state;
     }
 
+    private static boolean isSignificantNode(Node node) {
+        return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode || node instanceof BoxNode);
+    }
+
+    /**
+     * Collects the effects of virtualizing the given node.
+     * 
+     * @return {@code true} if the effects include removing the node, {@code false} otherwise.
+     */
     protected abstract boolean processNode(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode);
 
     @Override

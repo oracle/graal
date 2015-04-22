@@ -38,7 +38,6 @@ import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.nodes.ClassQueryNode.Query;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.hotspot.word.*;
@@ -79,7 +78,7 @@ public class HotSpotGraphBuilderPlugins {
         plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(metaAccess, nodeIntrinsification, wordOperationPlugin));
 
         registerObjectPlugins(invocationPlugins);
-        registerClassPlugins(invocationPlugins);
+        registerClassPlugins(plugins);
         registerSystemPlugins(invocationPlugins, foreignCalls);
         registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
         registerCallSitePlugins(invocationPlugins);
@@ -107,27 +106,16 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 
-    private static void registerClassPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Class.class);
+    private static void registerClassPlugins(Plugins plugins) {
+        Registration r = new Registration(plugins.getInvocationPlugins(), Class.class);
 
-        for (Query query : Query.values()) {
-            r.register1(query.name(), Receiver.class, new InvocationPlugin() {
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode javaClass = receiver.get();
-                    ValueNode folded = ClassQueryNode.tryFold(GraphUtil.originalValue(javaClass), query, b.getMetaAccess(), b.getConstantReflection());
-                    if (folded != null) {
-                        b.addPush(query.returnKind, folded);
-                    } else {
-                        b.addPush(query.returnKind, new ClassQueryNode(b.getInvokeKind(), targetMethod, query, b.bci(), b.getInvokeReturnType(), javaClass));
-                    }
-                    return true;
-                }
+        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getModifiers", Receiver.class);
+        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isInterface", Receiver.class);
+        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isArray", Receiver.class);
+        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
+        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
+        r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
 
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-        }
         r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode javaClass = receiver.get();

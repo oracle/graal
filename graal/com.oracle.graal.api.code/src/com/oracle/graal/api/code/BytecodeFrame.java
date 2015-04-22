@@ -132,10 +132,31 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
     public static final int INVALID_FRAMESTATE_BCI = -6;
 
     /**
-     * Determines if a given BCI matches one of the synthetic BCI contants defined in this class.
+     * Determines if a given BCI matches one of the placeholder BCI constants defined in this class.
      */
-    public static boolean isSyntheticBci(int bci) {
+    public static boolean isPlaceholderBci(int bci) {
         return bci < 0;
+    }
+
+    /**
+     * Gets the name of a given placeholder BCI.
+     */
+    public static String getPlaceholderBciName(int bci) {
+        assert isPlaceholderBci(bci);
+        if (bci == BytecodeFrame.AFTER_BCI) {
+            return "AFTER_BCI";
+        } else if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            return "AFTER_EXCEPTION_BCI";
+        } else if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            return "INVALID_FRAMESTATE_BCI";
+        } else if (bci == BytecodeFrame.BEFORE_BCI) {
+            return "BEFORE_BCI";
+        } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
+            return "UNKNOWN_BCI";
+        } else {
+            assert bci == BytecodeFrame.UNWIND_BCI;
+            return "UNWIND_BCI";
+        }
     }
 
     /**

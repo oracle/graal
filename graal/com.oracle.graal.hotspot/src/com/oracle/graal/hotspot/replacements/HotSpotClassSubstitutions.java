@@ -26,7 +26,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.word.*;
@@ -34,10 +33,8 @@ import com.oracle.graal.word.*;
 /**
  * Substitutions for {@link java.lang.Class} methods.
  */
-@ClassSubstitution(java.lang.Class.class)
 public class HotSpotClassSubstitutions {
 
-    @MethodSubstitution(isStatic = false, forced = true)
     public static int getModifiers(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
@@ -48,7 +45,6 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isInterface(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
@@ -59,7 +55,6 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isArray(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
@@ -69,15 +64,11 @@ public class HotSpotClassSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean isPrimitive(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         return klass.isNull();
     }
 
-    public static native ClassLoader getClassLoader0(Class<?> thisObj);
-
-    @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (!klass.isNull()) {
@@ -102,7 +93,6 @@ public class HotSpotClassSubstitutions {
         return PiNode.asNonNullClass(klass.readObject(classMirrorOffset(), CLASS_MIRROR_LOCATION));
     }
 
-    @MethodSubstitution(isStatic = false)
     public static Class<?> getComponentType(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (!klass.isNull()) {

@@ -124,7 +124,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || replacementContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
                 parser.build(graph.start(), frameState);
 
-                connectLoopEndToBegin(graph);
+                GraphUtil.normalizeLoops(graph);
 
                 // Remove dead parameters.
                 for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
@@ -2427,28 +2427,5 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
         return assertionsEnabled;
-    }
-
-    /**
-     * Remove loop header without loop ends. This can happen with degenerated loops like this one:
-     *
-     * <pre>
-     * for (;;) {
-     *     try {
-     *         break;
-     *     } catch (UnresolvedException iioe) {
-     *     }
-     * }
-     * </pre>
-     */
-    public static void connectLoopEndToBegin(StructuredGraph graph) {
-        for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
-            if (begin.loopEnds().isEmpty()) {
-                assert begin.forwardEndCount() == 1;
-                graph.reduceDegenerateLoopBegin(begin);
-            } else {
-                GraphUtil.normalizeLoopBegin(begin);
-            }
-        }
     }
 }

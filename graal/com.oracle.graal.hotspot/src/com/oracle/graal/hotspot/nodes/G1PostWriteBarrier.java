@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 @NodeInfo
-public class G1PostWriteBarrier extends WriteBarrier {
+public class G1PostWriteBarrier extends WriteBarrier implements MemoryCheckpoint.Single {
 
     public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
     protected final boolean alwaysNull;
@@ -44,5 +45,9 @@ public class G1PostWriteBarrier extends WriteBarrier {
 
     public boolean alwaysNull() {
         return alwaysNull;
+    }
+
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.any();
     }
 }
