@@ -25,7 +25,6 @@ package com.oracle.graal.lir.ssa;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -41,43 +40,26 @@ public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
         AbstractControlFlowGraph<?> cfg = lir.getControlFlowGraph();
         for (AbstractBlockBase<?> block : cfg.getBlocks()) {
             doBlock(block, lir, lirGen);
-
         }
-
     }
 
     private static void doBlock(AbstractBlockBase<?> block, LIR lir, LIRGeneratorTool lirGen) {
         if (block.getPredecessorCount() > 1) {
             LabelOp label = (LabelOp) lir.getLIRforBlock(block).get(0);
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, pred.getSuccessors());
 
                 List<LIRInstruction> instructions = lir.getLIRforBlock(pred);
-                JumpOp jump = (JumpOp) instructions.get(instructions.size() - 1);
+                int insertBefore = instructions.size() - 1;
+                JumpOp jump = (JumpOp) instructions.get(insertBefore);
 
-                resolvePhi(label, jump, lirGen, instructions);
+                PhiResolver resolver = PhiResolver.create(lirGen, new LIRInsertionBuffer(), instructions, insertBefore);
+                SSAUtils.forEachPhiValuePair(lir, block, pred, resolver::move);
+                resolver.dispose();
+
                 jump.clearOutgoingValues();
             }
             label.clearIncomingValues();
         }
-    }
-
-    private static void resolvePhi(LabelOp label, JumpOp jump, LIRGeneratorTool gen, List<LIRInstruction> instructions) {
-        int incomingSize = label.getIncomingSize();
-        int outgoingSize = jump.getOutgoingSize();
-        assert incomingSize == outgoingSize : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", incomingSize, outgoingSize);
-
-        int insertBefore = instructions.size() - 1;
-        assert instructions.get(insertBefore) == jump;
-
-        PhiResolver resolver = PhiResolver.create(gen, new LIRInsertionBuffer(), instructions, insertBefore);
-        for (int i = 0; i < incomingSize; i++) {
-            Value phiIn = label.getIncomingValue(i);
-            Value phiOut = jump.getOutgoingValue(i);
-            resolver.move(phiIn, phiOut);
-        }
-        resolver.dispose();
-
     }
 
 }
