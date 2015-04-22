@@ -34,6 +34,6 @@ final class MessageUtil {
         } else if (o1 instanceof Receiver && o2 instanceof Receiver) {
             return true;
         }
-        throw new IllegalStateException();
+        return false;
     }
 }
