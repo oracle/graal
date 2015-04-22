@@ -2249,8 +2249,8 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
-    public void nullCheck(Register r) {
-        testl(AMD64.rax, new AMD64Address(r, 0));
+    public void nullCheck(AMD64Address address) {
+        testl(AMD64.rax, address);
     }
 
     @Override

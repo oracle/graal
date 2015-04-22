@@ -736,16 +736,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitNullCheck(Value address, LIRFrameState state) {
         if (address.getLIRKind().getPlatformKind() == Kind.Int) {
             CompressEncoding encoding = config.getOopEncoding();
+            Value uncompressed;
             if (encoding.shift <= 3) {
-                AMD64AddressValue uncompressionAddress = emitAddress(getProviders().getRegisters().getHeapBaseRegister().asValue(), 0, load(address), 1 << encoding.shift);
-                append(new AMD64HotSpotMove.CompressedNullCheckOp(uncompressionAddress, state));
+                uncompressed = emitAddress(getProviders().getRegisters().getHeapBaseRegister().asValue(), 0, load(address), 1 << encoding.shift);
             } else {
-                Value uncompress = emitUncompress(address, encoding, false);
-                append(new AMD64Move.NullCheckOp(load(uncompress), state));
+                uncompressed = emitUncompress(address, encoding, false);
             }
+            append(new AMD64Move.NullCheckOp(asAddressValue(uncompressed), state));
         } else {
             assert address.getKind() == Kind.Object || address.getKind() == Kind.Long : address + " - " + address.getKind() + " not a pointer!";
-            append(new AMD64Move.NullCheckOp(load(address), state));
+            append(new AMD64Move.NullCheckOp(asAddressValue(address), state));
         }
     }
 
