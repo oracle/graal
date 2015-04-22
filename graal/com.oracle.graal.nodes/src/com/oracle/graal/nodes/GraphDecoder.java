@@ -303,7 +303,6 @@ public class GraphDecoder {
              */
             FixedNode detectLoopsStart = startNode.predecessor() != null ? (FixedNode) startNode.predecessor() : startNode;
             cleanupGraph(methodScope, start);
-            Debug.dump(methodScope.graph, "Before loop detection");
             detectLoops(methodScope.graph, detectLoopsStart);
         }
     }
@@ -1020,7 +1019,6 @@ public class GraphDecoder {
             }
         }
 
-        Debug.dump(currentGraph, "After loops detected");
         insertLoopEnds(currentGraph, startInstruction);
     }
 
@@ -1145,7 +1143,6 @@ public class GraphDecoder {
     protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
         assert verifyEdges(methodScope);
 
-        Debug.dump(methodScope.graph, "Before removing redundant merges");
         for (Node node : methodScope.graph.getNewNodes(start)) {
             if (node instanceof MergeNode) {
                 MergeNode mergeNode = (MergeNode) node;
@@ -1155,7 +1152,6 @@ public class GraphDecoder {
             }
         }
 
-        Debug.dump(methodScope.graph, "Before removing redundant begins");
         for (Node node : methodScope.graph.getNewNodes(start)) {
             if (node instanceof BeginNode || node instanceof KillingBeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
@@ -1165,7 +1161,6 @@ public class GraphDecoder {
             }
         }
 
-        Debug.dump(methodScope.graph, "Before removing unused non-fixed nodes");
         for (Node node : methodScope.graph.getNewNodes(start)) {
             if (!(node instanceof FixedNode) && node.hasNoUsages()) {
                 GraphUtil.killCFG(node);

@@ -238,12 +238,26 @@ public class GraphUtil {
      * </pre>
      */
     public static void normalizeLoops(StructuredGraph graph) {
+        boolean loopRemoved = false;
         for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
             if (begin.loopEnds().isEmpty()) {
                 assert begin.forwardEndCount() == 1;
                 graph.reduceDegenerateLoopBegin(begin);
+                loopRemoved = true;
             } else {
                 normalizeLoopBegin(begin);
+            }
+        }
+
+        if (loopRemoved) {
+            /*
+             * Removing a degenerated loop can make non-loop phi functions unnecessary. Therefore,
+             * we re-check all phi functions and remove redundant ones.
+             */
+            for (Node node : graph.getNodes()) {
+                if (node instanceof PhiNode) {
+                    checkRedundantPhi((PhiNode) node);
+                }
             }
         }
     }

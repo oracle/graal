@@ -70,9 +70,11 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             if (constant != null) {
                 return constant;
             }
-            PhiNode phi = asPhi(metaAccess, constantReflection, forObject);
-            if (phi != null) {
-                return phi;
+            if (tool.allUsagesAvailable()) {
+                PhiNode phi = asPhi(metaAccess, constantReflection, forObject);
+                if (phi != null) {
+                    return phi;
+                }
             }
         }
         if (!isStatic() && forObject.isNullConstant()) {
