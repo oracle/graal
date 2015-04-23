@@ -62,7 +62,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
 
     @Override
     protected BytecodeFrame computeFrameForState(FrameState state) {
-        assert !isPlaceholderBci(state.bci) || state.bci == BytecodeFrame.BEFORE_BCI : state.bci;
+        assert !isPlaceholderBci(state.bci) || state.bci == BytecodeFrame.BEFORE_BCI : BytecodeFrame.getPlaceholderBciName(state.bci);
         return super.computeFrameForState(state);
     }
 }
