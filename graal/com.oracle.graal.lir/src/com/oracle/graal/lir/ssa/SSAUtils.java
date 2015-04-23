@@ -113,4 +113,25 @@ public final class SSAUtils {
         }
     }
 
+    public static void removePhiOut(LIR lir, AbstractBlockBase<?> block) {
+        assert block.getSuccessorCount() == 1;
+        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        JumpOp jump = (JumpOp) instructions.get(instructions.size() - 1);
+        jump.clearOutgoingValues();
+    }
+
+    public static void removePhiIn(LIR lir, AbstractBlockBase<?> block) {
+        assert block.getPredecessorCount() > 1;
+        LabelOp label = (LabelOp) lir.getLIRforBlock(block).get(0);
+        label.clearIncomingValues();
+    }
+
+    public static int phiOutIndex(LIR lir, AbstractBlockBase<?> block) {
+        assert block.getSuccessorCount() == 1;
+        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        int index = instructions.size() - 1;
+        assert instructions.get(index) instanceof JumpOp;
+        return index;
+    }
+
 }
