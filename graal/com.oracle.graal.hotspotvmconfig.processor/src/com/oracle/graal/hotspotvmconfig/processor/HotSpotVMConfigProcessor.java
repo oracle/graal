@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspotvmconfig;
+package com.oracle.graal.hotspotvmconfig.processor;
 
 import java.io.*;
 import java.lang.annotation.*;
@@ -35,6 +35,7 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.hotspotvmconfig.*;
 
 @SupportedAnnotationTypes({"com.oracle.graal.hotspotvmconfig.HotSpotVMConstant", "com.oracle.graal.hotspotvmconfig.HotSpotVMFlag", "com.oracle.graal.hotspotvmconfig.HotSpotVMField",
                 "com.oracle.graal.hotspotvmconfig.HotSpotVMType", "com.oracle.graal.hotspotvmconfig.HotSpotVMValue"})
