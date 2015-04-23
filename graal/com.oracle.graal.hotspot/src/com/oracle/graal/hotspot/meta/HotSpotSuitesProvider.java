@@ -31,6 +31,8 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 import com.oracle.graal.phases.*;
@@ -104,7 +106,31 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins);
         suite.appendPhase(new GraphBuilderPhase(config));
+        assert appendGraphEncoderTest(suite);
         return suite;
+    }
+
+    /**
+     * When assertions are enabled, we encode and decode every parsed graph, to ensure that the
+     * encoding and decoding process work correctly. The decoding performs canonicalization during
+     * decoding, so the decoded graph can be different than the encoded graph - we cannot check them
+     * for equality here. However, the encoder {@link GraphEncoder#verifyEncoding verifies the
+     * encoding itself}, i.e., performs a decoding without canoncialization and checks the graphs
+     * for equality.
+     */
+    private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
+        suite.appendPhase(new BasePhase<HighTierContext>() {
+            @Override
+            protected void run(StructuredGraph graph, HighTierContext context) {
+                EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);
+
+                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(context.getMetaAccess(), context.getConstantReflection(), context.getStampProvider(), !ImmutableCode.getValue(),
+                                runtime.getTarget().arch);
+                StructuredGraph targetGraph = new StructuredGraph(graph.method(), AllowAssumptions.YES);
+                graphDecoder.decode(targetGraph, encodedGraph);
+            }
+        });
+        return true;
     }
 
     /**
