@@ -124,6 +124,27 @@ public final class LIRKind {
     }
 
     /**
+     * Merge the types of the inputs. The result will have the {@link PlatformKind} of one of the
+     * inputs. If all inputs are values (references), the result is a value (reference). Otherwise,
+     * the result is a derived reference.
+     *
+     * This method should be used to construct the result {@link LIRKind} of merge operation that do
+     * not modify values (e.g. phis).
+     */
+    public static LIRKind merge(Value... inputs) {
+        assert inputs.length > 0;
+        for (Value input : inputs) {
+            LIRKind kind = input.getLIRKind();
+            if (kind.isDerivedReference()) {
+                return kind;
+            }
+        }
+
+        // all inputs are values or references, just return one of them
+        return inputs[0].getLIRKind();
+    }
+
+    /**
      * Create a new {@link LIRKind} with the same reference information and a new
      * {@linkplain #getPlatformKind platform kind}. If the new kind is a longer vector than this,
      * the new elements are marked as untracked values.
