@@ -103,4 +103,14 @@ public final class SSAUtils {
         return new SSAVerifier(lir).verify();
     }
 
+    public static void verifyPhi(LIR lir, AbstractBlockBase<?> merge) {
+        assert merge.getPredecessorCount() > 1;
+        for (AbstractBlockBase<?> pred : merge.getPredecessors()) {
+            forEachPhiValuePair(lir, merge, pred, (phiIn, phiOut) -> {
+                assert phiIn.getLIRKind().equals(phiOut.getLIRKind()) ||
+                                (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && phiIn.getLIRKind().isDerivedReference() && phiOut.getLIRKind().isValue());
+            });
+        }
+    }
+
 }
