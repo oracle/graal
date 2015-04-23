@@ -35,6 +35,7 @@ public abstract class StructuralInput {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
+    @Inherited
     public @interface MarkerType {
         InputType value();
     }

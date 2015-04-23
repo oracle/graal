@@ -123,17 +123,12 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
 
     private InputType getInputType(ResolvedJavaType type) {
         if (type != null && structuralInputType.isAssignableFrom(type)) {
-            ResolvedJavaType current = type;
-            while (current != null) {
-                MarkerType markerType = type.getAnnotation(MarkerType.class);
-                if (markerType != null) {
-                    return markerType.value();
-                }
-
-                current = current.getSuperclass();
+            MarkerType markerType = type.getAnnotation(MarkerType.class);
+            if (markerType != null) {
+                return markerType.value();
+            } else {
+                throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
             }
-
-            throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
         } else {
             return InputType.Value;
         }
