@@ -87,8 +87,12 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     protected void addSerialPostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
+        if (alwaysNull) {
+            // Serial barrier isn't needed for null value
+            return;
+        }
         final LocationNode loc = (precise ? location : null);
-        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, loc, precise, alwaysNull)));
+        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, loc, precise)));
     }
 
     private void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
