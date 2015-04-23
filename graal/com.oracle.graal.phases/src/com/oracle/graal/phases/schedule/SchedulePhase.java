@@ -597,18 +597,19 @@ public final class SchedulePhase extends Phase {
         for (int i = 1; i < oldList.size(); ++i) {
             Node n = oldList.get(i);
             if (unprocessed.isMarked(n)) {
-                if (n instanceof MemoryCheckpoint) {
-                    assert n instanceof FixedNode;
-                    if (watchList.size() > 0) {
-                        // Check whether we need to commit reads from the watch list.
-                        checkWatchList(b, nodeToBlock, unprocessed, newList, watchList, n);
+                if (n instanceof MemoryNode) {
+                    if (n instanceof MemoryCheckpoint) {
+                        assert n instanceof FixedNode;
+                        if (watchList.size() > 0) {
+                            // Check whether we need to commit reads from the watch list.
+                            checkWatchList(b, nodeToBlock, unprocessed, newList, watchList, n);
+                        }
                     }
-
                     // Add potential dependent reads to the watch list.
                     for (Node usage : n.usages()) {
                         if (usage instanceof FloatingReadNode) {
                             FloatingReadNode floatingReadNode = (FloatingReadNode) usage;
-                            if (nodeToBlock.get(floatingReadNode) == b && floatingReadNode.getLastLocationAccess() == n) {
+                            if (nodeToBlock.get(floatingReadNode) == b && floatingReadNode.getLastLocationAccess() == n && !(n instanceof MemoryPhiNode)) {
                                 watchList.add(floatingReadNode);
                             }
                         }
