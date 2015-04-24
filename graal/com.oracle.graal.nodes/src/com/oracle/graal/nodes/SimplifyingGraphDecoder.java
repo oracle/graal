@@ -82,6 +82,15 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
+    protected boolean allowLazyPhis() {
+        /*
+         * We do not need to exactly reproduce the encoded graph, so we want to avoid unnecessary
+         * phi functions.
+         */
+        return true;
+    }
+
+    @Override
     protected void simplifyFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         if (node instanceof IfNode) {
             IfNode ifNode = (IfNode) node;
@@ -170,5 +179,14 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             }
         }
         return node;
+    }
+
+    @Override
+    protected Node addFloatingNode(MethodScope methodScope, Node node) {
+        /*
+         * In contrast to the base class implementation, we do not need to exactly reproduce the
+         * encoded graph. Since we do canonicalization, we also want nodes to be unique.
+         */
+        return methodScope.graph.addOrUnique(node);
     }
 }
