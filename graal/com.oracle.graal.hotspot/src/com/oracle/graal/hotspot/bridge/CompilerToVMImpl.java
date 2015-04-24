@@ -206,4 +206,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean shouldDebugNonSafepoints();
 
     public native void writeDebugOutput(byte[] bytes, int offset, int length);
+
+    public native void flushDebugOutput();
 }

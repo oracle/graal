@@ -387,4 +387,6 @@ public interface CompilerToVM {
     boolean shouldDebugNonSafepoints();
 
     void writeDebugOutput(byte[] bytes, int offset, int length);
+
+    void flushDebugOutput();
 }
