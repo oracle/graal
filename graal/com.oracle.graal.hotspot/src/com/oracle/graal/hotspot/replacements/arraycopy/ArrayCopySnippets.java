@@ -207,6 +207,9 @@ public class ArrayCopySnippets implements Snippets {
             // copied elements (xor'd with -1).
             copiedElements ^= -1;
             System.arraycopy(nonNullSrc, srcPos + copiedElements, nonNullDest, destPos + copiedElements, length - copiedElements);
+        } else {
+            // Capture an after state for this path.
+            ArrayCopyStateNode.captureState();
         }
     }
 

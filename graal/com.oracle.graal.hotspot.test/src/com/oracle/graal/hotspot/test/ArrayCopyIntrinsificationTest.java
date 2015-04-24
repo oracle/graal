@@ -256,7 +256,6 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
      * "https://code.google.com/r/baggiogamp-guava/source/browse/guava/src/com/google/common/collect/ArrayTable.java?r=d2e06112416223cb5437d43c12a989c0adc7345b#181"
      * > com.google.common.collect.ArrayTable(ArrayTable other)</a>.
      */
-    @Ignore
     @Test
     public void testCopyRows() {
         mustIntrinsify = false;
