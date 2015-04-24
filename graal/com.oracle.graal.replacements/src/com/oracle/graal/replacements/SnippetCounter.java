@@ -24,15 +24,8 @@ package com.oracle.graal.replacements;
 
 //JaCoCo Exclude
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-
 import java.io.*;
 import java.util.*;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.word.*;
 
 /**
  * A counter that can be safely {@linkplain #inc() incremented} from within a snippet for gathering
@@ -94,15 +87,6 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
     private final String description;
     private long value;
 
-    @Fold
-    private static int countOffset() {
-        try {
-            return (int) unsafe.objectFieldOffset(SnippetCounter.class.getDeclaredField("value"));
-        } catch (Exception e) {
-            throw new GraalInternalError(e);
-        }
-    }
-
     /**
      * Creates a counter.
      *
@@ -128,20 +112,12 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
     }
 
     /**
-     * We do not want to use the {@link LocationIdentity} of the {@link #value} field, so that the
-     * usage in snippets is always possible. If a method accesses the counter via the field and the
-     * snippet, the result might not be correct though.
-     */
-    protected static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.mutable("SnippetCounter");
-
-    /**
      * Increments the value of this counter. This method can be safely used in a snippet if it is
      * invoked on a compile-time constant {@link SnippetCounter} object.
      */
     public void inc() {
         if (group != null) {
-            long loadedValue = ObjectAccess.readLong(this, countOffset(), SNIPPET_COUNTER_LOCATION);
-            ObjectAccess.writeLong(this, countOffset(), loadedValue + 1, SNIPPET_COUNTER_LOCATION);
+            SnippetCounterNode.increment(this);
         }
     }
 
@@ -150,6 +126,14 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
      */
     public long value() {
         return value;
+    }
+
+    @Override
+    public String toString() {
+        if (group != null) {
+            return "SnippetCounter-" + group.name + ":" + name;
+        }
+        return super.toString();
     }
 
     /**

@@ -67,6 +67,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public void initialize(Providers providers, SnippetReflectionProvider snippetReflection) {
         boxingSnippets = new BoxingSnippets.Templates(providers, snippetReflection, target);
+        providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(providers, snippetReflection, target));
     }
 
     @Override

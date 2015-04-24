@@ -23,7 +23,6 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
@@ -1015,14 +1014,6 @@ public class SnippetTemplate {
 
         // node can only lower to a ANY_LOCATION kill if the replacee also kills ANY_LOCATION
         assert !kills.contains(any()) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
-
-        if (SnippetCounters.getValue()) {
-            /*
-             * accesses to snippet counters are artificially introduced and violate the memory
-             * semantics.
-             */
-            kills.remove(SnippetCounter.SNIPPET_COUNTER_LOCATION);
-        }
 
         /*
          * Kills to private locations are safe, since there can be no floating read to these
