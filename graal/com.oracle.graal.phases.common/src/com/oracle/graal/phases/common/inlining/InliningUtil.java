@@ -427,7 +427,7 @@ public class InliningUtil {
     }
 
     public static BytecodePosition processSimpleInfopoint(Invoke invoke, SimpleInfopointNode infopointNode, BytecodePosition incomingPos) {
-        BytecodePosition pos = incomingPos != null ? incomingPos : new BytecodePosition(toBytecodePosition(invoke.stateAfter()), invoke.asNode().graph().method(), invoke.bci());
+        BytecodePosition pos = incomingPos != null ? incomingPos : new BytecodePosition(toBytecodePosition(invoke.stateAfter()).getCaller(), invoke.asNode().graph().method(), invoke.bci());
         infopointNode.addCaller(pos);
         return pos;
     }
