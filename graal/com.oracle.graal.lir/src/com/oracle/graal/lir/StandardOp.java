@@ -235,4 +235,33 @@ public class StandardOp {
             // do nothing, just keep value alive until at least here
         }
     }
+
+    public static final class StackMove extends LIRInstruction implements MoveOp {
+        public static final LIRInstructionClass<StackMove> TYPE = LIRInstructionClass.create(StackMove.class);
+
+        @Def({STACK, HINT}) protected AllocatableValue result;
+        @Use({STACK}) protected Value input;
+
+        public StackMove(AllocatableValue result, Value input) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+            throw new GraalInternalError(this + " should have been removed");
+        }
+
+        @Override
+        public Value getInput() {
+            return input;
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+    }
+
 }
