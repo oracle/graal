@@ -576,7 +576,8 @@ class CFGPrinter extends CompilationPrinter {
             out.printf("\"[%s|%c]\"", interval.getOperand(), interval.getOperand().getKind().getTypeChar());
         }
 
-        out.printf("%s -1 ", interval.getOperand());
+        StackInterval hint = interval.locationHint();
+        out.printf("%s %s ", interval.getOperand(), hint != null ? hint.getOperand() : -1);
 
         out.printf("[%d, %d[", interval.from(), interval.to());
 

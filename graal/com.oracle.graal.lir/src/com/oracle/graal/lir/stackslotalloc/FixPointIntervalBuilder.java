@@ -189,6 +189,7 @@ final class FixPointIntervalBuilder {
                 if (isVirtualStackSlot(operand)) {
                     VirtualStackSlot vslot = asVirtualStackSlot(operand);
                     addUse(vslot, inst, flags);
+                    addRegisterHint(inst, vslot, mode, flags, false);
                     usePos.add(inst);
                     Debug.log("set operand: %s", operand);
                     currentSet.set(vslot.getId());
@@ -201,6 +202,7 @@ final class FixPointIntervalBuilder {
                 if (isVirtualStackSlot(operand)) {
                     VirtualStackSlot vslot = asVirtualStackSlot(operand);
                     addDef(vslot, inst);
+                    addRegisterHint(inst, vslot, mode, flags, true);
                     usePos.add(inst);
                     Debug.log("clear operand: %s", operand);
                     currentSet.clear(vslot.getId());
@@ -227,6 +229,32 @@ final class FixPointIntervalBuilder {
         private void addDef(VirtualStackSlot stackSlot, LIRInstruction inst) {
             StackInterval interval = getOrCreateInterval(stackSlot);
             interval.addFrom(inst.id());
+        }
+
+        void addRegisterHint(final LIRInstruction op, VirtualStackSlot targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
+            if (flags.contains(OperandFlag.HINT)) {
+
+                op.forEachRegisterHint(targetValue, mode, (registerHint, valueMode, valueFlags) -> {
+                    if (isStackSlotValue(registerHint)) {
+                        assert isVirtualStackSlot(registerHint) : "Hint is not a VirtualStackSlot: " + registerHint;
+                        StackInterval from = getOrCreateInterval((VirtualStackSlot) registerHint);
+                        StackInterval to = getOrCreateInterval(targetValue);
+
+                        /* hints always point from def to use */
+                        if (hintAtDef) {
+                            to.setLocationHint(from);
+                        } else {
+                            from.setLocationHint(to);
+                        }
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("operation %s at opId %d: added hint from interval %d to %d", op, op.id(), from, to);
+                        }
+
+                        return registerHint;
+                    }
+                    return null;
+                });
+            }
         }
 
     }
