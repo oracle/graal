@@ -118,18 +118,20 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Retrieves the guest language source code section that is currently assigned to this node.
+     * Retrieves the segment of guest language source code that is represented by this Node.
      *
-     * @return the assigned source code section
+     * @return the source code represented by this Node
      */
     public final SourceSection getSourceSection() {
         return sourceSection;
     }
 
     /**
-     * Retrieves the guest language source code section that is currently assigned to this node.
+     * Retrieves the segment of guest language source code that is represented by this Node, if
+     * present; otherwise retrieves the segment represented by the nearest AST ancestor that has
+     * this information.
      *
-     * @return the assigned source code section
+     * @return an approximation of the source code represented by this Node
      */
     @ExplodeLoop
     public final SourceSection getEncapsulatingSourceSection() {
