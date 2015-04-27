@@ -74,6 +74,7 @@ public class HotSpotGraphBuilderPlugins {
         plugins.setParameterPlugin(new HotSpotParameterPlugin(wordTypes));
         plugins.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
         plugins.setLoadIndexedPlugin(new HotSpotLoadIndexedPlugin(wordTypes));
+        plugins.setTypeCheckPlugin(wordOperationPlugin);
         plugins.setInlineInvokePlugin(new DefaultInlineInvokePlugin(replacements));
         plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(metaAccess, nodeIntrinsification, wordOperationPlugin));
 

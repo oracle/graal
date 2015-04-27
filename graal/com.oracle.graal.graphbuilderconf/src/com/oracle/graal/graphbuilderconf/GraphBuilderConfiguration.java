@@ -34,6 +34,7 @@ public class GraphBuilderConfiguration {
         private final InvocationPlugins invocationPlugins;
         private LoadFieldPlugin loadFieldPlugin;
         private LoadIndexedPlugin loadIndexedPlugin;
+        private TypeCheckPlugin typeCheckPlugin;
         private ParameterPlugin parameterPlugin;
         private InlineInvokePlugin inlineInvokePlugin;
         private GenericInvocationPlugin genericInvocationPlugin;
@@ -49,6 +50,7 @@ public class GraphBuilderConfiguration {
             this.parameterPlugin = copyFrom.parameterPlugin;
             this.loadFieldPlugin = copyFrom.loadFieldPlugin;
             this.loadIndexedPlugin = copyFrom.loadIndexedPlugin;
+            this.typeCheckPlugin = copyFrom.typeCheckPlugin;
             this.inlineInvokePlugin = copyFrom.inlineInvokePlugin;
             this.loopExplosionPlugin = copyFrom.loopExplosionPlugin;
             this.genericInvocationPlugin = copyFrom.genericInvocationPlugin;
@@ -90,6 +92,14 @@ public class GraphBuilderConfiguration {
 
         public void setLoadIndexedPlugin(LoadIndexedPlugin plugin) {
             this.loadIndexedPlugin = plugin;
+        }
+
+        public TypeCheckPlugin getTypeCheckPlugin() {
+            return typeCheckPlugin;
+        }
+
+        public void setTypeCheckPlugin(TypeCheckPlugin typeCheckPlugin) {
+            this.typeCheckPlugin = typeCheckPlugin;
         }
 
         public ParameterPlugin getParameterPlugin() {

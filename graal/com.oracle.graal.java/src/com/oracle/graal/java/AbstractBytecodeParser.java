@@ -604,9 +604,13 @@ public abstract class AbstractBytecodeParser {
         JavaType type = lookupType(cpi, CHECKCAST);
         ValueNode object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
-            JavaTypeProfile profileForTypeCheck = getProfileForTypeCheck((ResolvedJavaType) type);
-            ValueNode checkCastNode = append(createCheckCast((ResolvedJavaType) type, object, profileForTypeCheck, false));
-            frameState.apush(checkCastNode);
+            ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+            JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
+            TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
+            if (typeCheckPlugin == null || !typeCheckPlugin.checkCast((GraphBuilderContext) this, object, resolvedType, profile)) {
+                ValueNode checkCastNode = append(createCheckCast(resolvedType, object, profile, false));
+                frameState.apush(checkCastNode);
+            }
         } else {
             handleUnresolvedCheckCast(type, object);
         }
@@ -622,8 +626,12 @@ public abstract class AbstractBytecodeParser {
         ValueNode object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-            ValueNode instanceOfNode = createInstanceOf((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
-            frameState.ipush(append(genConditional(genUnique(instanceOfNode))));
+            JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
+            TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
+            if (typeCheckPlugin == null || !typeCheckPlugin.instanceOf((GraphBuilderContext) this, object, resolvedType, profile)) {
+                ValueNode instanceOfNode = createInstanceOf(resolvedType, object, profile);
+                frameState.ipush(append(genConditional(genUnique(instanceOfNode))));
+            }
         } else {
             handleUnresolvedInstanceOf(type, object);
         }
