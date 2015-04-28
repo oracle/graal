@@ -686,7 +686,7 @@ final class LinearScan {
 
         // iterate all blocks
         for (final AbstractBlockBase<?> block : sortedBlocks) {
-            try (Indent indent = Debug.logAndIndent("compute local live sets for block %d", block.getId())) {
+            try (Indent indent = Debug.logAndIndent("compute local live sets for block %s", block)) {
 
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
@@ -700,7 +700,7 @@ final class LinearScan {
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
                             if (Debug.isLogEnabled()) {
-                                Debug.log("liveGen for operand %d", operandNum);
+                                Debug.log("liveGen for operand %d(%s)", operandNum, operand);
                             }
                         }
                         if (block.getLoop() != null) {
@@ -718,7 +718,7 @@ final class LinearScan {
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
                             if (Debug.isLogEnabled()) {
-                                Debug.log("liveGen in state for operand %d", operandNum);
+                                Debug.log("liveGen in state for operand %d(%s)", operandNum, operand);
                             }
                         }
                     }
@@ -728,7 +728,7 @@ final class LinearScan {
                         int varNum = operandNumber(operand);
                         liveKill.set(varNum);
                         if (Debug.isLogEnabled()) {
-                            Debug.log("liveKill for operand %d", varNum);
+                            Debug.log("liveKill for operand %d(%s)", varNum, operand);
                         }
                         if (block.getLoop() != null) {
                             intervalInLoop.setBit(varNum, block.getLoop().getIndex());
