@@ -60,6 +60,30 @@ public abstract class LIRPhase<C> {
      */
     private final DebugMemUseTracker memUseTracker;
 
+    private static class LIRPhaseStatistics {
+        /**
+         * Records time spent within {@link #apply}.
+         */
+        private final DebugTimer timer;
+
+        /**
+         * Records memory usage within {@link #apply}.
+         */
+        private final DebugMemUseTracker memUseTracker;
+
+        LIRPhaseStatistics(Class<?> clazz) {
+            timer = Debug.timer("LIRPhaseTime_%s", clazz);
+            memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", clazz);
+        }
+    }
+
+    private static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<LIRPhaseStatistics>() {
+        @Override
+        protected LIRPhaseStatistics computeValue(Class<?> c) {
+            return new LIRPhaseStatistics(c);
+        }
+    };
+
     private static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
 
     private static boolean checkName(String name) {
@@ -68,15 +92,17 @@ public abstract class LIRPhase<C> {
     }
 
     public LIRPhase() {
-        timer = Debug.timer("LIRPhaseTime_%s", getClass());
-        memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", getClass());
+        LIRPhaseStatistics statistics = statisticsClassValue.get(getClass());
+        timer = statistics.timer;
+        memUseTracker = statistics.memUseTracker;
     }
 
     protected LIRPhase(String name) {
         assert checkName(name);
         this.name = name;
-        timer = Debug.timer("LIRPhaseTime_%s", getClass());
-        memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", getClass());
+        LIRPhaseStatistics statistics = statisticsClassValue.get(getClass());
+        timer = statistics.timer;
+        memUseTracker = statistics.memUseTracker;
     }
 
     public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context) {

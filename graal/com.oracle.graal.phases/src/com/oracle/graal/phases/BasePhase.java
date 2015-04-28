@@ -69,20 +69,59 @@ public abstract class BasePhase<C> {
         return true;
     }
 
+    private static class BasePhaseStatistics {
+        /**
+         * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
+         */
+        private final DebugTimer timer;
+
+        /**
+         * Counts calls to {@link #apply(StructuredGraph, Object, boolean)}.
+         */
+        private final DebugMetric executionCount;
+
+        /**
+         * Accumulates the {@linkplain Graph#getNodeCount() live node count} of all graphs sent to
+         * {@link #apply(StructuredGraph, Object, boolean)}.
+         */
+        private final DebugMetric inputNodesCount;
+
+        /**
+         * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
+         */
+        private final DebugMemUseTracker memUseTracker;
+
+        BasePhaseStatistics(Class<?> clazz) {
+            timer = Debug.timer("PhaseTime_%s", clazz);
+            executionCount = Debug.metric("PhaseCount_%s", clazz);
+            memUseTracker = Debug.memUseTracker("PhaseMemUse_%s", clazz);
+            inputNodesCount = Debug.metric("PhaseNodes_%s", clazz);
+        }
+    }
+
+    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<BasePhaseStatistics>() {
+        @Override
+        protected BasePhaseStatistics computeValue(Class<?> c) {
+            return new BasePhaseStatistics(c);
+        }
+    };
+
     protected BasePhase() {
-        timer = Debug.timer("PhaseTime_%s", getClass());
-        executionCount = Debug.metric("PhaseCount_%s", getClass());
-        memUseTracker = Debug.memUseTracker("PhaseMemUse_%s", getClass());
-        inputNodesCount = Debug.metric("PhaseNodes_%s", getClass());
+        BasePhaseStatistics statistics = statisticsClassValue.get(getClass());
+        timer = statistics.timer;
+        executionCount = statistics.executionCount;
+        memUseTracker = statistics.memUseTracker;
+        inputNodesCount = statistics.inputNodesCount;
     }
 
     protected BasePhase(String name) {
         assert checkName(name);
         this.name = name;
-        timer = Debug.timer("PhaseTime_%s", getClass());
-        executionCount = Debug.metric("PhaseCount_%s", getClass());
-        memUseTracker = Debug.memUseTracker("PhaseMemUse_%s", getClass());
-        inputNodesCount = Debug.metric("PhaseNodes_%s", getClass());
+        BasePhaseStatistics statistics = statisticsClassValue.get(getClass());
+        timer = statistics.timer;
+        executionCount = statistics.executionCount;
+        memUseTracker = statistics.memUseTracker;
+        inputNodesCount = statistics.inputNodesCount;
     }
 
     protected CharSequence getDetailedName() {
