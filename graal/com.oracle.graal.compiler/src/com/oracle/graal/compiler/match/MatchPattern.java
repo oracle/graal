@@ -76,32 +76,32 @@ public class MatchPattern {
 
         static Result wrongClass(Node node, MatchPattern matcher) {
             MatchResult_WRONG_CLASS.increment();
-            return Debug.isEnabled() ? new Result(MatchResultCode.WRONG_CLASS, node, matcher) : CACHED_WRONG_CLASS;
+            return Debug.isLogEnabled() ? new Result(MatchResultCode.WRONG_CLASS, node, matcher) : CACHED_WRONG_CLASS;
         }
 
         static Result namedValueMismatch(Node node, MatchPattern matcher) {
             MatchResult_NAMED_VALUE_MISMATCH.increment();
-            return Debug.isEnabled() ? new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher) : CACHED_NAMED_VALUE_MISMATCH;
+            return Debug.isLogEnabled() ? new Result(MatchResultCode.NAMED_VALUE_MISMATCH, node, matcher) : CACHED_NAMED_VALUE_MISMATCH;
         }
 
         static Result tooManyUsers(Node node, MatchPattern matcher) {
             MatchResult_TOO_MANY_USERS.increment();
-            return Debug.isEnabled() ? new Result(MatchResultCode.TOO_MANY_USERS, node, matcher) : CACHED_TOO_MANY_USERS;
+            return Debug.isLogEnabled() ? new Result(MatchResultCode.TOO_MANY_USERS, node, matcher) : CACHED_TOO_MANY_USERS;
         }
 
         static Result notInBlock(Node node, MatchPattern matcher) {
             MatchResult_NOT_IN_BLOCK.increment();
-            return Debug.isEnabled() ? new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher) : CACHED_NOT_IN_BLOCK;
+            return Debug.isLogEnabled() ? new Result(MatchResultCode.NOT_IN_BLOCK, node, matcher) : CACHED_NOT_IN_BLOCK;
         }
 
         static Result notSafe(Node node, MatchPattern matcher) {
             MatchResult_NOT_SAFE.increment();
-            return Debug.isEnabled() ? new Result(MatchResultCode.NOT_SAFE, node, matcher) : CACHED_NOT_SAFE;
+            return Debug.isLogEnabled() ? new Result(MatchResultCode.NOT_SAFE, node, matcher) : CACHED_NOT_SAFE;
         }
 
         static Result alreadyUsed(Node node, MatchPattern matcher) {
             MatchResult_ALREADY_USED.increment();
-            return Debug.isEnabled() ? new Result(MatchResultCode.ALREADY_USED, node, matcher) : CACHED_ALREADY_USED;
+            return Debug.isLogEnabled() ? new Result(MatchResultCode.ALREADY_USED, node, matcher) : CACHED_ALREADY_USED;
         }
 
         @Override

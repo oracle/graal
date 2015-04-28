@@ -738,8 +738,8 @@ public class Debug {
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
     public static Indent logAndIndent(int logLevel, String msg) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, msg);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, msg);
         }
         return null;
     }
@@ -757,8 +757,8 @@ public class Debug {
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg);
         }
         return null;
     }
@@ -776,8 +776,8 @@ public class Debug {
      *         {@linkplain Indent#close() closed} or null if debugging is disabled
      */
     public static Indent logAndIndent(int logLevel, String format, int arg) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg);
         }
         return null;
     }
@@ -790,8 +790,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, int arg1, Object arg2) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2);
         }
         return null;
     }
@@ -804,8 +804,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, int arg2) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2);
         }
         return null;
     }
@@ -818,8 +818,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, int arg1, int arg2) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2);
         }
         return null;
     }
@@ -832,8 +832,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2);
         }
         return null;
     }
@@ -846,8 +846,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2, arg3);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2, arg3);
         }
         return null;
     }
@@ -860,8 +860,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, int arg1, int arg2, int arg3) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2, arg3);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2, arg3);
         }
         return null;
     }
@@ -874,8 +874,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, int arg2, int arg3) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2, arg3);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2, arg3);
         }
         return null;
     }
@@ -888,8 +888,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2, arg3, arg4);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2, arg3, arg4);
         }
         return null;
     }
@@ -902,8 +902,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2, arg3, arg4, arg5);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2, arg3, arg4, arg5);
         }
         return null;
     }
@@ -916,8 +916,8 @@ public class Debug {
      * @see #logAndIndent(int, String, Object)
      */
     public static Indent logAndIndent(int logLevel, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
-        if (ENABLED) {
-            return logvAndIndent(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6);
+        if (ENABLED && Debug.isLogEnabled(logLevel)) {
+            return logvAndIndentInternal(logLevel, format, arg1, arg2, arg3, arg4, arg5, arg6);
         }
         return null;
     }
@@ -933,11 +933,19 @@ public class Debug {
      */
     public static Indent logvAndIndent(int logLevel, String format, Object... args) {
         if (ENABLED) {
-            DebugScope scope = DebugScope.getInstance();
-            scope.log(logLevel, format, args);
-            return scope.pushIndentLogger();
+            if (Debug.isLogEnabled(logLevel)) {
+                return logvAndIndentInternal(logLevel, format, args);
+            }
+            return null;
         }
         throw new InternalError("Use of Debug.logvAndIndent() must be guarded by a test of Debug.isEnabled()");
+    }
+
+    private static Indent logvAndIndentInternal(int logLevel, String format, Object... args) {
+        assert ENABLED && Debug.isLogEnabled(logLevel) : "must have checked Debug.isLogEnabled()";
+        DebugScope scope = DebugScope.getInstance();
+        scope.log(logLevel, format, args);
+        return scope.pushIndentLogger();
     }
 
     /**

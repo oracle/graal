@@ -172,7 +172,12 @@ public class GraalDebugConfig implements DebugConfig {
     }
 
     private int getLevel(DebugFilter filter) {
-        int level = checkDebugFilter(Debug.currentScope(), filter);
+        int level;
+        if (filter == null) {
+            level = 0;
+        } else {
+            level = filter.matchLevel(Debug.currentScope());
+        }
         if (level > 0 && !checkMethodFilter()) {
             level = 0;
         }
@@ -181,14 +186,6 @@ public class GraalDebugConfig implements DebugConfig {
 
     private boolean isEnabledForMethod(DebugFilter filter) {
         return filter != null && checkMethodFilter();
-    }
-
-    private static int checkDebugFilter(String currentScope, DebugFilter filter) {
-        if (filter == null) {
-            return 0;
-        } else {
-            return filter.matchLevel(currentScope);
-        }
     }
 
     /**
