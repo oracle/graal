@@ -52,6 +52,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -446,7 +448,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      * @param frameStateProcessing controls how {@link FrameState FrameStates} should be handled.
      */
     public StructuredGraph makeGraph(ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original, FrameStateProcessing frameStateProcessing) {
-        return createGraphMaker(method, original, frameStateProcessing).makeGraph(args);
+        try (OverrideScope s = OptionValue.override(DeoptALot, false)) {
+            return createGraphMaker(method, original, frameStateProcessing).makeGraph(args);
+        }
     }
 
     /**
