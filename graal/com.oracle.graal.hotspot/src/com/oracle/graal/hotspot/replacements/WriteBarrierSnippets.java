@@ -212,13 +212,13 @@ public class WriteBarrierSnippets implements Snippets {
 
             // If the written value is not null continue with the barrier addition.
             if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
-                byte cardByte = cardAddress.readByte(0);
+                byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
                 g1EffectiveAfterNullPostWriteBarrierCounter.inc();
 
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByte != g1YoungCardValue())) {
-                    MembarNode.memoryBarrier(STORE_LOAD);
-                    byte cardByteReload = cardAddress.readByte(0);
+                    MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
+                    byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                         log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
                         cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
@@ -298,11 +298,11 @@ public class WriteBarrierSnippets implements Snippets {
 
         while (count-- > 0) {
             Word cardAddress = Word.unsigned((start + cardStart) + count);
-            byte cardByte = cardAddress.readByte(0);
+            byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
             // If the card is already dirty, (hence already enqueued) skip the insertion.
             if (probability(NOT_FREQUENT_PROBABILITY, cardByte != g1YoungCardValue())) {
-                MembarNode.memoryBarrier(STORE_LOAD);
-                byte cardByteReload = cardAddress.readByte(0);
+                MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
+                byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                     cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
                     // If the thread local card queue is full, issue a native call which will

@@ -37,15 +37,21 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
 
     public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
     protected final int barriers;
+    protected final LocationIdentity location;
 
     public MembarNode(int barriers) {
+        this(barriers, LocationIdentity.any());
+    }
+
+    public MembarNode(int barriers, LocationIdentity location) {
         super(TYPE, StampFactory.forVoid());
         this.barriers = barriers;
+        this.location = location;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.any();
+        return location;
     }
 
     @Override
@@ -55,4 +61,7 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
 
     @NodeIntrinsic
     public static native void memoryBarrier(@ConstantNodeParameter int barriers);
+
+    @NodeIntrinsic
+    public static native void memoryBarrier(@ConstantNodeParameter int barriers, @ConstantNodeParameter LocationIdentity location);
 }
