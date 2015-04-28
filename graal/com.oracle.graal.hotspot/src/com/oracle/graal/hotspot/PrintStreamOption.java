@@ -111,6 +111,11 @@ public class PrintStreamOption extends OptionValue<String> {
                     public void write(int b) throws IOException {
                         write(new byte[]{(byte) b}, 0, 1);
                     }
+
+                    @Override
+                    public void flush() throws IOException {
+                        compilerToVM.flushDebugOutput();
+                    }
                 };
                 ps = new PrintStream(ttyOut);
             }

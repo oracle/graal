@@ -31,6 +31,8 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -75,6 +77,7 @@ public class SPARCControlFlow {
 
     public static final class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, SPARCDelayedControlTransfer {
         public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
+        static final EnumSet<Kind> SUPPORTED_KINDS = EnumSet.of(Kind.Long, Kind.Int, Kind.Object, Kind.Float, Kind.Double);
 
         private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
@@ -231,9 +234,6 @@ public class SPARCControlFlow {
 
         private static void emitCBCond(SPARCMacroAssembler masm, Value actualX, Value actualY, Label actualTrueTarget, ConditionFlag conditionFlag) {
             switch ((Kind) actualX.getLIRKind().getPlatformKind()) {
-                case Byte:
-                case Char:
-                case Short:
                 case Int:
                     if (isConstant(actualY)) {
                         int constantY = asConstant(actualY).asInt();
@@ -269,9 +269,6 @@ public class SPARCControlFlow {
                 return false;
             }
             switch ((Kind) x.getPlatformKind()) {
-                case Byte:
-                case Char:
-                case Short:
                 case Int:
                 case Long:
                 case Object:
@@ -319,6 +316,13 @@ public class SPARCControlFlow {
             emitted = false;
             delaySlotPosition = -1;
         }
+
+        @Override
+        public void verify() {
+            super.verify();
+            assert SUPPORTED_KINDS.contains(kind) : kind;
+            assert x.getKind().equals(kind) && y.getKind().equals(kind) : x + " " + y;
+        }
     }
 
     public static final class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
@@ -341,6 +345,11 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             emitBranch(crb, masm, kind, conditionFlag, trueDestination, falseDestination, true, trueDestinationProbability);
+        }
+
+        @Override
+        public void verify() {
+            assert CompareBranchOp.SUPPORTED_KINDS.contains(kind);
         }
     }
 

@@ -43,9 +43,10 @@ import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.nodes.*;
 
 /**
- * A {@link GenericInvocationPlugin} for calls to {@linkplain Operation word operations}.
+ * A {@link GenericInvocationPlugin} for calls to {@linkplain Operation word operations}, and a
+ * {@link TypeCheckPlugin} to handle casts between word types.
  */
-public class WordOperationPlugin implements GenericInvocationPlugin {
+public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPlugin {
     protected final WordTypes wordTypes;
     protected final Kind wordKind;
     protected final SnippetReflectionProvider snippetReflection;
@@ -69,6 +70,32 @@ public class WordOperationPlugin implements GenericInvocationPlugin {
         }
         processWordOperation(b, args, wordTypes.getWordOperation(method, b.getMethod().getDeclaringClass()));
         return true;
+    }
+
+    @Override
+    public boolean checkCast(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
+        if (!wordTypes.isWord(type)) {
+            if (object.getKind() != Kind.Object) {
+                throw b.bailout("Cannot cast a word value to a non-word type: " + type.toJavaName(true));
+            }
+            return false;
+        }
+
+        if (object.getKind() != wordTypes.getWordKind()) {
+            throw b.bailout("Cannot cast a non-word value to a word type: " + type.toJavaName(true));
+        }
+        b.push(Kind.Object, object);
+        return true;
+    }
+
+    @Override
+    public boolean instanceOf(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
+        if (wordTypes.isWord(type)) {
+            throw b.bailout("Cannot use instanceof for word a type: " + type.toJavaName(true));
+        } else if (object.getKind() != Kind.Object) {
+            throw b.bailout("Cannot use instanceof on a word value: " + type.toJavaName(true));
+        }
+        return false;
     }
 
     protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws GraalInternalError {

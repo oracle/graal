@@ -110,6 +110,20 @@ public class WordTest extends GraalCompilerTest implements Snippets {
         }
     }
 
+    @Test
+    public void testCast() {
+        test("cast", 1234L);
+    }
+
+    @Snippet
+    public static long cast(long input) {
+        WordBase base = Word.signed(input);
+        Unsigned unsigned = (Unsigned) base;
+        Pointer pointer = (Pointer) unsigned;
+        Word word = (Word) pointer;
+        return word.rawValue();
+    }
+
     @Snippet
     public static long unsignedLong(long word) {
         return Word.unsigned(word).rawValue();
