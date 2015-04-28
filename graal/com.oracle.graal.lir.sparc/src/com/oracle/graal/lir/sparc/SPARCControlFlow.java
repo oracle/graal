@@ -77,7 +77,7 @@ public class SPARCControlFlow {
 
     public static final class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, SPARCDelayedControlTransfer {
         public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
-        private static final EnumSet<Kind> SUPPORTED_KINDS = EnumSet.of(Kind.Long, Kind.Int, Kind.Object, Kind.Float, Kind.Double);
+        static final EnumSet<Kind> SUPPORTED_KINDS = EnumSet.of(Kind.Long, Kind.Int, Kind.Object, Kind.Float, Kind.Double);
 
         private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
@@ -345,6 +345,11 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             emitBranch(crb, masm, kind, conditionFlag, trueDestination, falseDestination, true, trueDestinationProbability);
+        }
+
+        @Override
+        public void verify() {
+            assert CompareBranchOp.SUPPORTED_KINDS.contains(kind);
         }
     }
 
