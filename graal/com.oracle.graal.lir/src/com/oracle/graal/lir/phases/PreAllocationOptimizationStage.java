@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.lir.phases;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
+
 import com.oracle.graal.lir.constopt.*;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.lir.ssa.*;
 
 public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
     public PreAllocationOptimizationStage() {
-        if (SSADestructionPhase.Options.LIREagerSSADestruction.getValue()) {
+        if (SSA_LIR.getValue() && SSADestructionPhase.Options.LIREagerSSADestruction.getValue()) {
             appendPhase(new SSADestructionPhase());
         }
         if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
