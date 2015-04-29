@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
@@ -149,6 +150,11 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     @Override
     public void simplify(SimplifierTool tool) {
         // attempt to devirtualize the call
+        if (invoke().getContextMethod() == null) {
+            // avoid invokes that have placeholder bcis: they do not have a valid contextType
+            assert (invoke().stateAfter() != null && BytecodeFrame.isPlaceholderBci(invoke().stateAfter().bci)) || BytecodeFrame.isPlaceholderBci(invoke().stateDuring().bci);
+            return;
+        }
         ResolvedJavaType contextType = (invoke().stateAfter() == null && invoke().stateDuring() == null) ? null : invoke().getContextType();
         ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
         if (specialCallTarget != null) {
