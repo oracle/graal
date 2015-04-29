@@ -70,6 +70,7 @@ import com.oracle.graal.sparc.SPARC.CPUFeature;
 public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     private StackSlotValue tmpStackSlot;
+    private SPARCSpillMoveFactory moveFactory;
 
     private class SPARCSpillMoveFactory implements LIRGeneratorTool.SpillMoveFactory {
 
@@ -84,7 +85,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     public SpillMoveFactory getSpillMoveFactory() {
-        return new SPARCSpillMoveFactory();
+        if (moveFactory == null) {
+            moveFactory = new SPARCSpillMoveFactory();
+        }
+        return moveFactory;
     }
 
     @Override
