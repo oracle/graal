@@ -32,6 +32,8 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
+import java.util.*;
+
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -61,12 +63,14 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.phases.util.*;
 
@@ -78,11 +82,53 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     private static final RegisterValue RCX_I = AMD64.rcx.asValue(LIRKind.value(Kind.Int));
     private AMD64SpillMoveFactory moveFactory;
 
+    private static class RegisterBackupPair {
+        public final Register register;
+        public final StackSlotValue backupSlot;
+
+        RegisterBackupPair(Register register, StackSlotValue backupSlot) {
+            this.register = register;
+            this.backupSlot = backupSlot;
+        }
+    }
+
     private class AMD64SpillMoveFactory implements LIRGeneratorTool.SpillMoveFactory {
+        private Map<PlatformKind.Key, RegisterBackupPair> categorized;
 
         @Override
         public LIRInstruction createMove(AllocatableValue result, Value input) {
             return AMD64LIRGenerator.this.createMove(result, input);
+        }
+
+        @Override
+        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
+            RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
+            return new AMD64StackMove(result, input, backup.register, backup.backupSlot);
+        }
+
+        private RegisterBackupPair getScratchRegister(PlatformKind kind) {
+            PlatformKind.Key key = kind.getKey();
+            if (categorized == null) {
+                categorized = new HashMap<>();
+            } else if (categorized.containsKey(key)) {
+                return categorized.get(key);
+            }
+
+            FrameMapBuilder frameMapBuilder = getResult().getFrameMapBuilder();
+            RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
+
+            Register[] availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
+            assert availableRegister != null && availableRegister.length > 1;
+            Register scratchRegister = availableRegister[0];
+
+            Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;
+            LIRKind largestKind = LIRKind.value(arch.getLargestStorableKind(scratchRegister.getRegisterCategory()));
+            VirtualStackSlot backupSlot = frameMapBuilder.allocateSpillSlot(largestKind);
+
+            RegisterBackupPair value = new RegisterBackupPair(scratchRegister, backupSlot);
+            categorized.put(key, value);
+
+            return value;
         }
     }
 
