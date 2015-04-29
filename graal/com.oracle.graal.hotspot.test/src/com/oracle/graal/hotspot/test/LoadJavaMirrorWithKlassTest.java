@@ -64,8 +64,8 @@ public class LoadJavaMirrorWithKlassTest extends GraalCompilerTest {
     @Override
     protected boolean checkLowTierGraph(StructuredGraph graph) {
         for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class)) {
-            assert constantNode.asJavaConstant() == null || constantNode.asJavaConstant().getKind() != Kind.Object : "Found unexpected object constant " + constantNode +
-                            ", this should have been removed by the LoadJavaMirrorWithKlassPhase.";
+            assert constantNode.asJavaConstant() == null || constantNode.asJavaConstant().getKind() != Kind.Object || constantNode.asJavaConstant().isDefaultForKind() : "Found unexpected object constant " +
+                            constantNode + ", this should have been removed by the LoadJavaMirrorWithKlassPhase.";
         }
         return true;
     }
