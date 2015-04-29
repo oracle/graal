@@ -219,6 +219,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
                 if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
                     ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity, entry.getKey().index, this);
+                    assert value != null : "Got null from read cache, entry's value:" + entry.getValue();
                     if (!(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint() != exitNode) {
                         ProxyNode proxy = new ValueProxyNode(value, exitNode);
                         effects.addFloatingNode(proxy, "readCacheProxy");
