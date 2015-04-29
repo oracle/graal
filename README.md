@@ -24,10 +24,8 @@ want one of these VM configurations:
    Graal API. This is how Truffle uses Graal.
    
 2. The 'graal' configuration is a VM where normal compilations are performed
-   by Graal. This VM will bootstrap Graal itself at startup unless the
-   -XX:-BootstrapGraal. Note that if tiered compilation is enabled, Graal
-   will be used at the last tier while C1 will be used for the first compiled
-   tiers.
+   by Graal. By default tiered compilation is enabled and Graal will be used at
+   the last tier while C1 will be used for the first compiled tiers.
 
 Unless you use the --vm option with the build command, you will be presented
 with a dialogue to choose one of the above VM configurations for the build
@@ -64,17 +62,18 @@ VM configurations that omit all VM support for Graal:
 ```
 % mx --vm server-nograal build
 % mx --vm server-nograal vm -version
-java version "1.7.0_25"
-Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
-OpenJDK 64-Bit Server VM (build 25.0-b43-internal, mixed mode)
+java version "1.8.0_40"
+Java(TM) SE Runtime Environment (build 1.8.0_40-b25)
+OpenJDK 64-Bit Server VM (build 25.40-b25-internal, mixed mode)
+
 ```
 
 ```
 % mx --vm client-nograal build
 % mx --vm client-nograal vm -version
-java version "1.7.0_25"
-Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
-OpenJDK 64-Bit Client VM (build 25.0-b43-internal, mixed mode)
+java version "1.8.0_40"
+Java(TM) SE Runtime Environment (build 1.8.0_40-b25)
+OpenJDK 64-Bit Client VM (build 25.40-b25-internal, mixed mode)
 ```
 
 These configurations aim to match as closely as possible the

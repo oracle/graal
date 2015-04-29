@@ -5,14 +5,20 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## `tip`
 ### Graal
+* By default the Graal code is now only compiled by C1 which should improve application start-up.
 * Merged with jdk8u40-b25.
+* The Graal class loader now loads all lib/graal/graal*.jar jars.
+* Fast Graal services (see com.oracle.graal.api.runtime.Service) are now looked up using service files in lib/graal/services
 * Add utilities ModifiersProvider#isConcrete, ResolvedJavaMethod#hasBytecodes, ResolvedJavaMethod#hasReceiver to Graal API.
 * Add `GraalDirectives` API, containing methods to influence compiler behavior for unittests and microbenchmarks.
 * Introduce `LIRSuites`, an extensible configuration for the low-level compiler pipeline.
-* The Graal class loader now loads all lib/graal/graal*.jar jars.
 * ...
 
 ### Truffle
+* New, faster partial evaluation (no more TruffleCache).
+* If a method is annotated with @ExplodeLoop and contains a loop that can not be exploded, partial evaluation will fail.
+* Truffle background compilation is now multi-threaded.
+* Experimental merge=true flag for @ExplodeLoop allows building bytecode-based interpreters (see BytecodeInterpreterPartialEvaluationTest).
 * Added Node#deepCopy as primary method to copy ASTs.
 * Disable inlining across Truffle boundary by default. New option TruffleInlineAcrossTruffleBoundary default false.
 * Node.replace(Node) now guards against non-assignable replacement, and Node.isReplacementSafe(Node) checks in advance.
