@@ -100,7 +100,6 @@ public class IntrinsicContext extends ReplacementContext {
         } else {
             assert !parent.parsingReplacement() || parent.replacementContext instanceof IntrinsicContext;
             if (stateBeforeCache == null) {
-                assert stateBeforeCache == null;
 
                 // Find the non-intrinsic ancestor calling the intrinsified method
                 BytecodeParser ancestor = parent;
