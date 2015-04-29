@@ -198,11 +198,34 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return merge.usages().filter(ValuePhiNode.class).filter(merge::isPhiAtMerge);
     }
 
-    protected Value[] createPhiIn(AbstractMergeNode merge) {
+    protected LIRKind getExactPhiKind(PhiNode phi) {
+        ArrayList<Value> values = new ArrayList<>(phi.valueCount());
+        for (int i = 0; i < phi.valueCount(); i++) {
+            ValueNode node = phi.valueAt(i);
+            Value value = node instanceof ConstantNode ? ((ConstantNode) node).asJavaConstant() : getOperand(node);
+            if (value != null) {
+                values.add(value);
+            } else {
+                assert isPhiInputFromBackedge(phi, i);
+            }
+        }
+        LIRKind derivedKind = LIRKind.merge(values.toArray(new Value[values.size()]));
+        assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isDerivedReference();
+        assert derivedKind.getPlatformKind().equals(gen.getLIRKind(phi.stamp()).getPlatformKind());
+        return derivedKind;
+    }
+
+    private static boolean isPhiInputFromBackedge(PhiNode phi, int index) {
+        AbstractMergeNode merge = phi.merge();
+        AbstractEndNode end = merge.phiPredecessorAt(index);
+        return end instanceof LoopEndNode && ((LoopEndNode) end).loopBegin().equals(merge);
+    }
+
+    private Value[] createPhiIn(AbstractMergeNode merge) {
         List<Value> values = new ArrayList<>();
         for (ValuePhiNode phi : valuePhis(merge)) {
             assert getOperand(phi) == null;
-            Variable value = gen.newVariable(getPhiKind(phi));
+            Variable value = gen.newVariable(getExactPhiKind(phi));
             values.add(value);
             setResult(phi, value);
         }
@@ -234,6 +257,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                         AbstractMergeNode merge = (AbstractMergeNode) begin;
                         LabelOp label = (LabelOp) gen.getResult().getLIR().getLIRforBlock(block).get(0);
                         label.setIncomingValues(createPhiIn(merge));
+                        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
+                            TTY.println("Created PhiIn: " + label);
+
+                        }
                     }
                 }
             }
