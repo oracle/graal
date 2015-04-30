@@ -128,7 +128,7 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
                 return LogicConstantNode.contradiction();
             } else {
                 boolean superType = inputType.isAssignableFrom(type);
-                if (!superType && !inputType.isInterface() && !type.isInterface()) {
+                if (!superType && !isInterfaceOrArrayOfInterface(inputType) && !isInterfaceOrArrayOfInterface(type)) {
                     return LogicConstantNode.contradiction();
                 }
                 // since the subtype comparison was only performed on a declared type we don't
@@ -198,5 +198,9 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
             }
         }
         return TriState.UNKNOWN;
+    }
+
+    private static boolean isInterfaceOrArrayOfInterface(ResolvedJavaType t) {
+        return t.isInterface() || (t.isArray() && t.getElementalType().isInterface());
     }
 }
