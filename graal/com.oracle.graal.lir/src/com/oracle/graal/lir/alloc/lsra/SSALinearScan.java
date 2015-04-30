@@ -42,6 +42,7 @@ import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
 
 final class SSALinearScan extends LinearScan {
 
+    private static final DebugMetric numPhiResolutionMoves = Debug.metric("SSA LSRA[numPhiResolutionMoves]");
     private static final DebugMetric numStackToStackMoves = Debug.metric("SSA LSRA[numStackToStackMoves]");
 
     SSALinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig) {
@@ -78,10 +79,12 @@ final class SSALinearScan extends LinearScan {
                 public void visit(Value phiIn, Value phiOut) {
                     Interval toInterval = splitChildAtOpId(intervalFor(phiIn), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
                     if (isConstant(phiOut)) {
+                        numPhiResolutionMoves.increment();
                         moveResolver.addMapping(phiOut, toInterval);
                     } else {
                         Interval fromInterval = splitChildAtOpId(intervalFor(phiOut), phiOutId, LIRInstruction.OperandMode.DEF);
                         if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
+                            numPhiResolutionMoves.increment();
                             if (!(isStackSlotValue(toInterval.location()) && isStackSlotValue(fromInterval.location()))) {
                                 moveResolver.addMapping(fromInterval, toInterval);
                             } else {
