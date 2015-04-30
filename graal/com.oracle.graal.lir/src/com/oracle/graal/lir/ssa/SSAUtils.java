@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
@@ -53,14 +54,14 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
  *   v0|i = ...
  *   JUMP ~[v0|i, int[0|0x0]] destination: B0 -> B1
  * ________________________________________________
- *
+ * 
  * B2 -> B1
  *   ...
  *   v1|i = ...
  *   v2|i = ...
  *   JUMP ~[v1|i, v2|i] destination: B2 -> B1
  * ________________________________________________
- *
+ * 
  * B1 <- B0,B2
  *   [v3|i, v4|i] = LABEL
  *   ...
@@ -144,6 +145,31 @@ public final class SSAUtils {
         }
     }
 
+    public static void forEachPhiRegisterHint(LIR lir, AbstractBlockBase<?> block, LabelOp label, Value targetValue, OperandMode mode, ValueConsumer valueConsumer) {
+        assert mode == OperandMode.DEF : "Wrong operand mode: " + mode;
+        assert lir.getLIRforBlock(block).get(0).equals(label) : String.format("Block %s and Label %s do not match!", block, label);
 
+        if (!label.isPhiIn()) {
+            return;
+        }
+        int idx = indexOfValue(label, targetValue);
+        assert idx >= 0 : String.format("Value %s not in label %s", targetValue, label);
+
+        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            JumpOp jump = phiOut(lir, pred);
+            Value sourceValue = jump.getOutgoingValue(idx);
+            valueConsumer.visitValue(jump, sourceValue, null, null);
+        }
+
+    }
+
+    private static int indexOfValue(LabelOp label, Value value) {
+        for (int i = 0; i < label.getIncomingSize(); i++) {
+            if (label.getIncomingValue(i).equals(value)) {
+                return i;
+            }
+        }
+        return -1;
+    }
 
 }
