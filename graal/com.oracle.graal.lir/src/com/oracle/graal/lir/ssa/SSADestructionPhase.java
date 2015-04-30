@@ -36,7 +36,7 @@ public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Destruct SSA LIR eagerly (before other LIR phases).", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIREagerSSADestruction = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LIREagerSSADestruction = new OptionValue<>(false);
         // @formatter:on
     }
 
