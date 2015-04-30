@@ -281,6 +281,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     public abstract void reinstallStubs();
 
+    public abstract boolean enableInfopoints();
+
     private final class DispatchTruffleCompilationListener implements GraalTruffleCompilationListener {
 
         public void notifyCompilationQueued(OptimizedCallTarget target) {

@@ -181,7 +181,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(plugins);
+        boolean infoPoints = HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints();
+        GraphBuilderConfiguration config = infoPoints ? GraphBuilderConfiguration.getInfopointEagerDefault(plugins) : GraphBuilderConfiguration.getEagerDefault(plugins);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
@@ -302,6 +303,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public void reinstallStubs() {
         installOptimizedCallTargetCallMethod();
+    }
+
+    @Override
+    public boolean enableInfopoints() {
+        return HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints();
     }
 
     @Override

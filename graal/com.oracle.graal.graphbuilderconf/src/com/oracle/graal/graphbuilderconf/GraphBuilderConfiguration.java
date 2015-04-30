@@ -237,8 +237,16 @@ public class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
     }
 
+    public static GraphBuilderConfiguration getInfopointDefault(Plugins plugins) {
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+    }
+
     public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
         return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+    }
+
+    public static GraphBuilderConfiguration getInfopointEagerDefault(Plugins plugins) {
+        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
