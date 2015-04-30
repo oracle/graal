@@ -29,12 +29,12 @@ import com.oracle.truffle.api.interop.*;
 public interface TruffleLanguage {
     String getLanguageName();
 
-    TruffleObject getLanguageContext();
-
-    void setGlobalContext(TruffleObject context);
-
-    boolean hasGlobalProperty(String name);
-
     Object run(String[] arguments);
+
+    void setTruffleGlobalScope(TruffleGlobalScope globalScope);
+
+    TruffleObject getLanguageGlobal();
+
+    boolean isObjectOfLanguage(TruffleObject object);
 
 }

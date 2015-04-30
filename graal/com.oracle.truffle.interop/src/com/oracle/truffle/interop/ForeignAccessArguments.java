@@ -54,6 +54,10 @@ public final class ForeignAccessArguments {
         return copyOfRange(arguments, RUNTIME_ARGUMENT_COUNT, arguments.length);
     }
 
+    public static Object[] extractUserArguments(int skip, Object[] arguments) {
+        return copyOfRange(arguments, RUNTIME_ARGUMENT_COUNT + skip, arguments.length);
+    }
+
     public static int getUserArgumentCount(Object[] arguments) {
         return arguments.length - RUNTIME_ARGUMENT_COUNT;
     }
