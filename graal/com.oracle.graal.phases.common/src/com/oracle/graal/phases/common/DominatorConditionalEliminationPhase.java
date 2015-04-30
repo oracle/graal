@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.LoweringPhase.*;
+import com.oracle.graal.phases.common.LoweringPhase.Frame;
 import com.oracle.graal.phases.schedule.*;
 
 public class DominatorConditionalEliminationPhase extends Phase {
@@ -54,8 +54,8 @@ public class DominatorConditionalEliminationPhase extends Phase {
     }
 
     private static final class InfoElement {
-        private Stamp stamp;
-        private ValueNode guard;
+        private final Stamp stamp;
+        private final ValueNode guard;
 
         public InfoElement(Stamp stamp, ValueNode guard) {
             this.stamp = stamp;
@@ -69,10 +69,15 @@ public class DominatorConditionalEliminationPhase extends Phase {
         public ValueNode getGuard() {
             return guard;
         }
+
+        @Override
+        public String toString() {
+            return stamp + " -> " + guard;
+        }
     }
 
     private static final class Info {
-        private ArrayList<InfoElement> infos;
+        private final ArrayList<InfoElement> infos;
 
         public Info() {
             infos = new ArrayList<>();
@@ -267,7 +272,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
         }
 
         private void registerCondition(LogicNode condition, boolean negated, ValueNode guard, List<Runnable> undoOperations) {
-            this.registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology(), guard, undoOperations);
+            registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology(), guard, undoOperations);
         }
 
         private Iterable<InfoElement> getInfoElements(ValueNode proxiedValue) {
@@ -368,11 +373,11 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 if (this.loopExits.isEmpty()) {
                     return tryProofCondition(shortCircuitOrNode.getX(), (guard, result) -> {
                         if (result == !shortCircuitOrNode.isXNegated()) {
-                            return rewireGuards(guard, result, rewireGuardFunction);
+                            return rewireGuards(guard, true, rewireGuardFunction);
                         } else {
                             return tryProofCondition(shortCircuitOrNode.getY(), (innerGuard, innerResult) -> {
                                 if (innerGuard == guard) {
-                                    return rewireGuards(guard, shortCircuitOrNode.isYNegated() ? !innerResult : innerResult, rewireGuardFunction);
+                                    return rewireGuards(guard, innerResult ^ shortCircuitOrNode.isYNegated(), rewireGuardFunction);
                                 }
                                 return false;
                             });
