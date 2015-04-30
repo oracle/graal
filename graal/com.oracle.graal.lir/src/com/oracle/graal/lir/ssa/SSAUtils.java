@@ -88,15 +88,46 @@ public final class SSAUtils {
         assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, pred.getSuccessors());
         assert pred.getSuccessors().get(0) == merge : String.format("Predecessor block %s has wrong successor: %s, should be: %s", pred, pred.getSuccessors().get(0), merge);
 
-        List<LIRInstruction> instructions = lir.getLIRforBlock(pred);
-        JumpOp jump = (JumpOp) instructions.get(instructions.size() - 1);
-        LabelOp label = (LabelOp) lir.getLIRforBlock(merge).get(0);
+        JumpOp jump = phiOut(lir, pred);
+        LabelOp label = phiIn(lir, merge);
 
         assert label.getIncomingSize() == jump.getOutgoingSize() : String.format("Phi In/Out size mismatch: in=%d vs. out=%d", label.getIncomingSize(), jump.getOutgoingSize());
 
         for (int i = 0; i < label.getIncomingSize(); i++) {
             visitor.visit(label.getIncomingValue(i), jump.getOutgoingValue(i));
         }
+    }
+
+    private static JumpOp phiOut(LIR lir, AbstractBlockBase<?> block) {
+        assert block.getSuccessorCount() == 1;
+        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        int index = instructions.size() - 1;
+        LIRInstruction op = instructions.get(index);
+        return (JumpOp) op;
+    }
+
+    public static int phiOutIndex(LIR lir, AbstractBlockBase<?> block) {
+        assert block.getSuccessorCount() == 1;
+        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        int index = instructions.size() - 1;
+        assert instructions.get(index) instanceof JumpOp;
+        return index;
+    }
+
+    private static LabelOp phiIn(LIR lir, AbstractBlockBase<?> block) {
+        assert block.getPredecessorCount() > 1;
+        LabelOp label = (LabelOp) lir.getLIRforBlock(block).get(0);
+        return label;
+    }
+
+    public static void removePhiOut(LIR lir, AbstractBlockBase<?> block) {
+        JumpOp jump = phiOut(lir, block);
+        jump.clearOutgoingValues();
+    }
+
+    public static void removePhiIn(LIR lir, AbstractBlockBase<?> block) {
+        LabelOp label = phiIn(lir, block);
+        label.clearIncomingValues();
     }
 
     public static boolean verifySSAForm(LIR lir) {
@@ -113,25 +144,6 @@ public final class SSAUtils {
         }
     }
 
-    public static void removePhiOut(LIR lir, AbstractBlockBase<?> block) {
-        assert block.getSuccessorCount() == 1;
-        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-        JumpOp jump = (JumpOp) instructions.get(instructions.size() - 1);
-        jump.clearOutgoingValues();
-    }
 
-    public static void removePhiIn(LIR lir, AbstractBlockBase<?> block) {
-        assert block.getPredecessorCount() > 1;
-        LabelOp label = (LabelOp) lir.getLIRforBlock(block).get(0);
-        label.clearIncomingValues();
-    }
-
-    public static int phiOutIndex(LIR lir, AbstractBlockBase<?> block) {
-        assert block.getSuccessorCount() == 1;
-        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
-        int index = instructions.size() - 1;
-        assert instructions.get(index) instanceof JumpOp;
-        return index;
-    }
 
 }
