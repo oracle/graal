@@ -167,8 +167,7 @@ public interface Frame {
 
     /**
      * Materializes this frame, which allows it to be stored in a field or cast to
-     * {@link java.lang.Object}. The frame however looses the ability to be packed or to access the
-     * caller frame.
+     * {@link java.lang.Object}.
      *
      * @return the new materialized frame
      */
