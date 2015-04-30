@@ -205,9 +205,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             }
         }
         LIRKind derivedKind = LIRKind.merge(values.toArray(new Value[values.size()]));
-        assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isDerivedReference();
-        assert derivedKind.getPlatformKind().equals(gen.getLIRKind(phi.stamp()).getPlatformKind());
+        assert verifyPHIKind(derivedKind, gen.getLIRKind(phi.stamp()));
         return derivedKind;
+    }
+
+    private static boolean verifyPHIKind(LIRKind derivedKind, LIRKind phiKind) {
+        assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isDerivedReference();
+        PlatformKind phiPlatformKind = phiKind.getPlatformKind();
+        assert derivedKind.getPlatformKind().equals(phiPlatformKind instanceof Kind ? ((Kind) phiPlatformKind).getStackKind() : phiPlatformKind);
+        return true;
     }
 
     private static boolean isPhiInputFromBackedge(PhiNode phi, int index) {
