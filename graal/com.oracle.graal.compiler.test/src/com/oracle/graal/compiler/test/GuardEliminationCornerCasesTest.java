@@ -62,11 +62,11 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
                     if (b instanceof C) {
                         return 1;
                     } else {
-                        GraalDirectives.deoptimize();
+                        GraalDirectives.deoptimizeAndInvalidate();
                     }
                 }
             } else {
-                GraalDirectives.deoptimize();
+                GraalDirectives.deoptimizeAndInvalidate();
             }
         }
         return 0;
