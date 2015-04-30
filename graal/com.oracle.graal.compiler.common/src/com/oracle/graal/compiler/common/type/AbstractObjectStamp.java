@@ -205,7 +205,8 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
                 } else {
                     joinType = null;
                 }
-                if (joinExactType || (!type.isInterface() && !other.type.isInterface())) {
+
+                if (joinExactType || (!isInterfaceOrArrayOfInterface(type) && !isInterfaceOrArrayOfInterface(other.type))) {
                     joinAlwaysNull = true;
                 }
             }
@@ -229,6 +230,10 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         } else {
             return copyWith(joinType, joinExactType, joinNonNull, joinAlwaysNull);
         }
+    }
+
+    private static boolean isInterfaceOrArrayOfInterface(ResolvedJavaType t) {
+        return t.isInterface() || (t.isArray() && t.getElementalType().isInterface());
     }
 
     public static boolean isConcreteType(ResolvedJavaType type) {
