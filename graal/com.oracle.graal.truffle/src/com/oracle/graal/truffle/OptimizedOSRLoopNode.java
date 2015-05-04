@@ -157,8 +157,9 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
         }
     }
 
-    public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+    public boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         invalidate(newNode, reason);
+        return false;
     }
 
     private void invalidate(Object source, CharSequence reason) {
