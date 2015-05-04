@@ -347,7 +347,7 @@ public interface ResolvedJavaType extends JavaType, ModifiersProvider {
     ResolvedJavaMethod getClassInitializer();
 
     /**
-     * Returns true if this type represents and interface and it should be trusted even in places
+     * Returns true if this type represents an interface and it should be trusted even in places
      * where the JVM verifier would not give any guarantees other than {@link Object}.
      */
     boolean isTrustedInterfaceType();
