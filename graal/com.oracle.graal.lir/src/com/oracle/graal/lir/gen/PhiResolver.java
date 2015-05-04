@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
@@ -30,11 +30,12 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 
 /**
- * Converts {@link ValuePhiNode} instructions into moves.
+ * Converts phi instructions into moves.
  *
  * Resolves cycles:
  *
@@ -106,6 +107,9 @@ public class PhiResolver {
     }
 
     private final LIRGeneratorTool gen;
+    private final SpillMoveFactory moveFactory;
+    private final LIRInsertionBuffer buffer;
+    private final int insertBefore;
 
     /**
      * The operand loop header phi for the operand currently being process in {@link #dispose()}.
@@ -122,9 +126,27 @@ public class PhiResolver {
      */
     private final HashMap<Value, PhiResolverNode> operandToNodeMap = CollectionsFactory.newMap();
 
-    public PhiResolver(LIRGeneratorTool gen) {
+    public static PhiResolver create(LIRGeneratorTool gen) {
+        AbstractBlockBase<?> block = gen.getCurrentBlock();
+        assert block != null;
+        List<LIRInstruction> instructions = gen.getResult().getLIR().getLIRforBlock(block);
+
+        return new PhiResolver(gen, new LIRInsertionBuffer(), instructions, instructions.size());
+    }
+
+    public static PhiResolver create(LIRGeneratorTool gen, LIRInsertionBuffer buffer, List<LIRInstruction> instructions, int insertBefore) {
+        return new PhiResolver(gen, buffer, instructions, insertBefore);
+    }
+
+    protected PhiResolver(LIRGeneratorTool gen, LIRInsertionBuffer buffer, List<LIRInstruction> instructions, int insertBefore) {
         this.gen = gen;
+        moveFactory = gen.getSpillMoveFactory();
         temp = ILLEGAL;
+
+        this.buffer = buffer;
+        this.buffer.init(instructions);
+        this.insertBefore = insertBefore;
+
     }
 
     public void dispose() {
@@ -146,6 +168,7 @@ public class PhiResolver {
                 emitMove(node.destinations.get(j).operand, node.operand);
             }
         }
+        buffer.finish();
     }
 
     public void move(Value dest, Value src) {
@@ -189,7 +212,8 @@ public class PhiResolver {
     private void emitMove(Value dest, Value src) {
         assert isLegal(src);
         assert isLegal(dest);
-        gen.emitMove((AllocatableValue) dest, src);
+        LIRInstruction move = moveFactory.createMove((AllocatableValue) dest, src);
+        buffer.append(insertBefore, move);
     }
 
     // Traverse assignment graph in depth first order and generate moves in post order

@@ -108,6 +108,47 @@ public class AMD64Move {
         }
     }
 
+    @Opcode("STACKMOVE")
+    public static final class AMD64StackMove extends AMD64LIRInstruction implements MoveOp {
+        public static final LIRInstructionClass<AMD64StackMove> TYPE = LIRInstructionClass.create(AMD64StackMove.class);
+
+        @Def({STACK}) protected AllocatableValue result;
+        @Use({STACK, HINT}) protected Value input;
+        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue backupSlot;
+
+        private Register scratch;
+
+        public AMD64StackMove(AllocatableValue result, Value input, Register scratch, StackSlotValue backupSlot) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
+            this.backupSlot = backupSlot;
+            this.scratch = scratch;
+        }
+
+        @Override
+        public Value getInput() {
+            return input;
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            // backup scratch register
+            move(backupSlot.getKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
+            // move stack slot
+            move(getInput().getKind(), crb, masm, scratch.asValue(getInput().getLIRKind()), getInput());
+            move(getResult().getKind(), crb, masm, getResult(), scratch.asValue(getResult().getLIRKind()));
+            // restore scratch register
+            move(backupSlot.getKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
+
+        }
+    }
+
     public static final class LeaOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<LeaOp> TYPE = LIRInstructionClass.create(LeaOp.class);
 

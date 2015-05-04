@@ -74,7 +74,7 @@ class LinearScanWalker extends IntervalWalker {
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
-        moveResolver = new MoveResolver(allocator);
+        moveResolver = allocator.createMoveResolver();
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
         for (int i = 0; i < allocator.registers.length; i++) {
             spillIntervals[i] = EMPTY_LIST;

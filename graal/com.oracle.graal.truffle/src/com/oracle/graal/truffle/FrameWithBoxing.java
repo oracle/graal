@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import java.lang.reflect.*;
 import java.util.*;
-
-import sun.misc.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
@@ -235,71 +232,5 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
     @SuppressWarnings({"unchecked", "unused"})
     static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
         return (T) value;
-    }
-
-    @SuppressWarnings("unused")
-    static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getInt(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getLong(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getFloat(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getDouble(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return UNSAFE.getObject(receiver, offset);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
-        UNSAFE.putInt(receiver, offset, value);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        UNSAFE.putLong(receiver, offset, value);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
-        UNSAFE.putFloat(receiver, offset, value);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
-        UNSAFE.putDouble(receiver, offset, value);
-    }
-
-    @SuppressWarnings("unused")
-    static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
-        UNSAFE.putObject(receiver, offset, value);
-    }
-
-    private static final Unsafe UNSAFE = getUnsafe();
-
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
     }
 }

@@ -24,14 +24,10 @@ package com.oracle.graal.jtt.bytecode;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.*;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.*;
 
 /**

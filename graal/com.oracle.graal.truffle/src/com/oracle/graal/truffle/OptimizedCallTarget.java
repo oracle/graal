@@ -458,7 +458,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     @Override
-    public void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+    public boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         if (isValid()) {
             invalidate(newNode, reason);
@@ -470,6 +470,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (cancelInstalledTask(newNode, reason)) {
             compilationProfile.reportInvalidated();
         }
+        return false;
     }
 
     public void accept(NodeVisitor visitor, boolean includeInlinedNodes) {

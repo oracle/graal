@@ -200,6 +200,10 @@ final class LinearScan {
         return spillMoveFactory;
     }
 
+    protected MoveResolver createMoveResolver() {
+        return new MoveResolver(this);
+    }
+
     public static boolean isVariableOrRegister(Value value) {
         return isVariable(value) || isRegister(value);
     }
@@ -554,9 +558,7 @@ final class LinearScan {
                             // move target is a stack slot that is always correct, so eliminate
                             // instruction
                             if (Debug.isLogEnabled()) {
-                                if (Debug.isLogEnabled()) {
-                                    Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
-                                }
+                                Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
                             }
                             // null-instructions are deleted by assignRegNum
                             instructions.set(j, null);
@@ -688,7 +690,7 @@ final class LinearScan {
 
         // iterate all blocks
         for (final AbstractBlockBase<?> block : sortedBlocks) {
-            try (Indent indent = Debug.logAndIndent("compute local live sets for block %d", block.getId())) {
+            try (Indent indent = Debug.logAndIndent("compute local live sets for block %s", block)) {
 
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
@@ -702,7 +704,7 @@ final class LinearScan {
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
                             if (Debug.isLogEnabled()) {
-                                Debug.log("liveGen for operand %d", operandNum);
+                                Debug.log("liveGen for operand %d(%s)", operandNum, operand);
                             }
                         }
                         if (block.getLoop() != null) {
@@ -720,7 +722,7 @@ final class LinearScan {
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
                             if (Debug.isLogEnabled()) {
-                                Debug.log("liveGen in state for operand %d", operandNum);
+                                Debug.log("liveGen in state for operand %d(%s)", operandNum, operand);
                             }
                         }
                     }
@@ -730,7 +732,7 @@ final class LinearScan {
                         int varNum = operandNumber(operand);
                         liveKill.set(varNum);
                         if (Debug.isLogEnabled()) {
-                            Debug.log("liveKill for operand %d", varNum);
+                            Debug.log("liveKill for operand %d(%s)", varNum, operand);
                         }
                         if (block.getLoop() != null) {
                             intervalInLoop.setBit(varNum, block.getLoop().getIndex());
@@ -1521,7 +1523,7 @@ final class LinearScan {
         try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 
             int numBlocks = blockCount();
-            MoveResolver moveResolver = new MoveResolver(this);
+            MoveResolver moveResolver = createMoveResolver();
             BitSet blockCompleted = new BitSet(numBlocks);
             BitSet alreadyResolved = new BitSet(numBlocks);
 
@@ -1613,14 +1615,17 @@ final class LinearScan {
             if (DetailedAsserts.getValue()) {
                 AbstractBlockBase<?> block = blockForId(opId);
                 if (block.getSuccessorCount() <= 1 && opId == getLastLirInstructionId(block)) {
-                    // check if spill moves could have been appended at the end of this block, but
-                    // before the branch instruction. So the split child information for this branch
-                    // would
-                    // be incorrect.
+                    /*
+                     * Check if spill moves could have been appended at the end of this block, but
+                     * before the branch instruction. So the split child information for this branch
+                     * would be incorrect.
+                     */
                     LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                            assert false : "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow)";
+                            assert false : String.format(
+                                            "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow) block=%s, instruction=%s, operand=%s",
+                                            block, instr, operand);
                         }
                     }
                 }

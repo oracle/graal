@@ -4,15 +4,18 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 
 ## `tip`
+...
+
+## Version 0.7
+29-Apr-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.7)
 ### Graal
 * By default the Graal code is now only compiled by C1 which should improve application start-up.
 * Merged with jdk8u40-b25.
 * The Graal class loader now loads all lib/graal/graal*.jar jars.
-* Fast Graal services (see com.oracle.graal.api.runtime.Service) are now looked up using service files in lib/graal/services
+* Fast Graal services (see com.oracle.graal.api.runtime.Service) are now looked up using service files in lib/graal/services.
 * Add utilities ModifiersProvider#isConcrete, ResolvedJavaMethod#hasBytecodes, ResolvedJavaMethod#hasReceiver to Graal API.
 * Add `GraalDirectives` API, containing methods to influence compiler behavior for unittests and microbenchmarks.
 * Introduce `LIRSuites`, an extensible configuration for the low-level compiler pipeline.
-* ...
 
 ### Truffle
 * New, faster partial evaluation (no more TruffleCache).
