@@ -28,16 +28,17 @@ import org.junit.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
-import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestSplicedCounterNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestToolEvalCounterNode;
 
 /**
  * Tests the kind of instrumentation where a client can provide an AST fragment to be
  * <em>spliced</em> directly into the AST.
  */
-public class SpliceInstrumentTest {
+public class ToolEvalInstrumentTest {
 
     @Test
     public void testSpliceInstrumentListener() {
@@ -58,26 +59,24 @@ public class SpliceInstrumentTest {
         assertEquals(13, callTarget1.call());
 
         // Attach a null listener; it never actually attaches a node.
-        final Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
+        final Instrument instrument = Instrument.create(new ToolEvalNodeFactory() {
 
-            public SplicedNode getSpliceNode(Probe p) {
+            public ToolEvalNode createToolEvalNode(Probe p, Node n) {
                 return null;
             }
-
         }, null);
         probe.attach(instrument);
 
         assertEquals(13, callTarget1.call());
 
-        final TestSplicedCounterNode counter = new TestSplicedCounterNode();
+        final TestToolEvalCounterNode counter = new TestToolEvalCounterNode();
 
         // Attach a listener that splices an execution counter into the AST.
-        probe.attach(Instrument.create(new SpliceInstrumentListener() {
+        probe.attach(Instrument.create(new ToolEvalNodeFactory() {
 
-            public SplicedNode getSpliceNode(Probe p) {
+            public ToolEvalNode createToolEvalNode(Probe p, Node n) {
                 return counter;
             }
-
         }, null));
         assertEquals(0, counter.getCount());
 

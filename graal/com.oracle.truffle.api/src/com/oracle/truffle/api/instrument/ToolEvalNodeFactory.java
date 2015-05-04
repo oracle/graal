@@ -24,32 +24,28 @@
  */
 package com.oracle.truffle.api.instrument;
 
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Root of a client-provided AST fragment that can be spliced directly into an executing AST via
- * {@link Instrument#create(SpliceInstrumentListener, String)}.
- * <p>
- * <strong>Note:</strong> Instances of this class will in some situations be cloned by the
- * instrumentation platform for attachment at equivalent locations in cloned ASTs.
+ * Creator of {@linkplain ToolEvalNode AST fragments} suitable for efficient execution, subject to
+ * full Truffle optimization, by a {@linkplain Instrument#create(ToolEvalNodeFactory, String) Tool
+ * Eval Instrument}.
+ *
+ * @see Instrument
+ * @see ToolEvalNode
  */
-public abstract class SplicedNode extends Node implements InstrumentationNode.TruffleEvents, InstrumentationNode {
+public interface ToolEvalNodeFactory {
 
-    public void enter(Node node, VirtualFrame vFrame) {
-    }
-
-    public void returnVoid(Node node, VirtualFrame vFrame) {
-    }
-
-    public void returnValue(Node node, VirtualFrame vFrame, Object result) {
-    }
-
-    public void returnExceptional(Node node, VirtualFrame vFrame, Exception exception) {
-    }
-
-    public String instrumentationInfo() {
-        return null;
-    }
-
+    /**
+     * Provider of {@linkplain ToolEvalNode AST fragment} instances for efficient execution via
+     * instrumentation, subject to full Truffle optimization, at a {@linkplain Probe Probed} site in
+     * a guest-language AST.
+     *
+     * @param probe the Probe to which the Instrument requesting the AST fragment is attached
+     * @param node the guest-language AST location that is the context in which the requesting
+     *            Instrument must execute the AST fragment.
+     * @return a newly created AST fragment suitable for execution, via instrumentation, in the
+     *         execution context of the specified guest-language AST site.
+     */
+    ToolEvalNode createToolEvalNode(Probe probe, Node node);
 }

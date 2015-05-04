@@ -200,6 +200,13 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
     }
 
     /**
+     * Gets the guest-language AST node to which this Probe is attached.
+     */
+    Node getProbedNode() {
+        return ((WrapperNode) this.getParent()).getChild();
+    }
+
+    /**
      * Adds an {@link AbstractInstrumentNode} to this chain.
      */
     @TruffleBoundary
