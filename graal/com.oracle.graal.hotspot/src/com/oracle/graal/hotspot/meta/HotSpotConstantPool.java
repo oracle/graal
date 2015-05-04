@@ -489,16 +489,20 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool,
 
     @Override
     public JavaType lookupType(int cpi, int opcode) {
-        synchronized (this) {
-            if (cpi == this.lastTypeCpi) {
-                return this.lastType;
+        if (cpi == this.lastTypeCpi) {
+            synchronized (this) {
+                if (cpi == this.lastTypeCpi) {
+                    return this.lastType;
+                }
             }
         }
         final long metaspacePointer = runtime().getCompilerToVM().lookupKlassInPool(metaspaceConstantPool, cpi);
         JavaType result = getJavaType(metaspacePointer);
         if (result instanceof ResolvedJavaType) {
-            this.lastType = (ResolvedJavaType) result;
-            this.lastTypeCpi = cpi;
+            synchronized (this) {
+                this.lastType = (ResolvedJavaType) result;
+                this.lastTypeCpi = cpi;
+            }
         }
         return result;
     }
