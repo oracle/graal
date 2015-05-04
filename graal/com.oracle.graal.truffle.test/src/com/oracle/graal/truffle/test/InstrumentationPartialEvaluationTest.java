@@ -205,46 +205,53 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
     }
 
     @Test
-    public void constantValueInertSpliceInstrumentListener() {
+    public void constantValueInertToolEvalNodeFactory() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
-        Probe probe = result.probe();
-        // A listener that could insert a SplicedNode into the AST, but which never does.
-        Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
+        Probe testProbe = result.probe();
+        // A factory that could insert a ToolEvalNode into the AST, but which never does.
+        Instrument instrument = Instrument.create(new ToolEvalNodeFactory() {
 
-            public SplicedNode getSpliceNode(Probe p) {
+            public ToolEvalNode createToolEvalNode(Probe probe, Node node) {
                 return null;
             }
-
         }, null);
-        probe.attach(instrument);
+        testProbe.attach(instrument);
 
         // It all gets compiled away
         assertPartialEvalEquals("constant42", root);
     }
 
     @Test
-    public void constantValueInertSplicedNode() {
+    public void constantValueInertToolEvalNode() {
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new ConstantTestNode(42);
-        RootTestNode root = new RootTestNode(fd, "constantValue", result);
-        root.adoptChildren();
-        Probe probe = result.probe();
-        // A listener that inserts a SplicedNode with empty methods into the AST.
-        Instrument instrument = Instrument.create(new SpliceInstrumentListener() {
+        AbstractTestNode resultTestNode = new ConstantTestNode(42);
+        RootTestNode rootTestNode = new RootTestNode(fd, "constantValue", resultTestNode);
+        rootTestNode.adoptChildren();
+        Probe testProbe = resultTestNode.probe();
+        // A factory that inserts a ToolEvalNode with empty methods into the instrumentation chain.
+        Instrument instrument = Instrument.create(new ToolEvalNodeFactory() {
 
-            public SplicedNode getSpliceNode(Probe p) {
-                return new SplicedNode() {
+            public ToolEvalNode createToolEvalNode(Probe probe, Node node) {
+                return new ToolEvalNode() {
+
+                    public String instrumentationInfo() {
+                        return null;
+                    }
+
+                    @Override
+                    public Object executeToolEvalNode(Node n, VirtualFrame frame) {
+                        return null;
+                    }
                 };
             }
-
         }, null);
-        probe.attach(instrument);
+        testProbe.attach(instrument);
 
         // It all gets compiled away.
-        assertPartialEvalEquals("constant42", root);
+        assertPartialEvalEquals("constant42", rootTestNode);
     }
 
     @Test
