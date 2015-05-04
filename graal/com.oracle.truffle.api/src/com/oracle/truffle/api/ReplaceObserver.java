@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,5 +31,10 @@ import com.oracle.truffle.api.nodes.*;
  */
 public interface ReplaceObserver {
 
-    void nodeReplaced(Node oldNode, Node newNode, CharSequence reason);
+    /**
+     * Returns <code>true</code> if the event is consumed and no parent nodes should be notified by
+     * for replaces. Returns <code>false</code> if the parent {@link Node} or {@link CallTarget}
+     * should get notified.
+     */
+    boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason);
 }
