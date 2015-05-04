@@ -122,34 +122,56 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     }
 
     @Test
-    public void testJoinInterface0() {
-        Stamp a = StampFactory.declared(getType(A.class));
-        Stamp i = StampFactory.declaredTrusted(getType(I.class));
-        Assert.assertNotSame(StampFactory.empty(Kind.Object), join(a, i));
+    public void testJoinInterfaceSimple() {
+        // Tests joining of interface
+        testJoinInterface(A.class, B.class, I.class);
     }
 
     @Test
-    public void testJoinInterface1() {
-        Stamp aNonNull = StampFactory.declaredNonNull(getType(A.class));
-        Stamp i = StampFactory.declaredTrusted(getType(I.class));
+    public void testJoinInterfaceArray() {
+        // Tests joining of arrays interface
+        testJoinInterface(A[].class, B[].class, I[].class);
+    }
+
+    @Test
+    public void testJoinInterfaceMultiArray() {
+        // Tests joining of multidimensional arrays of interface
+        testJoinInterface(A[][].class, B[][].class, I[][].class);
+    }
+
+    private void testJoinInterface(Class<?> typeA, Class<?> typeB, Class<?> typeI) {
+        testJoinInterface0(typeA, typeI);
+        testJoinInterface1(typeA, typeI);
+        testJoinInterface2(typeB, typeI);
+        testJoinInterface3(typeB, typeI);
+    }
+
+    private void testJoinInterface0(Class<?> typeA, Class<?> typeI) {
+        Stamp a = StampFactory.declared(getType(typeA));
+        Stamp i = StampFactory.declaredTrusted(getType(typeI));
+        Assert.assertNotSame(StampFactory.empty(Kind.Object), join(a, i));
+    }
+
+    private void testJoinInterface1(Class<?> typeA, Class<?> typeI) {
+        Stamp aNonNull = StampFactory.declaredNonNull(getType(typeA));
+        Stamp i = StampFactory.declaredTrusted(getType(typeI));
         Stamp join = join(aNonNull, i);
         Assert.assertTrue(join instanceof ObjectStamp);
         Assert.assertTrue(((ObjectStamp) join).nonNull());
     }
 
-    @Test
-    public void testJoinInterface2() {
-        Stamp bExact = StampFactory.exactNonNull(getType(B.class));
-        Stamp i = StampFactory.declaredTrusted(getType(I.class));
+    private void testJoinInterface2(Class<?> typeB, Class<?> typeI) {
+        Stamp bExact = StampFactory.exactNonNull(getType(typeB));
+        Stamp i = StampFactory.declaredTrusted(getType(typeI));
         Stamp join = join(i, bExact);
         Assert.assertEquals(StampFactory.empty(Kind.Object), join);
     }
 
-    @Test
-    public void testJoinInterface3() {
-        Stamp bExact = StampFactory.exactNonNull(getType(B.class));
-        Stamp i = StampFactory.declared(getType(I.class)); // not trusted
+    private void testJoinInterface3(Class<?> typeB, Class<?> typeI) {
+        Stamp bExact = StampFactory.exactNonNull(getType(typeB));
+        Stamp i = StampFactory.declared(getType(typeI)); // not trusted
         Stamp join = join(i, bExact);
         Assert.assertEquals(bExact, join);
     }
+
 }
