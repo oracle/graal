@@ -75,7 +75,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
             }
             if (clazz instanceof GetClassNode) {
                 GetClassNode getClass = (GetClassNode) clazz;
-                return new LoadHubNode(KlassPointerStamp.klass(), getClass.getObject(), null);
+                return new LoadHubNode(KlassPointerStamp.klassNonNull(), getClass.getObject(), null);
             }
             if (clazz instanceof HubGetClassNode) {
                 // replace _klass._java_mirror._klass -> _klass
