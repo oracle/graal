@@ -274,9 +274,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             for (int i = 0; i < nodes.size(); i++) {
                 Node node = nodes.get(i);
                 if (node instanceof ValueNode) {
-                    if (node instanceof ValuePhiNode) {
-                        assert node != null;
-                    }
                     ValueNode valueNode = (ValueNode) node;
                     if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
                         TTY.println("LIRGen for " + valueNode);
