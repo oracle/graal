@@ -38,6 +38,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.options.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
@@ -45,6 +46,11 @@ import com.oracle.graal.lir.framemap.*;
  * @see CompilationResultBuilderFactory
  */
 public class CompilationResultBuilder {
+
+    // @formatter:off
+    @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug)
+    public static final OptionValue<Boolean> PrintLIRWithAssembly = new OptionValue<>(false);
+    // @formatter:on
 
     private static class ExceptionInfo {
 
@@ -353,12 +359,12 @@ public class CompilationResultBuilder {
     }
 
     private void emitBlock(AbstractBlockBase<?> block) {
-        if (Debug.isDumpEnabled()) {
+        if (Debug.isDumpEnabled() || PrintLIRWithAssembly.getValue()) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
-            if (Debug.isDumpEnabled()) {
+            if (Debug.isDumpEnabled() || PrintLIRWithAssembly.getValue()) {
                 blockComment(String.format("%d %s", op.id(), op));
             }
 
