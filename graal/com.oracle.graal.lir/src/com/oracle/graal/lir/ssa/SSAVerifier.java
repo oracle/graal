@@ -58,7 +58,6 @@ final class SSAVerifier {
     }
 
     public boolean verify() {
-        // init();
         try (Scope s = Debug.scope("SSAVerifier", lir)) {
             for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
                 doBlock(block);
