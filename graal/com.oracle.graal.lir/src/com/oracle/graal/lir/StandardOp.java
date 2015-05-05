@@ -88,6 +88,7 @@ public class StandardOp {
 
         public void setIncomingValues(Value[] values) {
             assert incomingValues.length == 0;
+            assert values != null;
             incomingValues = values;
         }
 
@@ -147,6 +148,7 @@ public class StandardOp {
 
         public void setOutgoingValues(Value[] values) {
             assert outgoingValues.length == 0;
+            assert values != null;
             outgoingValues = values;
         }
 
