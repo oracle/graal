@@ -35,7 +35,7 @@ import com.oracle.graal.lir.*;
 
 /**
  */
-final class MoveResolver {
+class MoveResolver {
 
     private final LinearScan allocator;
 
@@ -48,7 +48,7 @@ final class MoveResolver {
     private boolean multipleReadsAllowed;
     private final int[] registerBlocked;
 
-    private void setValueBlocked(Value location, int direction) {
+    protected void setValueBlocked(Value location, int direction) {
         assert direction == 1 || direction == -1 : "out of bounds";
         if (isRegister(location)) {
             registerBlocked[asRegister(location).number] += direction;
@@ -57,7 +57,7 @@ final class MoveResolver {
         }
     }
 
-    private int valueBlocked(Value location) {
+    protected int valueBlocked(Value location) {
         if (isRegister(location)) {
             return registerBlocked[asRegister(location).number];
         }

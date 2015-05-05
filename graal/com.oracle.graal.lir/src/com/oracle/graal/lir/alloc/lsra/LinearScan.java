@@ -58,7 +58,7 @@ import com.oracle.graal.options.*;
  * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
-final class LinearScan {
+class LinearScan {
 
     final TargetDescription target;
     final LIRGenerationResult res;
