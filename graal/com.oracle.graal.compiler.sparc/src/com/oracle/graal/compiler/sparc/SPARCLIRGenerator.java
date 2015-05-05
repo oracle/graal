@@ -59,6 +59,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGpVIS3;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
@@ -77,6 +78,11 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         @Override
         public LIRInstruction createMove(AllocatableValue result, Value input) {
             return SPARCLIRGenerator.this.createMove(result, input);
+        }
+
+        @Override
+        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
+            return new SPARCStackMove(result, input);
         }
     }
 

@@ -253,6 +253,41 @@ public class SPARCMove {
         }
     }
 
+    @Opcode("STACKMOVE")
+    public static final class SPARCStackMove extends SPARCLIRInstruction implements MoveOp {
+        public static final LIRInstructionClass<SPARCStackMove> TYPE = LIRInstructionClass.create(SPARCStackMove.class);
+
+        @Def({STACK}) protected AllocatableValue result;
+        @Use({STACK, HINT}) protected Value input;
+
+        public SPARCStackMove(AllocatableValue result, Value input) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public Value getInput() {
+            return input;
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            try (ScratchRegister scratchReg = masm.getScratchRegister()) {
+                Register scratch = scratchReg.getRegister();
+                // move stack slot
+                move(crb, masm, scratch.asValue(getInput().getLIRKind()), getInput(), delayedControlTransfer);
+                move(crb, masm, getResult(), scratch.asValue(getResult().getLIRKind()), delayedControlTransfer);
+            }
+
+        }
+    }
+
     public abstract static class MemOp extends SPARCLIRInstruction implements ImplicitNullCheck {
         public static final LIRInstructionClass<MemOp> TYPE = LIRInstructionClass.create(MemOp.class);
 
