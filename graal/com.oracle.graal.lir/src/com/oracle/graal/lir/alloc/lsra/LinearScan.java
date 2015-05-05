@@ -202,7 +202,9 @@ class LinearScan {
     }
 
     protected MoveResolver createMoveResolver() {
-        return new MoveResolver(this);
+        MoveResolver moveResolver = new MoveResolver(this);
+        assert moveResolver.checkEmpty();
+        return moveResolver;
     }
 
     public static boolean isVariableOrRegister(Value value) {

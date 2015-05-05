@@ -90,7 +90,6 @@ class MoveResolver {
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
         this.registerBlocked = new int[allocator.registers.length];
-        assert checkEmpty();
     }
 
     boolean checkEmpty() {

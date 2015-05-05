@@ -32,7 +32,7 @@ import com.oracle.graal.lir.framemap.*;
 
 final class SSAMoveResolver extends MoveResolver {
 
-    private int[] stackBlocked = null;
+    private int[] stackBlocked;
 
     SSAMoveResolver(LinearScan allocator) {
         super(allocator);
@@ -41,10 +41,8 @@ final class SSAMoveResolver extends MoveResolver {
 
     @Override
     boolean checkEmpty() {
-        if (stackBlocked != null) {
-            for (int i = 0; i < stackBlocked.length; i++) {
-                assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
-            }
+        for (int i = 0; i < stackBlocked.length; i++) {
+            assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
         }
         return super.checkEmpty();
     }
