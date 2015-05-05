@@ -138,12 +138,12 @@ public class StandardOp {
 
         public JumpOp(LabelRef destination) {
             this(TYPE, destination);
-            this.outgoingValues = NO_VALUES;
         }
 
         protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
             super(c);
             this.destination = destination;
+            this.outgoingValues = NO_VALUES;
         }
 
         public void setOutgoingValues(Value[] values) {
