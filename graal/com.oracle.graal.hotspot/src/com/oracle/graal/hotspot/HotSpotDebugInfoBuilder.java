@@ -65,7 +65,9 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     protected BytecodeFrame computeFrameForState(FrameState state) {
         if (isPlaceholderBci(state.bci) && state.bci != BytecodeFrame.BEFORE_BCI) {
             // This is really a hard error since an incorrect state could crash hotspot
-            throw GraalInternalError.shouldNotReachHere("Invalid state " + BytecodeFrame.getPlaceholderBciName(state.bci) + " " + state);
+            throw new BailoutException(true, "Invalid state " + BytecodeFrame.getPlaceholderBciName(state.bci) + " " + state);
+// throw GraalInternalError.shouldNotReachHere("Invalid state " +
+// BytecodeFrame.getPlaceholderBciName(state.bci) + " " + state);
         }
         return super.computeFrameForState(state);
     }
