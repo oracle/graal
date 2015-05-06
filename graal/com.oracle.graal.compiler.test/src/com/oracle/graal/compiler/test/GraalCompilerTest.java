@@ -436,8 +436,8 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected static class Result {
 
-        final Object returnValue;
-        final Throwable exception;
+        public final Object returnValue;
+        public final Throwable exception;
 
         public Result(Object returnValue, Throwable exception) {
             this.returnValue = returnValue;
