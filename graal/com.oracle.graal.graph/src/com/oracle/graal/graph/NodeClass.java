@@ -233,6 +233,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 String localShortName = getClazz().getSimpleName();
                 if (localShortName.endsWith("Node") && !localShortName.equals("StartNode") && !localShortName.equals("EndNode")) {
                     shortName = localShortName.substring(0, localShortName.length() - 4);
+                } else {
+                    shortName = localShortName;
                 }
             }
         }

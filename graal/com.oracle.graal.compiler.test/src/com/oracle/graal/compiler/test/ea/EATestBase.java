@@ -51,6 +51,7 @@ public class EATestBase extends GraalCompilerTest {
     public static class TestClassInt {
         public int x;
         public int y;
+        public int z;
 
         public TestClassInt() {
             this(0, 0);
@@ -68,7 +69,7 @@ public class EATestBase extends GraalCompilerTest {
         @Override
         public boolean equals(Object obj) {
             TestClassInt other = (TestClassInt) obj;
-            return x == other.x && y == other.y;
+            return x == other.x && y == other.y && z == other.z;
         }
 
         @Override
