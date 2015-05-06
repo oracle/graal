@@ -4,6 +4,12 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 
 ## `tip`
+### Graal
+* Add experimental support constructing low-level IR in SSA form.
+* Add experimental support for SSA linear scan register allocation.
+...
+
+### Truffle
 ...
 
 ## Version 0.7

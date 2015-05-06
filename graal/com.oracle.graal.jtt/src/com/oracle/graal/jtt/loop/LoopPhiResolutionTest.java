@@ -20,21 +20,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package com.oracle.graal.jtt.loop;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import org.junit.*;
 
-import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.lir.ssa.*;
+import com.oracle.graal.api.directives.*;
+import com.oracle.graal.jtt.*;
 
-public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
-    public PreAllocationOptimizationStage() {
-        if (SSA_LIR.getValue() && SSADestructionPhase.Options.LIREagerSSADestruction.getValue()) {
-            appendPhase(new SSADestructionPhase());
+/*
+ */
+public class LoopPhiResolutionTest extends JTTTest {
+
+    public static int test(int count) {
+        int i1 = 1;
+        int i2 = 2;
+        int i3 = 3;
+        int i4 = 4;
+
+        for (int i = 0; i < count; i++) {
+            i1 = wormhole(i1);
+            i2 = wormhole(i2);
+            i3 = wormhole(i2);
+            i4 = wormhole(i4);
         }
-        if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
-            appendPhase(new ConstantLoadOptimization());
-        }
+        return i1 + i2 * 10 + i3 * 100 + i4 * 1000;
     }
+
+    private static int wormhole(int x) {
+        return (int) GraalDirectives.opaque((long) x);
+    }
+
+    @Test
+    public void run0() throws Throwable {
+        runTest("test", 0);
+    }
+
+    @Test
+    public void run1() throws Throwable {
+        runTest("test", 1);
+    }
+
+    @Test
+    public void run2() throws Throwable {
+        runTest("test", 10);
+    }
+
 }

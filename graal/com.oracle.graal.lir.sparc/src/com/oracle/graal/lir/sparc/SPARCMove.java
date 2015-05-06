@@ -253,6 +253,62 @@ public class SPARCMove {
         }
     }
 
+    @Opcode("STACKMOVE")
+    public static final class SPARCStackMove extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+        public static final LIRInstructionClass<SPARCStackMove> TYPE = LIRInstructionClass.create(SPARCStackMove.class);
+
+        @Def({STACK}) protected AllocatableValue result;
+        @Use({STACK, HINT}) protected Value input;
+
+        public SPARCStackMove(AllocatableValue result, Value input) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public Value getInput() {
+            return input;
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            try (ScratchRegister scratchReg = masm.getScratchRegister()) {
+                Register scratch = scratchReg.getRegister();
+                StackSlot intInput = reInterprete(asStackSlot(getInput()));
+                StackSlot intResult = reInterprete(asStackSlot(getResult()));
+                // move stack slot
+                move(crb, masm, scratch.asValue(intInput.getLIRKind()), intInput, SPARCDelayedControlTransfer.DUMMY);
+                move(crb, masm, intResult, scratch.asValue(intResult.getLIRKind()), delayedControlTransfer);
+            }
+
+        }
+
+        private static StackSlot reInterprete(StackSlot slot) {
+            switch ((Kind) slot.getPlatformKind()) {
+                case Boolean:
+                case Byte:
+                case Short:
+                case Char:
+                case Int:
+                case Long:
+                case Object:
+                    return slot;
+                case Float:
+                    return StackSlot.get(LIRKind.value(Kind.Int), slot.getRawOffset(), slot.getRawAddFrameSize());
+                case Double:
+                    return StackSlot.get(LIRKind.value(Kind.Long), slot.getRawOffset(), slot.getRawAddFrameSize());
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public abstract static class MemOp extends SPARCLIRInstruction implements ImplicitNullCheck {
         public static final LIRInstructionClass<MemOp> TYPE = LIRInstructionClass.create(MemOp.class);
 

@@ -23,6 +23,7 @@
 package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
@@ -87,7 +88,20 @@ public class StandardOp {
 
         public void setIncomingValues(Value[] values) {
             assert incomingValues.length == 0;
+            assert values != null;
             incomingValues = values;
+        }
+
+        public int getIncomingSize() {
+            return incomingValues.length;
+        }
+
+        public Value getIncomingValue(int idx) {
+            return incomingValues[idx];
+        }
+
+        public void clearIncomingValues() {
+            incomingValues = NO_VALUES;
         }
 
         @Override
@@ -101,6 +115,13 @@ public class StandardOp {
         public Label getLabel() {
             return label;
         }
+
+        /**
+         * @return true if this label acts as a PhiIn.
+         */
+        public boolean isPhiIn() {
+            return getIncomingSize() > 0 && isVariable(getIncomingValue(0));
+        }
     }
 
     /**
@@ -108,6 +129,10 @@ public class StandardOp {
      */
     public static class JumpOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
+
+        private static final Value[] NO_VALUES = new Value[0];
+
+        @Alive({REG, STACK, CONST}) private Value[] outgoingValues;
 
         private final LabelRef destination;
 
@@ -118,6 +143,25 @@ public class StandardOp {
         protected JumpOp(LIRInstructionClass<? extends JumpOp> c, LabelRef destination) {
             super(c);
             this.destination = destination;
+            this.outgoingValues = NO_VALUES;
+        }
+
+        public void setOutgoingValues(Value[] values) {
+            assert outgoingValues.length == 0;
+            assert values != null;
+            outgoingValues = values;
+        }
+
+        public int getOutgoingSize() {
+            return outgoingValues.length;
+        }
+
+        public Value getOutgoingValue(int idx) {
+            return outgoingValues[idx];
+        }
+
+        public void clearOutgoingValues() {
+            outgoingValues = NO_VALUES;
         }
 
         @Override

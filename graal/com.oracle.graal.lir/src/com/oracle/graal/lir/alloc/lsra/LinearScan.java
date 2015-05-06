@@ -42,6 +42,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
@@ -57,7 +58,7 @@ import com.oracle.graal.options.*;
  * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
-final class LinearScan {
+class LinearScan {
 
     final TargetDescription target;
     final LIRGenerationResult res;
@@ -201,7 +202,9 @@ final class LinearScan {
     }
 
     protected MoveResolver createMoveResolver() {
-        return new MoveResolver(this);
+        MoveResolver moveResolver = new MoveResolver(this);
+        assert moveResolver.checkEmpty();
+        return moveResolver;
     }
 
     public static boolean isVariableOrRegister(Value value) {
@@ -522,6 +525,15 @@ final class LinearScan {
         }
     };
 
+    /**
+     * @return the index of the first instruction that is of interest for
+     *         {@link #eliminateSpillMoves()}
+     */
+    protected int firstInstructionOfInterest() {
+        // skip the first because it is always a label
+        return 1;
+    }
+
     // called once before assignment of register numbers
     void eliminateSpillMoves() {
         try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves")) {
@@ -536,72 +548,99 @@ final class LinearScan {
 
             LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
             for (AbstractBlockBase<?> block : sortedBlocks) {
-                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-                int numInst = instructions.size();
+                try (Indent indent1 = Debug.logAndIndent("Handle %s", block)) {
+                    List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                    int numInst = instructions.size();
 
-                // iterate all instructions of the block. skip the first
-                // because it is always a label
-                for (int j = 1; j < numInst; j++) {
-                    LIRInstruction op = instructions.get(j);
-                    int opId = op.id();
+                    // iterate all instructions of the block.
+                    for (int j = firstInstructionOfInterest(); j < numInst; j++) {
+                        LIRInstruction op = instructions.get(j);
+                        int opId = op.id();
 
-                    if (opId == -1) {
-                        MoveOp move = (MoveOp) op;
-                        // remove move from register to stack if the stack slot is guaranteed to be
-                        // correct.
-                        // only moves that have been inserted by LinearScan can be removed.
-                        assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables";
-
-                        Interval curInterval = intervalFor(move.getResult());
-
-                        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) {
-                            // move target is a stack slot that is always correct, so eliminate
-                            // instruction
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("eliminating move from interval %d to %d", operandNumber(move.getInput()), operandNumber(move.getResult()));
-                            }
-                            // null-instructions are deleted by assignRegNum
-                            instructions.set(j, null);
-                        }
-
-                    } else {
-                        // insert move from register to stack just after
-                        // the beginning of the interval
-                        assert interval == Interval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
-                        assert interval == Interval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
-
-                        while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
-                            if (!interval.canMaterialize()) {
-                                if (!insertionBuffer.initialized()) {
-                                    // prepare insertion buffer (appended when all instructions in
-                                    // the block are processed)
-                                    insertionBuffer.init(instructions);
-                                }
-
-                                AllocatableValue fromLocation = interval.location();
-                                AllocatableValue toLocation = canonicalSpillOpr(interval);
-
-                                assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
-                                assert isStackSlotValue(toLocation) : "to operand must be a stack slot";
-
-                                insertionBuffer.append(j + 1, getSpillMoveFactory().createMove(toLocation, fromLocation));
-
+                        if (opId == -1) {
+                            MoveOp move = (MoveOp) op;
+                            /*
+                             * Remove move from register to stack if the stack slot is guaranteed to
+                             * be correct. Only moves that have been inserted by LinearScan can be
+                             * removed.
+                             */
+                            if (canEliminateSpillMove(block, move)) {
+                                /*
+                                 * Move target is a stack slot that is always correct, so eliminate
+                                 * instruction.
+                                 */
                                 if (Debug.isLogEnabled()) {
-                                    Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
+                                    Debug.log("eliminating move from interval %d (%s) to %d (%s) in block %s", operandNumber(move.getInput()), move.getInput(), operandNumber(move.getResult()),
+                                                    move.getResult(), block);
                                 }
-                            }
-                            interval = interval.next;
-                        }
-                    }
-                } // end of instruction iteration
 
-                if (insertionBuffer.initialized()) {
-                    insertionBuffer.finish();
+                                // null-instructions are deleted by assignRegNum
+                                instructions.set(j, null);
+                            }
+
+                        } else {
+                            /*
+                             * Insert move from register to stack just after the beginning of the
+                             * interval.
+                             */
+                            assert interval == Interval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
+                            assert interval == Interval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
+
+                            while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
+                                if (!interval.canMaterialize()) {
+                                    if (!insertionBuffer.initialized()) {
+                                        /*
+                                         * prepare insertion buffer (appended when all instructions
+                                         * in the block are processed)
+                                         */
+                                        insertionBuffer.init(instructions);
+                                    }
+
+                                    AllocatableValue fromLocation = interval.location();
+                                    AllocatableValue toLocation = canonicalSpillOpr(interval);
+                                    if (!fromLocation.equals(toLocation)) {
+
+                                        assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" +
+                                                        interval.spillState();
+                                        assert isStackSlotValue(toLocation) : "to operand must be a stack slot";
+
+                                        LIRInstruction move = getSpillMoveFactory().createMove(toLocation, fromLocation);
+                                        insertionBuffer.append(j + 1, move);
+
+                                        if (Debug.isLogEnabled()) {
+                                            Debug.log("inserting move after definition of interval %d to stack slot %s at opId %d", interval.operandNumber, interval.spillSlot(), opId);
+                                        }
+                                    }
+                                }
+                                interval = interval.next;
+                            }
+                        }
+                    } // end of instruction iteration
+
+                    if (insertionBuffer.initialized()) {
+                        insertionBuffer.finish();
+                    }
                 }
             } // end of block iteration
 
             assert interval == Interval.EndMarker : "missed an interval";
         }
+    }
+
+    /**
+     * @param block The block {@code move} is located in.
+     * @param move Spill move.
+     */
+    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
+        assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " + move;
+
+        Interval curInterval = intervalFor(move.getResult());
+
+        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) {
+            assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
+            return true;
+        }
+        return false;
     }
 
     private static void checkIntervals(Interval interval) {
@@ -1058,7 +1097,7 @@ final class LinearScan {
         }
 
         changeSpillDefinitionPos(interval, defPos);
-        if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal()) {
+        if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal() && isStackSlot(operand)) {
             // detection of method-parameters and roundfp-results
             interval.setSpillState(SpillState.StartInMemory);
         }
@@ -1076,6 +1115,11 @@ final class LinearScan {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
             if (optimizeMethodArgument(move.getInput())) {
+                return RegisterPriority.None;
+            }
+        } else if (op instanceof LabelOp) {
+            LabelOp label = (LabelOp) op;
+            if (label.isPhiIn()) {
                 return RegisterPriority.None;
             }
         }
@@ -1456,8 +1500,11 @@ final class LinearScan {
         throw new BailoutException("LinearScan: interval is null");
     }
 
-    void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, MoveResolver moveResolver) {
+    void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
+        assert midBlock == null ||
+                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors().get(0).equals(fromBlock) && midBlock.getSuccessors().get(0).equals(
+                                        toBlock));
 
         int toBlockFirstInstructionId = getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = getLastLirInstructionId(fromBlock) + 1;
@@ -1551,7 +1598,7 @@ final class LinearScan {
                             // directly resolve between pred and sux (without looking
                             // at the empty block
                             // between)
-                            resolveCollectMappings(pred, sux, moveResolver);
+                            resolveCollectMappings(pred, sux, block, moveResolver);
                             if (moveResolver.hasMappings()) {
                                 moveResolver.setInsertPosition(instructions, 1);
                                 moveResolver.resolveAndAppendMoves();
@@ -1579,7 +1626,7 @@ final class LinearScan {
 
                             // collect all intervals that have been split between
                             // fromBlock and toBlock
-                            resolveCollectMappings(fromBlock, toBlock, moveResolver);
+                            resolveCollectMappings(fromBlock, toBlock, null, moveResolver);
                             if (moveResolver.hasMappings()) {
                                 resolveFindInsertPos(fromBlock, toBlock, moveResolver);
                                 moveResolver.resolveAndAppendMoves();
@@ -1588,6 +1635,7 @@ final class LinearScan {
                     }
                 }
             }
+
         }
     }
 
@@ -1837,6 +1885,8 @@ final class LinearScan {
                     verify();
                 }
 
+                beforeSpillMoveElimination();
+
                 try (Scope s1 = Debug.scope("EliminateSpillMove"); DebugCloseable a = eliminateSpillMoveTimer.start()) {
                     eliminateSpillMoves();
                 } catch (Throwable e) {
@@ -1859,6 +1909,9 @@ final class LinearScan {
 
             printLir("After register number assignment", true);
         }
+    }
+
+    protected void beforeSpillMoveElimination() {
     }
 
     private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");

@@ -133,6 +133,10 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         return this.usages().filter(PhiNode.class).filter(this::isPhiAtMerge);
     }
 
+    public NodeIterable<ValuePhiNode> valuePhis() {
+        return this.usages().filter(ValuePhiNode.class).filter(this::isPhiAtMerge);
+    }
+
     @Override
     public NodeIterable<Node> anchored() {
         return super.anchored().filter(n -> !isPhiAtMerge(n));
