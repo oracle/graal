@@ -254,7 +254,7 @@ public class SPARCMove {
     }
 
     @Opcode("STACKMOVE")
-    public static final class SPARCStackMove extends SPARCLIRInstruction implements MoveOp {
+    public static final class SPARCStackMove extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<SPARCStackMove> TYPE = LIRInstructionClass.create(SPARCStackMove.class);
 
         @Def({STACK}) protected AllocatableValue result;
