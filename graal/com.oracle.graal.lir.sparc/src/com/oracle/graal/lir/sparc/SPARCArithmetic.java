@@ -66,7 +66,7 @@ public enum SPARCArithmetic {
         public static final LIRInstructionClass<Unary2Op> TYPE = LIRInstructionClass.create(Unary2Op.class);
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG, HINT}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
@@ -90,7 +90,7 @@ public enum SPARCArithmetic {
         public static final LIRInstructionClass<BinaryRegReg> TYPE = LIRInstructionClass.create(BinaryRegReg.class);
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
+        @Def({REG}) protected Value result;
         @Use({REG}) protected Value x;
         @Alive({REG}) protected Value y;
         @State LIRFrameState state;
@@ -127,7 +127,7 @@ public enum SPARCArithmetic {
         public static final LIRInstructionClass<BinaryRegConst> TYPE = LIRInstructionClass.create(BinaryRegConst.class);
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG, HINT}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue result;
         @Use({REG}) protected Value x;
         @State protected LIRFrameState state;
         protected JavaConstant y;
