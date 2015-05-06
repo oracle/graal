@@ -50,6 +50,8 @@ import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.options.*;
 
 /**
@@ -60,14 +62,13 @@ import com.oracle.graal.options.*;
  */
 class LinearScan {
 
-    final TargetDescription target;
     final LIRGenerationResult res;
     final LIR ir;
     final FrameMapBuilder frameMapBuilder;
-    final SpillMoveFactory spillMoveFactory;
     final RegisterAttributes[] registerAttributes;
     final Register[] registers;
     final RegisterAllocationConfig regAllocConfig;
+    private final SpillMoveFactory moveFactory;
 
     final boolean callKillsRegisters;
 
@@ -166,10 +167,9 @@ class LinearScan {
     private final int firstVariableNumber;
 
     LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig) {
-        this.target = target;
         this.res = res;
         this.ir = res.getLIR();
-        this.spillMoveFactory = spillMoveFactory;
+        this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
         this.sortedBlocks = ir.linearScanOrder();
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
@@ -198,7 +198,7 @@ class LinearScan {
     }
 
     SpillMoveFactory getSpillMoveFactory() {
-        return spillMoveFactory;
+        return moveFactory;
     }
 
     protected MoveResolver createMoveResolver() {
@@ -1829,86 +1829,107 @@ class LinearScan {
         }
     }
 
-    private static final DebugTimer lifetimeTimer = Debug.timer("LinearScan_LifetimeAnalysis");
-    private static final DebugTimer registerAllocationTimer = Debug.timer("LinearScan_RegisterAllocation");
-    private static final DebugTimer optimizedSpillPositionTimer = Debug.timer("LinearScan_OptimizeSpillPosition");
-    private static final DebugTimer resolveDataFlowTimer = Debug.timer("LinearScan_ResolveDataFlow");
-    private static final DebugTimer eliminateSpillMoveTimer = Debug.timer("LinearScan_EliminateSpillMove");
-    private static final DebugTimer assignLocationsTimer = Debug.timer("LinearScan_AssignLocations");
-
-    void allocate() {
+    <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
+            AllocationContext context = new AllocationContext(spillMoveFactory);
 
-            try (Scope s = Debug.scope("LifetimeAnalysis"); DebugCloseable a = lifetimeTimer.start()) {
-                numberInstructions();
-                printLir("Before register allocation", true);
-                computeLocalLiveSets();
-                computeGlobalLiveSets();
-                buildIntervals();
-                sortIntervalsBeforeAllocation();
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+            new LifetimeAnalysis().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            new RegisterAllocation().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
+                new OptimizeSpillPosition().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            }
+            new ResolveDataFlow().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+
+            printIntervals("After register allocation");
+            printLir("After register allocation", true);
+
+            sortIntervalsAfterAllocation();
+
+            if (DetailedAsserts.getValue()) {
+                verify();
             }
 
-            try (Scope s = Debug.scope("RegisterAllocation"); DebugCloseable a = registerAllocationTimer.start()) {
-                printIntervals("Before register allocation");
-                allocateRegisters();
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
+            new EliminateSpillMove().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            new AssignLocations().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
-            if (Options.LSRAOptimizeSpillPosition.getValue()) {
-                try (Scope s = Debug.scope("OptimizeSpillPosition"); DebugCloseable a = optimizedSpillPositionTimer.start()) {
-                    optimizeSpillPosition();
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-            }
-
-            try (Scope s = Debug.scope("ResolveDataFlow"); DebugCloseable a = resolveDataFlowTimer.start()) {
-                resolveDataFlow();
-            } catch (Throwable e) {
-                throw Debug.handle(e);
-            }
-
-            try (Scope s = Debug.scope("DebugInfo")) {
-                printIntervals("After register allocation");
-                printLir("After register allocation", true);
-
-                sortIntervalsAfterAllocation();
-
-                if (DetailedAsserts.getValue()) {
-                    verify();
-                }
-
-                beforeSpillMoveElimination();
-
-                try (Scope s1 = Debug.scope("EliminateSpillMove"); DebugCloseable a = eliminateSpillMoveTimer.start()) {
-                    eliminateSpillMoves();
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-                printLir("After spill move elimination", true);
-
-                try (Scope s1 = Debug.scope("AssignLocations"); DebugCloseable a = assignLocationsTimer.start()) {
-                    assignLocations();
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-
-                if (DetailedAsserts.getValue()) {
-                    verifyIntervals();
-                }
-            } catch (Throwable e) {
-                throw Debug.handle(e);
+            if (DetailedAsserts.getValue()) {
+                verifyIntervals();
             }
 
             printLir("After register number assignment", true);
         }
+    }
+
+    private final class LifetimeAnalysis extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            numberInstructions();
+            printLir("Before register allocation", true);
+            computeLocalLiveSets();
+            computeGlobalLiveSets();
+            buildIntervals();
+            sortIntervalsBeforeAllocation();
+        }
+
+    }
+
+    private final class RegisterAllocation extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            printIntervals("Before register allocation");
+            allocateRegisters();
+        }
+
+    }
+
+    private final class OptimizeSpillPosition extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            optimizeSpillPosition();
+        }
+
+    }
+
+    private final class ResolveDataFlow extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            resolveDataFlow();
+        }
+
+    }
+
+    private final class EliminateSpillMove extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            beforeSpillMoveElimination();
+            eliminateSpillMoves();
+            printLir("After spill move elimination", true);
+        }
+
+    }
+
+    private final class AssignLocations extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            assignLocations();
+        }
+
     }
 
     protected void beforeSpillMoveElimination() {
