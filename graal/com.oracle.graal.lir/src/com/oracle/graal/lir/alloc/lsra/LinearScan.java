@@ -1870,7 +1870,6 @@ class LinearScan {
             computeLocalLiveSets();
             computeGlobalLiveSets();
             buildIntervals();
-            sortIntervalsBeforeAllocation();
         }
 
     }
@@ -1880,6 +1879,7 @@ class LinearScan {
         @Override
         protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                         SpillMoveFactory spillMoveFactory) {
+            sortIntervalsBeforeAllocation();
             printIntervals("Before register allocation");
             allocateRegisters();
             printIntervals("After register allocation");
