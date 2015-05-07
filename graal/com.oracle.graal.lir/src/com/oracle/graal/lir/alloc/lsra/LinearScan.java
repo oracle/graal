@@ -1829,6 +1829,10 @@ class LinearScan {
         }
     }
 
+    protected LifetimeAnalysis createLifetimeAnalysis() {
+        return new LifetimeAnalysis(this);
+    }
+
     <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
 
         /*
@@ -1837,7 +1841,7 @@ class LinearScan {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             AllocationContext context = new AllocationContext(spillMoveFactory);
 
-            new LifetimeAnalysis().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            createLifetimeAnalysis().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
             new RegisterAllocation().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
             if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
