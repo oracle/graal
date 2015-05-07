@@ -37,7 +37,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
         LIRInstruction createMove(AllocatableValue result, Value input);
 
-        default LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+        default LIRInstruction createStackMove(AllocatableValue result, Value input) {
             return new StackMove(result, input);
         }
     }

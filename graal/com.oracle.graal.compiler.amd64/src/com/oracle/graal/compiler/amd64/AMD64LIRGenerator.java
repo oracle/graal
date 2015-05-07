@@ -101,7 +101,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         }
 
         @Override
-        public LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
             return AMD64LIRGenerator.this.createStackMove(result, input);
         }
 
@@ -140,14 +140,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         }
     }
 
-    protected LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+    protected LIRInstruction createStackMove(AllocatableValue result, Value input) {
         RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
         Register scratchRegister = backup.register;
         StackSlotValue backupSlot = backup.backupSlot;
         return createStackMove(result, input, scratchRegister, backupSlot);
     }
 
-    protected LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input, Register scratchRegister, StackSlotValue backupSlot) {
+    protected LIRInstruction createStackMove(AllocatableValue result, Value input, Register scratchRegister, StackSlotValue backupSlot) {
         return new AMD64StackMove(result, input, scratchRegister, backupSlot);
     }
 
