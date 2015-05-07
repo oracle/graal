@@ -162,7 +162,7 @@ public class LoopEx {
     public boolean detectCounted() {
         LoopBeginNode loopBegin = loopBegin();
         FixedNode next = loopBegin.next();
-        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode) {
+        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof InfopointNode) {
             next = ((FixedWithNextNode) next).next();
         }
         if (next instanceof IfNode) {
