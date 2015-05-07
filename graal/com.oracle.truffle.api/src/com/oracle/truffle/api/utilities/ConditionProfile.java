@@ -52,6 +52,8 @@ import com.oracle.truffle.api.nodes.*;
  * @see #createBinaryProfile()
  */
 public abstract class ConditionProfile extends NodeCloneable {
+    ConditionProfile() {
+    }
 
     public abstract boolean profile(boolean value);
 
