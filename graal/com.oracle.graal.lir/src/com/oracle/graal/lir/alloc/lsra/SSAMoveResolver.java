@@ -114,7 +114,7 @@ final class SSAMoveResolver extends MoveResolver {
     @Override
     protected LIRInstruction createMove(AllocatableValue fromOpr, AllocatableValue toOpr, AllocatableValue fromLocation, AllocatableValue toLocation) {
         if (isStackSlotValue(toLocation) && isStackSlotValue(fromLocation)) {
-            return getAllocator().getSpillMoveFactory().createStackMove(toOpr, fromOpr);
+            return getAllocator().getSpillMoveFactory().createStackMove(asStackSlotValue(toOpr), asStackSlotValue(fromOpr));
         }
         return super.createMove(fromOpr, toOpr, fromLocation, toLocation);
     }

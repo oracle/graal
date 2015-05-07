@@ -81,8 +81,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
 
         @Override
-        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
-            return new SPARCStackMove(result, input);
+        public LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+            return SPARCLIRGenerator.this.createStackMove(result, input);
         }
     }
 
@@ -123,6 +123,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         } else {
             return new MoveToRegOp(dst, src);
         }
+    }
+
+    protected LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+        return new SPARCStackMove(result, input);
     }
 
     @Override

@@ -81,6 +81,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     private static final RegisterValue RCX_I = AMD64.rcx.asValue(LIRKind.value(Kind.Int));
     private AMD64SpillMoveFactory moveFactory;
+    private Map<PlatformKind.Key, RegisterBackupPair> categorized;
 
     private static class RegisterBackupPair {
         public final Register register;
@@ -93,7 +94,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     private class AMD64SpillMoveFactory implements LIRGeneratorTool.SpillMoveFactory {
-        private Map<PlatformKind.Key, RegisterBackupPair> categorized;
 
         @Override
         public LIRInstruction createMove(AllocatableValue result, Value input) {
@@ -101,35 +101,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         }
 
         @Override
-        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
-            RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
-            return new AMD64StackMove(result, input, backup.register, backup.backupSlot);
+        public LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+            return AMD64LIRGenerator.this.createStackMove(result, input);
         }
 
-        private RegisterBackupPair getScratchRegister(PlatformKind kind) {
-            PlatformKind.Key key = kind.getKey();
-            if (categorized == null) {
-                categorized = new HashMap<>();
-            } else if (categorized.containsKey(key)) {
-                return categorized.get(key);
-            }
-
-            FrameMapBuilder frameMapBuilder = getResult().getFrameMapBuilder();
-            RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
-
-            Register[] availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
-            assert availableRegister != null && availableRegister.length > 1;
-            Register scratchRegister = availableRegister[0];
-
-            Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;
-            LIRKind largestKind = LIRKind.value(arch.getLargestStorableKind(scratchRegister.getRegisterCategory()));
-            VirtualStackSlot backupSlot = frameMapBuilder.allocateSpillSlot(largestKind);
-
-            RegisterBackupPair value = new RegisterBackupPair(scratchRegister, backupSlot);
-            categorized.put(key, value);
-
-            return value;
-        }
     }
 
     public AMD64LIRGenerator(LIRKindTool lirKindTool, Providers providers, CallingConvention cc, LIRGenerationResult lirGenRes) {
@@ -163,6 +138,42 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         } else {
             return new MoveToRegOp(dst.getKind(), dst, src);
         }
+    }
+
+    protected LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input) {
+        RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
+        Register scratchRegister = backup.register;
+        StackSlotValue backupSlot = backup.backupSlot;
+        return createStackMove(result, input, scratchRegister, backupSlot);
+    }
+
+    protected LIRInstruction createStackMove(StackSlotValue result, StackSlotValue input, Register scratchRegister, StackSlotValue backupSlot) {
+        return new AMD64StackMove(result, input, scratchRegister, backupSlot);
+    }
+
+    protected RegisterBackupPair getScratchRegister(PlatformKind kind) {
+        PlatformKind.Key key = kind.getKey();
+        if (categorized == null) {
+            categorized = new HashMap<>();
+        } else if (categorized.containsKey(key)) {
+            return categorized.get(key);
+        }
+
+        FrameMapBuilder frameMapBuilder = getResult().getFrameMapBuilder();
+        RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
+
+        Register[] availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
+        assert availableRegister != null && availableRegister.length > 1;
+        Register scratchRegister = availableRegister[0];
+
+        Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;
+        LIRKind largestKind = LIRKind.value(arch.getLargestStorableKind(scratchRegister.getRegisterCategory()));
+        VirtualStackSlot backupSlot = frameMapBuilder.allocateSpillSlot(largestKind);
+
+        RegisterBackupPair value = new RegisterBackupPair(scratchRegister, backupSlot);
+        categorized.put(key, value);
+
+        return value;
     }
 
     @Override
