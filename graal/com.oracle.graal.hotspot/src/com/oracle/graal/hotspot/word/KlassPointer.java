@@ -44,8 +44,8 @@ public abstract class KlassPointer extends MetaspacePointer {
     public static native KlassPointer fromWord(Pointer pointer);
 
     @HotSpotOperation(opcode = READ_KLASS_POINTER)
-    public native KlassPointer readKlassPointer(int secondarySuperCacheOffset, LocationIdentity secondarySuperCacheLocation);
+    public native KlassPointer readKlassPointer(int offset, LocationIdentity locationIdentity);
 
     @Operation(opcode = Opcode.WRITE_POINTER)
-    public native void writeKlassPointer(int secondarySuperCacheOffset, KlassPointer t, LocationIdentity secondarySuperCacheLocation);
+    public native void writeKlassPointer(int offset, KlassPointer t, LocationIdentity locationIdentity);
 }
