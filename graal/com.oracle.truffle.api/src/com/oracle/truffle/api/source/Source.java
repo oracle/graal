@@ -60,6 +60,11 @@ import com.oracle.truffle.api.instrument.*;
  * <li><strong>Reader:</strong> Contents are <em>read eagerly</em> and treated as an anonymous
  * (non-indexed) <em>Literal</em> . <br>
  * See {@link Source#fromReader(Reader, String)}</li>
+ * <p>
+ * <li><strong>AppendableSource:</strong> Literal contents are provided by the client,
+ * incrementally, after the instance is created.<br>
+ * See {@link Source#fromAppendableText(String)}<br>
+ * See {@link Source#fromNamedAppendableText(String)}</li>
  * </ul>
  * <p>
  * <strong>File cache:</strong>
@@ -239,6 +244,19 @@ public abstract class Source {
     }
 
     /**
+     * Creates an anonymous source from literal text that is provided incrementally after creation:
+     * not named and not indexed.
+     *
+     * @param description a note about the origin, for error messages and debugging
+     * @return a newly created, non-indexed, initially empty, appendable source representation
+     */
+    public static AppendableSource fromAppendableText(String description) {
+        final AppendableSource source = new AppendableLiteralSource(description);
+        notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
+        return source;
+    }
+
+    /**
      * Creates a source from literal text that can be retrieved by name, with no assumptions about
      * the structure or meaning of the name. If the name is already in the index, the new instance
      * will replace the previously existing instance in the index.
@@ -252,6 +270,22 @@ public abstract class Source {
         nameToSource.put(name, new WeakReference<>(source));
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
+    }
+
+    /**
+     * Creates a source from literal text that is provided incrementally after creation and which
+     * can be retrieved by name, with no assumptions about the structure or meaning of the name. If
+     * the name is already in the index, the new instance will replace the previously existing
+     * instance in the index.
+     *
+     * @param name string to use for indexing/lookup
+     * @return a newly created, indexed, initially empty, appendable source representation
+     */
+    public static AppendableSource fromNamedAppendableText(String name) {
+        final Source source = new AppendableLiteralSource(name);
+        nameToSource.put(name, new WeakReference<>(source));
+        notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
+        return (AppendableSource) source;
     }
 
     /**
@@ -384,9 +418,28 @@ public abstract class Source {
         return builder.toString();
     }
 
+    public abstract static class AppendableSource extends Source {
+
+        /**
+         * Sets the mark.
+         */
+        public void setMark() {
+        }
+
+        public abstract void appendCode(CharSequence chars);
+
+        /**
+         * Gets the code from the mark to the end.
+         */
+        public String getCodeFromMark() {
+            return getCode();
+        }
+
+    }
+
     private final ArrayList<SourceTag> tags = new ArrayList<>();
 
-    Source() {
+    private Source() {
     }
 
     private TextMap textMap = null;
@@ -641,11 +694,23 @@ public abstract class Source {
         return new LineLocationImpl(this, lineNumber);
     }
 
-    private TextMap checkTextMap() {
+    /**
+     * An object suitable for using as a key into a hashtable that defines equivalence between
+     * different source types.
+     */
+    protected Object getHashKey() {
+        return getName();
+    }
+
+    protected final TextMap checkTextMap() {
         if (textMap == null) {
             textMap = createTextMap();
         }
         return textMap;
+    }
+
+    protected final void clearTextMap() {
+        textMap = null;
     }
 
     protected TextMap createTextMap() {
@@ -658,22 +723,22 @@ public abstract class Source {
 
     private static final class LiteralSource extends Source {
 
-        private final String name; // Name used originally to describe the source
+        private final String description;
         private final String code;
 
-        public LiteralSource(String name, String code) {
-            this.name = name;
+        public LiteralSource(String description, String code) {
+            this.description = description;
             this.code = code;
         }
 
         @Override
         public String getName() {
-            return name;
+            return description;
         }
 
         @Override
         public String getShortName() {
-            return name;
+            return description;
         }
 
         @Override
@@ -683,7 +748,7 @@ public abstract class Source {
 
         @Override
         public String getPath() {
-            return name;
+            return description;
         }
 
         @Override
@@ -702,11 +767,7 @@ public abstract class Source {
 
         @Override
         public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + name.hashCode();
-            result = prime * result + (code == null ? 0 : code.hashCode());
-            return result;
+            return description.hashCode();
         }
 
         @Override
@@ -717,13 +778,81 @@ public abstract class Source {
             if (obj == null) {
                 return false;
             }
-            if (!(obj instanceof LiteralSource)) {
-                return false;
+            if (obj instanceof LiteralSource) {
+                LiteralSource other = (LiteralSource) obj;
+                return description.equals(other.description);
             }
-            LiteralSource other = (LiteralSource) obj;
-            return name.equals(other.name) && code.equals(other.code);
+            return false;
+        }
+    }
+
+    private static final class AppendableLiteralSource extends AppendableSource {
+        private String description;
+        private int mark = 0;
+        final List<CharSequence> codeList = new ArrayList<>();
+
+        public AppendableLiteralSource(String description) {
+            this.description = description;
         }
 
+        @Override
+        public String getName() {
+            return description;
+        }
+
+        @Override
+        public String getShortName() {
+            return description;
+        }
+
+        @Override
+        public String getCode() {
+            return getCodeFromIndex(0);
+        }
+
+        @Override
+        public String getPath() {
+            return description;
+        }
+
+        @Override
+        public URL getURL() {
+            return null;
+        }
+
+        @Override
+        public Reader getReader() {
+            return new StringReader(getCode());
+        }
+
+        @Override
+        protected void reset() {
+        }
+
+        private String getCodeFromIndex(int index) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = index; i < codeList.size(); i++) {
+                CharSequence s = codeList.get(i);
+                sb.append(s);
+            }
+            return sb.toString();
+        }
+
+        @Override
+        public String getCodeFromMark() {
+            return getCodeFromIndex(mark);
+        }
+
+        @Override
+        public void appendCode(CharSequence chars) {
+            codeList.add(chars);
+            clearTextMap();
+        }
+
+        @Override
+        public void setMark() {
+            mark = codeList.size();
+        }
     }
 
     private static final class FileSource extends Source {
@@ -756,6 +885,11 @@ public abstract class Source {
         @Override
         public String getShortName() {
             return file.getName();
+        }
+
+        @Override
+        protected Object getHashKey() {
+            return path;
         }
 
         @Override
@@ -821,7 +955,6 @@ public abstract class Source {
         protected void reset() {
             this.code = null;
         }
-
     }
 
     private static final class URLSource extends Source {
@@ -881,7 +1014,6 @@ public abstract class Source {
         @Override
         protected void reset() {
         }
-
     }
 
     private static final class BytesSource extends Source {
@@ -1146,7 +1278,7 @@ public abstract class Source {
             final int prime = 31;
             int result = 1;
             result = prime * result + line;
-            result = prime * result + source.hashCode();
+            result = prime * result + source.getHashKey().hashCode();
             return result;
         }
 
@@ -1165,7 +1297,7 @@ public abstract class Source {
             if (line != other.line) {
                 return false;
             }
-            return source.equals(other.source);
+            return source.getHashKey().equals(other.source.getHashKey());
         }
 
     }
