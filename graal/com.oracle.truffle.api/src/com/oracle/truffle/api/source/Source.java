@@ -35,32 +35,36 @@ import com.oracle.truffle.api.instrument.*;
  * Representation of a guest language source code unit and its contents. Sources originate in
  * several ways:
  * <ul>
- * <li><strong>Literal:</strong> A named text string. These are not indexed and should be considered
- * value objects; equality is defined based on contents. <br>
+ * <li><strong>Literal:</strong> An anonymous text string: not named and not indexed. These should
+ * be considered value objects; equality is defined based on contents.<br>
  * See {@link Source#fromText(CharSequence, String)}</li>
+ * <p>
+ * <li><strong>Named Literal:</strong> A text string that can be retrieved by name as if it were a
+ * file, but without any assumption that the name is related to a file path. Creating a new literal
+ * with an already existing name will replace its predecessor in the index.<br>
+ * See {@link Source#fromNamedText(CharSequence, String)}<br>
+ * See {@link Source#find(String)}</li>
  * <p>
  * <li><strong>File:</strong> Each file is represented as a canonical object, indexed by the
  * absolute, canonical path name of the file. File contents are <em>read lazily</em> and contents
  * optionally <em>cached</em>. <br>
  * See {@link Source#fromFileName(String)}<br>
- * See {@link Source#fromFileName(String, boolean)}</li>
+ * See {@link Source#fromFileName(String, boolean)}<br>
+ * See {@link Source#find(String)}</li>
  * <p>
  * <li><strong>URL:</strong> Each URL source is represented as a canonical object, indexed by the
  * URL. Contents are <em>read eagerly</em> and <em>cached</em>. <br>
- * See {@link Source#fromURL(URL, String)}</li>
+ * See {@link Source#fromURL(URL, String)}<br>
+ * See {@link Source#find(String)}</li>
  * <p>
- * <li><strong>Reader:</strong> Contents are <em>read eagerly</em> and treated as a <em>Literal</em>
- * . <br>
+ * <li><strong>Reader:</strong> Contents are <em>read eagerly</em> and treated as an anonymous
+ * (non-indexed) <em>Literal</em> . <br>
  * See {@link Source#fromReader(Reader, String)}</li>
- * <p>
- * <li><strong>Pseudo File:</strong> A literal text string that can be retrieved by name as if it
- * were a file, unlike literal sources; useful for testing. <br>
- * See {@link Source#asPseudoFile(CharSequence, String)}</li>
  * </ul>
  * <p>
  * <strong>File cache:</strong>
  * <ol>
- * <li>File content caching is optional, <em>off</em> by default.</li>
+ * <li>File content caching is optional, <em>on</em> by default.</li>
  * <li>The first access to source file contents will result in the contents being read, and (if
  * enabled) cached.</li>
  * <li>If file contents have been cached, access to contents via {@link Source#getInputStream()} or
@@ -128,12 +132,22 @@ public abstract class Source {
      */
     private static final List<WeakReference<Source>> allSources = Collections.synchronizedList(new ArrayList<WeakReference<Source>>());
 
-    // Files and pseudo files are indexed.
-    private static final Map<String, WeakReference<Source>> filePathToSource = new HashMap<>();
+    /**
+     * Index of all named sources.
+     */
+    private static final Map<String, WeakReference<Source>> nameToSource = new HashMap<>();
 
     private static boolean fileCacheEnabled = true;
 
     private static final List<SourceListener> sourceListeners = new ArrayList<>();
+
+    /**
+     * Locates an existing instance by the name under which it was indexed.
+     */
+    public static Source find(String name) {
+        final WeakReference<Source> nameRef = nameToSource.get(name);
+        return nameRef == null ? null : nameRef.get();
+    }
 
     /**
      * Gets the canonical representation of a source file, whose contents will be read lazily and
@@ -146,7 +160,7 @@ public abstract class Source {
      */
     public static Source fromFileName(String fileName, boolean reset) throws IOException {
 
-        final WeakReference<Source> nameRef = filePathToSource.get(fileName);
+        final WeakReference<Source> nameRef = nameToSource.get(fileName);
         Source source = nameRef == null ? null : nameRef.get();
         if (source == null) {
             final File file = new File(fileName);
@@ -154,11 +168,11 @@ public abstract class Source {
                 throw new IOException("Can't read file " + fileName);
             }
             final String path = file.getCanonicalPath();
-            final WeakReference<Source> pathRef = filePathToSource.get(path);
+            final WeakReference<Source> pathRef = nameToSource.get(path);
             source = pathRef == null ? null : pathRef.get();
             if (source == null) {
                 source = new FileSource(file, fileName, path);
-                filePathToSource.put(path, new WeakReference<>(source));
+                nameToSource.put(path, new WeakReference<>(source));
             }
         }
         if (reset) {
@@ -193,17 +207,17 @@ public abstract class Source {
      */
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
 
-        final WeakReference<Source> nameRef = filePathToSource.get(fileName);
+        final WeakReference<Source> nameRef = nameToSource.get(fileName);
         Source source = nameRef == null ? null : nameRef.get();
         if (source == null) {
             final File file = new File(fileName);
             // We are going to trust that the fileName is readable.
             final String path = file.getCanonicalPath();
-            final WeakReference<Source> pathRef = filePathToSource.get(path);
+            final WeakReference<Source> pathRef = nameToSource.get(path);
             source = pathRef == null ? null : pathRef.get();
             if (source == null) {
                 source = new FileSource(file, fileName, path, chars);
-                filePathToSource.put(path, new WeakReference<>(source));
+                nameToSource.put(path, new WeakReference<>(source));
             }
         }
         notifyNewSource(source).tagAs(Tags.FROM_FILE);
@@ -211,8 +225,7 @@ public abstract class Source {
     }
 
     /**
-     * Creates a non-canonical source from literal text. If an already created literal source must
-     * be retrievable by name, use {@link #asPseudoFile(CharSequence, String)}.
+     * Creates an anonymous source from literal text: not named and not indexed.
      *
      * @param chars textual source code
      * @param description a note about the origin, for error messages and debugging
@@ -221,6 +234,22 @@ public abstract class Source {
     public static Source fromText(CharSequence chars, String description) {
         assert chars != null;
         final LiteralSource source = new LiteralSource(description, chars.toString());
+        notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
+        return source;
+    }
+
+    /**
+     * Creates a source from literal text that can be retrieved by name, with no assumptions about
+     * the structure or meaning of the name. If the name is already in the index, the new instance
+     * will replace the previously existing instance in the index.
+     *
+     * @param chars textual source code
+     * @param name string to use for indexing/lookup
+     * @return a newly created, source representation
+     */
+    public static Source fromNamedText(CharSequence chars, String name) {
+        final Source source = new LiteralSource(name, chars.toString());
+        nameToSource.put(name, new WeakReference<>(source));
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
     }
@@ -283,21 +312,6 @@ public abstract class Source {
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, BytesDecoder decoder) {
         final BytesSource source = new BytesSource(description, bytes, byteIndex, length, decoder);
         notifyNewSource(source).tagAs(Tags.FROM_BYTES);
-        return source;
-    }
-
-    /**
-     * Creates a source from literal text, but which acts as a file and can be retrieved by name
-     * (unlike other literal sources); intended for testing.
-     *
-     * @param chars textual source code
-     * @param pseudoFileName string to use for indexing/lookup
-     * @return a newly created, source representation, canonical with respect to its name
-     */
-    public static Source asPseudoFile(CharSequence chars, String pseudoFileName) {
-        final Source source = new LiteralSource(pseudoFileName, chars.toString());
-        filePathToSource.put(pseudoFileName, new WeakReference<>(source));
-        notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
     }
 
