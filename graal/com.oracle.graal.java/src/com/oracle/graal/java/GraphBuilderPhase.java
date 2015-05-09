@@ -121,6 +121,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 ReplacementContext replacementContext = initialReplacementContext;
                 BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, replacementContext);
                 HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(parser, method, graph);
+
                 frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || replacementContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
                 parser.build(graph.start(), frameState);
 
@@ -328,7 +329,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         if (method.isSynchronized()) {
                             startNode.setStateAfter(createFrameState(BytecodeFrame.BEFORE_BCI));
                         } else {
-                            frameState.clearNonLiveLocals(startBlock, liveness, true);
+
+                            if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
+                                // Don't clear the receiver when Object.<init> is the compilation
+                                // root. The receiver is needed as input to RegisterFinalizerNode.
+                            } else {
+                                frameState.clearNonLiveLocals(startBlock, liveness, true);
+                            }
                             assert bci() == 0;
                             startNode.setStateAfter(createFrameState(bci()));
                         }
@@ -1440,6 +1447,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void beforeReturn(ValueNode x, Kind kind) {
+                if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
+                    append(new RegisterFinalizerNode(frameState.localAt(0)));
+                }
                 if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
                     append(createInfoPointNode(InfopointReason.METHOD_END));
                 }
