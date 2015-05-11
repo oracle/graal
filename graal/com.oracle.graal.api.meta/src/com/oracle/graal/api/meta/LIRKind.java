@@ -282,7 +282,12 @@ public final class LIRKind {
         if (src.equals(dst)) {
             return true;
         }
-        if (toStackKind(src.getPlatformKind()).equals(dst.getPlatformKind())) {
+        /*
+         * TODO(je,rs) What we actually want is toStackKind(src.getPlatformKind()).equals(
+         * dst.getPlatformKind()) but due to the handling of sub-integer at the current point
+         * (phi-)moves from e.g. integer to short can happen. Therefore we compare stack kinds.
+         */
+        if (toStackKind(src.getPlatformKind()).equals(toStackKind(dst.getPlatformKind()))) {
             return !src.isDerivedReference() || dst.isDerivedReference();
         }
         return false;
