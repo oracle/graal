@@ -73,6 +73,9 @@ public abstract class AbstractBytecodeParser {
         @Option(help = "Do not bail out but throw an exception on failed loop explosion.", type = OptionType.Debug)
         public static final OptionValue<Boolean> FailedLoopExplosionIsFatal = new OptionValue<>(false);
 
+        @Option(help = "When creating info points hide the methods of the substitutions.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> HideSubstitutionStates = new OptionValue<>(false);
+
         // @formatter:on
     }
 

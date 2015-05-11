@@ -427,9 +427,16 @@ public class InliningUtil {
     }
 
     public static BytecodePosition processSimpleInfopoint(Invoke invoke, SimpleInfopointNode infopointNode, BytecodePosition incomingPos) {
-        BytecodePosition pos = incomingPos != null ? incomingPos : new BytecodePosition(toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.asNode().graph().method(), invoke.bci());
+        BytecodePosition pos = processBytecodePosition(invoke, incomingPos);
         infopointNode.addCaller(pos);
+        assert infopointNode.verify();
         return pos;
+    }
+
+    public static BytecodePosition processBytecodePosition(Invoke invoke, BytecodePosition incomingPos) {
+        assert invoke.stateAfter() != null;
+        assert incomingPos == null || incomingPos.equals(InliningUtil.processBytecodePosition(invoke, null)) : incomingPos + " " + InliningUtil.processBytecodePosition(invoke, null);
+        return incomingPos != null ? incomingPos : new BytecodePosition(FrameState.toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.stateAfter().method(), invoke.bci());
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
@@ -437,13 +444,6 @@ public class InliningUtil {
             int callerLockDepth = stateAfter.nestedLockDepth();
             monitorIdNode.setLockDepth(monitorIdNode.getLockDepth() + callerLockDepth);
         }
-    }
-
-    private static BytecodePosition toBytecodePosition(FrameState fs) {
-        if (fs == null) {
-            return null;
-        }
-        return new BytecodePosition(toBytecodePosition(fs.outerFrameState()), fs.method(), fs.bci);
     }
 
     protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge, boolean alwaysDuplicateStateAfter) {

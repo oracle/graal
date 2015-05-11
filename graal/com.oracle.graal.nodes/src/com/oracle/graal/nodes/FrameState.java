@@ -153,6 +153,17 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         this.outerFrameState = x;
     }
 
+    public BytecodePosition toBytecodePosition() {
+        return toBytecodePosition(this);
+    }
+
+    public static BytecodePosition toBytecodePosition(FrameState fs) {
+        if (fs == null) {
+            return null;
+        }
+        return new BytecodePosition(toBytecodePosition(fs.outerFrameState()), fs.method(), fs.bci);
+    }
+
     /**
      * @see BytecodeFrame#rethrowException
      */

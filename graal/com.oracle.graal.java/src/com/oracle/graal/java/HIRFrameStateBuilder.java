@@ -233,6 +233,39 @@ public final class HIRFrameStateBuilder {
         return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
     }
 
+    public BytecodePosition createBytecodePosition(int bci) {
+        BytecodeParser parent = parser.getParent();
+        if (AbstractBytecodeParser.Options.HideSubstitutionStates.getValue()) {
+            if (parser.parsingReplacement()) {
+                IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
+                if (intrinsic != null) {
+                    // Attribute to the method being replaced
+                    return new BytecodePosition(FrameState.toBytecodePosition(intrinsic.getInvokeStateBefore(parser.getGraph(), parent)), intrinsic.method, -1);
+                }
+            }
+            // If this is the recursive call in a partial intrinsification
+            // the frame(s) of the intrinsic method are omitted
+            while (parent != null && parent.parsingReplacement() && parent.replacementContext.asIntrinsic() != null) {
+                parent = parent.getParent();
+            }
+        }
+        return create(null, bci, parent);
+    }
+
+    private BytecodePosition create(BytecodePosition o, int bci, BytecodeParser parent) {
+        BytecodePosition outer = o;
+        if (outer == null && parent != null) {
+            outer = parent.getFrameState().createBytecodePosition(parent.bci());
+        }
+        if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
+            return FrameState.toBytecodePosition(outerFrameState);
+        }
+        if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+        return new BytecodePosition(outer, method, bci);
+    }
+
     public HIRFrameStateBuilder copy() {
         return new HIRFrameStateBuilder(this);
     }
