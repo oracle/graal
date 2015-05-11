@@ -97,6 +97,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public boolean isInlinedMethod() {
             return caller != null;
         }
+
+        public BytecodePosition getBytecodePosition() {
+            if (bytecodePosition == null) {
+                ensureOuterStateDecoded(this);
+                ensureExceptionStateDecoded(this);
+                bytecodePosition = InliningUtil.processBytecodePosition(invokeData.invoke, null);
+            }
+            return bytecodePosition;
+        }
     }
 
     protected class PENonAppendGraphBuilderContext implements GraphBuilderContext {
@@ -519,6 +528,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method);
 
     @Override
+    protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+        PEMethodScope methodScope = (PEMethodScope) s;
+        if (node instanceof SimpleInfopointNode && methodScope.isInlinedMethod()) {
+            InliningUtil.processSimpleInfopoint(methodScope.invokeData.invoke, (SimpleInfopointNode) node, methodScope.getBytecodePosition());
+        }
+        super.handleFixedNode(s, loopScope, nodeOrderId, node);
+    }
+
+    @Override
     protected Node handleFloatingNodeBeforeAdd(MethodScope s, LoopScope loopScope, Node node) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
@@ -591,11 +609,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (methodScope.isInlinedMethod()) {
-            if (node instanceof SimpleInfopointNode) {
-                methodScope.bytecodePosition = InliningUtil.processSimpleInfopoint(methodScope.invokeData.invoke, (SimpleInfopointNode) node, methodScope.bytecodePosition);
-                return node;
-
-            } else if (node instanceof FrameState) {
+            if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
 
                 ensureOuterStateDecoded(methodScope);

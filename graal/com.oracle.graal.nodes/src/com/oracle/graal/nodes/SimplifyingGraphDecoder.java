@@ -91,7 +91,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
-    protected void simplifyFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+    protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         if (node instanceof IfNode) {
             IfNode ifNode = (IfNode) node;
             if (ifNode.condition() instanceof LogicNegationNode) {
