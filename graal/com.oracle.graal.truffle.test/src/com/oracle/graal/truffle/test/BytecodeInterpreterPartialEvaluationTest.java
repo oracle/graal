@@ -269,7 +269,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram", bytecodes, 0, 6));
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     public void manyIfsProgram() {
         byte[] bytecodes = new byte[]{
         /* 0: */Bytecode.CONST,
