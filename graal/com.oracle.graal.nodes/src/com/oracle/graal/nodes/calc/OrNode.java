@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "|")
-public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryCommutative<ValueNode> {
+public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryCommutative<ValueNode>, NarrowableArithmeticNode {
 
     public static final NodeClass<OrNode> TYPE = NodeClass.create(OrNode.class);
 
