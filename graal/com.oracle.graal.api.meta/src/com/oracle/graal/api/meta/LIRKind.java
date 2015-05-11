@@ -277,4 +277,21 @@ public final class LIRKind {
         LIRKind other = (LIRKind) obj;
         return platformKind == other.platformKind && referenceMask == other.referenceMask;
     }
+
+    public static boolean verifyMoveKinds(LIRKind dst, LIRKind src) {
+        if (src.equals(dst)) {
+            return true;
+        }
+        if (toStackKind(src.getPlatformKind()).equals(dst.getPlatformKind())) {
+            return !src.isDerivedReference() || dst.isDerivedReference();
+        }
+        return false;
+    }
+
+    private static PlatformKind toStackKind(PlatformKind platformKind) {
+        if (platformKind instanceof Kind) {
+            return ((Kind) platformKind).getStackKind();
+        }
+        return platformKind;
+    }
 }
