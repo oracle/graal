@@ -226,7 +226,7 @@ class MoveResolver {
 
     private void insertMove(Interval fromInterval, Interval toInterval) {
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
-        assert fromInterval.kind().equals(toInterval.kind()) : "move between different types";
+        assert LIRKind.verifyMoveKinds(toInterval.kind(), fromInterval.kind()) : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         insertionBuffer.append(insertIdx, createMove(fromInterval.operand, toInterval.operand, fromInterval.location(), toInterval.location()));
@@ -247,7 +247,7 @@ class MoveResolver {
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
-        assert fromOpr.getLIRKind().equals(toInterval.kind()) : format("move between different types %s %s", fromOpr.getLIRKind(), toInterval.kind());
+        assert LIRKind.verifyMoveKinds(toInterval.kind(), fromOpr.getLIRKind()) : format("move between different types %s %s", fromOpr.getLIRKind(), toInterval.kind());
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
@@ -409,8 +409,8 @@ class MoveResolver {
         }
 
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
-        assert fromInterval.kind().equals(toInterval.kind()) || (fromInterval.kind().getPlatformKind().equals(toInterval.kind().getPlatformKind()) && toInterval.kind().isDerivedReference()) : String.format(
-                        "Kind mismatch: %s vs. %s, from=%s, to=%s", fromInterval.kind(), toInterval.kind(), fromInterval, toInterval);
+        assert LIRKind.verifyMoveKinds(toInterval.kind(), fromInterval.kind()) : String.format("Kind mismatch: %s vs. %s, from=%s, to=%s", fromInterval.kind(), toInterval.kind(), fromInterval,
+                        toInterval);
         mappingFrom.add(fromInterval);
         mappingFromOpr.add(Value.ILLEGAL);
         mappingTo.add(toInterval);
