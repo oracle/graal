@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.java.IntrinsicContext.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -94,7 +96,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
         assert SnippetGraphUnderConstruction.get() == null;
         SnippetGraphUnderConstruction.set(graph);
-        ReplacementContext initialReplacementContext = new ReplacementContext(method, method);
+        ReplacementContext initialReplacementContext = new IntrinsicContext(method, method, POST_PARSE_INLINE_BCI);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
         SnippetGraphUnderConstruction.set(null);
 

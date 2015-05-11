@@ -52,6 +52,7 @@ import com.oracle.graal.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.BciBlockMapping.ExceptionDispatchBlock;
+import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -82,6 +83,87 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
         return graphBuilderConfig;
+    }
+
+    static class ReplacementScope implements AutoCloseable {
+        FrameState stateBefore;
+        final Mark mark;
+        final BytecodeParser parser;
+
+        static ReplacementScope create(boolean enteringReplacement, BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
+            if (enteringReplacement) {
+                return new ReplacementScope(parser, currentFrameState, args);
+            }
+            return null;
+        }
+
+        public ReplacementScope(BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
+            this.parser = parser;
+            if (args == null) {
+                assert parser.parent == null;
+                assert parser.bci() == 0;
+                mark = null;
+            } else {
+                mark = parser.getGraph().getMark();
+                for (ValueNode arg : args) {
+                    currentFrameState.push(arg.getKind(), arg);
+                }
+                stateBefore = currentFrameState.create(parser.bci(), null);
+                for (int i = args.length - 1; i >= 0; i--) {
+                    ValueNode arg = args[i];
+                    currentFrameState.pop(arg.getKind());
+                }
+            }
+        }
+
+        public void close() {
+            IntrinsicContext intrinsic = (IntrinsicContext) parser.replacementContext;
+            if (intrinsic != null && intrinsic.isPostParseInlined()) {
+                return;
+            }
+
+            FrameState stateAfterReturn = null;
+            StructuredGraph graph = parser.getGraph();
+            for (Node node : graph.getNewNodes(mark)) {
+                if (node instanceof FrameState) {
+                    FrameState fs = (FrameState) node;
+                    if (BytecodeFrame.isPlaceholderBci(fs.bci)) {
+                        if (fs.bci == BytecodeFrame.AFTER_BCI) {
+                            if (fs.stackSize() != 0) {
+                                assert fs.usages().count() == 1;
+                                ValueNode returnVal = fs.stackAt(0);
+                                assert returnVal == fs.usages().first();
+
+                                ValueNode tos = parser.frameState.pop(returnVal.getKind());
+                                parser.frameState.push(returnVal.getKind(), returnVal);
+                                FrameState newFs = parser.frameState.create(parser.stream.nextBCI(), null);
+                                fs.replaceAndDelete(newFs);
+                                parser.frameState.pop(returnVal.getKind());
+                                parser.frameState.push(tos.getKind(), tos);
+                            } else {
+                                if (stateAfterReturn == null) {
+                                    if (intrinsic != null && intrinsic.isCompilationRoot()) {
+                                        stateAfterReturn = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
+                                    } else {
+                                        stateAfterReturn = parser.frameState.create(parser.stream.nextBCI(), null);
+                                    }
+                                }
+                                fs.replaceAndDelete(stateAfterReturn);
+                            }
+                        } else if (fs.bci == BytecodeFrame.BEFORE_BCI) {
+                            if (stateBefore == null) {
+                                stateBefore = graph.start().stateAfter();
+                            }
+                            if (stateBefore != fs) {
+                                fs.replaceAndDelete(stateBefore);
+                            }
+                        } else {
+                            assert fs.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Fully qualified name is a workaround for JDK-8056066
@@ -123,8 +205,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(parser, method, graph);
 
                 frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || replacementContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
-                parser.build(graph.start(), frameState);
 
+                try (ReplacementScope rs = ReplacementScope.create(replacementContext != null, parser, frameState, null)) {
+                    parser.build(graph.start(), frameState);
+                }
                 GraphUtil.normalizeLoops(graph);
 
                 // Remove dead parameters.
@@ -327,17 +411,27 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (startInstruction == graph.start()) {
                         StartNode startNode = graph.start();
                         if (method.isSynchronized()) {
-                            startNode.setStateAfter(createFrameState(BytecodeFrame.BEFORE_BCI));
+                            assert !parsingReplacement();
+                            startNode.setStateAfter(createFrameState(BytecodeFrame.BEFORE_BCI, startNode));
                         } else {
-
-                            if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
-                                // Don't clear the receiver when Object.<init> is the compilation
-                                // root. The receiver is needed as input to RegisterFinalizerNode.
+                            if (!parsingReplacement()) {
+                                if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
+                                    /*
+                                     * Don't clear the receiver when Object.<init> is the
+                                     * compilation root. The receiver is needed as input to
+                                     * RegisterFinalizerNode.
+                                     */
+                                } else {
+                                    frameState.clearNonLiveLocals(startBlock, liveness, true);
+                                }
+                                assert bci() == 0;
+                                startNode.setStateAfter(createFrameState(bci(), startNode));
                             } else {
-                                frameState.clearNonLiveLocals(startBlock, liveness, true);
+                                if (startNode.stateAfter() == null) {
+                                    FrameState stateAfterStart = createStateAfterStartOfReplacementGraph();
+                                    startNode.setStateAfter(stateAfterStart);
+                                }
                             }
-                            assert bci() == 0;
-                            startNode.setStateAfter(createFrameState(bci()));
                         }
                     }
 
@@ -377,6 +471,42 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         Debug.dump(graph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
                     }
                 }
+            }
+
+            /**
+             * Creates the frame state after the start node of a graph for a
+             * {@link ReplacementContext replacement} that is the parse root (either for root
+             * compiling or for post-parse inlining).
+             */
+            private FrameState createStateAfterStartOfReplacementGraph() {
+                assert parent == null;
+                assert frameState.method.equals(replacementContext.replacement);
+                assert bci() == 0;
+                assert frameState.stackSize == 0;
+                FrameState stateAfterStart;
+                if (replacementContext.isIntrinsic() && replacementContext.asIntrinsic().isPostParseInlined()) {
+                    stateAfterStart = graph.add(new FrameState(BytecodeFrame.BEFORE_BCI));
+                } else {
+                    ResolvedJavaMethod original = replacementContext.method;
+                    ValueNode[] locals;
+                    if (original.getMaxLocals() == frameState.localsSize() || original.isNative()) {
+                        locals = frameState.locals;
+                    } else {
+                        locals = new ValueNode[original.getMaxLocals()];
+                        int parameterCount = original.getSignature().getParameterCount(!original.isStatic());
+                        for (int i = 0; i < parameterCount; i++) {
+                            ValueNode param = frameState.locals[i];
+                            locals[i] = param;
+                            assert param == null || param instanceof ParameterNode || param.isConstant();
+                        }
+                    }
+                    ValueNode[] stack = {};
+                    int stackSize = 0;
+                    ValueNode[] locks = {};
+                    List<MonitorIdNode> monitorIds = Collections.emptyList();
+                    stateAfterStart = graph.add(new FrameState(null, original, 0, locals, stack, stackSize, locks, monitorIds, false, false));
+                }
+                return stateAfterStart;
             }
 
             private void detectLoops(FixedNode startInstruction) {
@@ -735,11 +865,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     dispatchBegin = graph.add(new ExceptionObjectNode(metaAccess));
                     dispatchState.apush(dispatchBegin);
                     dispatchState.setRethrowException(true);
-                    dispatchBegin.setStateAfter(dispatchState.create(bci));
+                    dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
                 } else {
                     dispatchBegin = graph.add(new DispatchBeginNode());
                     dispatchState.apush(exceptionObject);
-                    dispatchBegin.setStateAfter(dispatchState.create(bci));
+                    dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
                     dispatchState.setRethrowException(true);
                 }
                 this.controlFlowSplit = true;
@@ -953,7 +1083,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new IfNode(graph.unique(new IsNullNode(receiver)), exception, falseSucc, 0.01));
                 lastInstr = falseSucc;
 
-                exception.setStateAfter(createFrameState(bci()));
+                exception.setStateAfter(createFrameState(bci(), exception));
                 exception.setNext(handleException(exception, bci()));
                 return nonNullReceiver;
             }
@@ -965,7 +1095,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 append(new IfNode(graph.unique(IntegerBelowNode.create(index, length, constantReflection)), trueSucc, exception, 0.99));
                 lastInstr = trueSucc;
 
-                exception.setStateAfter(createFrameState(bci()));
+                exception.setStateAfter(createFrameState(bci(), exception));
                 exception.setNext(handleException(exception, bci()));
             }
 
@@ -978,7 +1108,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
                 StoreFieldNode storeFieldNode = new StoreFieldNode(receiver, field, value);
                 append(storeFieldNode);
-                storeFieldNode.setStateAfter(this.createFrameState(stream.nextBCI()));
+                storeFieldNode.setStateAfter(this.createFrameState(stream.nextBCI(), storeFieldNode));
             }
 
             /**
@@ -1217,8 +1347,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         for (Node n : newNodes) {
                             if (n instanceof StateSplit) {
                                 StateSplit stateSplit = (StateSplit) n;
-                                assert stateSplit.stateAfter() != null : error("%s node added by plugin for %s need to have a non-null frame state: %s", StateSplit.class.getSimpleName(),
-                                                targetMethod.format("%H.%n(%p)"), stateSplit);
+                                assert stateSplit.stateAfter() != null || !stateSplit.hasSideEffect() : error("%s node added by plugin for %s need to have a non-null frame state: %s",
+                                                StateSplit.class.getSimpleName(), targetMethod.format("%H.%n(%p)"), stateSplit);
                             }
                         }
                         try {
@@ -1294,14 +1424,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (intrinsic != null) {
                         if (intrinsic.isCompilationRoot()) {
                             // A root compiled intrinsic needs to deoptimize
-                            // if the slow path is taken
-                            DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
-                            deopt.setStateBefore(intrinsic.getInvokeStateBefore(graph, null));
+                            // if the slow path is taken. During frame state
+                            // assignment, the deopt node will get its stateBefore
+                            // from the start node of the intrinsic
+                            append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
                             return true;
                         } else {
                             // Otherwise inline the original method. Any frame state created
                             // during the inlining will exclude frame(s) in the
                             // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
+                            if (context.method.isNative()) {
+                                return false;
+                            }
                             parseAndInlineCallee(context.method, args, null);
                             return true;
                         }
@@ -1319,8 +1453,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (context == null && isReplacement) {
                         assert !inlinedMethod.equals(targetMethod);
                         if (isIntrinsic) {
-                            context = new IntrinsicContext(targetMethod, inlinedMethod, args, bci);
+                            context = new IntrinsicContext(targetMethod, inlinedMethod, bci);
                         } else {
+                            assert false;
                             context = new ReplacementContext(targetMethod, inlinedMethod);
                         }
                     }
@@ -1370,33 +1505,37 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, ReplacementContext calleeReplacementContext) {
-                BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeReplacementContext);
-                HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, graph);
-                if (!targetMethod.isStatic()) {
-                    args[0] = nullCheckedValue(args[0]);
-                }
-                startFrameState.initializeFromArgumentsArray(args);
-                parser.build(this.lastInstr, startFrameState);
+                try (ReplacementScope rs = ReplacementScope.create(calleeReplacementContext != null && !parsingReplacement(), this, frameState, args)) {
 
-                FixedWithNextNode calleeBeforeReturnNode = parser.getBeforeReturnNode();
-                this.lastInstr = calleeBeforeReturnNode;
-                if (calleeBeforeReturnNode != null) {
-                    ValueNode calleeReturnValue = parser.getReturnValue();
-                    if (calleeReturnValue != null) {
-                        frameState.push(targetMethod.getSignature().getReturnKind().getStackKind(), calleeReturnValue);
+                    BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeReplacementContext);
+                    HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, graph);
+                    if (!targetMethod.isStatic()) {
+                        args[0] = nullCheckedValue(args[0]);
                     }
-                }
+                    startFrameState.initializeFromArgumentsArray(args);
+                    parser.build(this.lastInstr, startFrameState);
 
-                FixedWithNextNode calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
-                if (calleeBeforeUnwindNode != null) {
-                    ValueNode calleeUnwindValue = parser.getUnwindValue();
-                    assert calleeUnwindValue != null;
-                    calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
-                }
+                    FixedWithNextNode calleeBeforeReturnNode = parser.getBeforeReturnNode();
+                    this.lastInstr = calleeBeforeReturnNode;
+                    Kind calleeReturnKind = targetMethod.getSignature().getReturnKind();
+                    if (calleeBeforeReturnNode != null) {
+                        ValueNode calleeReturnValue = parser.getReturnValue();
+                        if (calleeReturnValue != null) {
+                            frameState.push(calleeReturnKind.getStackKind(), calleeReturnValue);
+                        }
+                    }
 
-                // Record inlined method dependency in the graph
-                if (graph.isInlinedMethodRecordingEnabled()) {
-                    graph.getInlinedMethods().add(targetMethod);
+                    FixedWithNextNode calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
+                    if (calleeBeforeUnwindNode != null) {
+                        ValueNode calleeUnwindValue = parser.getUnwindValue();
+                        assert calleeUnwindValue != null;
+                        calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
+                    }
+
+                    // Record inlined method dependency in the graph
+                    if (graph.isInlinedMethodRecordingEnabled()) {
+                        graph.getInlinedMethods().add(targetMethod);
+                    }
                 }
             }
 
@@ -1407,7 +1546,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
                 InvokeNode invoke = append(new InvokeNode(callTarget, bci()));
                 frameState.pushReturn(resultType, invoke);
-                invoke.setStateAfter(createFrameState(stream.nextBCI()));
+                invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
                 return invoke;
             }
 
@@ -1415,13 +1554,35 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 DispatchBeginNode exceptionEdge = handleException(null, bci());
                 InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
                 frameState.pushReturn(resultType, invoke);
-                invoke.setStateAfter(createFrameState(stream.nextBCI()));
+                invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
                 return invoke;
             }
 
             @Override
             protected void genReturn(ValueNode returnVal, Kind returnKind) {
-
+                if (parsingReplacement() && returnVal != null) {
+                    if (returnVal instanceof StateSplit) {
+                        StateSplit stateSplit = (StateSplit) returnVal;
+                        FrameState stateAfter = stateSplit.stateAfter();
+                        if (stateSplit.hasSideEffect()) {
+                            assert stateSplit != null;
+                            if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
+                                assert stateAfter.usages().count() == 1;
+                                assert stateAfter.usages().first() == stateSplit;
+                                stateAfter.replaceAtUsages(graph.add(new FrameState(BytecodeFrame.AFTER_BCI, returnVal)));
+                                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+                            } else {
+                                /*
+                                 * This must be the return value from within a partial
+                                 * intrinsification.
+                                 */
+                                assert !BytecodeFrame.isPlaceholderBci(stateAfter.bci);
+                            }
+                        } else {
+                            assert stateAfter == null;
+                        }
+                    }
+                }
                 if (parent == null) {
                     frameState.setRethrowException(false);
                     frameState.clearStack();
@@ -1465,7 +1626,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 MonitorIdNode monitorId = graph.add(new MonitorIdNode(frameState.lockDepth()));
                 MonitorEnterNode monitorEnter = append(new MonitorEnterNode(x, monitorId));
                 frameState.pushLock(x, monitorId);
-                monitorEnter.setStateAfter(createFrameState(bci));
+                monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
             }
 
             @Override
@@ -1476,7 +1637,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject)));
                 }
                 MonitorExitNode monitorExit = append(new MonitorExitNode(x, monitorId, escapedReturnValue));
-                monitorExit.setStateAfter(createFrameState(bci));
+                monitorExit.setStateAfter(createFrameState(bci, monitorExit));
             }
 
             @Override
@@ -1627,7 +1788,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                             lastLoopExit = loopExit;
                             Debug.log("Target %s Exits %s, scanning framestates...", targetBlock, loop);
                             newState.insertLoopProxies(loopExit, getEntryState(loop, this.getCurrentDimension()));
-                            loopExit.setStateAfter(newState.create(bci));
+                            loopExit.setStateAfter(newState.create(bci, loopExit));
                         }
 
                         lastLoopExit.setNext(target);
@@ -1972,7 +2133,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (block instanceof ExceptionDispatchBlock) {
                         bci = ((ExceptionDispatchBlock) block).deoptBci;
                     }
-                    abstractMergeNode.setStateAfter(createFrameState(bci));
+                    abstractMergeNode.setStateAfter(createFrameState(bci, abstractMergeNode));
                 }
             }
 
@@ -2055,7 +2216,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                     // Create phi functions for all local variables and operand stack slots.
                     frameState.insertLoopPhis(liveness, block.loopId, loopBegin);
-                    loopBegin.setStateAfter(createFrameState(block.startBci));
+                    loopBegin.setStateAfter(createFrameState(block.startBci, loopBegin));
 
                     /*
                      * We have seen all forward branches. All subsequent backward branches will
@@ -2103,7 +2264,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                         EntryMarkerNode x = append(new EntryMarkerNode());
                         frameState.insertProxies(x);
-                        x.setStateAfter(createFrameState(bci));
+                        x.setStateAfter(createFrameState(bci, x));
                     }
 
                     try {
@@ -2120,7 +2281,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     bci = stream.currentBCI();
 
                     assert block == currentBlock;
-                    assert !(lastInstr instanceof StateSplit) || lastInstr instanceof BeginNode || ((StateSplit) lastInstr).stateAfter() != null : lastInstr;
+                    assert checkLastInstruction();
                     lastInstr = finishInstruction(lastInstr, frameState);
                     if (bci < endBCI) {
                         if (bci > block.endBci) {
@@ -2132,6 +2293,18 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 }
+            }
+
+            protected boolean checkLastInstruction() {
+                if (lastInstr instanceof BeginNode) {
+                    // ignore
+                } else if (lastInstr instanceof StateSplit) {
+                    StateSplit stateSplit = (StateSplit) lastInstr;
+                    if (stateSplit.hasSideEffect()) {
+                        assert stateSplit.stateAfter() != null : "side effect " + lastInstr + " requires a non-null stateAfter";
+                    }
+                }
+                return true;
             }
 
             private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext) {
@@ -2156,7 +2329,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private InfopointNode createInfoPointNode(InfopointReason reason) {
                 if (graphBuilderConfig.insertFullDebugInfo()) {
-                    return new FullInfopointNode(reason, createFrameState(bci()));
+                    return new FullInfopointNode(reason, createFrameState(bci(), null));
                 } else {
                     return new SimpleInfopointNode(reason, new BytecodePosition(null, method, bci()));
                 }
@@ -2409,22 +2582,23 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             public BailoutException bailout(String string) {
-                FrameState currentFrameState = createFrameState(bci());
+                FrameState currentFrameState = createFrameState(bci(), null);
                 StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(currentFrameState);
                 BailoutException bailout = new BailoutException(string);
                 throw GraphUtil.createBailoutException(string, bailout, elements);
             }
 
-            private FrameState createFrameState(int bci) {
+            private FrameState createFrameState(int bci, StateSplit forStateSplit) {
                 if (currentBlock != null && bci > currentBlock.endBci) {
                     frameState.clearNonLiveLocals(currentBlock, liveness, false);
                 }
-                return frameState.create(bci);
+                return frameState.create(bci, forStateSplit);
             }
 
-            public void setStateAfter(StateSplit stateSplit) {
-                FrameState stateAfter = createFrameState(stream.nextBCI());
-                stateSplit.setStateAfter(stateAfter);
+            public void setStateAfter(StateSplit sideEffect) {
+                assert sideEffect.hasSideEffect();
+                FrameState stateAfter = createFrameState(stream.nextBCI(), sideEffect);
+                sideEffect.setStateAfter(stateAfter);
             }
         }
     }

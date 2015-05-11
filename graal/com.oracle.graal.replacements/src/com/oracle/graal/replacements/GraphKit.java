@@ -152,7 +152,7 @@ public class GraphKit {
             if (invoke.getKind() != Kind.Void) {
                 frameStateBuilder.push(returnType.getKind(), invoke);
             }
-            invoke.setStateAfter(frameStateBuilder.create(bci));
+            invoke.setStateAfter(frameStateBuilder.create(bci, invoke));
             if (invoke.getKind() != Kind.Void) {
                 frameStateBuilder.pop(returnType.getKind());
             }
@@ -219,7 +219,7 @@ public class GraphKit {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         StructuredGraph calleeGraph = new StructuredGraph(method, AllowAssumptions.NO);
-        IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, null, IntrinsicContext.POST_PARSE_INLINE_BCI);
+        IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, IntrinsicContext.POST_PARSE_INLINE_BCI);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(calleeGraph);
 
         // Remove all frame states from inlinee

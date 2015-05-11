@@ -152,9 +152,10 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return graph;
     }
 
-    public void setStateAfter(StateSplit stateSplit) {
+    public void setStateAfter(StateSplit sideEffect) {
+        assert sideEffect.hasSideEffect();
         FrameState stateAfter = getGraph().add(new FrameState(BytecodeFrame.BEFORE_BCI));
-        stateSplit.setStateAfter(stateAfter);
+        sideEffect.setStateAfter(stateAfter);
     }
 
     public GraphBuilderContext getParent() {

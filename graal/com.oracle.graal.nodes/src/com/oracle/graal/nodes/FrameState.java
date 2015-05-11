@@ -117,6 +117,19 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                         bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
     }
 
+    /**
+     * Creates a placeholder frame state with a single element on the stack representing a return
+     * value. This allows the parsing of an intrinsic to communicate the returned value in a
+     * {@link StateSplit#stateAfter() stateAfter} to the inlining call site.
+     *
+     * @param bci this must be {@link BytecodeFrame#AFTER_BCI}
+     */
+    public FrameState(int bci, ValueNode returnValue) {
+        this(null, null, bci, 0, returnValue.getKind().getSlotCount(), 0, false, false, null, Collections.<EscapeObjectState> emptyList());
+        assert bci == BytecodeFrame.AFTER_BCI;
+        this.values.initialize(0, returnValue);
+    }
+
     public FrameState(FrameState outerFrameState, ResolvedJavaMethod method, int bci, ValueNode[] locals, ValueNode[] stack, int stackSize, ValueNode[] locks, List<MonitorIdNode> monitorIds,
                     boolean rethrowException, boolean duringCall) {
         this(outerFrameState, method, bci, locals.length, stackSize, locks.length, rethrowException, duringCall, monitorIds, Collections.<EscapeObjectState> emptyList());
@@ -410,7 +423,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         String nl = CodeUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {
-            MetaUtil.appendLocation(sb, fs.method, fs.bci).append(nl);
+            MetaUtil.appendLocation(sb, fs.method, fs.bci);
+            if (BytecodeFrame.isPlaceholderBci(fs.bci)) {
+                sb.append("//").append(getPlaceholderBciName(fs.bci));
+            }
+            sb.append(nl);
             sb.append("locals: [");
             for (int i = 0; i < fs.localsSize(); i++) {
                 sb.append(i == 0 ? "" : ", ").append(fs.localAt(i) == null ? "_" : fs.localAt(i).toString(Verbosity.Id));
@@ -434,7 +451,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         if (verbosity == Verbosity.Debugger) {
             return toString(this);
         } else if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + "@" + bci;
+            String res = super.toString(Verbosity.Name) + "@" + bci;
+            if (BytecodeFrame.isPlaceholderBci(bci)) {
+                res += "[" + getPlaceholderBciName(bci) + "]";
+            }
+            return res;
         } else {
             return super.toString(verbosity);
         }

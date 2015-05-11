@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
+import static com.oracle.graal.java.IntrinsicContext.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static java.lang.String.*;
 
@@ -629,12 +630,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                         OptimisticOptimizations optimisticOpts) {
             ReplacementContext initialReplacementContext = null;
             if (method.getAnnotation(Snippet.class) == null) {
-                // Late inlined intrinsic
-                initialReplacementContext = new IntrinsicContext(substitutedMethod, method, null, -1);
+                // Post-parse inlined intrinsic
+                initialReplacementContext = new IntrinsicContext(substitutedMethod, method, POST_PARSE_INLINE_BCI);
             } else {
                 // Snippet
                 ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
-                initialReplacementContext = new ReplacementContext(original, method);
+                // initialReplacementContext = new ReplacementContext(original, method);
+                initialReplacementContext = new IntrinsicContext(original, method, POST_PARSE_INLINE_BCI);
             }
             return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, graphBuilderConfig, optimisticOpts, initialReplacementContext);
         }
