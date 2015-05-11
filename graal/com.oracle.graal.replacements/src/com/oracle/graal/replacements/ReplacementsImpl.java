@@ -300,9 +300,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         StructuredGraph graph = UseSnippetGraphCache ? graphs.get(method) : null;
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
-                FrameStateProcessing frameStateProcessing = method.getAnnotation(Snippet.class).removeAllFrameStates() ? FrameStateProcessing.Removal
-                                : FrameStateProcessing.CollapseFrameForSingleSideEffect;
-                StructuredGraph newGraph = makeGraph(method, args, recursiveEntry, frameStateProcessing);
+                StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
                 Debug.metric("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
                 if (!UseSnippetGraphCache || args != null) {
                     return newGraph;
@@ -347,7 +345,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
         StructuredGraph graph = graphs.get(substitute);
         if (graph == null) {
-            graph = makeGraph(substitute, null, original, FrameStateProcessing.None);
+            graph = makeGraph(substitute, null, original);
             graph.freeze();
             graphs.putIfAbsent(substitute, graph);
             graph = graphs.get(substitute);
@@ -446,37 +444,24 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      * @param args
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
-     * @param frameStateProcessing controls how {@link FrameState FrameStates} should be handled.
      */
-    public StructuredGraph makeGraph(ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original, FrameStateProcessing frameStateProcessing) {
+    public StructuredGraph makeGraph(ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original) {
         try (OverrideScope s = OptionValue.override(DeoptALot, false)) {
-            return createGraphMaker(method, original, frameStateProcessing).makeGraph(args);
+            return createGraphMaker(method, original).makeGraph(args);
         }
     }
 
     /**
      * Can be overridden to return an object that specializes various parts of graph preprocessing.
      */
-    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original, FrameStateProcessing frameStateProcessing) {
-        return new GraphMaker(this, substitute, original, frameStateProcessing);
+    protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
+        return new GraphMaker(this, substitute, original);
     }
 
     /**
      * Cache to speed up preprocessing of replacement graphs.
      */
     final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphCache = new ConcurrentHashMap<>();
-
-    public enum FrameStateProcessing {
-        None,
-        /**
-         * @see CollapseFrameForSingleSideEffectPhase
-         */
-        CollapseFrameForSingleSideEffect,
-        /**
-         * Removes frame states from all nodes in the graph.
-         */
-        Removal
-    }
 
     /**
      * Creates and preprocesses a graph for a replacement.
@@ -497,16 +482,10 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          */
         protected final ResolvedJavaMethod substitutedMethod;
 
-        /**
-         * Controls how FrameStates are processed.
-         */
-        private FrameStateProcessing frameStateProcessing;
-
-        protected GraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, FrameStateProcessing frameStateProcessing) {
+        protected GraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
             this.replacements = replacements;
             this.method = substitute;
             this.substitutedMethod = substitutedMethod;
-            this.frameStateProcessing = frameStateProcessing;
         }
 
         public StructuredGraph makeGraph(Object[] args) {
@@ -537,18 +516,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             new ConvertDeoptimizeToGuardPhase().apply(graph, null);
             assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 
-            switch (frameStateProcessing) {
-                case Removal:
-                    for (Node node : graph.getNodes()) {
-                        if (node instanceof StateSplit) {
-                            ((StateSplit) node).setStateAfter(null);
-                        }
-                    }
-                    break;
-                case CollapseFrameForSingleSideEffect:
-                    new CollapseFrameForSingleSideEffectPhase().apply(graph);
-                    break;
-            }
             new DeadCodeEliminationPhase(Required).apply(graph);
         }
 

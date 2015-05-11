@@ -35,7 +35,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 /**
@@ -314,7 +313,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         ResolvedJavaMethod initMethod = null;
         try {
             Class<?> rjm = ResolvedJavaMethod.class;
-            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm, FrameStateProcessing.class));
+            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm));
             initMethod = metaAccess.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
