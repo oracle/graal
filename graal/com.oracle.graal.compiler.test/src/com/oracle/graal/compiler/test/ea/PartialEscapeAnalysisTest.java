@@ -23,12 +23,14 @@
 package com.oracle.graal.compiler.test.ea;
 
 import java.lang.ref.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.common.*;
@@ -189,6 +191,23 @@ public class PartialEscapeAnalysisTest extends EATestBase {
         prepareGraph("testCanonicalizeSnippet", false);
         assertTrue(graph.getNodes().filter(ReturnNode.class).count() == 1);
         assertTrue(graph.getNodes().filter(ReturnNode.class).first().result() == graph.getParameter(0));
+    }
+
+    public static int testBoxLoopSnippet(int n) {
+        Integer sum = 0;
+        for (Integer i = 0; i < n; i++) {
+            if (sum == null) {
+                sum = null;
+            } else {
+                sum += i;
+            }
+        }
+        return sum;
+    }
+
+    @Test
+    public void testBoxLoop() {
+        testPartialEscapeAnalysis("testBoxLoopSnippet", 0, 0, BoxNode.class, UnboxNode.class);
     }
 
     @SafeVarargs
