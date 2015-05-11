@@ -61,6 +61,11 @@ import com.oracle.truffle.api.instrument.*;
  * (non-indexed) <em>Literal</em> . <br>
  * See {@link Source#fromReader(Reader, String)}</li>
  * <p>
+ * <li><strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
+ * {@link Source}.<br>
+ * See @link {@link Source#subSource(Source, int, int)}<br>
+ * See @link {@link Source#subSource(Source, int)}</li>
+ * <p>
  * <li><strong>AppendableSource:</strong> Literal contents are provided by the client,
  * incrementally, after the instance is created.<br>
  * See {@link Source#fromAppendableText(String)}<br>
@@ -250,8 +255,8 @@ public abstract class Source {
      * @param description a note about the origin, for error messages and debugging
      * @return a newly created, non-indexed, initially empty, appendable source representation
      */
-    public static AppendableSource fromAppendableText(String description) {
-        final AppendableSource source = new AppendableLiteralSource(description);
+    public static Source fromAppendableText(String description) {
+        final Source source = new AppendableLiteralSource(description);
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
     }
@@ -281,11 +286,39 @@ public abstract class Source {
      * @param name string to use for indexing/lookup
      * @return a newly created, indexed, initially empty, appendable source representation
      */
-    public static AppendableSource fromNamedAppendableText(String name) {
+    public static Source fromNamedAppendableText(String name) {
         final Source source = new AppendableLiteralSource(name);
         nameToSource.put(name, new WeakReference<>(source));
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
-        return (AppendableSource) source;
+        return source;
+    }
+
+    /**
+     * Creates a {@linkplain Source Source instance} that represents the contents of a sub-range of
+     * an existing {@link Source}.
+     *
+     * @param base an existing Source instance
+     * @param baseCharIndex 0-based index of the first character of the sub-range
+     * @param length the number of characters in the sub-range
+     * @return a new instance representing a sub-range of another Source
+     * @throws IllegalArgumentException if the specified sub-range is not contained in the base
+     */
+    public static Source subSource(Source base, int baseCharIndex, int length) {
+        final SubSource subSource = SubSource.create(base, baseCharIndex, length);
+        return subSource;
+    }
+
+    /**
+     * Creates a {@linkplain Source Source instance} that represents the contents of a sub-range at
+     * the end of an existing {@link Source}.
+     *
+     * @param base an existing Source instance
+     * @param baseCharIndex 0-based index of the first character of the sub-range
+     * @return a new instance representing a sub-range at the end of another Source
+     * @throws IllegalArgumentException if the index is out of range
+     */
+    public static Source subSource(Source base, int baseCharIndex) {
+        return subSource(base, baseCharIndex, base.getLength() - baseCharIndex);
     }
 
     /**
@@ -418,23 +451,59 @@ public abstract class Source {
         return builder.toString();
     }
 
-    public abstract static class AppendableSource extends Source {
+    private static final class SubSource extends Source {
+        private final Source base;
+        private final int baseIndex;
+        private final int subLength;
 
-        /**
-         * Sets the mark.
-         */
-        public void setMark() {
+        private static SubSource create(Source base, int baseIndex, int length) {
+            if (baseIndex < 0 || length < 0 || baseIndex + length > base.getLength()) {
+                throw new IllegalArgumentException("text positions out of range");
+            }
+            return new SubSource(base, baseIndex, length);
         }
 
-        public abstract void appendCode(CharSequence chars);
-
-        /**
-         * Gets the code from the mark to the end.
-         */
-        public String getCodeFromMark() {
-            return getCode();
+        private SubSource(Source base, int baseIndex, int length) {
+            this.base = base;
+            this.baseIndex = baseIndex;
+            this.subLength = length;
         }
 
+        @Override
+        protected void reset() {
+            assert false;
+        }
+
+        @Override
+        public String getName() {
+            return base.getName();
+        }
+
+        @Override
+        public String getShortName() {
+            return base.getShortName();
+        }
+
+        @Override
+        public String getPath() {
+            return base.getPath();
+        }
+
+        @Override
+        public URL getURL() {
+            return null;
+        }
+
+        @Override
+        public Reader getReader() {
+            assert false;
+            return null;
+        }
+
+        @Override
+        public String getCode() {
+            return base.getCode(baseIndex, subLength);
+        }
     }
 
     private final ArrayList<SourceTag> tags = new ArrayList<>();
@@ -584,6 +653,16 @@ public abstract class Source {
      */
     public final int getLineLength(int lineNumber) throws IllegalArgumentException {
         return checkTextMap().lineLength(lineNumber);
+    }
+
+    /**
+     * Append text to a Source explicitly created as <em>Appendable</em>.
+     *
+     * @param chars the text to append
+     * @throws UnsupportedOperationException by concrete subclasses that do not support appending
+     */
+    public void appendCode(CharSequence chars) {
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -786,9 +865,8 @@ public abstract class Source {
         }
     }
 
-    private static final class AppendableLiteralSource extends AppendableSource {
+    private static final class AppendableLiteralSource extends Source {
         private String description;
-        private int mark = 0;
         final List<CharSequence> codeList = new ArrayList<>();
 
         public AppendableLiteralSource(String description) {
@@ -839,20 +917,11 @@ public abstract class Source {
         }
 
         @Override
-        public String getCodeFromMark() {
-            return getCodeFromIndex(mark);
-        }
-
-        @Override
         public void appendCode(CharSequence chars) {
             codeList.add(chars);
             clearTextMap();
         }
 
-        @Override
-        public void setMark() {
-            mark = codeList.size();
-        }
     }
 
     private static final class FileSource extends Source {
