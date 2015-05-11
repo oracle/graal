@@ -294,6 +294,9 @@ public class CodeUtil {
      */
     public static StringBuilder append(StringBuilder sb, BytecodeFrame frame) {
         MetaUtil.appendLocation(sb.append("at "), frame.getMethod(), frame.getBCI());
+        assert sb.charAt(sb.length() - 1) == ']';
+        sb.deleteCharAt(sb.length() - 1);
+        sb.append(", duringCall: ").append(frame.duringCall).append(", rethrow: ").append(frame.rethrowException).append(']');
         if (frame.values != null && frame.values.length > 0) {
             sb.append(NEW_LINE);
             String table = tabulateValues(frame);
