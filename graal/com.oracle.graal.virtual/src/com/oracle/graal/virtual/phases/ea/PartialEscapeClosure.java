@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
@@ -356,6 +357,20 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         boolean materialized = ensureMaterialized(state, obj, materializeBefore, effects, metric);
         effects.replaceFirstInput(usage, value, obj.getMaterializedValue());
         return materialized;
+    }
+
+    @Override
+    protected void processInitialLoopState(Loop<Block> loop, BlockT initialState) {
+        super.processInitialLoopState(loop, initialState);
+
+        for (PhiNode phi : ((LoopBeginNode) loop.getHeader().getBeginNode()).phis()) {
+            if (phi.valueAt(0) != null) {
+                ObjectState state = getObjectState(initialState, phi.valueAt(0));
+                if (state != null && state.isVirtual()) {
+                    addAndMarkAlias(state.virtual, phi);
+                }
+            }
+        }
     }
 
     @Override
