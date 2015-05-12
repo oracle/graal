@@ -38,10 +38,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
@@ -448,39 +446,6 @@ class LinearScan {
         return instructionForId(opId).destroysCallerSavedRegisters();
     }
 
-    /**
-     * Eliminates moves from register to stack if the stack slot is known to be correct.
-     */
-    void changeSpillDefinitionPos(Interval interval, int defPos) {
-        assert interval.isSplitParent() : "can only be called for split parents";
-
-        switch (interval.spillState()) {
-            case NoDefinitionFound:
-                assert interval.spillDefinitionPos() == -1 : "must no be set before";
-                interval.setSpillDefinitionPos(defPos);
-                interval.setSpillState(SpillState.NoSpillStore);
-                break;
-
-            case NoSpillStore:
-                assert defPos <= interval.spillDefinitionPos() : "positions are processed in reverse order when intervals are created";
-                if (defPos < interval.spillDefinitionPos() - 2) {
-                    // second definition found, so no spill optimization possible for this interval
-                    interval.setSpillState(SpillState.NoOptimization);
-                } else {
-                    // two consecutive definitions (because of two-operand LIR form)
-                    assert blockForId(defPos) == blockForId(interval.spillDefinitionPos()) : "block must be equal";
-                }
-                break;
-
-            case NoOptimization:
-                // nothing to do
-                break;
-
-            default:
-                throw new BailoutException("other states not allowed at this time");
-        }
-    }
-
     // called during register allocation
     void changeSpillState(Interval interval, int spillPos) {
         switch (interval.spillState()) {
@@ -493,7 +458,7 @@ class LinearScan {
                      * The loop depth of the spilling position is higher then the loop depth at the
                      * definition of the interval. Move write to memory out of loop.
                      */
-                    if (Options.LSRAOptimizeSpillPosition.getValue()) {
+                    if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
                         // find best spill position in dominator the tree
                         interval.setSpillState(SpillState.SpillInDominator);
                     } else {
@@ -511,7 +476,7 @@ class LinearScan {
             }
 
             case OneSpillStore: {
-                if (Options.LSRAOptimizeSpillPosition.getValue()) {
+                if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
                     // the interval is spilled more then once
                     interval.setSpillState(SpillState.SpillInDominator);
                 } else {
@@ -688,46 +653,6 @@ class LinearScan {
             prev = temp;
             temp = temp.next;
         }
-    }
-
-    /**
-     * Determines the register priority for an instruction's output/result operand.
-     */
-    static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
-        if (op instanceof MoveOp) {
-            MoveOp move = (MoveOp) op;
-            if (optimizeMethodArgument(move.getInput())) {
-                return RegisterPriority.None;
-            }
-        } else if (op instanceof LabelOp) {
-            LabelOp label = (LabelOp) op;
-            if (label.isPhiIn()) {
-                return RegisterPriority.None;
-            }
-        }
-
-        // all other operands require a register
-        return RegisterPriority.MustHaveRegister;
-    }
-
-    /**
-     * Determines the priority which with an instruction's input operand will be allocated a
-     * register.
-     */
-    static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
-        if (flags.contains(OperandFlag.STACK)) {
-            return RegisterPriority.ShouldHaveRegister;
-        }
-        // all other operands require a register
-        return RegisterPriority.MustHaveRegister;
-    }
-
-    static boolean optimizeMethodArgument(Value value) {
-        /*
-         * Object method arguments that are passed on the stack are currently not optimized because
-         * this requires that the runtime visits method arguments during stack walking.
-         */
-        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getKind() != Kind.Object;
     }
 
     boolean isProcessed(Value operand) {

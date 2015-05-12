@@ -36,14 +36,17 @@ import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.*;
-import com.oracle.graal.lir.alloc.lsra.LinearScan.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
+import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
+import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
 class LifetimeAnalysis extends AllocationPhase {
@@ -515,7 +518,7 @@ class LifetimeAnalysis extends AllocationPhase {
             }
         }
 
-        allocator.changeSpillDefinitionPos(interval, defPos);
+        changeSpillDefinitionPos(interval, defPos);
         if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal() && isStackSlot(operand)) {
             // detection of method-parameters and roundfp-results
             interval.setSpillState(SpillState.StartInMemory);
@@ -534,7 +537,7 @@ class LifetimeAnalysis extends AllocationPhase {
     void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            if (LinearScan.optimizeMethodArgument(move.getInput())) {
+            if (optimizeMethodArgument(move.getInput())) {
                 StackSlot slot = asStackSlot(move.getInput());
                 if (DetailedAsserts.getValue()) {
                     assert op.id() > 0 : "invalid id";
@@ -578,12 +581,85 @@ class LifetimeAnalysis extends AllocationPhase {
         }
     }
 
+    /**
+     * Eliminates moves from register to stack if the stack slot is known to be correct.
+     */
+    void changeSpillDefinitionPos(Interval interval, int defPos) {
+        assert interval.isSplitParent() : "can only be called for split parents";
+
+        switch (interval.spillState()) {
+            case NoDefinitionFound:
+                assert interval.spillDefinitionPos() == -1 : "must no be set before";
+                interval.setSpillDefinitionPos(defPos);
+                interval.setSpillState(SpillState.NoSpillStore);
+                break;
+
+            case NoSpillStore:
+                assert defPos <= interval.spillDefinitionPos() : "positions are processed in reverse order when intervals are created";
+                if (defPos < interval.spillDefinitionPos() - 2) {
+                    // second definition found, so no spill optimization possible for this interval
+                    interval.setSpillState(SpillState.NoOptimization);
+                } else {
+                    // two consecutive definitions (because of two-operand LIR form)
+                    assert allocator.blockForId(defPos) == allocator.blockForId(interval.spillDefinitionPos()) : "block must be equal";
+                }
+                break;
+
+            case NoOptimization:
+                // nothing to do
+                break;
+
+            default:
+                throw new BailoutException("other states not allowed at this time");
+        }
+    }
+
+    private static boolean optimizeMethodArgument(Value value) {
+        /*
+         * Object method arguments that are passed on the stack are currently not optimized because
+         * this requires that the runtime visits method arguments during stack walking.
+         */
+        return isStackSlot(value) && asStackSlot(value).isInCallerFrame() && value.getKind() != Kind.Object;
+    }
+
+    /**
+     * Determines the register priority for an instruction's output/result operand.
+     */
+    private static RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
+        if (op instanceof MoveOp) {
+            MoveOp move = (MoveOp) op;
+            if (optimizeMethodArgument(move.getInput())) {
+                return RegisterPriority.None;
+            }
+        } else if (op instanceof LabelOp) {
+            LabelOp label = (LabelOp) op;
+            if (label.isPhiIn()) {
+                return RegisterPriority.None;
+            }
+        }
+
+        // all other operands require a register
+        return RegisterPriority.MustHaveRegister;
+    }
+
+    /**
+     * Determines the priority which with an instruction's input operand will be allocated a
+     * register.
+     */
+    private static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
+        if (flags.contains(OperandFlag.STACK)) {
+            return RegisterPriority.ShouldHaveRegister;
+        }
+        // all other operands require a register
+        return RegisterPriority.MustHaveRegister;
+    }
+
     void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {
             InstructionValueConsumer outputConsumer = (op, operand, mode, flags) -> {
                 if (LinearScan.isVariableOrRegister(operand)) {
-                    addDef((AllocatableValue) operand, op, LinearScan.registerPriorityOfOutputOperand(op), operand.getLIRKind());
+                    addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
                     addRegisterHint(op, operand, mode, flags, true);
                 }
             };
@@ -597,7 +673,7 @@ class LifetimeAnalysis extends AllocationPhase {
 
             InstructionValueConsumer aliveConsumer = (op, operand, mode, flags) -> {
                 if (LinearScan.isVariableOrRegister(operand)) {
-                    RegisterPriority p = LinearScan.registerPriorityOfInputOperand(flags);
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getLIRKind());
@@ -609,7 +685,7 @@ class LifetimeAnalysis extends AllocationPhase {
                 if (LinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
-                    RegisterPriority p = LinearScan.registerPriorityOfInputOperand(flags);
+                    RegisterPriority p = registerPriorityOfInputOperand(flags);
                     addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getLIRKind());
                     addRegisterHint(op, operand, mode, flags, false);
                 }
