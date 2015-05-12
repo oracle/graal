@@ -788,26 +788,7 @@ class LinearScan {
         sortedIntervals = combinedList;
     }
 
-    void allocateRegisters() {
-        try (Indent indent = Debug.logAndIndent("allocate registers")) {
-            Interval precoloredIntervals;
-            Interval notPrecoloredIntervals;
-
-            Interval.Pair result = createUnhandledLists(IS_PRECOLORED_INTERVAL, IS_VARIABLE_INTERVAL);
-            precoloredIntervals = result.first;
-            notPrecoloredIntervals = result.second;
-
-            // allocate cpu registers
-            LinearScanWalker lsw;
-            if (OptimizingLinearScanWalker.Options.LSRAOptimization.getValue()) {
-                lsw = new OptimizingLinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
-            } else {
-                lsw = new LinearScanWalker(this, precoloredIntervals, notPrecoloredIntervals);
-            }
-            lsw.walk();
-            lsw.finishAllocation();
-        }
-    }
+    
 
     // * Phase 6: resolve data flow
     // (insert moves at edges between blocks if intervals have been split)
@@ -1033,7 +1014,7 @@ class LinearScan {
     }
 
     protected RegisterAllocation createRegisterAllocationPhase() {
-        return new RegisterAllocation();
+        return new RegisterAllocation(this);
     }
 
     protected OptimizeSpillPosition createOptimizeSpillPositionPhase() {
@@ -1050,18 +1031,6 @@ class LinearScan {
 
     protected AssignLocations createAssignLocationsPhase() {
         return new AssignLocations(this);
-    }
-
-    private final class RegisterAllocation extends AllocationPhase {
-
-        @Override
-        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                        SpillMoveFactory spillMoveFactory) {
-            printIntervals("Before register allocation");
-            allocateRegisters();
-            printIntervals("After register allocation");
-        }
-
     }
 
     private final class ResolveDataFlow extends AllocationPhase {
