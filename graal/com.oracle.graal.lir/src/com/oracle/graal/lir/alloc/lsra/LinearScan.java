@@ -110,7 +110,7 @@ class LinearScan {
         public BitSet liveKill;
     }
 
-    final BlockMap<BlockData> blockData;
+    private final BlockMap<BlockData> blockData;
 
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
@@ -231,6 +231,14 @@ class LinearScan {
      */
     int maxRegisterNumber() {
         return firstVariableNumber - 1;
+    }
+
+    BlockData getBlockData(AbstractBlockBase<?> block) {
+        return blockData.get(block);
+    }
+
+    void initBlockData(AbstractBlockBase<?> block) {
+        blockData.put(block, new BlockData());
     }
 
     static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
@@ -883,12 +891,12 @@ class LinearScan {
         int toBlockFirstInstructionId = getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = getLastLirInstructionId(fromBlock) + 1;
         int numOperands = operandSize();
-        BitSet liveAtEdge = blockData.get(toBlock).liveIn;
+        BitSet liveAtEdge = getBlockData(toBlock).liveIn;
 
         // visit all variables for which the liveAtEdge bit is set
         for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
             assert operandNum < numOperands : "live information set for not exisiting interval";
-            assert blockData.get(fromBlock).liveOut.get(operandNum) && blockData.get(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
+            assert getBlockData(fromBlock).liveOut.get(operandNum) && getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
             Interval fromInterval = splitChildAtOpId(intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
             Interval toInterval = splitChildAtOpId(intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);

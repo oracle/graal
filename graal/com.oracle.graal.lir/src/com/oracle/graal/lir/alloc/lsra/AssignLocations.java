@@ -76,7 +76,7 @@ final class AssignLocations extends AllocationPhase {
                      */
                     LIRInstruction instr = allocator.ir.getLIRforBlock(block).get(allocator.ir.getLIRforBlock(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
-                        if (allocator.blockData.get(block).liveOut.get(allocator.operandNumber(operand))) {
+                        if (allocator.getBlockData(block).liveOut.get(allocator.operandNumber(operand))) {
                             assert false : String.format(
                                             "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow) block=%s, instruction=%s, operand=%s",
                                             block, instr, operand);
@@ -119,12 +119,12 @@ final class AssignLocations extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             *
+             * 
              * Solution: use the first opId of the branch target block instead.
              */
             final LIRInstruction instr = allocator.ir.getLIRforBlock(block).get(allocator.ir.getLIRforBlock(block).size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
-                if (allocator.blockData.get(block).liveOut.get(allocator.operandNumber(operand))) {
+                if (allocator.getBlockData(block).liveOut.get(allocator.operandNumber(operand))) {
                     tempOpId = allocator.getFirstLirInstructionId(block.getSuccessors().iterator().next());
                     mode = OperandMode.DEF;
                 }

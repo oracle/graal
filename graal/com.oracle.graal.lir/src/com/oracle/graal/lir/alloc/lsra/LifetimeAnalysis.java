@@ -103,7 +103,7 @@ class LifetimeAnalysis extends AllocationPhase {
         int opId = 0;
         int index = 0;
         for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
-            allocator.blockData.put(block, new LinearScan.BlockData());
+            allocator.initBlockData(block);
 
             List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(block);
 
@@ -214,7 +214,7 @@ class LifetimeAnalysis extends AllocationPhase {
                     }
                 } // end of instruction iteration
 
-                BlockData blockSets = allocator.blockData.get(block);
+                BlockData blockSets = allocator.getBlockData(block);
                 blockSets.liveGen = liveGen;
                 blockSets.liveKill = liveKill;
                 blockSets.liveIn = new BitSet(liveSize);
@@ -278,7 +278,7 @@ class LifetimeAnalysis extends AllocationPhase {
                     // iterate all blocks in reverse order
                     for (int i = numBlocks - 1; i >= 0; i--) {
                         AbstractBlockBase<?> block = allocator.blockAt(i);
-                        BlockData blockSets = allocator.blockData.get(block);
+                        BlockData blockSets = allocator.getBlockData(block);
 
                         changeOccurredInBlock = false;
 
@@ -289,7 +289,7 @@ class LifetimeAnalysis extends AllocationPhase {
                             // block has successors
                             if (n > 0) {
                                 for (AbstractBlockBase<?> successor : block.getSuccessors()) {
-                                    liveOut.or(allocator.blockData.get(successor).liveIn);
+                                    liveOut.or(allocator.getBlockData(successor).liveIn);
                                 }
                             }
 
@@ -340,12 +340,12 @@ class LifetimeAnalysis extends AllocationPhase {
 
             // check that the liveIn set of the first block is empty
             AbstractBlockBase<?> startBlock = allocator.ir.getControlFlowGraph().getStartBlock();
-            if (allocator.blockData.get(startBlock).liveIn.cardinality() != 0) {
+            if (allocator.getBlockData(startBlock).liveIn.cardinality() != 0) {
                 if (DetailedAsserts.getValue()) {
                     reportFailure(numBlocks);
                 }
                 // bailout if this occurs in product mode.
-                throw new GraalInternalError("liveIn set of first block must be empty: " + allocator.blockData.get(startBlock).liveIn);
+                throw new GraalInternalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
             }
         }
     }
@@ -354,7 +354,7 @@ class LifetimeAnalysis extends AllocationPhase {
         try (Scope s = Debug.forceLog()) {
             try (Indent indent = Debug.logAndIndent("report failure")) {
 
-                BitSet startBlockLiveIn = allocator.blockData.get(allocator.ir.getControlFlowGraph().getStartBlock()).liveIn;
+                BitSet startBlockLiveIn = allocator.getBlockData(allocator.ir.getControlFlowGraph().getStartBlock()).liveIn;
                 try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
                     for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
                         Interval interval = allocator.intervalFor(operandNum);
@@ -381,7 +381,7 @@ class LifetimeAnalysis extends AllocationPhase {
                         Deque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
                         HashSet<AbstractBlockBase<?>> usedIn = new HashSet<>();
                         for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
-                            if (allocator.blockData.get(block).liveGen.get(operandNum)) {
+                            if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);
                                 try (Indent indent3 = Debug.logAndIndent("used in block B%d", block.getId())) {
                                     for (LIRInstruction ins : allocator.ir.getLIRforBlock(block)) {
@@ -394,7 +394,7 @@ class LifetimeAnalysis extends AllocationPhase {
                                     }
                                 }
                             }
-                            if (allocator.blockData.get(block).liveKill.get(operandNum)) {
+                            if (allocator.getBlockData(block).liveKill.get(operandNum)) {
                                 definedIn.add(block);
                                 try (Indent indent3 = Debug.logAndIndent("defined in block B%d", block.getId())) {
                                     for (LIRInstruction ins : allocator.ir.getLIRforBlock(block)) {
@@ -441,9 +441,9 @@ class LifetimeAnalysis extends AllocationPhase {
          */
         for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
             for (int j = 0; j <= allocator.maxRegisterNumber(); j++) {
-                assert !allocator.blockData.get(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
-                assert !allocator.blockData.get(block).liveOut.get(j) : "liveOut set of fixed register must be empty";
-                assert !allocator.blockData.get(block).liveGen.get(j) : "liveGen set of fixed register must be empty";
+                assert !allocator.getBlockData(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
+                assert !allocator.getBlockData(block).liveOut.get(j) : "liveOut set of fixed register must be empty";
+                assert !allocator.getBlockData(block).liveGen.get(j) : "liveGen set of fixed register must be empty";
             }
         }
     }
@@ -643,7 +643,7 @@ class LifetimeAnalysis extends AllocationPhase {
                     assert blockTo == instructions.get(instructions.size() - 1).id();
 
                     // Update intervals for operands live at the end of this block;
-                    BitSet live = allocator.blockData.get(block).liveOut;
+                    BitSet live = allocator.getBlockData(block).liveOut;
                     for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                         assert live.get(operandNum) : "should not stop here otherwise";
                         AllocatableValue operand = allocator.intervalFor(operandNum).operand;
