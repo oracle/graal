@@ -24,7 +24,6 @@ package com.oracle.graal.replacements.nodes;
 
 import static com.oracle.graal.api.code.BytecodeFrame.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
@@ -114,13 +113,6 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         StructuredGraph methodSubstitution = tool.getReplacements().getSubstitution(getTargetMethod(), true, bci);
         if (methodSubstitution != null) {
             methodSubstitution = methodSubstitution.copy();
-            if (stateAfter() == null || stateAfter().bci == BytecodeFrame.AFTER_BCI) {
-                /*
-                 * handles the case of a MacroNode inside a snippet used for another MacroNode
-                 * lowering
-                 */
-                new CollapseFrameForSingleSideEffectPhase().apply(methodSubstitution);
-            }
             return lowerReplacement(methodSubstitution, tool);
         }
         return null;

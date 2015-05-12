@@ -35,7 +35,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.nodes.*;
 
@@ -56,7 +55,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return installer.makeGraph(m, null, null, FrameStateProcessing.CollapseFrameForSingleSideEffect);
+        return installer.makeGraph(m, null, null);
     }
 
     @Test

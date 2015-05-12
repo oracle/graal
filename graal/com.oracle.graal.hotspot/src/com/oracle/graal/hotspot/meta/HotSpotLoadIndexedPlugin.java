@@ -40,7 +40,7 @@ public final class HotSpotLoadIndexedPlugin implements LoadIndexedPlugin {
     }
 
     public boolean apply(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind) {
-        if (b.parsingReplacement()) {
+        if (b.parsingIntrinsic()) {
             ResolvedJavaType arrayType = StampTool.typeOrNull(array);
             /*
              * There are cases where the array does not have a known type yet, i.e., the type is

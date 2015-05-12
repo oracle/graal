@@ -97,6 +97,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public boolean isInlinedMethod() {
             return caller != null;
         }
+
+        public BytecodePosition getBytecodePosition() {
+            if (bytecodePosition == null) {
+                ensureOuterStateDecoded(this);
+                ensureExceptionStateDecoded(this);
+                bytecodePosition = InliningUtil.processBytecodePosition(invokeData.invoke, null);
+            }
+            return bytecodePosition;
+        }
     }
 
     protected class PENonAppendGraphBuilderContext implements GraphBuilderContext {
@@ -139,7 +148,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public Replacement getReplacement() {
+        public IntrinsicContext getIntrinsic() {
             return null;
         }
 
@@ -169,7 +178,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public FrameState createStateAfter() {
+        public void setStateAfter(StateSplit stateSplit) {
             throw unimplemented();
         }
 
@@ -217,10 +226,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public FrameState createStateAfter() {
+        public void setStateAfter(StateSplit stateSplit) {
             Node stateAfter = decodeFloatingNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.stateAfterOrderId);
             getGraph().add(stateAfter);
-            return (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
+            FrameState fs = (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
+            stateSplit.setStateAfter(fs);
         }
 
         @Override
@@ -411,7 +421,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (inlineInfo == null) {
             return false;
         }
-        assert !inlineInfo.isIntrinsic && !inlineInfo.isReplacement : "not supported";
+        assert !inlineInfo.isIntrinsic : "not supported";
 
         ResolvedJavaMethod inlineMethod = inlineInfo.methodToInline;
         EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod);
@@ -519,6 +529,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method);
 
     @Override
+    protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+        PEMethodScope methodScope = (PEMethodScope) s;
+        if (node instanceof SimpleInfopointNode && methodScope.isInlinedMethod()) {
+            InliningUtil.processSimpleInfopoint(methodScope.invokeData.invoke, (SimpleInfopointNode) node, methodScope.getBytecodePosition());
+        }
+        super.handleFixedNode(s, loopScope, nodeOrderId, node);
+    }
+
+    @Override
     protected Node handleFloatingNodeBeforeAdd(MethodScope s, LoopScope loopScope, Node node) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
@@ -591,11 +610,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (methodScope.isInlinedMethod()) {
-            if (node instanceof SimpleInfopointNode) {
-                methodScope.bytecodePosition = InliningUtil.processSimpleInfopoint(methodScope.invokeData.invoke, (SimpleInfopointNode) node, methodScope.bytecodePosition);
-                return node;
-
-            } else if (node instanceof FrameState) {
+            if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
 
                 ensureOuterStateDecoded(methodScope);

@@ -109,4 +109,15 @@ public class BytecodePosition implements Serializable {
     public BytecodePosition getCaller() {
         return caller;
     }
+
+    /*
+     * Adds a caller to the current position returning the new position.
+     */
+    public BytecodePosition addCaller(BytecodePosition link) {
+        if (getCaller() == null) {
+            return new BytecodePosition(link, getMethod(), getBCI());
+        } else {
+            return new BytecodePosition(getCaller().addCaller(link), getMethod(), getBCI());
+        }
+    }
 }

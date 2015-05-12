@@ -239,7 +239,7 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 if (message.isConstant()) {
                     String messageString = message.asConstant().toValueString();
-                    b.add(new NeverPartOfCompilationNode(messageString, b.createStateAfter()));
+                    b.add(new NeverPartOfCompilationNode(messageString));
                     return true;
                 } else if (canDelayIntrinsification) {
                     return false;

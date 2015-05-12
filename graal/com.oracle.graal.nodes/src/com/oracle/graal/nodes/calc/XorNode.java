@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 
 @NodeInfo(shortName = "^")
-public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCommutative<ValueNode> {
+public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCommutative<ValueNode>, NarrowableArithmeticNode {
 
     public static final NodeClass<XorNode> TYPE = NodeClass.create(XorNode.class);
 

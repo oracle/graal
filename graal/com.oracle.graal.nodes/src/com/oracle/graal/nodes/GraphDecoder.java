@@ -409,7 +409,7 @@ public class GraphDecoder {
             methodScope.unwindNode = (UnwindNode) node;
 
         } else {
-            simplifyFixedNode(methodScope, loopScope, nodeOrderId, node);
+            handleFixedNode(methodScope, loopScope, nodeOrderId, node);
         }
 
         return resultScope;
@@ -527,7 +527,7 @@ public class GraphDecoder {
      * @param nodeOrderId The orderId of the node.
      * @param node The node to be simplified.
      */
-    protected void simplifyFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+    protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
     }
 
     protected void handleProxyNodes(MethodScope methodScope, LoopScope loopScope, LoopExitNode loopExit) {

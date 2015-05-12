@@ -41,7 +41,7 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
     static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
 
     public boolean apply(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
-        if (!ImmutableCode.getValue() || b.parsingReplacement()) {
+        if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {
             if (receiver.isConstant()) {
                 JavaConstant asJavaConstant = receiver.asJavaConstant();
                 return tryReadField(b, field, asJavaConstant);
@@ -64,10 +64,10 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
     }
 
     public boolean apply(GraphBuilderContext b, ResolvedJavaField staticField) {
-        if (!ImmutableCode.getValue() || b.parsingReplacement()) {
+        if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {
             // Javac does not allow use of "$assertionsDisabled" for a field name but
             // Eclipse does in which case a suffix is added to the generated field.
-            if (b.parsingReplacement() && staticField.isSynthetic() && staticField.getName().startsWith("$assertionsDisabled")) {
+            if (b.parsingIntrinsic() && staticField.isSynthetic() && staticField.getName().startsWith("$assertionsDisabled")) {
                 // For methods called indirectly from intrinsics, we (silently) disable
                 // assertions so that the parser won't see calls to the AssertionError
                 // constructor (all Invokes must be removed from intrinsics - see

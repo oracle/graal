@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -208,6 +209,23 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
             state.killReadCache();
         } else {
             state.killReadCache(identity, -1);
+        }
+    }
+
+    @Override
+    protected void processInitialLoopState(Loop<Block> loop, PEReadEliminationBlockState initialState) {
+        super.processInitialLoopState(loop, initialState);
+
+        for (PhiNode phi : ((LoopBeginNode) loop.getHeader().getBeginNode()).phis()) {
+            ValueNode firstValue = phi.valueAt(0);
+            if (firstValue != null) {
+                firstValue = GraphUtil.unproxify(firstValue);
+                for (Map.Entry<ReadCacheEntry, ValueNode> entry : new ArrayList<>(initialState.getReadCache().entrySet())) {
+                    if (entry.getKey().object == firstValue) {
+                        initialState.addReadCache(phi, entry.getKey().identity, entry.getKey().index, entry.getValue(), this);
+                    }
+                }
+            }
         }
     }
 

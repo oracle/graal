@@ -22,40 +22,49 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
 
-public final class LinearScanPhase extends AllocationPhase {
+final class LinearScanRegisterAllocationPhase extends AllocationPhase {
 
-    public static final DerivedOptionValue<Boolean> SSA_LSRA = new DerivedOptionValue<>(new OptionSupplier<Boolean>() {
+    private final LinearScan allocator;
 
-        private static final long serialVersionUID = 9115795480259228194L;
-
-        public Boolean get() {
-            return SSA_LIR.getValue() && !SSADestructionPhase.Options.LIREagerSSADestruction.getValue();
-        }
-    });
+    LinearScanRegisterAllocationPhase(LinearScan allocator) {
+        this.allocator = allocator;
+    }
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
-        final LinearScan allocator;
-        if (LinearScanPhase.SSA_LSRA.getValue()) {
-            allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig()));
-        } else {
-            allocator = new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig()));
+        allocator.printIntervals("Before register allocation");
+        allocateRegisters();
+        allocator.printIntervals("After register allocation");
+    }
+
+    void allocateRegisters() {
+        try (Indent indent = Debug.logAndIndent("allocate registers")) {
+            Interval precoloredIntervals;
+            Interval notPrecoloredIntervals;
+
+            Interval.Pair result = allocator.createUnhandledLists(LinearScan.IS_PRECOLORED_INTERVAL, LinearScan.IS_VARIABLE_INTERVAL);
+            precoloredIntervals = result.first;
+            notPrecoloredIntervals = result.second;
+
+            // allocate cpu registers
+            LinearScanWalker lsw;
+            if (OptimizingLinearScanWalker.Options.LSRAOptimization.getValue()) {
+                lsw = new OptimizingLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
+            } else {
+                lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
+            }
+            lsw.walk();
+            lsw.finishAllocation();
         }
-        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory);
     }
 
 }

@@ -825,6 +825,11 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = NamedLocationIdentity.immutable("ObjArrayKlass::_element_klass");
 
+    @Fold
+    public static int arrayClassElementOffset() {
+        return config().arrayClassElementOffset;
+    }
+
     public static final LocationIdentity PRIMARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("PrimarySupers");
 
     public static final LocationIdentity METASPACE_ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("MetaspaceArrayLength");

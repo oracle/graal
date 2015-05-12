@@ -30,7 +30,7 @@ import org.junit.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 
-public class TestCopyOfVirtualization extends GraalCompilerTest {
+public class CopyOfVirtualizationTest extends GraalCompilerTest {
 
     @Override
     protected boolean checkMidTierGraph(StructuredGraph graph) {

@@ -229,6 +229,10 @@ public class GraphBuilderConfiguration {
         return debugInfoMode.ordinal() >= DebugInfoMode.Full.ordinal();
     }
 
+    public boolean insertSimpleDebugInfo() {
+        return debugInfoMode == DebugInfoMode.Simple;
+    }
+
     public boolean doLivenessAnalysis() {
         return doLivenessAnalysis;
     }

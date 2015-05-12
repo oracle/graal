@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -52,9 +53,14 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
                         Assert.assertTrue(invoke.callTarget() instanceof DirectCallTargetNode);
                         LoweredCallTargetNode directCall = (LoweredCallTargetNode) invoke.callTarget();
                         JavaMethod callee = directCall.targetMethod();
-                        Assert.assertTrue(callee.getName().equals("<init>"));
-                        Assert.assertTrue(getMetaAccess().lookupJavaType(ArrayIndexOutOfBoundsException.class).equals(callee.getDeclaringClass()) ||
-                                        getMetaAccess().lookupJavaType(NullPointerException.class).equals(callee.getDeclaringClass()));
+                        if (callee.getDeclaringClass().equals(getMetaAccess().lookupJavaType(System.class)) && callee.getName().equals("arraycopy")) {
+                            // A partial snippet (e.g., ArrayCopySnippets.checkcastArraycopy) may
+                            // call the original arraycopy method
+                        } else {
+                            Assert.assertTrue(callee.toString(), callee.getName().equals("<init>"));
+                            Assert.assertTrue(getMetaAccess().lookupJavaType(ArrayIndexOutOfBoundsException.class).equals(callee.getDeclaringClass()) ||
+                                            getMetaAccess().lookupJavaType(NullPointerException.class).equals(callee.getDeclaringClass()));
+                        }
                     }
                 }
             } else {
@@ -145,25 +151,28 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Test
     public void testObject() {
-        mustIntrinsify = false; // a generic call to arraycopy will not be intrinsified
-
         Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
         testHelper("objectArraycopy", src);
+    }
 
-        mustIntrinsify = true;
+    /**
+     * Tests {@link ArrayCopySnippets#checkcastArraycopySnippet}.
+     */
+    @Test
+    public void testArrayStoreException() {
+        Object[] src = {"one", "two", "three", new ArrayList<>(), new HashMap<>()};
+        Object[] dst = new CharSequence[src.length];
+        // Will throw ArrayStoreException for 4th element
+        test("objectArraycopy", src, 0, dst, 0, src.length);
     }
 
     @Test
     public void testDisjointObject() {
-        mustIntrinsify = false; // a generic call to arraycopy will not be intrinsified
-
         Integer[] src1 = {1, 2, 3, 4};
         test("objectArraycopy", src1, 0, src1, 1, src1.length - 1);
 
         Integer[] src2 = {1, 2, 3, 4};
         test("objectArraycopy", src2, 1, src2, 0, src2.length - 1);
-
-        mustIntrinsify = true;
     }
 
     @Test

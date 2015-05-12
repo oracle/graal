@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
  * Square root.
  */
 @NodeInfo
-public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements ArithmeticLIRLowerable, NarrowableArithmeticNode {
+public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements ArithmeticLIRLowerable {
 
     public static final NodeClass<SqrtNode> TYPE = NodeClass.create(SqrtNode.class);
 

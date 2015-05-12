@@ -212,7 +212,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private static boolean verifyPHIKind(LIRKind derivedKind, LIRKind phiKind) {
         assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isDerivedReference();
         PlatformKind phiPlatformKind = phiKind.getPlatformKind();
-        assert derivedKind.getPlatformKind().equals(phiPlatformKind instanceof Kind ? ((Kind) phiPlatformKind).getStackKind() : phiPlatformKind);
+        assert derivedKind.equals(phiKind) || derivedKind.getPlatformKind().equals(phiPlatformKind instanceof Kind ? ((Kind) phiPlatformKind).getStackKind() : phiPlatformKind);
         return true;
     }
 

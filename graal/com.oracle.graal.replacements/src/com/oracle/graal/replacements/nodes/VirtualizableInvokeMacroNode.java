@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.asserts;
+package com.oracle.graal.replacements.nodes;
 
-import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.spi.*;
 
+/**
+ * A helper class to allow elimination of byte code instrumentation that could interfere with escape
+ * analysis.
+ */
 @NodeInfo
-public final class NeverPartOfCompilationNode extends AbstractStateSplit implements IterableNodeType {
+public class VirtualizableInvokeMacroNode extends MacroStateSplitNode implements Virtualizable {
 
-    public static final NodeClass<NeverPartOfCompilationNode> TYPE = NodeClass.create(NeverPartOfCompilationNode.class);
-    protected final String message;
+    public static final NodeClass<VirtualizableInvokeMacroNode> TYPE = NodeClass.create(VirtualizableInvokeMacroNode.class);
 
-    public NeverPartOfCompilationNode(String message) {
-        super(TYPE, StampFactory.forVoid());
-        this.message = message;
+    public VirtualizableInvokeMacroNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
+        super(TYPE, invokeKind, targetMethod, bci, returnType, arguments);
     }
 
-    public String getMessage() {
-        return message;
-    }
-
-    public static void verifyNotFoundIn(final StructuredGraph graph) {
-        for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
-            Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
-            throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        for (ValueNode arg : arguments) {
+            State state = tool.getObjectState(arg);
+            if (state != null && state.getState() == EscapeState.Virtual) {
+                tool.delete();
+            }
         }
     }
 }

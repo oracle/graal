@@ -84,6 +84,7 @@ public class StandardGraphBuilderPlugins {
         if (Options.UseBlackholeSubstitution.getValue()) {
             registerJMHBlackholePlugins(plugins);
         }
+        registerJFRThrowablePlugins(plugins);
     }
 
     private static final Field STRING_VALUE_FIELD;
@@ -459,7 +460,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-            if (b.parsingReplacement()) {
+            if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();
                 if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for boxing snippets so that the
@@ -486,7 +487,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-            if (b.parsingReplacement()) {
+            if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();
                 if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for unboxing snippets so that the
@@ -649,6 +650,20 @@ public class StandardGraphBuilderPlugins {
                 }
                 r.register2("consume", Receiver.class, Object[].class, blackholePlugin);
             }
+        }
+    }
+
+    private static void registerJFRThrowablePlugins(InvocationPlugins plugins) {
+        String name = "oracle.jrockit.jfr.jdkevents.ThrowableTracer";
+        Class<?> tracerClass = MethodSubstitutionPlugin.resolveClass(name, true);
+        if (tracerClass != null) {
+            Registration r = new Registration(plugins, tracerClass);
+            r.register2("traceThrowable", Throwable.class, String.class, new InvocationPlugin() {
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
+                    b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), throwable, message));
+                    return true;
+                }
+            });
         }
     }
 }
