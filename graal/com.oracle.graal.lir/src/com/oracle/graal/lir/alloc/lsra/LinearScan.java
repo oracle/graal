@@ -1020,6 +1020,9 @@ class LinearScan {
             AllocationContext context = new AllocationContext(spillMoveFactory);
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+
+            sortIntervalsBeforeAllocation();
+
             createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
             if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
@@ -1071,7 +1074,6 @@ class LinearScan {
         @Override
         protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                         SpillMoveFactory spillMoveFactory) {
-            sortIntervalsBeforeAllocation();
             printIntervals("Before register allocation");
             allocateRegisters();
             printIntervals("After register allocation");
