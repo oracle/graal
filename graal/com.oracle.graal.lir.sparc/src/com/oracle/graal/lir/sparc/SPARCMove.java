@@ -343,10 +343,16 @@ public class SPARCMove {
         public static final LIRInstructionClass<LoadOp> TYPE = LIRInstructionClass.create(LoadOp.class);
 
         @Def({REG}) protected AllocatableValue result;
+        protected boolean signExtend;
 
         public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state) {
+            this(kind, result, address, state, false);
+        }
+
+        public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state, boolean signExtend) {
             super(TYPE, kind, address, state);
             this.result = result;
+            this.signExtend = signExtend;
         }
 
         @Override
@@ -362,16 +368,28 @@ public class SPARCMove {
                 switch ((Kind) kind) {
                     case Boolean:
                     case Byte:
-                        masm.ldsb(addr, dst);
+                        if (signExtend) {
+                            masm.ldsb(addr, dst);
+                        } else {
+                            masm.ldub(addr, dst);
+                        }
                         break;
                     case Short:
-                        masm.ldsh(addr, dst);
+                        if (signExtend) {
+                            masm.ldsh(addr, dst);
+                        } else {
+                            masm.lduh(addr, dst);
+                        }
                         break;
                     case Char:
                         masm.lduh(addr, dst);
                         break;
                     case Int:
-                        masm.ldsw(addr, dst);
+                        if (signExtend) {
+                            masm.ldsw(addr, dst);
+                        } else {
+                            masm.lduw(addr, dst);
+                        }
                         break;
                     case Long:
                         masm.ldx(addr, dst);

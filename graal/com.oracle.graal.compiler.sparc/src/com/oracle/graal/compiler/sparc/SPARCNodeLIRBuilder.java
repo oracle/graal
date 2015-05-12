@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.gen.*;
@@ -105,8 +106,9 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
         Kind localFromKind = fromKind;
         Kind localToKind = toKind;
         return builder -> {
+            TTY.println("FromKind: " + localFromKind + " " + localToKind);
             Value address = access.accessLocation().generateAddress(builder, gen, operand(access.object()));
-            Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), address, getState(access));
+            Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), address, getState(access));
             return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
         };
     }
@@ -115,5 +117,10 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
     @MatchRule("(SignExtend FloatingRead=access)")
     public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
         return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
+    }
+
+    @Override
+    public SPARCLIRGenerator getLIRGeneratorTool() {
+        return (SPARCLIRGenerator) super.getLIRGeneratorTool();
     }
 }
