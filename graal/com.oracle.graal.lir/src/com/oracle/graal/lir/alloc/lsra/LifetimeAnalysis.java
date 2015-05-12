@@ -67,6 +67,15 @@ class LifetimeAnalysis extends AllocationPhase {
     }
 
     /**
+     * Bit set for each variable that is contained in each loop.
+     */
+    BitMap2D intervalInLoop;
+
+    boolean isIntervalInLoop(int interval, int loop) {
+        return intervalInLoop.at(interval, loop);
+    }
+
+    /**
      * Numbers all instructions in all blocks. The numbering follows the
      * {@linkplain ComputeBlockOrder linear scan order}.
      */
@@ -125,7 +134,7 @@ class LifetimeAnalysis extends AllocationPhase {
     void computeLocalLiveSets() {
         int liveSize = allocator.liveSetSize();
 
-        allocator.intervalInLoop = new BitMap2D(allocator.operandSize(), allocator.numLoops());
+        intervalInLoop = new BitMap2D(allocator.operandSize(), allocator.numLoops());
 
         // iterate all blocks
         for (final AbstractBlockBase<?> block : allocator.sortedBlocks) {
@@ -147,7 +156,7 @@ class LifetimeAnalysis extends AllocationPhase {
                             }
                         }
                         if (block.getLoop() != null) {
-                            allocator.intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
+                            intervalInLoop.setBit(operandNum, block.getLoop().getIndex());
                         }
                     }
 
@@ -174,7 +183,7 @@ class LifetimeAnalysis extends AllocationPhase {
                             Debug.log("liveKill for operand %d(%s)", varNum, operand);
                         }
                         if (block.getLoop() != null) {
-                            allocator.intervalInLoop.setBit(varNum, block.getLoop().getIndex());
+                            intervalInLoop.setBit(varNum, block.getLoop().getIndex());
                         }
                     }
 
@@ -649,7 +658,7 @@ class LifetimeAnalysis extends AllocationPhase {
                          * anywhere inside this loop. It's possible that the block was part of a
                          * non-natural loop, so it might have an invalid loop index.
                          */
-                        if (block.isLoopEnd() && block.getLoop() != null && allocator.isIntervalInLoop(operandNum, block.getLoop().getIndex())) {
+                        if (block.isLoopEnd() && block.getLoop() != null && isIntervalInLoop(operandNum, block.getLoop().getIndex())) {
                             allocator.intervalFor(operandNum).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
                         }
                     }

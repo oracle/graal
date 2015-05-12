@@ -35,7 +35,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -153,11 +152,6 @@ class LinearScan {
      * with {@link #blockForId(int)} as the id is not simply an index into this array.
      */
     AbstractBlockBase<?>[] opIdToBlockMap;
-
-    /**
-     * Bit set for each variable that is contained in each loop.
-     */
-    BitMap2D intervalInLoop;
 
     /**
      * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
@@ -341,10 +335,6 @@ class LinearScan {
 
     int numLoops() {
         return ir.getControlFlowGraph().getLoops().size();
-    }
-
-    boolean isIntervalInLoop(int interval, int loop) {
-        return intervalInLoop.at(interval, loop);
     }
 
     Interval intervalFor(int operandNumber) {
