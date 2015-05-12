@@ -29,6 +29,7 @@ import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
+import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
 import static java.lang.String.*;
@@ -85,19 +86,19 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         return graphBuilderConfig;
     }
 
-    static class ReplacementScope implements AutoCloseable {
+    static class IntrinsicScope implements AutoCloseable {
         FrameState stateBefore;
         final Mark mark;
         final BytecodeParser parser;
 
-        static ReplacementScope create(boolean enteringReplacement, BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
-            if (enteringReplacement) {
-                return new ReplacementScope(parser, currentFrameState, args);
+        static IntrinsicScope create(boolean enteringIntrinsic, BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
+            if (enteringIntrinsic) {
+                return new IntrinsicScope(parser, currentFrameState, args);
             }
             return null;
         }
 
-        public ReplacementScope(BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
+        public IntrinsicScope(BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
             this.parser = parser;
             if (args == null) {
                 assert parser.parent == null;
@@ -117,7 +118,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         public void close() {
-            IntrinsicContext intrinsic = (IntrinsicContext) parser.replacementContext;
+            IntrinsicContext intrinsic = parser.intrinsicContext;
             if (intrinsic != null && intrinsic.isPostParseInlined()) {
                 return;
             }
@@ -173,7 +174,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         private final MetaAccessProvider metaAccess;
 
-        private final ReplacementContext initialReplacementContext;
+        private final IntrinsicContext initialIntrinsicContext;
 
         private final GraphBuilderConfiguration graphBuilderConfig;
         private final OptimisticOptimizations optimisticOpts;
@@ -181,13 +182,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private final ConstantReflectionProvider constantReflection;
 
         public Instance(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
-                        OptimisticOptimizations optimisticOpts, ReplacementContext initialReplacementContext) {
+                        OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
             this.graphBuilderConfig = graphBuilderConfig;
             this.optimisticOpts = optimisticOpts;
             this.metaAccess = metaAccess;
             this.stampProvider = stampProvider;
             this.constantReflection = constantReflection;
-            this.initialReplacementContext = initialReplacementContext;
+            this.initialIntrinsicContext = initialIntrinsicContext;
 
             assert metaAccess != null;
         }
@@ -200,13 +201,13 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             this.graph = graph;
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             try {
-                ReplacementContext replacementContext = initialReplacementContext;
-                BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, replacementContext);
+                IntrinsicContext intrinsicContext = initialIntrinsicContext;
+                BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, intrinsicContext);
                 HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(parser, method, graph);
 
-                frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || replacementContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
+                frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
 
-                try (ReplacementScope rs = ReplacementScope.create(replacementContext != null, parser, frameState, null)) {
+                try (IntrinsicScope s = IntrinsicScope.create(intrinsicContext != null, parser, frameState, null)) {
                     parser.build(graph.start(), frameState);
                 }
                 GraphUtil.normalizeLoops(graph);
@@ -337,8 +338,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private HIRFrameStateBuilder[][] entryStateMatrix;
 
             public BytecodeParser(BytecodeParser parent, MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig,
-                            OptimisticOptimizations optimisticOpts, int entryBCI, ReplacementContext replacementContext) {
-                super(metaAccess, method, graphBuilderConfig, optimisticOpts, replacementContext);
+                            OptimisticOptimizations optimisticOpts, int entryBCI, IntrinsicContext intrinsicContext) {
+                super(metaAccess, method, graphBuilderConfig, optimisticOpts, intrinsicContext);
                 this.entryBCI = entryBCI;
                 this.parent = parent;
 
@@ -411,10 +412,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (startInstruction == graph.start()) {
                         StartNode startNode = graph.start();
                         if (method.isSynchronized()) {
-                            assert !parsingReplacement();
+                            assert !parsingIntrinsic();
                             startNode.setStateAfter(createFrameState(BytecodeFrame.BEFORE_BCI, startNode));
                         } else {
-                            if (!parsingReplacement()) {
+                            if (!parsingIntrinsic()) {
                                 if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
                                     /*
                                      * Don't clear the receiver when Object.<init> is the
@@ -474,20 +475,20 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             /**
-             * Creates the frame state after the start node of a graph for a
-             * {@link ReplacementContext replacement} that is the parse root (either for root
-             * compiling or for post-parse inlining).
+             * Creates the frame state after the start node of a graph for an
+             * {@link IntrinsicContext intrinsic} that is the parse root (either for root compiling
+             * or for post-parse inlining).
              */
             private FrameState createStateAfterStartOfReplacementGraph() {
                 assert parent == null;
-                assert frameState.method.equals(replacementContext.replacement);
+                assert frameState.method.equals(intrinsicContext.intrinsic);
                 assert bci() == 0;
                 assert frameState.stackSize == 0;
                 FrameState stateAfterStart;
-                if (replacementContext.isIntrinsic() && replacementContext.asIntrinsic().isPostParseInlined()) {
+                if (intrinsicContext.isPostParseInlined()) {
                     stateAfterStart = graph.add(new FrameState(BytecodeFrame.BEFORE_BCI));
                 } else {
-                    ResolvedJavaMethod original = replacementContext.method;
+                    ResolvedJavaMethod original = intrinsicContext.method;
                     ValueNode[] locals;
                     if (original.getMaxLocals() == frameState.localsSize() || original.isNative()) {
                         locals = frameState.locals;
@@ -541,7 +542,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                                 }
                                 LoopBeginNode loopBegin = (LoopBeginNode) ((EndNode) merge.next()).merge();
                                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                                if (parsingReplacement()) {
+                                if (parsingIntrinsic()) {
                                     loopEnd.disableSafepoint();
                                 }
                                 endNode.replaceAndDelete(loopEnd);
@@ -1241,7 +1242,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 JavaType returnType = targetMethod.getSignature().getReturnType(method.getDeclaringClass());
-                if (graphBuilderConfig.eagerResolving() || parsingReplacement()) {
+                if (graphBuilderConfig.eagerResolving() || parsingIntrinsic()) {
                     returnType = returnType.resolve(targetMethod.getDeclaringClass());
                 }
                 if (invokeKind.hasReceiver()) {
@@ -1368,9 +1369,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
                 if (plugin != null) {
 
-                    ReplacementContext context = this.replacementContext;
-                    if (context != null && context.isCallToOriginal(targetMethod)) {
-                        // Self recursive replacement means the original
+                    if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
+                        // Self recursive intrinsic means the original
                         // method should be called.
                         assert !targetMethod.hasBytecodes() : "TODO: when does this happen?";
                         return false;
@@ -1393,74 +1393,56 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
                 InlineInvokePlugin plugin = graphBuilderConfig.getPlugins().getInlineInvokePlugin();
-                boolean canBeInlined = parsingReplacement() || targetMethod.canBeInlined();
+                boolean canBeInlined = parsingIntrinsic() || targetMethod.canBeInlined();
                 if (plugin == null || !canBeInlined) {
                     return false;
                 }
                 InlineInfo inlineInfo = plugin.getInlineInfo(this, targetMethod, args, returnType);
                 if (inlineInfo != null) {
-                    return inline(plugin, targetMethod, inlineInfo.methodToInline, inlineInfo.isReplacement, inlineInfo.isIntrinsic, args);
+                    return inline(plugin, targetMethod, inlineInfo.methodToInline, inlineInfo.isIntrinsic, args);
                 }
                 return false;
             }
 
             public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
-                boolean res = inline(null, targetMethod, substitute, true, true, args);
+                boolean res = inline(null, targetMethod, substitute, true, args);
                 assert res : "failed to inline " + substitute;
             }
 
-            private boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isReplacement, boolean isIntrinsic, ValueNode[] args) {
-                int bci = bci();
+            private boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isIntrinsic, ValueNode[] args) {
                 if (TraceInlineDuringParsing.getValue() || TraceParserPlugins.getValue()) {
                     if (targetMethod.equals(inlinedMethod)) {
                         traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
                     } else {
-                        traceWithContext("inlining call to %s as replacement for %s", inlinedMethod.format("%h.%n(%p)"), targetMethod.format("%h.%n(%p)"));
+                        traceWithContext("inlining call to %s as intrinsic for %s", inlinedMethod.format("%h.%n(%p)"), targetMethod.format("%h.%n(%p)"));
                     }
                 }
-                ReplacementContext context = this.replacementContext;
-                if (context != null && context.isCallToOriginal(targetMethod)) {
-                    IntrinsicContext intrinsic = context.asIntrinsic();
-                    if (intrinsic != null) {
-                        if (intrinsic.isCompilationRoot()) {
-                            // A root compiled intrinsic needs to deoptimize
-                            // if the slow path is taken. During frame state
-                            // assignment, the deopt node will get its stateBefore
-                            // from the start node of the intrinsic
-                            append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
-                            return true;
-                        } else {
-                            // Otherwise inline the original method. Any frame state created
-                            // during the inlining will exclude frame(s) in the
-                            // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
-                            if (context.method.isNative()) {
-                                return false;
-                            }
-                            parseAndInlineCallee(context.method, args, null);
-                            return true;
-                        }
+                IntrinsicContext intrinsic = this.intrinsicContext;
+                if (intrinsic != null && intrinsic.isCallToOriginal(targetMethod)) {
+                    if (intrinsic.isCompilationRoot()) {
+                        // A root compiled intrinsic needs to deoptimize
+                        // if the slow path is taken. During frame state
+                        // assignment, the deopt node will get its stateBefore
+                        // from the start node of the intrinsic
+                        append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
+                        return true;
                     } else {
-                        // Self recursive replacement means the original
-                        // method should be called.
-                        if (context.method.hasBytecodes()) {
-                            parseAndInlineCallee(context.method, args, null);
-                            return true;
-                        } else {
+                        // Otherwise inline the original method. Any frame state created
+                        // during the inlining will exclude frame(s) in the
+                        // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
+                        if (intrinsic.method.isNative()) {
                             return false;
                         }
+                        parseAndInlineCallee(intrinsic.method, args, null);
+                        return true;
                     }
                 } else {
-                    if (context == null && isReplacement) {
+                    if (intrinsic == null && isIntrinsic) {
                         assert !inlinedMethod.equals(targetMethod);
-                        if (isIntrinsic) {
-                            context = new IntrinsicContext(targetMethod, inlinedMethod, bci);
-                        } else {
-                            assert false;
-                            context = new ReplacementContext(targetMethod, inlinedMethod);
-                        }
+                        intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, INLINE_DURING_PARSING);
                     }
                     if (inlinedMethod.hasBytecodes()) {
-                        parseAndInlineCallee(inlinedMethod, args, context);
+                        parseAndInlineCallee(inlinedMethod, args, intrinsic);
                         if (plugin != null) {
                             plugin.postInline(inlinedMethod);
                         }
@@ -1504,10 +1486,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return res;
             }
 
-            private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, ReplacementContext calleeReplacementContext) {
-                try (ReplacementScope rs = ReplacementScope.create(calleeReplacementContext != null && !parsingReplacement(), this, frameState, args)) {
+            private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
+                try (IntrinsicScope s = IntrinsicScope.create(calleeIntrinsicContext != null && !parsingIntrinsic(), this, frameState, args)) {
 
-                    BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeReplacementContext);
+                    BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
                     HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, graph);
                     if (!targetMethod.isStatic()) {
                         args[0] = nullCheckedValue(args[0]);
@@ -1560,7 +1542,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             @Override
             protected void genReturn(ValueNode returnVal, Kind returnKind) {
-                if (parsingReplacement() && returnVal != null) {
+                if (parsingIntrinsic() && returnVal != null) {
                     if (returnVal instanceof StateSplit) {
                         StateSplit stateSplit = (StateSplit) returnVal;
                         FrameState stateAfter = stateSplit.stateAfter();
@@ -1947,7 +1929,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                      */
                     LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block, operatingDimension);
                     LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                    if (parsingReplacement()) {
+                    if (parsingIntrinsic()) {
                         loopEnd.disableSafepoint();
                     }
                     Target target = checkLoopExit(loopEnd, block, state);
@@ -2444,7 +2426,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
                     ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
                     append(ifNode);
-                    if (parsingReplacement()) {
+                    if (parsingIntrinsic()) {
                         if (x instanceof BranchProbabilityNode) {
                             ((BranchProbabilityNode) x).simplify(null);
                         } else if (y instanceof BranchProbabilityNode) {
@@ -2574,8 +2556,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return parent;
             }
 
-            public Replacement getReplacement() {
-                return replacementContext;
+            public Intrinsic getIntrinsic() {
+                return intrinsicContext;
             }
 
             @Override
@@ -2587,7 +2569,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     if (bp != this) {
                         fmt.format("%n%s", indent);
                     }
-                    fmt.format("%s [bci: %d, replacement: %s]", bp.method.asStackTraceElement(bp.bci()), bp.bci(), bp.parsingReplacement());
+                    fmt.format("%s [bci: %d, intrinsic: %s]", bp.method.asStackTraceElement(bp.bci()), bp.bci(), bp.parsingIntrinsic());
                     fmt.format("%n%s", new BytecodeDisassembler().disassemble(bp.method, bp.bci(), bp.bci() + 10));
                     bp = bp.parent;
                     indent += " ";

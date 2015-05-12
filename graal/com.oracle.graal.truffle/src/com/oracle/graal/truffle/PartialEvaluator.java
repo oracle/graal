@@ -190,7 +190,7 @@ public class PartialEvaluator {
             if (replacements.hasSubstitution(original, builder.bci())) {
                 return null;
             }
-            assert !builder.parsingReplacement();
+            assert !builder.parsingIntrinsic();
 
             if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
                 if (original.equals(callSiteProxyMethod)) {
@@ -210,12 +210,12 @@ public class PartialEvaluator {
                     if (decision != null && decision.isInline()) {
                         inlining.push(decision);
                         builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
-                        return new InlineInfo(callInlinedMethod, false, false);
+                        return new InlineInfo(callInlinedMethod, false);
                     }
                 }
             }
 
-            return new InlineInfo(original, false, false);
+            return new InlineInfo(original, false);
         }
 
         @Override
@@ -277,10 +277,10 @@ public class PartialEvaluator {
                  * We want to inline invokes that have a constant MethodHandle parameter to remove
                  * invokedynamic related calls as early as possible.
                  */
-                return new InlineInfo(original, false, false);
+                return new InlineInfo(original, false);
             }
             if (inlineDuringParsing && original.hasBytecodes() && original.getCode().length < TrivialInliningSize.getValue() && builder.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
-                return new InlineInfo(original, false, false);
+                return new InlineInfo(original, false);
             }
             return null;
         }

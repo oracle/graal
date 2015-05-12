@@ -23,49 +23,76 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.api.code.BytecodeFrame.*;
+import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Intrinsic;
 import com.oracle.graal.nodes.*;
 
-/**
- * Context for a replacement being inlined as a compiler intrinsic.
- */
-public class IntrinsicContext extends ReplacementContext {
+public class IntrinsicContext implements Intrinsic {
 
     /**
-     * BCI denoting an intrinsic is being parsed for inlining after the graph of the caller has been
-     * built.
+     * The method being replaced.
      */
-    public static final int POST_PARSE_INLINE_BCI = -1;
+    final ResolvedJavaMethod method;
 
     /**
-     * BCI denoting an intrinsic is the compilation root.
+     * The intrinsic implementation method.
      */
-    public static final int ROOT_COMPILATION_BCI = -2;
+    final ResolvedJavaMethod intrinsic;
+
+    public ResolvedJavaMethod getOriginalMethod() {
+        return method;
+    }
+
+    public ResolvedJavaMethod getIntrinsicMethod() {
+        return intrinsic;
+    }
 
     /**
-     * The BCI of the intrinsified invocation, {@link #POST_PARSE_INLINE_BCI} or
-     * {@link #ROOT_COMPILATION_BCI}.
+     * Determines if a call within the compilation scope of a replacement represents a call to the
+     * original method.
      */
-    final int bci;
+    public boolean isCallToOriginal(ResolvedJavaMethod targetMethod) {
+        return method.equals(targetMethod) || intrinsic.equals(targetMethod);
+    }
 
-    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod substitute, int bci) {
-        super(method, substitute);
-        this.bci = bci;
+    final CompilationContext compilationContext;
+
+    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, CompilationContext compilationContext) {
+        this.method = method;
+        this.intrinsic = intrinsic;
+        this.compilationContext = compilationContext;
         assert !isCompilationRoot() || method.hasBytecodes() : "Cannot root compile intrinsic for native or abstract method " + method.format("%H.%n(%p)");
     }
 
-    @Override
-    public boolean isIntrinsic() {
-        return true;
-    }
-
     public boolean isPostParseInlined() {
-        return bci == POST_PARSE_INLINE_BCI;
+        return compilationContext.equals(INLINE_AFTER_PARSING);
     }
 
     public boolean isCompilationRoot() {
-        return bci == ROOT_COMPILATION_BCI;
+        return compilationContext.equals(ROOT_COMPILATION);
+    }
+
+    /**
+     * Denotes the compilation context in which an intrinsic is being parsed.
+     */
+    public enum CompilationContext {
+        /**
+         * An intrinsic is being processed when parsing an invoke bytecode that calls the
+         * intrinsified method.
+         */
+        INLINE_DURING_PARSING,
+
+        /**
+         * An intrinsic is being processed when inlining an {@link Invoke} in an existing graph.
+         */
+        INLINE_AFTER_PARSING,
+
+        /**
+         * An intrinsic is the root of compilation.
+         */
+        ROOT_COMPILATION
     }
 
     public FrameState createFrameState(StructuredGraph graph, HIRFrameStateBuilder frameState, StateSplit forStateSplit) {
@@ -99,12 +126,7 @@ public class IntrinsicContext extends ReplacementContext {
     }
 
     @Override
-    IntrinsicContext asIntrinsic() {
-        return this;
-    }
-
-    @Override
     public String toString() {
-        return "Intrinsic{original: " + method.format("%H.%n(%p)") + ", replacement: " + replacement.format("%H.%n(%p)") + ", bci: " + bci + "}";
+        return "Intrinsic{original: " + method.format("%H.%n(%p)") + ", intrinsic: " + intrinsic.format("%H.%n(%p)") + ", context: " + compilationContext + "}";
     }
 }

@@ -41,33 +41,30 @@ import com.oracle.graal.nodes.type.*;
 public interface GraphBuilderContext {
 
     /**
-     * Information about a snippet or method substitution currently being processed by the graph
-     * builder. When in the scope of a replacement, the graph builder does not check the value kinds
-     * flowing through the JVM state since replacements can employ non-Java kinds to represent
-     * values such as raw machine words and pointers.
+     * An intrinsic is a substitute implementation of a Java method (or a bytecode in the case of
+     * snippets) that is itself implemented in Java. This interface provides information about the
+     * intrinsic currently being processed by the graph builder.
+     *
+     * When in the scope of an intrinsic, the graph builder does not check the value kinds flowing
+     * through the JVM state since intrinsics can employ non-Java kinds to represent values such as
+     * raw machine words and pointers.
      */
-    public interface Replacement {
+    public interface Intrinsic {
 
         /**
-         * Gets the method being replaced.
+         * Gets the method being intrinsified.
          */
         ResolvedJavaMethod getOriginalMethod();
 
         /**
-         * Gets the replacement method.
+         * Gets the method providing the intrinsic implementation.
          */
-        ResolvedJavaMethod getReplacementMethod();
+        ResolvedJavaMethod getIntrinsicMethod();
 
         /**
-         * Determines if this replacement is being inlined as a compiler intrinsic. A compiler
-         * intrinsic is atomic with respect to deoptimization. Deoptimization within a compiler
-         * intrinsic will restart the interpreter at the intrinsified call.
-         */
-        boolean isIntrinsic();
-
-        /**
-         * Determines if a call within the compilation scope of this replacement represents a call
-         * to the {@linkplain #getOriginalMethod() original} method.
+         * Determines if a call within the compilation scope of this intrinsic represents a call to
+         * the {@linkplain #getOriginalMethod() original} method. This denotes the path where a
+         * partial intrinsification falls back to the original method.
          */
         boolean isCallToOriginal(ResolvedJavaMethod method);
     }
@@ -208,11 +205,11 @@ public interface GraphBuilderContext {
 
     /**
      * Gets the first ancestor parsing context that is not parsing a
-     * {@linkplain #parsingReplacement() replacement}.
+     * {@linkplain #parsingIntrinsic() intrinsic}.
      */
     default GraphBuilderContext getNonReplacementAncestor() {
         GraphBuilderContext ancestor = getParent();
-        while (ancestor != null && ancestor.parsingReplacement()) {
+        while (ancestor != null && ancestor.parsingIntrinsic()) {
             ancestor = ancestor.getParent();
         }
         return ancestor;
@@ -250,15 +247,15 @@ public interface GraphBuilderContext {
     /**
      * Determines if the current parsing context is a snippet or method substitution.
      */
-    default boolean parsingReplacement() {
-        return getReplacement() != null;
+    default boolean parsingIntrinsic() {
+        return getIntrinsic() != null;
     }
 
     /**
-     * Gets the replacement of the current parsing context or {@code null} if not
-     * {@link #parsingReplacement() parsing a replacement}.
+     * Gets the intrinsic of the current parsing context or {@code null} if not
+     * {@link #parsingIntrinsic() parsing an intrinsic}.
      */
-    Replacement getReplacement();
+    Intrinsic getIntrinsic();
 
     BailoutException bailout(String string);
 

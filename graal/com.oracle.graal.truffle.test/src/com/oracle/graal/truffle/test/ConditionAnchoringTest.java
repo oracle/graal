@@ -147,7 +147,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final class InlineEverythingPlugin implements InlineInvokePlugin {
         public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
             assert method.hasBytecodes();
-            return new InlineInfo(method, false, false);
+            return new InlineInfo(method, false);
         }
     }
 

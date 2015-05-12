@@ -25,7 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
-import static com.oracle.graal.java.IntrinsicContext.*;
+import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static java.lang.String.*;
 
@@ -46,7 +46,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Replacement;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Intrinsic;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
@@ -94,13 +94,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
         ResolvedJavaMethod subst = getSubstitutionMethod(method);
         if (subst != null) {
-            if (b.parsingReplacement() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
+            if (b.parsingIntrinsic() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
                 // Forced inlining of intrinsics
-                return new InlineInfo(subst, true, true);
+                return new InlineInfo(subst, true);
             }
             return null;
         }
-        if (b.parsingReplacement()) {
+        if (b.parsingIntrinsic()) {
             assert !hasGenericInvocationPluginAnnotation(method) : format("%s should have been handled by %s", method.format("%H.%n(%p)"), DefaultGenericInvocationPlugin.class.getName());
 
             assert b.getDepth() < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
@@ -111,7 +111,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             }
 
             // Force inlining when parsing replacements
-            return new InlineInfo(method, true, true);
+            return new InlineInfo(method, true);
         } else {
             assert method.getAnnotation(NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s", NodeIntrinsic.class.getSimpleName(),
                             method.format("%h.%n"), b);
@@ -120,10 +120,10 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
-        if (b.parsingReplacement()) {
-            Replacement replacement = b.getReplacement();
-            assert replacement.isCallToOriginal(method) : format("All non-recursive calls in the replacement %s must be inlined or intrinsified: found call to %s",
-                            replacement.getReplacementMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
+        if (b.parsingIntrinsic()) {
+            Intrinsic intrinsic = b.getIntrinsic();
+            assert intrinsic.isCallToOriginal(method) : format("All non-recursive calls in the intrinsic %s must be inlined or intrinsified: found call to %s",
+                            intrinsic.getIntrinsicMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
         }
     }
 
@@ -595,17 +595,16 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
         protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
                         OptimisticOptimizations optimisticOpts) {
-            ReplacementContext initialReplacementContext = null;
+            IntrinsicContext initialIntrinsicContext = null;
             if (method.getAnnotation(Snippet.class) == null) {
                 // Post-parse inlined intrinsic
-                initialReplacementContext = new IntrinsicContext(substitutedMethod, method, POST_PARSE_INLINE_BCI);
+                initialIntrinsicContext = new IntrinsicContext(substitutedMethod, method, INLINE_AFTER_PARSING);
             } else {
                 // Snippet
                 ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
-                // initialReplacementContext = new ReplacementContext(original, method);
-                initialReplacementContext = new IntrinsicContext(original, method, POST_PARSE_INLINE_BCI);
+                initialIntrinsicContext = new IntrinsicContext(original, method, INLINE_AFTER_PARSING);
             }
-            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, graphBuilderConfig, optimisticOpts, initialReplacementContext);
+            return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         }
     }
 

@@ -176,8 +176,8 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     public T loadLocal(int i) {
         T x = locals[i];
         assert x != null : i;
-        assert parser.parsingReplacement() || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
-        assert parser.parsingReplacement() || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
+        assert parser.parsingIntrinsic() || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
+        assert parser.parsingIntrinsic() || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
         return x;
     }
 
@@ -193,14 +193,14 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction which produces the value for the local
      */
     public void storeLocal(int i, T x, Kind kind) {
-        assert x == null || parser.parsingReplacement() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
+        assert x == null || parser.parsingIntrinsic() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
         locals[i] = x;
         if (x != null) {
-            if (kind.needsTwoSlots() && !parser.parsingReplacement()) {
+            if (kind.needsTwoSlots() && !parser.parsingIntrinsic()) {
                 // if this is a double word, then kill i+1
                 locals[i + 1] = null;
             }
-            if (i > 0 && !parser.parsingReplacement()) {
+            if (i > 0 && !parser.parsingIntrinsic()) {
                 T p = locals[i - 1];
                 if (p != null && p.getKind().needsTwoSlots()) {
                     // if there was a double word at i - 1, then kill it
@@ -235,7 +235,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
      * @param x the instruction to push onto the stack
      */
     public void xpush(T x) {
-        assert parser.parsingReplacement() || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
+        assert parser.parsingIntrinsic() || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
         stack[stackSize++] = x;
     }
 
@@ -379,7 +379,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
                 newStackSize--;
                 assert stack[newStackSize].getKind().needsTwoSlots();
             } else {
-                assert parser.parsingReplacement() || (stack[newStackSize].getKind().getSlotCount() == 1);
+                assert parser.parsingIntrinsic() || (stack[newStackSize].getKind().getSlotCount() == 1);
             }
             result[i] = stack[newStackSize];
         }
@@ -415,7 +415,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertKind(Kind kind, T x) {
-        assert x != null && (parser.parsingReplacement() || x.getKind() == kind) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
+        assert x != null && (parser.parsingIntrinsic() || x.getKind() == kind) : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getKind());
         return x;
     }
 
@@ -435,7 +435,7 @@ public abstract class AbstractFrameStateBuilder<T extends KindProvider, S extend
     }
 
     private T assertObject(T x) {
-        assert x != null && (parser.parsingReplacement() || (x.getKind() == Kind.Object));
+        assert x != null && (parser.parsingIntrinsic() || (x.getKind() == Kind.Object));
         return x;
     }
 
