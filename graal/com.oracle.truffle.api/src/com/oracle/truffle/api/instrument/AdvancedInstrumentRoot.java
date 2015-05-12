@@ -29,14 +29,14 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * Root of a client-provided AST fragment that can be executed efficiently, subject to full Truffle
- * optimization, by a {@linkplain Instrument#create(ToolEvalNodeFactory, String) Tool Eval
+ * optimization, by an {@linkplain Instrument#create(AdvancedInstrumentRootFactory, String) Advanced
  * Instrument}.
  *
  * @see Instrument
- * @see ToolEvalNodeFactory
- * @see ToolEvalResultListener
+ * @see AdvancedInstrumentRootFactory
+ * @see AdvancedInstrumentResultListener
  */
-public abstract class ToolEvalNode extends Node implements InstrumentationNode {
+public abstract class AdvancedInstrumentRoot extends Node implements InstrumentationNode {
 
     /**
      * Executes this AST fragment on behalf of a client {@link Instrument}, just before the
@@ -46,6 +46,6 @@ public abstract class ToolEvalNode extends Node implements InstrumentationNode {
      * @param vFrame execution frame at the guest-language AST node
      * @return the result of this AST fragment's execution
      */
-    public abstract Object executeToolEvalNode(Node node, VirtualFrame vFrame);
+    public abstract Object executeRoot(Node node, VirtualFrame vFrame);
 
 }

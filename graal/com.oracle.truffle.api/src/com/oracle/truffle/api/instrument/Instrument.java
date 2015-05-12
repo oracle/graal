@@ -127,16 +127,16 @@ public abstract class Instrument {
     }
 
     /**
-     * Creates a <em>Tool Eval Instrument</em>: this Instrument executes efficiently, subject to
+     * Creates an <em>Advanced Instrument</em>: this Instrument executes efficiently, subject to
      * full Truffle optimization, a client-provided AST fragment every time the Probed node is
      * entered.
      *
-     * @param toolEvalNodeFactory provider of AST fragments on behalf of the client
+     * @param rootFactory provider of AST fragments on behalf of the client
      * @param instrumentInfo optional description of the instrument's role, intended for debugging.
      * @return a new instrument, ready for attachment at a probe
      */
-    public static Instrument create(ToolEvalNodeFactory toolEvalNodeFactory, String instrumentInfo) {
-        return new ToolEvalInstrument(toolEvalNodeFactory, instrumentInfo);
+    public static Instrument create(AdvancedInstrumentRootFactory rootFactory, String instrumentInfo) {
+        return new AdvancedInstrument(rootFactory, instrumentInfo);
     }
 
     // TODO (mlvdv) experimental
@@ -379,22 +379,22 @@ public abstract class Instrument {
      * within a Probe's <em>instrumentation chain</em>, and thus directly in the executing Truffle
      * AST with potential for full optimization.
      */
-    private static final class ToolEvalInstrument extends Instrument {
+    private static final class AdvancedInstrument extends Instrument {
 
         /**
          * Client-provided supplier of new node instances to attach.
          */
-        private final ToolEvalNodeFactory toolEvalNodeFactory;
+        private final AdvancedInstrumentRootFactory rootFactory;
 
-        private ToolEvalInstrument(ToolEvalNodeFactory toolEvalNodeFactory, String instrumentInfo) {
+        private AdvancedInstrument(AdvancedInstrumentRootFactory rootFactory, String instrumentInfo) {
             super(instrumentInfo);
-            this.toolEvalNodeFactory = toolEvalNodeFactory;
+            this.rootFactory = rootFactory;
 
         }
 
         @Override
         AbstractInstrumentNode addToChain(AbstractInstrumentNode nextNode) {
-            return new ToolEvalNodeInstrumentNode(nextNode);
+            return new AdvancedInstrumentNode(nextNode);
         }
 
         @Override
@@ -406,7 +406,7 @@ public abstract class Instrument {
                     return instrumentNode.nextInstrumentNode;
                 }
                 // Match not at the head of the chain; remove it.
-                found = instrumentNode.removeFromChain(ToolEvalInstrument.this);
+                found = instrumentNode.removeFromChain(AdvancedInstrument.this);
             }
             if (!found) {
                 throw new IllegalStateException("Couldn't find instrument node to remove: " + this);
@@ -415,29 +415,29 @@ public abstract class Instrument {
         }
 
         /**
-         * Node that implements a {@link ToolEvalInstrument} in a particular AST.
+         * Node that implements a {@link AdvancedInstrument} in a particular AST.
          */
         @NodeInfo(cost = NodeCost.NONE)
-        private final class ToolEvalNodeInstrumentNode extends AbstractInstrumentNode {
+        private final class AdvancedInstrumentNode extends AbstractInstrumentNode {
 
-            @Child private ToolEvalNode toolEvalNode;
+            @Child private AdvancedInstrumentRoot instrumentRoot;
 
-            private ToolEvalNodeInstrumentNode(AbstractInstrumentNode nextNode) {
+            private AdvancedInstrumentNode(AbstractInstrumentNode nextNode) {
                 super(nextNode);
             }
 
             public void enter(Node node, VirtualFrame vFrame) {
-                if (toolEvalNode == null) {
-                    final ToolEvalNode newToolEvalNodeNode = ToolEvalInstrument.this.toolEvalNodeFactory.createToolEvalNode(ToolEvalInstrument.this.probe, node);
-                    if (newToolEvalNodeNode != null) {
-                        toolEvalNode = newToolEvalNodeNode;
+                if (instrumentRoot == null) {
+                    final AdvancedInstrumentRoot newInstrumentRoot = AdvancedInstrument.this.rootFactory.createInstrumentRoot(AdvancedInstrument.this.probe, node);
+                    if (newInstrumentRoot != null) {
+                        instrumentRoot = newInstrumentRoot;
                         adoptChildren();
-                        ToolEvalInstrument.this.probe.invalidateProbeUnchanged();
+                        AdvancedInstrument.this.probe.invalidateProbeUnchanged();
                     }
                 }
-                if (toolEvalNode != null) {
+                if (instrumentRoot != null) {
                     // TODO (mlvdv) should report exception ; non-trivial architectural change
-                    toolEvalNode.executeToolEvalNode(node, vFrame);
+                    instrumentRoot.executeRoot(node, vFrame);
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);
@@ -464,7 +464,7 @@ public abstract class Instrument {
 
             public String instrumentationInfo() {
                 final String info = getInstrumentInfo();
-                return info != null ? info : toolEvalNodeFactory.getClass().getSimpleName();
+                return info != null ? info : rootFactory.getClass().getSimpleName();
             }
         }
     }

@@ -167,12 +167,12 @@ class InstrumentationTestNodes {
         }
     }
 
-    static class TestToolEvalCounterNode extends ToolEvalNode {
+    static class TestAdvancedInstrumentCounterRoot extends AdvancedInstrumentRoot {
 
         private long count;
 
         @Override
-        public Object executeToolEvalNode(Node node, VirtualFrame vFrame) {
+        public Object executeRoot(Node node, VirtualFrame vFrame) {
             count++;
             return null;
         }

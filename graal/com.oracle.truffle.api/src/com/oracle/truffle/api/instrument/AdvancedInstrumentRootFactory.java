@@ -27,19 +27,19 @@ package com.oracle.truffle.api.instrument;
 import com.oracle.truffle.api.nodes.*;
 
 /**
- * Creator of {@linkplain ToolEvalNode AST fragments} suitable for efficient execution, subject to
- * full Truffle optimization, by a {@linkplain Instrument#create(ToolEvalNodeFactory, String) Tool
- * Eval Instrument}.
+ * Creator of {@linkplain AdvancedInstrumentRoot AST fragments} suitable for efficient execution,
+ * subject to full Truffle optimization, by an
+ * {@linkplain Instrument#create(AdvancedInstrumentRootFactory, String) Advanced Instrument}.
  *
  * @see Instrument
- * @see ToolEvalNode
+ * @see AdvancedInstrumentRoot
  */
-public interface ToolEvalNodeFactory {
+public interface AdvancedInstrumentRootFactory {
 
     /**
-     * Provider of {@linkplain ToolEvalNode AST fragment} instances for efficient execution via
-     * instrumentation, subject to full Truffle optimization, at a {@linkplain Probe Probed} site in
-     * a guest-language AST.
+     * Provider of {@linkplain AdvancedInstrumentRoot AST fragment} instances for efficient
+     * execution via instrumentation, subject to full Truffle optimization, at a {@linkplain Probe
+     * Probed} site in a guest-language AST.
      *
      * @param probe the Probe to which the Instrument requesting the AST fragment is attached
      * @param node the guest-language AST location that is the context in which the requesting
@@ -47,5 +47,5 @@ public interface ToolEvalNodeFactory {
      * @return a newly created AST fragment suitable for execution, via instrumentation, in the
      *         execution context of the specified guest-language AST site.
      */
-    ToolEvalNode createToolEvalNode(Probe probe, Node node);
+    AdvancedInstrumentRoot createInstrumentRoot(Probe probe, Node node);
 }
