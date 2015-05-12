@@ -41,35 +41,6 @@ import com.oracle.graal.nodes.type.*;
 public interface GraphBuilderContext {
 
     /**
-     * An intrinsic is a substitute implementation of a Java method (or a bytecode in the case of
-     * snippets) that is itself implemented in Java. This interface provides information about the
-     * intrinsic currently being processed by the graph builder.
-     *
-     * When in the scope of an intrinsic, the graph builder does not check the value kinds flowing
-     * through the JVM state since intrinsics can employ non-Java kinds to represent values such as
-     * raw machine words and pointers.
-     */
-    public interface Intrinsic {
-
-        /**
-         * Gets the method being intrinsified.
-         */
-        ResolvedJavaMethod getOriginalMethod();
-
-        /**
-         * Gets the method providing the intrinsic implementation.
-         */
-        ResolvedJavaMethod getIntrinsicMethod();
-
-        /**
-         * Determines if a call within the compilation scope of this intrinsic represents a call to
-         * the {@linkplain #getOriginalMethod() original} method. This denotes the path where a
-         * partial intrinsification falls back to the original method.
-         */
-        boolean isCallToOriginal(ResolvedJavaMethod method);
-    }
-
-    /**
      * Raw operation for adding a node to the graph when neither {@link #add},
      * {@link #addPush(ValueNode)} nor {@link #addPush(Kind, ValueNode)} can be used.
      *
@@ -255,7 +226,7 @@ public interface GraphBuilderContext {
      * Gets the intrinsic of the current parsing context or {@code null} if not
      * {@link #parsingIntrinsic() parsing an intrinsic}.
      */
-    Intrinsic getIntrinsic();
+    IntrinsicContext getIntrinsic();
 
     BailoutException bailout(String string);
 
@@ -280,5 +251,4 @@ public interface GraphBuilderContext {
         }
         return value;
     }
-
 }

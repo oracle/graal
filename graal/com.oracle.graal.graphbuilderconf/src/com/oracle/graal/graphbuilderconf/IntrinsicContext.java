@@ -20,24 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package com.oracle.graal.graphbuilderconf;
 
 import static com.oracle.graal.api.code.BytecodeFrame.*;
-import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Intrinsic;
 import com.oracle.graal.nodes.*;
 
-public class IntrinsicContext implements Intrinsic {
+/**
+ * An intrinsic is a substitute implementation of a Java method (or a bytecode in the case of
+ * snippets) that is itself implemented in Java. This interface provides information about the
+ * intrinsic currently being processed by the graph builder.
+ *
+ * When in the scope of an intrinsic, the graph builder does not check the value kinds flowing
+ * through the JVM state since intrinsics can employ non-Java kinds to represent values such as raw
+ * machine words and pointers.
+ */
+public class IntrinsicContext {
 
     /**
-     * The method being replaced.
+     * Gets the method being intrinsified.
      */
     final ResolvedJavaMethod method;
 
     /**
-     * The intrinsic implementation method.
+     * Gets the method providing the intrinsic implementation.
      */
     final ResolvedJavaMethod intrinsic;
 
@@ -50,8 +58,9 @@ public class IntrinsicContext implements Intrinsic {
     }
 
     /**
-     * Determines if a call within the compilation scope of a replacement represents a call to the
-     * original method.
+     * Determines if a call within the compilation scope of this intrinsic represents a call to the
+     * {@linkplain #getOriginalMethod() original} method. This denotes the path where a partial
+     * intrinsification falls back to the original method.
      */
     public boolean isCallToOriginal(ResolvedJavaMethod targetMethod) {
         return method.equals(targetMethod) || intrinsic.equals(targetMethod);
@@ -95,23 +104,45 @@ public class IntrinsicContext implements Intrinsic {
         ROOT_COMPILATION
     }
 
-    public FrameState createFrameState(StructuredGraph graph, HIRFrameStateBuilder frameState, StateSplit forStateSplit) {
+    /**
+     * Models the state of a graph in terms of {@link StateSplit#hasSideEffect() side effects} that
+     * are control flow predecessors of the current point in a graph.
+     */
+    public interface SideEffectsState {
+
+        /**
+         * Determines if the current program point is preceded by one or more side effects.
+         */
+        boolean isAfterSideEffect();
+
+        /**
+         * Gets the side effects preceding the current program point.
+         */
+        Iterable<StateSplit> sideEffects();
+
+        /**
+         * Records a side effect for the current program point.
+         */
+        void addSideEffect(StateSplit sideEffect);
+    }
+
+    public FrameState createFrameState(StructuredGraph graph, SideEffectsState sideEffects, StateSplit forStateSplit) {
         assert forStateSplit != graph.start();
         if (forStateSplit.hasSideEffect()) {
-            if (frameState.lastSideEffects != null) {
+            if (sideEffects.isAfterSideEffect()) {
                 // Only the last side effect on any execution path in a replacement
                 // can inherit the stateAfter of the replaced node
                 FrameState invalid = graph.add(new FrameState(INVALID_FRAMESTATE_BCI));
-                for (StateSplit lastSideEffect : frameState.lastSideEffects) {
+                for (StateSplit lastSideEffect : sideEffects.sideEffects()) {
                     lastSideEffect.setStateAfter(invalid);
                 }
             }
-            frameState.addLastSideEffect(forStateSplit);
+            sideEffects.addSideEffect(forStateSplit);
             return graph.add(new FrameState(AFTER_BCI));
         } else {
             if (forStateSplit instanceof AbstractMergeNode) {
                 // Merge nodes always need a frame state
-                if (frameState.lastSideEffects != null) {
+                if (sideEffects.isAfterSideEffect()) {
                     // A merge after one or more side effects
                     return graph.add(new FrameState(AFTER_BCI));
                 } else {

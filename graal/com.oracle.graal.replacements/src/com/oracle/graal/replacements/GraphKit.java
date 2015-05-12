@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.lang.reflect.*;
 import java.util.*;

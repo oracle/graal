@@ -186,7 +186,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return true;
     }
 
-    public Intrinsic getIntrinsic() {
+    public IntrinsicContext getIntrinsic() {
         throw GraalInternalError.shouldNotReachHere();
     }
 

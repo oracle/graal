@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodeinfo.*;
@@ -40,7 +41,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 
-public final class HIRFrameStateBuilder {
+public final class HIRFrameStateBuilder implements SideEffectsState {
 
     static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
     static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
@@ -65,7 +66,7 @@ public final class HIRFrameStateBuilder {
      * The closest {@link StateSplit#hasSideEffect() side-effect} predecessors. There will be more
      * than one when the current block contains no side-effects but merging predecessor blocks do.
      */
-    protected StateSplit[] lastSideEffects;
+    protected List<StateSplit> sideEffects;
 
     /**
      * Creates a new frame state builder for the given method and the given target graph.
@@ -229,7 +230,7 @@ public final class HIRFrameStateBuilder {
         if (AbstractBytecodeParser.Options.HideSubstitutionStates.getValue()) {
             if (parser.parsingIntrinsic()) {
                 // Attribute to the method being replaced
-                return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), parser.intrinsicContext.method, -1);
+                return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
             }
             // Skip intrinsic frames
             parent = (BytecodeParser) parser.getNonReplacementAncestor();
@@ -302,14 +303,11 @@ public final class HIRFrameStateBuilder {
             assert monitorIds[i] == other.monitorIds[i];
         }
 
-        if (lastSideEffects == null) {
-            lastSideEffects = other.lastSideEffects;
+        if (sideEffects == null) {
+            sideEffects = other.sideEffects;
         } else {
-            if (other.lastSideEffects != null) {
-                int thisLength = lastSideEffects.length;
-                int otherLength = other.lastSideEffects.length;
-                lastSideEffects = Arrays.copyOf(lastSideEffects, thisLength + otherLength);
-                System.arraycopy(other.lastSideEffects, 0, lastSideEffects, thisLength, otherLength);
+            if (other.sideEffects != null) {
+                sideEffects.addAll(other.sideEffects);
             }
         }
     }
@@ -1000,14 +998,23 @@ public final class HIRFrameStateBuilder {
         }
     }
 
-    public void addLastSideEffect(StateSplit sideEffect) {
+    @Override
+    public boolean isAfterSideEffect() {
+        return sideEffects != null;
+    }
+
+    @Override
+    public Iterable<StateSplit> sideEffects() {
+        return sideEffects;
+    }
+
+    @Override
+    public void addSideEffect(StateSplit sideEffect) {
         assert sideEffect != null;
         assert sideEffect.hasSideEffect();
-        if (lastSideEffects == null) {
-            lastSideEffects = new StateSplit[]{sideEffect};
-        } else {
-            lastSideEffects = Arrays.copyOf(lastSideEffects, lastSideEffects.length + 1);
-            lastSideEffects[lastSideEffects.length - 1] = sideEffect;
+        if (sideEffects == null) {
+            sideEffects = new ArrayList<>(4);
         }
+        sideEffects.add(sideEffect);
     }
 }

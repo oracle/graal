@@ -148,7 +148,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public Intrinsic getIntrinsic() {
+        public IntrinsicContext getIntrinsic() {
             return null;
         }
 

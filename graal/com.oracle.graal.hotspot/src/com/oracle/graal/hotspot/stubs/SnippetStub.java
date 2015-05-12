@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.lang.reflect.*;
 

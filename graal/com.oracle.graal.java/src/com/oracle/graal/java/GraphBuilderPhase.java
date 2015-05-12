@@ -28,8 +28,8 @@ import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
-import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
 import static java.lang.String.*;
@@ -481,14 +481,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              */
             private FrameState createStateAfterStartOfReplacementGraph() {
                 assert parent == null;
-                assert frameState.method.equals(intrinsicContext.intrinsic);
+                assert frameState.method.equals(intrinsicContext.getIntrinsicMethod());
                 assert bci() == 0;
                 assert frameState.stackSize == 0;
                 FrameState stateAfterStart;
                 if (intrinsicContext.isPostParseInlined()) {
                     stateAfterStart = graph.add(new FrameState(BytecodeFrame.BEFORE_BCI));
                 } else {
-                    ResolvedJavaMethod original = intrinsicContext.method;
+                    ResolvedJavaMethod original = intrinsicContext.getOriginalMethod();
                     ValueNode[] locals;
                     if (original.getMaxLocals() == frameState.localsSize() || original.isNative()) {
                         locals = frameState.locals;
@@ -1430,10 +1430,10 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         // Otherwise inline the original method. Any frame state created
                         // during the inlining will exclude frame(s) in the
                         // intrinsic method (see HIRFrameStateBuilder.create(int bci)).
-                        if (intrinsic.method.isNative()) {
+                        if (intrinsic.getOriginalMethod().isNative()) {
                             return false;
                         }
-                        parseAndInlineCallee(intrinsic.method, args, null);
+                        parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
                         return true;
                     }
                 } else {
@@ -2556,7 +2556,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return parent;
             }
 
-            public Intrinsic getIntrinsic() {
+            public IntrinsicContext getIntrinsic() {
                 return intrinsicContext;
             }
 

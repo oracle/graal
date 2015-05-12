@@ -24,8 +24,8 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
-import static com.oracle.graal.java.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static java.lang.String.*;
 
@@ -46,7 +46,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.GraphBuilderContext.Intrinsic;
 import com.oracle.graal.java.*;
 import com.oracle.graal.java.GraphBuilderPhase.Instance;
 import com.oracle.graal.nodes.*;
@@ -121,7 +120,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (b.parsingIntrinsic()) {
-            Intrinsic intrinsic = b.getIntrinsic();
+            IntrinsicContext intrinsic = b.getIntrinsic();
             assert intrinsic.isCallToOriginal(method) : format("All non-recursive calls in the intrinsic %s must be inlined or intrinsified: found call to %s",
                             intrinsic.getIntrinsicMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
         }
