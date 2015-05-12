@@ -212,8 +212,9 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         root.adoptChildren();
         Probe testProbe = result.probe();
         // A factory that could insert a AdvancedInstrumentRoot into the AST, but which never does.
-        Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory() {
+        Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory(null) {
 
+            @Override
             public AdvancedInstrumentRoot createInstrumentRoot(Probe probe, Node node) {
                 return null;
             }
@@ -232,11 +233,13 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
         rootTestNode.adoptChildren();
         Probe testProbe = resultTestNode.probe();
         // Factory inserts a AdvancedInstrumentRoot with empty methods into instrumentation .
-        Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory() {
+        Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory(null) {
 
+            @Override
             public AdvancedInstrumentRoot createInstrumentRoot(Probe probe, Node node) {
                 return new AdvancedInstrumentRoot() {
 
+                    @Override
                     public String instrumentationInfo() {
                         return null;
                     }
@@ -351,6 +354,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
             final boolean[] isCurrentlyCompiled = {false};
             final Instrument optInstrument = Instrument.create(new Instrument.TruffleOptListener() {
 
+                @Override
                 public void notifyIsCompiled(boolean isCompiled) {
                     isCurrentlyCompiled[0] = isCompiled;
                 }
