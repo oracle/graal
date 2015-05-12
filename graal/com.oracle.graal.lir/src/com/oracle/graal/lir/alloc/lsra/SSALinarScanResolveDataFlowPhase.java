@@ -33,12 +33,12 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.ssa.*;
 import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
 
-class SSAResolveDataFlow extends LinearScanResolveDataFlowPhase {
+class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
     private static final DebugMetric numPhiResolutionMoves = Debug.metric("SSA LSRA[numPhiResolutionMoves]");
     private static final DebugMetric numStackToStackMoves = Debug.metric("SSA LSRA[numStackToStackMoves]");
 
-    SSAResolveDataFlow(LinearScan allocator) {
+    SSALinarScanResolveDataFlowPhase(LinearScan allocator) {
         super(allocator);
     }
 

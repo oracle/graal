@@ -42,17 +42,17 @@ final class SSALinearScan extends LinearScan {
 
     @Override
     protected LinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
-        return new SSALifetimeAnalysis(this);
+        return new SSALinearScanLifetimeAnalysisPhase(this);
     }
 
     @Override
     protected LinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
-        return new SSAResolveDataFlow(this);
+        return new SSALinarScanResolveDataFlowPhase(this);
     }
 
     @Override
     protected LinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
-        return new SSAEliminateSpillMove(this);
+        return new SSALinearScanEliminateSpillMovePhase(this);
     }
 
 }

@@ -32,9 +32,9 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.ssa.*;
 
-public class SSAEliminateSpillMove extends LinearScanEliminateSpillMovePhase {
+public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 
-    SSAEliminateSpillMove(LinearScan allocator) {
+    SSALinearScanEliminateSpillMovePhase(LinearScan allocator) {
         super(allocator);
     }
 

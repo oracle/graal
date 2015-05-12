@@ -31,9 +31,9 @@ import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.ssa.*;
 
-public class SSALifetimeAnalysis extends LinearScanLifetimeAnalysisPhase {
+public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 
-    SSALifetimeAnalysis(LinearScan linearScan) {
+    SSALinearScanLifetimeAnalysisPhase(LinearScan linearScan) {
         super(linearScan);
     }
 
