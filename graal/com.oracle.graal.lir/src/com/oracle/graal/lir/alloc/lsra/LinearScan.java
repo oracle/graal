@@ -788,11 +788,6 @@ class LinearScan {
         sortedIntervals = combinedList;
     }
 
-    
-
-    // * Phase 6: resolve data flow
-    // (insert moves at edges between blocks if intervals have been split)
-
     // wrapper for Interval.splitChildAtOpId that performs a bailout in product mode
     // instead of returning null
     Interval splitChildAtOpId(Interval interval, int opId, LIRInstruction.OperandMode mode) {
@@ -806,149 +801,6 @@ class LinearScan {
         }
 
         throw new BailoutException("LinearScan: interval is null");
-    }
-
-    void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
-        assert moveResolver.checkEmpty();
-        assert midBlock == null ||
-                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors().get(0).equals(fromBlock) && midBlock.getSuccessors().get(0).equals(
-                                        toBlock));
-
-        int toBlockFirstInstructionId = getFirstLirInstructionId(toBlock);
-        int fromBlockLastInstructionId = getLastLirInstructionId(fromBlock) + 1;
-        int numOperands = operandSize();
-        BitSet liveAtEdge = getBlockData(toBlock).liveIn;
-
-        // visit all variables for which the liveAtEdge bit is set
-        for (int operandNum = liveAtEdge.nextSetBit(0); operandNum >= 0; operandNum = liveAtEdge.nextSetBit(operandNum + 1)) {
-            assert operandNum < numOperands : "live information set for not exisiting interval";
-            assert getBlockData(fromBlock).liveOut.get(operandNum) && getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
-
-            Interval fromInterval = splitChildAtOpId(intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
-            Interval toInterval = splitChildAtOpId(intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
-
-            if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
-                // need to insert move instruction
-                moveResolver.addMapping(fromInterval, toInterval);
-            }
-        }
-    }
-
-    void resolveFindInsertPos(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, MoveResolver moveResolver) {
-        if (fromBlock.getSuccessorCount() <= 1) {
-            if (Debug.isLogEnabled()) {
-                Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
-            }
-
-            List<LIRInstruction> instructions = ir.getLIRforBlock(fromBlock);
-            LIRInstruction instr = instructions.get(instructions.size() - 1);
-            if (instr instanceof StandardOp.JumpOp) {
-                // insert moves before branch
-                moveResolver.setInsertPosition(instructions, instructions.size() - 1);
-            } else {
-                moveResolver.setInsertPosition(instructions, instructions.size());
-            }
-
-        } else {
-            if (Debug.isLogEnabled()) {
-                Debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
-            }
-
-            if (DetailedAsserts.getValue()) {
-                assert ir.getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
-
-                /*
-                 * Because the number of predecessor edges matches the number of successor edges,
-                 * blocks which are reached by switch statements may have be more than one
-                 * predecessor but it will be guaranteed that all predecessors will be the same.
-                 */
-                for (AbstractBlockBase<?> predecessor : toBlock.getPredecessors()) {
-                    assert fromBlock == predecessor : "all critical edges must be broken";
-                }
-            }
-
-            moveResolver.setInsertPosition(ir.getLIRforBlock(toBlock), 1);
-        }
-    }
-
-    /**
-     * Inserts necessary moves (spilling or reloading) at edges between blocks for intervals that
-     * have been split.
-     */
-    void resolveDataFlow() {
-        try (Indent indent = Debug.logAndIndent("resolve data flow")) {
-
-            int numBlocks = blockCount();
-            MoveResolver moveResolver = createMoveResolver();
-            BitSet blockCompleted = new BitSet(numBlocks);
-            BitSet alreadyResolved = new BitSet(numBlocks);
-
-            for (AbstractBlockBase<?> block : sortedBlocks) {
-
-                // check if block has only one predecessor and only one successor
-                if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
-                    List<LIRInstruction> instructions = ir.getLIRforBlock(block);
-                    assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
-                    assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
-
-                    // check if block is empty (only label and branch)
-                    if (instructions.size() == 2) {
-                        AbstractBlockBase<?> pred = block.getPredecessors().iterator().next();
-                        AbstractBlockBase<?> sux = block.getSuccessors().iterator().next();
-
-                        // prevent optimization of two consecutive blocks
-                        if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
-                            if (Debug.isLogEnabled()) {
-                                Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
-                            }
-
-                            blockCompleted.set(block.getLinearScanNumber());
-
-                            /*
-                             * Directly resolve between pred and sux (without looking at the empty
-                             * block between).
-                             */
-                            resolveCollectMappings(pred, sux, block, moveResolver);
-                            if (moveResolver.hasMappings()) {
-                                moveResolver.setInsertPosition(instructions, 1);
-                                moveResolver.resolveAndAppendMoves();
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (AbstractBlockBase<?> fromBlock : sortedBlocks) {
-                if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
-                    alreadyResolved.clear();
-                    alreadyResolved.or(blockCompleted);
-
-                    for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
-
-                        /*
-                         * Check for duplicate edges between the same blocks (can happen with switch
-                         * blocks).
-                         */
-                        if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
-                            }
-
-                            alreadyResolved.set(toBlock.getLinearScanNumber());
-
-                            // collect all intervals that have been split between
-                            // fromBlock and toBlock
-                            resolveCollectMappings(fromBlock, toBlock, null, moveResolver);
-                            if (moveResolver.hasMappings()) {
-                                resolveFindInsertPos(fromBlock, toBlock, moveResolver);
-                                moveResolver.resolveAndAppendMoves();
-                            }
-                        }
-                    }
-                }
-            }
-
-        }
     }
 
     static StackSlotValue canonicalSpillOpr(Interval interval) {
@@ -1022,7 +874,7 @@ class LinearScan {
     }
 
     protected ResolveDataFlow createResolveDataFlowPhase() {
-        return new ResolveDataFlow();
+        return new ResolveDataFlow(this);
     }
 
     protected EliminateSpillMove createSpillMoveEliminationPhase() {
@@ -1031,16 +883,6 @@ class LinearScan {
 
     protected AssignLocations createAssignLocationsPhase() {
         return new AssignLocations(this);
-    }
-
-    private final class ResolveDataFlow extends AllocationPhase {
-
-        @Override
-        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                        SpillMoveFactory spillMoveFactory) {
-            resolveDataFlow();
-        }
-
     }
 
     private final class EliminateSpillMove extends AllocationPhase {
