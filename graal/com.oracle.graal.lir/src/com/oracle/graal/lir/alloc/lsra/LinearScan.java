@@ -397,10 +397,10 @@ class LinearScan {
 
     /**
      * Converts an {@linkplain LIRInstruction#id instruction id} to an instruction index. All LIR
-     * instructions in a method have an index one greater than their linear-scan order predecesor
+     * instructions in a method have an index one greater than their linear-scan order predecessor
      * with the first instruction having an index of 0.
      */
-    static int opIdToIndex(int opId) {
+    private static int opIdToIndex(int opId) {
         return opId >> 1;
     }
 
