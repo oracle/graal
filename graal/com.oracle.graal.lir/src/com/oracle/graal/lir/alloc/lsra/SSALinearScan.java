@@ -34,8 +34,6 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
@@ -136,37 +134,8 @@ final class SSALinearScan extends LinearScan {
     }
 
     @Override
-    void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
-        super.addRegisterHint(op, targetValue, mode, flags, hintAtDef);
-
-        if (hintAtDef && op instanceof LabelOp) {
-            LabelOp label = (LabelOp) op;
-
-            Interval to = getOrCreateInterval((AllocatableValue) targetValue);
-
-            SSAUtils.forEachPhiRegisterHint(ir, blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
-                if (isVariableOrRegister(registerHint)) {
-                    Interval from = getOrCreateInterval((AllocatableValue) registerHint);
-
-                    setHint(op, to, from);
-                    setHint(op, from, to);
-                }
-            });
-        }
-    }
-
-    private static void setHint(final LIRInstruction op, Interval target, Interval source) {
-        Interval currentHint = target.locationHint(false);
-        if (currentHint == null || currentHint.from() > target.from()) {
-            /*
-             * Update hint if there was none or if the hint interval starts after the hinted
-             * interval.
-             */
-            target.setLocationHint(source);
-            if (Debug.isLogEnabled()) {
-                Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), source.operandNumber, target.operandNumber);
-            }
-        }
+    protected LifetimeAnalysis createLifetimeAnalysis() {
+        return new SSALifetimeAnalysis(this);
     }
 
     private boolean isPhiResolutionMove(AbstractBlockBase<?> block, MoveOp move, Interval toInterval) {
