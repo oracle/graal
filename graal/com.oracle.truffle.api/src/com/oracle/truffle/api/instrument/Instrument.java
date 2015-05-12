@@ -420,7 +420,7 @@ public abstract class Instrument {
         @NodeInfo(cost = NodeCost.NONE)
         private final class ToolEvalNodeInstrumentNode extends AbstractInstrumentNode {
 
-            @Child ToolEvalNode toolEvalNode;
+            @Child private ToolEvalNode toolEvalNode;
 
             private ToolEvalNodeInstrumentNode(AbstractInstrumentNode nextNode) {
                 super(nextNode);
@@ -428,6 +428,7 @@ public abstract class Instrument {
 
             public void enter(Node node, VirtualFrame vFrame) {
                 if (toolEvalNode == null) {
+                    CompilerDirectives.transferToInterpreter();
                     final ToolEvalNode newToolEvalNodeNode = ToolEvalInstrument.this.toolEvalNodeFactory.createToolEvalNode(ToolEvalInstrument.this.probe, node);
                     if (newToolEvalNodeNode != null) {
                         toolEvalNode = newToolEvalNodeNode;
