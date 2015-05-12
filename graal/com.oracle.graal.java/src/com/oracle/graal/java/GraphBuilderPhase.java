@@ -343,7 +343,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 this.entryBCI = entryBCI;
                 this.parent = parent;
 
-                if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
                     lnt = method.getLineNumberTable();
                     previousLineNumber = -1;
                 }
@@ -444,7 +444,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         genMonitorEnter(methodSynchronizedObject, bci());
                     }
 
-                    if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                    if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
                         append(createInfoPointNode(InfopointReason.METHOD_START));
                     }
 
@@ -1593,7 +1593,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
                     append(new RegisterFinalizerNode(frameState.localAt(0)));
                 }
-                if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
                     append(createInfoPointNode(InfopointReason.METHOD_END));
                 }
 
@@ -2233,7 +2233,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
 
                 while (bci < endBCI) {
-                    if (graphBuilderConfig.insertNonSafepointDebugInfo()) {
+                    if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
                         currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : (graphBuilderConfig.insertFullDebugInfo() ? -1 : bci);
                         if (currentLineNumber != previousLineNumber) {
                             append(createInfoPointNode(InfopointReason.LINE_NUMBER));
