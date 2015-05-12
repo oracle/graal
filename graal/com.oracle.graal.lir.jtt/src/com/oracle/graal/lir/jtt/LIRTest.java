@@ -48,26 +48,26 @@ import com.oracle.graal.nodes.spi.*;
  */
 public abstract class LIRTest extends JTTTest {
 
-    protected abstract static class LIRTestSpecification {
+    public abstract static class LIRTestSpecification {
         private Value result;
 
-        void generate(LIRGeneratorTool gen, Value arg0) {
+        public void generate(LIRGeneratorTool gen, Value arg0) {
             defaultHandler(gen, arg0);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1) {
             defaultHandler(gen, arg0, arg1);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2) {
             defaultHandler(gen, arg0, arg1, arg2);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3) {
             defaultHandler(gen, arg0, arg1, arg2, arg3);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3, Value arg4) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3, Value arg4) {
             defaultHandler(gen, arg0, arg1, arg2, arg3, arg4);
         }
 
