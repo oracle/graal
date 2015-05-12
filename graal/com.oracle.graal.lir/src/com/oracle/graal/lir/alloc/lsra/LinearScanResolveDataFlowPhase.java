@@ -39,11 +39,11 @@ import com.oracle.graal.lir.phases.*;
  *
  * Insert moves at edges between blocks if intervals have been split.
  */
-class ResolveDataFlow extends AllocationPhase {
+class LinearScanResolveDataFlowPhase extends AllocationPhase {
 
     protected final LinearScan allocator;
 
-    ResolveDataFlow(LinearScan allocator) {
+    LinearScanResolveDataFlowPhase(LinearScan allocator) {
         this.allocator = allocator;
     }
 

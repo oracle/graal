@@ -49,14 +49,14 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-class LifetimeAnalysis extends AllocationPhase {
+class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
     protected final LinearScan allocator;
 
     /**
      * @param linearScan
      */
-    LifetimeAnalysis(LinearScan linearScan) {
+    LinearScanLifetimeAnalysisPhase(LinearScan linearScan) {
         allocator = linearScan;
     }
 

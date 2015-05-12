@@ -31,11 +31,11 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 import com.oracle.graal.lir.phases.*;
 
-final class RegisterAllocation extends AllocationPhase {
+final class LinearScanRegisterAllocationPhase extends AllocationPhase {
 
     private final LinearScan allocator;
 
-    RegisterAllocation(LinearScan allocator) {
+    LinearScanRegisterAllocationPhase(LinearScan allocator) {
         this.allocator = allocator;
     }
 

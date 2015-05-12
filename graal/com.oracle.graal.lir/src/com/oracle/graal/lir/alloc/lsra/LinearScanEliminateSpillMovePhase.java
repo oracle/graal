@@ -40,7 +40,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 import com.oracle.graal.lir.phases.*;
 
-class EliminateSpillMove extends AllocationPhase {
+class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     private static final IntervalPredicate mustStoreAtDefinition = new LinearScan.IntervalPredicate() {
 
@@ -52,7 +52,7 @@ class EliminateSpillMove extends AllocationPhase {
 
     protected final LinearScan allocator;
 
-    EliminateSpillMove(LinearScan allocator) {
+    LinearScanEliminateSpillMovePhase(LinearScan allocator) {
         this.allocator = allocator;
     }
 

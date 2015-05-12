@@ -654,28 +654,28 @@ class LinearScan {
         }
     }
 
-    protected LifetimeAnalysis createLifetimeAnalysisPhase() {
-        return new LifetimeAnalysis(this);
+    protected LinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
+        return new LinearScanLifetimeAnalysisPhase(this);
     }
 
-    protected RegisterAllocation createRegisterAllocationPhase() {
-        return new RegisterAllocation(this);
+    protected LinearScanRegisterAllocationPhase createRegisterAllocationPhase() {
+        return new LinearScanRegisterAllocationPhase(this);
     }
 
-    protected OptimizeSpillPosition createOptimizeSpillPositionPhase() {
-        return new OptimizeSpillPosition(this);
+    protected LinearScanOptimizeSpillPositionPhase createOptimizeSpillPositionPhase() {
+        return new LinearScanOptimizeSpillPositionPhase(this);
     }
 
-    protected ResolveDataFlow createResolveDataFlowPhase() {
-        return new ResolveDataFlow(this);
+    protected LinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
+        return new LinearScanResolveDataFlowPhase(this);
     }
 
-    protected EliminateSpillMove createSpillMoveEliminationPhase() {
-        return new EliminateSpillMove(this);
+    protected LinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
+        return new LinearScanEliminateSpillMovePhase(this);
     }
 
-    protected AssignLocations createAssignLocationsPhase() {
-        return new AssignLocations(this);
+    protected LinearScanAssignLocationsPhase createAssignLocationsPhase() {
+        return new LinearScanAssignLocationsPhase(this);
     }
 
     void printIntervals(String label) {
