@@ -69,13 +69,16 @@ public class SPARCHotSpotMove {
                     try (ScratchRegister s2 = masm.getScratchRegister()) {
                         Register sr2 = s2.getRegister();
                         int stackBias = HotSpotGraalRuntime.runtime().getConfig().stackBias;
-                        new SPARCMacroAssembler.Setx(ss.getOffset(crb.frameMap.currentFrameSize()) + stackBias, sr2).emit(masm);
+                        int offset = crb.frameMap.offsetForStackSlot(ss);
+                        new SPARCMacroAssembler.Setx(offset + stackBias, sr2).emit(masm);
                         SPARCAddress addr = new SPARCAddress(SPARC.sp, sr2);
-                        switch (((Kind) result.getPlatformKind()).getBitCount()) {
-                            case 32:
+                        Kind resultKind = (Kind) result.getPlatformKind();
+                        switch (resultKind) {
+                            case Int:
                                 masm.stw(sr1, addr);
                                 break;
-                            case 64:
+                            case Long:
+                            case Object:
                                 masm.stx(sr1, addr);
                                 break;
                             default:
