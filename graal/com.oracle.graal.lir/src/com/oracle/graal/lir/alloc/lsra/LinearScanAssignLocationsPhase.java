@@ -39,7 +39,9 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
 import com.oracle.graal.lir.phases.*;
 
-/** Phase 7: assign register numbers back to LIR */
+/**
+ * Phase 7: Assign register numbers back to LIR.
+ */
 final class LinearScanAssignLocationsPhase extends AllocationPhase {
 
     private final LinearScan allocator;
