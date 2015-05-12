@@ -179,9 +179,11 @@ class LifetimeAnalysis extends AllocationPhase {
                     }
 
                     if (DetailedAsserts.getValue()) {
-                        // fixed intervals are never live at block boundaries, so
-                        // they need not be processed in live sets
-                        // process them only in debug mode so that this can be checked
+                        /*
+                         * Fixed intervals are never live at block boundaries, so they need not be
+                         * processed in live sets. Process them only in debug mode so that this can
+                         * be checked
+                         */
                         verifyTemp(liveKill, operand);
                     }
                 };
@@ -193,9 +195,10 @@ class LifetimeAnalysis extends AllocationPhase {
                     try (Indent indent2 = Debug.logAndIndent("handle op %d", op.id())) {
                         op.visitEachInput(useConsumer);
                         op.visitEachAlive(useConsumer);
-                        // Add uses of live locals from interpreter's point of view for proper
-// debug
-                        // information generation
+                        /*
+                         * Add uses of live locals from interpreter's point of view for proper debug
+                         * information generation.
+                         */
                         op.visitEachState(stateConsumer);
                         op.visitEachTemp(defConsumer);
                         op.visitEachOutput(defConsumer);
@@ -218,9 +221,10 @@ class LifetimeAnalysis extends AllocationPhase {
     }
 
     private void verifyTemp(BitSet liveKill, Value operand) {
-        // fixed intervals are never live at block boundaries, so
-        // they need not be processed in live sets
-        // process them only in debug mode so that this can be checked
+        /*
+         * Fixed intervals are never live at block boundaries, so they need not be processed in live
+         * sets. Process them only in debug mode so that this can be checked
+         */
         if (isRegister(operand)) {
             if (allocator.isProcessed(operand)) {
                 liveKill.set(allocator.operandNumber(operand));
@@ -229,11 +233,11 @@ class LifetimeAnalysis extends AllocationPhase {
     }
 
     private void verifyInput(AbstractBlockBase<?> block, BitSet liveKill, Value operand) {
-        // fixed intervals are never live at block boundaries, so
-        // they need not be processed in live sets.
-        // this is checked by these assertions to be sure about it.
-        // the entry block may have incoming
-        // values in registers, which is ok.
+        /*
+         * Fixed intervals are never live at block boundaries, so they need not be processed in live
+         * sets. This is checked by these assertions to be sure about it. The entry block may have
+         * incoming values in registers, which is ok.
+         */
         if (isRegister(operand) && block != allocator.ir.getControlFlowGraph().getStartBlock()) {
             if (allocator.isProcessed(operand)) {
                 assert liveKill.get(allocator.operandNumber(operand)) : "using fixed register that is not defined in this block";
@@ -253,9 +257,10 @@ class LifetimeAnalysis extends AllocationPhase {
             int iterationCount = 0;
             BitSet liveOut = new BitSet(allocator.liveSetSize()); // scratch set for calculations
 
-            // Perform a backward dataflow analysis to compute liveOut and liveIn for each
-// block.
-            // The loop is executed until a fixpoint is reached (no changes in an iteration)
+            /*
+             * Perform a backward dataflow analysis to compute liveOut and liveIn for each block.
+             * The loop is executed until a fixpoint is reached (no changes in an iteration).
+             */
             do {
                 changeOccurred = false;
 
@@ -268,8 +273,7 @@ class LifetimeAnalysis extends AllocationPhase {
 
                         changeOccurredInBlock = false;
 
-                        // liveOut(block) is the union of liveIn(sux), for successors sux of
-// block
+                        /* liveOut(block) is the union of liveIn(sux), for successors sux of block. */
                         int n = block.getSuccessorCount();
                         if (n > 0) {
                             liveOut.clear();
@@ -281,8 +285,10 @@ class LifetimeAnalysis extends AllocationPhase {
                             }
 
                             if (!blockSets.liveOut.equals(liveOut)) {
-                                // A change occurred. Swap the old and new live out
-                                // sets to avoid copying.
+                                /*
+                                 * A change occurred. Swap the old and new live out sets to avoid
+                                 * copying.
+                                 */
                                 BitSet temp = blockSets.liveOut;
                                 blockSets.liveOut = liveOut;
                                 liveOut = temp;
@@ -293,11 +299,13 @@ class LifetimeAnalysis extends AllocationPhase {
                         }
 
                         if (iterationCount == 0 || changeOccurredInBlock) {
-                            // liveIn(block) is the union of liveGen(block) with (liveOut(block)
-// &
-                            // !liveKill(block))
-                            // note: liveIn has to be computed only in first iteration
-                            // or if liveOut has changed!
+                            /*
+                             * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
+                             * !liveKill(block)).
+                             *
+                             * Note: liveIn has to be computed only in first iteration or if liveOut
+                             * has changed!
+                             */
                             BitSet liveIn = blockSets.liveIn;
                             liveIn.clear();
                             liveIn.or(blockSets.liveOut);
@@ -418,8 +426,10 @@ class LifetimeAnalysis extends AllocationPhase {
     }
 
     private void verifyLiveness() {
-        // check that fixed intervals are not live at block boundaries
-        // (live set must be empty at fixed intervals)
+        /*
+         * Check that fixed intervals are not live at block boundaries (live set must be empty at
+         * fixed intervals).
+         */
         for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
             for (int j = 0; j <= allocator.maxRegisterNumber(); j++) {
                 assert !allocator.blockData.get(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
@@ -481,14 +491,17 @@ class LifetimeAnalysis extends AllocationPhase {
 
         Range r = interval.first();
         if (r.from <= defPos) {
-            // Update the starting point (when a range is first created for a use, its
-            // start is the beginning of the current block until a def is encountered.)
+            /*
+             * Update the starting point (when a range is first created for a use, its start is the
+             * beginning of the current block until a def is encountered).
+             */
             r.from = defPos;
             interval.addUsePos(defPos, registerPriority);
 
         } else {
-            // Dead value - make vacuous interval
-            // also add register priority for dead intervals
+            /*
+             * Dead value - make vacuous interval also add register priority for dead intervals
+             */
             interval.addRange(defPos, defPos + 1);
             interval.addUsePos(defPos, registerPriority);
             if (Debug.isLogEnabled()) {
@@ -631,17 +644,20 @@ class LifetimeAnalysis extends AllocationPhase {
 
                         addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None, LIRKind.Illegal);
 
-                        // add special use positions for loop-end blocks when the
-                        // interval is used anywhere inside this loop. It's possible
-                        // that the block was part of a non-natural loop, so it might
-                        // have an invalid loop index.
+                        /*
+                         * Add special use positions for loop-end blocks when the interval is used
+                         * anywhere inside this loop. It's possible that the block was part of a
+                         * non-natural loop, so it might have an invalid loop index.
+                         */
                         if (block.isLoopEnd() && block.getLoop() != null && allocator.isIntervalInLoop(operandNum, block.getLoop().getIndex())) {
                             allocator.intervalFor(operandNum).addUsePos(blockTo + 1, RegisterPriority.LiveAtLoopEnd);
                         }
                     }
 
-                    // iterate all instructions of the block in reverse order.
-                    // definitions of intervals are processed before uses
+                    /*
+                     * Iterate all instructions of the block in reverse order. definitions of
+                     * intervals are processed before uses.
+                     */
                     for (int j = instructions.size() - 1; j >= 0; j--) {
                         final LIRInstruction op = instructions.get(j);
                         final int opId = op.id();
@@ -666,13 +682,12 @@ class LifetimeAnalysis extends AllocationPhase {
                             op.visitEachAlive(aliveConsumer);
                             op.visitEachInput(inputConsumer);
 
-                            // Add uses of live locals from interpreter's point of view for
-// proper
-                            // debug information generation
-                            // Treat these operands as temp values (if the live range is
-// extended
-                            // to a call site, the value would be in a register at
-                            // the call otherwise)
+                            /*
+                             * Add uses of live locals from interpreter's point of view for proper
+                             * debug information generation. Treat these operands as temp values (if
+                             * the live range is extended to a call site, the value would be in a
+                             * register at the call otherwise).
+                             */
                             op.visitEachState(stateProc);
 
                             // special steps for some instructions (especially moves)
@@ -684,8 +699,10 @@ class LifetimeAnalysis extends AllocationPhase {
                 }
             } // end of block iteration
 
-            // add the range [0, 1] to all fixed intervals.
-            // the register allocator need not handle unhandled fixed intervals
+            /*
+             * Add the range [0, 1] to all fixed intervals. the register allocator need not handle
+             * unhandled fixed intervals.
+             */
             for (Interval interval : allocator.intervals) {
                 if (interval != null && isRegister(interval.operand)) {
                     interval.addRange(0, 1);
