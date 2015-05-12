@@ -28,26 +28,29 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Annul;
 import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCAssembler.RCondition;
-import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCHotSpotMove {
 
     public static final class HotSpotLoadConstantOp extends SPARCLIRInstruction implements MoveOp {
         public static final LIRInstructionClass<HotSpotLoadConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadConstantOp.class);
 
-        @Def({REG}) private AllocatableValue result;
+        @Def({REG, STACK}) private AllocatableValue result;
         private final JavaConstant input;
 
         public HotSpotLoadConstantOp(AllocatableValue result, JavaConstant input) {
@@ -58,43 +61,71 @@ public class SPARCHotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            assert isRegister(result);
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(input)) {
-                masm.mov(0, asRegister(result));
-            } else if (input instanceof HotSpotObjectConstant) {
-                boolean compressed = ((HotSpotObjectConstant) input).isCompressed();
+            if (isStackSlot(result)) {
+                StackSlot ss = asStackSlot(result);
+                try (ScratchRegister s1 = masm.getScratchRegister()) {
+                    Register sr1 = s1.getRegister();
+                    loadToRegister(crb, masm, sr1.asValue(), input);
+                    try (ScratchRegister s2 = masm.getScratchRegister()) {
+                        Register sr2 = s2.getRegister();
+                        int stackBias = HotSpotGraalRuntime.runtime().getConfig().stackBias;
+                        new SPARCMacroAssembler.Setx(ss.getOffset(crb.frameMap.currentFrameSize()) + stackBias, sr2).emit(masm);
+                        SPARCAddress addr = new SPARCAddress(SPARC.sp, sr2);
+                        switch (((Kind) result.getPlatformKind()).getBitCount()) {
+                            case 32:
+                                masm.stw(sr1, addr);
+                                break;
+                            case 64:
+                                masm.stx(sr1, addr);
+                                break;
+                            default:
+                                throw GraalInternalError.shouldNotReachHere();
+                        }
+                    }
+                }
+            } else {
+                loadToRegister(crb, masm, result, input);
+            }
+        }
+
+        private static void loadToRegister(CompilationResultBuilder crb, SPARCMacroAssembler masm, AllocatableValue dest, JavaConstant constant) {
+            assert isRegister(dest);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(constant)) {
+                masm.mov(0, asRegister(dest));
+            } else if (constant instanceof HotSpotObjectConstant) {
+                boolean compressed = ((HotSpotObjectConstant) constant).isCompressed();
                 if (crb.target.inlineObjects) {
-                    crb.recordInlineDataInCode(input);
+                    crb.recordInlineDataInCode(constant);
                     if (compressed) {
-                        masm.sethi(0xDEADDEAD >>> 10, asRegister(result));
-                        masm.add(asRegister(result), 0xAD & 0x3F, asRegister(result));
+                        masm.sethi(0xDEADDEAD >>> 10, asRegister(dest));
+                        masm.add(asRegister(dest), 0xAD & 0x3F, asRegister(dest));
                     } else {
-                        new SPARCMacroAssembler.Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
+                        new SPARCMacroAssembler.Setx(0xDEADDEADDEADDEADL, asRegister(dest), true).emit(masm);
                     }
                 } else {
                     GraalInternalError.unimplemented();
                 }
-            } else if (input instanceof HotSpotMetaspaceConstant) {
-                assert input.getKind() == Kind.Int || input.getKind() == Kind.Long;
-                boolean compressed = input.getKind() == Kind.Int;
+            } else if (constant instanceof HotSpotMetaspaceConstant) {
+                assert constant.getKind() == Kind.Int || constant.getKind() == Kind.Long;
+                boolean compressed = constant.getKind() == Kind.Int;
                 boolean isImmutable = GraalOptions.ImmutableCode.getValue();
                 boolean generatePIC = GraalOptions.GeneratePIC.getValue();
-                crb.recordInlineDataInCode(input);
+                crb.recordInlineDataInCode(constant);
                 if (compressed) {
                     if (isImmutable && generatePIC) {
                         GraalInternalError.unimplemented();
                     } else {
-                        new SPARCMacroAssembler.Setx(input.asInt(), asRegister(result), true).emit(masm);
+                        new SPARCMacroAssembler.Setx(constant.asInt(), asRegister(dest), true).emit(masm);
                     }
                 } else {
                     if (isImmutable && generatePIC) {
                         GraalInternalError.unimplemented();
                     } else {
-                        new SPARCMacroAssembler.Setx(input.asLong(), asRegister(result), true).emit(masm);
+                        new SPARCMacroAssembler.Setx(constant.asLong(), asRegister(dest), true).emit(masm);
                     }
                 }
             } else {
-                SPARCMove.move(crb, masm, result, input, SPARCDelayedControlTransfer.DUMMY);
+                SPARCMove.move(crb, masm, dest, constant, SPARCDelayedControlTransfer.DUMMY);
             }
         }
 
@@ -171,8 +202,7 @@ public class SPARCHotSpotMove {
 
             Register resReg = asRegister(result);
             if (encoding.shift != 0) {
-                masm.sllx(resReg, 32, resReg);
-                masm.srlx(resReg, 32 - encoding.shift, resReg);
+                masm.sll(resReg, encoding.shift, resReg);
             }
 
             if (encoding.base != 0) {
