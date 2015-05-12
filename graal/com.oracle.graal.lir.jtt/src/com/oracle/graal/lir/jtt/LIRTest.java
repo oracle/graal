@@ -31,7 +31,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.jtt.*;
@@ -142,7 +141,7 @@ public abstract class LIRTest extends JTTTest {
     }
 
     @NodeInfo
-    private static final class FloatingLIRTestNode extends FloatingNode implements LIRLowerable, Simplifiable {
+    private static final class FloatingLIRTestNode extends FloatingNode implements LIRLowerable {
 
         public static final NodeClass<FloatingLIRTestNode> TYPE = NodeClass.create(FloatingLIRTestNode.class);
         @Input protected ValueNode opsNode;
@@ -162,13 +161,6 @@ public abstract class LIRTest extends JTTTest {
 
         public ValueNode getLIROpsNode() {
             return opsNode;
-        }
-
-        @Override
-        public void simplify(SimplifierTool tool) {
-            if (tool.allUsagesAvailable() && getLIROpsNode().isConstant()) {
-                getLIROpsNode().asConstant();
-            }
         }
 
         @Override
