@@ -96,8 +96,7 @@ class LifetimeAnalysis extends AllocationPhase {
         }
 
         // initialize with correct length
-        allocator.opIdToInstructionMap = new LIRInstruction[numInstructions];
-        allocator.opIdToBlockMap = new AbstractBlockBase<?>[numInstructions];
+        allocator.initOpIdMaps(numInstructions);
 
         int opId = 0;
         int index = 0;
@@ -111,8 +110,7 @@ class LifetimeAnalysis extends AllocationPhase {
                 LIRInstruction op = instructions.get(j);
                 op.setId(opId);
 
-                allocator.opIdToInstructionMap[index] = op;
-                allocator.opIdToBlockMap[index] = block;
+                allocator.putOpIdMaps(index, op, block);
                 assert allocator.instructionForId(opId) == op : "must match";
 
                 op.visitEachTemp(setVariableConsumer);
@@ -310,7 +308,7 @@ class LifetimeAnalysis extends AllocationPhase {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             *
+                             * 
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */

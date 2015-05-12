@@ -141,14 +141,14 @@ class LinearScan {
      * be retrieved with {@link #instructionForId(int)} as the id is not simply an index into this
      * array.
      */
-    LIRInstruction[] opIdToInstructionMap;
+    private LIRInstruction[] opIdToInstructionMap;
 
     /**
      * Map from an instruction {@linkplain LIRInstruction#id id} to the
      * {@linkplain AbstractBlockBase block} containing the instruction. Entries should be retrieved
      * with {@link #blockForId(int)} as the id is not simply an index into this array.
      */
-    AbstractBlockBase<?>[] opIdToBlockMap;
+    private AbstractBlockBase<?>[] opIdToBlockMap;
 
     /**
      * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
@@ -375,6 +375,16 @@ class LinearScan {
         } else {
             return ret;
         }
+    }
+
+    void initOpIdMaps(int numInstructions) {
+        opIdToInstructionMap = new LIRInstruction[numInstructions];
+        opIdToBlockMap = new AbstractBlockBase<?>[numInstructions];
+    }
+
+    void putOpIdMaps(int index, LIRInstruction op, AbstractBlockBase<?> block) {
+        opIdToInstructionMap[index] = op;
+        opIdToBlockMap[index] = block;
     }
 
     /**
