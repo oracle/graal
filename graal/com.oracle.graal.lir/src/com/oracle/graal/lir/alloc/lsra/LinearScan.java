@@ -1018,58 +1018,9 @@ class LinearScan {
         }
     }
 
-    // * Phase 7: assign register numbers back to LIR
-    // (includes computation of debug information and oop maps)
-
     static StackSlotValue canonicalSpillOpr(Interval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
-    }
-
-    /**
-     * Assigns the allocated location for an LIR instruction operand back into the instruction.
-     *
-     * @param operand an LIR instruction operand
-     * @param opId the id of the LIR instruction using {@code operand}
-     * @param mode the usage mode for {@code operand} by the instruction
-     * @return the location assigned for the operand
-     */
-    private Value colorLirOperand(Variable operand, int opId, OperandMode mode) {
-        Interval interval = intervalFor(operand);
-        assert interval != null : "interval must exist";
-
-        if (opId != -1) {
-            if (DetailedAsserts.getValue()) {
-                AbstractBlockBase<?> block = blockForId(opId);
-                if (block.getSuccessorCount() <= 1 && opId == getLastLirInstructionId(block)) {
-                    /*
-                     * Check if spill moves could have been appended at the end of this block, but
-                     * before the branch instruction. So the split child information for this branch
-                     * would be incorrect.
-                     */
-                    LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
-                    if (instr instanceof StandardOp.JumpOp) {
-                        if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                            assert false : String.format(
-                                            "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow) block=%s, instruction=%s, operand=%s",
-                                            block, instr, operand);
-                        }
-                    }
-                }
-            }
-
-            /*
-             * Operands are not changed when an interval is split during allocation, so search the
-             * right interval here.
-             */
-            interval = splitChildAtOpId(interval, opId, mode);
-        }
-
-        if (isIllegal(interval.location()) && interval.canMaterialize()) {
-            assert mode != OperandMode.DEF;
-            return interval.getMaterializedValue();
-        }
-        return interval.location();
     }
 
     private boolean isMaterialized(AllocatableValue operand, int opId, OperandMode mode) {
@@ -1108,109 +1059,168 @@ class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-    /**
-     * @param op
-     * @param operand
-     * @param valueMode
-     * @param flags
-     * @see InstructionValueProcedure#doValue(LIRInstruction, Value, OperandMode, EnumSet)
-     */
-    private Value debugInfoProcedure(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
-        if (isVirtualStackSlot(operand)) {
-            return operand;
+    /** Phase 7: assign register numbers back to LIR */
+    private final class AssignLocations extends AllocationPhase {
+
+        @Override
+        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                        SpillMoveFactory spillMoveFactory) {
+            assignLocations();
         }
-        int tempOpId = op.id();
-        OperandMode mode = OperandMode.USE;
-        AbstractBlockBase<?> block = blockForId(tempOpId);
-        if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
-            /*
-             * Generating debug information for the last instruction of a block. If this instruction
-             * is a branch, spill moves are inserted before this branch and so the wrong operand
-             * would be returned (spill moves at block boundaries are not considered in the live
-             * ranges of intervals).
-             *
-             * Solution: use the first opId of the branch target block instead.
-             */
-            final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
-            if (instr instanceof StandardOp.JumpOp) {
-                if (blockData.get(block).liveOut.get(operandNumber(operand))) {
-                    tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
-                    mode = OperandMode.DEF;
+
+        /**
+         * Assigns the allocated location for an LIR instruction operand back into the instruction.
+         *
+         * @param operand an LIR instruction operand
+         * @param opId the id of the LIR instruction using {@code operand}
+         * @param mode the usage mode for {@code operand} by the instruction
+         * @return the location assigned for the operand
+         */
+        private Value colorLirOperand(Variable operand, int opId, OperandMode mode) {
+            Interval interval = intervalFor(operand);
+            assert interval != null : "interval must exist";
+
+            if (opId != -1) {
+                if (DetailedAsserts.getValue()) {
+                    AbstractBlockBase<?> block = blockForId(opId);
+                    if (block.getSuccessorCount() <= 1 && opId == getLastLirInstructionId(block)) {
+                        /*
+                         * Check if spill moves could have been appended at the end of this block,
+                         * but before the branch instruction. So the split child information for
+                         * this branch would be incorrect.
+                         */
+                        LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
+                        if (instr instanceof StandardOp.JumpOp) {
+                            if (blockData.get(block).liveOut.get(operandNumber(operand))) {
+                                assert false : String.format(
+                                                "can't get split child for the last branch of a block because the information would be incorrect (moves are inserted before the branch in resolveDataFlow) block=%s, instruction=%s, operand=%s",
+                                                block, instr, operand);
+                            }
+                        }
+                    }
+                }
+
+                /*
+                 * Operands are not changed when an interval is split during allocation, so search
+                 * the right interval here.
+                 */
+                interval = splitChildAtOpId(interval, opId, mode);
+            }
+
+            if (isIllegal(interval.location()) && interval.canMaterialize()) {
+                assert mode != OperandMode.DEF;
+                return interval.getMaterializedValue();
+            }
+            return interval.location();
+        }
+
+        /**
+         * @param op
+         * @param operand
+         * @param valueMode
+         * @param flags
+         * @see InstructionValueProcedure#doValue(LIRInstruction, Value, OperandMode, EnumSet)
+         */
+        private Value debugInfoProcedure(LIRInstruction op, Value operand, OperandMode valueMode, EnumSet<OperandFlag> flags) {
+            if (isVirtualStackSlot(operand)) {
+                return operand;
+            }
+            int tempOpId = op.id();
+            OperandMode mode = OperandMode.USE;
+            AbstractBlockBase<?> block = blockForId(tempOpId);
+            if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
+                /*
+                 * Generating debug information for the last instruction of a block. If this
+                 * instruction is a branch, spill moves are inserted before this branch and so the
+                 * wrong operand would be returned (spill moves at block boundaries are not
+                 * considered in the live ranges of intervals).
+                 * 
+                 * Solution: use the first opId of the branch target block instead.
+                 */
+                final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
+                if (instr instanceof StandardOp.JumpOp) {
+                    if (blockData.get(block).liveOut.get(operandNumber(operand))) {
+                        tempOpId = getFirstLirInstructionId(block.getSuccessors().iterator().next());
+                        mode = OperandMode.DEF;
+                    }
                 }
             }
+
+            /*
+             * Get current location of operand. The operand must be live because debug information
+             * is considered when building the intervals if the interval is not live,
+             * colorLirOperand will cause an assert on failure.
+             */
+            Value result = colorLirOperand((Variable) operand, tempOpId, mode);
+            assert !hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
+            return result;
         }
 
-        /*
-         * Get current location of operand. The operand must be live because debug information is
-         * considered when building the intervals if the interval is not live, colorLirOperand will
-         * cause an assert on failure.
-         */
-        Value result = colorLirOperand((Variable) operand, tempOpId, mode);
-        assert !hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
-        return result;
-    }
+        private void computeDebugInfo(final LIRInstruction op, LIRFrameState info) {
+            info.forEachState(op, this::debugInfoProcedure);
+        }
 
-    private void computeDebugInfo(final LIRInstruction op, LIRFrameState info) {
-        info.forEachState(op, this::debugInfoProcedure);
-    }
+        private void assignLocations(List<LIRInstruction> instructions) {
+            int numInst = instructions.size();
+            boolean hasDead = false;
 
-    private void assignLocations(List<LIRInstruction> instructions) {
-        int numInst = instructions.size();
-        boolean hasDead = false;
-
-        InstructionValueProcedure assignProc = (op, operand, mode, flags) -> isVariable(operand) ? colorLirOperand((Variable) operand, op.id(), mode) : operand;
-        for (int j = 0; j < numInst; j++) {
-            final LIRInstruction op = instructions.get(j);
-            if (op == null) { // this can happen when spill-moves are removed in eliminateSpillMoves
-                hasDead = true;
-                continue;
-            }
-
-            // remove useless moves
-            MoveOp move = null;
-            if (op instanceof MoveOp) {
-                move = (MoveOp) op;
-                AllocatableValue result = move.getResult();
-                if (isVariable(result) && isMaterialized(result, op.id(), OperandMode.DEF)) {
+            InstructionValueProcedure assignProc = (op, operand, mode, flags) -> isVariable(operand) ? colorLirOperand((Variable) operand, op.id(), mode) : operand;
+            for (int j = 0; j < numInst; j++) {
+                final LIRInstruction op = instructions.get(j);
+                if (op == null) {
                     /*
-                     * This happens if a materializable interval is originally not spilled but then
-                     * kicked out in LinearScanWalker.splitForSpilling(). When kicking out such an
-                     * interval this move operation was already generated.
+                     * this can happen when spill-moves are removed in eliminateSpillMoves
                      */
-                    instructions.set(j, null);
                     hasDead = true;
                     continue;
                 }
-            }
 
-            op.forEachInput(assignProc);
-            op.forEachAlive(assignProc);
-            op.forEachTemp(assignProc);
-            op.forEachOutput(assignProc);
+                // remove useless moves
+                MoveOp move = null;
+                if (op instanceof MoveOp) {
+                    move = (MoveOp) op;
+                    AllocatableValue result = move.getResult();
+                    if (isVariable(result) && isMaterialized(result, op.id(), OperandMode.DEF)) {
+                        /*
+                         * This happens if a materializable interval is originally not spilled but
+                         * then kicked out in LinearScanWalker.splitForSpilling(). When kicking out
+                         * such an interval this move operation was already generated.
+                         */
+                        instructions.set(j, null);
+                        hasDead = true;
+                        continue;
+                    }
+                }
 
-            // compute reference map and debug information
-            op.forEachState((inst, state) -> computeDebugInfo(inst, state));
+                op.forEachInput(assignProc);
+                op.forEachAlive(assignProc);
+                op.forEachTemp(assignProc);
+                op.forEachOutput(assignProc);
 
-            // remove useless moves
-            if (move != null) {
-                if (move.getInput().equals(move.getResult())) {
-                    instructions.set(j, null);
-                    hasDead = true;
+                // compute reference map and debug information
+                op.forEachState((inst, state) -> computeDebugInfo(inst, state));
+
+                // remove useless moves
+                if (move != null) {
+                    if (move.getInput().equals(move.getResult())) {
+                        instructions.set(j, null);
+                        hasDead = true;
+                    }
                 }
             }
+
+            if (hasDead) {
+                // Remove null values from the list.
+                instructions.removeAll(Collections.singleton(null));
+            }
         }
 
-        if (hasDead) {
-            // Remove null values from the list.
-            instructions.removeAll(Collections.singleton(null));
-        }
-    }
-
-    private void assignLocations() {
-        try (Indent indent = Debug.logAndIndent("assign locations")) {
-            for (AbstractBlockBase<?> block : sortedBlocks) {
-                try (Indent indent2 = Debug.logAndIndent("assign locations in block B%d", block.getId())) {
-                    assignLocations(ir.getLIRforBlock(block));
+        private void assignLocations() {
+            try (Indent indent = Debug.logAndIndent("assign locations")) {
+                for (AbstractBlockBase<?> block : sortedBlocks) {
+                    try (Indent indent2 = Debug.logAndIndent("assign locations in block B%d", block.getId())) {
+                        assignLocations(ir.getLIRforBlock(block));
+                    }
                 }
             }
         }
@@ -1292,16 +1302,6 @@ class LinearScan {
                         SpillMoveFactory spillMoveFactory) {
             beforeSpillMoveElimination();
             eliminateSpillMoves();
-        }
-
-    }
-
-    private final class AssignLocations extends AllocationPhase {
-
-        @Override
-        protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
-                        SpillMoveFactory spillMoveFactory) {
-            assignLocations();
         }
 
     }
