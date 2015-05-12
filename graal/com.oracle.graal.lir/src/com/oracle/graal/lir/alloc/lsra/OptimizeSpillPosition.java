@@ -57,7 +57,7 @@ final class OptimizeSpillPosition extends AllocationPhase {
 
     private void optimizeSpillPosition() {
         LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.ir.linearScanOrder().size()];
-        for (Interval interval : allocator.intervals) {
+        for (Interval interval : allocator.intervals()) {
             if (interval != null && interval.isSplitParent() && interval.spillState() == SpillState.SpillInDominator) {
                 AbstractBlockBase<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
                 AbstractBlockBase<?> spillBlock = null;

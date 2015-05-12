@@ -117,26 +117,24 @@ class LinearScan {
      */
     final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
-    /**
-     * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
-     */
-    Interval[] intervals;
+    /** @see #intervals() */
+    private Interval[] intervals;
 
     /**
      * The number of valid entries in {@link #intervals}.
      */
-    int intervalsSize;
+    private int intervalsSize;
 
     /**
      * The index of the first entry in {@link #intervals} for a
      * {@linkplain #createDerivedInterval(Interval) derived interval}.
      */
-    int firstDerivedIntervalIndex = -1;
+    private int firstDerivedIntervalIndex = -1;
 
     /**
      * Intervals sorted by {@link Interval#from()}.
      */
-    Interval[] sortedIntervals;
+    private Interval[] sortedIntervals;
 
     /**
      * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction. Entries should
@@ -287,6 +285,18 @@ class LinearScan {
             interval.setSpillSlot(slot);
             interval.assignLocation(slot);
         }
+    }
+
+    /**
+     * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
+     */
+    Interval[] intervals() {
+        return intervals;
+    }
+
+    void initIntervals() {
+        intervalsSize = operandSize();
+        intervals = new Interval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
     }
 
     /**

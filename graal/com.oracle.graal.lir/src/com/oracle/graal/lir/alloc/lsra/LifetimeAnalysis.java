@@ -81,8 +81,7 @@ class LifetimeAnalysis extends AllocationPhase {
      */
     void numberInstructions() {
 
-        allocator.intervalsSize = allocator.operandSize();
-        allocator.intervals = new Interval[allocator.intervalsSize + (allocator.intervalsSize >> LinearScan.SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
+        allocator.initIntervals();
 
         ValueConsumer setVariableConsumer = (value, mode, flags) -> {
             if (isVariable(value)) {
@@ -712,7 +711,7 @@ class LifetimeAnalysis extends AllocationPhase {
              * Add the range [0, 1] to all fixed intervals. the register allocator need not handle
              * unhandled fixed intervals.
              */
-            for (Interval interval : allocator.intervals) {
+            for (Interval interval : allocator.intervals()) {
                 if (interval != null && isRegister(interval.operand)) {
                     interval.addRange(0, 1);
                 }
