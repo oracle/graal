@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.instrument;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -42,7 +43,10 @@ public interface AdvancedInstrumentResultListener {
      * Notifies listener that a client-provided {@linkplain AdvancedInstrumentRoot AST fragment} has
      * been executed by an {@linkplain Instrument#create(AdvancedInstrumentRootFactory, String)
      * Advanced Instrument} with the specified result, possibly {@code null}.
-     *
+     * <p>
+     * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
+     * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
+     * 
      * @param node the guest-language AST node to which the host Instrument's {@link Probe} is
      *            attached
      * @param vFrame execution frame at the guest-language AST node
@@ -54,6 +58,9 @@ public interface AdvancedInstrumentResultListener {
      * Notifies listener that execution of client-provided {@linkplain AdvancedInstrumentRoot AST
      * fragment} filed during execution by a @linkplain
      * Instrument#create(AdvancedInstrumentRootFactory, String) Advanced Instrument}.
+     * <p>
+     * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
+     * evaluation; annotate with {@link TruffleBoundary} if this should not be permitted.
      *
      * @param node the guest-language AST node to which the host Instrument's {@link Probe} is
      *            attached

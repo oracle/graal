@@ -436,8 +436,17 @@ public abstract class Instrument {
                     }
                 }
                 if (instrumentRoot != null) {
-                    // TODO (mlvdv) should report exception ; non-trivial architectural change
-                    instrumentRoot.executeRoot(node, vFrame);
+                    final AdvancedInstrumentResultListener resultListener = AdvancedInstrument.this.rootFactory.resultListener();
+                    try {
+                        final Object result = instrumentRoot.executeRoot(node, vFrame);
+                        if (resultListener != null) {
+                            resultListener.notifyResult(node, vFrame, result);
+                        }
+                    } catch (RuntimeException ex) {
+                        if (resultListener != null) {
+                            resultListener.notifyFailure(node, vFrame, ex);
+                        }
+                    }
                 }
                 if (nextInstrumentNode != null) {
                     nextInstrumentNode.enter(node, vFrame);

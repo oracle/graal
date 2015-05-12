@@ -58,9 +58,10 @@ public class AdvancedInstrumentTest {
 
         assertEquals(13, callTarget1.call());
 
-        // Attach a null listener; it never actually attaches a node.
-        final Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory() {
+        // Attach a null factory; it never actually attaches a node.
+        final Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory(null) {
 
+            @Override
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return null;
             }
@@ -71,9 +72,10 @@ public class AdvancedInstrumentTest {
 
         final TestAdvancedInstrumentCounterRoot counter = new TestAdvancedInstrumentCounterRoot();
 
-        // Attach a listener that splices an execution counter into the AST.
-        probe.attach(Instrument.create(new AdvancedInstrumentRootFactory() {
+        // Attach a factory that splices an execution counter into the AST.
+        probe.attach(Instrument.create(new AdvancedInstrumentRootFactory(null) {
 
+            @Override
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return counter;
             }
