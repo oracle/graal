@@ -25,10 +25,7 @@ package com.oracle.graal.lir.alloc.lsra;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
@@ -39,12 +36,8 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
 
 final class SSALinearScan extends LinearScan {
-
-    private static final DebugMetric numPhiResolutionMoves = Debug.metric("SSA LSRA[numPhiResolutionMoves]");
-    private static final DebugMetric numStackToStackMoves = Debug.metric("SSA LSRA[numStackToStackMoves]");
 
     SSALinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig) {
         super(target, res, spillMoveFactory, regAllocConfig);
@@ -61,47 +54,6 @@ final class SSALinearScan extends LinearScan {
     protected int firstInstructionOfInterest() {
         // also look at Labels as they define PHI values
         return 0;
-    }
-
-    @Override
-    void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
-        super.resolveCollectMappings(fromBlock, toBlock, midBlock, moveResolver);
-
-        if (toBlock.getPredecessorCount() > 1) {
-            int toBlockFirstInstructionId = getFirstLirInstructionId(toBlock);
-            int fromBlockLastInstructionId = getLastLirInstructionId(fromBlock) + 1;
-
-            AbstractBlockBase<?> phiOutBlock = midBlock != null ? midBlock : fromBlock;
-            List<LIRInstruction> instructions = ir.getLIRforBlock(phiOutBlock);
-            int phiOutIdx = SSAUtils.phiOutIndex(ir, phiOutBlock);
-            int phiOutId = midBlock != null ? fromBlockLastInstructionId : instructions.get(phiOutIdx).id();
-            assert phiOutId >= 0;
-
-            PhiValueVisitor visitor = new PhiValueVisitor() {
-
-                public void visit(Value phiIn, Value phiOut) {
-                    Interval toInterval = splitChildAtOpId(intervalFor(phiIn), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
-                    if (isConstant(phiOut)) {
-                        numPhiResolutionMoves.increment();
-                        moveResolver.addMapping(phiOut, toInterval);
-                    } else {
-                        Interval fromInterval = splitChildAtOpId(intervalFor(phiOut), phiOutId, LIRInstruction.OperandMode.DEF);
-                        if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
-                            numPhiResolutionMoves.increment();
-                            if (!(isStackSlotValue(toInterval.location()) && isStackSlotValue(fromInterval.location()))) {
-                                moveResolver.addMapping(fromInterval, toInterval);
-                            } else {
-                                numStackToStackMoves.increment();
-                                moveResolver.addMapping(fromInterval, toInterval);
-                            }
-                        }
-                    }
-                }
-            };
-
-            SSAUtils.forEachPhiValuePair(ir, toBlock, phiOutBlock, visitor);
-            SSAUtils.removePhiOut(ir, phiOutBlock);
-        }
     }
 
     @Override
@@ -136,6 +88,11 @@ final class SSALinearScan extends LinearScan {
     @Override
     protected LifetimeAnalysis createLifetimeAnalysisPhase() {
         return new SSALifetimeAnalysis(this);
+    }
+
+    @Override
+    protected ResolveDataFlow createResolveDataFlowPhase() {
+        return new SSAResolveDataFlow(this);
     }
 
     private boolean isPhiResolutionMove(AbstractBlockBase<?> block, MoveOp move, Interval toInterval) {
