@@ -1133,7 +1133,7 @@ class LinearScan {
                  * instruction is a branch, spill moves are inserted before this branch and so the
                  * wrong operand would be returned (spill moves at block boundaries are not
                  * considered in the live ranges of intervals).
-                 *
+                 * 
                  * Solution: use the first opId of the branch target block instead.
                  */
                 final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
@@ -1501,37 +1501,4 @@ class LinearScan {
         }
     }
 
-    /**
-     * Returns a value for a interval definition, which can be used for re-materialization.
-     *
-     * @param op An instruction which defines a value
-     * @param operand The destination operand of the instruction
-     * @param interval The interval for this defined value.
-     * @return Returns the value which is moved to the instruction and which can be reused at all
-     *         reload-locations in case the interval of this instruction is spilled. Currently this
-     *         can only be a {@link JavaConstant}.
-     */
-    public static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
-        if (op instanceof MoveOp) {
-            MoveOp move = (MoveOp) op;
-            if (move.getInput() instanceof JavaConstant) {
-                /*
-                 * Check if the interval has any uses which would accept an stack location (priority
-                 * == ShouldHaveRegister). Rematerialization of such intervals can result in a
-                 * degradation, because rematerialization always inserts a constant load, even if
-                 * the value is not needed in a register.
-                 */
-                Interval.UsePosList usePosList = interval.usePosList();
-                int numUsePos = usePosList.size();
-                for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                    Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
-                    if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
-                        return null;
-                    }
-                }
-                return (JavaConstant) move.getInput();
-            }
-        }
-        return null;
-    }
 }
