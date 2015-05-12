@@ -451,61 +451,6 @@ public abstract class Source {
         return builder.toString();
     }
 
-    private static final class SubSource extends Source {
-        private final Source base;
-        private final int baseIndex;
-        private final int subLength;
-
-        private static SubSource create(Source base, int baseIndex, int length) {
-            if (baseIndex < 0 || length < 0 || baseIndex + length > base.getLength()) {
-                throw new IllegalArgumentException("text positions out of range");
-            }
-            return new SubSource(base, baseIndex, length);
-        }
-
-        private SubSource(Source base, int baseIndex, int length) {
-            this.base = base;
-            this.baseIndex = baseIndex;
-            this.subLength = length;
-        }
-
-        @Override
-        protected void reset() {
-            assert false;
-        }
-
-        @Override
-        public String getName() {
-            return base.getName();
-        }
-
-        @Override
-        public String getShortName() {
-            return base.getShortName();
-        }
-
-        @Override
-        public String getPath() {
-            return base.getPath();
-        }
-
-        @Override
-        public URL getURL() {
-            return null;
-        }
-
-        @Override
-        public Reader getReader() {
-            assert false;
-            return null;
-        }
-
-        @Override
-        public String getCode() {
-            return base.getCode(baseIndex, subLength);
-        }
-    }
-
     private final ArrayList<SourceTag> tags = new ArrayList<>();
 
     private Source() {
@@ -584,7 +529,7 @@ public abstract class Source {
      * Gets the number of characters in the source.
      */
     public final int getLength() {
-        return checkTextMap().length();
+        return getTextMap().length();
     }
 
     /**
@@ -603,9 +548,8 @@ public abstract class Source {
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
      */
     public final String getCode(int lineNumber) {
-        checkTextMap();
-        final int offset = textMap.lineStartOffset(lineNumber);
-        final int length = textMap.lineLength(lineNumber);
+        final int offset = getTextMap().lineStartOffset(lineNumber);
+        final int length = getTextMap().lineLength(lineNumber);
         return getCode().substring(offset, offset + length);
     }
 
@@ -614,7 +558,7 @@ public abstract class Source {
      * source without a terminating newline count as a line.
      */
     public final int getLineCount() {
-        return checkTextMap().lineCount();
+        return getTextMap().lineCount();
     }
 
     /**
@@ -624,7 +568,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if the offset is outside the text contents
      */
     public final int getLineNumber(int offset) throws IllegalArgumentException {
-        return checkTextMap().offsetToLine(offset);
+        return getTextMap().offsetToLine(offset);
     }
 
     /**
@@ -633,7 +577,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if the offset is outside the text contents
      */
     public final int getColumnNumber(int offset) throws IllegalArgumentException {
-        return checkTextMap().offsetToCol(offset);
+        return getTextMap().offsetToCol(offset);
     }
 
     /**
@@ -642,7 +586,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if there is no such line in the text
      */
     public final int getLineStartOffset(int lineNumber) throws IllegalArgumentException {
-        return checkTextMap().lineStartOffset(lineNumber);
+        return getTextMap().lineStartOffset(lineNumber);
     }
 
     /**
@@ -652,7 +596,7 @@ public abstract class Source {
      * @throws IllegalArgumentException if there is no such line in the text
      */
     public final int getLineLength(int lineNumber) throws IllegalArgumentException {
-        return checkTextMap().lineLength(lineNumber);
+        return getTextMap().lineLength(lineNumber);
     }
 
     /**
@@ -702,9 +646,8 @@ public abstract class Source {
      * @throws IllegalStateException if the source is one of the "null" instances
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int length) {
-        checkTextMap();
-        final int lineStartOffset = textMap.lineStartOffset(startLine);
-        if (startColumn > textMap.lineLength(startLine)) {
+        final int lineStartOffset = getTextMap().lineStartOffset(startLine);
+        if (startColumn > getTextMap().lineLength(startLine)) {
             throw new IllegalArgumentException("column out of range");
         }
         final int startOffset = lineStartOffset + startColumn - 1;
@@ -732,10 +675,8 @@ public abstract class Source {
      */
     public final SourceSection createSection(String identifier, int charIndex, int length) throws IllegalArgumentException {
         checkRange(charIndex, length);
-        checkTextMap();
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
-
         return new DefaultSourceSection(this, identifier, startLine, startColumn, charIndex, length);
     }
 
@@ -756,9 +697,8 @@ public abstract class Source {
      * @throws IllegalStateException if the source is one of the "null" instances
      */
     public final SourceSection createSection(String identifier, int lineNumber) {
-        checkTextMap();
-        final int charIndex = textMap.lineStartOffset(lineNumber);
-        final int length = textMap.lineLength(lineNumber);
+        final int charIndex = getTextMap().lineStartOffset(lineNumber);
+        final int length = getTextMap().lineLength(lineNumber);
         return createSection(identifier, charIndex, length);
     }
 
@@ -781,7 +721,7 @@ public abstract class Source {
         return getName();
     }
 
-    protected final TextMap checkTextMap() {
+    protected final TextMap getTextMap() {
         if (textMap == null) {
             textMap = createTextMap();
         }
@@ -1082,6 +1022,61 @@ public abstract class Source {
 
         @Override
         protected void reset() {
+        }
+    }
+
+    private static final class SubSource extends Source {
+        private final Source base;
+        private final int baseIndex;
+        private final int subLength;
+
+        private static SubSource create(Source base, int baseIndex, int length) {
+            if (baseIndex < 0 || length < 0 || baseIndex + length > base.getLength()) {
+                throw new IllegalArgumentException("text positions out of range");
+            }
+            return new SubSource(base, baseIndex, length);
+        }
+
+        private SubSource(Source base, int baseIndex, int length) {
+            this.base = base;
+            this.baseIndex = baseIndex;
+            this.subLength = length;
+        }
+
+        @Override
+        protected void reset() {
+            assert false;
+        }
+
+        @Override
+        public String getName() {
+            return base.getName();
+        }
+
+        @Override
+        public String getShortName() {
+            return base.getShortName();
+        }
+
+        @Override
+        public String getPath() {
+            return base.getPath();
+        }
+
+        @Override
+        public URL getURL() {
+            return null;
+        }
+
+        @Override
+        public Reader getReader() {
+            assert false;
+            return null;
+        }
+
+        @Override
+        public String getCode() {
+            return base.getCode(baseIndex, subLength);
         }
     }
 
