@@ -148,7 +148,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public Replacement getReplacement() {
+        public Intrinsic getIntrinsic() {
             return null;
         }
 
@@ -421,7 +421,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (inlineInfo == null) {
             return false;
         }
-        assert !inlineInfo.isIntrinsic && !inlineInfo.isReplacement : "not supported";
+        assert !inlineInfo.isIntrinsic : "not supported";
 
         ResolvedJavaMethod inlineMethod = inlineInfo.methodToInline;
         EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod);

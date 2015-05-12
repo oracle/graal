@@ -460,7 +460,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-            if (b.parsingReplacement()) {
+            if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();
                 if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for boxing snippets so that the
@@ -487,7 +487,7 @@ public class StandardGraphBuilderPlugins {
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-            if (b.parsingReplacement()) {
+            if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();
                 if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for unboxing snippets so that the

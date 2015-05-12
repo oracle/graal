@@ -182,11 +182,11 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return 0;
     }
 
-    public boolean parsingReplacement() {
+    public boolean parsingIntrinsic() {
         return true;
     }
 
-    public Replacement getReplacement() {
+    public Intrinsic getIntrinsic() {
         throw GraalInternalError.shouldNotReachHere();
     }
 

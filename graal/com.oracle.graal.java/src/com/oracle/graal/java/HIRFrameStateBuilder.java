@@ -201,11 +201,8 @@ public final class HIRFrameStateBuilder {
     }
 
     public FrameState create(int bci, StateSplit forStateSplit) {
-        if (parser.parsingReplacement()) {
-            IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
-            if (intrinsic != null) {
-                return intrinsic.createFrameState(parser.getGraph(), this, forStateSplit);
-            }
+        if (parser.parsingIntrinsic()) {
+            return parser.intrinsicContext.createFrameState(parser.getGraph(), this, forStateSplit);
         }
 
         // Skip intrinsic frames
@@ -223,7 +220,6 @@ public final class HIRFrameStateBuilder {
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw GraalInternalError.shouldNotReachHere();
-            // return graph.add(new FrameState(bci));
         }
         return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
     }
@@ -231,18 +227,12 @@ public final class HIRFrameStateBuilder {
     public BytecodePosition createBytecodePosition(int bci) {
         BytecodeParser parent = parser.getParent();
         if (AbstractBytecodeParser.Options.HideSubstitutionStates.getValue()) {
-            if (parser.parsingReplacement()) {
-                IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
-                if (intrinsic != null) {
-                    // Attribute to the method being replaced
-                    return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), intrinsic.method, -1);
-                }
+            if (parser.parsingIntrinsic()) {
+                // Attribute to the method being replaced
+                return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), parser.intrinsicContext.method, -1);
             }
-            // If this is the recursive call in a partial intrinsification
-            // the frame(s) of the intrinsic method are omitted
-            while (parent != null && parent.parsingReplacement() && parent.replacementContext.asIntrinsic() != null) {
-                parent = parent.getParent();
-            }
+            // Skip intrinsic frames
+            parent = (BytecodeParser) parser.getNonReplacementAncestor();
         }
         return create(null, bci, parent);
     }
@@ -612,8 +602,8 @@ public final class HIRFrameStateBuilder {
 
     private boolean assertLoadLocal(int i, ValueNode x) {
         assert x != null : i;
-        assert parser.parsingReplacement() || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
-        assert parser.parsingReplacement() || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
+        assert parser.parsingIntrinsic() || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
+        assert parser.parsingIntrinsic() || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
         return true;
     }
 
@@ -632,11 +622,11 @@ public final class HIRFrameStateBuilder {
         assert assertStoreLocal(x);
         locals[i] = x;
         if (x != null) {
-            if (kind.needsTwoSlots() && !parser.parsingReplacement()) {
+            if (kind.needsTwoSlots() && !parser.parsingIntrinsic()) {
                 // if this is a double word, then kill i+1
                 locals[i + 1] = null;
             }
-            if (i > 0 && !parser.parsingReplacement()) {
+            if (i > 0 && !parser.parsingIntrinsic()) {
                 ValueNode p = locals[i - 1];
                 if (p != null && p.getKind().needsTwoSlots()) {
                     // if there was a double word at i - 1, then kill it
@@ -647,7 +637,7 @@ public final class HIRFrameStateBuilder {
     }
 
     private boolean assertStoreLocal(ValueNode x) {
-        assert x == null || parser.parsingReplacement() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
+        assert x == null || parser.parsingIntrinsic() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
         return true;
     }
 
@@ -676,8 +666,8 @@ public final class HIRFrameStateBuilder {
     }
 
     private boolean assertPush(Kind kind, ValueNode x) {
-        assert parser.parsingReplacement() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
-        assert x != null && (parser.parsingReplacement() || x.getKind() == kind);
+        assert parser.parsingIntrinsic() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
+        assert x != null && (parser.parsingIntrinsic() || x.getKind() == kind);
         return true;
     }
 
@@ -692,7 +682,7 @@ public final class HIRFrameStateBuilder {
     }
 
     private boolean assertXpush(ValueNode x) {
-        assert parser.parsingReplacement() || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
+        assert parser.parsingIntrinsic() || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
         return true;
     }
 
@@ -771,7 +761,7 @@ public final class HIRFrameStateBuilder {
     private boolean assertPop(Kind kind) {
         assert kind != Kind.Void;
         ValueNode x = xpeek();
-        assert x != null && (parser.parsingReplacement() || x.getKind() == kind);
+        assert x != null && (parser.parsingIntrinsic() || x.getKind() == kind);
         return true;
     }
 
@@ -858,7 +848,7 @@ public final class HIRFrameStateBuilder {
                 newStackSize--;
                 assert stack[newStackSize].getKind().needsTwoSlots();
             } else {
-                assert parser.parsingReplacement() || (stack[newStackSize].getKind().getSlotCount() == 1);
+                assert parser.parsingIntrinsic() || (stack[newStackSize].getKind().getSlotCount() == 1);
             }
             result[i] = stack[newStackSize];
         }
@@ -925,7 +915,7 @@ public final class HIRFrameStateBuilder {
     }
 
     private boolean assertObject(ValueNode x) {
-        assert x != null && (parser.parsingReplacement() || (x.getKind() == Kind.Object));
+        assert x != null && (parser.parsingIntrinsic() || (x.getKind() == Kind.Object));
         return true;
     }
 

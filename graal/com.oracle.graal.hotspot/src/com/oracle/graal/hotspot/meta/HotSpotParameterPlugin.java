@@ -38,7 +38,7 @@ public final class HotSpotParameterPlugin implements ParameterPlugin {
     }
 
     public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
-        if (b.parsingReplacement()) {
+        if (b.parsingIntrinsic()) {
             ResolvedJavaType type = StampTool.typeOrNull(stamp);
             if (wordTypes.isWord(type)) {
                 return new ParameterNode(index, wordTypes.getWordStamp(type));

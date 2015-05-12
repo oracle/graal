@@ -102,7 +102,7 @@ public abstract class AbstractBytecodeParser {
     protected final ConstantPool constantPool;
     protected final MetaAccessProvider metaAccess;
 
-    protected final ReplacementContext replacementContext;
+    protected final IntrinsicContext intrinsicContext;
 
     /**
      * Meters the number of actual bytecodes parsed.
@@ -110,7 +110,7 @@ public abstract class AbstractBytecodeParser {
     public static final DebugMetric BytecodesParsed = Debug.metric("BytecodesParsed");
 
     public AbstractBytecodeParser(MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    ReplacementContext replacementContext) {
+                    IntrinsicContext intrinsicContext) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
@@ -118,7 +118,7 @@ public abstract class AbstractBytecodeParser {
         this.profilingInfo = (graphBuilderConfig.getUseProfiling() ? method.getProfilingInfo() : null);
         this.constantPool = method.getConstantPool();
         this.method = method;
-        this.replacementContext = replacementContext;
+        this.intrinsicContext = intrinsicContext;
         assert metaAccess != null;
     }
 
@@ -143,7 +143,7 @@ public abstract class AbstractBytecodeParser {
         if (kind == Kind.Object) {
             value = frameState.xpop();
             // astore and astore_<n> may be used to store a returnAddress (jsr)
-            assert parsingReplacement() || (value.getKind() == Kind.Object || value.getKind() == Kind.Int) : value + ":" + value.getKind();
+            assert parsingIntrinsic() || (value.getKind() == Kind.Object || value.getKind() == Kind.Int) : value + ":" + value.getKind();
         } else {
             value = frameState.pop(kind);
         }
@@ -587,13 +587,13 @@ public abstract class AbstractBytecodeParser {
     }
 
     private void maybeEagerlyResolve(int cpi, int bytecode) {
-        if (graphBuilderConfig.eagerResolving() || replacementContext instanceof IntrinsicContext) {
+        if (graphBuilderConfig.eagerResolving() || intrinsicContext != null) {
             constantPool.loadReferencedType(cpi, bytecode);
         }
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (parsingReplacement() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
+        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -1254,7 +1254,7 @@ public abstract class AbstractBytecodeParser {
         Debug.log("%s", sb);
     }
 
-    public boolean parsingReplacement() {
-        return replacementContext != null;
+    public boolean parsingIntrinsic() {
+        return intrinsicContext != null;
     }
 }

@@ -40,22 +40,14 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
         public final ResolvedJavaMethod methodToInline;
 
         /**
-         * Specifies if {@link #methodToInline} is to be considered a
-         * {@linkplain GraphBuilderContext.Replacement replacement} for the {@code method} passed to
-         * {@link InlineInvokePlugin#getInlineInfo}.
-         */
-        public final boolean isReplacement;
-
-        /**
-         * Specifies if {@link #methodToInline} is an intrinsic for the original method.
+         * Specifies if {@link #methodToInline} is an intrinsic for the original method (i.e., the
+         * {@code method} passed to {@link InlineInvokePlugin#getInlineInfo}).
          */
         public final boolean isIntrinsic;
 
-        public InlineInfo(ResolvedJavaMethod methodToInline, boolean isReplacement, boolean isIntrinsic) {
+        public InlineInfo(ResolvedJavaMethod methodToInline, boolean isIntrinsic) {
             this.methodToInline = methodToInline;
             this.isIntrinsic = isIntrinsic;
-            this.isReplacement = isReplacement;
-            assert !isIntrinsic || isReplacement : "cannot be an intrinsic without also being a replacement";
         }
     }
 
