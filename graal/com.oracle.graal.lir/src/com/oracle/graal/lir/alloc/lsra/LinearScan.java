@@ -990,23 +990,6 @@ class LinearScan {
         return isIllegal(interval.location()) && interval.canMaterialize();
     }
 
-    protected IntervalWalker initIntervalWalker(IntervalPredicate predicate) {
-        // setup lists of potential oops for walking
-        Interval oopIntervals;
-        Interval nonOopIntervals;
-
-        oopIntervals = createUnhandledLists(predicate, null).first;
-
-        /*
-         * Intervals that have no oops inside need not to be processed. to ensure a walking until
-         * the last instruction id, add a dummy interval with a high operation id.
-         */
-        nonOopIntervals = new Interval(Value.ILLEGAL, -1);
-        nonOopIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
-
-        return new IntervalWalker(this, oopIntervals, nonOopIntervals);
-    }
-
     boolean isCallerSave(Value operand) {
         return attributes(asRegister(operand)).isCallerSave();
     }
