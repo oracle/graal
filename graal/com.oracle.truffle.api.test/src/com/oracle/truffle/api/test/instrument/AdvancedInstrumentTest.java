@@ -41,7 +41,7 @@ import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvan
 public class AdvancedInstrumentTest {
 
     @Test
-    public void testSpliceInstrumentListener() {
+    public void testAdvancedInstrumentListener() {
         // Create a simple addition AST
         final TruffleRuntime runtime = Truffle.getRuntime();
         final TestValueNode leftValueNode = new TestValueNode(6);
@@ -59,13 +59,12 @@ public class AdvancedInstrumentTest {
         assertEquals(13, callTarget1.call());
 
         // Attach a null factory; it never actually attaches a node.
-        final Instrument instrument = Instrument.create(new AdvancedInstrumentRootFactory(null) {
+        final Instrument instrument = Instrument.create(null, new AdvancedInstrumentRootFactory() {
 
-            @Override
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return null;
             }
-        }, null);
+        }, "test AdvancedInstrument");
         probe.attach(instrument);
 
         assertEquals(13, callTarget1.call());
@@ -73,19 +72,16 @@ public class AdvancedInstrumentTest {
         final TestAdvancedInstrumentCounterRoot counter = new TestAdvancedInstrumentCounterRoot();
 
         // Attach a factory that splices an execution counter into the AST.
-        probe.attach(Instrument.create(new AdvancedInstrumentRootFactory(null) {
+        probe.attach(Instrument.create(null, new AdvancedInstrumentRootFactory() {
 
-            @Override
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return counter;
             }
-        }, null));
+        }, "test AdvancedInstrument"));
         assertEquals(0, counter.getCount());
 
         assertEquals(13, callTarget1.call());
 
         assertEquals(1, counter.getCount());
-
     }
-
 }

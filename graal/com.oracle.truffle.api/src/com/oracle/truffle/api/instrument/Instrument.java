@@ -131,12 +131,13 @@ public abstract class Instrument {
      * full Truffle optimization, a client-provided AST fragment every time the Probed node is
      * entered.
      *
+     * @param resultListener optional client callback for results/failure notification
      * @param rootFactory provider of AST fragments on behalf of the client
      * @param instrumentInfo optional description of the instrument's role, intended for debugging.
      * @return a new instrument, ready for attachment at a probe
      */
-    public static Instrument create(AdvancedInstrumentRootFactory rootFactory, String instrumentInfo) {
-        return new AdvancedInstrument(rootFactory, instrumentInfo);
+    public static Instrument create(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, String instrumentInfo) {
+        return new AdvancedInstrument(resultListener, rootFactory, instrumentInfo);
     }
 
     // TODO (mlvdv) experimental
@@ -381,13 +382,15 @@ public abstract class Instrument {
      */
     private static final class AdvancedInstrument extends Instrument {
 
+        private final AdvancedInstrumentResultListener resultListener;
         /**
          * Client-provided supplier of new node instances to attach.
          */
         private final AdvancedInstrumentRootFactory rootFactory;
 
-        private AdvancedInstrument(AdvancedInstrumentRootFactory rootFactory, String instrumentInfo) {
+        private AdvancedInstrument(AdvancedInstrumentResultListener resultListener, AdvancedInstrumentRootFactory rootFactory, String instrumentInfo) {
             super(instrumentInfo);
+            this.resultListener = resultListener;
             this.rootFactory = rootFactory;
 
         }
@@ -428,15 +431,20 @@ public abstract class Instrument {
 
             public void enter(Node node, VirtualFrame vFrame) {
                 if (instrumentRoot == null) {
-                    final AdvancedInstrumentRoot newInstrumentRoot = AdvancedInstrument.this.rootFactory.createInstrumentRoot(AdvancedInstrument.this.probe, node);
-                    if (newInstrumentRoot != null) {
-                        instrumentRoot = newInstrumentRoot;
-                        adoptChildren();
-                        AdvancedInstrument.this.probe.invalidateProbeUnchanged();
+                    try {
+                        final AdvancedInstrumentRoot newInstrumentRoot = AdvancedInstrument.this.rootFactory.createInstrumentRoot(AdvancedInstrument.this.probe, node);
+                        if (newInstrumentRoot != null) {
+                            instrumentRoot = newInstrumentRoot;
+                            adoptChildren();
+                            AdvancedInstrument.this.probe.invalidateProbeUnchanged();
+                        }
+                    } catch (RuntimeException ex) {
+                        if (resultListener != null) {
+                            resultListener.notifyFailure(node, vFrame, ex);
+                        }
                     }
                 }
                 if (instrumentRoot != null) {
-                    final AdvancedInstrumentResultListener resultListener = AdvancedInstrument.this.rootFactory.resultListener();
                     try {
                         final Object result = instrumentRoot.executeRoot(node, vFrame);
                         if (resultListener != null) {

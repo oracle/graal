@@ -29,8 +29,9 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * Root of a client-provided AST fragment that can be executed efficiently, subject to full Truffle
- * optimization, by an {@linkplain Instrument#create(AdvancedInstrumentRootFactory, String) Advanced
- * Instrument}.
+ * optimization, by an
+ * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, String)
+ * Advanced Instrument}.
  *
  * @see Instrument
  * @see AdvancedInstrumentRootFactory
