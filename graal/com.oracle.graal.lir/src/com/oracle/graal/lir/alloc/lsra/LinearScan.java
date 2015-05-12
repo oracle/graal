@@ -171,8 +171,10 @@ class LinearScan {
         this.firstVariableNumber = registers.length;
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
 
-        // If all allocatable registers are caller saved, then no registers are live across a call
-        // site. The register allocator can save time not trying to find a register at a call site.
+        /*
+         * If all allocatable registers are caller saved, then no registers are live across a call
+         * site. The register allocator can save time not trying to find a register at a call site.
+         */
         this.callKillsRegisters = regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
@@ -265,8 +267,10 @@ class LinearScan {
     }
 
     void assignSpillSlot(Interval interval) {
-        // assign the canonical spill slot of the parent (if a part of the interval
-        // is already spilled) or allocate a new spill slot
+        /*
+         * Assign the canonical spill slot of the parent (if a part of the interval is already
+         * spilled) or allocate a new spill slot.
+         */
         if (interval.canMaterialize()) {
             interval.assignLocation(Value.ILLEGAL);
         } else if (interval.spillSlot() != null) {
@@ -458,8 +462,10 @@ class LinearScan {
                 int spillLoopDepth = blockForId(spillPos).getLoopDepth();
 
                 if (defLoopDepth < spillLoopDepth) {
-                    // the loop depth of the spilling position is higher then the loop depth
-                    // at the definition of the interval . move write to memory out of loop.
+                    /*
+                     * The loop depth of the spilling position is higher then the loop depth at the
+                     * definition of the interval. Move write to memory out of loop.
+                     */
                     if (Options.LSRAOptimizeSpillPosition.getValue()) {
                         // find best spill position in dominator the tree
                         interval.setSpillState(SpillState.SpillInDominator);
@@ -468,8 +474,10 @@ class LinearScan {
                         interval.setSpillState(SpillState.StoreAtDefinition);
                     }
                 } else {
-                    // the interval is currently spilled only once, so for now there is no
-                    // reason to store the interval at the definition
+                    /*
+                     * The interval is currently spilled only once, so for now there is no reason to
+                     * store the interval at the definition.
+                     */
                     interval.setSpillState(SpillState.OneSpillStore);
                 }
                 break;
@@ -480,8 +488,7 @@ class LinearScan {
                     // the interval is spilled more then once
                     interval.setSpillState(SpillState.SpillInDominator);
                 } else {
-                    // it is better to store it to
-                    // memory at the definition
+                    // It is better to store it to memory at the definition.
                     interval.setSpillState(SpillState.StoreAtDefinition);
                 }
                 break;
@@ -526,8 +533,10 @@ class LinearScan {
     void eliminateSpillMoves() {
         try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves")) {
 
-            // collect all intervals that must be stored after their definition.
-            // the list is sorted by Interval.spillDefinitionPos
+            /*
+             * collect all intervals that must be stored after their definition. The list is sorted
+             * by Interval.spillDefinitionPos.
+             */
             Interval interval;
             interval = createUnhandledLists(mustStoreAtDefinition, null).first;
             if (DetailedAsserts.getValue()) {
@@ -915,10 +924,11 @@ class LinearScan {
             if (DetailedAsserts.getValue()) {
                 assert ir.getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
-                // because the number of predecessor edges matches the number of
-                // successor edges, blocks which are reached by switch statements
-                // may have be more than one predecessor but it will be guaranteed
-                // that all predecessors will be the same.
+                /*
+                 * Because the number of predecessor edges matches the number of successor edges,
+                 * blocks which are reached by switch statements may have be more than one
+                 * predecessor but it will be guaranteed that all predecessors will be the same.
+                 */
                 for (AbstractBlockBase<?> predecessor : toBlock.getPredecessors()) {
                     assert fromBlock == predecessor : "all critical edges must be broken";
                 }
@@ -961,9 +971,10 @@ class LinearScan {
 
                             blockCompleted.set(block.getLinearScanNumber());
 
-                            // directly resolve between pred and sux (without looking
-                            // at the empty block
-                            // between)
+                            /*
+                             * Directly resolve between pred and sux (without looking at the empty
+                             * block between).
+                             */
                             resolveCollectMappings(pred, sux, block, moveResolver);
                             if (moveResolver.hasMappings()) {
                                 moveResolver.setInsertPosition(instructions, 1);
@@ -981,8 +992,10 @@ class LinearScan {
 
                     for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
 
-                        // check for duplicate edges between the same blocks (can happen with switch
-                        // blocks)
+                        /*
+                         * Check for duplicate edges between the same blocks (can happen with switch
+                         * blocks).
+                         */
                         if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
                             if (Debug.isLogEnabled()) {
                                 Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
@@ -1045,8 +1058,10 @@ class LinearScan {
                 }
             }
 
-            // operands are not changed when an interval is split during allocation,
-            // so search the right interval here
+            /*
+             * Operands are not changed when an interval is split during allocation, so search the
+             * right interval here.
+             */
             interval = splitChildAtOpId(interval, opId, mode);
         }
 
@@ -1062,8 +1077,10 @@ class LinearScan {
         assert interval != null : "interval must exist";
 
         if (opId != -1) {
-            // operands are not changed when an interval is split during allocation,
-            // so search the right interval here
+            /*
+             * Operands are not changed when an interval is split during allocation, so search the
+             * right interval here.
+             */
             interval = splitChildAtOpId(interval, opId, mode);
         }
 
@@ -1077,9 +1094,10 @@ class LinearScan {
 
         oopIntervals = createUnhandledLists(predicate, null).first;
 
-        // intervals that have no oops inside need not to be processed.
-        // to ensure a walking until the last instruction id, add a dummy interval
-        // with a high operation id
+        /*
+         * Intervals that have no oops inside need not to be processed. to ensure a walking until
+         * the last instruction id, add a dummy interval with a high operation id.
+         */
         nonOopIntervals = new Interval(Value.ILLEGAL, -1);
         nonOopIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
 
@@ -1105,12 +1123,14 @@ class LinearScan {
         OperandMode mode = OperandMode.USE;
         AbstractBlockBase<?> block = blockForId(tempOpId);
         if (block.getSuccessorCount() == 1 && tempOpId == getLastLirInstructionId(block)) {
-            // generating debug information for the last instruction of a block.
-            // if this instruction is a branch, spill moves are inserted before this branch
-            // and so the wrong operand would be returned (spill moves at block boundaries
-            // are not
-            // considered in the live ranges of intervals)
-            // Solution: use the first opId of the branch target block instead.
+            /*
+             * Generating debug information for the last instruction of a block. If this instruction
+             * is a branch, spill moves are inserted before this branch and so the wrong operand
+             * would be returned (spill moves at block boundaries are not considered in the live
+             * ranges of intervals).
+             *
+             * Solution: use the first opId of the branch target block instead.
+             */
             final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 if (blockData.get(block).liveOut.get(operandNumber(operand))) {
@@ -1120,10 +1140,11 @@ class LinearScan {
             }
         }
 
-        // Get current location of operand
-        // The operand must be live because debug information is considered when building
-        // the intervals
-        // if the interval is not live, colorLirOperand will cause an assert on failure
+        /*
+         * Get current location of operand. The operand must be live because debug information is
+         * considered when building the intervals if the interval is not live, colorLirOperand will
+         * cause an assert on failure.
+         */
         Value result = colorLirOperand((Variable) operand, tempOpId, mode);
         assert !hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !isCallerSave(result) : "cannot have caller-save register operands at calls";
         return result;
@@ -1603,14 +1624,18 @@ class LinearScan {
                         iw.walkBefore(op.id());
                         boolean checkLive = true;
 
-                        // Make sure none of the fixed registers is live across an
-                        // oopmap since we can't handle that correctly.
+                        /*
+                         * Make sure none of the fixed registers is live across an oopmap since we
+                         * can't handle that correctly.
+                         */
                         if (checkLive) {
                             for (Interval interval = iw.activeLists.get(RegisterBinding.Fixed); interval != Interval.EndMarker; interval = interval.next) {
                                 if (interval.currentTo() > op.id() + 1) {
-                                    // This interval is live out of this op so make sure
-                                    // that this interval represents some value that's
-                                    // referenced by this op either as an input or output.
+                                    /*
+                                     * This interval is live out of this op so make sure that this
+                                     * interval represents some value that's referenced by this op
+                                     * either as an input or output.
+                                     */
                                     checkConsumer.curInterval = interval;
                                     checkConsumer.ok = false;
 
