@@ -26,8 +26,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * Plugin for specifying what is inlined during graph parsing or for post-processing non-inlined
- * invocations that result in {@link Invoke} nodes.
+ * Plugin for specifying what is inlined during graph parsing. This plugin is also
+ * {@linkplain #notifyOfNoninlinedInvoke notified} of non-inlined invocations (i.e., those for which
+ * an {@link Invoke} node is created).
  */
 public interface InlineInvokePlugin extends GraphBuilderPlugin {
 
@@ -46,9 +47,7 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
         public final boolean isReplacement;
 
         /**
-         * Specifies if {@link #methodToInline} is an intrinsic for the original method. If so, any
-         * {@link StateSplit} node created in the (recursive) inlining scope will be given a frame
-         * state that restarts the interpreter just before the intrinsified invocation.
+         * Specifies if {@link #methodToInline} is an intrinsic for the original method.
          */
         public final boolean isIntrinsic;
 

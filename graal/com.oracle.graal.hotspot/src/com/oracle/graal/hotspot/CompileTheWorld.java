@@ -305,7 +305,7 @@ public final class CompileTheWorld {
                 }
                 if (excludeMethodFilters != null && excludeMethodFilters.length > 0) {
                     String exclude = Arrays.asList(excludeMethodFilters).stream().map(MethodFilter::toString).collect(Collectors.joining(", "));
-                    println("CompileTheWorld : Excluding all methods matching one of the follwing filters: " + exclude);
+                    println("CompileTheWorld : Excluding all methods matching one of the following filters: " + exclude);
                 }
                 println();
 

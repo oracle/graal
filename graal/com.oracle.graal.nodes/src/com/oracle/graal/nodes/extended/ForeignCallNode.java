@@ -107,6 +107,12 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     @Override
+    public void setStateAfter(FrameState x) {
+        assert hasSideEffect() || x == null;
+        super.setStateAfter(x);
+    }
+
+    @Override
     public FrameState stateDuring() {
         return stateDuring;
     }

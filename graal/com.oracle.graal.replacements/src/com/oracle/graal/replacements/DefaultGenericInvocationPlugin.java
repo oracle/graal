@@ -145,11 +145,17 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             b.add(new UnsafeStoreNode(copy.destinationObject(), copy.destinationOffset(), value, copy.accessKind(), copy.getLocationIdentity()));
             return true;
         } else if (res instanceof ForeignCallNode) {
-            ForeignCallNode foreign = (ForeignCallNode) res;
-            foreign.setBci(b.bci());
+            /*
+             * Need to update the BCI of a ForeignCallNode so that it gets the stateDuring in the
+             * case that the foreign call can deoptimize. As with all deoptimization, we need a
+             * state in a normal method as opposed to an intrinsic.
+             */
+            GraphBuilderContext ancestor = b.getNonReplacementAncestor();
+            if (ancestor != null) {
+                ForeignCallNode foreign = (ForeignCallNode) res;
+                foreign.setBci(ancestor.bci());
+            }
         }
-
-        res = b.add(res);
 
         boolean nonValueType = false;
         if (returnKind == Kind.Object && stamp instanceof ObjectStamp) {
@@ -162,16 +168,10 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
 
         if (returnKind != Kind.Void) {
             assert nonValueType || res.getKind().getStackKind() != Kind.Void;
-            b.push(returnKind.getStackKind(), res);
+            res = b.addPush(returnKind.getStackKind(), res);
         } else {
             assert res.getKind().getStackKind() == Kind.Void;
-        }
-
-        if (res instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) res;
-            if (stateSplit.stateAfter() == null) {
-                stateSplit.setStateAfter(b.createStateAfter());
-            }
+            res = b.add(res);
         }
 
         return true;

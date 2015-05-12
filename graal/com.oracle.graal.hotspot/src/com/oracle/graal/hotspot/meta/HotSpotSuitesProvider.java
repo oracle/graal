@@ -119,7 +119,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
      * for equality.
      */
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
-        suite.appendPhase(new BasePhase<HighTierContext>() {
+        suite.appendPhase(new BasePhase<HighTierContext>("VerifyEncodingDecoding") {
             @Override
             protected void run(StructuredGraph graph, HighTierContext context) {
                 EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);

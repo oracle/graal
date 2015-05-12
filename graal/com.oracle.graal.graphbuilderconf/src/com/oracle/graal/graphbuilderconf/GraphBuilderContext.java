@@ -115,8 +115,8 @@ public interface GraphBuilderContext {
         T equivalentValue = append(value);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null) {
-                stateSplit.setStateAfter(createStateAfter());
+            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
+                setStateAfter(stateSplit);
             }
         }
         return equivalentValue;
@@ -149,8 +149,8 @@ public interface GraphBuilderContext {
         push(kind.getStackKind(), equivalentValue);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null) {
-                stateSplit.setStateAfter(createStateAfter());
+            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
+                setStateAfter(stateSplit);
             }
         }
         return equivalentValue;
@@ -194,14 +194,29 @@ public interface GraphBuilderContext {
 
     /**
      * Creates a snap shot of the current frame state with the BCI of the instruction after the one
-     * currently being parsed.
+     * currently being parsed and assigns it to a given {@linkplain StateSplit#hasSideEffect() side
+     * effect} node.
+     *
+     * @param sideEffect a side effect node just appended to the graph
      */
-    FrameState createStateAfter();
+    void setStateAfter(StateSplit sideEffect);
 
     /**
      * Gets the parsing context for the method that inlines the method being parsed by this context.
      */
     GraphBuilderContext getParent();
+
+    /**
+     * Gets the first ancestor parsing context that is not parsing a
+     * {@linkplain #parsingReplacement() replacement}.
+     */
+    default GraphBuilderContext getNonReplacementAncestor() {
+        GraphBuilderContext ancestor = getParent();
+        while (ancestor != null && ancestor.parsingReplacement()) {
+            ancestor = ancestor.getParent();
+        }
+        return ancestor;
+    }
 
     /**
      * Gets the method currently being parsed.

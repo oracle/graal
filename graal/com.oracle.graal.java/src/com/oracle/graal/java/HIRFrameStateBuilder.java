@@ -62,6 +62,12 @@ public final class HIRFrameStateBuilder {
     private FrameState outerFrameState;
 
     /**
+     * The closest {@link StateSplit#hasSideEffect() side-effect} predecessors. There will be more
+     * than one when the current block contains no side-effects but merging predecessor blocks do.
+     */
+    protected StateSplit[] lastSideEffects;
+
+    /**
      * Creates a new frame state builder for the given method and the given target graph.
      *
      * @param method the method whose frame is simulated
@@ -144,14 +150,6 @@ public final class HIRFrameStateBuilder {
             javaIndex += kind.getSlotCount();
             index++;
         }
-
-        if (parser.replacementContext instanceof IntrinsicContext) {
-            IntrinsicContext intrinsic = (IntrinsicContext) parser.replacementContext;
-            if (intrinsic.isCompilationRoot()) {
-                // Records the parameters to an root compiled intrinsic
-                intrinsic.args = locals.clone();
-            }
-        }
     }
 
     private HIRFrameStateBuilder(HIRFrameStateBuilder other) {
@@ -202,25 +200,22 @@ public final class HIRFrameStateBuilder {
         return sb.toString();
     }
 
-    public FrameState create(int bci) {
-        BytecodeParser parent = parser.getParent();
+    public FrameState create(int bci, StateSplit forStateSplit) {
         if (parser.parsingReplacement()) {
             IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
             if (intrinsic != null) {
-                return intrinsic.getInvokeStateBefore(parser.getGraph(), parent);
+                return intrinsic.createFrameState(parser.getGraph(), this, forStateSplit);
             }
         }
-        // If this is the recursive call in a partial intrinsification
-        // the frame(s) of the intrinsic method are omitted
-        while (parent != null && parent.parsingReplacement() && parent.replacementContext.asIntrinsic() != null) {
-            parent = parent.getParent();
-        }
+
+        // Skip intrinsic frames
+        BytecodeParser parent = (BytecodeParser) parser.getNonReplacementAncestor();
         return create(bci, parent, false);
     }
 
     public FrameState create(int bci, BytecodeParser parent, boolean duringCall) {
         if (outerFrameState == null && parent != null) {
-            outerFrameState = parent.getFrameState().create(parent.bci());
+            outerFrameState = parent.getFrameState().create(parent.bci(), null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, this.peek(0));
@@ -315,6 +310,17 @@ public final class HIRFrameStateBuilder {
         for (int i = 0; i < lockedObjects.length; i++) {
             lockedObjects[i] = merge(lockedObjects[i], other.lockedObjects[i], block);
             assert monitorIds[i] == other.monitorIds[i];
+        }
+
+        if (lastSideEffects == null) {
+            lastSideEffects = other.lastSideEffects;
+        } else {
+            if (other.lastSideEffects != null) {
+                int thisLength = lastSideEffects.length;
+                int otherLength = other.lastSideEffects.length;
+                lastSideEffects = Arrays.copyOf(lastSideEffects, thisLength + otherLength);
+                System.arraycopy(other.lastSideEffects, 0, lastSideEffects, thisLength, otherLength);
+            }
         }
     }
 
@@ -1001,6 +1007,17 @@ public final class HIRFrameStateBuilder {
             if (stack[i] == oldValue) {
                 stack[i] = newValue;
             }
+        }
+    }
+
+    public void addLastSideEffect(StateSplit sideEffect) {
+        assert sideEffect != null;
+        assert sideEffect.hasSideEffect();
+        if (lastSideEffects == null) {
+            lastSideEffects = new StateSplit[]{sideEffect};
+        } else {
+            lastSideEffects = Arrays.copyOf(lastSideEffects, lastSideEffects.length + 1);
+            lastSideEffects[lastSideEffects.length - 1] = sideEffect;
         }
     }
 }
