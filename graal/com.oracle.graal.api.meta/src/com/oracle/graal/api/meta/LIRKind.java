@@ -133,15 +133,49 @@ public final class LIRKind {
      */
     public static LIRKind merge(Value... inputs) {
         assert inputs.length > 0;
+        LIRKind mergeKind = null;
+
         for (Value input : inputs) {
             LIRKind kind = input.getLIRKind();
+
+            assert mergeKind == null || verifyMoveKinds(mergeKind, kind) : String.format("Input kinds do not match %s vs. %s", mergeKind, kind);
+
             if (kind.isDerivedReference()) {
+                /**
+                 * Kind is a derived reference therefore the result can only be also a derived
+                 * reference.
+                 */
                 return kind;
             }
+            if (mergeKind == null) {
+                mergeKind = kind;
+                continue;
+            }
+
+            if (kind.isValue()) {
+                /* Kind is a value. */
+                if (mergeKind.referenceMask != 0) {
+                    /*
+                     * Inputs consists of values and references. Make the result a derived
+                     * reference.
+                     */
+                    return mergeKind.makeDerivedReference();
+                }
+                /* Check that other inputs are also values. */
+            } else {
+                /* Kind is a reference. */
+                if (mergeKind.referenceMask != kind.referenceMask) {
+                    /*
+                     * Reference maps do not match so the result can only be a derived reference.
+                     */
+                    return mergeKind.makeDerivedReference();
+                }
+            }
+
         }
 
         // all inputs are values or references, just return one of them
-        return inputs[0].getLIRKind();
+        return mergeKind;
     }
 
     /**
