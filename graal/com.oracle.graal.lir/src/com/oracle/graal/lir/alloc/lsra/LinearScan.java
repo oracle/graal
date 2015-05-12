@@ -39,7 +39,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
-import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
@@ -442,59 +441,6 @@ class LinearScan {
     boolean hasCall(int opId) {
         assert isEven(opId) : "opId not even";
         return instructionForId(opId).destroysCallerSavedRegisters();
-    }
-
-    // called during register allocation
-    void changeSpillState(Interval interval, int spillPos) {
-        switch (interval.spillState()) {
-            case NoSpillStore: {
-                int defLoopDepth = blockForId(interval.spillDefinitionPos()).getLoopDepth();
-                int spillLoopDepth = blockForId(spillPos).getLoopDepth();
-
-                if (defLoopDepth < spillLoopDepth) {
-                    /*
-                     * The loop depth of the spilling position is higher then the loop depth at the
-                     * definition of the interval. Move write to memory out of loop.
-                     */
-                    if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
-                        // find best spill position in dominator the tree
-                        interval.setSpillState(SpillState.SpillInDominator);
-                    } else {
-                        // store at definition of the interval
-                        interval.setSpillState(SpillState.StoreAtDefinition);
-                    }
-                } else {
-                    /*
-                     * The interval is currently spilled only once, so for now there is no reason to
-                     * store the interval at the definition.
-                     */
-                    interval.setSpillState(SpillState.OneSpillStore);
-                }
-                break;
-            }
-
-            case OneSpillStore: {
-                if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
-                    // the interval is spilled more then once
-                    interval.setSpillState(SpillState.SpillInDominator);
-                } else {
-                    // It is better to store it to memory at the definition.
-                    interval.setSpillState(SpillState.StoreAtDefinition);
-                }
-                break;
-            }
-
-            case SpillInDominator:
-            case StoreAtDefinition:
-            case StartInMemory:
-            case NoOptimization:
-            case NoDefinitionFound:
-                // nothing to do
-                break;
-
-            default:
-                throw new BailoutException("other states not allowed at this time");
-        }
     }
 
     abstract static class IntervalPredicate {
