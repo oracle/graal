@@ -1133,7 +1133,7 @@ class LinearScan {
                  * instruction is a branch, spill moves are inserted before this branch and so the
                  * wrong operand would be returned (spill moves at block boundaries are not
                  * considered in the live ranges of intervals).
-                 * 
+                 *
                  * Solution: use the first opId of the branch target block instead.
                  */
                 final LIRInstruction instr = ir.getLIRforBlock(block).get(ir.getLIRforBlock(block).size() - 1);
@@ -1225,10 +1225,6 @@ class LinearScan {
         }
     }
 
-    protected LifetimeAnalysis createLifetimeAnalysis() {
-        return new LifetimeAnalysis(this);
-    }
-
     <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
 
         /*
@@ -1237,13 +1233,13 @@ class LinearScan {
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
             AllocationContext context = new AllocationContext(spillMoveFactory);
 
-            createLifetimeAnalysis().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-            new RegisterAllocation().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+            createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
             if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
-                new OptimizeSpillPosition(this).apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
             }
-            new ResolveDataFlow().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            createResolveDataFlowPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
             sortIntervalsAfterAllocation();
 
@@ -1251,13 +1247,37 @@ class LinearScan {
                 verify();
             }
 
-            new EliminateSpillMove().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-            new AssignLocations().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            createSpillMoveEliminationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+            createAssignLocationsPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
             if (DetailedAsserts.getValue()) {
                 verifyIntervals();
             }
         }
+    }
+
+    protected LifetimeAnalysis createLifetimeAnalysisPhase() {
+        return new LifetimeAnalysis(this);
+    }
+
+    protected RegisterAllocation createRegisterAllocationPhase() {
+        return new RegisterAllocation();
+    }
+
+    protected OptimizeSpillPosition createOptimizeSpillPositionPhase() {
+        return new OptimizeSpillPosition(this);
+    }
+
+    protected ResolveDataFlow createResolveDataFlowPhase() {
+        return new ResolveDataFlow();
+    }
+
+    protected EliminateSpillMove createSpillMoveEliminationPhase() {
+        return new EliminateSpillMove();
+    }
+
+    protected AssignLocations createAssignLocationsPhase() {
+        return new AssignLocations();
     }
 
     private final class RegisterAllocation extends AllocationPhase {

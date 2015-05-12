@@ -134,7 +134,7 @@ final class SSALinearScan extends LinearScan {
     }
 
     @Override
-    protected LifetimeAnalysis createLifetimeAnalysis() {
+    protected LifetimeAnalysis createLifetimeAnalysisPhase() {
         return new SSALifetimeAnalysis(this);
     }
 
