@@ -235,7 +235,7 @@ public final class HIRFrameStateBuilder {
                 IntrinsicContext intrinsic = parser.replacementContext.asIntrinsic();
                 if (intrinsic != null) {
                     // Attribute to the method being replaced
-                    return new BytecodePosition(FrameState.toBytecodePosition(intrinsic.getInvokeStateBefore(parser.getGraph(), parent)), intrinsic.method, -1);
+                    return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), intrinsic.method, -1);
                 }
             }
             // If this is the recursive call in a partial intrinsification
