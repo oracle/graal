@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 
 import java.lang.invoke.*;
+import java.util.zip.*;
 
 import sun.reflect.*;
 
@@ -86,6 +87,7 @@ public class HotSpotGraphBuilderPlugins {
         registerReflectionPlugins(invocationPlugins);
         registerStableOptionPlugins(invocationPlugins);
         registerAESPlugins(invocationPlugins, config);
+        registerCRC32Plugins(invocationPlugins, config);
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
 
         return plugins;
@@ -246,6 +248,19 @@ public class HotSpotGraphBuilderPlugins {
                 r.registerMethodSubstitution(AESCryptSubstitutions.class, "encryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
                 r.registerMethodSubstitution(AESCryptSubstitutions.class, "decryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
             }
+        }
+    }
+
+    private static void registerCRC32Plugins(InvocationPlugins plugins, HotSpotVMConfig config) {
+        if (config.useCRC32Intrinsics) {
+            assert config.aescryptEncryptBlockStub != 0L;
+            assert config.aescryptDecryptBlockStub != 0L;
+            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
+            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+            Registration r = new Registration(plugins, CRC32.class);
+            r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
+            r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
         }
     }
 }
