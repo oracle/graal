@@ -64,7 +64,7 @@ public class AdvancedInstrumentTest {
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return null;
             }
-        }, "test AdvancedInstrument");
+        }, null, "test AdvancedInstrument");
         probe.attach(instrument);
 
         assertEquals(13, callTarget1.call());
@@ -77,7 +77,7 @@ public class AdvancedInstrumentTest {
             public AdvancedInstrumentRoot createInstrumentRoot(Probe p, Node n) {
                 return counter;
             }
-        }, "test AdvancedInstrument"));
+        }, null, "test AdvancedInstrument"));
         assertEquals(0, counter.getCount());
 
         assertEquals(13, callTarget1.call());

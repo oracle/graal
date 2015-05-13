@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Listener for receiving the result a client-provided {@linkplain AdvancedInstrumentRoot AST
  * fragment}, when executed by a
- * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, String)
+ * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
  * Advanced Instrument}.
  *
  * @see Instrument
@@ -43,7 +43,7 @@ public interface AdvancedInstrumentResultListener {
     /**
      * Notifies listener that a client-provided {@linkplain AdvancedInstrumentRoot AST fragment} has
      * been executed by an
-     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, String)
+     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
      * Advanced Instrument} with the specified result, possibly {@code null}.
      * <p>
      * <strong>Note: </strong> Truffle will attempt to optimize implementations through partial
