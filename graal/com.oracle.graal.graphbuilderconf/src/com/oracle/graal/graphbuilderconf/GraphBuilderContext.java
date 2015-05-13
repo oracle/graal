@@ -178,7 +178,7 @@ public interface GraphBuilderContext {
      * Gets the first ancestor parsing context that is not parsing a
      * {@linkplain #parsingIntrinsic() intrinsic}.
      */
-    default GraphBuilderContext getNonReplacementAncestor() {
+    default GraphBuilderContext getNonIntrinsicAncestor() {
         GraphBuilderContext ancestor = getParent();
         while (ancestor != null && ancestor.parsingIntrinsic()) {
             ancestor = ancestor.getParent();

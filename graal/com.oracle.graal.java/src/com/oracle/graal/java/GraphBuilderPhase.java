@@ -207,35 +207,38 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         return graphBuilderConfig;
     }
 
+    /**
+     * A scoped object for tasks to be performed after parsing an intrinsic such as processing
+     * {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frames states.
+     */
     static class IntrinsicScope implements AutoCloseable {
         FrameState stateBefore;
         final Mark mark;
         final BytecodeParser parser;
 
-        static IntrinsicScope create(boolean enteringIntrinsic, BytecodeParser parser, FrameStateBuilder currentFrameState, ValueNode[] args) {
-            if (enteringIntrinsic) {
-                return new IntrinsicScope(parser, currentFrameState, args);
-            }
-            return null;
+        /**
+         * Creates a scope for root parsing an intrinsic.
+         *
+         * @param parser the parsing context of the intrinsic
+         */
+        public IntrinsicScope(BytecodeParser parser) {
+            this.parser = parser;
+            assert parser.parent == null;
+            assert parser.bci() == 0;
+            mark = null;
         }
 
-        public IntrinsicScope(BytecodeParser parser, FrameStateBuilder currentFrameState, ValueNode[] args) {
+        /**
+         * Creates a scope for parsing an intrinsic during graph builder inlining.
+         *
+         * @param parser the parsing context of the (non-intrinsic) method calling the intrinsic
+         * @param args the arguments to the call
+         */
+        public IntrinsicScope(BytecodeParser parser, ValueNode[] args) {
+            assert !parser.parsingIntrinsic();
             this.parser = parser;
-            if (args == null) {
-                assert parser.parent == null;
-                assert parser.bci() == 0;
-                mark = null;
-            } else {
-                mark = parser.getGraph().getMark();
-                for (ValueNode arg : args) {
-                    currentFrameState.push(arg.getKind(), arg);
-                }
-                stateBefore = currentFrameState.create(parser.bci(), null);
-                for (int i = args.length - 1; i >= 0; i--) {
-                    ValueNode arg = args[i];
-                    currentFrameState.pop(arg.getKind());
-                }
-            }
+            mark = parser.getGraph().getMark();
+            stateBefore = parser.frameState.create(parser.bci(), parser.getNonIntrinsicAncestor(), false, args);
         }
 
         public void close() {
@@ -244,43 +247,56 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return;
             }
 
+            processPlaceholderFrameStates(intrinsic);
+        }
+
+        /**
+         * Fixes up the {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frame states
+         * added to the graph while parsing/inlining the intrinsic for which this object exists.
+         */
+        private void processPlaceholderFrameStates(IntrinsicContext intrinsic) {
             FrameState stateAfterReturn = null;
             StructuredGraph graph = parser.getGraph();
             for (Node node : graph.getNewNodes(mark)) {
                 if (node instanceof FrameState) {
-                    FrameState fs = (FrameState) node;
-                    if (BytecodeFrame.isPlaceholderBci(fs.bci)) {
-                        if (fs.bci == BytecodeFrame.AFTER_BCI) {
-                            if (fs.stackSize() != 0) {
-                                assert fs.usages().count() == 1;
-                                ValueNode returnVal = fs.stackAt(0);
-                                assert returnVal == fs.usages().first();
+                    FrameState frameState = (FrameState) node;
+                    if (BytecodeFrame.isPlaceholderBci(frameState.bci)) {
+                        if (frameState.bci == BytecodeFrame.AFTER_BCI) {
+                            FrameStateBuilder frameStateBuilder = parser.frameState;
+                            if (frameState.stackSize() != 0) {
+                                assert frameState.usages().count() == 1;
+                                ValueNode returnVal = frameState.stackAt(0);
+                                assert returnVal == frameState.usages().first();
 
-                                ValueNode tos = parser.frameState.pop(returnVal.getKind());
-                                parser.frameState.push(returnVal.getKind(), returnVal);
-                                FrameState newFs = parser.frameState.create(parser.stream.nextBCI(), null);
-                                fs.replaceAndDelete(newFs);
-                                parser.frameState.pop(returnVal.getKind());
-                                parser.frameState.push(tos.getKind(), tos);
+                                /*
+                                 * Swap the top-of-stack value with the side-effect return value
+                                 * using the frame state.
+                                 */
+                                ValueNode tos = frameStateBuilder.pop(returnVal.getKind());
+                                assert tos.getKind() == returnVal.getKind();
+                                FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, returnVal);
+                                frameState.replaceAndDelete(newFrameState);
+                                frameStateBuilder.push(tos.getKind(), tos);
                             } else {
                                 if (stateAfterReturn == null) {
-                                    if (intrinsic != null && intrinsic.isCompilationRoot()) {
+                                    if (intrinsic != null) {
+                                        assert intrinsic.isCompilationRoot();
                                         stateAfterReturn = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
                                     } else {
-                                        stateAfterReturn = parser.frameState.create(parser.stream.nextBCI(), null);
+                                        stateAfterReturn = frameStateBuilder.create(parser.stream.nextBCI(), null);
                                     }
                                 }
-                                fs.replaceAndDelete(stateAfterReturn);
+                                frameState.replaceAndDelete(stateAfterReturn);
                             }
-                        } else if (fs.bci == BytecodeFrame.BEFORE_BCI) {
+                        } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
                             if (stateBefore == null) {
                                 stateBefore = graph.start().stateAfter();
                             }
-                            if (stateBefore != fs) {
-                                fs.replaceAndDelete(stateBefore);
+                            if (stateBefore != frameState) {
+                                frameState.replaceAndDelete(stateBefore);
                             }
                         } else {
-                            assert fs.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
+                            assert frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI;
                         }
                     }
                 }
@@ -328,7 +344,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
                 frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
 
-                try (IntrinsicScope s = IntrinsicScope.create(intrinsicContext != null, parser, frameState, null)) {
+                try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(parser) : null) {
                     parser.build(graph.start(), frameState);
                 }
                 GraphUtil.normalizeLoops(graph);
@@ -1571,7 +1587,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private void parseAndInlineCallee(ResolvedJavaMethod targetMethod, ValueNode[] args, IntrinsicContext calleeIntrinsicContext) {
-                try (IntrinsicScope s = IntrinsicScope.create(calleeIntrinsicContext != null && !parsingIntrinsic(), this, frameState, args)) {
+                try (IntrinsicScope s = calleeIntrinsicContext != null && !parsingIntrinsic() ? new IntrinsicScope(this, args) : null) {
 
                     BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
                     FrameStateBuilder startFrameState = new FrameStateBuilder(parser, targetMethod, graph);
@@ -3562,6 +3578,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             public boolean parsingIntrinsic() {
                 return intrinsicContext != null;
+            }
+
+            public BytecodeParser getNonIntrinsicAncestor() {
+                BytecodeParser ancestor = parent;
+                while (ancestor != null && ancestor.parsingIntrinsic()) {
+                    ancestor = ancestor.parent;
+                }
+                return ancestor;
             }
         }
     }

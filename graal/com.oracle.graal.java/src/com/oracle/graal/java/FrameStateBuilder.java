@@ -208,11 +208,14 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
 
         // Skip intrinsic frames
-        BytecodeParser parent = (BytecodeParser) parser.getNonReplacementAncestor();
-        return create(bci, parent, false);
+        return create(bci, parser.getNonIntrinsicAncestor(), false, (ValueNode[]) null);
     }
 
-    public FrameState create(int bci, BytecodeParser parent, boolean duringCall) {
+    /**
+     * @param pushedValues if non-null, values to {@link #push(Kind, ValueNode)} to the stack before
+     *            creating the {@link FrameState}
+     */
+    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, ValueNode... pushedValues) {
         if (outerFrameState == null && parent != null) {
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), null);
         }
@@ -223,7 +226,18 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw GraalInternalError.shouldNotReachHere();
         }
-        return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+
+        if (pushedValues != null) {
+            int stackSizeToRestore = stackSize;
+            for (ValueNode arg : pushedValues) {
+                push(arg.getKind(), arg);
+            }
+            FrameState res = graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+            stackSize = stackSizeToRestore;
+            return res;
+        } else {
+            return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+        }
     }
 
     public BytecodePosition createBytecodePosition(int bci) {
@@ -234,7 +248,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 return new BytecodePosition(parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
             }
             // Skip intrinsic frames
-            parent = (BytecodeParser) parser.getNonReplacementAncestor();
+            parent = parser.getNonIntrinsicAncestor();
         }
         return create(null, bci, parent);
     }
