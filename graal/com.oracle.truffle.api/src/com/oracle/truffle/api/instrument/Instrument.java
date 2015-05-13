@@ -466,7 +466,10 @@ public abstract class Instrument {
                 if (requiredResultType == null) {
                     return;
                 }
-                if (result == null || !(requiredResultType.isAssignableFrom(result.getClass()))) {
+                if (result == null) {
+                    throw new RuntimeException("Instrument result null: " + requiredResultType.getSimpleName() + " is required");
+                }
+                if (!(requiredResultType.isAssignableFrom(result.getClass()))) {
                     throw new RuntimeException("Instrument result " + result.toString() + " not assignable to " + requiredResultType.getSimpleName());
                 }
             }
