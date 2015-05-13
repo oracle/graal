@@ -96,7 +96,17 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, Instantiation instantiation, Node usage, final StructuredGraph graph) {
         InstanceOfUsageReplacer replacer;
         if (usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ShortCircuitOrNode || usage instanceof GuardingPiNode || usage instanceof ConditionAnchorNode) {
-            replacer = new NonMaterializationUsageReplacer(instantiation, ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph), instanceOf, usage);
+            ValueNode trueValue = ConstantNode.forInt(1, graph);
+            ValueNode falseValue = ConstantNode.forInt(0, graph);
+            if (instantiation.isInitialized() && (trueValue != instantiation.trueValue || falseValue != instantiation.falseValue)) {
+                /*
+                 * This code doesn't really care what values are used so adopt the values from the
+                 * previous instantiation.
+                 */
+                trueValue = instantiation.trueValue;
+                falseValue = instantiation.falseValue;
+            }
+            replacer = new NonMaterializationUsageReplacer(instantiation, trueValue, falseValue, instanceOf, usage);
         } else {
             assert usage instanceof ConditionalNode : "unexpected usage of " + instanceOf + ": " + usage;
             ConditionalNode c = (ConditionalNode) usage;

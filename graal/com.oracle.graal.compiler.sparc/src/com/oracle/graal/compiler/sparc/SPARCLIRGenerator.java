@@ -52,15 +52,7 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadDataAddressOp;
-import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGpVIS3;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
-import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
-import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
+import com.oracle.graal.lir.sparc.SPARCMove.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
@@ -1072,6 +1064,13 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         append(new ReturnOp(Value.ILLEGAL));
+    }
+
+    public Value emitSignExtendLoad(LIRKind kind, Value address, LIRFrameState state) {
+        SPARCAddressValue loadAddress = asAddressValue(address);
+        Variable result = newVariable(kind);
+        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state, true));
+        return result;
     }
 
 }

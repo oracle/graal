@@ -412,4 +412,23 @@ public class InstanceOfTest extends TypeCheckTest {
         test("arrayCopyTypeName", (Object) new Object[]{"one", "two", "three"});
         test("arrayCopyTypeName", (Object) new String[]{"one", "two", "three"});
     }
+
+    public int conditionalInstantiation(Object o) {
+        int total = 0;
+        if (o instanceof CharSequence) {
+            if (o instanceof StringBuilder || o instanceof String) {
+                total = 9;
+            }
+            total += (o instanceof String ? 2 : 1);
+        }
+
+        return total;
+    }
+
+    @Test
+    public void testInstantiation() {
+        test("conditionalInstantiation", "foo");
+        test("conditionalInstantiation", new StringBuilder());
+        test("conditionalInstantiation", 1);
+    }
 }

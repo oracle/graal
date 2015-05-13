@@ -23,6 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 
 import java.util.*;
 
@@ -31,8 +32,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.IntrinsicContext.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodeinfo.*;
@@ -227,7 +228,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
 
     public BytecodePosition createBytecodePosition(int bci) {
         BytecodeParser parent = parser.getParent();
-        if (AbstractBytecodeParser.Options.HideSubstitutionStates.getValue()) {
+        if (HideSubstitutionStates.getValue()) {
             if (parser.parsingIntrinsic()) {
                 // Attribute to the method being replaced
                 return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
