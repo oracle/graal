@@ -1066,16 +1066,36 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             return result;
         } else {
             assert inputVal.getKind().getStackKind() == Kind.Int;
-            Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Int));
-            int mask = (int) CodeUtil.mask(fromBits);
-            append(new AMD64Binary.DataOp(AND.getRMOpcode(DWORD), DWORD, result, asAllocatable(inputVal), JavaConstant.forInt(mask)));
+
+            LIRKind resultKind = LIRKind.derive(inputVal);
+            OperandSize resultSize;
             if (toBits > 32) {
-                Variable longResult = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
-                emitMove(longResult, result);
-                return longResult;
+                resultKind = resultKind.changeType(Kind.Long);
+                resultSize = QWORD;
             } else {
-                return result;
+                resultKind = resultKind.changeType(Kind.Int);
+                resultSize = DWORD;
             }
+
+            switch (fromBits) {
+                case 8:
+                    return emitConvertOp(resultKind, MOVZXB, resultSize, inputVal);
+                case 16:
+                    return emitConvertOp(resultKind, MOVZX, resultSize, inputVal);
+                case 32:
+                    return emitConvertOp(resultKind, MOV, DWORD, inputVal);
+            }
+
+            // odd bit count, fall back on manual masking
+            Variable result = newVariable(resultKind);
+            JavaConstant mask;
+            if (toBits > 32) {
+                mask = JavaConstant.forLong(CodeUtil.mask(fromBits));
+            } else {
+                mask = JavaConstant.forInt((int) CodeUtil.mask(fromBits));
+            }
+            append(new AMD64Binary.DataOp(AND.getRMOpcode(DWORD), DWORD, result, asAllocatable(inputVal), mask));
+            return result;
         }
     }
 
