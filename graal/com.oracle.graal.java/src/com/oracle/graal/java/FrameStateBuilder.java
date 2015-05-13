@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 
-public final class HIRFrameStateBuilder implements SideEffectsState {
+public final class FrameStateBuilder implements SideEffectsState {
 
     static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
     static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
@@ -75,7 +75,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
      * @param method the method whose frame is simulated
      * @param graph the target graph of Graal nodes created by the builder
      */
-    public HIRFrameStateBuilder(BytecodeParser parser, ResolvedJavaMethod method, StructuredGraph graph) {
+    public FrameStateBuilder(BytecodeParser parser, ResolvedJavaMethod method, StructuredGraph graph) {
         this.parser = parser;
         this.method = method;
         this.locals = allocateArray(method.getMaxLocals());
@@ -154,7 +154,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         }
     }
 
-    private HIRFrameStateBuilder(HIRFrameStateBuilder other) {
+    private FrameStateBuilder(FrameStateBuilder other) {
         this.parser = other.parser;
         this.method = other.method;
         this.stackSize = other.stackSize;
@@ -253,11 +253,11 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         return new BytecodePosition(outer, method, bci);
     }
 
-    public HIRFrameStateBuilder copy() {
-        return new HIRFrameStateBuilder(this);
+    public FrameStateBuilder copy() {
+        return new FrameStateBuilder(this);
     }
 
-    public boolean isCompatibleWith(HIRFrameStateBuilder other) {
+    public boolean isCompatibleWith(FrameStateBuilder other) {
         assert method.equals(other.method) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
@@ -282,7 +282,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         return true;
     }
 
-    public void merge(AbstractMergeNode block, HIRFrameStateBuilder other) {
+    public void merge(AbstractMergeNode block, FrameStateBuilder other) {
         assert isCompatibleWith(other);
 
         for (int i = 0; i < localsSize(); i++) {
@@ -377,7 +377,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void insertLoopProxies(LoopExitNode loopExit, HIRFrameStateBuilder loopEntryState) {
+    public void insertLoopProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
@@ -960,8 +960,8 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
 
     @Override
     public boolean equals(Object otherObject) {
-        if (otherObject instanceof HIRFrameStateBuilder) {
-            HIRFrameStateBuilder other = (HIRFrameStateBuilder) otherObject;
+        if (otherObject instanceof FrameStateBuilder) {
+            FrameStateBuilder other = (FrameStateBuilder) otherObject;
             if (!other.method.equals(method)) {
                 return false;
             }

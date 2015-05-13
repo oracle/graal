@@ -212,14 +212,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         final Mark mark;
         final BytecodeParser parser;
 
-        static IntrinsicScope create(boolean enteringIntrinsic, BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
+        static IntrinsicScope create(boolean enteringIntrinsic, BytecodeParser parser, FrameStateBuilder currentFrameState, ValueNode[] args) {
             if (enteringIntrinsic) {
                 return new IntrinsicScope(parser, currentFrameState, args);
             }
             return null;
         }
 
-        public IntrinsicScope(BytecodeParser parser, HIRFrameStateBuilder currentFrameState, ValueNode[] args) {
+        public IntrinsicScope(BytecodeParser parser, FrameStateBuilder currentFrameState, ValueNode[] args) {
             this.parser = parser;
             if (args == null) {
                 assert parser.parent == null;
@@ -324,7 +324,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             try {
                 IntrinsicContext intrinsicContext = initialIntrinsicContext;
                 BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, intrinsicContext);
-                HIRFrameStateBuilder frameState = new HIRFrameStateBuilder(parser, method, graph);
+                FrameStateBuilder frameState = new FrameStateBuilder(parser, method, graph);
 
                 frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
 
@@ -400,9 +400,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         private static class Target {
 
             FixedNode fixed;
-            HIRFrameStateBuilder state;
+            FrameStateBuilder state;
 
-            public Target(FixedNode fixed, HIRFrameStateBuilder state) {
+            public Target(FixedNode fixed, FrameStateBuilder state) {
                 this.fixed = fixed;
                 this.state = state;
             }
@@ -447,16 +447,16 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private FixedWithNextNode lastInstr;                 // the last instruction added
             private final boolean explodeLoops;
             private final boolean mergeExplosions;
-            private final Map<HIRFrameStateBuilder, Integer> mergeExplosionsMap;
+            private final Map<FrameStateBuilder, Integer> mergeExplosionsMap;
             private Deque<ExplodedLoopContext> explodeLoopsContext;
             private int nextPeelIteration = 1;
             private boolean controlFlowSplit;
             private final InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(this);
 
             private FixedWithNextNode[] firstInstructionArray;
-            private HIRFrameStateBuilder[] entryStateArray;
+            private FrameStateBuilder[] entryStateArray;
             private FixedWithNextNode[][] firstInstructionMatrix;
-            private HIRFrameStateBuilder[][] entryStateMatrix;
+            private FrameStateBuilder[][] entryStateMatrix;
 
             public BytecodeParser(BytecodeParser parent, MetaAccessProvider metaAccess, ResolvedJavaMethod method, GraphBuilderConfiguration graphBuilderConfig,
                             OptimisticOptimizations optimisticOpts, int entryBCI, IntrinsicContext intrinsicContext) {
@@ -510,7 +510,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return this.beforeUnwindNode;
             }
 
-            protected void build(FixedWithNextNode startInstruction, HIRFrameStateBuilder startFrameState) {
+            protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
                 if (PrintProfilingInformation.getValue() && profilingInfo != null) {
                     TTY.println("Profiling info for " + method.format("%H.%n(%p)"));
                     TTY.println(MetaUtil.indent(profilingInfo.toString(method, CodeUtil.NEW_LINE), "  "));
@@ -522,7 +522,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     BciBlockMapping newMapping = BciBlockMapping.create(stream, method);
                     this.blockMap = newMapping;
                     this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
-                    this.entryStateArray = new HIRFrameStateBuilder[blockMap.getBlockCount()];
+                    this.entryStateArray = new FrameStateBuilder[blockMap.getBlockCount()];
 
                     if (graphBuilderConfig.doLivenessAnalysis()) {
                         try (Scope s = Debug.scope("LivenessAnalysis")) {
@@ -833,7 +833,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return header.loopEnd + 1;
             }
 
-            private void addToMergeCache(HIRFrameStateBuilder key, int dimension) {
+            private void addToMergeCache(FrameStateBuilder key, int dimension) {
                 mergeExplosionsMap.put(key, dimension);
             }
 
@@ -978,7 +978,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     dispatchBlock = blockMap.getUnwindBlock();
                 }
 
-                HIRFrameStateBuilder dispatchState = frameState.copy();
+                FrameStateBuilder dispatchState = frameState.copy();
                 dispatchState.clearStack();
 
                 DispatchBeginNode dispatchBegin;
@@ -1283,7 +1283,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
             private InvokeKind currentInvokeKind;
             private JavaType currentInvokeReturnType;
-            protected HIRFrameStateBuilder frameState;
+            protected FrameStateBuilder frameState;
             protected BciBlock currentBlock;
             protected final BytecodeStream stream;
             protected final GraphBuilderConfiguration graphBuilderConfig;
@@ -1426,7 +1426,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 boolean check(boolean pluginResult) {
                     if (pluginResult == true) {
                         int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                        assert expectedStackSize == frameState.stackSize : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize);
+                        assert expectedStackSize == frameState.stackSize : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize,
+                                        frameState.stackSize);
                         NodeIterable<Node> newNodes = graph.getNewNodes(mark);
                         assert !needsNullCheck || isPointerNonNull(args[0].stamp()) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
                         for (Node n : newNodes) {
@@ -1574,7 +1575,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 try (IntrinsicScope s = IntrinsicScope.create(calleeIntrinsicContext != null && !parsingIntrinsic(), this, frameState, args)) {
 
                     BytecodeParser parser = new BytecodeParser(this, metaAccess, targetMethod, graphBuilderConfig, optimisticOpts, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
-                    HIRFrameStateBuilder startFrameState = new HIRFrameStateBuilder(parser, targetMethod, graph);
+                    FrameStateBuilder startFrameState = new FrameStateBuilder(parser, targetMethod, graph);
                     if (!targetMethod.isStatic()) {
                         args[0] = nullCheckedValue(args[0]);
                     }
@@ -1804,7 +1805,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private Target checkLoopExit(FixedNode target, BciBlock targetBlock, HIRFrameStateBuilder state) {
+            private Target checkLoopExit(FixedNode target, BciBlock targetBlock, FrameStateBuilder state) {
                 if (currentBlock != null && !explodeLoops) {
                     long exits = currentBlock.loops & ~targetBlock.loops;
                     if (exits != 0) {
@@ -1834,7 +1835,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         if (targetBlock instanceof ExceptionDispatchBlock) {
                             bci = ((ExceptionDispatchBlock) targetBlock).deoptBci;
                         }
-                        HIRFrameStateBuilder newState = state.copy();
+                        FrameStateBuilder newState = state.copy();
                         for (BciBlock loop : exitLoops) {
                             LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(loop, this.getCurrentDimension());
                             LoopExitNode loopExit = graph.add(new LoopExitNode(loopBegin));
@@ -1857,7 +1858,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return new Target(target, state);
             }
 
-            private HIRFrameStateBuilder getEntryState(BciBlock block, int dimension) {
+            private FrameStateBuilder getEntryState(BciBlock block, int dimension) {
                 int id = block.id;
                 if (dimension == 0) {
                     return entryStateArray[id];
@@ -1866,9 +1867,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private HIRFrameStateBuilder getEntryStateMultiDimension(int dimension, int id) {
+            private FrameStateBuilder getEntryStateMultiDimension(int dimension, int id) {
                 if (entryStateMatrix != null && dimension - 1 < entryStateMatrix.length) {
-                    HIRFrameStateBuilder[] entryStateArrayEntry = entryStateMatrix[dimension - 1];
+                    FrameStateBuilder[] entryStateArrayEntry = entryStateMatrix[dimension - 1];
                     if (entryStateArrayEntry == null) {
                         return null;
                     }
@@ -1878,7 +1879,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void setEntryState(BciBlock block, int dimension, HIRFrameStateBuilder entryState) {
+            private void setEntryState(BciBlock block, int dimension, FrameStateBuilder entryState) {
                 int id = block.id;
                 if (dimension == 0) {
                     this.entryStateArray[id] = entryState;
@@ -1887,9 +1888,9 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private void setEntryStateMultiDimension(int dimension, HIRFrameStateBuilder entryState, int id) {
+            private void setEntryStateMultiDimension(int dimension, FrameStateBuilder entryState, int id) {
                 if (entryStateMatrix == null) {
-                    entryStateMatrix = new HIRFrameStateBuilder[4][];
+                    entryStateMatrix = new FrameStateBuilder[4][];
                 }
                 if (dimension - 1 < entryStateMatrix.length) {
                     // We are within bounds.
@@ -1898,7 +1899,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     entryStateMatrix = Arrays.copyOf(entryStateMatrix, Math.max(entryStateMatrix.length * 2, dimension));
                 }
                 if (entryStateMatrix[dimension - 1] == null) {
-                    entryStateMatrix[dimension - 1] = new HIRFrameStateBuilder[blockMap.getBlockCount()];
+                    entryStateMatrix[dimension - 1] = new FrameStateBuilder[blockMap.getBlockCount()];
                 }
                 entryStateMatrix[dimension - 1][id] = entryState;
             }
@@ -1949,7 +1950,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private FixedNode createTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
+            private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
                 assert probability >= 0 && probability <= 1.01 : probability;
                 if (isNeverExecutedCode(probability)) {
                     return graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
@@ -1959,11 +1960,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 }
             }
 
-            private FixedNode createTarget(BciBlock block, HIRFrameStateBuilder state) {
+            private FixedNode createTarget(BciBlock block, FrameStateBuilder state) {
                 return createTarget(block, state, false, false);
             }
 
-            private FixedNode createTarget(BciBlock block, HIRFrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
+            private FixedNode createTarget(BciBlock block, FrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
                 assert block != null && state != null;
                 assert !block.isExceptionEntry || state.stackSize() == 1;
 
@@ -1985,7 +1986,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     targetNode = getFirstInstruction(block, operatingDimension);
                     Target target = checkLoopExit(targetNode, block, state);
                     FixedNode result = target.fixed;
-                    HIRFrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
+                    FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
                     setEntryState(block, operatingDimension, currentEntryState);
                     currentEntryState.clearNonLiveLocals(block, liveness, true);
 
@@ -2058,14 +2059,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return result;
             }
 
-            private int findOperatingDimension(BciBlock block, HIRFrameStateBuilder state) {
+            private int findOperatingDimension(BciBlock block, FrameStateBuilder state) {
                 if (this.explodeLoops && this.explodeLoopsContext != null && !this.explodeLoopsContext.isEmpty()) {
                     return findOperatingDimensionWithLoopExplosion(block, state);
                 }
                 return this.getCurrentDimension();
             }
 
-            private int findOperatingDimensionWithLoopExplosion(BciBlock block, HIRFrameStateBuilder state) {
+            private int findOperatingDimensionWithLoopExplosion(BciBlock block, FrameStateBuilder state) {
                 for (ExplodedLoopContext context : explodeLoopsContext) {
                     if (context.header == block) {
 
@@ -2116,7 +2117,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * Returns a block begin node with the specified state. If the specified probability is
              * 0, the block deoptimizes immediately.
              */
-            private AbstractBeginNode createBlockTarget(double probability, BciBlock block, HIRFrameStateBuilder stateAfter) {
+            private AbstractBeginNode createBlockTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
                 FixedNode target = createTarget(probability, block, stateAfter);
                 AbstractBeginNode begin = BeginNode.begin(target);
 
@@ -2125,7 +2126,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return begin;
             }
 
-            private ValueNode synchronizedObject(HIRFrameStateBuilder state, ResolvedJavaMethod target) {
+            private ValueNode synchronizedObject(FrameStateBuilder state, ResolvedJavaMethod target) {
                 if (target.isStatic()) {
                     return appendConstant(target.getDeclaringClass().getJavaClass());
                 } else {
@@ -2386,7 +2387,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
              * @param state The current frame state.
              * @return Returns the (new) last instruction.
              */
-            protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, HIRFrameStateBuilder state) {
+            protected FixedWithNextNode finishInstruction(FixedWithNextNode instr, FrameStateBuilder state) {
                 return instr;
             }
 
@@ -2676,7 +2677,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return frameState.createBytecodePosition(bci());
             }
 
-            public void setCurrentFrameState(HIRFrameStateBuilder frameState) {
+            public void setCurrentFrameState(FrameStateBuilder frameState) {
                 this.frameState = frameState;
             }
 
@@ -3531,7 +3532,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return method;
             }
 
-            public HIRFrameStateBuilder getFrameState() {
+            public FrameStateBuilder getFrameState() {
                 return frameState;
             }
 
