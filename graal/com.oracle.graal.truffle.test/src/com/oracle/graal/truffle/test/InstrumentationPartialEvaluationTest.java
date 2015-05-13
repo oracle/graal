@@ -217,7 +217,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
             public AdvancedInstrumentRoot createInstrumentRoot(Probe probe, Node node) {
                 return null;
             }
-        }, "test AdvancedInstrument");
+        }, null, "test AdvancedInstrument");
         testProbe.attach(instrument);
 
         // It all gets compiled away
@@ -248,7 +248,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
                     }
                 };
             }
-        }, "test AdvancedInstrument");
+        }, null, "test AdvancedInstrument");
         testProbe.attach(instrument);
 
         // It all gets compiled away.
