@@ -214,7 +214,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public FrameState create(int bci, BytecodeParser parent, boolean duringCall) {
         if (outerFrameState == null && parent != null) {
-            outerFrameState = parent.getFrameState().create(parent.bci(), null);
+            outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, this.peek(0));
@@ -231,7 +231,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (HideSubstitutionStates.getValue()) {
             if (parser.parsingIntrinsic()) {
                 // Attribute to the method being replaced
-                return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
+                return new BytecodePosition(parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
             }
             // Skip intrinsic frames
             parent = (BytecodeParser) parser.getNonReplacementAncestor();
@@ -242,7 +242,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     private BytecodePosition create(BytecodePosition o, int bci, BytecodeParser parent) {
         BytecodePosition outer = o;
         if (outer == null && parent != null) {
-            outer = parent.getFrameState().createBytecodePosition(parent.bci());
+            outer = parent.getFrameStateBuilder().createBytecodePosition(parent.bci());
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             return FrameState.toBytecodePosition(outerFrameState);

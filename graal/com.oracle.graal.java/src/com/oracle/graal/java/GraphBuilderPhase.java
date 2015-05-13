@@ -1426,8 +1426,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 boolean check(boolean pluginResult) {
                     if (pluginResult == true) {
                         int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                        assert expectedStackSize == frameState.stackSize : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize,
-                                        frameState.stackSize);
+                        assert expectedStackSize == frameState.stackSize : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize);
                         NodeIterable<Node> newNodes = graph.getNewNodes(mark);
                         assert !needsNullCheck || isPointerNonNull(args[0].stamp()) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"), args[0]);
                         for (Node n : newNodes) {
@@ -3532,7 +3531,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 return method;
             }
 
-            public FrameStateBuilder getFrameState() {
+            public FrameStateBuilder getFrameStateBuilder() {
                 return frameState;
             }
 
