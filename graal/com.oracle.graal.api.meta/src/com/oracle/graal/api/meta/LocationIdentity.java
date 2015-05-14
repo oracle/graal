@@ -54,26 +54,18 @@ public abstract class LocationIdentity {
      */
     public static final LocationIdentity ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("[].length");
 
-    protected final boolean immutable;
-
     public static LocationIdentity any() {
         return ANY_LOCATION;
-    }
-
-    protected LocationIdentity(boolean immutable) {
-        this.immutable = immutable;
     }
 
     /**
      * Denotes a location is unchanging in all cases. Not that this is different than the Java
      * notion of final which only requires definite assignment.
      */
-    public final boolean isImmutable() {
-        return immutable;
-    }
+    public abstract boolean isImmutable();
 
     public final boolean isMutable() {
-        return !immutable;
+        return !isImmutable();
     }
 
     public final boolean isAny() {

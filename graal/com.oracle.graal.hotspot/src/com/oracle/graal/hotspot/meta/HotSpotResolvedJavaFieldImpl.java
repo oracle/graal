@@ -54,8 +54,12 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         HotSpotResolvedJavaField inner;
 
         public FieldLocationIdentity(HotSpotResolvedJavaFieldImpl inner) {
-            super(false);
             this.inner = inner;
+        }
+
+        @Override
+        public boolean isImmutable() {
+            return false;
         }
 
         @Override
