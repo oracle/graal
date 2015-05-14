@@ -143,13 +143,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field) : storeField.object();
         ValueNode value = implicitStoreConvert(graph, storeField.field().getKind(), storeField.value());
         ConstantLocationNode location = createFieldLocation(graph, field, false);
+        assert location != null;
 
-        if (location == null) {
-            /* Field has been eliminated, so no write necessary. */
-            assert !storeField.isVolatile() : "missing memory barriers";
-            graph.removeFixed(storeField);
-            return;
-        }
         WriteNode memoryWrite = graph.add(new WriteNode(object, value, location, fieldStoreBarrierType(storeField.field())));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
