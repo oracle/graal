@@ -540,13 +540,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
                     this.entryStateArray = new FrameStateBuilder[blockMap.getBlockCount()];
 
-                    if (graphBuilderConfig.doLivenessAnalysis()) {
-                        try (Scope s = Debug.scope("LivenessAnalysis")) {
-                            int maxLocals = method.getMaxLocals();
-                            liveness = LocalLiveness.compute(stream, blockMap.getBlocks(), maxLocals, blockMap.getLoopCount());
-                        } catch (Throwable e) {
-                            throw Debug.handle(e);
-                        }
+                    try (Scope s = Debug.scope("LivenessAnalysis")) {
+                        int maxLocals = method.getMaxLocals();
+                        liveness = LocalLiveness.compute(stream, blockMap.getBlocks(), maxLocals, blockMap.getLoopCount());
+                    } catch (Throwable e) {
+                        throw Debug.handle(e);
                     }
 
                     lastInstr = startInstruction;
@@ -1633,6 +1631,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             protected InvokeWithExceptionNode createInvokeWithException(CallTargetNode callTarget, Kind resultType) {
+                if (currentBlock != null && stream.nextBCI() > currentBlock.endBci) {
+                    /*
+                     * Clear non-live locals early so that the exception handler entry gets the
+                     * cleared state.
+                     */
+                    frameState.clearNonLiveLocals(currentBlock, liveness, false);
+                }
+
                 DispatchBeginNode exceptionEdge = handleException(null, bci());
                 InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
                 frameState.pushReturn(resultType, invoke);
@@ -2289,7 +2295,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     lastInstr = loopBegin;
 
                     // Create phi functions for all local variables and operand stack slots.
-                    frameState.insertLoopPhis(liveness, block.loopId, loopBegin);
+                    frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis());
                     loopBegin.setStateAfter(createFrameState(block.startBci, loopBegin));
 
                     /*
@@ -2372,6 +2378,11 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         }
                     }
                 }
+            }
+
+            /* Also a hook for subclasses. */
+            protected boolean forceLoopPhis() {
+                return graph.isOSR();
             }
 
             protected boolean checkLastInstruction() {
@@ -3182,9 +3193,17 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void genGetStatic(JavaField field) {
                 Kind kind = field.getKind();
                 if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
+                    ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+                    // Javac does not allow use of "$assertionsDisabled" for a field name but
+                    // Eclipse does in which case a suffix is added to the generated field.
+                    if ((parsingIntrinsic() || graphBuilderConfig.omitAssertions()) && resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
+                        appendOptimizedLoadField(kind, ConstantNode.forBoolean(true));
+                        return;
+                    }
+
                     LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getPlugins().getLoadFieldPlugin();
-                    if (loadFieldPlugin == null || !loadFieldPlugin.apply((GraphBuilderContext) this, (ResolvedJavaField) field)) {
-                        appendOptimizedLoadField(kind, genLoadField(null, (ResolvedJavaField) field));
+                    if (loadFieldPlugin == null || !loadFieldPlugin.apply(this, resolvedField)) {
+                        appendOptimizedLoadField(kind, genLoadField(null, resolvedField));
                     }
                 } else {
                     handleUnresolvedLoadField(field, null);

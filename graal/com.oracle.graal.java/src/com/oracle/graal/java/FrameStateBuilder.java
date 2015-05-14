@@ -377,17 +377,18 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin) {
+    public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin, boolean forcePhis) {
         for (int i = 0; i < localsSize(); i++) {
-            if (loopBegin.graph().isOSR() || liveness.localIsChangedInLoop(loopId, i)) {
-                storeLocal(i, createLoopPhi(loopBegin, localAt(i)));
+            boolean changedInLoop = liveness.localIsChangedInLoop(loopId, i);
+            if (changedInLoop || forcePhis) {
+                storeLocal(i, createLoopPhi(loopBegin, localAt(i), !changedInLoop));
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            storeStack(i, createLoopPhi(loopBegin, stackAt(i)));
+            storeStack(i, createLoopPhi(loopBegin, stackAt(i), false));
         }
         for (int i = 0; i < lockedObjects.length; i++) {
-            lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i]);
+            lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i], false);
         }
     }
 
@@ -439,13 +440,13 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    private ValuePhiNode createLoopPhi(AbstractMergeNode block, ValueNode value) {
+    private ValuePhiNode createLoopPhi(AbstractMergeNode block, ValueNode value, boolean stampFromValue) {
         if (value == null) {
             return null;
         }
         assert !block.isPhiAtMerge(value) : "phi function for this block already created";
 
-        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(value.stamp().unrestricted(), block));
+        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(stampFromValue ? value.stamp() : value.stamp().unrestricted(), block));
         phi.addInput(value);
         return phi;
     }
@@ -518,7 +519,7 @@ public final class FrameStateBuilder implements SideEffectsState {
          * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
          * Kind.Illegal, because the conflicting branch might not have been parsed.
          */
-        if (liveness == null) {
+        if (!parser.graphBuilderConfig.clearNonLiveLocals()) {
             return;
         }
         if (liveIn) {

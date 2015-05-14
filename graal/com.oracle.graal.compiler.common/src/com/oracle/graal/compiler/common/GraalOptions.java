@@ -286,7 +286,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptImplicitNullChecks = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> OptLivenessAnalysis = new OptionValue<>(true);
+    public static final OptionValue<Boolean> OptClearNonLiveLocals = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> OptLoopTransform = new OptionValue<>(true);
