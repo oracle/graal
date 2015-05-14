@@ -32,7 +32,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.util.*;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for
@@ -1154,32 +1153,14 @@ public class GraphDecoder {
         }
     }
 
+    /**
+     * Removes unnecessary nodes from the graph after decoding.
+     *
+     * @param methodScope The current method.
+     * @param start Marker for the begin of the current method in the graph.
+     */
     protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
         assert verifyEdges(methodScope);
-
-        for (Node node : methodScope.graph.getNewNodes(start)) {
-            if (node instanceof MergeNode) {
-                MergeNode mergeNode = (MergeNode) node;
-                if (mergeNode.forwardEndCount() == 1) {
-                    methodScope.graph.reduceTrivialMerge(mergeNode);
-                }
-            }
-        }
-
-        for (Node node : methodScope.graph.getNewNodes(start)) {
-            if (node instanceof BeginNode || node instanceof KillingBeginNode) {
-                if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
-                    GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
-                    node.safeDelete();
-                }
-            }
-        }
-
-        for (Node node : methodScope.graph.getNewNodes(start)) {
-            if (!(node instanceof FixedNode) && node.hasNoUsages()) {
-                GraphUtil.killCFG(node);
-            }
-        }
     }
 
     protected boolean verifyEdges(MethodScope methodScope) {
