@@ -57,7 +57,7 @@ public abstract class Edges extends Fields {
 
     public static void translateInto(Edges edges, ArrayList<EdgeInfo> infos) {
         for (int index = 0; index < edges.getCount(); index++) {
-            infos.add(new EdgeInfo(edges.offsets[index], edges.getName(index), edges.getType(index)));
+            infos.add(new EdgeInfo(edges.offsets[index], edges.getName(index), edges.getType(index), edges.getDeclaringClass(index)));
         }
     }
 
@@ -545,10 +545,6 @@ public abstract class Edges extends Fields {
                 }
             }
         }
-    }
-
-    public long[] getOffsets() {
-        return this.offsets;
     }
 
     public void pushAll(Node node, NodeStack stack) {

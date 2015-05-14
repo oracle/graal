@@ -60,11 +60,13 @@ public class FieldsScanner {
         public final long offset;
         public final String name;
         public final Class<?> type;
+        public final Class<?> declaringClass;
 
-        public FieldInfo(long offset, String name, Class<?> type) {
+        public FieldInfo(long offset, String name, Class<?> type, Class<?> declaringClass) {
             this.offset = offset;
             this.name = name;
             this.type = type;
+            this.declaringClass = declaringClass;
         }
 
         /**
@@ -117,6 +119,6 @@ public class FieldsScanner {
     }
 
     protected void scanField(Field field, long offset) {
-        data.add(new FieldsScanner.FieldInfo(offset, field.getName(), field.getType()));
+        data.add(new FieldsScanner.FieldInfo(offset, field.getName(), field.getType(), field.getDeclaringClass()));
     }
 }

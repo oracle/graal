@@ -47,7 +47,7 @@ public final class InputEdges extends Edges {
 
     public static void translateInto(InputEdges inputs, ArrayList<InputInfo> infos) {
         for (int index = 0; index < inputs.getCount(); index++) {
-            infos.add(new InputInfo(inputs.offsets[index], inputs.getName(index), inputs.getType(index), inputs.inputTypes[index], inputs.isOptional(index)));
+            infos.add(new InputInfo(inputs.offsets[index], inputs.getName(index), inputs.getType(index), inputs.getDeclaringClass(index), inputs.inputTypes[index], inputs.isOptional(index)));
         }
     }
 
