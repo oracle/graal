@@ -38,12 +38,12 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 public class PartialEvaluationTest extends GraalCompilerTest {
-    private final TruffleCompilerImpl truffleCompiler;
+    private final TruffleCompiler truffleCompiler;
 
     public PartialEvaluationTest() {
         // Make sure Truffle runtime is initialized.
         Assert.assertTrue(Truffle.getRuntime() != null);
-        this.truffleCompiler = new TruffleCompilerImpl();
+        this.truffleCompiler = DefaultTruffleCompiler.create();
 
         DebugEnvironment.initialize(System.out);
     }

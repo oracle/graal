@@ -71,8 +71,8 @@ public class PartialEvaluator {
     @Option(help = "New partial evaluation on Graal graphs", type = OptionType.Expert)//
     public static final StableOptionValue<Boolean> GraphPE = new StableOptionValue<>(true);
 
-    private final Providers providers;
-    private final Architecture architecture;
+    protected final Providers providers;
+    protected final Architecture architecture;
     private final CanonicalizerPhase canonicalizer;
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
@@ -140,11 +140,6 @@ public class PartialEvaluator {
         }
 
         public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
-            if (TruffleCompilerOptions.TruffleExcludeAssertions.getValue() && staticField.getName().equals("$assertionsDisabled")) {
-                ConstantNode trueNode = builder.add(ConstantNode.forBoolean(true));
-                builder.addPush(trueNode);
-                return true;
-            }
             return tryConstantFold(builder, providers.getMetaAccess(), providers.getConstantReflection(), staticField, null);
         }
     }
@@ -319,18 +314,16 @@ public class PartialEvaluator {
         }
         plugins.setInlineInvokePlugin(inlinePlugin);
         plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig, TruffleCompilerImpl.Optimizations, null).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig, TruffleCompiler.Optimizations, null).apply(graph);
         if (PrintTruffleExpansionHistogram.getValue()) {
             ((HistogramInlineInvokePlugin) inlinePlugin).print(callTarget, System.out);
         }
     }
 
-    protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
+    protected PEGraphDecoder createGraphDecoder(StructuredGraph graph) {
         GraphBuilderConfiguration newConfig = configForRoot.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), parsingInvocationPlugins, true, snippetReflection);
-
-        callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
 
         LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
 
@@ -340,12 +333,18 @@ public class PartialEvaluator {
         plugins.setInlineInvokePlugin(new ParsingInlineInvokePlugin((ReplacementsImpl) providers.getReplacements(), parsingInvocationPlugins, loopExplosionPlugin,
                         !PrintTruffleExpansionHistogram.getValue()));
 
-        CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(providers, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.from(graph.getAssumptions() != null), architecture);
+        return new CachingPEGraphDecoder(providers, newConfig, TruffleCompiler.Optimizations, AllowAssumptions.from(graph.getAssumptions() != null), architecture);
+    }
 
+    protected void doGraphPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
+        callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
+
+        PEGraphDecoder decoder = createGraphDecoder(graph);
+
+        LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
 
-        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(providers.getMetaAccess());
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false, snippetReflection);
+        InvocationPlugins decodingInvocationPlugins = createDecodingInvocationPlugins();
         InlineInvokePlugin decodingInlinePlugin = new PEInlineInvokePlugin(callTarget.getInlining(), (ReplacementsImpl) providers.getReplacements());
         if (PrintTruffleExpansionHistogram.getValue()) {
             decodingInlinePlugin = new HistogramInlineInvokePlugin(graph, decodingInlinePlugin);
@@ -356,6 +355,12 @@ public class PartialEvaluator {
         if (PrintTruffleExpansionHistogram.getValue()) {
             ((HistogramInlineInvokePlugin) decodingInlinePlugin).print(callTarget, System.out);
         }
+    }
+
+    protected InvocationPlugins createDecodingInvocationPlugins() {
+        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(providers.getMetaAccess());
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false, snippetReflection);
+        return decodingInvocationPlugins;
     }
 
     @SuppressWarnings("unused")
@@ -434,13 +439,13 @@ public class PartialEvaluator {
     }
 
     public StructuredGraph createRootGraph(StructuredGraph graph) {
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations, null).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompiler.Optimizations, null).apply(graph);
         return graph;
     }
 
     public StructuredGraph createInlineGraph(String name, StructuredGraph caller) {
         StructuredGraph graph = new StructuredGraph(name, callInlinedMethod, AllowAssumptions.from(caller.getAssumptions() != null));
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompilerImpl.Optimizations, null).apply(graph);
+        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompiler.Optimizations, null).apply(graph);
         return graph;
     }
 
