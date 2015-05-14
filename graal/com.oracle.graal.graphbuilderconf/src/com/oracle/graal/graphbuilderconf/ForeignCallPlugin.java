@@ -41,7 +41,9 @@ public final class ForeignCallPlugin implements InvocationPlugin {
     }
 
     public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] args) {
-        b.addPush(new ForeignCallNode(foreignCalls, descriptor, args));
+        ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, descriptor, args);
+        foreignCall.setBci(b.bci());
+        b.addPush(foreignCall);
         return true;
     }
 }
