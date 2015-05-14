@@ -207,6 +207,15 @@ public interface GraphBuilderContext {
      */
     JavaType getInvokeReturnType();
 
+    default Stamp getInvokeReturnStamp() {
+        JavaType returnType = getInvokeReturnType();
+        if (returnType.getKind() == Kind.Object && returnType instanceof ResolvedJavaType) {
+            return StampFactory.declared((ResolvedJavaType) returnType);
+        } else {
+            return StampFactory.forKind(returnType.getKind());
+        }
+    }
+
     /**
      * Gets the inline depth of this context. A return value of 0 implies that this is the context
      * for the parse root.
