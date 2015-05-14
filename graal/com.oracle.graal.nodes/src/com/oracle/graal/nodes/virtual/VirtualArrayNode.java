@@ -33,14 +33,18 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(nameTemplate = "VirtualArray {p#componentType/s}[{p#length}]")
-public final class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthProvider {
+public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthProvider {
 
     public static final NodeClass<VirtualArrayNode> TYPE = NodeClass.create(VirtualArrayNode.class);
     protected final ResolvedJavaType componentType;
     protected final int length;
 
     public VirtualArrayNode(ResolvedJavaType componentType, int length) {
-        super(TYPE, componentType.getArrayClass(), true);
+        this(TYPE, componentType, length);
+    }
+
+    protected VirtualArrayNode(NodeClass<? extends VirtualObjectNode> c, ResolvedJavaType componentType, int length) {
+        super(c, componentType.getArrayClass(), true);
         this.componentType = componentType;
         this.length = length;
     }

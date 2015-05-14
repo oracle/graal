@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.type.*;
  * Implements a type check against a compile-time known type.
  */
 @NodeInfo
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
+public class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Simplifiable, Lowerable, Virtualizable, ValueProxy {
 
     public static final NodeClass<CheckCastNode> TYPE = NodeClass.create(CheckCastNode.class);
     @Input protected ValueNode object;
@@ -55,7 +55,11 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     protected final boolean forStoreCheck;
 
     public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        super(TYPE, StampFactory.declaredTrusted(type));
+        this(TYPE, type, object, profile, forStoreCheck);
+    }
+
+    protected CheckCastNode(NodeClass<? extends CheckCastNode> c, ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
+        super(c, StampFactory.declaredTrusted(type));
         assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
         assert type != null;
         this.type = type;
@@ -178,7 +182,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         return this;
     }
 
-    private static ValueNode findSynonym(ResolvedJavaType type, ValueNode object) {
+    protected static ValueNode findSynonym(ResolvedJavaType type, ValueNode object) {
         ResolvedJavaType objectType = StampTool.typeOrNull(object);
         if (objectType != null && type.isAssignableFrom(objectType)) {
             // we don't have to check for null types here because they will also pass the

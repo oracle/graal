@@ -31,12 +31,16 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|%|")
-public final class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
+public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public static final NodeClass<UnsignedRemNode> TYPE = NodeClass.create(UnsignedRemNode.class);
 
     public UnsignedRemNode(ValueNode x, ValueNode y) {
-        super(TYPE, x.stamp().unrestricted(), x, y);
+        this(TYPE, x, y);
+    }
+
+    protected UnsignedRemNode(NodeClass<? extends UnsignedRemNode> c, ValueNode x, ValueNode y) {
+        super(c, x.stamp().unrestricted(), x, y);
     }
 
     @Override
