@@ -91,7 +91,7 @@ public class GraphKit {
     }
 
     public <T extends ValueNode> T changeToWord(T node) {
-        if (wordTypes.isWord(node)) {
+        if (wordTypes != null && wordTypes.isWord(node)) {
             node.setStamp(wordTypes.getWordStamp(StampTool.typeOrNull(node)));
         }
         return node;
@@ -127,6 +127,11 @@ public class GraphKit {
      */
     public InvokeNode createInvoke(Class<?> declaringClass, String name, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
         boolean isStatic = invokeKind == InvokeKind.Static;
+        ResolvedJavaMethod method = findMethod(declaringClass, name, isStatic);
+        return createInvoke(method, invokeKind, frameStateBuilder, bci, args);
+    }
+
+    public ResolvedJavaMethod findMethod(Class<?> declaringClass, String name, boolean isStatic) {
         ResolvedJavaMethod method = null;
         for (Method m : declaringClass.getDeclaredMethods()) {
             if (Modifier.isStatic(m.getModifiers()) == isStatic && m.getName().equals(name)) {
@@ -135,7 +140,7 @@ public class GraphKit {
             }
         }
         assert method != null : "did not find method in " + declaringClass + " named " + name;
-        return createInvoke(method, invokeKind, frameStateBuilder, bci, args);
+        return method;
     }
 
     /**
@@ -181,12 +186,14 @@ public class GraphKit {
         }
         int argIndex = 0;
         if (!isStatic) {
-            Kind expected = wordTypes.asKind(method.getDeclaringClass());
+            ResolvedJavaType expectedType = method.getDeclaringClass();
+            Kind expected = wordTypes == null ? expectedType.getKind() : wordTypes.asKind(expectedType);
             Kind actual = args[argIndex++].stamp().getStackKind();
             assert expected == actual : graph + ": wrong kind of value for receiver argument of call to " + method + " [" + actual + " != " + expected + "]";
         }
         for (int i = 0; i != signature.getParameterCount(false); i++) {
-            Kind expected = wordTypes.asKind(signature.getParameterType(i, method.getDeclaringClass())).getStackKind();
+            JavaType expectedType = signature.getParameterType(i, method.getDeclaringClass());
+            Kind expected = wordTypes == null ? expectedType.getKind().getStackKind() : wordTypes.asKind(expectedType).getStackKind();
             Kind actual = args[argIndex++].stamp().getStackKind();
             if (expected != actual) {
                 throw new AssertionError(graph + ": wrong kind of value for argument " + i + " of call to " + method + " [" + actual + " != " + expected + "]");
