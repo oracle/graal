@@ -43,6 +43,11 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     protected abstract AbstractObjectStamp copyWith(ResolvedJavaType newType, boolean newExactType, boolean newNonNull, boolean newAlwaysNull);
 
     @Override
+    protected final AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull) {
+        return copyWith(type, exactType, newNonNull, newAlwaysNull);
+    }
+
+    @Override
     public Stamp unrestricted() {
         return copyWith(null, false, false, false);
     }
