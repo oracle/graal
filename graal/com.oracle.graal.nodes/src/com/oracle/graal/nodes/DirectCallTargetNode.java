@@ -31,9 +31,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 
 @NodeInfo
-public abstract class DirectCallTargetNode extends LoweredCallTargetNode {
+public class DirectCallTargetNode extends LoweredCallTargetNode {
 
     public static final NodeClass<DirectCallTargetNode> TYPE = NodeClass.create(DirectCallTargetNode.class);
+
+    public DirectCallTargetNode(List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target, CallingConvention.Type callType, InvokeKind invokeKind) {
+        this(TYPE, arguments, returnStamp, signature, target, callType, invokeKind);
+    }
 
     protected DirectCallTargetNode(NodeClass<? extends DirectCallTargetNode> c, List<ValueNode> arguments, Stamp returnStamp, JavaType[] signature, ResolvedJavaMethod target,
                     CallingConvention.Type callType, InvokeKind invokeKind) {

@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
@@ -62,10 +61,6 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 if (config.useCountTrailingZerosInstruction) {
                     return null;
                 }
-            }
-        } else if (substituteClass == CRC32Substitutions.class) {
-            if (!config.useCRC32Intrinsics) {
-                return null;
             }
         }
         return super.registerMethodSubstitution(cr, originalMethod, substituteMethod);

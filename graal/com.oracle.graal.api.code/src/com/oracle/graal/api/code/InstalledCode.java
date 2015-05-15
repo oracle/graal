@@ -64,6 +64,13 @@ public class InstalledCode {
     }
 
     /**
+     * Returns the name of this code blob.
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
      * Returns the start address of this installed code if it is {@linkplain #isValid() valid}, 0
      * otherwise.
      */

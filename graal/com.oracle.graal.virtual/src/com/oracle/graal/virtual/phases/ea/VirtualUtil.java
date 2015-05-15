@@ -109,6 +109,12 @@ public final class VirtualUtil {
         return success;
     }
 
+    public static void trace(String format) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+            Debug.logv(format);
+        }
+    }
+
     public static void trace(String format, Object obj) {
         if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
             Debug.logv(format, obj);
@@ -124,6 +130,12 @@ public final class VirtualUtil {
     public static void trace(String format, Object obj, Object obj2, Object obj3) {
         if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
             Debug.logv(format, obj, obj2, obj3);
+        }
+    }
+
+    public static void trace(String format, Object obj, Object obj2, Object obj3, Object obj4) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+            Debug.logv(format, obj, obj2, obj3, obj4);
         }
     }
 

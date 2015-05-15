@@ -45,4 +45,6 @@ public abstract class FieldIntrospection<T> extends UnsafeAccess {
     public Fields getData() {
         return data;
     }
+
+    public abstract Fields[] getAllFields();
 }

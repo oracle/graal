@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 
 import java.lang.invoke.*;
+import java.util.zip.*;
 
 import sun.reflect.*;
 
@@ -65,7 +66,7 @@ public class HotSpotGraphBuilderPlugins {
      */
     public static Plugins create(HotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, StampProvider stampProvider, ReplacementsImpl replacements) {
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess, constantReflection.getMethodHandleAccess());
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
         Plugins plugins = new Plugins(invocationPlugins);
         NodeIntrinsificationPhase nodeIntrinsification = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
@@ -76,7 +77,8 @@ public class HotSpotGraphBuilderPlugins {
         plugins.setLoadIndexedPlugin(new HotSpotLoadIndexedPlugin(wordTypes));
         plugins.setTypeCheckPlugin(wordOperationPlugin);
         plugins.setInlineInvokePlugin(new DefaultInlineInvokePlugin(replacements));
-        plugins.setGenericInvocationPlugin(new DefaultGenericInvocationPlugin(metaAccess, nodeIntrinsification, wordOperationPlugin));
+        plugins.setGenericInvocationPlugin(new MethodHandleInvocationPlugin(constantReflection.getMethodHandleAccess(), new DefaultGenericInvocationPlugin(metaAccess, nodeIntrinsification,
+                        wordOperationPlugin)));
 
         registerObjectPlugins(invocationPlugins);
         registerClassPlugins(plugins);
@@ -86,6 +88,7 @@ public class HotSpotGraphBuilderPlugins {
         registerReflectionPlugins(invocationPlugins);
         registerStableOptionPlugins(invocationPlugins);
         registerAESPlugins(invocationPlugins, config);
+        registerCRC32Plugins(invocationPlugins, config);
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
 
         return plugins;
@@ -246,6 +249,19 @@ public class HotSpotGraphBuilderPlugins {
                 r.registerMethodSubstitution(AESCryptSubstitutions.class, "encryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
                 r.registerMethodSubstitution(AESCryptSubstitutions.class, "decryptBlock", Receiver.class, byte[].class, int.class, byte[].class, int.class);
             }
+        }
+    }
+
+    private static void registerCRC32Plugins(InvocationPlugins plugins, HotSpotVMConfig config) {
+        if (config.useCRC32Intrinsics) {
+            assert config.aescryptEncryptBlockStub != 0L;
+            assert config.aescryptDecryptBlockStub != 0L;
+            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
+            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+            Registration r = new Registration(plugins, CRC32.class);
+            r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
+            r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
         }
     }
 }

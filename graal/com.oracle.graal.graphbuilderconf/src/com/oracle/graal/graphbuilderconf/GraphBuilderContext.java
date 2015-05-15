@@ -36,7 +36,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Used by a {@link GraphBuilderPlugin} to interface with a graph builder object.
+ * Used by a {@link GraphBuilderPlugin} to interface with an object that parses the bytecode of a
+ * single {@linkplain #getMethod() method} as part of building a {@linkplain #getGraph() graph} .
  */
 public interface GraphBuilderContext {
 
@@ -178,7 +179,7 @@ public interface GraphBuilderContext {
      * Gets the first ancestor parsing context that is not parsing a
      * {@linkplain #parsingIntrinsic() intrinsic}.
      */
-    default GraphBuilderContext getNonReplacementAncestor() {
+    default GraphBuilderContext getNonIntrinsicAncestor() {
         GraphBuilderContext ancestor = getParent();
         while (ancestor != null && ancestor.parsingIntrinsic()) {
             ancestor = ancestor.getParent();
@@ -187,7 +188,7 @@ public interface GraphBuilderContext {
     }
 
     /**
-     * Gets the method currently being parsed.
+     * Gets the method being parsed by this context.
      */
     ResolvedJavaMethod getMethod();
 
@@ -206,9 +207,18 @@ public interface GraphBuilderContext {
      */
     JavaType getInvokeReturnType();
 
+    default Stamp getInvokeReturnStamp() {
+        JavaType returnType = getInvokeReturnType();
+        if (returnType.getKind() == Kind.Object && returnType instanceof ResolvedJavaType) {
+            return StampFactory.declared((ResolvedJavaType) returnType);
+        } else {
+            return StampFactory.forKind(returnType.getKind());
+        }
+    }
+
     /**
-     * Gets the inline depth of this context. 0 implies this is the context for the compilation root
-     * method.
+     * Gets the inline depth of this context. A return value of 0 implies that this is the context
+     * for the parse root.
      */
     default int getDepth() {
         GraphBuilderContext parent = getParent();
@@ -216,7 +226,8 @@ public interface GraphBuilderContext {
     }
 
     /**
-     * Determines if the current parsing context is a snippet or method substitution.
+     * Determines if this parsing context is within the bytecode of an intrinsic or a method inlined
+     * by an intrinsic.
      */
     default boolean parsingIntrinsic() {
         return getIntrinsic() != null;

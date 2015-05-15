@@ -39,7 +39,7 @@ import com.oracle.graal.lir.LIRIntrospection.Values;
  * such fields.</li>
  * </ul>
  */
-public final class CompositeValueClass<T> {
+public final class CompositeValueClass<T> extends FieldIntrospection<T> {
 
     /**
      * The CompositeValueClass is only used for formatting for the most part so cache it as a
@@ -56,16 +56,15 @@ public final class CompositeValueClass<T> {
 
     };
 
-    public static CompositeValueClass<?> get(Class<?> type) {
-        return compositeClass.get(type);
+    @SuppressWarnings("unchecked")
+    public static <T> CompositeValueClass<T> get(Class<T> type) {
+        return (CompositeValueClass<T>) compositeClass.get(type);
     }
 
-    private final Class<?> clazz;
     private final Values values;
-    private final Fields data;
 
     private CompositeValueClass(Class<T> clazz) {
-        this.clazz = clazz;
+        super(clazz);
 
         CompositeValueFieldsScanner vfs = new CompositeValueFieldsScanner(new FieldsScanner.DefaultCalcOffset());
         vfs.scan(clazz, CompositeValue.class, false);
@@ -94,9 +93,14 @@ public final class CompositeValueClass<T> {
     }
 
     @Override
+    public Fields[] getAllFields() {
+        return new Fields[]{data, values};
+    }
+
+    @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(getClass().getSimpleName()).append(" ").append(clazz.getSimpleName()).append(" components[");
+        str.append(getClass().getSimpleName()).append(" ").append(getClazz().getSimpleName()).append(" components[");
         values.appendFields(str);
         str.append("] data[");
         data.appendFields(str);

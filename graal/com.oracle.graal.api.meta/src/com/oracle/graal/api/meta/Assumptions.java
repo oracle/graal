@@ -68,6 +68,10 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
             return result;
         }
 
+        public boolean isAssumptionFree() {
+            return assumptions.length == 0;
+        }
+
         public void add(AssumptionResult<T> other) {
             Assumption[] newAssumptions = Arrays.copyOf(this.assumptions, this.assumptions.length + other.assumptions.length);
             System.arraycopy(other.assumptions, 0, newAssumptions, this.assumptions.length, other.assumptions.length);

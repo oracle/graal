@@ -46,11 +46,12 @@ public final class NamedLocationIdentity extends LocationIdentity implements For
         }
     }
 
-    protected final String name;
+    private final String name;
+    private final boolean immutable;
 
     private NamedLocationIdentity(String name, boolean immutable) {
-        super(immutable);
         this.name = name;
+        this.immutable = immutable;
     }
 
     /**
@@ -84,6 +85,11 @@ public final class NamedLocationIdentity extends LocationIdentity implements For
         NamedLocationIdentity id = new NamedLocationIdentity(name, immutable);
         assert DB.checkUnique(id);
         return id;
+    }
+
+    @Override
+    public boolean isImmutable() {
+        return immutable;
     }
 
     @Override

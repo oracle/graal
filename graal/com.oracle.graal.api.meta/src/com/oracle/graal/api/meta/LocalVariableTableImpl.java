@@ -20,11 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.debug;
+package com.oracle.graal.api.meta;
 
 import java.util.*;
-
-import com.oracle.graal.api.meta.*;
 
 public class LocalVariableTableImpl implements LocalVariableTable {
 

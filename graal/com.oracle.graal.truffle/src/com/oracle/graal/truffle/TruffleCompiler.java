@@ -31,14 +31,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
@@ -47,7 +44,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
-import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
@@ -55,16 +51,15 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Implementation of the Truffle compiler using Graal.
  */
-public class TruffleCompilerImpl {
+public abstract class TruffleCompiler {
 
-    private final Providers providers;
-    private final Suites suites;
-    private final LIRSuites lirSuites;
-    private final PartialEvaluator partialEvaluator;
-    private final Backend backend;
-    private final GraphBuilderConfiguration config;
-    private final RuntimeProvider runtime;
-    private final GraalTruffleCompilationListener compilationNotify;
+    protected final Providers providers;
+    protected final Suites suites;
+    protected final GraphBuilderConfiguration config;
+    protected final LIRSuites lirSuites;
+    protected final PartialEvaluator partialEvaluator;
+    protected final Backend backend;
+    protected final GraalTruffleCompilationListener compilationNotify;
 
     // @formatter:off
     private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class[]{
@@ -81,31 +76,30 @@ public class TruffleCompilerImpl {
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
 
-    public TruffleCompilerImpl() {
+    public TruffleCompiler(Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend) {
         GraalTruffleRuntime graalTruffleRuntime = ((GraalTruffleRuntime) Truffle.getRuntime());
-        this.runtime = Graal.getRequiredCapability(RuntimeProvider.class);
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
-        this.backend = runtime.getHostBackend();
+        this.backend = backend;
         Providers backendProviders = backend.getProviders();
         ConstantReflectionProvider constantReflection = new TruffleConstantReflectionProvider(backendProviders.getConstantReflection(), backendProviders.getMetaAccess());
         this.providers = backendProviders.copyWith(constantReflection);
-        this.suites = backend.getSuites().getDefaultSuites();
-        this.lirSuites = backend.getSuites().getDefaultLIRSuites();
+        this.suites = suites;
+        this.lirSuites = lirSuites;
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
-        GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
-        // copy all plugins from the host
-        Plugins plugins = new Plugins(phase.getGraphBuilderConfig().getPlugins());
-        GraphBuilderConfiguration baseConfig = graalTruffleRuntime.enableInfopoints() ? GraphBuilderConfiguration.getInfopointDefault(plugins) : GraphBuilderConfiguration.getDefault(plugins);
-        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes);
+        GraphBuilderConfiguration baseConfig = graalTruffleRuntime.enableInfopoints() ? GraphBuilderConfiguration.getInfopointDefault(new Plugins(plugins))
+                        : GraphBuilderConfiguration.getDefault(new Plugins(plugins));
+        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.TruffleExcludeAssertions.getValue());
 
-        this.partialEvaluator = new PartialEvaluator(providers, config, Graal.getRequiredCapability(SnippetReflectionProvider.class), backend.getTarget().arch);
+        this.partialEvaluator = createPartialEvaluator();
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
         }
     }
+
+    protected abstract PartialEvaluator createPartialEvaluator();
 
     public static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccess) {
         ResolvedJavaType[] skippedExceptionTypes = new ResolvedJavaType[SKIPPED_EXCEPTION_CLASSES.length];
@@ -206,13 +200,7 @@ public class TruffleCompilerImpl {
         return result;
     }
 
-    private PhaseSuite<HighTierContext> createGraphBuilderSuite() {
-        PhaseSuite<HighTierContext> suite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
-        ListIterator<BasePhase<? super HighTierContext>> iterator = suite.findPhase(GraphBuilderPhase.class);
-        iterator.remove();
-        iterator.add(new GraphBuilderPhase(config));
-        return suite;
-    }
+    protected abstract PhaseSuite<HighTierContext> createGraphBuilderSuite();
 
     public void processAssumption(Set<Assumption> newAssumptions, Assumption assumption, List<AssumptionValidAssumption> manual) {
         if (assumption != null) {

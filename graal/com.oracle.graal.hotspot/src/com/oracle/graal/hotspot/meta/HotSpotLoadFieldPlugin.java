@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 
@@ -65,18 +64,6 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
 
     public boolean apply(GraphBuilderContext b, ResolvedJavaField staticField) {
         if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {
-            // Javac does not allow use of "$assertionsDisabled" for a field name but
-            // Eclipse does in which case a suffix is added to the generated field.
-            if (b.parsingIntrinsic() && staticField.isSynthetic() && staticField.getName().startsWith("$assertionsDisabled")) {
-                // For methods called indirectly from intrinsics, we (silently) disable
-                // assertions so that the parser won't see calls to the AssertionError
-                // constructor (all Invokes must be removed from intrinsics - see
-                // HotSpotInlineInvokePlugin.notifyOfNoninlinedInvoke). Direct use of
-                // assertions in intrinsics is forbidden.
-                assert b.getMethod().getAnnotation(MethodSubstitution.class) == null : "cannot use assertions in " + b.getMethod().format("%H.%n(%p)");
-                b.addPush(ConstantNode.forBoolean(true));
-                return true;
-            }
             return tryReadField(b, staticField, null);
         }
         return false;

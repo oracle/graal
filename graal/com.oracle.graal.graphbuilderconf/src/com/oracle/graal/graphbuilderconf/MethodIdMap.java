@@ -199,43 +199,47 @@ public class MethodIdMap<V> {
 
     public V get(MethodIdHolder method) {
         if (entries == null) {
-            // 'assignIds' synchronizes on a global lock which ensures thread safe
-            // allocation of identifiers across all MethodIdHolder objects
-            MethodIdHolder.assignIds(new Consumer<MethodIdAllocator>() {
-
-                public void accept(MethodIdAllocator idAllocator) {
-                    if (entries == null) {
-                        if (registrations.isEmpty()) {
-                            entries = allocateEntries(0);
-                        } else {
-                            int max = Integer.MIN_VALUE;
-                            for (MethodKey<V> methodKey : registrations) {
-                                MethodIdHolder m = methodKey.resolve(metaAccess);
-                                int id = idAllocator.assignId(m);
-                                if (id < minId) {
-                                    minId = id;
-                                }
-                                if (id > max) {
-                                    max = id;
-                                }
-                                methodKey.id = id;
-                            }
-
-                            int length = (max - minId) + 1;
-                            entries = allocateEntries(length);
-                            for (MethodKey<V> m : registrations) {
-                                int index = m.id - minId;
-                                entries[index] = m.value;
-                            }
-                        }
-                    }
-                }
-            });
+            createEntries();
         }
 
         int id = method.getMethodId();
         int index = id - minId;
         return index >= 0 && index < entries.length ? entries[index] : null;
+    }
+
+    public void createEntries() {
+        // 'assignIds' synchronizes on a global lock which ensures thread safe
+        // allocation of identifiers across all MethodIdHolder objects
+        MethodIdHolder.assignIds(new Consumer<MethodIdAllocator>() {
+
+            public void accept(MethodIdAllocator idAllocator) {
+                if (entries == null) {
+                    if (registrations.isEmpty()) {
+                        entries = allocateEntries(0);
+                    } else {
+                        int max = Integer.MIN_VALUE;
+                        for (MethodKey<V> methodKey : registrations) {
+                            MethodIdHolder m = methodKey.resolve(metaAccess);
+                            int id = idAllocator.assignId(m);
+                            if (id < minId) {
+                                minId = id;
+                            }
+                            if (id > max) {
+                                max = id;
+                            }
+                            methodKey.id = id;
+                        }
+
+                        int length = (max - minId) + 1;
+                        entries = allocateEntries(length);
+                        for (MethodKey<V> m : registrations) {
+                            int index = m.id - minId;
+                            entries[index] = m.value;
+                        }
+                    }
+                }
+            }
+        });
     }
 
     @Override

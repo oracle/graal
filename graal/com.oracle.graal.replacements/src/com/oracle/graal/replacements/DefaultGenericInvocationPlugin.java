@@ -148,12 +148,12 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             /*
              * Need to update the BCI of a ForeignCallNode so that it gets the stateDuring in the
              * case that the foreign call can deoptimize. As with all deoptimization, we need a
-             * state in a normal method as opposed to an intrinsic.
+             * state in a non-intrinsic method.
              */
-            GraphBuilderContext ancestor = b.getNonReplacementAncestor();
-            if (ancestor != null) {
+            GraphBuilderContext nonIntrinsicAncestor = b.getNonIntrinsicAncestor();
+            if (nonIntrinsicAncestor != null) {
                 ForeignCallNode foreign = (ForeignCallNode) res;
-                foreign.setBci(ancestor.bci());
+                foreign.setBci(nonIntrinsicAncestor.bci());
             }
         }
 

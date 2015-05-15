@@ -100,8 +100,8 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
         final EnumSet<OperandFlag> flags;
 
-        public ValueFieldInfo(long offset, String name, Class<?> type, EnumSet<OperandFlag> flags) {
-            super(offset, name, type);
+        public ValueFieldInfo(long offset, String name, Class<?> type, Class<?> declaringClass, EnumSet<OperandFlag> flags) {
+            super(offset, name, type, declaringClass);
             assert VALUE_ARRAY_CLASS.isAssignableFrom(type) || VALUE_CLASS.isAssignableFrom(type);
             this.flags = flags;
         }
@@ -171,14 +171,14 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 EnumSet<OperandFlag> flags = getFlags(field);
                 assert verifyFlags(field, type, flags);
-                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, flags));
+                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
                 annotation.directCount++;
             } else if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 EnumSet<OperandFlag> flags = getFlags(field);
                 assert verifyFlags(field, type.getComponentType(), flags);
-                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, flags));
+                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
             } else {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,8 +123,8 @@ public class GraphNodeVerifier {
                         if (modifiers.contains(FINAL)) {
                             throw new ElementException(field, "Input list field must not be final");
                         }
-                        if (modifiers.contains(PUBLIC) || modifiers.contains(PRIVATE)) {
-                            throw new ElementException(field, "Input list field must be protected or package-private");
+                        if (modifiers.contains(PUBLIC)) {
+                            throw new ElementException(field, "Input list field must not be public");
                         }
                     } else {
                         if (!isAssignableWithErasure(field, Node) && field.getKind() == ElementKind.INTERFACE) {
@@ -133,8 +133,8 @@ public class GraphNodeVerifier {
                         if (modifiers.contains(FINAL)) {
                             throw new ElementException(field, "Input field must not be final");
                         }
-                        if (modifiers.contains(PUBLIC) || modifiers.contains(PRIVATE)) {
-                            throw new ElementException(field, "Input field must be protected or package-private");
+                        if (modifiers.contains(PUBLIC)) {
+                            throw new ElementException(field, "Input field must not be public");
                         }
                     }
                 } else if (isSuccessor) {
@@ -152,8 +152,8 @@ public class GraphNodeVerifier {
                         if (modifiers.contains(FINAL)) {
                             throw new ElementException(field, "Successor field must not be final");
                         }
-                        if (modifiers.contains(PUBLIC) || modifiers.contains(PRIVATE)) {
-                            throw new ElementException(field, "Successor field must be protected or package-private");
+                        if (modifiers.contains(PUBLIC)) {
+                            throw new ElementException(field, "Successor field must not be public");
                         }
                     }
 
@@ -167,12 +167,8 @@ public class GraphNodeVerifier {
                     if (isAssignableWithErasure(field, NodeSuccessorList)) {
                         throw new ElementException(field, "NodeSuccessorList field must be annotated with @" + Successor.getSimpleName());
                     }
-                    if (modifiers.contains(PUBLIC)) {
-                        if (!modifiers.contains(FINAL)) {
-                            throw new ElementException(field, "Data field must be final if public otherwise it must be protected");
-                        }
-                    } else if (!modifiers.contains(PROTECTED)) {
-                        throw new ElementException(field, "Data field must be protected");
+                    if (modifiers.contains(PUBLIC) && !modifiers.contains(FINAL)) {
+                        throw new ElementException(field, "Data field must be final if public");
                     }
                 }
             }

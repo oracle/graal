@@ -197,8 +197,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null || HotSpotLoadFieldPlugin.FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
 
-        if (receiver == null) {
-            assert hotspotField.isStatic();
+        if (hotspotField.isStatic()) {
             if (hotspotField.isFinal() || hotspotField.isStable()) {
                 ResolvedJavaType holder = hotspotField.getDeclaringClass();
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable(hotspotField)) {
@@ -213,7 +212,6 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
              * for non-static final fields, we must assume that they are only initialized if they
              * have a non-default value.
              */
-            assert !hotspotField.isStatic();
             Object object = receiver.isNull() ? null : ((HotSpotObjectConstantImpl) receiver).object();
 
             // Canonicalization may attempt to process an unsafe read before
@@ -259,18 +257,17 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     private JavaConstant readNonStableFieldValue(JavaField field, JavaConstant receiver) {
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
-        if (receiver == null) {
-            assert hotspotField.isStatic();
+        if (hotspotField.isStatic()) {
             HotSpotResolvedJavaType holder = (HotSpotResolvedJavaType) hotspotField.getDeclaringClass();
             if (holder.isInitialized()) {
                 return memoryAccess.readUnsafeConstant(hotspotField.getKind(), HotSpotObjectConstantImpl.forObject(holder.mirror()), hotspotField.offset());
             }
-            return null;
         } else {
-            assert !hotspotField.isStatic();
-            assert receiver.isNonNull() && hotspotField.isInObject(((HotSpotObjectConstantImpl) receiver).object());
-            return memoryAccess.readUnsafeConstant(hotspotField.getKind(), receiver, hotspotField.offset());
+            if (receiver.isNonNull() && hotspotField.isInObject(((HotSpotObjectConstantImpl) receiver).object())) {
+                return memoryAccess.readUnsafeConstant(hotspotField.getKind(), receiver, hotspotField.offset());
+            }
         }
+        return null;
     }
 
     public JavaConstant readStableFieldValue(JavaField field, JavaConstant receiver, boolean isDefaultStable) {

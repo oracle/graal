@@ -1098,11 +1098,12 @@ public class SnippetTemplate {
             // rewire outgoing memory edges
             replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
 
-            ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
-            MemoryMapNode memoryMap = ret.getMemoryMap();
-            ret.setMemoryMap(null);
-            memoryMap.safeDelete();
-
+            if (returnNode != null) {
+                ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
+                MemoryMapNode memoryMap = ret.getMemoryMap();
+                ret.setMemoryMap(null);
+                memoryMap.safeDelete();
+            }
             if (memoryAnchor != null) {
                 // rewire incoming memory edges
                 MemoryAnchorNode memoryDuplicate = (MemoryAnchorNode) duplicates.get(memoryAnchor);

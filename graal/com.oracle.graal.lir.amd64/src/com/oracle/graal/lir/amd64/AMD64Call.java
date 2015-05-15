@@ -71,8 +71,12 @@ public class AMD64Call {
     }
 
     @Opcode("CALL_DIRECT")
-    public abstract static class DirectCallOp extends MethodCallOp {
+    public static class DirectCallOp extends MethodCallOp {
         public static final LIRInstructionClass<DirectCallOp> TYPE = LIRInstructionClass.create(DirectCallOp.class);
+
+        public DirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            this(TYPE, callTarget, result, parameters, temps, state);
+        }
 
         protected DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(c, callTarget, result, parameters, temps, state);

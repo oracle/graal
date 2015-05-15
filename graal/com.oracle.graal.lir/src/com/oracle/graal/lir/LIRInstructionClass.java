@@ -76,6 +76,17 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> LIRInstructionClass<T> get(Class<T> clazz) {
+        try {
+            Field field = clazz.getDeclaredField("TYPE");
+            field.setAccessible(true);
+            return (LIRInstructionClass<T>) field.get(null);
+        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static class LIRInstructionFieldsScanner extends LIRFieldsScanner {
 
         private String opcodeConstant;
@@ -137,7 +148,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             if (STATE_CLASS.isAssignableFrom(type)) {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) != null : "Field must have state annotation: " + field;
-                states.add(new FieldsScanner.FieldInfo(offset, field.getName(), type));
+                states.add(new FieldsScanner.FieldInfo(offset, field.getName(), type, field.getDeclaringClass()));
             } else {
                 super.scanField(field, offset);
             }
@@ -148,6 +159,12 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
                 opcodeField = data.get(data.size() - 1);
             }
         }
+    }
+
+    @Override
+    public Fields[] getAllFields() {
+        assert values == null;
+        return new Fields[]{data, uses, alives, temps, defs, states};
     }
 
     @Override

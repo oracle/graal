@@ -25,7 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
-import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
+import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static java.lang.String.*;
 
@@ -75,6 +75,10 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public void setGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
         assert this.graphBuilderPlugins == null;
         this.graphBuilderPlugins = plugins;
+    }
+
+    public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
+        return graphBuilderPlugins;
     }
 
     protected boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
@@ -581,7 +585,19 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 if (args != null) {
                     plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));
                 }
-                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE).apply(graph);
+
+                IntrinsicContext initialIntrinsicContext = null;
+                if (method.getAnnotation(Snippet.class) == null) {
+                    // Post-parse inlined intrinsic
+                    initialIntrinsicContext = new IntrinsicContext(substitutedMethod, method, INLINE_AFTER_PARSING);
+                } else {
+                    // Snippet
+                    ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
+                    initialIntrinsicContext = new IntrinsicContext(original, method, INLINE_AFTER_PARSING);
+                }
+
+                createGraphBuilder(metaAccess, replacements.providers.getStampProvider(), replacements.providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(
+                                graph);
 
                 if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
@@ -593,16 +609,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
 
         protected Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, GraphBuilderConfiguration graphBuilderConfig,
-                        OptimisticOptimizations optimisticOpts) {
-            IntrinsicContext initialIntrinsicContext = null;
-            if (method.getAnnotation(Snippet.class) == null) {
-                // Post-parse inlined intrinsic
-                initialIntrinsicContext = new IntrinsicContext(substitutedMethod, method, INLINE_AFTER_PARSING);
-            } else {
-                // Snippet
-                ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
-                initialIntrinsicContext = new IntrinsicContext(original, method, INLINE_AFTER_PARSING);
-            }
+                        OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
             return new GraphBuilderPhase.Instance(metaAccess, stampProvider, constantReflection, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         }
     }

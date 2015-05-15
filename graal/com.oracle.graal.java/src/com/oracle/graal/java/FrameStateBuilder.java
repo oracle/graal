@@ -23,6 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 
 import java.util.*;
 
@@ -31,8 +32,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.IntrinsicContext.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
 import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodeinfo.*;
@@ -41,7 +42,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 
-public final class HIRFrameStateBuilder implements SideEffectsState {
+public final class FrameStateBuilder implements SideEffectsState {
 
     static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
     static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
@@ -74,7 +75,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
      * @param method the method whose frame is simulated
      * @param graph the target graph of Graal nodes created by the builder
      */
-    public HIRFrameStateBuilder(BytecodeParser parser, ResolvedJavaMethod method, StructuredGraph graph) {
+    public FrameStateBuilder(BytecodeParser parser, ResolvedJavaMethod method, StructuredGraph graph) {
         this.parser = parser;
         this.method = method;
         this.locals = allocateArray(method.getMaxLocals());
@@ -153,7 +154,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         }
     }
 
-    private HIRFrameStateBuilder(HIRFrameStateBuilder other) {
+    private FrameStateBuilder(FrameStateBuilder other) {
         this.parser = other.parser;
         this.method = other.method;
         this.stackSize = other.stackSize;
@@ -207,13 +208,16 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         }
 
         // Skip intrinsic frames
-        BytecodeParser parent = (BytecodeParser) parser.getNonReplacementAncestor();
-        return create(bci, parent, false);
+        return create(bci, parser.getNonIntrinsicAncestor(), false, (ValueNode[]) null);
     }
 
-    public FrameState create(int bci, BytecodeParser parent, boolean duringCall) {
+    /**
+     * @param pushedValues if non-null, values to {@link #push(Kind, ValueNode)} to the stack before
+     *            creating the {@link FrameState}
+     */
+    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, ValueNode... pushedValues) {
         if (outerFrameState == null && parent != null) {
-            outerFrameState = parent.getFrameState().create(parent.bci(), null);
+            outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, this.peek(0));
@@ -222,18 +226,29 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw GraalInternalError.shouldNotReachHere();
         }
-        return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+
+        if (pushedValues != null) {
+            int stackSizeToRestore = stackSize;
+            for (ValueNode arg : pushedValues) {
+                push(arg.getKind(), arg);
+            }
+            FrameState res = graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+            stackSize = stackSizeToRestore;
+            return res;
+        } else {
+            return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+        }
     }
 
     public BytecodePosition createBytecodePosition(int bci) {
         BytecodeParser parent = parser.getParent();
-        if (AbstractBytecodeParser.Options.HideSubstitutionStates.getValue()) {
+        if (HideSubstitutionStates.getValue()) {
             if (parser.parsingIntrinsic()) {
                 // Attribute to the method being replaced
-                return new BytecodePosition(parent.getFrameState().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
+                return new BytecodePosition(parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
             }
             // Skip intrinsic frames
-            parent = (BytecodeParser) parser.getNonReplacementAncestor();
+            parent = parser.getNonIntrinsicAncestor();
         }
         return create(null, bci, parent);
     }
@@ -241,7 +256,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
     private BytecodePosition create(BytecodePosition o, int bci, BytecodeParser parent) {
         BytecodePosition outer = o;
         if (outer == null && parent != null) {
-            outer = parent.getFrameState().createBytecodePosition(parent.bci());
+            outer = parent.getFrameStateBuilder().createBytecodePosition(parent.bci());
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
             return FrameState.toBytecodePosition(outerFrameState);
@@ -252,11 +267,11 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         return new BytecodePosition(outer, method, bci);
     }
 
-    public HIRFrameStateBuilder copy() {
-        return new HIRFrameStateBuilder(this);
+    public FrameStateBuilder copy() {
+        return new FrameStateBuilder(this);
     }
 
-    public boolean isCompatibleWith(HIRFrameStateBuilder other) {
+    public boolean isCompatibleWith(FrameStateBuilder other) {
         assert method.equals(other.method) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
@@ -281,7 +296,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         return true;
     }
 
-    public void merge(AbstractMergeNode block, HIRFrameStateBuilder other) {
+    public void merge(AbstractMergeNode block, FrameStateBuilder other) {
         assert isCompatibleWith(other);
 
         for (int i = 0; i < localsSize(); i++) {
@@ -362,21 +377,22 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin) {
+    public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin, boolean forcePhis) {
         for (int i = 0; i < localsSize(); i++) {
-            if (loopBegin.graph().isOSR() || liveness.localIsChangedInLoop(loopId, i)) {
-                storeLocal(i, createLoopPhi(loopBegin, localAt(i)));
+            boolean changedInLoop = liveness.localIsChangedInLoop(loopId, i);
+            if (changedInLoop || forcePhis) {
+                storeLocal(i, createLoopPhi(loopBegin, localAt(i), !changedInLoop));
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            storeStack(i, createLoopPhi(loopBegin, stackAt(i)));
+            storeStack(i, createLoopPhi(loopBegin, stackAt(i), false));
         }
         for (int i = 0; i < lockedObjects.length; i++) {
-            lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i]);
+            lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i], false);
         }
     }
 
-    public void insertLoopProxies(LoopExitNode loopExit, HIRFrameStateBuilder loopEntryState) {
+    public void insertLoopProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
@@ -424,13 +440,13 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
         }
     }
 
-    private ValuePhiNode createLoopPhi(AbstractMergeNode block, ValueNode value) {
+    private ValuePhiNode createLoopPhi(AbstractMergeNode block, ValueNode value, boolean stampFromValue) {
         if (value == null) {
             return null;
         }
         assert !block.isPhiAtMerge(value) : "phi function for this block already created";
 
-        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(value.stamp().unrestricted(), block));
+        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(stampFromValue ? value.stamp() : value.stamp().unrestricted(), block));
         phi.addInput(value);
         return phi;
     }
@@ -503,7 +519,7 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
          * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
          * Kind.Illegal, because the conflicting branch might not have been parsed.
          */
-        if (liveness == null) {
+        if (!parser.graphBuilderConfig.clearNonLiveLocals()) {
             return;
         }
         if (liveIn) {
@@ -959,8 +975,8 @@ public final class HIRFrameStateBuilder implements SideEffectsState {
 
     @Override
     public boolean equals(Object otherObject) {
-        if (otherObject instanceof HIRFrameStateBuilder) {
-            HIRFrameStateBuilder other = (HIRFrameStateBuilder) otherObject;
+        if (otherObject instanceof FrameStateBuilder) {
+            FrameStateBuilder other = (FrameStateBuilder) otherObject;
             if (!other.method.equals(method)) {
                 return false;
             }
