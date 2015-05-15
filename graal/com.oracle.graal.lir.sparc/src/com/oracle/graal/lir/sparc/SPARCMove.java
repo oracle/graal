@@ -798,16 +798,16 @@ public class SPARCMove {
             switch (input.getKind()) {
                 case Boolean:
                 case Byte:
-                    masm.ldsb(src, dst);
+                    masm.ldub(src, dst);
                     break;
                 case Short:
-                    masm.ldsh(src, dst);
+                    masm.lduh(src, dst);
                     break;
                 case Char:
                     masm.lduh(src, dst);
                     break;
                 case Int:
-                    masm.ldsw(src, dst);
+                    masm.lduw(src, dst);
                     break;
                 case Long:
                 case Object:
