@@ -462,11 +462,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     /**
-     * Cache to speed up preprocessing of replacement graphs.
-     */
-    final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphCache = new ConcurrentHashMap<>();
-
-    /**
      * Creates and preprocesses a graph for a replacement.
      */
     public static class GraphMaker {
@@ -493,12 +488,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
         public StructuredGraph makeGraph(Object[] args) {
             try (Scope s = Debug.scope("BuildSnippetGraph", method)) {
-                StructuredGraph graph = parseGraph(method, args);
-
-                if (args == null) {
-                    // Cannot have a finalized version of a graph in the cache
-                    graph = graph.copy();
-                }
+                assert method.hasBytecodes() : method;
+                StructuredGraph graph = buildInitialGraph(method, args);
 
                 finalizeGraph(graph);
 
@@ -549,21 +540,6 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             }
             // Not a StateSplit
             return false;
-        }
-
-        private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, Object[] args) {
-            assert methodToParse.hasBytecodes() : methodToParse;
-            if (args != null) {
-                return buildInitialGraph(methodToParse, args);
-            }
-            StructuredGraph graph = replacements.graphCache.get(methodToParse);
-            if (graph == null) {
-                StructuredGraph newGraph = buildInitialGraph(methodToParse, args);
-                replacements.graphCache.putIfAbsent(methodToParse, newGraph);
-                graph = replacements.graphCache.get(methodToParse);
-                assert graph != null;
-            }
-            return graph;
         }
 
         /**
