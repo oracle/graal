@@ -38,9 +38,21 @@ import com.oracle.truffle.api.nodes.*;
 public interface AdvancedInstrumentRootFactory {
 
     /**
-     * Provider of {@linkplain AdvancedInstrumentRoot AST fragment} instances for efficient
-     * execution via instrumentation, subject to full Truffle optimization, at a {@linkplain Probe
-     * Probed} site in a guest-language AST.
+     * Provider of {@linkplain AdvancedInstrumentRoot AST fragment} instances to be executed by the
+     * Instrumentation Framework at a {@linkplain Probe Probed} site in a guest-language AST.
+     * <p>
+     * <strong>Notes:</strong>
+     * <ul>
+     * <li>Once the factory has produced an AST fragment at a particular {@linkplain Node AST Node},
+     * it will not be called again at that Node.</li>
+     * <li>In some use cases, for example to implement a breakpoint at a specific program location,
+     * the Probe argument will be the same for every call. Each Node argument will represent the
+     * same program location associated with the Probe, but in different clones of the AST.</li>
+     * <li>In other use cases, for example to implement a breakpoint at any Node with a particular
+     * {@linkplain SyntaxTag tag}, both the Probe and Node argument may differ. Implementations that
+     * are sensitive to the lexical context in which the AST fragment will be evaluated must take
+     * care to build a new, possibly different AST fragment for each request.</li>
+     * </ul>
      *
      * @param probe the Probe to which the Instrument requesting the AST fragment is attached
      * @param node the guest-language AST location that is the context in which the requesting

@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 
 // TODO (mlvdv) these statics should not be global.  Move them to some kind of context.
-// TODO (mlvdv) migrate factory into .impl (together with Probe)? break out nested classes?
+// TODO (mlvdv) migrate factory (together with Probe)? break out nested classes?
 
 /**
  * A <em>binding</em> between:
