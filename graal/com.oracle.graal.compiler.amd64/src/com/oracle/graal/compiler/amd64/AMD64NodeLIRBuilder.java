@@ -47,6 +47,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 

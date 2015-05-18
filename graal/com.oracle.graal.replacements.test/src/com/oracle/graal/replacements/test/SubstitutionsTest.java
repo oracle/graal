@@ -39,6 +39,7 @@ import com.oracle.graal.nodeinfo.StructuralInput.Memory;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 
