@@ -92,6 +92,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             return new FloatEqualsNode(newX, newY);
         } else if (newX.stamp() instanceof IntegerStamp && newY.stamp() instanceof IntegerStamp) {
             return new IntegerEqualsNode(newX, newY);
+        } else if (newX.stamp() instanceof AbstractPointerStamp && newY.stamp() instanceof AbstractPointerStamp) {
+            return new IntegerEqualsNode(newX, newY);
         }
         throw GraalInternalError.shouldNotReachHere();
     }
