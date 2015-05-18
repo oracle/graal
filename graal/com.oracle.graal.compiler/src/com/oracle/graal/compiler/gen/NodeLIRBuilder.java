@@ -202,7 +202,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             if (value != null) {
                 values.add(value);
             } else {
-                assert isPhiInputFromBackedge(phi, i);
+                assert isPhiInputFromBackedge(phi, i) : String.format("Input %s to phi node %s is not yet available although it is not coming from a loop back edge", node, phi);
             }
         }
         LIRKind derivedKind = LIRKind.merge(values.toArray(new Value[values.size()]));
