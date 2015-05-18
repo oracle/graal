@@ -56,7 +56,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(method);
                     final Replacements replacements = tool.getReplacements();
                     StructuredGraph snippetGraph = null;
-                    try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
+                    try (Scope s = Debug.scope("ArrayCloneSnippet", snippetMethod)) {
                         snippetGraph = replacements.getSnippet(snippetMethod, null);
                     } catch (Throwable e) {
                         throw Debug.handle(e);
