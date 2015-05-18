@@ -39,9 +39,7 @@ import com.oracle.graal.hotspot.meta.HotSpotMethodDataAccessor.Tag;
 /**
  * Access to a HotSpot MethodData structure (defined in methodData.hpp).
  */
-public final class HotSpotMethodData extends CompilerObject {
-
-    private static final long serialVersionUID = -8873133496591225071L;
+public final class HotSpotMethodData {
 
     private static final HotSpotVMConfig config = runtime().getConfig();
     private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(TriState.FALSE);

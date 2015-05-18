@@ -37,8 +37,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
  */
 public abstract class CompositeValue extends AbstractValue {
 
-    private static final long serialVersionUID = -169180052684126180L;
-
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public static @interface Component {

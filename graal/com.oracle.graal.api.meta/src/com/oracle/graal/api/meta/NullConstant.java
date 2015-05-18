@@ -27,8 +27,6 @@ package com.oracle.graal.api.meta;
  */
 final class NullConstant extends AbstractValue implements JavaConstant {
 
-    private static final long serialVersionUID = 8906209595800783961L;
-
     protected NullConstant() {
         super(LIRKind.reference(Kind.Object));
     }

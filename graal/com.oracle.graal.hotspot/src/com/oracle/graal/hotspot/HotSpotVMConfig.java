@@ -39,9 +39,7 @@ import com.oracle.graal.hotspotvmconfig.*;
  *
  * All non-static, public fields in this class are so that they can be compiled as constants.
  */
-public class HotSpotVMConfig extends CompilerObject {
-
-    private static final long serialVersionUID = -4744897993263044184L;
+public class HotSpotVMConfig {
 
     /**
      * Determines if the current architecture is included in a given architecture set specification.

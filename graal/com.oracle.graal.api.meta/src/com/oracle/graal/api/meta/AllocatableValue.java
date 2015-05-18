@@ -28,8 +28,6 @@ package com.oracle.graal.api.meta;
  */
 public abstract class AllocatableValue extends AbstractValue implements JavaValue, KindProvider {
 
-    private static final long serialVersionUID = 153019506717492133L;
-
     public static final AllocatableValue[] NONE = {};
 
     public AllocatableValue(LIRKind lirKind) {

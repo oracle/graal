@@ -28,8 +28,6 @@ import com.oracle.graal.api.meta.*;
 
 public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
 
-    private static final long serialVersionUID = -6410840212023428347L;
-
     /**
      * Gets the Graal mirror for a {@link Class} object.
      *

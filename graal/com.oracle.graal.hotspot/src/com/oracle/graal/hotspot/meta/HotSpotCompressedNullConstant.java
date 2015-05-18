@@ -29,8 +29,6 @@ import com.oracle.graal.api.meta.*;
  */
 public final class HotSpotCompressedNullConstant extends AbstractValue implements JavaConstant, HotSpotConstant {
 
-    private static final long serialVersionUID = 8906209595800783961L;
-
     public static final JavaConstant COMPRESSED_NULL = new HotSpotCompressedNullConstant();
 
     private HotSpotCompressedNullConstant() {

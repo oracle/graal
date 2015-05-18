@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.io.*;
-
 /**
  * This object holds probability information for a set of items that were profiled at a specific
  * BCI. The precision of the supplied values may vary, but a runtime that provides this information
@@ -34,9 +32,7 @@ import java.io.*;
  * @param <U> the class of the items that are profiled at the specific BCI and for which
  *            probabilities are stored. E.g., a ResolvedJavaType or a ResolvedJavaMethod.
  */
-public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> implements Serializable {
-
-    private static final long serialVersionUID = 5493379044459116749L;
+public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> {
 
     private final double notRecordedProbability;
     private final T[] pitems;

@@ -33,7 +33,6 @@ import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
  */
 public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, ResolvedJavaType> {
 
-    private static final long serialVersionUID = -6877016333706838441L;
     private static final ProfiledType[] EMPTY_ARRAY = new ProfiledType[0];
 
     private final TriState nullSeen;
@@ -144,8 +143,6 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
     }
 
     public static class ProfiledType extends AbstractProfiledItem<ResolvedJavaType> {
-
-        private static final long serialVersionUID = 1481773321889860837L;
 
         public ProfiledType(ResolvedJavaType type, double probability) {
             super(type, probability);

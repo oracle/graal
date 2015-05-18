@@ -41,9 +41,8 @@ import com.oracle.graal.api.code.CompilationResult.Site;
  * A {@link CompilationResult} with additional HotSpot-specific information required for installing
  * the code in HotSpot's code cache.
  */
-public abstract class HotSpotCompiledCode extends CompilerObject {
+public abstract class HotSpotCompiledCode {
 
-    private static final long serialVersionUID = 7807321392203253218L;
     public final CompilationResult comp;
 
     public final Site[] sites;

@@ -35,7 +35,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 
 public final class AMD64AddressValue extends CompositeValue {
-    private static final long serialVersionUID = -4444600052487578694L;
 
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;

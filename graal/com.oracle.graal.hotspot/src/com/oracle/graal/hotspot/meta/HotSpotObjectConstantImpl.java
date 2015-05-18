@@ -37,8 +37,6 @@ import edu.umd.cs.findbugs.annotations.*;
  */
 public final class HotSpotObjectConstantImpl extends AbstractValue implements HotSpotObjectConstant, HotSpotProxified {
 
-    private static final long serialVersionUID = 3592151693708093496L;
-
     static JavaConstant forObject(Object object) {
         return forObject(object, false);
     }

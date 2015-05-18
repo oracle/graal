@@ -22,15 +22,11 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.io.*;
-
 /**
  * A profiled type that has a probability. Profiled types are naturally sorted in descending order
  * of their probabilities.
  */
-public abstract class AbstractProfiledItem<T> implements Comparable<AbstractProfiledItem<?>>, Serializable {
-
-    private static final long serialVersionUID = 7838575753661305744L;
+public abstract class AbstractProfiledItem<T> implements Comparable<AbstractProfiledItem<?>> {
 
     protected final T item;
     protected final double probability;

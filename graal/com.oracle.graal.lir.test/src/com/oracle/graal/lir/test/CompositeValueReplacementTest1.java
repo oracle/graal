@@ -43,7 +43,6 @@ public class CompositeValueReplacementTest1 {
 
     private static class TestCompositeValue extends CompositeValue {
 
-        private static final long serialVersionUID = -8804214200173503527L;
         @Component({REG, OperandFlag.ILLEGAL}) protected Value value;
 
         public TestCompositeValue(Value value) {
@@ -70,7 +69,6 @@ public class CompositeValueReplacementTest1 {
 
     private static class DummyValue extends AbstractValue {
 
-        private static final long serialVersionUID = -645435039553382737L;
         private final int id;
         private static int counter = 1;
 

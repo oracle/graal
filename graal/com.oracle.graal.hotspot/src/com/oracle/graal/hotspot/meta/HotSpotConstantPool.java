@@ -35,9 +35,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
  */
-public class HotSpotConstantPool extends CompilerObject implements ConstantPool, HotSpotProxified {
-
-    private static final long serialVersionUID = -5443206401485234850L;
+public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
 
     /**
      * Enum of all {@code JVM_CONSTANT} constants used in the VM. This includes the public and

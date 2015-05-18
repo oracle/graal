@@ -37,8 +37,6 @@ import com.oracle.graal.hotspot.stubs.*;
  */
 public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
-    private static final long serialVersionUID = -4506206868419153274L;
-
     public final String stubName;
 
     public HotSpotCompiledRuntimeStub(Stub stub, CompilationResult compResult) {

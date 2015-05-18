@@ -32,8 +32,6 @@ import com.oracle.graal.api.meta.*;
  */
 public final class RegisterValue extends AllocatableValue {
 
-    private static final long serialVersionUID = 7999341472196897163L;
-
     private final Register reg;
 
     /**

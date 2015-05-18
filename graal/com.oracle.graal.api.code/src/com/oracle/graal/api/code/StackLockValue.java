@@ -31,8 +31,6 @@ import com.oracle.graal.api.meta.*;
  */
 public final class StackLockValue extends AbstractValue implements JavaValue {
 
-    private static final long serialVersionUID = 8241681800464483691L;
-
     private Value owner;
     private StackSlotValue slot;
     private final boolean eliminated;

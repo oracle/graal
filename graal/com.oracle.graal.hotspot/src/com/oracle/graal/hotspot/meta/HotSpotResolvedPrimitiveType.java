@@ -38,7 +38,6 @@ import com.oracle.graal.hotspot.*;
  */
 public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType implements HotSpotProxified {
 
-    private static final long serialVersionUID = -6208552348908071473L;
     private final Kind kind;
 
     /**

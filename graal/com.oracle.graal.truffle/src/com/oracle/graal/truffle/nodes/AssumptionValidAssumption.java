@@ -27,8 +27,6 @@ import com.oracle.graal.truffle.*;
 
 public final class AssumptionValidAssumption extends Assumptions.Assumption {
 
-    private static final long serialVersionUID = 2010244979610891262L;
-
     private final OptimizedAssumption assumption;
 
     public AssumptionValidAssumption(OptimizedAssumption assumption) {

@@ -43,8 +43,6 @@ import com.oracle.graal.nodes.*;
  */
 public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod, HotSpotProxified, MethodIdHolder {
 
-    private static final long serialVersionUID = -5486975070147586588L;
-
     /**
      * Reference to metaspace Method object.
      */

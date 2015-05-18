@@ -30,7 +30,6 @@ import com.oracle.graal.hotspot.*;
  */
 public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
 
-    private static final long serialVersionUID = -2320936267633521314L;
     private final HotSpotGraalRuntimeProvider runtime;
 
     public HotSpotUnresolvedJavaType(String name, HotSpotGraalRuntimeProvider runtime) {
