@@ -1512,23 +1512,26 @@ public class HotSpotVMConfig {
     @HotSpotVMConstant(name = "CompilerToVM::KLASS_TAG") @Stable public int compilerToVMKlassTag;
     @HotSpotVMConstant(name = "CompilerToVM::SYMBOL_TAG") @Stable public int compilerToVMSymbolTag;
 
-    @HotSpotVMConstant(name = "CodeInstaller::VERIFIED_ENTRY") @Stable public int codeInstallerMarkIdVerifiedEntry;
-    @HotSpotVMConstant(name = "CodeInstaller::UNVERIFIED_ENTRY") @Stable public int codeInstallerMarkIdUnverifiedEntry;
-    @HotSpotVMConstant(name = "CodeInstaller::OSR_ENTRY") @Stable public int codeInstallerMarkIdOsrEntry;
-    @HotSpotVMConstant(name = "CodeInstaller::EXCEPTION_HANDLER_ENTRY") @Stable public int codeInstallerMarkIdExceptionHandlerEntry;
-    @HotSpotVMConstant(name = "CodeInstaller::DEOPT_HANDLER_ENTRY") @Stable public int codeInstallerMarkIdDeoptHandlerEntry;
-    @HotSpotVMConstant(name = "CodeInstaller::INVOKEINTERFACE") @Stable public int codeInstallerMarkIdInvokeinterface;
-    @HotSpotVMConstant(name = "CodeInstaller::INVOKEVIRTUAL") @Stable public int codeInstallerMarkIdInvokevirtual;
-    @HotSpotVMConstant(name = "CodeInstaller::INVOKESTATIC") @Stable public int codeInstallerMarkIdInvokestatic;
-    @HotSpotVMConstant(name = "CodeInstaller::INVOKESPECIAL") @Stable public int codeInstallerMarkIdInvokespecial;
-    @HotSpotVMConstant(name = "CodeInstaller::INLINE_INVOKE") @Stable public int codeInstallerMarkIdInlineInvoke;
-    @HotSpotVMConstant(name = "CodeInstaller::POLL_NEAR") @Stable public int codeInstallerMarkIdPollNear;
-    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_NEAR") @Stable public int codeInstallerMarkIdPollReturnNear;
-    @HotSpotVMConstant(name = "CodeInstaller::POLL_FAR") @Stable public int codeInstallerMarkIdPollFar;
-    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_FAR") @Stable public int codeInstallerMarkIdPollReturnFar;
-    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_SHIFT") @Stable public int codeInstallerMarkIdCardTableShift;
-    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_ADDRESS") @Stable public int codeInstallerMarkIdCardTableAddress;
-    @HotSpotVMConstant(name = "CodeInstaller::INVOKE_INVALID") @Stable public int codeInstallerMarkIdInvokeInvalid;
+    // Checkstyle: stop
+    @HotSpotVMConstant(name = "CodeInstaller::VERIFIED_ENTRY") @Stable public int MARKID_VERIFIED_ENTRY;
+    @HotSpotVMConstant(name = "CodeInstaller::UNVERIFIED_ENTRY") @Stable public int MARKID_UNVERIFIED_ENTRY;
+    @HotSpotVMConstant(name = "CodeInstaller::OSR_ENTRY") @Stable public int MARKID_OSR_ENTRY;
+    @HotSpotVMConstant(name = "CodeInstaller::EXCEPTION_HANDLER_ENTRY") @Stable public int MARKID_EXCEPTION_HANDLER_ENTRY;
+    @HotSpotVMConstant(name = "CodeInstaller::DEOPT_HANDLER_ENTRY") @Stable public int MARKID_DEOPT_HANDLER_ENTRY;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKEINTERFACE") @Stable public int MARKID_INVOKEINTERFACE;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKEVIRTUAL") @Stable public int MARKID_INVOKEVIRTUAL;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKESTATIC") @Stable public int MARKID_INVOKESTATIC;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKESPECIAL") @Stable public int MARKID_INVOKESPECIAL;
+    @HotSpotVMConstant(name = "CodeInstaller::INLINE_INVOKE") @Stable public int MARKID_INLINE_INVOKE;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_NEAR") @Stable public int MARKID_POLL_NEAR;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_NEAR") @Stable public int MARKID_POLL_RETURN_NEAR;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_FAR") @Stable public int MARKID_POLL_FAR;
+    @HotSpotVMConstant(name = "CodeInstaller::POLL_RETURN_FAR") @Stable public int MARKID_POLL_RETURN_FAR;
+    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_SHIFT") @Stable public int MARKID_CARD_TABLE_SHIFT;
+    @HotSpotVMConstant(name = "CodeInstaller::CARD_TABLE_ADDRESS") @Stable public int MARKID_CARD_TABLE_ADDRESS;
+    @HotSpotVMConstant(name = "CodeInstaller::INVOKE_INVALID") @Stable public int MARKID_INVOKE_INVALID;
+
+    // Checkstyle: resume
 
     public boolean check() {
         for (Field f : getClass().getDeclaredFields()) {

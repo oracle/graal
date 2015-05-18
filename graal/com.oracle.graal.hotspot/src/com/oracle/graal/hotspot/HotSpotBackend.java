@@ -64,8 +64,8 @@ public abstract class HotSpotBackend extends Backend {
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
-     * {@linkplain HotSpotVMConfig#codeInstallerMarkIdExceptionHandlerEntry exception handler} in a
-     * compiled method.
+     * {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler} in a compiled
+     * method.
      */
     public static final ForeignCallDescriptor EXCEPTION_HANDLER = new ForeignCallDescriptor("exceptionHandler", void.class, Object.class, Word.class);
 

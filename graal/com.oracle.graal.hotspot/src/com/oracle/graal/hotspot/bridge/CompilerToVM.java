@@ -27,9 +27,9 @@ import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+
 import com.oracle.graal.hotspotvmconfig.*;
 
 /**
@@ -205,7 +205,7 @@ public interface CompilerToVM {
                     this.value = config.codeInstallResultCodeTooLarge;
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere("unknown enum name " + name);
+                    throw new IllegalArgumentException(name);
             }
             this.message = name;
         }
@@ -219,7 +219,7 @@ public interface CompilerToVM {
                     return e;
                 }
             }
-            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
+            throw new IllegalArgumentException(String.valueOf(value));
         }
 
         @Override
@@ -294,8 +294,8 @@ public interface CompilerToVM {
     long readUnsafeKlassPointer(Object o);
 
     /**
-     * Reads an object pointer within a VM data structures. That is, any {@link HotSpotVMField}
-     * whose {@link HotSpotVMField#type() type} is {@code "oop"} (e.g.,
+     * Reads an object pointer within a VM data structure. That is, any {@link HotSpotVMField} whose
+     * {@link HotSpotVMField#type() type} is {@code "oop"} (e.g.,
      * {@code ArrayKlass::_component_mirror}, {@code Klass::_java_mirror},
      * {@code JavaThread::_threadObj}).
      *

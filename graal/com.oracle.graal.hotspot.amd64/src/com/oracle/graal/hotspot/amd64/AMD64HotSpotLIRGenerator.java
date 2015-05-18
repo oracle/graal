@@ -255,14 +255,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Value emitCardTableShift() {
         Variable result = newVariable(LIRKind.value(Kind.Long));
-        append(new AMD64HotSpotCardTableShiftOp(result));
+        append(new AMD64HotSpotCardTableShiftOp(result, config));
         return result;
     }
 
     @Override
     public Value emitCardTableAddress() {
         Variable result = newVariable(LIRKind.value(Kind.Long));
-        append(new AMD64HotSpotCardTableAddressOp(result));
+        append(new AMD64HotSpotCardTableAddressOp(result, config));
         return result;
     }
 

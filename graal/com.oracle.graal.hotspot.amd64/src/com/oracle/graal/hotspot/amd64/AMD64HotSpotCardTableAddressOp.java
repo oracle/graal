@@ -25,20 +25,22 @@ package com.oracle.graal.hotspot.amd64;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
 
 public final class AMD64HotSpotCardTableAddressOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HotSpotCardTableAddressOp> TYPE = LIRInstructionClass.create(AMD64HotSpotCardTableAddressOp.class);
 
     @Def({OperandFlag.REG}) private AllocatableValue result;
 
-    public AMD64HotSpotCardTableAddressOp(AllocatableValue result) {
+    private final HotSpotVMConfig config;
+
+    public AMD64HotSpotCardTableAddressOp(AllocatableValue result, HotSpotVMConfig config) {
         super(TYPE);
         this.result = result;
+        this.config = config;
     }
 
     @Override
@@ -48,7 +50,7 @@ public final class AMD64HotSpotCardTableAddressOp extends AMD64LIRInstruction {
         JavaConstant address = JavaConstant.forIntegerKind(hostWordKind, 0);
         // recordDataReferenceInCode forces the mov to be rip-relative
         asm.movq(ValueUtil.asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(address, alignment));
-        MarkId.recordMark(crb, MarkId.CARD_TABLE_ADDRESS);
+        crb.recordMark(config.MARKID_CARD_TABLE_ADDRESS);
     }
 
 }

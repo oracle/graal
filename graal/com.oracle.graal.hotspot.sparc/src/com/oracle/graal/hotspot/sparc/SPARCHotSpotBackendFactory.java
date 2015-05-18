@@ -91,7 +91,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
-        return new HotSpotCodeCacheProvider(runtime, target, regConfig);
+        return new HotSpotCodeCacheProvider(runtime, runtime.getConfig(), target, regConfig);
     }
 
     protected SPARCHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {

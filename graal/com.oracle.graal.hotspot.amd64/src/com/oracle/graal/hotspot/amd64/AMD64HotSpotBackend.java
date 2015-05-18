@@ -39,7 +39,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -251,7 +250,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         emitCodeBody(installedCodeOwner, crb, lir);
 
         // Emit the suffix
-        emitCodeSuffix(installedCodeOwner, crb, asm, frameMap);
+        emitCodeSuffix(installedCodeOwner, crb, asm, config, frameMap);
 
         // Profile assembler instructions
         profileInstructions(lir, crb);
@@ -265,7 +264,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedEntry) {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
-            MarkId.recordMark(crb, MarkId.UNVERIFIED_ENTRY);
+            crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
                                              // c1_LIRAssembler_x86.cpp
@@ -287,9 +286,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         }
 
         asm.align(config.codeEntryAlignment);
-        MarkId.recordMark(crb, MarkId.OSR_ENTRY);
+        crb.recordMark(config.MARKID_OSR_ENTRY);
         asm.bind(verifiedEntry);
-        MarkId.recordMark(crb, MarkId.VERIFIED_ENTRY);
+        crb.recordMark(config.MARKID_VERIFIED_ENTRY);
     }
 
     /**
@@ -303,15 +302,16 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     /**
      * @param installedCodeOwner see {@link Backend#emitCode}
+     * @param config
      */
-    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, FrameMap frameMap) {
+    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, FrameMap frameMap) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
             HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
-            MarkId.recordMark(crb, MarkId.EXCEPTION_HANDLER_ENTRY);
+            crb.recordMark(config.MARKID_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
-            MarkId.recordMark(crb, MarkId.DEOPT_HANDLER_ENTRY);
+            crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since

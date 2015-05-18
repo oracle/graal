@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 
 public final class HotSpotReferenceMap extends ReferenceMap {
 
@@ -347,7 +346,7 @@ public final class HotSpotReferenceMap extends ReferenceMap {
 
     private void set(HotSpotOopMap refMap, int index, LIRKind kind) {
         if (kind.isDerivedReference()) {
-            throw GraalInternalError.shouldNotReachHere("derived reference cannot be inserted in ReferenceMap");
+            throw new InternalError("derived reference cannot be inserted in ReferenceMap");
         }
 
         int bytesPerElement = bytesPerElement(kind);
