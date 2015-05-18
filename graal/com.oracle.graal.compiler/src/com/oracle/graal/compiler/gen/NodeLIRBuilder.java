@@ -239,6 +239,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         for (PhiNode phi : merge.valuePhis()) {
             Value value = operand(phi.valueAt(pred));
             assert value != null;
+            if (isRegister(value)) {
+                /*
+                 * Fixed register intervals are not allowed at block boundaries so we introduce a
+                 * new Variable.
+                 */
+                value = gen.emitMove(value);
+            }
             values.add(value);
         }
         return values.toArray(new Value[values.size()]);
