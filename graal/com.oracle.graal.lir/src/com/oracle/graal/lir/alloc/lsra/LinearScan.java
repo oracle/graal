@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -630,26 +631,30 @@ class LinearScan {
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-            sortIntervalsBeforeAllocation();
+            try (Scope s = Debug.scope("AfterLifetimeAnalysis", intervals)) {
+                sortIntervalsBeforeAllocation();
 
-            createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-            if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
-                createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-            }
-            createResolveDataFlowPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
+                    createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                }
+                createResolveDataFlowPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
-            sortIntervalsAfterAllocation();
+                sortIntervalsAfterAllocation();
 
-            if (DetailedAsserts.getValue()) {
-                verify();
-            }
+                if (DetailedAsserts.getValue()) {
+                    verify();
+                }
 
-            createSpillMoveEliminationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
-            createAssignLocationsPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                createSpillMoveEliminationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
+                createAssignLocationsPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
-            if (DetailedAsserts.getValue()) {
-                verifyIntervals();
+                if (DetailedAsserts.getValue()) {
+                    verifyIntervals();
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
         }
     }
