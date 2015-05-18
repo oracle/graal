@@ -211,6 +211,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         try {
             createProviderFile(pkg, optionsClassName, originatingElements);
+            createOptionsFile(info, pkg, topDeclaringClass.toString(), originatingElements);
         } catch (IOException e) {
             processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), info.topDeclaringType);
         }
@@ -222,6 +223,45 @@ public class OptionProcessor extends AbstractProcessor {
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
         writer.println(Options.class.getName());
         writer.close();
+    }
+
+    private void createOptionsFile(OptionsInfo info, String pkg, String relativeName, Element... originatingElements) throws IOException {
+        String filename = "META-INF/options/" + pkg + "." + relativeName;
+        FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
+        for (OptionInfo option : info.options) {
+            String help = option.help;
+            if (help.indexOf('\t') >= 0 || help.indexOf('\r') >= 0 || help.indexOf('\n') >= 0) {
+                processingEnv.getMessager().printMessage(Kind.WARNING, "Option help should not contain '\\t', '\\r' or '\\n'", option.field);
+                help = help.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
+            }
+            try {
+                char optionTypeToChar = optionTypeToChar(option);
+                writer.printf("%s\t%s\t%s%n", option.name, optionTypeToChar, help);
+            } catch (IllegalArgumentException iae) {
+            }
+        }
+        writer.close();
+    }
+
+    private char optionTypeToChar(OptionInfo option) {
+        switch (option.type) {
+            case "Boolean":
+                return 'z';
+            case "Integer":
+                return 'i';
+            case "Long":
+                return 'j';
+            case "Float":
+                return 'f';
+            case "Double":
+                return 'd';
+            case "String":
+                return 's';
+            default:
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Unsoported option type: " + option.type, option.field);
+                throw new IllegalArgumentException();
+        }
     }
 
     protected PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
