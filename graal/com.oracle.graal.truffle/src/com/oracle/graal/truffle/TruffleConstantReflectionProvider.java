@@ -52,6 +52,10 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         return graalConstantReflection.readConstantArrayElement(array, index);
     }
 
+    public JavaConstant readConstantArrayElementForOffset(JavaConstant array, long offset) {
+        return graalConstantReflection.readConstantArrayElementForOffset(array, offset);
+    }
+
     public JavaConstant readConstantFieldValue(JavaField field0, JavaConstant receiver) {
         ResolvedJavaField field = (ResolvedJavaField) field0;
         if (!field.isStatic() && receiver.isNonNull()) {

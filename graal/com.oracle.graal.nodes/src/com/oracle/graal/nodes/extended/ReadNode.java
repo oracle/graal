@@ -105,13 +105,18 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (tool.canonicalizeReads()) {
-            if (metaAccess != null && object != null && object.isConstant() && !object.isNullConstant()) {
-                if ((location.getLocationIdentity().isImmutable()) && location instanceof ConstantLocationNode) {
-                    long displacement = ((ConstantLocationNode) location).getDisplacement();
+            if (metaAccess != null && object != null && object.isConstant() && !object.isNullConstant() && location instanceof ConstantLocationNode) {
+                long displacement = ((ConstantLocationNode) location).getDisplacement();
+                if ((location.getLocationIdentity().isImmutable())) {
                     Constant constant = read.stamp().readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement);
                     if (constant != null) {
                         return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                     }
+                }
+
+                Constant constant = tool.getConstantReflection().readConstantArrayElementForOffset(object.asJavaConstant(), displacement);
+                if (constant != null) {
+                    return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                 }
             }
             if (location.getLocationIdentity().equals(LocationIdentity.ARRAY_LENGTH_LOCATION)) {

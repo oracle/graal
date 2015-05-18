@@ -96,6 +96,40 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         return null;
     }
 
+    /**
+     * Try to convert {@code offset} into an an index into {@code array}.
+     *
+     * @return -1 if the offset isn't within the array or the computed index
+     */
+    private int indexForOffset(JavaConstant array, long offset) {
+        if (array.getKind() != Kind.Object || array.isNull()) {
+            return -1;
+        }
+        Class<?> componentType = ((HotSpotObjectConstantImpl) array).object().getClass().getComponentType();
+        Kind kind = runtime.getHostProviders().getMetaAccess().lookupJavaType(componentType).getKind();
+        int arraybase = runtime.getArrayBaseOffset(kind);
+        int scale = runtime.getArrayIndexScale(kind);
+        if (offset < arraybase) {
+            return -1;
+        }
+        long index = offset - arraybase;
+        if (index % scale != 0) {
+            return -1;
+        }
+        long result = index / scale;
+        if (result >= Integer.MAX_VALUE) {
+            return -1;
+        }
+        return (int) result;
+    }
+
+    public JavaConstant readConstantArrayElementForOffset(JavaConstant array, long offset) {
+        if (array instanceof HotSpotObjectConstantImpl && ((HotSpotObjectConstantImpl) array).getStableDimension() > 0) {
+            return readConstantArrayElement(array, indexForOffset(array, offset));
+        }
+        return null;
+    }
+
     @Override
     public JavaConstant readArrayElement(JavaConstant array, int index) {
         if (array.getKind() != Kind.Object || array.isNull()) {
