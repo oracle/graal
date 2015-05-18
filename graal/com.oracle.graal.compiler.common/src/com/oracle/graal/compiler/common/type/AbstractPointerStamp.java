@@ -61,7 +61,11 @@ public abstract class AbstractPointerStamp extends Stamp {
         AbstractPointerStamp other = (AbstractPointerStamp) stamp;
         boolean joinNonNull = this.nonNull || other.nonNull;
         boolean joinAlwaysNull = this.alwaysNull || other.alwaysNull;
-        return copyWith(joinNonNull, joinAlwaysNull);
+        if (joinNonNull && joinAlwaysNull) {
+            return empty();
+        } else {
+            return copyWith(joinNonNull, joinAlwaysNull);
+        }
     }
 
     @Override
