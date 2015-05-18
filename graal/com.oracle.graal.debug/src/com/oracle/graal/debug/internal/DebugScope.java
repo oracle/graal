@@ -269,9 +269,10 @@ public final class DebugScope implements Debug.Scope {
     /**
      * This method exists mainly to allow a debugger (e.g., Eclipse) to force dump a graph.
      */
-    public static void forceDump(Object object, String message) {
+    public static void forceDump(Object object, String format, Object... args) {
         DebugConfig config = getConfig();
         if (config != null) {
+            String message = String.format(format, args);
             for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
                 dumpHandler.dump(object, message);
             }
