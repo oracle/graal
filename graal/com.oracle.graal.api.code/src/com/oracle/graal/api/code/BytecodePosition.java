@@ -107,7 +107,7 @@ public class BytecodePosition {
         return caller;
     }
 
-    /*
+    /**
      * Adds a caller to the current position returning the new position.
      */
     public BytecodePosition addCaller(BytecodePosition link) {
