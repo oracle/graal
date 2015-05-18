@@ -58,20 +58,18 @@ public class DefaultASTPrinter implements ASTPrinter {
     }
 
     public String printNodeWithInstrumentation(Node node) {
-        final StringBuilder sb = new StringBuilder();
         if (node == null) {
-            sb.append("null");
-        } else {
-            sb.append(nodeName(node));
-            sb.append("(");
-            if (node instanceof InstrumentationNode) {
-                sb.append(instrumentInfo((InstrumentationNode) node));
-            }
-            sb.append(sourceInfo(node));
-
-            sb.append(NodeUtil.printSyntaxTags(node));
-            sb.append(")");
+            return "null";
         }
+        final StringBuilder sb = new StringBuilder();
+        sb.append(nodeName(node));
+        sb.append("(");
+        if (node instanceof InstrumentationNode) {
+            sb.append(instrumentInfo((InstrumentationNode) node));
+        }
+        sb.append(sourceInfo(node));
+        sb.append(NodeUtil.printSyntaxTags(node));
+        sb.append(")");
         final Node parent = node.getParent();
         if (parent instanceof WrapperNode) {
             final WrapperNode wrapper = (WrapperNode) parent;
