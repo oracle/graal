@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind;
 import com.oracle.truffle.api.source.*;
@@ -54,6 +55,30 @@ public class DefaultASTPrinter implements ASTPrinter {
 
     public String printTreeToString(Node node, int maxDepth) {
         return printTreeToString(node, maxDepth, null);
+    }
+
+    public String printNodeWithInstrumentation(Node node) {
+        final StringBuilder sb = new StringBuilder();
+        if (node == null) {
+            sb.append("null");
+        } else {
+            sb.append(nodeName(node));
+            sb.append("(");
+            if (node instanceof InstrumentationNode) {
+                sb.append(instrumentInfo((InstrumentationNode) node));
+            }
+            sb.append(sourceInfo(node));
+
+            sb.append(NodeUtil.printSyntaxTags(node));
+            sb.append(")");
+        }
+        final Node parent = node.getParent();
+        if (parent instanceof WrapperNode) {
+            final WrapperNode wrapper = (WrapperNode) parent;
+            sb.append(" Probed");
+            sb.append(NodeUtil.printSyntaxTags(wrapper));
+        }
+        return sb.toString();
     }
 
     protected void printTree(PrintWriter p, Node node, int maxDepth, Node markNode, int level) {

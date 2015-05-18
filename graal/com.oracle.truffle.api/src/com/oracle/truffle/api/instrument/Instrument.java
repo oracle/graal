@@ -130,6 +130,9 @@ public abstract class Instrument {
      * Creates an <em>Advanced Instrument</em>: this Instrument executes efficiently, subject to
      * full Truffle optimization, a client-provided AST fragment every time the Probed node is
      * entered.
+     * <p>
+     * Any {@link RuntimeException} thrown by execution of the fragment is caught by the framework
+     * and reported to the listener; there is no other notification.
      *
      * @param resultListener optional client callback for results/failure notification
      * @param rootFactory provider of AST fragments on behalf of the client
