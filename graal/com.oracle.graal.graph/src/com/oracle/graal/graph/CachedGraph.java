@@ -29,22 +29,32 @@ import java.util.function.*;
  * This class is a container of a graph that needs to be readonly and optionally a lazily created
  * mutable copy of the graph.
  */
-public class CachedGraph {
+public final class CachedGraph<G extends Graph> {
 
-    private final Graph readonlyCopy;
-    private Graph mutableCopy;
+    private final G readonlyCopy;
+    private G mutableCopy;
 
-    public CachedGraph(Graph readonlyCopy) {
+    private CachedGraph(G readonlyCopy, G mutableCopy) {
         this.readonlyCopy = readonlyCopy;
+        this.mutableCopy = mutableCopy;
     }
 
-    public Graph getReadonlyCopy() {
+    public static <G extends Graph> CachedGraph<G> fromReadonlyCopy(G graph) {
+        return new CachedGraph<>(graph, null);
+    }
+
+    public static <G extends Graph> CachedGraph<G> fromMutableCopy(G graph) {
+        return new CachedGraph<>(graph, graph);
+    }
+
+    public G getReadonlyCopy() {
         return readonlyCopy;
     }
 
-    public Graph getMutableCopy(Consumer<Map<Node, Node>> duplicationMapCallback) {
+    @SuppressWarnings("unchecked")
+    public G getMutableCopy(Consumer<Map<Node, Node>> duplicationMapCallback) {
         if (mutableCopy == null) {
-            mutableCopy = readonlyCopy.copy(duplicationMapCallback);
+            mutableCopy = (G) readonlyCopy.copy(duplicationMapCallback);
         }
         return mutableCopy;
     }

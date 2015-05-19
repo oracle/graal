@@ -1299,7 +1299,7 @@ public class SnippetTemplate {
      * Gets a copy of the specialized graph.
      */
     public StructuredGraph copySpecializedGraph() {
-        return snippet.copy();
+        return (StructuredGraph) snippet.copy();
     }
 
     /**

@@ -220,7 +220,7 @@ public class Graph {
     /**
      * Creates a copy of this graph.
      */
-    public Graph copy() {
+    public final Graph copy() {
         return copy(name, null);
     }
 
@@ -229,7 +229,7 @@ public class Graph {
      *
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    public Graph copy(Consumer<Map<Node, Node>> duplicationMapCallback) {
+    public final Graph copy(Consumer<Map<Node, Node>> duplicationMapCallback) {
         return copy(name, duplicationMapCallback);
     }
 
@@ -238,7 +238,7 @@ public class Graph {
      *
      * @param newName the name of the copy, used for debugging purposes (can be null)
      */
-    public Graph copy(String newName) {
+    public final Graph copy(String newName) {
         return copy(newName, null);
     }
 
@@ -248,7 +248,7 @@ public class Graph {
      * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    public Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
+    protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
         Graph copy = new Graph(newName);
         Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (Map<Node, Node>) null);
         if (duplicationMapCallback != null) {

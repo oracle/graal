@@ -63,7 +63,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     }
 
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
-                    return lowerReplacement(snippetGraph.copy(), tool);
+                    return lowerReplacement((StructuredGraph) snippetGraph.copy(), tool);
                 }
                 assert false : "unhandled array type " + type.getComponentType().getKind();
             } else {

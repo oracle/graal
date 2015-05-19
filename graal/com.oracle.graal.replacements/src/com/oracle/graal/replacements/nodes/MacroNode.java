@@ -112,7 +112,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     protected StructuredGraph getLoweredSubstitutionGraph(LoweringTool tool) {
         StructuredGraph methodSubstitution = tool.getReplacements().getSubstitution(getTargetMethod(), true, bci);
         if (methodSubstitution != null) {
-            methodSubstitution = methodSubstitution.copy();
+            methodSubstitution = (StructuredGraph) methodSubstitution.copy();
             return lowerReplacement(methodSubstitution, tool);
         }
         return null;

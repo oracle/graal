@@ -98,14 +98,14 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
             }
             snippetGraph = null;
             try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
-                snippetGraph = replacements.getSnippet(snippetMethod, getTargetMethod(), null).copy();
+                snippetGraph = (StructuredGraph) replacements.getSnippet(snippetMethod, getTargetMethod(), null).copy();
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
             replaceSnippetInvokes(snippetGraph);
         } else {
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
-            snippetGraph = snippetGraph.copy();
+            snippetGraph = (StructuredGraph) snippetGraph.copy();
             if (shouldUnroll()) {
                 final StructuredGraph copy = snippetGraph;
                 try (Scope s = Debug.scope("ArrayCopySnippetSpecialization", snippetGraph.method())) {
