@@ -48,12 +48,19 @@ public final class CachedGraph<G extends Graph> {
     }
 
     public G getReadonlyCopy() {
+        if (hasMutableCopy()) {
+            return mutableCopy;
+        }
         return readonlyCopy;
+    }
+
+    public boolean hasMutableCopy() {
+        return mutableCopy != null;
     }
 
     @SuppressWarnings("unchecked")
     public G getMutableCopy(Consumer<Map<Node, Node>> duplicationMapCallback) {
-        if (mutableCopy == null) {
+        if (!hasMutableCopy()) {
             mutableCopy = (G) readonlyCopy.copy(duplicationMapCallback);
         }
         return mutableCopy;
