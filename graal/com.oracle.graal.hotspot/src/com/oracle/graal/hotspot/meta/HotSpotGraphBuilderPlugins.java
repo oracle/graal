@@ -37,7 +37,7 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
@@ -86,7 +86,7 @@ public class HotSpotGraphBuilderPlugins {
         registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
         registerCallSitePlugins(invocationPlugins);
         registerReflectionPlugins(invocationPlugins);
-        registerStableOptionPlugins(invocationPlugins);
+        registerStableOptionPlugins(invocationPlugins, snippetReflection);
         registerAESPlugins(invocationPlugins, config);
         registerCRC32Plugins(invocationPlugins, config);
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
@@ -216,13 +216,12 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerStableOptionPlugins(InvocationPlugins plugins) {
+    private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
-                    Object object = ((HotSpotObjectConstantImpl) receiver.get().asConstant()).object();
-                    StableOptionValue<?> option = (StableOptionValue<?>) object;
+                    StableOptionValue<?> option = snippetReflection.asObject(StableOptionValue.class, (JavaConstant) receiver.get().asConstant());
                     b.addPush(Kind.Object, ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(option.getValue()), b.getMetaAccess()));
                     return true;
                 }

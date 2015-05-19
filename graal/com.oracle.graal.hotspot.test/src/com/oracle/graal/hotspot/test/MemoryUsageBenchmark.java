@@ -33,7 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.printer.*;
 

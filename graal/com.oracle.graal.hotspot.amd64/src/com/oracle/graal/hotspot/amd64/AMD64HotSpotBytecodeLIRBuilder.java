@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotLIRGenerator.SaveRbp;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.gen.*;
 

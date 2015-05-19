@@ -27,7 +27,7 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public class HotSpotNmethodTest extends GraalCompilerTest {

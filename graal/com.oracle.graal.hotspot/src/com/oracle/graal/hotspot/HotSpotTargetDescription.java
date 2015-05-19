@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.jvmci.*;
 
 public class HotSpotTargetDescription extends TargetDescription {
 

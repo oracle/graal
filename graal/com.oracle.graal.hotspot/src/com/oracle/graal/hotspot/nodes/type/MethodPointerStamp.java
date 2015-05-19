@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 
 public final class MethodPointerStamp extends MetaspacePointerStamp {
 

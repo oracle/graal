@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedObjectTypeImpl.*;
 
 import java.lang.reflect.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 
 /**
  * Tests {@link HotSpotResolvedJavaField} functionality.

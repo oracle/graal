@@ -35,6 +35,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 
 public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {

@@ -30,8 +30,7 @@ import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.options.*;

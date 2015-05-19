@@ -36,7 +36,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;

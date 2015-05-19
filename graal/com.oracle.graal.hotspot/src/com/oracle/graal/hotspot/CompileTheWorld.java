@@ -43,7 +43,7 @@ import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
 import com.oracle.graal.options.OptionValue.OverrideScope;

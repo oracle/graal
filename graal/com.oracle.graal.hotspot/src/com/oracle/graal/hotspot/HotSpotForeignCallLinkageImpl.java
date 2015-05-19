@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
@@ -38,17 +39,7 @@ import com.oracle.graal.word.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage, HotSpotProxified {
-
-    /**
-     * The descriptor of the call.
-     */
-    private final ForeignCallDescriptor descriptor;
-
-    /**
-     * The entry point address of this call's target.
-     */
-    private long address;
+public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget implements HotSpotForeignCallLinkage, HotSpotProxified {
 
     /**
      * Non-null (eventually) iff this is a call to a compiled {@linkplain Stub stub}.
@@ -134,10 +125,10 @@ public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage,
 
     public HotSpotForeignCallLinkageImpl(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
                     CallingConvention incomingCallingConvention, boolean reexecutable, LocationIdentity... killedLocations) {
+        super(descriptor, address);
         this.address = address;
         this.effect = effect;
         this.transition = transition;
-        this.descriptor = descriptor;
         this.outgoingCallingConvention = outgoingCallingConvention;
         this.incomingCallingConvention = incomingCallingConvention;
         this.reexecutable = reexecutable;

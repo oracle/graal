@@ -37,7 +37,7 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
         this.constantReflection = constantReflection;
     }
 
-    static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
+    public static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
 
     public boolean apply(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
         if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {

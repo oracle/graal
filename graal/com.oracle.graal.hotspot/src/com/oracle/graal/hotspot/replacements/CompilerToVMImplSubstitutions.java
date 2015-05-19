@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.word.*;
 
 /**
  * Substitutions for {@link CompilerToVMImpl} methods.
  */
-@ClassSubstitution(com.oracle.graal.hotspot.bridge.CompilerToVMImpl.class)
+@ClassSubstitution(com.oracle.graal.hotspot.jvmci.CompilerToVMImpl.class)
 public class CompilerToVMImplSubstitutions {
 
     @MethodSubstitution(isStatic = false)

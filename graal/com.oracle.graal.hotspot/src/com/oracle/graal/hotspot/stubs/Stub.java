@@ -35,6 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.asm.*;
@@ -191,7 +192,7 @@ public abstract class Stub {
                 try (Scope s = Debug.scope("CodeInstall")) {
                     Stub stub = Stub.this;
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
+                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(compResult);
 
                     HotSpotGraalRuntime runtime = runtime();
                     int result = runtime.getCompilerToVM().installCode(hsCompResult, installedCode, null);

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.jvmci.*;
 
 /**
  * Implementation of {@link JavaMethod} for unresolved HotSpot methods.

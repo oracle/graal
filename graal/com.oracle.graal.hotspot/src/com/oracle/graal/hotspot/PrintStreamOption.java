@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot;
 import java.io.*;
 import java.lang.management.*;
 
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.options.*;
 
 /**

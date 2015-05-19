@@ -24,6 +24,9 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
+import com.oracle.graal.hotspot.jvmci.*;
+
 import sun.misc.*;
 
 /**
