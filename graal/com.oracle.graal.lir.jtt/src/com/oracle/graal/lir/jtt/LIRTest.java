@@ -51,6 +51,10 @@ public abstract class LIRTest extends JTTTest {
     public abstract static class LIRTestSpecification {
         private Value result;
 
+        public void generate(LIRGeneratorTool gen) {
+            defaultHandler(gen);
+        }
+
         public void generate(LIRGeneratorTool gen, Value arg0) {
             defaultHandler(gen, arg0);
         }
@@ -76,7 +80,9 @@ public abstract class LIRTest extends JTTTest {
         }
 
         void generate(LIRGeneratorTool gen, Value[] values) {
-            if (values.length == 1) {
+            if (values.length == 0) {
+                generate(gen);
+            } else if (values.length == 1) {
                 generate(gen, values[0]);
             } else if (values.length == 2) {
                 generate(gen, values[0], values[1]);
@@ -244,7 +250,7 @@ public abstract class LIRTest extends JTTTest {
                 assert Modifier.isStatic(m.getModifiers());
                 Class<?>[] p = m.getParameterTypes();
                 assert p.length > 0;
-                assert p[0].equals(LIRTestSpecification.class);
+                assert LIRTestSpecification.class.isAssignableFrom(p[0]);
 
                 if (m.getReturnType().equals(void.class)) {
                     invocationPlugins.register(fixedLIRNodePlugin, c, m.getName(), p);
