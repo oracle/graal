@@ -58,11 +58,7 @@ class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
-        beforeSpillMoveElimination();
         eliminateSpillMoves();
-    }
-
-    protected void beforeSpillMoveElimination() {
     }
 
     /**

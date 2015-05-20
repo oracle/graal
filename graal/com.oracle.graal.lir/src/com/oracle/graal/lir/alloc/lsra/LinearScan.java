@@ -646,7 +646,7 @@ class LinearScan {
                 if (DetailedAsserts.getValue()) {
                     verify();
                 }
-
+                beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
 
@@ -657,6 +657,9 @@ class LinearScan {
                 throw Debug.handle(e);
             }
         }
+    }
+
+    protected void beforeSpillMoveElimination() {
     }
 
     protected LinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
