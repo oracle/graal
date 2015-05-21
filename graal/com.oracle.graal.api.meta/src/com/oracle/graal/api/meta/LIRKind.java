@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.util.*;
+
 /**
  * Represents the type of values in the LIR. It is composed of a {@link PlatformKind} that gives the
  * low level representation of the value, and a {@link #referenceMask} that describes the location
@@ -133,10 +135,20 @@ public final class LIRKind {
      */
     public static LIRKind merge(Value... inputs) {
         assert inputs.length > 0;
+        ArrayList<LIRKind> kinds = new ArrayList<>(inputs.length);
+        for (int i = 0; i < inputs.length; i++) {
+            kinds.add(inputs[i].getLIRKind());
+        }
+        return merge(kinds);
+    }
+
+    /**
+     * @see #merge(Value...)
+     */
+    public static LIRKind merge(Iterable<LIRKind> kinds) {
         LIRKind mergeKind = null;
 
-        for (Value input : inputs) {
-            LIRKind kind = input.getLIRKind();
+        for (LIRKind kind : kinds) {
 
             assert mergeKind == null || verifyMoveKinds(mergeKind, kind) : String.format("Input kinds do not match %s vs. %s", mergeKind, kind);
 
@@ -173,6 +185,7 @@ public final class LIRKind {
             }
 
         }
+        assert mergeKind != null;
 
         // all inputs are values or references, just return one of them
         return mergeKind;
