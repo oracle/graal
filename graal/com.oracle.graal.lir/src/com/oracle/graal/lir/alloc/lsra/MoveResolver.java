@@ -198,12 +198,24 @@ class MoveResolver {
 
         Value location = to.location();
         if (mightBeBlocked(location)) {
-            if ((valueBlocked(location) > 1 || (valueBlocked(location) == 1 && !location.equals(fromReg)))) {
+            if ((valueBlocked(location) > 1 || (valueBlocked(location) == 1 && !isMoveToSelf(fromReg, location)))) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    protected boolean isMoveToSelf(Value from, Value to) {
+        assert to != null;
+        if (to.equals(from)) {
+            return true;
+        }
+        if (from != null && isRegister(from) && isRegister(to) && asRegister(from).equals(asRegister(to))) {
+            assert LIRKind.verifyMoveKinds(to.getLIRKind(), from.getLIRKind()) : String.format("Same register but Kind mismatch %s <- %s", to, from);
+            return true;
+        }
+        return false;
     }
 
     protected boolean mightBeBlocked(Value location) {
