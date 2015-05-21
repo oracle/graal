@@ -168,7 +168,12 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
-        builder.startStaticCall(context.getType(Arrays.class), "asList");
+
+        if (factoryList.size() > 1) {
+            builder.startStaticCall(context.getType(Arrays.class), "asList");
+        } else {
+            builder.startStaticCall(context.getType(Collections.class), "singletonList");
+        }
 
         for (NodeData child : factoryList) {
             builder.startGroup();
