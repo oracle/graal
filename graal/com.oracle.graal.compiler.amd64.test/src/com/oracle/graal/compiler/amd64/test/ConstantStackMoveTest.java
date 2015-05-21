@@ -20,16 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.jtt;
+package com.oracle.graal.compiler.amd64.test;
+
+import static org.junit.Assume.*;
 
 import org.junit.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.jtt.*;
 
 public class ConstantStackMoveTest extends LIRTest {
+    @Before
+    public void checkAMD64() {
+        assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
+    }
 
     private static class LoadConstantStackSpec extends LIRTestSpecification {
         protected final Object primitive;
