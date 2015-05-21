@@ -87,4 +87,18 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         builder.setResult(this, gen.emitUShr(builder.operand(getX()), builder.operand(getY())));
     }
+
+    @Override
+    public boolean isNarrowable(int resultBits) {
+        if (super.isNarrowable(resultBits)) {
+            /*
+             * For unsigned right shifts, the narrow can be done before the shift if the cut off
+             * bits are all zero.
+             */
+            IntegerStamp inputStamp = (IntegerStamp) getX().stamp();
+            return (inputStamp.upMask() & ~(resultBits - 1)) == 0;
+        } else {
+            return false;
+        }
+    }
 }

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shr;
 import com.oracle.graal.graph.*;
@@ -97,5 +98,20 @@ public final class RightShiftNode extends ShiftNode<Shr> {
     @Override
     public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
         builder.setResult(this, gen.emitShr(builder.operand(getX()), builder.operand(getY())));
+    }
+
+    @Override
+    public boolean isNarrowable(int resultBits) {
+        if (super.isNarrowable(resultBits)) {
+            /*
+             * For signed right shifts, the narrow can be done before the shift if the cut off bits
+             * are all equal to the sign bit of the input. That's equivalent to the condition that
+             * the input is in the signed range of the narrow type.
+             */
+            IntegerStamp inputStamp = (IntegerStamp) getX().stamp();
+            return CodeUtil.minValue(resultBits) <= inputStamp.lowerBound() && inputStamp.upperBound() <= CodeUtil.maxValue(resultBits);
+        } else {
+            return false;
+        }
     }
 }
