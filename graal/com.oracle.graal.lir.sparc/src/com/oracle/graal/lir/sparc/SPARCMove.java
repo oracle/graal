@@ -421,10 +421,10 @@ public class SPARCMove {
     public static final class NullCheckOp extends SPARCLIRInstruction implements NullCheck, SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<NullCheckOp> TYPE = LIRInstructionClass.create(NullCheckOp.class);
 
-        @Use({REG}) protected AllocatableValue input;
+        @Use({COMPOSITE}) protected SPARCAddressValue input;
         @State protected LIRFrameState state;
 
-        public NullCheckOp(Variable input, LIRFrameState state) {
+        public NullCheckOp(SPARCAddressValue input, LIRFrameState state) {
             super(TYPE);
             this.input = input;
             this.state = state;
@@ -433,8 +433,9 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             delayedControlTransfer.emitControlTransfer(crb, masm);
+            SPARCAddress addr = input.toAddress();
             crb.recordImplicitException(masm.position(), state);
-            masm.ldx(new SPARCAddress(asRegister(input), 0), g0);
+            masm.ldx(addr, g0);
         }
 
         public Value getCheckedValue() {

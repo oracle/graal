@@ -440,17 +440,15 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return result;
     }
 
+    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
-        PlatformKind kind = address.getLIRKind().getPlatformKind();
-        if (address.getLIRKind().getPlatformKind() == Kind.Int) {
+        PlatformKind kind = address.getPlatformKind();
+        if (kind == Kind.Int) {
             CompressEncoding encoding = config.getOopEncoding();
-            Value uncompressed;
-            uncompressed = emitUncompress(address, encoding, false);
-
-            append(new NullCheckOp(load(uncompressed), state));
+            Value uncompressed = emitUncompress(address, encoding, false);
+            append(new NullCheckOp(asAddressValue(uncompressed), state));
         } else {
-            assert kind == Kind.Object || kind == Kind.Long : address + " - " + kind + " not an object!";
-            append(new NullCheckOp(load(address), state));
+            super.emitNullCheck(address, state);
         }
     }
 

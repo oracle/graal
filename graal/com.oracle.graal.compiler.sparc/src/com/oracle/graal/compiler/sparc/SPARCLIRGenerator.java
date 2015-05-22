@@ -1075,4 +1075,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        PlatformKind kind = address.getPlatformKind();
+        assert kind == Kind.Object || kind == Kind.Long : address + " - " + kind + " not an object!";
+        append(new NullCheckOp(asAddressValue(address), state));
+    }
 }
