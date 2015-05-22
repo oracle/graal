@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodeinfo.*;
@@ -94,7 +95,8 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), runtime.getArrayBaseOffset(Kind.Object), pos, runtime.getArrayIndexScale(Kind.Object)));
+        HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
+        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), jvmciRuntime.getArrayBaseOffset(Kind.Object), pos, jvmciRuntime.getArrayIndexScale(Kind.Object)));
         return graph().unique(new ComputeAddressNode(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 

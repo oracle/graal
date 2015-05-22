@@ -29,6 +29,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -115,9 +116,10 @@ public class NativeCallStubGraphBuilder {
                 // array value
                 Kind arrayElementKind = getElementKind(type);
                 LocationIdentity locationIdentity = NamedLocationIdentity.getArrayLocation(arrayElementKind);
-                int displacement = runtime().getArrayBaseOffset(arrayElementKind);
+                HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime().getJVMCIRuntime();
+                int displacement = jvmciRuntime.getArrayBaseOffset(arrayElementKind);
                 ConstantNode index = ConstantNode.forInt(0, g);
-                int indexScaling = runtime().getArrayIndexScale(arrayElementKind);
+                int indexScaling = jvmciRuntime.getArrayIndexScale(arrayElementKind);
                 IndexedLocationNode locationNode = g.unique(new IndexedLocationNode(locationIdentity, displacement, index, indexScaling));
                 Stamp wordStamp = StampFactory.forKind(providers.getWordTypes().getWordKind());
                 ComputeAddressNode arrayAddress = g.unique(new ComputeAddressNode(boxedElement, locationNode, wordStamp));

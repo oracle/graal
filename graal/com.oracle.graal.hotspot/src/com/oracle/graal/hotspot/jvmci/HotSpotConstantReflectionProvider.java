@@ -106,7 +106,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             return -1;
         }
         Class<?> componentType = ((HotSpotObjectConstantImpl) array).object().getClass().getComponentType();
-        Kind kind = runtime.getHostProviders().getMetaAccess().lookupJavaType(componentType).getKind();
+        Kind kind = runtime.getHostJVMCIBackend().getMetaAccess().lookupJavaType(componentType).getKind();
         int arraybase = runtime.getArrayBaseOffset(kind);
         int scale = runtime.getArrayIndexScale(kind);
         if (offset < arraybase) {

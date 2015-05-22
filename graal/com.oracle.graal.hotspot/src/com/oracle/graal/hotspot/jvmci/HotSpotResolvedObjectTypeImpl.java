@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 import static java.util.Objects.*;
 
 import java.lang.annotation.*;
@@ -795,7 +795,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * Gets the metaspace Klass boxed in a {@link JavaConstant}.
      */
     public JavaConstant klass() {
-        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime().getTarget().wordKind, getMetaspaceKlass(), this, false);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime().getHostJVMCIBackend().getTarget().wordKind, getMetaspaceKlass(), this, false);
     }
 
     public boolean isPrimaryType() {
@@ -866,7 +866,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
         Constructor<?>[] constructors = mirror().getDeclaredConstructors();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
-            result[i] = runtime().getHostProviders().getMetaAccess().lookupJavaMethod(constructors[i]);
+            result[i] = runtime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(constructors[i]);
             assert result[i].isConstructor();
         }
         return result;
@@ -877,7 +877,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
         Method[] methods = mirror().getDeclaredMethods();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[methods.length];
         for (int i = 0; i < methods.length; i++) {
-            result[i] = runtime().getHostProviders().getMetaAccess().lookupJavaMethod(methods[i]);
+            result[i] = runtime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(methods[i]);
             assert !result[i].isConstructor();
         }
         return result;

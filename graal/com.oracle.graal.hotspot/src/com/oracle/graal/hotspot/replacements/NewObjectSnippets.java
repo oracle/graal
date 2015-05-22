@@ -447,7 +447,7 @@ public class NewObjectSnippets implements Snippets {
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
-            final int headerSize = runtime.getArrayBaseOffset(elementKind);
+            final int headerSize = runtime.getJVMCIRuntime().getArrayBaseOffset(elementKind);
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
             int log2ElementSize = CodeUtil.log2(lowerer.arrayScalingFactor(elementKind));
 

@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedJavaType.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedObjectTypeImpl.*;
 
@@ -32,7 +31,6 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.replacements.*;
 
 /**
@@ -295,9 +293,10 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
                     int length = Array.getLength(((HotSpotObjectConstantImpl) constant).object());
                     ResolvedJavaType elementType = lookupJavaType.getComponentType();
                     Kind elementKind = elementType.getKind();
-                    final int headerSize = runtime().getArrayBaseOffset(elementKind);
-                    int sizeOfElement = HotSpotGraalRuntime.runtime().getTarget().getSizeInBytes(elementKind);
-                    int alignment = HotSpotGraalRuntime.runtime().getTarget().wordSize;
+                    final int headerSize = runtime.getArrayBaseOffset(elementKind);
+                    TargetDescription target = runtime.getHostJVMCIBackend().getTarget();
+                    int sizeOfElement = target.getSizeInBytes(elementKind);
+                    int alignment = target.wordSize;
                     int log2ElementSize = CodeUtil.log2(sizeOfElement);
                     return NewObjectSnippets.computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
                 }

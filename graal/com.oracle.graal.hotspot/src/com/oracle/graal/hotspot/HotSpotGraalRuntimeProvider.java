@@ -77,20 +77,6 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
     HotSpotBackend getHostBackend();
 
     /**
-     * The offset from the origin of an array to the first element.
-     *
-     * @return the offset in bytes
-     */
-    int getArrayBaseOffset(Kind kind);
-
-    /**
-     * The scale used for the index when accessing elements of an array of this kind.
-     *
-     * @return the scale in order to convert the index into a byte offset
-     */
-    int getArrayIndexScale(Kind kind);
-
-    /**
      * Gets the Graal mirror for a {@link Class} object.
      *
      * @return the {@link ResolvedJavaType} corresponding to {@code javaClass}

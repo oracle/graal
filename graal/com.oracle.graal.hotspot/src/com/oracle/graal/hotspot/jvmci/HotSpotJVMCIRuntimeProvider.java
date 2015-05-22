@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.jvmci.runtime.*;
 
@@ -57,4 +59,64 @@ public interface HotSpotJVMCIRuntimeProvider extends JVMCIRuntime {
      * @return the {@link ResolvedJavaType} corresponding to {@code javaClass}
      */
     ResolvedJavaType fromClass(Class<?> clazz);
+
+    /**
+     * The offset from the origin of an array to the first element.
+     *
+     * @return the offset in bytes
+     */
+    default int getArrayBaseOffset(Kind kind) {
+        switch (kind) {
+            case Boolean:
+                return Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
+            case Byte:
+                return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            case Char:
+                return Unsafe.ARRAY_CHAR_BASE_OFFSET;
+            case Short:
+                return Unsafe.ARRAY_SHORT_BASE_OFFSET;
+            case Int:
+                return Unsafe.ARRAY_INT_BASE_OFFSET;
+            case Long:
+                return Unsafe.ARRAY_LONG_BASE_OFFSET;
+            case Float:
+                return Unsafe.ARRAY_FLOAT_BASE_OFFSET;
+            case Double:
+                return Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+            case Object:
+                return Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+            default:
+                throw new InternalError(kind.toString());
+        }
+    }
+
+    /**
+     * The scale used for the index when accessing elements of an array of this kind.
+     *
+     * @return the scale in order to convert the index into a byte offset
+     */
+    default int getArrayIndexScale(Kind kind) {
+        switch (kind) {
+            case Boolean:
+                return Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
+            case Byte:
+                return Unsafe.ARRAY_BYTE_INDEX_SCALE;
+            case Char:
+                return Unsafe.ARRAY_CHAR_INDEX_SCALE;
+            case Short:
+                return Unsafe.ARRAY_SHORT_INDEX_SCALE;
+            case Int:
+                return Unsafe.ARRAY_INT_INDEX_SCALE;
+            case Long:
+                return Unsafe.ARRAY_LONG_INDEX_SCALE;
+            case Float:
+                return Unsafe.ARRAY_FLOAT_INDEX_SCALE;
+            case Double:
+                return Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
+            case Object:
+                return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            default:
+                throw new InternalError(kind.toString());
+        }
+    }
 }

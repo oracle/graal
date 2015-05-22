@@ -522,7 +522,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayBaseOffset(Kind kind) {
-        return runtime.getArrayBaseOffset(kind);
+        return runtime.getJVMCIRuntime().getArrayBaseOffset(kind);
     }
 
     @Override

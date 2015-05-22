@@ -429,12 +429,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayBaseOffset(Kind elementKind) {
-        return runtime().getArrayBaseOffset(elementKind);
+        return runtime().getJVMCIRuntime().getArrayBaseOffset(elementKind);
     }
 
     @Fold
     public static int arrayIndexScale(Kind elementKind) {
-        return runtime().getArrayIndexScale(elementKind);
+        return runtime().getJVMCIRuntime().getArrayIndexScale(elementKind);
     }
 
     @Fold
