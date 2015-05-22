@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,6 +68,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
+    protected ArrayCopySnippets.Templates arraycopySnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     TargetDescription target) {
@@ -89,6 +90,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
         assertionSnippets = new AssertionSnippets.Templates(providers, target);
+        arraycopySnippets = new ArrayCopySnippets.Templates(providers, target);
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
@@ -154,6 +156,12 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 monitorSnippets.lower((MonitorExitNode) n, tool);
             }
+        } else if (n instanceof ArrayCopyNode) {
+            arraycopySnippets.lower((ArrayCopyNode) n, tool);
+        } else if (n instanceof ArrayCopySlowPathNode) {
+            ArrayCopySlowPathNode slowpath = (ArrayCopySlowPathNode) n;
+            // FrameState stateAfter = slowpath.stateAfter();
+            arraycopySnippets.lower(slowpath, tool);
         } else if (n instanceof G1PreWriteBarrier) {
             writeBarrierSnippets.lower((G1PreWriteBarrier) n, registers, tool);
         } else if (n instanceof G1PostWriteBarrier) {

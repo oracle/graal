@@ -190,7 +190,7 @@ public class HotSpotGraphBuilderPlugins {
         });
         r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
-                b.add(new ArrayCopyNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), src, srcPos, dst, dstPos, length));
+                b.add(new ArrayCopyNode(b.bci(), src, srcPos, dst, dstPos, length));
                 return true;
             }
 

@@ -195,6 +195,11 @@ public class SnippetTemplate {
             }
             return null;
         }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + method.format("%h.%n");
+        }
     }
 
     protected static class LazySnippetInfo extends SnippetInfo {

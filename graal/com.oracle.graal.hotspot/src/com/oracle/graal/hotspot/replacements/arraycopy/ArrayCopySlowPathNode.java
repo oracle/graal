@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,45 @@ package com.oracle.graal.hotspot.replacements.arraycopy;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
 @NodeInfo
-public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualizable, Lowerable {
+public final class ArrayCopySlowPathNode extends BasicArrayCopyNode {
 
-    public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.create(ArrayCopyNode.class);
+    public static final NodeClass<ArrayCopySlowPathNode> TYPE = NodeClass.create(ArrayCopySlowPathNode.class);
 
-    private Kind elementKind;
+    private final SnippetTemplate.SnippetInfo snippet;
 
-    public ArrayCopyNode(int bci, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
-        super(TYPE, src, srcPos, dst, dstPos, length, null, bci);
-        elementKind = ArrayCopySnippets.Templates.selectComponentKind(this);
+    public ArrayCopySlowPathNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, SnippetTemplate.SnippetInfo snippet) {
+        super(TYPE, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
+        assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dest) : "must have been null checked";
+        this.snippet = snippet;
+    }
+
+    @NodeIntrinsic
+    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter Kind elementKind,
+                    @ConstantNodeParameter SnippetTemplate.SnippetInfo snippet);
+
+    public SnippetTemplate.SnippetInfo getSnippet() {
+        return snippet;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        if (elementKind == null) {
-            elementKind = ArrayCopySnippets.Templates.selectComponentKind(this);
-        }
         if (elementKind != null) {
             return NamedLocationIdentity.getArrayLocation(elementKind);
         }
         return any();
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+    public void setBci(int bci) {
+        this.bci = bci;
     }
 }

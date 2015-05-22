@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,12 +87,9 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Test
     public void test0() {
-        mustIntrinsify = false; // a generic call to arraycopy will not be intrinsified
         // Array store checks
         test("genericArraycopy", new Object(), 0, new Object[0], 0, 0);
         test("genericArraycopy", new Object[0], 0, new Object(), 0, 0);
-
-        mustIntrinsify = true;
     }
 
     @Test
@@ -156,7 +153,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests {@link ArrayCopySnippets#checkcastArraycopySnippet}.
+     * Tests {@link ArrayCopySnippets#checkcastArraycopyWork(Object, int, Object, int, int)}.
      */
     @Test
     public void testArrayStoreException() {
@@ -267,10 +264,8 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
      */
     @Test
     public void testCopyRows() {
-        mustIntrinsify = false;
         Object[][] rows = {{"a1", "a2", "a3", "a4"}, {"b1", "b2", "b3", "b4"}, {"c1", "c2", "c3", "c4"}};
         test("copyRows", rows, 4, new Integer(rows.length));
-        mustIntrinsify = true;
     }
 
     public static Object[][] copyRows(Object[][] rows, int rowSize, Integer rowCount) {

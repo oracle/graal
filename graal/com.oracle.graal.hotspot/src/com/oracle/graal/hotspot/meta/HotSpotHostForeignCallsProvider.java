@@ -71,10 +71,15 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         return checkcastArraycopyDescriptors[uninit ? 1 : 0];
     }
 
-    public static ForeignCallDescriptor lookupArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit) {
+    public static ForeignCallDescriptor lookupArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
         if (uninit) {
             assert kind == Kind.Object;
+            assert !killAny : "unsupported";
             return uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0];
+        }
+        if (killAny) {
+            assert kind == Kind.Object;
+            return objectArraycopyDescriptorsKillAny[aligned ? 1 : 0][disjoint ? 1 : 0];
         }
         return arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
     }
@@ -83,6 +88,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     private static final ForeignCallDescriptor[][] uninitObjectArraycopyDescriptors = new ForeignCallDescriptor[2][2];
     private static final ForeignCallDescriptor[] checkcastArraycopyDescriptors = new ForeignCallDescriptor[2];
+    private static ForeignCallDescriptor[][] objectArraycopyDescriptorsKillAny = new ForeignCallDescriptor[2][2];
 
     static {
         // Populate the EnumMap instances
@@ -93,19 +99,27 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private void registerArraycopyDescriptor(Map<Long, ForeignCallDescriptor> descMap, Kind kind, boolean aligned, boolean disjoint, boolean uninit, long routine) {
+    private void registerArraycopyDescriptor(Map<Long, ForeignCallDescriptor> descMap, Kind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
         ForeignCallDescriptor desc = descMap.get(routine);
-        String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy";
-        desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
-        LocationIdentity killed = NamedLocationIdentity.getArrayLocation(kind);
-        registerForeignCall(desc, routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
-        descMap.put(routine, desc);
+        if (desc == null) {
+            desc = buildDescriptor(kind, aligned, disjoint, uninit, killAny, routine);
+            descMap.put(routine, desc);
+        }
         if (uninit) {
             assert kind == Kind.Object;
             uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0] = desc;
         } else {
             arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
         }
+    }
+
+    private ForeignCallDescriptor buildDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
+        assert !killAny || kind == Kind.Object;
+        String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killAny ? "KillAny" : "");
+        ForeignCallDescriptor desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
+        LocationIdentity killed = killAny ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(kind);
+        registerForeignCall(desc, routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
+        return desc;
     }
 
     private void registerCheckcastArraycopyDescriptor(boolean uninit, long routine) {
@@ -134,10 +148,17 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          * they kill different memory so they still have to be distinct.
          */
         Map<Long, ForeignCallDescriptor> descMap = new HashMap<>();
-        registerArraycopyDescriptor(descMap, kind, false, false, uninit, routine);
-        registerArraycopyDescriptor(descMap, kind, true, false, uninit, alignedRoutine);
-        registerArraycopyDescriptor(descMap, kind, false, true, uninit, disjointRoutine);
-        registerArraycopyDescriptor(descMap, kind, true, true, uninit, alignedDisjointRoutine);
+        registerArraycopyDescriptor(descMap, kind, false, false, uninit, false, routine);
+        registerArraycopyDescriptor(descMap, kind, true, false, uninit, false, alignedRoutine);
+        registerArraycopyDescriptor(descMap, kind, false, true, uninit, false, disjointRoutine);
+        registerArraycopyDescriptor(descMap, kind, true, true, uninit, false, alignedDisjointRoutine);
+
+        if (kind == Kind.Object && !uninit) {
+            objectArraycopyDescriptorsKillAny[0][0] = buildDescriptor(kind, false, false, uninit, true, routine);
+            objectArraycopyDescriptorsKillAny[1][0] = buildDescriptor(kind, true, false, uninit, true, alignedRoutine);
+            objectArraycopyDescriptorsKillAny[0][1] = buildDescriptor(kind, false, true, uninit, true, disjointRoutine);
+            objectArraycopyDescriptorsKillAny[1][1] = buildDescriptor(kind, true, true, uninit, true, alignedDisjointRoutine);
+        }
     }
 
     public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
