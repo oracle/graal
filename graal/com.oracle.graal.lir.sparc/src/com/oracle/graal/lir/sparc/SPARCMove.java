@@ -31,7 +31,8 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
@@ -280,16 +281,15 @@ public class SPARCMove {
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             try (ScratchRegister scratchReg = masm.getScratchRegister()) {
                 Register scratch = scratchReg.getRegister();
-                StackSlot intInput = reInterprete(asStackSlot(getInput()));
-                StackSlot intResult = reInterprete(asStackSlot(getResult()));
+                StackSlot intInput = reInterpret(asStackSlot(getInput()));
+                StackSlot intResult = reInterpret(asStackSlot(getResult()));
                 // move stack slot
                 move(crb, masm, scratch.asValue(intInput.getLIRKind()), intInput, SPARCDelayedControlTransfer.DUMMY);
                 move(crb, masm, intResult, scratch.asValue(intResult.getLIRKind()), delayedControlTransfer);
             }
-
         }
 
-        private static StackSlot reInterprete(StackSlot slot) {
+        private static StackSlot reInterpret(StackSlot slot) {
             switch ((Kind) slot.getPlatformKind()) {
                 case Boolean:
                 case Byte:
@@ -357,60 +357,7 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                final SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
-                final Register dst = asRegister(result);
-                delayedControlTransfer.emitControlTransfer(crb, masm);
-                if (state != null) {
-                    crb.recordImplicitException(masm.position(), state);
-                }
-                switch ((Kind) kind) {
-                    case Boolean:
-                    case Byte:
-                        if (signExtend) {
-                            masm.ldsb(addr, dst);
-                        } else {
-                            masm.ldub(addr, dst);
-                        }
-                        break;
-                    case Short:
-                        if (signExtend) {
-                            masm.ldsh(addr, dst);
-                        } else {
-                            masm.lduh(addr, dst);
-                        }
-                        break;
-                    case Char:
-                        if (signExtend) {
-                            masm.ldsh(addr, dst);
-                        } else {
-                            masm.lduh(addr, dst);
-                        }
-                        break;
-                    case Int:
-                        if (signExtend) {
-                            masm.ldsw(addr, dst);
-                        } else {
-                            masm.lduw(addr, dst);
-                        }
-                        break;
-                    case Long:
-                        masm.ldx(addr, dst);
-                        break;
-                    case Float:
-                        masm.ldf(addr, dst);
-                        break;
-                    case Double:
-                        masm.lddf(addr, dst);
-                        break;
-                    case Object:
-                        masm.ldx(addr, dst);
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere();
-                }
-            }
+            emitLoad(address.toAddress(), result, signExtend, kind, delayedControlTransfer, state, crb, masm);
         }
     }
 
@@ -572,42 +519,7 @@ public class SPARCMove {
 
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            assert isRegister(input);
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                SPARCAddress addr = generateSimm13OffsetLoad(address.toAddress(), masm, scratch);
-                delayedControlTransfer.emitControlTransfer(crb, masm);
-                if (state != null) {
-                    crb.recordImplicitException(masm.position(), state);
-                }
-                switch ((Kind) kind) {
-                    case Boolean:
-                    case Byte:
-                        masm.stb(asRegister(input), addr);
-                        break;
-                    case Short:
-                    case Char:
-                        masm.sth(asRegister(input), addr);
-                        break;
-                    case Int:
-                        masm.stw(asRegister(input), addr);
-                        break;
-                    case Long:
-                        masm.stx(asRegister(input), addr);
-                        break;
-                    case Object:
-                        masm.stx(asRegister(input), addr);
-                        break;
-                    case Float:
-                        masm.stf(asRegister(input), addr);
-                        break;
-                    case Double:
-                        masm.stdf(asRegister(input), addr);
-                        break;
-                    default:
-                        throw GraalInternalError.shouldNotReachHere("missing: " + kind);
-                }
-            }
+            emitStore(input, address.toAddress(), kind, delayedControlTransfer, state, crb, masm);
         }
     }
 
@@ -664,13 +576,15 @@ public class SPARCMove {
             if (isRegister(result)) {
                 reg2reg(crb, masm, result, input, delaySlotLir);
             } else if (isStackSlot(result)) {
-                reg2stack(crb, masm, result, input, delaySlotLir);
+                SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
+                emitStore(input, resultAddress, input.getPlatformKind(), delaySlotLir, null, crb, masm);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
-                stack2reg(crb, masm, result, input, delaySlotLir);
+                SPARCAddress inputAddress = (SPARCAddress) crb.asAddress(input);
+                emitLoad(inputAddress, result, false, input.getPlatformKind(), delaySlotLir, null, crb, masm);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -680,7 +594,8 @@ public class SPARCMove {
                 const2reg(crb, masm, result, constant, delaySlotLir);
             } else if (isStackSlot(result)) {
                 if (constant.isDefaultForKind() || constant.isNull()) {
-                    reg2stack(crb, masm, result, g0.asValue(LIRKind.derive(input)), delaySlotLir);
+                    SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
+                    emitStore(g0.asValue(LIRKind.derive(input)), resultAddress, input.getPlatformKind(), delaySlotLir, null, crb, masm);
                 } else {
                     try (ScratchRegister sc = masm.getScratchRegister()) {
                         Register scratch = sc.getRegister();
@@ -690,7 +605,8 @@ public class SPARCMove {
                         } else {
                             new Setx(value, scratch).emit(masm);
                         }
-                        reg2stack(crb, masm, result, scratch.asValue(LIRKind.derive(input)), delaySlotLir);
+                        SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
+                        emitStore(scratch.asValue(LIRKind.derive(input)), resultAddress, input.getPlatformKind(), delaySlotLir, null, crb, masm);
                     }
                 }
             } else {
@@ -754,78 +670,6 @@ public class SPARCMove {
             return new SPARCAddress(addr.getBase(), scratch);
         } else {
             return addr;
-        }
-    }
-
-    private static void reg2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
-        SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
-        try (ScratchRegister sc = masm.getScratchRegister()) {
-            Register scratch = sc.getRegister();
-            dst = generateSimm13OffsetLoad(dst, masm, scratch);
-            Register src = asRegister(input);
-            delaySlotLir.emitControlTransfer(crb, masm);
-            switch (input.getKind()) {
-                case Byte:
-                case Boolean:
-                    masm.stb(src, dst);
-                    break;
-                case Char:
-                case Short:
-                    masm.sth(src, dst);
-                    break;
-                case Int:
-                    masm.stw(src, dst);
-                    break;
-                case Long:
-                case Object:
-                    masm.stx(src, dst);
-                    break;
-                case Float:
-                    masm.stf(src, dst);
-                    break;
-                case Double:
-                    masm.stdf(src, dst);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind() + "(" + input + ")");
-            }
-        }
-    }
-
-    private static void stack2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
-        SPARCAddress src = (SPARCAddress) crb.asAddress(input);
-        try (ScratchRegister sc = masm.getScratchRegister()) {
-            Register scratch = sc.getRegister();
-            src = generateSimm13OffsetLoad(src, masm, scratch);
-            Register dst = asRegister(result);
-            delaySlotLir.emitControlTransfer(crb, masm);
-            switch (input.getKind()) {
-                case Boolean:
-                case Byte:
-                    masm.ldub(src, dst);
-                    break;
-                case Short:
-                    masm.lduh(src, dst);
-                    break;
-                case Char:
-                    masm.lduh(src, dst);
-                    break;
-                case Int:
-                    masm.lduw(src, dst);
-                    break;
-                case Long:
-                case Object:
-                    masm.ldx(src, dst);
-                    break;
-                case Float:
-                    masm.ldf(src, dst);
-                    break;
-                case Double:
-                    masm.lddf(src, dst);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere("Input is a: " + input.getKind());
-            }
         }
     }
 
@@ -945,6 +789,103 @@ public class SPARCMove {
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private static void emitLoad(SPARCAddress address, Value result, boolean signExtend, PlatformKind kind, SPARCDelayedControlTransfer delayedControlTransfer, LIRFrameState state,
+                    CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        try (ScratchRegister sc = masm.getScratchRegister()) {
+            Register scratch = sc.getRegister();
+            final SPARCAddress addr = generateSimm13OffsetLoad(address, masm, scratch);
+            final Register dst = asRegister(result);
+            delayedControlTransfer.emitControlTransfer(crb, masm);
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
+            }
+            switch ((Kind) kind) {
+                case Boolean:
+                case Byte:
+                    if (signExtend) {
+                        masm.ldsb(addr, dst);
+                    } else {
+                        masm.ldub(addr, dst);
+                    }
+                    break;
+                case Short:
+                    if (signExtend) {
+                        masm.ldsh(addr, dst);
+                    } else {
+                        masm.lduh(addr, dst);
+                    }
+                    break;
+                case Char:
+                    if (signExtend) {
+                        masm.ldsh(addr, dst);
+                    } else {
+                        masm.lduh(addr, dst);
+                    }
+                    break;
+                case Int:
+                    if (signExtend) {
+                        masm.ldsw(addr, dst);
+                    } else {
+                        masm.lduw(addr, dst);
+                    }
+                    break;
+                case Long:
+                    masm.ldx(addr, dst);
+                    break;
+                case Float:
+                    masm.ldf(addr, dst);
+                    break;
+                case Double:
+                    masm.lddf(addr, dst);
+                    break;
+                case Object:
+                    masm.ldx(addr, dst);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
+    private static void emitStore(Value input, SPARCAddress address, PlatformKind kind, SPARCDelayedControlTransfer delayedControlTransfer, LIRFrameState state, CompilationResultBuilder crb,
+                    SPARCMacroAssembler masm) {
+        try (ScratchRegister sc = masm.getScratchRegister()) {
+            Register scratch = sc.getRegister();
+            SPARCAddress addr = generateSimm13OffsetLoad(address, masm, scratch);
+            delayedControlTransfer.emitControlTransfer(crb, masm);
+            if (state != null) {
+                crb.recordImplicitException(masm.position(), state);
+            }
+            switch ((Kind) kind) {
+                case Boolean:
+                case Byte:
+                    masm.stb(asRegister(input), addr);
+                    break;
+                case Short:
+                case Char:
+                    masm.sth(asRegister(input), addr);
+                    break;
+                case Int:
+                    masm.stw(asRegister(input), addr);
+                    break;
+                case Long:
+                    masm.stx(asRegister(input), addr);
+                    break;
+                case Object:
+                    masm.stx(asRegister(input), addr);
+                    break;
+                case Float:
+                    masm.stf(asRegister(input), addr);
+                    break;
+                case Double:
+                    masm.stdf(asRegister(input), addr);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: " + kind);
+            }
         }
     }
 }
