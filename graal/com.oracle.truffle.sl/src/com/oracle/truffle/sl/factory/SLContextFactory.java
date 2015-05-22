@@ -32,11 +32,7 @@ public final class SLContextFactory {
     private SLContextFactory() {
     }
 
-    public static SLContext create() {
-        return create(new BufferedReader(new InputStreamReader(System.in)), System.out);
-    }
-
-    public static SLContext create(BufferedReader input, PrintStream output) {
+    public static SLContext create(BufferedReader input, PrintWriter output) {
         final SLContext slContext = new SLContext(input, output);
         slContext.setVisualizer(new SLDefaultVisualizer());
         return slContext;

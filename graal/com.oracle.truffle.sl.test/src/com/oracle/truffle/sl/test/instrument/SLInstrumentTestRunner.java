@@ -202,7 +202,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream printer = new PrintStream(out);
+        PrintWriter printer = new PrintWriter(out);
         final ASTProber prober = new SLStandardASTProber();
         Probe.registerASTProber(prober);
         try {
@@ -226,6 +226,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));
             }
 
+            printer.flush();
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(testCase.expectedOutput, actualOutput);
         } catch (Throwable ex) {
@@ -270,15 +271,15 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
     /**
      * This sample listener provides prints the value of an assignment (after the assignment is
-     * complete) to the {@link PrintStream} specified in the constructor. This listener can only be
+     * complete) to the {@link PrintWriter} specified in the constructor. This listener can only be
      * attached at {@link SLWriteLocalVariableNode}, but provides no guards to protect it from being
      * attached elsewhere.
      */
     public final class SLPrintAssigmentValueListener extends DefaultSimpleInstrumentListener {
 
-        private PrintStream output;
+        private PrintWriter output;
 
-        public SLPrintAssigmentValueListener(PrintStream output) {
+        public SLPrintAssigmentValueListener(PrintWriter output) {
             this.output = output;
         }
 

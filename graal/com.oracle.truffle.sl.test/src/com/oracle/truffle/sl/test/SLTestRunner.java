@@ -165,7 +165,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
         notifier.fireTestStarted(testCase.name);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream printer = new PrintStream(out);
+        PrintWriter printer = new PrintWriter(out);
         try {
             SLContext context = SLContextFactory.create(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats))), printer);
             for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
@@ -178,6 +178,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
             final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
             SLMain.run(context, source, null, repeats);
 
+            printer.flush();
             String actualOutput = new String(out.toByteArray());
             Assert.assertEquals(repeat(testCase.expectedOutput, repeats), actualOutput);
         } catch (Throwable ex) {

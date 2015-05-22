@@ -50,11 +50,11 @@ public final class SLContext extends ExecutionContext {
     private static final Layout LAYOUT = Layout.createLayout();
 
     private final BufferedReader input;
-    private final PrintStream output;
+    private final PrintWriter output;
     private final SLFunctionRegistry functionRegistry;
     private final Shape emptyShape;
 
-    public SLContext(BufferedReader input, PrintStream output) {
+    public SLContext(BufferedReader input, PrintWriter output) {
         this.input = input;
         this.output = output;
         this.functionRegistry = new SLFunctionRegistry();
@@ -80,7 +80,7 @@ public final class SLContext extends ExecutionContext {
      * The default default, i.e., the output for the {@link SLPrintlnBuiltin}. To allow unit
      * testing, we do not use {@link System#out} directly.
      */
-    public PrintStream getOutput() {
+    public PrintWriter getOutput() {
         return output;
     }
 

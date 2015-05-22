@@ -135,7 +135,7 @@ public class SLMain extends TruffleLanguage {
     private final SLContext context;
 
     public SLMain() {
-        this.context = SLContextFactory.create(new BufferedReader(new InputStreamReader(System.in)), System.out);
+        this.context = SLContextFactory.create(new BufferedReader(new InputStreamReader(System.in)), new PrintWriter(System.out));
     }
 
     /* Demonstrate per-type tabulation of node execution counts */
@@ -170,7 +170,7 @@ public class SLMain extends TruffleLanguage {
      * Parse and run the specified SL source. Factored out in a separate method so that it can also
      * be used by the unit test harness.
      */
-    public static long run(SLContext context, Source source, PrintStream logOutput, int repeats) {
+    public static long run(SLContext context, Source source, PrintWriter logOutput, int repeats) {
         if (logOutput != null) {
             logOutput.println("== running on " + Truffle.getRuntime().getName());
             // logOutput.println("Source = " + source.getCode());
@@ -260,7 +260,7 @@ public class SLMain extends TruffleLanguage {
      * <p>
      * When printASTToLog is true: prints the ASTs to the console.
      */
-    private static void printScript(String groupName, SLContext context, PrintStream logOutput, boolean printASTToLog, boolean printSourceAttributionToLog, boolean dumpASTToIGV) {
+    private static void printScript(String groupName, SLContext context, PrintWriter logOutput, boolean printASTToLog, boolean printSourceAttributionToLog, boolean dumpASTToIGV) {
         if (dumpASTToIGV) {
             GraphPrintVisitor graphPrinter = new GraphPrintVisitor();
             graphPrinter.beginGroup(groupName);
