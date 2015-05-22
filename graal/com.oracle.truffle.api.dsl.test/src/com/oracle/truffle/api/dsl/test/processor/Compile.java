@@ -45,10 +45,6 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import static org.junit.Assert.*;
 
-/**
- *
- * @author Jaroslav Tulach
- */
 final class Compile implements DiagnosticListener<JavaFileObject> {
     private final List<Diagnostic<? extends JavaFileObject>> errors = new ArrayList<>();
     private final Map<String, byte[]> classes;

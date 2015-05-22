@@ -33,8 +33,6 @@ import org.junit.Test;
 
 /**
  * Verify errors emitted by the processor.
- *
- * @author Jaroslav Tulach
  */
 public class TruffleProcessorTest {
     @Test
