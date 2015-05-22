@@ -42,7 +42,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, NegateNode value) {
         super(loop, base);
-        this.scale = ConstantNode.forInt(-1, value.graph());
+        this.scale = ConstantNode.forIntegerStamp(value.stamp(), -1, value.graph());
         this.value = value;
     }
 

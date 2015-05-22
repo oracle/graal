@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.memory;
 
-import java.util.*;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodeinfo.*;
+import com.oracle.graal.nodes.*;
 
 /**
- * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the
- * location.
+ * Provides an implementation of {@link StateSplit}.
  */
-public interface MemoryMap {
+@NodeInfo
+public abstract class AbstractMemoryCheckpoint extends AbstractStateSplit implements MemoryCheckpoint {
 
-    /**
-     * Gets the last node that that (potentially) wrote to {@code locationIdentity}.
-     */
-    MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
+    public static final NodeClass<AbstractMemoryCheckpoint> TYPE = NodeClass.create(AbstractMemoryCheckpoint.class);
 
-    /**
-     * Gets the location identities in the domain of this map.
-     */
-    Collection<LocationIdentity> getLocations();
+    protected AbstractMemoryCheckpoint(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp) {
+        this(c, stamp, null);
+    }
+
+    protected AbstractMemoryCheckpoint(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp, FrameState stateAfter) {
+        super(c, stamp, stateAfter);
+    }
 }

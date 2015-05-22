@@ -1509,6 +1509,26 @@ public class HotSpotVMConfig {
     @HotSpotVMConstant(name = "GraalEnv::cache_full") @Stable public int codeInstallResultCacheFull;
     @HotSpotVMConstant(name = "GraalEnv::code_too_large") @Stable public int codeInstallResultCodeTooLarge;
 
+    public String getCodeInstallResultDescription(int codeInstallResult) {
+        if (codeInstallResult == codeInstallResultOk) {
+            return "ok";
+        }
+        if (codeInstallResult == codeInstallResultDependenciesFailed) {
+            return "dependencies failed";
+        }
+        if (codeInstallResult == codeInstallResultDependenciesInvalid) {
+            return "dependencies invalid";
+        }
+        if (codeInstallResult == codeInstallResultCacheFull) {
+            return "code cache is full";
+        }
+        if (codeInstallResult == codeInstallResultCodeTooLarge) {
+            return "code is too large";
+        }
+        assert false : codeInstallResult;
+        return "unknown";
+    }
+
     @HotSpotVMConstant(name = "CompilerToVM::KLASS_TAG") @Stable public int compilerToVMKlassTag;
     @HotSpotVMConstant(name = "CompilerToVM::SYMBOL_TAG") @Stable public int compilerToVMSymbolTag;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.compiler.test;
 
-/**
- * Marker interface for nodes where it is valid to apply a {@link NarrowNode} to its inputs and do a
- * narrow operation instead of doing the wide operation and applying the {@link NarrowNode} to the
- * result.
- */
-public interface NarrowableArithmeticNode {
+import org.junit.*;
 
-    /**
-     * Check whether this operation can be narrowed to {@code resultBits} bit without loss of
-     * precision.
-     *
-     * @param resultBits
-     */
-    default boolean isNarrowable(int resultBits) {
-        return true;
+public class BoxingTest extends GraalCompilerTest {
+
+    public static Object boxSnippet(int arg) {
+        return arg;
+    }
+
+    @Test
+    public void test0() {
+        test("boxSnippet", 0);
+    }
+
+    @Test
+    public void test5() {
+        test("boxSnippet", 5);
+    }
+
+    @Test
+    public void testMinus5() {
+        test("boxSnippet", -5);
+    }
+
+    @Test
+    public void test300() {
+        test("boxSnippet", 300);
+    }
+
+    @Test
+    public void testMinus300() {
+        test("boxSnippet", -300);
     }
 }

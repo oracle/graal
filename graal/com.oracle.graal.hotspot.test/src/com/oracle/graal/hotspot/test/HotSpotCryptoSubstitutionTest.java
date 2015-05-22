@@ -37,7 +37,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -54,8 +53,9 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
         HotSpotNmethod installedCode = new HotSpotNmethod(hsMethod, compResult.getName(), true);
         HotSpotCompiledNmethod compiledNmethod = new HotSpotCompiledNmethod(hsMethod, compResult);
-        CodeInstallResult result = runtime().getCompilerToVM().installCode(compiledNmethod, installedCode, null);
-        Assert.assertEquals("Error installing method " + method + ": " + result, result, CodeInstallResult.OK);
+        int result = runtime().getCompilerToVM().installCode(compiledNmethod, installedCode, null);
+        HotSpotVMConfig config = runtime().getConfig();
+        Assert.assertEquals("Error installing method " + method + ": " + config.getCodeInstallResultDescription(result), result, config.codeInstallResultOk);
 
         // HotSpotRuntime hsRuntime = (HotSpotRuntime) getCodeCache();
         // TTY.println(hsMethod.toString());

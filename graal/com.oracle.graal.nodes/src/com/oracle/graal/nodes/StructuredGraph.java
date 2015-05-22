@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 import java.util.concurrent.atomic.*;
+import java.util.function.*;
 
 import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
@@ -217,17 +218,17 @@ public class StructuredGraph extends Graph {
         this.start = start;
     }
 
+    /**
+     * Creates a copy of this graph.
+     *
+     * @param newName the name of the copy, used for debugging purposes (can be null)
+     * @param duplicationMapCallback consumer of the duplication map created during the copying
+     */
     @Override
-    public StructuredGraph copy() {
-        return copy(name);
-    }
-
-    public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod) {
-        return copy(newName, newMethod, AllowAssumptions.from(assumptions != null), isInlinedMethodRecordingEnabled());
-    }
-
-    public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod, AllowAssumptions allowAssumptions, boolean enableInlinedMethodRecording) {
-        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI, allowAssumptions);
+    protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
+        AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
+        boolean enableInlinedMethodRecording = isInlinedMethodRecordingEnabled();
+        StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI, allowAssumptions);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -239,13 +240,11 @@ public class StructuredGraph extends Graph {
         copy.hasValueProxies = hasValueProxies;
         Map<Node, Node> replacements = Node.newMap();
         replacements.put(start, copy.start);
-        copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        if (duplicationMapCallback != null) {
+            duplicationMapCallback.accept(duplicates);
+        }
         return copy;
-    }
-
-    @Override
-    public StructuredGraph copy(String newName) {
-        return copy(newName, method);
     }
 
     public ParameterNode getParameter(int index) {

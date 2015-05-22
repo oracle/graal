@@ -176,66 +176,19 @@ public interface CompilerToVM {
 
     Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
-    public enum CodeInstallResult {
-        OK("ok"),
-        DEPENDENCIES_FAILED("dependencies failed"),
-        DEPENDENCIES_INVALID("dependencies invalid"),
-        CACHE_FULL("code cache is full"),
-        CODE_TOO_LARGE("code is too large");
-
-        private int value;
-        private String message;
-
-        private CodeInstallResult(String name) {
-            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
-            switch (name) {
-                case "ok":
-                    this.value = config.codeInstallResultOk;
-                    break;
-                case "dependencies failed":
-                    this.value = config.codeInstallResultDependenciesFailed;
-                    break;
-                case "dependencies invalid":
-                    this.value = config.codeInstallResultDependenciesInvalid;
-                    break;
-                case "code cache is full":
-                    this.value = config.codeInstallResultCacheFull;
-                    break;
-                case "code is too large":
-                    this.value = config.codeInstallResultCodeTooLarge;
-                    break;
-                default:
-                    throw new IllegalArgumentException(name);
-            }
-            this.message = name;
-        }
-
-        /**
-         * Returns the enum object for the given value.
-         */
-        public static CodeInstallResult getEnum(int value) {
-            for (CodeInstallResult e : values()) {
-                if (e.value == value) {
-                    return e;
-                }
-            }
-            throw new IllegalArgumentException(String.valueOf(value));
-        }
-
-        @Override
-        public String toString() {
-            return message;
-        }
-    }
-
     /**
      * Installs the result of a compilation into the code cache.
      *
      * @param compiledCode the result of a compilation
      * @param code the details of the installed CodeBlob are written to this object
-     * @return the outcome of the installation as a {@link CodeInstallResult}.
+     * @return the outcome of the installation which will be one of
+     *         {@link HotSpotVMConfig#codeInstallResultOk},
+     *         {@link HotSpotVMConfig#codeInstallResultCacheFull},
+     *         {@link HotSpotVMConfig#codeInstallResultCodeTooLarge},
+     *         {@link HotSpotVMConfig#codeInstallResultDependenciesFailed} or
+     *         {@link HotSpotVMConfig#codeInstallResultDependenciesInvalid}.
      */
-    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
+    int installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
     /**
      * Notifies the VM of statistics for a completed compilation.

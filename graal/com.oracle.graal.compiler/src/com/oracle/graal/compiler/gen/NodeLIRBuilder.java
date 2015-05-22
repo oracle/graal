@@ -51,6 +51,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -194,17 +195,21 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected LIRKind getExactPhiKind(PhiNode phi) {
-        ArrayList<Value> values = new ArrayList<>(phi.valueCount());
+        // TODO (je): maybe turn this into generator-style instead of allocating an ArrayList.
+        ArrayList<LIRKind> values = new ArrayList<>(phi.valueCount());
         for (int i = 0; i < phi.valueCount(); i++) {
             ValueNode node = phi.valueAt(i);
             Value value = node instanceof ConstantNode ? ((ConstantNode) node).asJavaConstant() : getOperand(node);
             if (value != null) {
-                values.add(value);
+                values.add(value.getLIRKind());
             } else {
-                assert isPhiInputFromBackedge(phi, i);
+                assert node instanceof ConstantNode || isPhiInputFromBackedge(phi, i) : String.format("Input %s to phi node %s is not yet available although it is not coming from a loop back edge",
+                                node, phi);
+                // non-java constant -> get Kind from stamp.
+                values.add(getLIRGeneratorTool().getLIRKind(node.stamp()));
             }
         }
-        LIRKind derivedKind = LIRKind.merge(values.toArray(new Value[values.size()]));
+        LIRKind derivedKind = LIRKind.merge(values);
         assert verifyPHIKind(derivedKind, gen.getLIRKind(phi.stamp()));
         return derivedKind;
     }
@@ -238,6 +243,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         for (PhiNode phi : merge.valuePhis()) {
             Value value = operand(phi.valueAt(pred));
             assert value != null;
+            if (isRegister(value)) {
+                /*
+                 * Fixed register intervals are not allowed at block boundaries so we introduce a
+                 * new Variable.
+                 */
+                value = gen.emitMove(value);
+            }
             values.add(value);
         }
         return values.toArray(new Value[values.size()]);

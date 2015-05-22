@@ -24,8 +24,12 @@ package com.oracle.graal.lir.alloc.lsra;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.alloc.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
+import com.oracle.graal.lir.ssa.*;
 
 final class SSALinearScan extends LinearScan {
 
@@ -53,6 +57,21 @@ final class SSALinearScan extends LinearScan {
     @Override
     protected LinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
         return new SSALinearScanEliminateSpillMovePhase(this);
+    }
+
+    @Override
+    protected void beforeSpillMoveElimination() {
+        /*
+         * PHI Ins are needed for the RegisterVerifier, otherwise PHIs where the Out and In value
+         * matches (ie. there is no resolution move) are falsely detected as errors.
+         */
+        try (Scope s1 = Debug.scope("Remove Phi In")) {
+            for (AbstractBlockBase<?> toBlock : sortedBlocks) {
+                if (toBlock.getPredecessorCount() > 1) {
+                    SSAUtils.removePhiIn(ir, toBlock);
+                }
+            }
+        }
     }
 
 }

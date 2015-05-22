@@ -503,7 +503,9 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
         } else {
             final long metaspacePointer = runtime().getCompilerToVM().lookupKlassInPool(metaspaceConstantPool, cpi);
             JavaType result = getJavaType(metaspacePointer);
-            this.lastLookupType = new LookupTypeCacheElement(cpi, result);
+            if (result instanceof ResolvedJavaType) {
+                this.lastLookupType = new LookupTypeCacheElement(cpi, result);
+            }
             return result;
         }
     }

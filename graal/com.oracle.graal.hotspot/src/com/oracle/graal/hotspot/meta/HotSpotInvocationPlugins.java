@@ -81,7 +81,10 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                         if (isClass(c)) {
                             // This will be handled later by LoadJavaMirrorWithKlassPhase
                         } else {
-                            throw new AssertionError("illegal constant node in AOT: " + node);
+                            // Tolerate uses in unused FrameStates
+                            if (node.usages().filter((n) -> !(n instanceof FrameState) || n.hasUsages()).isNotEmpty()) {
+                                throw new AssertionError("illegal constant node in AOT: " + node);
+                            }
                         }
                     }
                 }

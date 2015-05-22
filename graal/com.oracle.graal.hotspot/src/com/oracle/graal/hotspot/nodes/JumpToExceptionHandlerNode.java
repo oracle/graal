@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodeinfo.StructuralInput.Memory;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.word.*;
 
-@NodeInfo(allowedUsageTypes = {InputType.Memory})
-public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode, Canonicalizable {
+/**
+ * Jumps to the exception handler specified by {@link #address}. This node is specific for the
+ * {@link ExceptionHandlerStub} and should not be used elswhere.
+ */
+@NodeInfo
+public final class JumpToExceptionHandlerNode extends FixedWithNextNode implements LIRLowerable {
 
-    public static final NodeClass<MemoryAnchorNode> TYPE = NodeClass.create(MemoryAnchorNode.class);
+    public static final NodeClass<JumpToExceptionHandlerNode> TYPE = NodeClass.create(JumpToExceptionHandlerNode.class);
+    @Input ValueNode address;
 
-    public MemoryAnchorNode() {
+    public JumpToExceptionHandlerNode(ValueNode address) {
         super(TYPE, StampFactory.forVoid());
-    }
-
-    public void generate(NodeLIRBuilderTool generator) {
-        // Nothing to emit, since this node is used for structural purposes only.
+        this.address = address;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        return tool.allUsagesAvailable() && hasNoUsages() ? null : this;
+    public void generate(NodeLIRBuilderTool gen) {
+        ((HotSpotNodeLIRBuilder) gen).emitJumpToExceptionHandler(address);
     }
 
     @NodeIntrinsic
-    public static native Memory anchor();
+    public static native void jumpToExceptionHandler(Word address);
 }

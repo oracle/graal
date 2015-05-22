@@ -42,7 +42,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
-import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.printer.*;
 
 /**
@@ -226,18 +225,19 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             installedCode = code;
         }
         HotSpotCompiledNmethod compiledCode = new HotSpotCompiledNmethod(hotspotMethod, compResult);
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(compiledCode, installedCode, log);
-        if (result != CodeInstallResult.OK) {
+        int result = runtime.getCompilerToVM().installCode(compiledCode, installedCode, log);
+        if (result != config.codeInstallResultOk) {
             String msg = compiledCode.getInstallationFailureMessage();
+            String resultDesc = config.getCodeInstallResultDescription(result);
             if (msg != null) {
-                msg = String.format("Code installation failed: %s%n%s", result, msg);
+                msg = String.format("Code installation failed: %s%n%s", resultDesc, msg);
             } else {
-                msg = String.format("Code installation failed: %s", result);
+                msg = String.format("Code installation failed: %s", resultDesc);
             }
-            if (result == CodeInstallResult.DEPENDENCIES_INVALID) {
-                throw new AssertionError(result + " " + msg);
+            if (result == config.codeInstallResultDependenciesInvalid) {
+                throw new AssertionError(resultDesc + " " + msg);
             }
-            throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, msg);
+            throw new BailoutException(result != config.codeInstallResultDependenciesFailed, msg);
         }
         return logOrDump(installedCode, compResult);
     }
@@ -256,8 +256,8 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
         HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(javaMethod, compResult);
         CompilerToVM vm = runtime.getCompilerToVM();
-        CodeInstallResult result = vm.installCode(compiled, code, null);
-        if (result != CodeInstallResult.OK) {
+        int result = vm.installCode(compiled, code, null);
+        if (result != runtime.getConfig().codeInstallResultOk) {
             return null;
         }
         return code;

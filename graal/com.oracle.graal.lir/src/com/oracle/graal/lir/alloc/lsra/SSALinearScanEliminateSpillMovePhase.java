@@ -27,10 +27,9 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.ssa.*;
+import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 
 public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 
@@ -42,21 +41,6 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
     protected int firstInstructionOfInterest() {
         // also look at Labels as they define PHI values
         return 0;
-    }
-
-    @Override
-    protected void beforeSpillMoveElimination() {
-        /*
-         * PHI Ins are needed for the RegisterVerifier, otherwise PHIs where the Out and In value
-         * matches (ie. there is no resolution move) are falsely detected as errors.
-         */
-        try (Scope s1 = Debug.scope("Remove Phi In")) {
-            for (AbstractBlockBase<?> toBlock : allocator.sortedBlocks) {
-                if (toBlock.getPredecessorCount() > 1) {
-                    SSAUtils.removePhiIn(allocator.ir, toBlock);
-                }
-            }
-        }
     }
 
     @Override

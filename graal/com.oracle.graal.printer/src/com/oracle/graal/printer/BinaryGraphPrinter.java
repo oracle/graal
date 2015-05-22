@@ -362,6 +362,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
         } else if (obj instanceof Graph) {
             writeByte(PROPERTY_SUBGRAPH);
             writeGraph((Graph) obj);
+        } else if (obj instanceof CachedGraph) {
+            writeByte(PROPERTY_SUBGRAPH);
+            writeGraph(((CachedGraph<?>) obj).getReadonlyCopy());
         } else if (obj != null && obj.getClass().isArray()) {
             Class<?> componentType = obj.getClass().getComponentType();
             if (componentType.isPrimitive()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.memory;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodeinfo.StructuralInput.Memory;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
-/**
- * Provides an implementation of {@link StateSplit}.
- */
-@NodeInfo
-public abstract class AbstractMemoryCheckpoint extends AbstractStateSplit implements MemoryCheckpoint {
+@NodeInfo(allowedUsageTypes = {InputType.Memory})
+public final class MemoryAnchorNode extends FixedWithNextNode implements LIRLowerable, MemoryNode, Canonicalizable {
 
-    public static final NodeClass<AbstractMemoryCheckpoint> TYPE = NodeClass.create(AbstractMemoryCheckpoint.class);
+    public static final NodeClass<MemoryAnchorNode> TYPE = NodeClass.create(MemoryAnchorNode.class);
 
-    protected AbstractMemoryCheckpoint(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp) {
-        this(c, stamp, null);
+    public MemoryAnchorNode() {
+        super(TYPE, StampFactory.forVoid());
     }
 
-    protected AbstractMemoryCheckpoint(NodeClass<? extends AbstractMemoryCheckpoint> c, Stamp stamp, FrameState stateAfter) {
-        super(c, stamp, stateAfter);
+    public void generate(NodeLIRBuilderTool generator) {
+        // Nothing to emit, since this node is used for structural purposes only.
     }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        return tool.allUsagesAvailable() && hasNoUsages() ? null : this;
+    }
+
+    @NodeIntrinsic
+    public static native Memory anchor();
 }

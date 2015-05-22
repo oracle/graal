@@ -30,6 +30,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -500,6 +501,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         deleteInvoke(invoke);
 
         methodScope.inlineInvokePlugin.postInline(inlineMethod);
+
+        if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
+            Debug.dump(methodScope.graph, "Inline finished: " + inlineMethod.getDeclaringClass().getUnqualifiedName() + "." + inlineMethod.getName());
+        }
         return true;
     }
 

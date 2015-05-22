@@ -66,7 +66,7 @@ public enum SPARCArithmetic {
         public static final LIRInstructionClass<Unary2Op> TYPE = LIRInstructionClass.create(Unary2Op.class);
 
         @Opcode private final SPARCArithmetic opcode;
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG}) protected AllocatableValue x;
 
         public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {

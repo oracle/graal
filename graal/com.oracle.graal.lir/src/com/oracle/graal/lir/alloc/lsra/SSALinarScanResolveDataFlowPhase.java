@@ -59,6 +59,8 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
             PhiValueVisitor visitor = new PhiValueVisitor() {
 
                 public void visit(Value phiIn, Value phiOut) {
+                    assert !isRegister(phiOut) : "phiOut is a register: " + phiOut;
+                    assert !isRegister(phiIn) : "phiIn is a register: " + phiIn;
                     Interval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiIn), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
                     if (isConstant(phiOut)) {
                         numPhiResolutionMoves.increment();

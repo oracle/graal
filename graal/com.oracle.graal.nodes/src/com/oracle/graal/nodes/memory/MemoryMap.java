@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.nodes.memory;
+
+import java.util.*;
+
+import com.oracle.graal.api.meta.*;
 
 /**
- * Marker interface for nodes where it is valid to apply a {@link NarrowNode} to its inputs and do a
- * narrow operation instead of doing the wide operation and applying the {@link NarrowNode} to the
- * result.
+ * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the
+ * location.
  */
-public interface NarrowableArithmeticNode {
+public interface MemoryMap {
 
     /**
-     * Check whether this operation can be narrowed to {@code resultBits} bit without loss of
-     * precision.
-     *
-     * @param resultBits
+     * Gets the last node that that (potentially) wrote to {@code locationIdentity}.
      */
-    default boolean isNarrowable(int resultBits) {
-        return true;
-    }
+    MemoryNode getLastLocationAccess(LocationIdentity locationIdentity);
+
+    /**
+     * Gets the location identities in the domain of this map.
+     */
+    Collection<LocationIdentity> getLocations();
 }

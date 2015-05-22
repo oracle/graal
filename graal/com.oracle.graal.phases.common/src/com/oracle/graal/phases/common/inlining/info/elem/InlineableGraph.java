@@ -61,7 +61,7 @@ public class InlineableGraph implements Inlineable {
     public InlineableGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         StructuredGraph original = getOriginalGraph(method, context, canonicalizer, invoke.asNode().graph(), invoke.bci());
         // TODO copying the graph is only necessary if it is modified or if it contains any invokes
-        this.graph = original.copy();
+        this.graph = (StructuredGraph) original.copy();
         specializeGraphToArguments(invoke, context, canonicalizer);
     }
 
