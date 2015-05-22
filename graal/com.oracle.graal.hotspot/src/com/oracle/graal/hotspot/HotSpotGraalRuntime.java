@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
-import static com.oracle.graal.hotspot.InitTimer.*;
+import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -48,34 +48,33 @@ import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.jvmci.*;
-import com.oracle.graal.hotspot.logging.*;
+import com.oracle.graal.hotspot.jvmci.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.runtime.*;
 
 //JaCoCo Exclude
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
-public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified {
+public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified, HotSpotVMEventListener {
 
     private static final HotSpotGraalRuntime instance;
 
     static {
-        try (InitTimer t = timer("initialize HotSpotOptions")) {
-            HotSpotOptions.initialize();
-        }
+        try (InitTimer t0 = timer("HotSpotGraalRuntime.<clinit>")) {
+            try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
+                instance = new HotSpotGraalRuntime();
+            }
 
-        try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            instance = new HotSpotGraalRuntime();
-        }
-
-        try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
-            // Why deferred initialization? See comment in completeInitialization().
-            instance.completeInitialization();
+            try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
+                // Why deferred initialization? See comment in completeInitialization().
+                instance.completeInitialization();
+            }
         }
     }
 
@@ -87,75 +86,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return instance;
     }
 
-    /**
-     * Do deferred initialization.
-     */
-    public void completeInitialization() {
-        TTY.initialize(Options.LogFile.getStream(compilerToVm));
-
-        // Proxies for the VM/Compiler interfaces cannot be initialized
-        // in the constructor as proxy creation causes static
-        // initializers to be executed for all the types involved in the
-        // proxied methods. Some of these static initializers (e.g. in
-        // HotSpotMethodData) rely on the static 'instance' field being set
-        // to retrieve configuration details.
-        CompilerToVM toVM = this.compilerToVm;
-
-        if (CountingProxy.ENABLED) {
-            toVM = CountingProxy.getProxy(CompilerToVM.class, toVM);
-        }
-        if (Logger.ENABLED) {
-            toVM = LoggingProxy.getProxy(CompilerToVM.class, toVM);
-        }
-
-        this.compilerToVm = toVM;
-
-        if (Log.getValue() == null && !areScopedMetricsOrTimersEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
-            if (MethodFilter.getValue() != null) {
-                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time, TrackMemUse, Dump and Verify options are all null");
-            }
-        }
-
-        if (Debug.isEnabled()) {
-            DebugEnvironment.initialize(TTY.cachedOut);
-
-            String summary = DebugValueSummary.getValue();
-            if (summary != null) {
-                switch (summary) {
-                    case "Name":
-                    case "Partial":
-                    case "Complete":
-                    case "Thread":
-                        break;
-                    default:
-                        throw new GraalInternalError("Unsupported value for DebugSummaryValue: %s", summary);
-                }
-            }
-        }
-
-        if (Debug.areUnconditionalMetricsEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areScopedMetricsOrTimersEnabled())) {
-            // This must be created here to avoid loading the DebugValuesPrinter class
-            // during shutdown() which in turn can cause a deadlock
-            debugValuesPrinter = new DebugValuesPrinter();
-        }
-
-        // Complete initialization of backends
-        try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
-            hostBackend.completeInitialization();
-        }
-        for (HotSpotBackend backend : backends.values()) {
-            if (backend != hostBackend) {
-                try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
-                    backend.completeInitialization();
-                }
-            }
-        }
-
-        BenchmarkCounters.initialize(toVM);
-
-        assert checkArrayIndexScaleInvariants();
-
-        runtimeStartTime = System.nanoTime();
+    @Override
+    public HotSpotJVMCIRuntimeProvider getJVMCIRuntime() {
+        return jvmciRuntime;
     }
 
     private boolean checkArrayIndexScaleInvariants() {
@@ -175,9 +108,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         // @formatter:off
         @Option(help = "The runtime configuration to use", type = OptionType.Expert)
         static final OptionValue<String> GraalRuntime = new OptionValue<>("");
-
-        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.", type = OptionType.Expert)
-        public static final PrintStreamOption LogFile = new PrintStreamOption();
         // @formatter:on
     }
 
@@ -186,6 +116,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         HotSpotBackendFactory selected = null;
         HotSpotBackendFactory nonBasic = null;
         int nonBasicCount = 0;
+
+        assert GraalRuntime.getValue().equals(HotSpotJVMCIRuntime.Options.JVMCIRuntime.getValue());
 
         for (HotSpotBackendFactory factory : Services.load(HotSpotBackendFactory.class)) {
             if (factory.getArchitecture().equalsIgnoreCase(architecture)) {
@@ -255,9 +187,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return unsafe.getInt(object, offset) & 0xFFFFFFFFL;
     }
 
-    protected/* final */CompilerToVM compilerToVm;
-
-    protected final HotSpotVMConfig config;
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
@@ -280,13 +209,23 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
 
-    private HotSpotGraalRuntime() {
-        CompilerToVM toVM = new CompilerToVMImpl();
-        compilerToVm = toVM;
-        try (InitTimer t = timer("HotSpotVMConfig<init>")) {
-            config = new HotSpotVMConfig(compilerToVm);
+    private final HotSpotJVMCIRuntime jvmciRuntime;
+
+    public static class HotSpotGraalRuntimeFactory implements GraalRuntimeFactory {
+
+        @Override
+        public GraalRuntime getRuntime() {
+            return runtime();
         }
 
+    }
+
+    private HotSpotGraalRuntime() {
+
+        jvmciRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
+        jvmciRuntime.registerVMEventListener(this);
+
+        HotSpotVMConfig config = getConfig();
         CompileTheWorld.Options.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
@@ -305,10 +244,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             factory = findFactory(hostArchitecture);
         }
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
-            hostBackend = registerBackend(factory.createBackend(this, null));
+            hostBackend = registerBackend(factory.createBackend(this, jvmciRuntime.getHostJVMCIBackend(), null));
         }
 
-        String[] gpuArchitectures = getGPUArchitectureNames(compilerToVm);
+        String[] gpuArchitectures = getGPUArchitectureNames(getCompilerToVM());
         for (String arch : gpuArchitectures) {
             try (InitTimer t = timer("find factory:", arch)) {
                 factory = findFactory(arch);
@@ -317,13 +256,66 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                 throw new GraalInternalError("No backend available for specified GPU architecture \"%s\"", arch);
             }
             try (InitTimer t = timer("create backend:", arch)) {
-                registerBackend(factory.createBackend(this, hostBackend));
+                registerBackend(factory.createBackend(this, null, hostBackend));
             }
         }
 
         try (InitTimer t = timer("createEventProvider")) {
             eventProvider = createEventProvider();
         }
+    }
+
+    /**
+     * Do deferred initialization.
+     */
+    private void completeInitialization() {
+
+        if (Log.getValue() == null && !areScopedMetricsOrTimersEnabled() && Dump.getValue() == null && Verify.getValue() == null) {
+            if (MethodFilter.getValue() != null) {
+                TTY.println("WARNING: Ignoring MethodFilter option since Log, Meter, Time, TrackMemUse, Dump and Verify options are all null");
+            }
+        }
+
+        if (Debug.isEnabled()) {
+            DebugEnvironment.initialize(TTY.cachedOut);
+
+            String summary = DebugValueSummary.getValue();
+            if (summary != null) {
+                switch (summary) {
+                    case "Name":
+                    case "Partial":
+                    case "Complete":
+                    case "Thread":
+                        break;
+                    default:
+                        throw new GraalInternalError("Unsupported value for DebugSummaryValue: %s", summary);
+                }
+            }
+        }
+
+        if (Debug.areUnconditionalMetricsEnabled() || Debug.areUnconditionalTimersEnabled() || (Debug.isEnabled() && areScopedMetricsOrTimersEnabled())) {
+            // This must be created here to avoid loading the DebugValuesPrinter class
+            // during shutdown() which in turn can cause a deadlock
+            debugValuesPrinter = new DebugValuesPrinter();
+        }
+
+        // Complete initialization of backends
+        try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
+            hostBackend.completeInitialization();
+        }
+        for (HotSpotBackend backend : backends.values()) {
+            if (backend != hostBackend) {
+                try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
+                    backend.completeInitialization();
+                }
+            }
+        }
+
+        BenchmarkCounters.initialize(getCompilerToVM());
+
+        assert checkArrayIndexScaleInvariants();
+
+        runtimeStartTime = System.nanoTime();
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
@@ -365,37 +357,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         }
     }
 
-    public HotSpotVMConfig getConfig() {
-        return config;
-    }
-
-    public TargetDescription getTarget() {
-        return hostBackend.getTarget();
-    }
-
-    public CompilerToVM getCompilerToVM() {
-        return compilerToVm;
-    }
-
-    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean resolve) {
-        Objects.requireNonNull(accessingType, "cannot resolve type without an accessing class");
-        // If the name represents a primitive type we can short-circuit the lookup.
-        if (name.length() == 1) {
-            Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-            return fromClass(kind.toJavaClass());
-        }
-
-        // Resolve non-primitive types in the VM.
-        HotSpotResolvedObjectTypeImpl hsAccessingType = (HotSpotResolvedObjectTypeImpl) accessingType;
-        final long metaspaceKlass = compilerToVm.lookupType(name, hsAccessingType.mirror(), resolve);
-
-        if (metaspaceKlass == 0L) {
-            assert resolve == false;
-            return HotSpotUnresolvedJavaType.create(this, name);
-        }
-        return HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(metaspaceKlass);
-    }
-
     public HotSpotProviders getHostProviders() {
         return getHostBackend().getProviders();
     }
@@ -410,7 +371,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
     private final EventProvider eventProvider;
 
     private EventProvider createEventProvider() {
-        if (config.flightRecorder) {
+        if (getConfig().flightRecorder) {
             Iterable<EventProvider> sl = Services.load(EventProvider.class);
             EventProvider singleProvider = null;
             for (EventProvider ep : sl) {
@@ -508,13 +469,14 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         final long[] initialMetaMethods = toMeta(initialMethods);
         final long[] matchingMetaMethods = toMeta(matchingMethods);
 
-        HotSpotStackFrameReference current = compilerToVm.getNextStackFrame(null, initialMetaMethods, initialSkip);
+        CompilerToVM compilerToVM = getCompilerToVM();
+        HotSpotStackFrameReference current = compilerToVM.getNextStackFrame(null, initialMetaMethods, initialSkip);
         while (current != null) {
             T result = visitor.visitFrame(current);
             if (result != null) {
                 return result;
             }
-            current = compilerToVm.getNextStackFrame(current, matchingMetaMethods, 0);
+            current = compilerToVM.getNextStackFrame(current, matchingMetaMethods, 0);
         }
         return null;
     }
@@ -542,14 +504,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         CompilationStatistics.clear(phase);
     }
 
-    /**
-     * Called from the VM.
-     */
-    @SuppressWarnings("unused")
-    private void compileTheWorld() throws Throwable {
+    @Override
+    public void notifyCompileTheWorld() throws Throwable {
+        CompilerToVM compilerToVM = runtime().getJVMCIRuntime().getCompilerToVM();
         int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
         for (int i = 0; i < iterations; i++) {
-            getCompilerToVM().resetCompilationStatistics();
+            compilerToVM.resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
             CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
                             CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
@@ -558,13 +518,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         System.exit(0);
     }
 
-    /**
-     * Shuts down the runtime.
-     *
-     * Called from the VM.
-     */
-    @SuppressWarnings("unused")
-    private void shutdown() throws Exception {
+    @Override
+    public void notifyShutdown() {
         if (debugValuesPrinter != null) {
             debugValuesPrinter.printDebugValues();
         }

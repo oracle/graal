@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,19 @@ package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 
 /**
  * HotSpot implementation of {@link MemoryAccessProvider}.
  */
 public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvider, HotSpotProxified {
 
-    protected final HotSpotGraalRuntimeProvider runtime;
+    protected final HotSpotJVMCIRuntimeProvider runtime;
 
-    public HotSpotMemoryAccessProviderImpl(HotSpotGraalRuntimeProvider runtime) {
+    public HotSpotMemoryAccessProviderImpl(HotSpotJVMCIRuntimeProvider runtime) {
         this.runtime = runtime;
     }
 
@@ -202,12 +202,13 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
 
     @Override
     public Constant readKlassPointerConstant(Constant base, long displacement) {
-        long klass = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+        TargetDescription target = runtime.getHostJVMCIBackend().getCodeCache().getTarget();
+        long klass = readRawValue(base, displacement, target.wordSize * 8);
         if (klass == 0) {
             return JavaConstant.NULL_POINTER;
         }
         HotSpotResolvedObjectType metaKlass = HotSpotResolvedObjectTypeImpl.fromMetaspaceKlass(klass);
-        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, klass, metaKlass, false);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(target.wordKind, klass, metaKlass, false);
     }
 
     @Override
@@ -223,8 +224,9 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
 
     @Override
     public Constant readMethodPointerConstant(Constant base, long displacement) {
-        long method = readRawValue(base, displacement, runtime.getTarget().wordSize * 8);
+        TargetDescription target = runtime.getHostJVMCIBackend().getCodeCache().getTarget();
+        long method = readRawValue(base, displacement, target.wordSize * 8);
         HotSpotResolvedJavaMethod metaMethod = HotSpotResolvedJavaMethodImpl.fromMetaspace(method);
-        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(runtime.getTarget().wordKind, method, metaMethod, false);
+        return HotSpotMetaspaceConstantImpl.forMetaspaceObject(target.wordKind, method, metaMethod, false);
     }
 }

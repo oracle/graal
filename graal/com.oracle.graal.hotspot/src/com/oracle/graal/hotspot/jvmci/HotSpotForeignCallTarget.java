@@ -19,7 +19,8 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- */package com.oracle.graal.hotspot.jvmci;
+ */
+package com.oracle.graal.hotspot.jvmci;
 
 import com.oracle.graal.api.meta.*;
 

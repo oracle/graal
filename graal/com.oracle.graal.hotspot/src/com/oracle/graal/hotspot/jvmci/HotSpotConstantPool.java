@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +23,15 @@
 package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+
+//import com.oracle.graal.hotspot.meta.*;
 
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
@@ -225,7 +225,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private long getEntryAt(int index) {
         assertBounds(index);
-        return unsafe.getAddress(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        return unsafe.getAddress(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
     }
 
     /**
@@ -236,7 +236,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private int getIntAt(int index) {
         assertTag(index, JVM_CONSTANT.Integer);
-        return unsafe.getInt(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        return unsafe.getInt(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
     }
 
     /**
@@ -247,7 +247,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private long getLongAt(int index) {
         assertTag(index, JVM_CONSTANT.Long);
-        return unsafe.getLong(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        return unsafe.getLong(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
     }
 
     /**
@@ -258,7 +258,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private float getFloatAt(int index) {
         assertTag(index, JVM_CONSTANT.Float);
-        return unsafe.getFloat(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        return unsafe.getFloat(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
     }
 
     /**
@@ -269,7 +269,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private double getDoubleAt(int index) {
         assertTag(index, JVM_CONSTANT.Double);
-        return unsafe.getDouble(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        return unsafe.getDouble(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
     }
 
     /**
@@ -280,7 +280,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private int getNameAndTypeAt(int index) {
         assertTag(index, JVM_CONSTANT.NameAndType);
-        return unsafe.getInt(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        return unsafe.getInt(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
     }
 
     /**
@@ -361,7 +361,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      */
     private int getUncachedKlassRefIndexAt(int index) {
         assert getTagAt(index) == JVM_CONSTANT.Fieldref || getTagAt(index) == JVM_CONSTANT.MethodRef || getTagAt(index) == JVM_CONSTANT.InterfaceMethodref;
-        final int refIndex = unsafe.getInt(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getTarget().wordSize);
+        final int refIndex = unsafe.getInt(metaspaceConstantPool + runtime().getConfig().constantPoolSize + index * runtime().getHostJVMCIBackend().getTarget().wordSize);
         // klass ref index is in the low 16-bits.
         return refIndex & 0xFFFF;
     }
@@ -452,7 +452,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
      * @param metaspacePointer either a metaspace Klass or a metaspace Symbol
      */
     private static JavaType getJavaType(final long metaspacePointer) {
-        HotSpotGraalRuntimeProvider runtime = runtime();
+        HotSpotJVMCIRuntime runtime = runtime();
         HotSpotVMConfig config = runtime.getConfig();
         if ((metaspacePointer & config.compilerToVMSymbolTag) != 0) {
             final long metaspaceSymbol = metaspacePointer & ~config.compilerToVMSymbolTag;

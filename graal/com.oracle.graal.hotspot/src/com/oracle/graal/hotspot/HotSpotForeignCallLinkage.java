@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,7 +94,8 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
 
     boolean needsJavaFrameAnchor();
 
-    CompilationResult getStubCompilationResult(final Backend backend);
-
-    Stub getStub();
+    /**
+     * Gets the VM symbol associated with the target {@linkplain #getAddress() address} of the call.
+     */
+    String getSymbol();
 }

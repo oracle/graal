@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.logging;
+package com.oracle.graal.hotspot.jvmci;
 
-import java.util.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.jvmci.runtime.*;
 
-public final class ProxyUtil {
+public interface HotSpotJVMCIBackendFactory extends Service {
 
-    public static Class<?>[] getAllInterfaces(Class<?> clazz) {
-        HashSet<Class<?>> interfaces = new HashSet<>();
-        getAllInterfaces(clazz, interfaces);
-        return interfaces.toArray(new Class<?>[interfaces.size()]);
-    }
+    JVMCIBackend createJVMCIBackend(HotSpotJVMCIRuntimeProvider runtime, JVMCIBackend host);
 
-    private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (!interfaces.contains(iface)) {
-                interfaces.add(iface);
-                getAllInterfaces(iface, interfaces);
-            }
-        }
-        if (clazz.getSuperclass() != null) {
-            getAllInterfaces(clazz.getSuperclass(), interfaces);
-        }
-    }
+    /**
+     * Gets the CPU architecture of this backend.
+     */
+    String getArchitecture();
+
+    String getJVMCIRuntimeName();
 }

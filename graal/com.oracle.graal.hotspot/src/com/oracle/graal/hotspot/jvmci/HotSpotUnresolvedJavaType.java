@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,16 +23,15 @@
 package com.oracle.graal.hotspot.jvmci;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of {@link JavaType} for unresolved HotSpot classes.
  */
 public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
 
-    private final HotSpotGraalRuntimeProvider runtime;
+    private final HotSpotJVMCIRuntimeProvider runtime;
 
-    public HotSpotUnresolvedJavaType(String name, HotSpotGraalRuntimeProvider runtime) {
+    public HotSpotUnresolvedJavaType(String name, HotSpotJVMCIRuntimeProvider runtime) {
         super(name);
         assert name.charAt(0) == '[' || name.charAt(name.length() - 1) == ';' : name;
         this.runtime = runtime;
@@ -41,7 +40,7 @@ public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
     /**
      * Creates an unresolved type for a valid {@link JavaType#getName() type name}.
      */
-    public static HotSpotUnresolvedJavaType create(HotSpotGraalRuntimeProvider runtime, String name) {
+    public static HotSpotUnresolvedJavaType create(HotSpotJVMCIRuntimeProvider runtime, String name) {
         return new HotSpotUnresolvedJavaType(name, runtime);
     }
 

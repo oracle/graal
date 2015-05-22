@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.hotspot.InitTimer.*;
+import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
 
 import java.util.*;
 
@@ -38,93 +38,23 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.amd64.*;
+import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
-    protected Architecture createArchitecture(HotSpotVMConfig config) {
-        return new AMD64(computeFeatures(config), computeFlags(config));
-    }
-
-    protected EnumSet<AMD64.CPUFeature> computeFeatures(HotSpotVMConfig config) {
-        // Configure the feature set using the HotSpot flag settings.
-        EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
-        assert config.useSSE >= 2 : "minimum config for x64";
-        features.add(AMD64.CPUFeature.SSE);
-        features.add(AMD64.CPUFeature.SSE2);
-        if ((config.x86CPUFeatures & config.cpuSSE3) != 0) {
-            features.add(AMD64.CPUFeature.SSE3);
-        }
-        if ((config.x86CPUFeatures & config.cpuSSSE3) != 0) {
-            features.add(AMD64.CPUFeature.SSSE3);
-        }
-        if ((config.x86CPUFeatures & config.cpuSSE4A) != 0) {
-            features.add(AMD64.CPUFeature.SSE4a);
-        }
-        if ((config.x86CPUFeatures & config.cpuSSE41) != 0) {
-            features.add(AMD64.CPUFeature.SSE4_1);
-        }
-        if ((config.x86CPUFeatures & config.cpuSSE42) != 0) {
-            features.add(AMD64.CPUFeature.SSE4_2);
-        }
-        if ((config.x86CPUFeatures & config.cpuAVX) != 0) {
-            features.add(AMD64.CPUFeature.AVX);
-        }
-        if ((config.x86CPUFeatures & config.cpuAVX2) != 0) {
-            features.add(AMD64.CPUFeature.AVX2);
-        }
-        if ((config.x86CPUFeatures & config.cpuERMS) != 0) {
-            features.add(AMD64.CPUFeature.ERMS);
-        }
-        if ((config.x86CPUFeatures & config.cpuLZCNT) != 0) {
-            features.add(AMD64.CPUFeature.LZCNT);
-        }
-        if ((config.x86CPUFeatures & config.cpuPOPCNT) != 0) {
-            features.add(AMD64.CPUFeature.POPCNT);
-        }
-        if ((config.x86CPUFeatures & config.cpuAES) != 0) {
-            features.add(AMD64.CPUFeature.AES);
-        }
-        if ((config.x86CPUFeatures & config.cpu3DNOWPREFETCH) != 0) {
-            features.add(AMD64.CPUFeature.AMD_3DNOW_PREFETCH);
-        }
-        if ((config.x86CPUFeatures & config.cpuBMI1) != 0) {
-            features.add(AMD64.CPUFeature.BMI1);
-        }
-        return features;
-    }
-
-    protected EnumSet<AMD64.Flag> computeFlags(HotSpotVMConfig config) {
-        EnumSet<AMD64.Flag> flags = EnumSet.noneOf(AMD64.Flag.class);
-        if (config.useCountLeadingZerosInstruction) {
-            flags.add(AMD64.Flag.UseCountLeadingZerosInstruction);
-        }
-        if (config.useCountTrailingZerosInstruction) {
-            flags.add(AMD64.Flag.UseCountTrailingZerosInstruction);
-        }
-        return flags;
-    }
-
-    protected TargetDescription createTarget(HotSpotVMConfig config) {
-        final int stackFrameAlignment = 16;
-        final int implicitNullCheckLimit = 4096;
-        final boolean inlineObjects = true;
-        return new HotSpotTargetDescription(createArchitecture(config), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
-    }
-
     @Override
-    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotBackend host) {
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, JVMCIBackend jvmci, HotSpotBackend host) {
         assert host == null;
-        TargetDescription target = createTarget(runtime.getConfig());
 
         HotSpotProviders providers;
         HotSpotRegistersProvider registers;
-        RegisterConfig regConfig;
-        HotSpotCodeCacheProvider codeCache;
-        HotSpotConstantReflectionProvider constantReflection;
+        HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
+        TargetDescription target = codeCache.getTarget();
+        HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
         HotSpotHostForeignCallsProvider foreignCalls;
         Value[] nativeABICallerSaveRegisters;
-        HotSpotMetaAccessProvider metaAccess;
+        HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) jvmci.getMetaAccess();
         HotSpotLoweringProvider lowerer;
         HotSpotSnippetReflectionProvider snippetReflection;
         HotSpotReplacementsImpl replacements;
@@ -135,18 +65,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         try (InitTimer t = timer("create providers")) {
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = createRegisters();
-            }
-            try (InitTimer rt = timer("create MetaAccess provider")) {
-                metaAccess = createMetaAccess(runtime);
-            }
-            try (InitTimer rt = timer("create RegisterConfig")) {
-                regConfig = createRegisterConfig(runtime, target);
-            }
-            try (InitTimer rt = timer("create CodeCache provider")) {
-                codeCache = createCodeCache(runtime, target, regConfig);
-            }
-            try (InitTimer rt = timer("create ConstantReflection provider")) {
-                constantReflection = createConstantReflection(runtime);
             }
             try (InitTimer rt = timer("create NativeABICallerSaveRegisters")) {
                 nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
@@ -213,22 +131,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
     protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache,
                     Value[] nativeABICallerSaveRegisters) {
         return new AMD64HotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-    }
-
-    protected HotSpotConstantReflectionProvider createConstantReflection(HotSpotGraalRuntimeProvider runtime) {
-        return new HotSpotConstantReflectionProvider(runtime);
-    }
-
-    protected RegisterConfig createRegisterConfig(HotSpotGraalRuntimeProvider runtime, TargetDescription target) {
-        return new AMD64HotSpotRegisterConfig(target.arch, runtime.getConfig());
-    }
-
-    protected HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
-        return new HotSpotCodeCacheProvider(runtime, runtime.getConfig(), target, regConfig);
-    }
-
-    protected HotSpotMetaAccessProvider createMetaAccess(HotSpotGraalRuntimeProvider runtime) {
-        return new HotSpotMetaAccessProvider(runtime);
     }
 
     protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins) {

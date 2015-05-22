@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,7 +111,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * Gets the metaspace Klass for this type.
      */
     public long getMetaspaceKlass() {
-        if (HotSpotGraalRuntime.getHostWordKind() == Kind.Long) {
+        if (HotSpotJVMCIRuntime.getHostWordKind() == Kind.Long) {
             return unsafe.getLong(javaClass, (long) runtime().getConfig().klassOffset);
         }
         return unsafe.getInt(javaClass, (long) runtime().getConfig().klassOffset) & 0xFFFFFFFFL;
@@ -761,7 +761,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
      * Performs a fast-path check that this type is resolved in the context of a given accessing
      * class. A negative result does not mean this type is not resolved with respect to
      * {@code accessingClass}. That can only be determined by
-     * {@linkplain HotSpotGraalRuntime#lookupType(String, HotSpotResolvedObjectType, boolean)
+     * {@linkplain HotSpotJVMCIRuntime#lookupType(String, HotSpotResolvedObjectType, boolean)
      * re-resolving} the type.
      */
     public boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass) {

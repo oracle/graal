@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.jvmci;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of {@link JavaType} for resolved non-primitive HotSpot classes.
@@ -73,7 +72,7 @@ public interface HotSpotResolvedObjectType extends ResolvedJavaType {
      * Performs a fast-path check that this type is resolved in the context of a given accessing
      * class. A negative result does not mean this type is not resolved with respect to
      * {@code accessingClass}. That can only be determined by
-     * {@linkplain HotSpotGraalRuntime#lookupType(String, HotSpotResolvedObjectType, boolean)
+     * {@linkplain HotSpotJVMCIRuntime#lookupType(String, HotSpotResolvedObjectType, boolean)
      * re-resolving} the type.
      */
     boolean isDefinitelyResolvedWithRespectTo(ResolvedJavaType accessingClass);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
@@ -44,11 +43,11 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 public class HotSpotConstantReflectionProvider implements ConstantReflectionProvider, HotSpotProxified {
     private static final String SystemClassName = "Ljava/lang/System;";
 
-    protected final HotSpotGraalRuntimeProvider runtime;
+    protected final HotSpotJVMCIRuntimeProvider runtime;
     protected final HotSpotMethodHandleAccessProvider methodHandleAccess;
     protected final HotSpotMemoryAccessProviderImpl memoryAccess;
 
-    public HotSpotConstantReflectionProvider(HotSpotGraalRuntimeProvider runtime) {
+    public HotSpotConstantReflectionProvider(HotSpotJVMCIRuntimeProvider runtime) {
         this.runtime = runtime;
         this.methodHandleAccess = new HotSpotMethodHandleAccessProvider(this);
         this.memoryAccess = new HotSpotMemoryAccessProviderImpl(runtime);
@@ -210,7 +209,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         if (constant instanceof HotSpotObjectConstant) {
             Object obj = ((HotSpotObjectConstantImpl) constant).object();
             if (obj instanceof Class) {
-                return runtime.getHostProviders().getMetaAccess().lookupJavaType((Class<?>) obj);
+                return runtime.getHostJVMCIBackend().getMetaAccess().lookupJavaType((Class<?>) obj);
             }
         }
         if (constant instanceof HotSpotMetaspaceConstant) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Represents a method signature.
@@ -38,9 +37,9 @@ public class HotSpotSignature implements Signature {
     private final String originalString;
     private ResolvedJavaType[] parameterTypes;
     private ResolvedJavaType returnTypeCache;
-    private final HotSpotGraalRuntimeProvider runtime;
+    private final HotSpotJVMCIRuntimeProvider runtime;
 
-    public HotSpotSignature(HotSpotGraalRuntimeProvider runtime, String signature) {
+    public HotSpotSignature(HotSpotJVMCIRuntimeProvider runtime, String signature) {
         this.runtime = runtime;
         assert signature.length() > 0;
         this.originalString = signature;
@@ -62,7 +61,7 @@ public class HotSpotSignature implements Signature {
         }
     }
 
-    public HotSpotSignature(HotSpotGraalRuntimeProvider runtime, ResolvedJavaType returnType, ResolvedJavaType... parameterTypes) {
+    public HotSpotSignature(HotSpotJVMCIRuntimeProvider runtime, ResolvedJavaType returnType, ResolvedJavaType... parameterTypes) {
         this.runtime = runtime;
         this.parameterTypes = parameterTypes.clone();
         this.returnTypeCache = returnType;
@@ -127,10 +126,10 @@ public class HotSpotSignature implements Signature {
         return true;
     }
 
-    private static JavaType getUnresolvedOrPrimitiveType(HotSpotGraalRuntimeProvider runtime, String name) {
+    private static JavaType getUnresolvedOrPrimitiveType(HotSpotJVMCIRuntimeProvider runtime, String name) {
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-            return runtime.getHostProviders().getMetaAccess().lookupJavaType(kind.toJavaClass());
+            return runtime.getHostJVMCIBackend().getMetaAccess().lookupJavaType(kind.toJavaClass());
         }
         return new HotSpotUnresolvedJavaType(name, runtime);
     }

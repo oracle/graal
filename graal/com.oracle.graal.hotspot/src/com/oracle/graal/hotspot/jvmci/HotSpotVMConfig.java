@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspotvmconfig.*;
 
 //JaCoCo Exclude
@@ -260,7 +259,7 @@ public class HotSpotVMConfig {
 
     /**
      * Gets the host architecture name for the purpose of finding the corresponding
-     * {@linkplain HotSpotBackendFactory backend}.
+     * {@linkplain HotSpotJVMCIBackendFactory backend}.
      */
     public String getHostArchitectureName() {
         String arch = System.getProperty("os.arch");

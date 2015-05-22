@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.api.runtime;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.Options;
-import com.oracle.jvmci.runtime.*;
+public interface GraalRuntimeFactory extends Service {
 
-public interface HotSpotBackendFactory extends Service {
-
-    HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, JVMCIBackend jvmciBackend, HotSpotBackend host);
-
-    /**
-     * Gets the CPU architecture of this backend.
-     */
-    String getArchitecture();
-
-    /**
-     * Gets the name of the {@link Options#JVMCIRuntime JVMCIRuntime} in which the backend created
-     * by this factory should be used.
-     */
-    String getGraalRuntimeName();
-
+    GraalRuntime getRuntime();
 }
