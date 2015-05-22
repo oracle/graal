@@ -1,2 +1,3 @@
 com.oracle.truffle.dsl.processor.TruffleProcessor
 com.oracle.truffle.dsl.processor.verify.VerifyTruffleProcessor
+com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor

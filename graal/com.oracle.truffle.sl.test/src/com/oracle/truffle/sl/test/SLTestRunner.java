@@ -37,8 +37,8 @@ import org.junit.runners.*;
 import org.junit.runners.model.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.*;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.sl.SLMain;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -171,6 +171,10 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
             for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
                 context.installBuiltin(builtin);
             }
+            /*
+             * TruffleVM vm = TruffleVM.create(); String script = readAllLines(testCase.path); for
+             * (int i = 0; i < repeats; i++) { vm.eval("application/x-sl", script); }
+             */
             final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
             SLMain.run(context, source, null, repeats);
 

@@ -22,19 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop;
+package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.interop.*;
+import java.io.IOException;
 
-public interface TruffleLanguage {
-    String getLanguageName();
-
-    Object run(String[] arguments);
-
-    void setTruffleGlobalScope(TruffleGlobalScope globalScope);
-
-    TruffleObject getLanguageGlobal();
-
-    boolean isObjectOfLanguage(TruffleObject object);
-
+/**
+ * XXX: Temporary class to make unit tests pass without messing with Message implementations and
+ * associated nodes too much.
+ */
+public abstract class SymbolInvoker {
+    protected abstract Object invoke(Object symbol, Object... args) throws IOException;
 }
