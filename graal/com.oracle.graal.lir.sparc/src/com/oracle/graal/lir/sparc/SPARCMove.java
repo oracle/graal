@@ -402,7 +402,7 @@ public class SPARCMove {
         }
     }
 
-    public static final class MembarOp extends SPARCLIRInstruction {
+    public static final class MembarOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
         private final int barriers;
@@ -414,6 +414,7 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            delayedControlTransfer.emitControlTransfer(crb, masm);
             masm.membar(barriers);
         }
     }
