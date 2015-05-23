@@ -1613,9 +1613,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     }
 
                     // Record inlined method dependency in the graph
-                    if (graph.isInlinedMethodRecordingEnabled()) {
-                        graph.getInlinedMethods().add(targetMethod);
-                    }
+                    graph.recordInlinedMethod(targetMethod);
                 }
             }
 

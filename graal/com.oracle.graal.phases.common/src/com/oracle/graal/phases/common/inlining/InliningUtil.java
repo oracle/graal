@@ -53,12 +53,6 @@ import com.oracle.graal.phases.common.inlining.info.*;
 public class InliningUtil {
 
     private static final String inliningDecisionsScopeString = "InliningDecisions";
-    /**
-     * Meters the size (in bytecodes) of all methods processed during compilation (i.e., top level
-     * and all inlined methods), irrespective of how many bytecodes in each method are actually
-     * parsed (which may be none for methods whose IR is retrieved from a cache).
-     */
-    public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
 
     /**
      * Print a HotSpot-style inlining message to the console.
@@ -321,7 +315,7 @@ public class InliningUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
-        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph.getInlinedMethods(), canonicalizedNodes);
+        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
 
         GraphUtil.killCFG(invokeNode);
 
@@ -329,7 +323,7 @@ public class InliningUtil {
     }
 
     public static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
-                    Set<ResolvedJavaMethod> inlinedMethods, List<Node> canonicalizedNodes) {
+                    StructuredGraph inlineGraph, List<Node> canonicalizedNodes) {
         FixedNode invokeNode = invoke.asNode();
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
@@ -401,9 +395,7 @@ public class InliningUtil {
         }
 
         // Copy inlined methods from inlinee to caller
-        if (inlinedMethods != null && graph.getInlinedMethods() != null) {
-            graph.getInlinedMethods().addAll(inlinedMethods);
-        }
+        graph.updateInlinedMethods(inlineGraph);
 
         return returnValue;
     }

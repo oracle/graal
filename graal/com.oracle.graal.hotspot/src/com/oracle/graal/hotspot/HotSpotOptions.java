@@ -26,14 +26,10 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.hotspot.HotSpotOptionsLoader.*;
 import static java.lang.Double.*;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
-import com.oracle.graal.phases.common.inlining.*;
 
 //JaCoCo Exclude
 
@@ -47,17 +43,10 @@ public class HotSpotOptions {
 
     /**
      * Parses the Graal specific options specified to HotSpot (e.g., on the command line).
-     *
-     * @return true if the CITime or CITimeEach HotSpot VM options are set
      */
-    private static native boolean parseVMOptions();
+    private static native void parseVMOptions();
 
     static {
-        boolean timeCompilations = parseVMOptions();
-        if (timeCompilations) {
-            unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
-            unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
-        }
         assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
                         "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
         if (areDebugScopePatternsEnabled()) {
@@ -126,34 +115,5 @@ public class HotSpotOptions {
      */
     public static boolean parseOption(String option, OptionConsumer setter) {
         return OptionUtils.parseOption(options, option, GRAAL_OPTION_PREFIX, setter);
-    }
-
-    /**
-     * Sets the relevant system property such that a {@link DebugTimer} or {@link DebugMetric}
-     * associated with a field in a class will be unconditionally enabled when it is created.
-     * <p>
-     * This method verifies that the named field exists and is of an expected type. However, it does
-     * not verify that the timer or metric created has the same name of the field.
-     *
-     * @param c the class in which the field is declared
-     * @param name the name of the field
-     */
-    private static void unconditionallyEnableTimerOrMetric(Class<?> c, String name) {
-        try {
-            Field field = c.getDeclaredField(name);
-            String propertyName;
-            if (DebugTimer.class.isAssignableFrom(field.getType())) {
-                propertyName = Debug.ENABLE_TIMER_PROPERTY_NAME_PREFIX + name;
-            } else {
-                assert DebugMetric.class.isAssignableFrom(field.getType());
-                propertyName = Debug.ENABLE_METRIC_PROPERTY_NAME_PREFIX + name;
-            }
-            String previous = System.setProperty(propertyName, "true");
-            if (previous != null) {
-                System.err.println("Overrode value \"" + previous + "\" of system property \"" + propertyName + "\" with \"true\"");
-            }
-        } catch (Exception e) {
-            throw new GraalInternalError(e);
-        }
     }
 }
