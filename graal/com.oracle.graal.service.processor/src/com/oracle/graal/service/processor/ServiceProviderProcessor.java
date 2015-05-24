@@ -75,6 +75,15 @@ public class ServiceProviderProcessor extends AbstractProcessor {
     }
 
     private void createProviderFile(TypeElement serviceProvider, String interfaceName) {
+        if (serviceProvider.getNestingKind().isNested()) {
+            // This is a simplifying constraint that means we don't have to
+            // processed the qualified name to insert '$' characters at
+            // the relevant positions.
+            String msg = String.format("Service provider class %s must be a top level class", serviceProvider.getSimpleName());
+            processingEnv.getMessager().printMessage(Kind.ERROR, msg, serviceProvider);
+            return;
+        }
+
         String filename = "META-INF/providers/" + serviceProvider.getQualifiedName();
         try {
             FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, serviceProvider);
