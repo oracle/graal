@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotOptionsLoader.*;
 import static java.lang.Double.*;
 
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
@@ -43,25 +43,20 @@ public class HotSpotOptions {
 
     /**
      * Parses the JVMCI specific options specified to HotSpot (e.g., on the command line).
+     *
+     * @param optionsParsedClass the {@link Class} for {@link OptionsParsed}
+     * @return the implementations of {@link OptionsParsed} available
      */
-    private static native void parseVMOptions();
+    private static native OptionsParsed[] parseVMOptions(Class<?> optionsParsedClass);
 
     static {
-        parseVMOptions();
-
+        // Debug should not be initialized until all options that may affect
+        // its initialization have been processed.
         assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the JVMCI runtime has been initialized. " +
                         "This can be fixed by placing a call to " + JVMCI.class.getName() + ".getRuntime() on the path that triggers initialization of " + Debug.class.getName();
-        if (areDebugScopePatternsEnabled()) {
-            System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
-        }
-        if ("".equals(Meter.getValue())) {
-            System.setProperty(Debug.ENABLE_UNSCOPED_METRICS_PROPERTY_NAME, "true");
-        }
-        if ("".equals(Time.getValue())) {
-            System.setProperty(Debug.ENABLE_UNSCOPED_TIMERS_PROPERTY_NAME, "true");
-        }
-        if ("".equals(TrackMemUse.getValue())) {
-            System.setProperty(Debug.ENABLE_UNSCOPED_MEM_USE_TRACKERS_PROPERTY_NAME, "true");
+
+        for (OptionsParsed handler : parseVMOptions(OptionsParsed.class)) {
+            handler.apply();
         }
     }
 
@@ -72,7 +67,7 @@ public class HotSpotOptions {
     }
 
     /**
-     * Helper for the VM code called by {@link #parseVMOptions()}.
+     * Helper for the VM code called by {@link #parseVMOptions}.
      *
      * @param name the name of a parsed option
      * @param option the object encapsulating the option

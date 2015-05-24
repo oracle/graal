@@ -76,11 +76,11 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<Boolean> LogVerbose = new OptionValue<>(false);
     // @formatter:on
 
-    public static boolean isNotEmpty(OptionValue<String> option) {
+    static boolean isNotEmpty(OptionValue<String> option) {
         return option.getValue() != null && !option.getValue().isEmpty();
     }
 
-    public static boolean areDebugScopePatternsEnabled() {
+    static boolean areDebugScopePatternsEnabled() {
         return DumpOnError.getValue() || Dump.getValue() != null || Log.getValue() != null || areScopedMetricsOrTimersEnabled();
     }
 
