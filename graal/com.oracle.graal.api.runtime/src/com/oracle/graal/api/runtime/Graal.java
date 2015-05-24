@@ -34,8 +34,13 @@ public class Graal {
     private static final GraalRuntime runtime = initializeRuntime();
 
     private static GraalRuntime initializeRuntime() {
+        GraalRuntime rt = null;
         for (GraalRuntimeFactory factory : Services.load(GraalRuntimeFactory.class)) {
-            return factory.getRuntime();
+            assert rt == null : String.format("Multiple %s implementations found: %s, %s", GraalRuntime.class.getName(), rt.getClass().getName(), factory.getRuntime().getClass().getName());
+            rt = factory.getRuntime();
+        }
+        if (rt != null) {
+            return rt;
         }
         return new InvalidGraalRuntime();
     }
