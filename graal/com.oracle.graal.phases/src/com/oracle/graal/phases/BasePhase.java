@@ -62,7 +62,14 @@ public abstract class BasePhase<C> {
      */
     private final DebugMemUseTracker memUseTracker;
 
-    private static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
+    }
+
+    private static final Pattern NAME_PATTERN = assertionsEnabled() ? Pattern.compile("[A-Z][A-Za-z0-9]+") : null;
 
     private static boolean checkName(String name) {
         assert NAME_PATTERN.matcher(name).matches() : "illegal phase name: " + name;
