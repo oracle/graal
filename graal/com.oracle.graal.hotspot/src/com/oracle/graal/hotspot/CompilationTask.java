@@ -173,14 +173,14 @@ public class CompilationTask {
         EventProvider eventProvider = Graal.getRequiredCapability(EventProvider.class);
         CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
 
-        try (DebugCloseable a = CompilationTime.start()) {
-            // If there is already compiled code for this method on our level we simply return.
-            // Graal compiles are always at the highest compile level, even in non-tiered mode so we
-            // only need to check for that value.
-            if (method.hasCodeAtLevel(entryBCI, config.compilationLevelFullOptimization)) {
-                return;
-            }
+        // If there is already compiled code for this method on our level we simply return.
+        // Graal compiles are always at the highest compile level, even in non-tiered mode so we
+        // only need to check for that value.
+        if (method.hasCodeAtLevel(entryBCI, config.compilationLevelFullOptimization)) {
+            return;
+        }
 
+        try (DebugCloseable a = CompilationTime.start()) {
             CompilationStatistics stats = CompilationStatistics.create(method, isOSR);
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
