@@ -478,7 +478,7 @@ public class InliningUtil {
              * pop return kind from invoke's stateAfter and replace with this frameState's return
              * value (top of stack)
              */
-            if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || (frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)))) {
+            if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                 stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
             }
 
@@ -533,8 +533,11 @@ public class InliningUtil {
                 // in the intrinsic code.
                 assert inlinedMethod.getAnnotation(MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
                                 frameState;
+            } else if (frameState.method().getName().equals(inlinedMethod.getName())) {
+                // This can happen for method substitutions.
             } else {
-                throw new AssertionError(frameState.toString());
+                throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, frameState.method(), frameState,
+                                invoke.callTarget().targetMethod()));
             }
         }
         return true;
