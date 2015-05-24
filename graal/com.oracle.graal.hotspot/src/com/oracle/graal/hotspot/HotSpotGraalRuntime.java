@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
 
@@ -42,7 +41,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.jvmci.*;
@@ -59,7 +57,7 @@ import com.oracle.jvmci.runtime.*;
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
-public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified, HotSpotVMEventListener {
+public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified {
 
     private static final HotSpotGraalRuntime instance;
 
@@ -209,19 +207,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
-    public static class HotSpotGraalRuntimeFactory implements GraalRuntimeFactory {
-
-        @Override
-        public GraalRuntime getRuntime() {
-            return runtime();
-        }
-
-    }
-
     private HotSpotGraalRuntime() {
 
         jvmciRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
-        jvmciRuntime.registerVMEventListener(this);
 
         HotSpotVMConfig config = getConfig();
         CompileTheWorld.Options.overrideWithNativeOptions(config);
@@ -452,22 +440,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         CompilationStatistics.clear(phase);
     }
 
-    @Override
-    public void notifyCompileTheWorld() throws Throwable {
-        CompilerToVM compilerToVM = runtime().getJVMCIRuntime().getCompilerToVM();
-        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
-        for (int i = 0; i < iterations; i++) {
-            compilerToVM.resetCompilationStatistics();
-            TTY.println("CompileTheWorld : iteration " + i);
-            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
-                            CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
-            ctw.compile();
-        }
-        System.exit(0);
-    }
-
-    @Override
-    public void notifyShutdown() {
+    void shutdown() {
         if (debugValuesPrinter != null) {
             debugValuesPrinter.printDebugValues();
         }

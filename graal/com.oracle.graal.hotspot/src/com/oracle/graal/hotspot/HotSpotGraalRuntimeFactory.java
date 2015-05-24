@@ -20,20 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.jvmci;
+package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.runtime.*;
 
-public interface HotSpotVMEventListener extends Service {
+@ServiceProvider(GraalRuntimeFactory.class)
+public class HotSpotGraalRuntimeFactory implements GraalRuntimeFactory {
 
-    /**
-     * Notifies this client that HotSpot is running in CompileTheWorld mode and the JVMCI compiler
-     * should now perform its version of CompileTheWorld.
-     */
-    void notifyCompileTheWorld() throws Throwable;
-
-    /**
-     * Notifies this client that the VM is shutting down.
-     */
-    void notifyShutdown();
+    @Override
+    public GraalRuntime getRuntime() {
+        return HotSpotGraalRuntime.runtime();
+    }
 }
