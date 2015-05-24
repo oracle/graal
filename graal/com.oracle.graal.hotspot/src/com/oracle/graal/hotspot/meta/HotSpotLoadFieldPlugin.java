@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.nodes.*;
 
 public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
@@ -36,8 +37,6 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
     }
-
-    public static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
 
     public boolean apply(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
         if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {
@@ -51,13 +50,13 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
 
     private boolean tryReadField(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
         if (ImmutableCode.getValue()) {
-            FieldReadEnabledInImmutableCode.set(Boolean.TRUE);
+            HotSpotConstantReflectionProvider.FieldReadEnabledInImmutableCode.set(Boolean.TRUE);
         }
         try {
             return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
         } finally {
             if (ImmutableCode.getValue()) {
-                FieldReadEnabledInImmutableCode.set(null);
+                HotSpotConstantReflectionProvider.FieldReadEnabledInImmutableCode.set(null);
             }
         }
     }

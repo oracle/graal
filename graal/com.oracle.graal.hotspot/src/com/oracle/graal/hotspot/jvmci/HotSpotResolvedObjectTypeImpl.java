@@ -39,7 +39,6 @@ import com.oracle.graal.api.meta.Assumptions.LeafType;
 import com.oracle.graal.api.meta.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of {@link JavaType} for resolved non-primitive HotSpot classes.

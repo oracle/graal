@@ -32,7 +32,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -46,6 +45,8 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     protected final HotSpotJVMCIRuntimeProvider runtime;
     protected final HotSpotMethodHandleAccessProvider methodHandleAccess;
     protected final HotSpotMemoryAccessProviderImpl memoryAccess;
+
+    public static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
 
     public HotSpotConstantReflectionProvider(HotSpotJVMCIRuntimeProvider runtime) {
         this.runtime = runtime;
@@ -228,7 +229,8 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
      * {@code receiver} is (assignable to) {@link StableOptionValue}.
      */
     public JavaConstant readConstantFieldValue(JavaField field, JavaConstant receiver) {
-        assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null || HotSpotLoadFieldPlugin.FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
+        assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null ||
+                        HotSpotConstantReflectionProvider.FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
 
         if (hotspotField.isStatic()) {

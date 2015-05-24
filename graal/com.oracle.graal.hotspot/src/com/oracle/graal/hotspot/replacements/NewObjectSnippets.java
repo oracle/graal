@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotMetaAccessProvider.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.*;
@@ -258,22 +259,6 @@ public class NewObjectSnippets implements Snippets {
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
         return allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
-    }
-
-    /**
-     * Computes the size of the memory chunk allocated for an array. This size accounts for the
-     * array header size, body size and any padding after the last element to satisfy object
-     * alignment requirements.
-     *
-     * @param length the number of elements in the array
-     * @param alignment the object alignment requirement
-     * @param headerSize the size of the array header
-     * @param log2ElementSize log2 of the size of an element in the array
-     */
-    public static int computeArrayAllocationSize(int length, int alignment, int headerSize, int log2ElementSize) {
-        int size = (length << log2ElementSize) + headerSize + (alignment - 1);
-        int mask = ~(alignment - 1);
-        return size & mask;
     }
 
     /**

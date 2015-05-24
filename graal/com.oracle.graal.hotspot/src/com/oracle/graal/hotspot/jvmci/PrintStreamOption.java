@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspot.jvmci;
 
 import java.io.*;
 import java.lang.management.*;
 
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.options.*;
 
 /**

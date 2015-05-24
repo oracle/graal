@@ -31,8 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 
-//import com.oracle.graal.hotspot.meta.*;
-
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
  */

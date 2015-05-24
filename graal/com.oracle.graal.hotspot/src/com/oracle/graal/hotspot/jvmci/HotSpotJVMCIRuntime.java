@@ -32,7 +32,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.jvmci.logging.*;
 import com.oracle.graal.options.*;
 import com.oracle.jvmci.runtime.*;

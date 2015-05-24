@@ -26,11 +26,10 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotOptionsLoader.*;
 import static java.lang.Double.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
+import com.oracle.jvmci.runtime.*;
 
 //JaCoCo Exclude
 
@@ -43,15 +42,15 @@ public class HotSpotOptions {
     private static final String GRAAL_OPTION_PREFIX = "-G:";
 
     /**
-     * Parses the Graal specific options specified to HotSpot (e.g., on the command line).
+     * Parses the JVMCI specific options specified to HotSpot (e.g., on the command line).
      */
     private static native void parseVMOptions();
 
     static {
         parseVMOptions();
 
-        assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
-                        "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
+        assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the JVMCI runtime has been initialized. " +
+                        "This can be fixed by placing a call to " + JVMCI.class.getName() + ".getRuntime() on the path that triggers initialization of " + Debug.class.getName();
         if (areDebugScopePatternsEnabled()) {
             System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
         }

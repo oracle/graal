@@ -30,8 +30,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.replacements.*;
 
 /**
  * HotSpot implementation of {@link MetaAccessProvider}.
@@ -78,7 +76,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             field.setAccessible(true);
             return field;
         } catch (NoSuchFieldException | SecurityException e) {
-            throw new GraalInternalError(e);
+            throw new InternalError(e);
         }
     }
 
@@ -90,7 +88,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
             return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
-            throw new GraalInternalError(e);
+            throw new InternalError(e);
         }
     }
 
@@ -110,7 +108,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             HotSpotResolvedObjectType resolved = holder;
             return resolved.createField(name, type, offset, modifiers);
         } else {
-            throw GraalInternalError.shouldNotReachHere("unresolved field " + reflectionField);
+            throw new InternalError("unresolved field " + reflectionField);
         }
     }
 
@@ -163,7 +161,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             case InvalidateStopCompiling:
                 return config.deoptActionMakeNotCompilable;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw new InternalError(action.toString());
         }
     }
 
@@ -184,7 +182,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
         if (action == config.deoptActionMakeNotCompilable) {
             return DeoptimizationAction.InvalidateStopCompiling;
         }
-        throw GraalInternalError.shouldNotReachHere();
+        throw new InternalError(String.valueOf(action));
     }
 
     public int convertDeoptReason(DeoptimizationReason reason) {
@@ -223,7 +221,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             case TransferToInterpreter:
                 return config.deoptReasonTransferToInterpreter;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw new InternalError(reason.toString());
         }
     }
 
@@ -277,7 +275,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
         if (reason == config.deoptReasonTransferToInterpreter) {
             return DeoptimizationReason.TransferToInterpreter;
         }
-        throw GraalInternalError.shouldNotReachHere(Integer.toHexString(reason));
+        throw new InternalError(Integer.toHexString(reason));
     }
 
     @Override
@@ -298,12 +296,28 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
                     int sizeOfElement = target.getSizeInBytes(elementKind);
                     int alignment = target.wordSize;
                     int log2ElementSize = CodeUtil.log2(sizeOfElement);
-                    return NewObjectSnippets.computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
+                    return computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
                 }
                 return lookupJavaType.instanceSize();
             }
         } else {
             return constant.getKind().getByteCount();
         }
+    }
+
+    /**
+     * Computes the size of the memory chunk allocated for an array. This size accounts for the
+     * array header size, body size and any padding after the last element to satisfy object
+     * alignment requirements.
+     *
+     * @param length the number of elements in the array
+     * @param alignment the object alignment requirement
+     * @param headerSize the size of the array header
+     * @param log2ElementSize log2 of the size of an element in the array
+     */
+    public static int computeArrayAllocationSize(int length, int alignment, int headerSize, int log2ElementSize) {
+        int size = (length << log2ElementSize) + headerSize + (alignment - 1);
+        int mask = ~(alignment - 1);
+        return size & mask;
     }
 }

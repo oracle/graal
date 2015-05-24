@@ -20,13 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
-import com.oracle.graal.hotspot.jvmci.*;
-
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 import sun.misc.*;
 
 /**
@@ -42,7 +39,7 @@ public final class HotSpotVmSymbols {
      * @return the symbol at position id
      */
     public static String symbolAt(int index) {
-        HotSpotGraalRuntimeProvider runtime = runtime();
+        HotSpotJVMCIRuntimeProvider runtime = runtime();
         HotSpotVMConfig config = runtime.getConfig();
         assert config.vmSymbolsFirstSID <= index && index < config.vmSymbolsSIDLimit : "index " + index + " is out of bounds";
         assert config.symbolPointerSize == Unsafe.ADDRESS_SIZE : "the following address read is broken";
