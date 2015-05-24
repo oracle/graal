@@ -101,7 +101,11 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node implements K
         return this instanceof ConstantNode;
     }
 
-    private static final NodePredicate IS_CONSTANT = node -> node instanceof ConstantNode;
+    private static final NodePredicate IS_CONSTANT = new NodePredicate() {
+        public boolean apply(Node n) {
+            return n instanceof ConstantNode;
+        }
+    };
 
     public static NodePredicate isConstantPredicate() {
         return IS_CONSTANT;
