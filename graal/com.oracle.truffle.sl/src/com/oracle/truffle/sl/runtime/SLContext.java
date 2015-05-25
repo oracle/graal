@@ -163,6 +163,7 @@ public final class SLContext extends ExecutionContext {
             throw new SLException("No function main() defined in SL source file.");
         }
         main.getCallTarget().call();
+        output.flush();
     }
 
     public DynamicObject createObject() {
