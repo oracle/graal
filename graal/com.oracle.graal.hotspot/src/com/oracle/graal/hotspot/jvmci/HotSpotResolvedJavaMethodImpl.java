@@ -34,7 +34,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.jvmci.common.*;
 
@@ -742,7 +741,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
     }
 
     public boolean hasCodeAtLevel(int entryBCI, int level) {
-        if (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI) {
+        if (entryBCI == runtime().getConfig().invocationEntryBci) {
             return hasCompiledCodeAtLevel(level);
         }
         return runtime().getCompilerToVM().hasCompiledCodeForOSR(metaspaceMethod, entryBCI, level);
