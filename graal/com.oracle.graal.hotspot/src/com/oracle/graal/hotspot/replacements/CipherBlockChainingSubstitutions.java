@@ -35,6 +35,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 // JaCoCo Exclude
 

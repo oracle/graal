@@ -53,7 +53,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final Object location = new Object();
 
     static {
-        Unsafe unsafe = com.oracle.graal.compiler.common.UnsafeAccess.unsafe;
+        Unsafe unsafe = com.oracle.jvmci.common.UnsafeAccess.unsafe;
         access = Truffle.getRuntime().getCapability(UnsafeAccessFactory.class).createUnsafeAccess(unsafe);
         long fieldOffset = 0;
         try {

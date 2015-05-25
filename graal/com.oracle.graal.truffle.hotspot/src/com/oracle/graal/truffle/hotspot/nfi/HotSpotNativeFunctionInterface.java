@@ -23,8 +23,8 @@
 package com.oracle.graal.truffle.hotspot.nfi;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;

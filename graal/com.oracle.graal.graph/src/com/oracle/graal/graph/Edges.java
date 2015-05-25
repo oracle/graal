@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.graph;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.graph.Graph.*;
 import static com.oracle.graal.graph.Node.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 import java.util.function.*;

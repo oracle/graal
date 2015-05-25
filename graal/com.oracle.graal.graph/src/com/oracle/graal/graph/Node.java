@@ -38,6 +38,7 @@ import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a

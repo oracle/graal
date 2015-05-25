@@ -59,6 +59,7 @@ import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.nfi.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.runtime.*;
 import com.oracle.nfi.api.*;
 import com.oracle.truffle.api.*;

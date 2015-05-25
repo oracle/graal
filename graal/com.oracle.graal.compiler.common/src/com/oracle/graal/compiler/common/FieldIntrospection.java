@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.common;
 
+import com.oracle.jvmci.common.*;
+
 public abstract class FieldIntrospection<T> extends UnsafeAccess {
 
     private final Class<T> clazz;

@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;

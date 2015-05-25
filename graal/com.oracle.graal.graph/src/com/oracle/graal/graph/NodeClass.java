@@ -43,6 +43,7 @@ import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:

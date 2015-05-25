@@ -27,9 +27,9 @@ import org.junit.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.jvmci.common.*;
 
 public class UnsafeEATest extends EATestBase {
 

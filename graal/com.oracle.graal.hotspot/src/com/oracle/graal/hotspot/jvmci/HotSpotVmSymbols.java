@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 import sun.misc.*;
 
 /**

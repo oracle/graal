@@ -34,6 +34,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .

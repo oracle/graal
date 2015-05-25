@@ -23,8 +23,8 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 

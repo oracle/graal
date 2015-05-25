@@ -23,7 +23,7 @@
 package com.oracle.graal.asm.amd64.test;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 import static org.junit.Assume.*;
 
 import java.lang.reflect.*;

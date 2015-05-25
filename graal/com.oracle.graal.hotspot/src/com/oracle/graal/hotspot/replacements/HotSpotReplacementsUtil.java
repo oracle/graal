@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
