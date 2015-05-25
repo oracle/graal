@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.jvmci;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.nodes.*;
 
 public final class HotSpotProfilingInfo implements ProfilingInfo, HotSpotProxified {
 
@@ -205,19 +204,33 @@ public final class HotSpotProfilingInfo implements ProfilingInfo, HotSpotProxifi
         isMature = true;
     }
 
+    /**
+     * {@code MethodData::_jvmci_ir_size} (currently) supports at most one JVMCI compiler IR type
+     * which will be determined by the first JVMCI compiler that calls
+     * {@link #setCompilerIRSize(Class, int)}.
+     */
+    private static volatile Class<?> supportedCompilerIRType;
+
     @Override
     public boolean setCompilerIRSize(Class<?> irType, int size) {
-        if (irType == StructuredGraph.class) {
-            methodData.setCompiledGraphSize(size);
-            return true;
+        if (supportedCompilerIRType == null) {
+            synchronized (HotSpotProfilingInfo.class) {
+                if (supportedCompilerIRType == null) {
+                    supportedCompilerIRType = irType;
+                }
+            }
         }
-        return false;
+        if (supportedCompilerIRType != irType) {
+            return false;
+        }
+        methodData.setCompiledIRSize(size);
+        return true;
     }
 
     @Override
     public int getCompilerIRSize(Class<?> irType) {
-        if (irType == StructuredGraph.class) {
-            return methodData.getCompiledGraphSize();
+        if (irType == supportedCompilerIRType) {
+            return methodData.getCompiledIRSize();
         }
         return -1;
     }

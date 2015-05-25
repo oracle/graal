@@ -848,11 +848,11 @@ public final class HotSpotMethodData {
         }
     }
 
-    public void setCompiledGraphSize(int nodeCount) {
-        unsafe.putInt(metaspaceMethodData + config.methodDataGraalNodeCountOffset, nodeCount);
+    public void setCompiledIRSize(int size) {
+        unsafe.putInt(metaspaceMethodData + config.methodDataIRSizeOffset, size);
     }
 
-    public int getCompiledGraphSize() {
-        return unsafe.getInt(metaspaceMethodData + config.methodDataGraalNodeCountOffset);
+    public int getCompiledIRSize() {
+        return unsafe.getInt(metaspaceMethodData + config.methodDataIRSizeOffset);
     }
 }
