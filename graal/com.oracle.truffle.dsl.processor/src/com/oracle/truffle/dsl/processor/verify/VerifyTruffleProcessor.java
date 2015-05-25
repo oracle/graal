@@ -128,7 +128,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
     void assertNoErrorExpected(Element e) {
         TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
         for (AnnotationMirror am : e.getAnnotationMirrors()) {
-            if (am.getAnnotationType().asElement() == eee) {
+            if (am.getAnnotationType().asElement().equals(eee)) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Expected an error, but none found!", e);
             }
         }
@@ -137,7 +137,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
     void emitError(String msg, Element e) {
         TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
         for (AnnotationMirror am : e.getAnnotationMirrors()) {
-            if (am.getAnnotationType().asElement() == eee) {
+            if (am.getAnnotationType().asElement().equals(eee)) {
                 Map<? extends ExecutableElement, ? extends AnnotationValue> vals = am.getElementValues();
                 if (vals.size() == 1) {
                     AnnotationValue av = vals.values().iterator().next();

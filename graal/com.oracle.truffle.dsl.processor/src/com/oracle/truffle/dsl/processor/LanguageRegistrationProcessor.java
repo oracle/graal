@@ -22,19 +22,27 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.dsl.ExpectError;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
@@ -72,12 +80,78 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             Registration annotation = e.getAnnotation(Registration.class);
             if (annotation != null && e.getKind() == ElementKind.CLASS) {
                 if (!e.getModifiers().contains(Modifier.PUBLIC)) {
-                    processingEnv.getMessager().printMessage(Kind.ERROR, "Registered language class must be public", e);
+                    emitError("Registered language class must be public", e);
+                    continue;
                 }
+                if (e.getEnclosingElement().getKind() != ElementKind.PACKAGE && !e.getModifiers().contains(Modifier.STATIC)) {
+                    emitError("Registered language inner-class must be static", e);
+                    continue;
+                }
+                TypeMirror truffleLang = processingEnv.getElementUtils().getTypeElement(TruffleLanguage.class.getName()).asType();
+                if (!processingEnv.getTypeUtils().isAssignable(e.asType(), truffleLang)) {
+                    emitError("Registered language class must subclass TruffleLanguage", e);
+                    continue;
+                }
+                boolean found = false;
+                for (Element mem : e.getEnclosedElements()) {
+                    if (mem.getKind() != ElementKind.CONSTRUCTOR) {
+                        continue;
+                    }
+                    ExecutableElement ee = (ExecutableElement) mem;
+                    if (ee.getParameters().size() != 1) {
+                        continue;
+                    }
+                    if (!ee.getModifiers().contains(Modifier.PUBLIC)) {
+                        continue;
+                    }
+                    TypeMirror env = processingEnv.getElementUtils().getTypeElement(TruffleLanguage.Env.class.getCanonicalName()).asType();
+                    if (processingEnv.getTypeUtils().isSameType(ee.getParameters().get(0).asType(), env)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    emitError("Language must have a public constructor accepting TruffleLanguage.Env as parameter", e);
+                    continue;
+                }
+                assertNoErrorExpected(e);
                 createProviderFile((TypeElement) e, annotation);
             }
         }
 
         return true;
+    }
+
+    void assertNoErrorExpected(Element e) {
+        TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
+        for (AnnotationMirror am : e.getAnnotationMirrors()) {
+            if (am.getAnnotationType().asElement().equals(eee)) {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Expected an error, but none found!", e);
+            }
+        }
+    }
+
+    void emitError(String msg, Element e) {
+        TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
+        for (AnnotationMirror am : e.getAnnotationMirrors()) {
+            if (am.getAnnotationType().asElement().equals(eee)) {
+                Map<? extends ExecutableElement, ? extends AnnotationValue> vals = am.getElementValues();
+                if (vals.size() == 1) {
+                    AnnotationValue av = vals.values().iterator().next();
+                    if (av.getValue() instanceof List) {
+                        List<?> arr = (List<?>) av.getValue();
+                        for (Object o : arr) {
+                            if (o instanceof AnnotationValue) {
+                                AnnotationValue ov = (AnnotationValue) o;
+                                if (msg.equals(ov.getValue())) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
     }
 }

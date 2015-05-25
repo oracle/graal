@@ -33,6 +33,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing
@@ -42,7 +43,17 @@ import java.lang.annotation.Target;
  * language support, multi tennat hosting, debugging, etc.) will be made available to them.
  */
 public abstract class TruffleLanguage {
-    private Env env;
+    private final Env env;
+
+    /**
+     * Constructor to be called by subclasses.
+     *
+     * @param env language environment that will be available via {@link #env()} method to
+     *            subclasses.
+     */
+    protected TruffleLanguage(Env env) {
+        this.env = env;
+    }
 
     /**
      * The annotation to use to register your language to the {@link TruffleVM Truffle} system. By
@@ -70,11 +81,6 @@ public abstract class TruffleLanguage {
          * @return array of mime types assigned to your language files
          */
         String[] mimeType();
-    }
-
-    @SuppressWarnings("all")
-    void attachEnv(Env env) {
-        this.env = env;
     }
 
     protected final Env env() {
@@ -130,9 +136,13 @@ public abstract class TruffleLanguage {
         private final TruffleVM vm;
         private final TruffleLanguage lang;
 
-        Env(TruffleVM vm, TruffleLanguage lang) {
+        Env(TruffleVM vm, Constructor<?> langConstructor) {
             this.vm = vm;
-            this.lang = lang;
+            try {
+                this.lang = (TruffleLanguage) langConstructor.newInstance(this);
+            } catch (Exception ex) {
+                throw new IllegalStateException("Cannot construct language " + langConstructor.getClass().getName(), ex);
+            }
         }
 
         /**
@@ -154,10 +164,9 @@ public abstract class TruffleLanguage {
     private static final class AccessAPI extends Accessor {
 
         @Override
-        protected Env attachEnv(TruffleVM vm, TruffleLanguage l) {
-            Env env = new Env(vm, l);
-            l.attachEnv(env);
-            return env;
+        protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz) {
+            Env env = new Env(vm, langClazz);
+            return env.lang;
         }
 
         @Override

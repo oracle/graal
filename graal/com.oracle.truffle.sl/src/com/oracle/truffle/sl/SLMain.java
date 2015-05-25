@@ -134,7 +134,8 @@ import com.oracle.truffle.sl.runtime.*;
 public class SLMain extends TruffleLanguage {
     private final SLContext context;
 
-    public SLMain() {
+    public SLMain(Env env) {
+        super(env);
         this.context = SLContextFactory.create(new BufferedReader(new InputStreamReader(System.in)), new PrintWriter(System.out));
     }
 

@@ -25,10 +25,10 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.TruffleVM;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.ServiceLoader;
 
 /**
@@ -38,7 +38,7 @@ public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
     static {
-        TruffleLanguage lng = new TruffleLanguage() {
+        TruffleLanguage lng = new TruffleLanguage(null) {
             @Override
             protected Object eval(Source code) throws IOException {
                 return null;
@@ -76,8 +76,8 @@ public abstract class Accessor {
         }
     }
 
-    protected Env attachEnv(TruffleVM vm, TruffleLanguage l) {
-        return API.attachEnv(vm, l);
+    protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz) {
+        return API.attachEnv(vm, langClazz);
     }
 
     protected Object eval(TruffleLanguage l, Source s) throws IOException {

@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.lang.reflect.Constructor;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
@@ -333,9 +334,9 @@ public final class TruffleVM {
             if (impl == null) {
                 String n = props.getProperty("className");
                 try {
-                    TruffleLanguage lang = (TruffleLanguage) Class.forName(n, true, loader()).newInstance();
-                    SPI.attachEnv(TruffleVM.this, lang);
-                    impl = lang;
+                    Class<?> langClazz = Class.forName(n, true, loader());
+                    Constructor<?> constructor = langClazz.getConstructor(Env.class);
+                    impl = SPI.attachEnv(TruffleVM.this, constructor);
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getName() + " language with implementation " + n, ex);
                 }
@@ -367,8 +368,8 @@ public final class TruffleVM {
         }
 
         @Override
-        public Env attachEnv(TruffleVM vm, TruffleLanguage l) {
-            return super.attachEnv(vm, l);
+        public TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz) {
+            return super.attachEnv(vm, langClazz);
         }
 
         @Override
