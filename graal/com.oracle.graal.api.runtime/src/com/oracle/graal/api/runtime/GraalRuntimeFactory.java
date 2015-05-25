@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.runtime;
 
+import com.oracle.jvmci.runtime.*;
+
 public interface GraalRuntimeFactory extends Service {
 
     GraalRuntime getRuntime();

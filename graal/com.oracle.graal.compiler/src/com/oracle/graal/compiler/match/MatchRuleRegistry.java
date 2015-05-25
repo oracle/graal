@@ -23,15 +23,16 @@
 package com.oracle.graal.compiler.match;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
+
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
+import com.oracle.jvmci.runtime.*;
 
 public class MatchRuleRegistry {
 

@@ -24,6 +24,8 @@ package com.oracle.graal.api.runtime;
 
 import java.util.*;
 
+import com.oracle.jvmci.runtime.*;
+
 import sun.reflect.*;
 
 /**

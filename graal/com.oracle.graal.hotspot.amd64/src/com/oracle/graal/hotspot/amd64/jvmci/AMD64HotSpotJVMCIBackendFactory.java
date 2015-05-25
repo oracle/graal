@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.*;
 import com.oracle.graal.hotspot.jvmci.*;
@@ -146,7 +147,7 @@ public class AMD64HotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFacto
 
         RegisterConfig regConfig;
         HotSpotCodeCacheProvider codeCache;
-        HotSpotConstantReflectionProvider constantReflection;
+        ConstantReflectionProvider constantReflection;
         HotSpotMetaAccessProvider metaAccess;
         try (InitTimer t = timer("create providers")) {
             try (InitTimer rt = timer("create MetaAccess provider")) {
@@ -167,7 +168,7 @@ public class AMD64HotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFacto
         }
     }
 
-    protected JVMCIBackend createBackend(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, HotSpotConstantReflectionProvider constantReflection) {
+    protected JVMCIBackend createBackend(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection) {
         return new JVMCIBackend(metaAccess, codeCache, constantReflection);
     }
 

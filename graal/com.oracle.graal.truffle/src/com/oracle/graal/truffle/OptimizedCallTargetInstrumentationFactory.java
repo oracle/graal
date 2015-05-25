@@ -23,8 +23,8 @@
 package com.oracle.graal.truffle;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.runtime.*;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into

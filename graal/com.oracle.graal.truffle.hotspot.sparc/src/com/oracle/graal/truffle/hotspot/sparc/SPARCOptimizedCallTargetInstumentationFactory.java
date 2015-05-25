@@ -32,7 +32,6 @@ import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
@@ -42,6 +41,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
+import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedCallTargetInstrumentationFactory {

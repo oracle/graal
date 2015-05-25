@@ -309,12 +309,6 @@ public final class GraalOptions {
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionValue<Boolean> MatchExpressions = new OptionValue<>(true);
 
-    @Option(help = "Constant fold final fields with default values.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> TrustFinalDefaultFields = new OptionValue<>(true);
-
-    @Option(help = "Mark well-known stable fields as such.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
-
     @Option(help = "Generate SSA LIR.", type = OptionType.Debug)
     public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(false);
 

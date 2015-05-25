@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.runtime.*;
+import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(GraalRuntimeFactory.class)
 public class HotSpotGraalRuntimeFactory implements GraalRuntimeFactory {

@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.jvmci.*;
+import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
+import com.oracle.jvmci.runtime.*;
 
 /**
  * Implementation of {@link OptionsParsed} for setting system properties used in the initialization

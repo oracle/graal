@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.jvmci;
 
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 import static java.lang.String.*;
 
 import java.util.*;
@@ -109,13 +109,13 @@ public final class HotSpotMethodData {
     }
 
     public int getDeoptimizationCount(DeoptimizationReason reason) {
-        HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) runtime().getHostProviders().getMetaAccess();
+        HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) runtime().getHostJVMCIBackend().getMetaAccess();
         int reasonIndex = metaAccess.convertDeoptReason(reason);
         return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
     public int getOSRDeoptimizationCount(DeoptimizationReason reason) {
-        HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) runtime().getHostProviders().getMetaAccess();
+        HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) runtime().getHostJVMCIBackend().getMetaAccess();
         int reasonIndex = metaAccess.convertDeoptReason(reason);
         return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + config.deoptReasonOSROffset + reasonIndex) & 0xFF;
     }

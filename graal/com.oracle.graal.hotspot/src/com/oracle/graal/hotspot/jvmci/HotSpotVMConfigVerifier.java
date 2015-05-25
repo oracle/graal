@@ -28,8 +28,6 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
-
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 import sun.misc.*;
@@ -53,7 +51,7 @@ final class HotSpotVMConfigVerifier extends ClassVisitor {
             cr.accept(cv, 0);
             return true;
         } catch (IOException e) {
-            throw new GraalInternalError(e);
+            throw new InternalError(e);
         }
     }
 

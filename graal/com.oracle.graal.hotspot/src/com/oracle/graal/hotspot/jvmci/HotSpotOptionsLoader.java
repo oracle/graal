@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.jvmci;
 
 import java.util.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.runtime.*;
 
 /**
  * Helper class for separating loading of options from option initialization at runtime.

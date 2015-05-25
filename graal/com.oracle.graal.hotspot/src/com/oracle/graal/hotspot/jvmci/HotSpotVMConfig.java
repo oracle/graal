@@ -27,7 +27,6 @@ import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspotvmconfig.*;
 
 //JaCoCo Exclude
@@ -171,7 +170,7 @@ public class HotSpotVMConfig {
                         checkField(f, entry.getValue());
                         break;
                     default:
-                        throw GraalInternalError.shouldNotReachHere("unknown kind " + annotation.get());
+                        throw new InternalError("unknown kind " + annotation.get());
                 }
             } else if (f.isAnnotationPresent(HotSpotVMType.class)) {
                 HotSpotVMType annotation = f.getAnnotation(HotSpotVMType.class);
@@ -185,7 +184,7 @@ public class HotSpotVMConfig {
                         checkField(f, entry.getSize());
                         break;
                     default:
-                        throw GraalInternalError.shouldNotReachHere("unknown kind " + annotation.get());
+                        throw new InternalError("unknown kind " + annotation.get());
                 }
             } else if (f.isAnnotationPresent(HotSpotVMConstant.class)) {
                 HotSpotVMConstant annotation = f.getAnnotation(HotSpotVMConstant.class);
@@ -237,7 +236,7 @@ public class HotSpotVMConfig {
                 } else if (value instanceof Long) {
                     assert field.getBoolean(this) == (((long) value) != 0) : field + " " + value + " " + field.getBoolean(this);
                 } else {
-                    GraalInternalError.shouldNotReachHere(value.getClass().getSimpleName());
+                    throw new InternalError(value.getClass().getSimpleName());
                 }
             } else if (fieldType == int.class) {
                 if (value instanceof Integer) {
@@ -245,15 +244,15 @@ public class HotSpotVMConfig {
                 } else if (value instanceof Long) {
                     assert field.getInt(this) == (int) (long) value : field + " " + value + " " + field.getInt(this);
                 } else {
-                    GraalInternalError.shouldNotReachHere(value.getClass().getSimpleName());
+                    throw new InternalError(value.getClass().getSimpleName());
                 }
             } else if (fieldType == long.class) {
                 assert field.getLong(this) == (long) value : field + " " + value + " " + field.getLong(this);
             } else {
-                GraalInternalError.shouldNotReachHere(field.toString());
+                throw new InternalError(field.toString());
             }
         } catch (IllegalAccessException e) {
-            throw GraalInternalError.shouldNotReachHere(field.toString() + ": " + e);
+            throw new InternalError(field.toString() + ": " + e);
         }
     }
 
@@ -316,11 +315,6 @@ public class HotSpotVMConfig {
                     index++;
                     return entry;
                 }
-
-                @Override
-                public void remove() {
-                    throw GraalInternalError.unimplemented();
-                }
             };
         }
 
@@ -378,7 +372,7 @@ public class HotSpotVMConfig {
                         if (type.endsWith("*")) {
                             return unsafe.getAddress(getAddress());
                         }
-                        throw GraalInternalError.shouldNotReachHere(type);
+                        throw new InternalError(type);
                 }
             }
 
@@ -431,11 +425,6 @@ public class HotSpotVMConfig {
                     Type entry = current();
                     index++;
                     return entry;
-                }
-
-                @Override
-                public void remove() {
-                    throw GraalInternalError.unimplemented();
                 }
             };
         }
@@ -540,11 +529,6 @@ public class HotSpotVMConfig {
                     index++;
                     return entry;
                 }
-
-                @Override
-                public void remove() {
-                    throw GraalInternalError.unimplemented();
-                }
             };
         }
 
@@ -603,11 +587,6 @@ public class HotSpotVMConfig {
                     Constant entry = currentEntry();
                     index++;
                     return entry;
-                }
-
-                @Override
-                public void remove() {
-                    throw GraalInternalError.unimplemented();
                 }
             };
         }
@@ -672,11 +651,6 @@ public class HotSpotVMConfig {
                     index++;
                     return entry;
                 }
-
-                @Override
-                public void remove() {
-                    throw GraalInternalError.unimplemented();
-                }
             };
         }
 
@@ -716,7 +690,7 @@ public class HotSpotVMConfig {
                     case "ccstrlist":
                         return readCString(getAddr());
                     default:
-                        throw GraalInternalError.shouldNotReachHere(getType());
+                        throw new InternalError(getType());
                 }
             }
 
@@ -1194,14 +1168,14 @@ public class HotSpotVMConfig {
 
     public long cardtableStartAddress() {
         if (cardtableStartAddress == -1) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw new InternalError();
         }
         return cardtableStartAddress;
     }
 
     public int cardtableShift() {
         if (cardtableShift == -1) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw new InternalError();
         }
         return cardtableShift;
     }

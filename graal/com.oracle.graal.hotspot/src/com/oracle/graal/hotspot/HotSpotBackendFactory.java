@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.Options;
 import com.oracle.jvmci.runtime.*;
 

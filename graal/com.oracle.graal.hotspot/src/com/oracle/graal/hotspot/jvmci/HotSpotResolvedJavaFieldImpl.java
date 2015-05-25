@@ -22,20 +22,28 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+//import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedJavaFieldImpl.Options.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedObjectTypeImpl.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.options.*;
 
 /**
  * Represents a field in a HotSpot type.
  */
 public class HotSpotResolvedJavaFieldImpl implements HotSpotResolvedJavaField, HotSpotProxified {
+
+    static class Options {
+        //@formatter:off
+        @Option(help = "Mark well-known stable fields as such.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
+        //@formatter:on
+    }
 
     private final HotSpotResolvedObjectTypeImpl holder;
     private final String name;
@@ -267,10 +275,10 @@ public class HotSpotResolvedJavaFieldImpl implements HotSpotResolvedJavaField, H
         private static final ResolvedJavaField STRING_VALUE_FIELD;
         static {
             try {
-                MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
+                MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
                 STRING_VALUE_FIELD = metaAccess.lookupJavaField(String.class.getDeclaredField("value"));
             } catch (SecurityException | NoSuchFieldException e) {
-                throw new GraalInternalError(e);
+                throw new InternalError(e);
             }
         }
     }

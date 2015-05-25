@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.jvmci;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 
 /**
  * Represents a method signature.
@@ -101,7 +100,7 @@ public class HotSpotSignature implements Signature {
             case 'Z':
                 break;
             default:
-                throw new GraalInternalError("Invalid character at index " + cur + " in signature: " + signature);
+                throw new InternalError("Invalid character at index " + cur + " in signature: " + signature);
         }
         return cur;
     }

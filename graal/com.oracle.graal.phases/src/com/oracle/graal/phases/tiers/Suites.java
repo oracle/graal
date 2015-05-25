@@ -26,11 +26,11 @@ import static com.oracle.graal.phases.tiers.Suites.Options.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
+import com.oracle.jvmci.runtime.*;
 
 public final class Suites {
 

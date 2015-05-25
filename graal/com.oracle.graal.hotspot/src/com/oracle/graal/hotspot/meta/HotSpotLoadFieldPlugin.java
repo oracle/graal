@@ -23,10 +23,10 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.nodes.*;
 
 public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
@@ -49,15 +49,16 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
     }
 
     private boolean tryReadField(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
-        if (ImmutableCode.getValue()) {
-            HotSpotConstantReflectionProvider.FieldReadEnabledInImmutableCode.set(Boolean.TRUE);
-        }
-        try {
-            return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
-        } finally {
-            if (ImmutableCode.getValue()) {
-                HotSpotConstantReflectionProvider.FieldReadEnabledInImmutableCode.set(null);
+        // FieldReadEnabledInImmutableCode is non null only if assertions are enabled
+        if (FieldReadEnabledInImmutableCode != null && ImmutableCode.getValue()) {
+            FieldReadEnabledInImmutableCode.set(Boolean.TRUE);
+            try {
+                return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
+            } finally {
+                FieldReadEnabledInImmutableCode.set(null);
             }
+        } else {
+            return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
         }
     }
 

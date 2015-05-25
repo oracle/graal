@@ -32,9 +32,9 @@ import javax.lang.model.type.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
-import com.oracle.graal.api.runtime.*;
+import com.oracle.jvmci.runtime.*;
 
-@SupportedAnnotationTypes("com.oracle.graal.api.runtime.ServiceProvider")
+@SupportedAnnotationTypes("com.oracle.jvmci.runtime.ServiceProvider")
 public class ServiceProviderProcessor extends AbstractProcessor {
 
     private final Set<TypeElement> processed = new HashSet<>();

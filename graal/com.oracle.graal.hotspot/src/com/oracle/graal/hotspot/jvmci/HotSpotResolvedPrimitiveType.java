@@ -30,7 +30,6 @@ import java.net.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.compiler.common.*;
 
 /**
  * Implementation of {@link JavaType} for primitive HotSpot types.
@@ -95,7 +94,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaType getSingleImplementor() {
-        throw new GraalInternalError("Cannot call getImplementor() on a non-interface type: " + this);
+        throw new InternalError("Cannot call getSingleImplementor() on a non-interface type: " + this);
     }
 
     @Override
@@ -105,12 +104,12 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public JavaConstant getObjectHub() {
-        throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getObjectHub");
+        throw new InternalError();
     }
 
     @Override
     public JavaConstant getJavaClass() {
-        throw GraalInternalError.unimplemented("HotSpotResolvedPrimitiveType.getJavaClass");
+        throw new InternalError();
     }
 
     @Override
@@ -230,7 +229,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public String getSourceFileName() {
-        throw GraalInternalError.shouldNotReachHere();
+        throw new InternalError();
     }
 
     @Override

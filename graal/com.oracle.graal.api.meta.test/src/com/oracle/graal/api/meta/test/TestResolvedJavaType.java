@@ -34,9 +34,8 @@ import org.junit.*;
 
 import sun.reflect.ConstantPool;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Tests for {@link ResolvedJavaType}.
@@ -417,13 +416,13 @@ public class TestResolvedJavaType extends TypeUniverse {
         assertEquals(aSai2, iSai2.getSingleImplementor());
     }
 
-    @Test(expected = GraalInternalError.class)
+    @Test(expected = InternalError.class)
     public void getSingleImplementorTestClassReceiver() {
         ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
         base.getSingleImplementor();
     }
 
-    @Test(expected = GraalInternalError.class)
+    @Test(expected = InternalError.class)
     public void getSingleImplementorTestPrimitiveReceiver() {
         ResolvedJavaType primitive = metaAccess.lookupJavaType(int.class);
         primitive.getSingleImplementor();

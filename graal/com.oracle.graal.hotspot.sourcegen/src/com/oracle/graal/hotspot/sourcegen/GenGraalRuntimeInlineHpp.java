@@ -28,9 +28,9 @@ import java.util.*;
 import java.util.stream.*;
 import java.util.zip.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.runtime.*;
 
 /**
  * Command line utility for generating the source code of {@code graalRuntime.inline.hpp}. The

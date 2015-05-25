@@ -78,7 +78,14 @@ public abstract class SnippetStub extends Stub implements Snippets {
         this.method = providers.getMetaAccess().lookupJavaMethod(javaMethod);
     }
 
-    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = new ThreadLocal<>();
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
+    }
+
+    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = assertionsEnabled() ? new ThreadLocal<>() : null;
 
     @Override
     protected StructuredGraph getGraph() {
@@ -94,11 +101,17 @@ public abstract class SnippetStub extends Stub implements Snippets {
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
         graph.disableInlinedMethodRecording();
 
-        assert SnippetGraphUnderConstruction.get() == null;
-        SnippetGraphUnderConstruction.set(graph);
+        if (SnippetGraphUnderConstruction != null) {
+            assert SnippetGraphUnderConstruction.get() == null;
+            SnippetGraphUnderConstruction.set(graph);
+        }
+
         IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
-        SnippetGraphUnderConstruction.set(null);
+
+        if (SnippetGraphUnderConstruction != null) {
+            SnippetGraphUnderConstruction.set(null);
+        }
 
         graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
         try (Scope s = Debug.scope("LoweringStub", graph)) {

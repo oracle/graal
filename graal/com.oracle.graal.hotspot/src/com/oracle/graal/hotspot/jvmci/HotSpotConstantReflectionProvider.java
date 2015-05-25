@@ -22,31 +22,28 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.stubs.SnippetStub.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotConstantReflectionProvider.Options.*;
 
 import java.lang.reflect.*;
-import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 /**
  * HotSpot implementation of {@link ConstantReflectionProvider}.
  */
 public class HotSpotConstantReflectionProvider implements ConstantReflectionProvider, HotSpotProxified {
-    private static final String SystemClassName = "Ljava/lang/System;";
+
+    static class Options {
+        //@formatter:off
+        @Option(help = "Constant fold final fields with default values.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TrustFinalDefaultFields = new OptionValue<>(true);
+        //@formatter:on
+    }
 
     protected final HotSpotJVMCIRuntimeProvider runtime;
     protected final HotSpotMethodHandleAccessProvider methodHandleAccess;
     protected final HotSpotMemoryAccessProviderImpl memoryAccess;
-
-    public static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
 
     public HotSpotConstantReflectionProvider(HotSpotJVMCIRuntimeProvider runtime) {
         this.runtime = runtime;
@@ -222,6 +219,49 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         return null;
     }
 
+    private static final String SystemClassName = "Ljava/lang/System;";
+
+    /**
+     * Determines if a static field is constant for the purpose of
+     * {@link #readConstantFieldValue(JavaField, JavaConstant)}.
+     */
+    protected boolean isStaticFieldConstant(HotSpotResolvedJavaField staticField) {
+        if (staticField.isFinal() || staticField.isStable()) {
+            ResolvedJavaType holder = staticField.getDeclaringClass();
+            if (holder.isInitialized() && !holder.getName().equals(SystemClassName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determines if a value read from a {@code final} instance field is considered constant. The
+     * implementation in {@link HotSpotConstantReflectionProvider} returns true if {@code value} is
+     * not the {@link JavaConstant#isDefaultForKind default value} for its kind or if
+     * {@link Options#TrustFinalDefaultFields} is true.
+     *
+     * @param value a value read from a {@code final} instance field
+     * @param receiverClass the {@link Object#getClass() class} of object from which the
+     *            {@code value} was read
+     */
+    protected boolean isFinalInstanceFieldValueConstant(JavaConstant value, Class<?> receiverClass) {
+        return !value.isDefaultForKind() || TrustFinalDefaultFields.getValue();
+    }
+
+    /**
+     * Determines if a value read from a {@link Stable} instance field is considered constant. The
+     * implementation in {@link HotSpotConstantReflectionProvider} returns true if {@code value} is
+     * not the {@link JavaConstant#isDefaultForKind default value} for its kind.
+     *
+     * @param value a value read from a {@link Stable} field
+     * @param receiverClass the {@link Object#getClass() class} of object from which the
+     *            {@code value} was read
+     */
+    protected boolean isStableInstanceFieldValueConstant(JavaConstant value, Class<?> receiverClass) {
+        return !value.isDefaultForKind();
+    }
+
     /**
      * {@inheritDoc}
      * <p>
@@ -229,18 +269,13 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
      * {@code receiver} is (assignable to) {@link StableOptionValue}.
      */
     public JavaConstant readConstantFieldValue(JavaField field, JavaConstant receiver) {
-        assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null ||
-                        HotSpotConstantReflectionProvider.FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
 
         if (hotspotField.isStatic()) {
-            if (hotspotField.isFinal() || hotspotField.isStable()) {
-                ResolvedJavaType holder = hotspotField.getDeclaringClass();
-                if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable(hotspotField)) {
-                    JavaConstant value = readFieldValue(field, receiver);
-                    if (hotspotField.isFinal() || !value.isDefaultForKind()) {
-                        return value;
-                    }
+            if (isStaticFieldConstant(hotspotField)) {
+                JavaConstant value = readFieldValue(field, receiver);
+                if (hotspotField.isFinal() || !value.isDefaultForKind()) {
+                    return value;
                 }
             }
         } else {
@@ -257,14 +292,14 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 if (hotspotField.isFinal()) {
                     if (hotspotField.isInObject(object)) {
                         JavaConstant value = readFieldValue(field, receiver);
-                        if (!value.isDefaultForKind() || assumeNonStaticFinalDefaultFieldsAsFinal(object.getClass())) {
+                        if (isFinalInstanceFieldValueConstant(value, object.getClass())) {
                             return value;
                         }
                     }
                 } else if (hotspotField.isStable()) {
                     if (hotspotField.isInObject(object)) {
                         JavaConstant value = readFieldValue(field, receiver);
-                        if (assumeDefaultStableFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
+                        if (isStableInstanceFieldValueConstant(value, object.getClass())) {
                             return value;
                         }
                     }
@@ -325,120 +360,5 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             dimensions++;
         }
         return dimensions;
-    }
-
-    /**
-     * Compares two {@link StackTraceElement}s for equality, ignoring differences in
-     * {@linkplain StackTraceElement#getLineNumber() line number}.
-     */
-    private static boolean equalsIgnoringLine(StackTraceElement left, StackTraceElement right) {
-        return left.getClassName().equals(right.getClassName()) && left.getMethodName().equals(right.getMethodName()) && left.getFileName().equals(right.getFileName());
-    }
-
-    /**
-     * If the compiler is configured for AOT mode,
-     * {@link #readConstantFieldValue(JavaField, JavaConstant)} should be only called for snippets
-     * or replacements.
-     */
-    private static boolean isCalledForSnippets() {
-        MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
-        ResolvedJavaMethod makeGraphMethod = null;
-        ResolvedJavaMethod initMethod = null;
-        try {
-            Class<?> rjm = ResolvedJavaMethod.class;
-            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm));
-            initMethod = metaAccess.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new GraalInternalError(e);
-        }
-        StackTraceElement makeGraphSTE = makeGraphMethod.asStackTraceElement(0);
-        StackTraceElement initSTE = initMethod.asStackTraceElement(0);
-
-        StackTraceElement[] stackTrace = new Exception().getStackTrace();
-        for (StackTraceElement element : stackTrace) {
-            // Ignoring line numbers should not weaken this check too much while at
-            // the same time making it more robust against source code changes
-            if (equalsIgnoringLine(makeGraphSTE, element) || equalsIgnoringLine(initSTE, element)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean assumeNonStaticFinalDefaultFieldsAsFinal(Class<?> clazz) {
-        if (TrustFinalDefaultFields.getValue()) {
-            return true;
-        }
-        return clazz == SnippetCounter.class || clazz == NodeClass.class;
-    }
-
-    /**
-     * Usually {@link Stable} fields are not considered constant if the value is the
-     * {@link JavaConstant#isDefaultForKind default value}. For some special classes we want to
-     * override this behavior.
-     */
-    private static boolean assumeDefaultStableFieldsAsFinal(Class<?> clazz) {
-        // HotSpotVMConfig has a lot of zero-value fields which we know are stable and want to be
-        // considered as constants.
-        if (clazz == HotSpotVMConfig.class) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * in AOT mode, some fields should never be embedded even for snippets/replacements.
-     */
-    private static boolean isEmbeddable(HotSpotResolvedJavaField field) {
-        return Embeddable.test(field);
-    }
-
-    /**
-     * Separate out the static initialization to eliminate cycles between clinit and other locks
-     * that could lead to deadlock. Static code that doesn't call back into type or field machinery
-     * is probably ok but anything else should be made lazy.
-     */
-    static class Embeddable {
-
-        /**
-         * @return Return true if it's ok to embed the value of {@code field}.
-         */
-        public static boolean test(HotSpotResolvedJavaField field) {
-            return !ImmutableCode.getValue() || !fields.contains(field);
-        }
-
-        private static final List<ResolvedJavaField> fields = new ArrayList<>();
-        static {
-            try {
-                MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
-                fields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("TRUE")));
-                fields.add(metaAccess.lookupJavaField(Boolean.class.getDeclaredField("FALSE")));
-
-                Class<?> characterCacheClass = Character.class.getDeclaredClasses()[0];
-                assert "java.lang.Character$CharacterCache".equals(characterCacheClass.getName());
-                fields.add(metaAccess.lookupJavaField(characterCacheClass.getDeclaredField("cache")));
-
-                Class<?> byteCacheClass = Byte.class.getDeclaredClasses()[0];
-                assert "java.lang.Byte$ByteCache".equals(byteCacheClass.getName());
-                fields.add(metaAccess.lookupJavaField(byteCacheClass.getDeclaredField("cache")));
-
-                Class<?> shortCacheClass = Short.class.getDeclaredClasses()[0];
-                assert "java.lang.Short$ShortCache".equals(shortCacheClass.getName());
-                fields.add(metaAccess.lookupJavaField(shortCacheClass.getDeclaredField("cache")));
-
-                Class<?> integerCacheClass = Integer.class.getDeclaredClasses()[0];
-                assert "java.lang.Integer$IntegerCache".equals(integerCacheClass.getName());
-                fields.add(metaAccess.lookupJavaField(integerCacheClass.getDeclaredField("cache")));
-
-                Class<?> longCacheClass = Long.class.getDeclaredClasses()[0];
-                assert "java.lang.Long$LongCache".equals(longCacheClass.getName());
-                fields.add(metaAccess.lookupJavaField(longCacheClass.getDeclaredField("cache")));
-
-                fields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("UNASSIGNED_STACK")));
-                fields.add(metaAccess.lookupJavaField(Throwable.class.getDeclaredField("SUPPRESSED_SENTINEL")));
-            } catch (SecurityException | NoSuchFieldException e) {
-                throw new GraalInternalError(e);
-            }
-        }
     }
 }

@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
+import com.oracle.jvmci.runtime.*;
 
 /**
  * Interface for service providers that register replacements with the compiler.

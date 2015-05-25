@@ -28,13 +28,48 @@ import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.bytecode.*;
-import com.oracle.graal.compiler.common.*;
 
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
  */
 public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
+
+    /**
+     * Subset of JVM bytecode opcodes used by {@link HotSpotConstantPool}.
+     */
+    static class Bytecodes {
+        public static final int LDC = 18; // 0x12
+        public static final int LDC_W = 19; // 0x13
+        public static final int LDC2_W = 20; // 0x14
+        public static final int GETSTATIC = 178; // 0xB2
+        public static final int PUTSTATIC = 179; // 0xB3
+        public static final int GETFIELD = 180; // 0xB4
+        public static final int PUTFIELD = 181; // 0xB5
+        public static final int INVOKEVIRTUAL = 182; // 0xB6
+        public static final int INVOKESPECIAL = 183; // 0xB7
+        public static final int INVOKESTATIC = 184; // 0xB8
+        public static final int INVOKEINTERFACE = 185; // 0xB9
+        public static final int INVOKEDYNAMIC = 186; // 0xBA
+        public static final int NEW = 187; // 0xBB
+        public static final int NEWARRAY = 188; // 0xBC
+        public static final int ANEWARRAY = 189; // 0xBD
+        public static final int CHECKCAST = 192; // 0xC0
+        public static final int INSTANCEOF = 193; // 0xC1
+        public static final int MULTIANEWARRAY = 197; // 0xC5
+
+        static boolean isInvoke(int opcode) {
+            switch (opcode) {
+                case INVOKEVIRTUAL:
+                case INVOKESPECIAL:
+                case INVOKESTATIC:
+                case INVOKEINTERFACE:
+                case INVOKEDYNAMIC:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+    }
 
     /**
      * Enum of all {@code JVM_CONSTANT} constants used in the VM. This includes the public and
@@ -103,7 +138,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
                 if (res != null) {
                     return res;
                 }
-                throw GraalInternalError.shouldNotReachHere("unknown JVM_CONSTANT tag " + tag);
+                throw new InternalError("Unknown JVM_CONSTANT tag " + tag);
             }
         }
 
@@ -161,7 +196,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
             assert index < 0 : "not an invokedynamic constant pool index " + index;
         } else {
             assert opcode == Bytecodes.GETFIELD || opcode == Bytecodes.PUTFIELD || opcode == Bytecodes.GETSTATIC || opcode == Bytecodes.PUTSTATIC || opcode == Bytecodes.INVOKEINTERFACE ||
-                            opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL || opcode == Bytecodes.INVOKESTATIC : "unexpected invoke opcode " + Bytecodes.nameOf(opcode);
+                            opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL || opcode == Bytecodes.INVOKESTATIC : "unexpected invoke opcode " + opcode;
             index = rawIndex + runtime().getConfig().constantPoolCpCacheIndexTag;
         }
         return index;
@@ -416,7 +451,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
                 Object obj = runtime().getCompilerToVM().resolveConstantInPool(metaspaceConstantPool, cpi);
                 return HotSpotObjectConstantImpl.forObject(obj);
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown constant pool tag " + tag);
+                throw new InternalError("Unknown constant pool tag " + tag);
         }
     }
 

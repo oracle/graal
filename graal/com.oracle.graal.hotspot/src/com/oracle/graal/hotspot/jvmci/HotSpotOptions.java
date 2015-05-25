@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.jvmci;
 import static com.oracle.graal.hotspot.jvmci.HotSpotOptionsLoader.*;
 import static java.lang.Double.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
