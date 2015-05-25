@@ -27,15 +27,9 @@ import static com.oracle.graal.bytecode.Bytecodes.Flags.*;
 import java.lang.reflect.*;
 
 /**
- * The definitions of the bytecodes that are valid input to the compiler and related utility
- * methods. This comprises two groups: the standard Java bytecodes defined by <a href=
+ * Definitions of the standard Java bytecodes defined by <a href=
  * "http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html"> Java Virtual
- * Machine Specification</a>, and a set of <i>extended</i> bytecodes that support low-level
- * programming, for example, memory barriers.
- *
- * The extended bytecodes are one or three bytes in size. The one-byte bytecodes follow the values
- * in the standard set, with no gap. The three-byte extended bytecodes share a common first byte and
- * carry additional instruction-specific information in the second and third bytes.
+ * Machine Specification</a>.
  */
 public class Bytecodes {
 
@@ -340,8 +334,7 @@ public class Bytecodes {
 
     /**
      * An array that maps from a bytecode value to a {@link String} for the corresponding
-     * instruction mnemonic. This will include the root instruction for the three-byte extended
-     * instructions.
+     * instruction mnemonic.
      */
     private static final String[] nameArray = new String[256];
 
