@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.jvmci;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 
 public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implements HotSpotMetaspaceConstant, VMConstant, HotSpotProxified {
 

@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
@@ -39,6 +38,7 @@ import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * An {@link GenericInvocationPlugin} that handles methods annotated by {@link Fold},
@@ -112,7 +112,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             } else if (MethodsElidedInSnippets != null) {
                 if (MethodFilter.matches(MethodsElidedInSnippets, method)) {
                     if (method.getSignature().getReturnKind() != Kind.Void) {
-                        throw new GraalInternalError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
+                        throw new JVMCIError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
                     }
                     return true;
                 }
@@ -127,7 +127,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             if (markerType != null) {
                 return markerType.value();
             } else {
-                throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
+                throw JVMCIError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
             }
         } else {
             return InputType.Value;

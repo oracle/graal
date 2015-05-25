@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -39,6 +38,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
@@ -134,7 +134,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             escapeReason = "Must not let virtual frame object escape at node " + fixed + ".";
         }
 
-        Throwable exception = new GraalInternalError(escapeReason +
+        Throwable exception = new JVMCIError(escapeReason +
                         " Insert a call to VirtualFrame.materialize() to convert the instance to a materialized frame object (source position of following stack trace is approximate)");
         throw GraphUtil.approxSourceException(fixed, exception);
     }

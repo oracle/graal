@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
@@ -1020,7 +1021,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         return;
                     }
                 } else {
-                    throw new GraalInternalError("Illegal state");
+                    throw new JVMCIError("Illegal state");
                 }
             } else if (node instanceof AbstractMergeNode && !(node instanceof LoopBeginNode)) {
                 for (AbstractEndNode endNode : ((AbstractMergeNode) node).cfgPredecessors()) {

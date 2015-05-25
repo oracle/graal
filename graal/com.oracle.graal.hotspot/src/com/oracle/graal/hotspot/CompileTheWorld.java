@@ -40,7 +40,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.jvmci.*;
@@ -49,6 +48,7 @@ import com.oracle.graal.options.OptionUtils.OptionConsumer;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class implements compile-the-world functionality in Graal.
@@ -126,7 +126,7 @@ public final class CompileTheWorld {
             if (options != null) {
                 for (String option : options.split("\\s+")) {
                     if (!HotSpotOptions.parseOption(option, this)) {
-                        throw new GraalInternalError("Invalid option specified: %s", option);
+                        throw new JVMCIError("Invalid option specified: %s", option);
                     }
                 }
             }

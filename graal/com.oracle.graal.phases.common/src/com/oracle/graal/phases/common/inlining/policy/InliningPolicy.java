@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.common.inlining.walker.*;
 
 public interface InliningPolicy {
 

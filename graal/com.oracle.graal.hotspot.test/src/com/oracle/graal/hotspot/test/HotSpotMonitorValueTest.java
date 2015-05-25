@@ -33,8 +33,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.jvmci.common.*;
 
 public class HotSpotMonitorValueTest extends GraalCompilerTest {
 
@@ -80,7 +80,7 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
         try {
             return getMetaAccess().lookupJavaMethod(Object.class.getDeclaredMethod("wait", long.class));
         } catch (Exception e) {
-            throw new GraalInternalError("Could not find Object.wait(long): %s", e);
+            throw new JVMCIError("Could not find Object.wait(long): %s", e);
         }
     }
 

@@ -32,7 +32,6 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -48,6 +47,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.replacements.nodes.arithmetic.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.
@@ -92,7 +92,7 @@ public class StandardGraphBuilderPlugins {
         try {
             STRING_VALUE_FIELD = String.class.getDeclaredField("value");
         } catch (NoSuchFieldException e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

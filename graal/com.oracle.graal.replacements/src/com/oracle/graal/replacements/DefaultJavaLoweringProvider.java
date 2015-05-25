@@ -34,7 +34,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -42,13 +41,14 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * VM-independent lowerings for standard Java nodes. VM-specific methods are abstract and must be
@@ -106,7 +106,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else if (n instanceof VerifyHeapNode) {
             lowerVerifyHeap((VerifyHeapNode) n);
         } else {
-            throw GraalInternalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
+            throw JVMCIError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
         }
     }
 
@@ -745,7 +745,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             base = indexedLocation.getDisplacement();
             index = indexedLocation.getIndex();
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         base -= arrayBaseOffset(elementKind);

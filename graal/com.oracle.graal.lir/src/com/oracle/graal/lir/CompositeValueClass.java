@@ -31,6 +31,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRIntrospection.LIRFieldsScanner;
 import com.oracle.graal.lir.LIRIntrospection.OperandModeAnnotation;
 import com.oracle.graal.lir.LIRIntrospection.Values;
+import com.oracle.jvmci.common.*;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
@@ -86,7 +87,7 @@ public final class CompositeValueClass<T> extends FieldIntrospection<T> {
             if (field.isAnnotationPresent(CompositeValue.Component.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(CompositeValue.Component.class).value()));
             } else {
-                GraalInternalError.shouldNotReachHere();
+                JVMCIError.shouldNotReachHere();
             }
             return result;
         }

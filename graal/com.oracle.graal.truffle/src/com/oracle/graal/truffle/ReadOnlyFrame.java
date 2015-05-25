@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.truffle.api.frame.*;
 
 class ReadOnlyFrame implements Frame {
@@ -45,7 +45,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setObject(FrameSlot slot, Object value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
@@ -53,7 +53,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setByte(FrameSlot slot, byte value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
@@ -61,7 +61,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setBoolean(FrameSlot slot, boolean value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public int getInt(FrameSlot slot) throws FrameSlotTypeException {
@@ -69,7 +69,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setInt(FrameSlot slot, int value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public long getLong(FrameSlot slot) throws FrameSlotTypeException {
@@ -77,7 +77,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setLong(FrameSlot slot, long value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
@@ -85,7 +85,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setFloat(FrameSlot slot, float value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
@@ -93,7 +93,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public void setDouble(FrameSlot slot, double value) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public Object getValue(FrameSlot slot) {
@@ -101,7 +101,7 @@ class ReadOnlyFrame implements Frame {
     }
 
     public MaterializedFrame materialize() {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public boolean isObject(FrameSlot slot) {

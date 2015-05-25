@@ -25,13 +25,14 @@ package com.oracle.graal.loop;
 import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.VirtualState.*;
+import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.common.*;
 
 public class LoopFragmentInside extends LoopFragment {
 
@@ -194,7 +195,7 @@ public class LoopFragmentInside extends LoopFragment {
         } else if (phi instanceof MemoryPhiNode) {
             ret = new MemoryPhiNode(merge, ((MemoryPhiNode) phi).getLocationIdentity());
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
         return graph.addWithoutUnique(ret);
     }

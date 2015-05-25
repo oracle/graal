@@ -33,7 +33,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
@@ -55,6 +54,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 public class ArrayCopySnippets implements Snippets {
 
@@ -307,13 +307,13 @@ public class ArrayCopySnippets implements Snippets {
             super(providers, providers.getSnippetReflection(), target);
         }
 
-        private ResolvedJavaMethod originalArraycopy() throws GraalInternalError {
+        private ResolvedJavaMethod originalArraycopy() throws JVMCIError {
             if (originalArraycopy == null) {
                 Method method;
                 try {
                     method = System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class);
                 } catch (NoSuchMethodException | SecurityException e) {
-                    throw new GraalInternalError(e);
+                    throw new JVMCIError(e);
                 }
                 originalArraycopy = providers.getMetaAccess().lookupJavaMethod(method);
             }
@@ -516,7 +516,7 @@ public class ArrayCopySnippets implements Snippets {
                     CallTargetNode call = invoke.callTarget();
 
                     if (!call.targetMethod().equals(originalArraycopy)) {
-                        throw new GraalInternalError("unexpected invoke %s in snippet", call.targetMethod());
+                        throw new JVMCIError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
                     InvokeNode newInvoke = graph.add(new InvokeNode(invoke.callTarget(), arraycopy.getBci()));

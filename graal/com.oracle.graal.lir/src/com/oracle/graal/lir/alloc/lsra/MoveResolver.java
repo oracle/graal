@@ -29,9 +29,9 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.jvmci.common.*;
 
 /**
  */
@@ -53,7 +53,7 @@ class MoveResolver {
         if (isRegister(location)) {
             registerBlocked[asRegister(location).number] += direction;
         } else {
-            throw GraalInternalError.shouldNotReachHere("unhandled value " + location);
+            throw JVMCIError.shouldNotReachHere("unhandled value " + location);
         }
     }
 
@@ -61,7 +61,7 @@ class MoveResolver {
         if (isRegister(location)) {
             return registerBlocked[asRegister(location).number];
         }
-        throw GraalInternalError.shouldNotReachHere("unhandled value " + location);
+        throw JVMCIError.shouldNotReachHere("unhandled value " + location);
     }
 
     void setMultipleReadsAllowed() {

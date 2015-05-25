@@ -30,7 +30,7 @@ import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.common.*;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -103,7 +103,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 }
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere("Unknown op2 " + op2);
+                throw JVMCIError.shouldNotReachHere("Unknown op2 " + op2);
         }
         int newInst = ~maskBits & inst;
         newInst |= setBits;

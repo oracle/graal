@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -36,6 +35,7 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Utility creating a graph for a stub used to call a native function.
@@ -93,7 +93,7 @@ public class NativeCallStubGraphBuilder {
             callNode.setNext(returnNode);
             return g;
         } catch (NoSuchMethodException e) {
-            throw GraalInternalError.shouldNotReachHere("Call Stub method not found");
+            throw JVMCIError.shouldNotReachHere("Call Stub method not found");
         }
     }
 
@@ -133,7 +133,7 @@ public class NativeCallStubGraphBuilder {
                     last = loadFieldNode;
                     args.add(loadFieldNode);
                 } catch (NoSuchFieldException e) {
-                    throw new GraalInternalError(e);
+                    throw new JVMCIError(e);
                 }
             }
         }
@@ -175,6 +175,6 @@ public class NativeCallStubGraphBuilder {
 
     @SuppressWarnings("unused")
     public static Object libCall(Object argLoc, Object unused1, Object unused2) {
-        throw GraalInternalError.shouldNotReachHere("GNFI libCall method must not be called");
+        throw JVMCIError.shouldNotReachHere("GNFI libCall method must not be called");
     }
 }

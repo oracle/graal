@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.graph.Graph.*;
+import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.util.*;

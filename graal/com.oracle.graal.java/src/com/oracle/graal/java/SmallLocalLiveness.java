@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.java.BciBlockMapping.*;
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
 public final class SmallLocalLiveness extends LocalLiveness {
     /*

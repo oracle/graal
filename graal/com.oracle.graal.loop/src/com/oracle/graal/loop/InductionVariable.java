@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class describes a value node that is an induction variable in a counted loop.
@@ -42,7 +42,7 @@ public abstract class InductionVariable {
                 case Down:
                     return Up;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     }

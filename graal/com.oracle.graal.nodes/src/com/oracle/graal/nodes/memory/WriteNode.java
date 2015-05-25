@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.memory;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -31,6 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.extended.LocationNode.Location;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
@@ -71,7 +71,7 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        throw GraalInternalError.shouldNotReachHere("unexpected WriteNode before PEA");
+        throw JVMCIError.shouldNotReachHere("unexpected WriteNode before PEA");
     }
 
     public boolean canNullCheck() {

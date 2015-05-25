@@ -30,10 +30,10 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.
@@ -95,7 +95,7 @@ public final class Interval {
                 case Stack:
                     return stack;
             }
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         /**
@@ -873,7 +873,7 @@ public final class Interval {
                 Interval lastChild = splitChildren.get(splitChildren.size() - 1);
                 msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
             }
-            throw new GraalInternalError("Linear Scan Error: %s", msg);
+            throw new JVMCIError("Linear Scan Error: %s", msg);
         }
 
         if (!splitChildren.isEmpty()) {

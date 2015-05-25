@@ -24,12 +24,12 @@ package com.oracle.graal.lir.gen;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.StackMove;
+import com.oracle.jvmci.common.*;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCounterFactory {
 
@@ -87,7 +87,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
      * @param delta the value to be added
      */
     default Value emitAtomicReadAndAdd(Value address, Value delta) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     /**
@@ -97,7 +97,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
      * @param newValue the new value to be written
      */
     default Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
@@ -205,12 +205,12 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
     @SuppressWarnings("unused")
     default Value emitCountLeadingZeros(Value value) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     @SuppressWarnings("unused")
     default Value emitCountTrailingZeros(Value value) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
 }

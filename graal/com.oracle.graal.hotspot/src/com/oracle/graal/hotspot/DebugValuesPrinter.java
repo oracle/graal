@@ -29,9 +29,9 @@ import java.util.*;
 import java.util.regex.*;
 import java.util.stream.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all
@@ -39,7 +39,7 @@ import com.oracle.graal.debug.internal.*;
  */
 public class DebugValuesPrinter {
 
-    public void printDebugValues() throws GraalInternalError {
+    public void printDebugValues() throws JVMCIError {
         TTY.println();
         TTY.println("<DebugValues>");
         List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
@@ -91,7 +91,7 @@ public class DebugValuesPrinter {
                         }
                         break;
                     default:
-                        throw new GraalInternalError("Unknown summary type: %s", summary);
+                        throw new JVMCIError("Unknown summary type: %s", summary);
                 }
                 for (DebugValueMap topLevelMap : topLevelMaps) {
                     topLevelMap.reset();

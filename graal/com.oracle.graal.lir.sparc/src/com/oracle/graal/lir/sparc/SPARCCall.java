@@ -30,9 +30,9 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.common.*;
 
 public class SPARCCall {
 
@@ -96,7 +96,7 @@ public class SPARCCall {
                 } else if (after - before == 8) {
                     // everything is fine;
                 } else {
-                    GraalInternalError.shouldNotReachHere("" + (after - before));
+                    JVMCIError.shouldNotReachHere("" + (after - before));
                 }
                 after = masm.position();
                 crb.recordDirectCall(before, after, callTarget, state);

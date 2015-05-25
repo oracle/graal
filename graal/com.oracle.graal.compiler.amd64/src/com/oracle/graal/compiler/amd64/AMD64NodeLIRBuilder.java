@@ -35,7 +35,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
@@ -48,6 +47,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.common.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
@@ -132,7 +132,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             case Double:
                 return OperandSize.SD;
             default:
-                throw GraalInternalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
+                throw JVMCIError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
         }
     }
 
@@ -258,7 +258,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     op = MOVSXD;
                     break;
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
             kind = Kind.Int;
@@ -274,7 +274,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 case 32:
                     return null;
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         }
         if (kind != null && op != null) {
@@ -460,7 +460,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             case L2F:
                 return emitConvertMemoryOp(Kind.Float, SSEOp.CVTSI2SS, QWORD, access);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 

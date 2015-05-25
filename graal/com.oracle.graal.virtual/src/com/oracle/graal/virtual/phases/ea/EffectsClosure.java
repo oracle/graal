@@ -39,6 +39,7 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.common.*;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
@@ -243,7 +244,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 }
             }
         }
-        throw new GraalInternalError("too many iterations at %s", loop);
+        throw new JVMCIError("too many iterations at %s", loop);
     }
 
     @SuppressWarnings("unused")

@@ -30,10 +30,10 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for
@@ -258,7 +258,7 @@ public class StandardOp {
         @Override
         public void emitCode(CompilationResultBuilder crb) {
             if (block != null) {
-                throw new GraalInternalError(this + " should have been replaced");
+                throw new JVMCIError(this + " should have been replaced");
             }
         }
     }
@@ -294,7 +294,7 @@ public class StandardOp {
 
         @Override
         public void emitCode(CompilationResultBuilder crb) {
-            throw new GraalInternalError(this + " should have been removed");
+            throw new JVMCIError(this + " should have been removed");
         }
 
         @Override

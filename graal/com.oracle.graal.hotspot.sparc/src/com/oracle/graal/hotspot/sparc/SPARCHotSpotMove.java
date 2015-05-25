@@ -38,12 +38,13 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.jvmci.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.common.*;
 
 public class SPARCHotSpotMove {
 
@@ -82,7 +83,7 @@ public class SPARCHotSpotMove {
                                 masm.stx(sr1, addr);
                                 break;
                             default:
-                                throw GraalInternalError.shouldNotReachHere();
+                                throw JVMCIError.shouldNotReachHere();
                         }
                     }
                 }
@@ -106,7 +107,7 @@ public class SPARCHotSpotMove {
                         new SPARCMacroAssembler.Setx(0xDEADDEADDEADDEADL, asRegister(dest), true).emit(masm);
                     }
                 } else {
-                    GraalInternalError.unimplemented();
+                    JVMCIError.unimplemented();
                 }
             } else if (constant instanceof HotSpotMetaspaceConstant) {
                 assert constant.getKind() == Kind.Int || constant.getKind() == Kind.Long;
@@ -116,13 +117,13 @@ public class SPARCHotSpotMove {
                 crb.recordInlineDataInCode(constant);
                 if (compressed) {
                     if (isImmutable && generatePIC) {
-                        GraalInternalError.unimplemented();
+                        JVMCIError.unimplemented();
                     } else {
                         new SPARCMacroAssembler.Setx(constant.asInt(), asRegister(dest), true).emit(masm);
                     }
                 } else {
                     if (isImmutable && generatePIC) {
-                        GraalInternalError.unimplemented();
+                        JVMCIError.unimplemented();
                     } else {
                         new SPARCMacroAssembler.Setx(constant.asLong(), asRegister(dest), true).emit(masm);
                     }

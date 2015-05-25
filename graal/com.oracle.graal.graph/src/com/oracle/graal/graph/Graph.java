@@ -32,6 +32,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -906,12 +907,12 @@ public class Graph {
                     try {
                         assert node.verify();
                     } catch (AssertionError t) {
-                        throw new GraalInternalError(t);
+                        throw new JVMCIError(t);
                     } catch (RuntimeException t) {
-                        throw new GraalInternalError(t);
+                        throw new JVMCIError(t);
                     }
-                } catch (GraalInternalError e) {
-                    throw GraalGraphInternalError.transformAndAddContext(e, node).addContext(this);
+                } catch (JVMCIError e) {
+                    throw GraalGraphJVMCIError.transformAndAddContext(e, node).addContext(this);
                 }
             }
         }

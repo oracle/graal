@@ -37,7 +37,6 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -335,7 +334,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         try {
             return UnsafeAccess.unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
         } catch (Exception e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

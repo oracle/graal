@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -30,6 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Instances of this node class will look for a preceding if node and put the given probability into
@@ -74,9 +74,9 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         if (probability.isConstant()) {
             double probabilityValue = probability.asJavaConstant().asDouble();
             if (probabilityValue < 0.0) {
-                throw new GraalInternalError("A negative probability of " + probabilityValue + " is not allowed!");
+                throw new JVMCIError("A negative probability of " + probabilityValue + " is not allowed!");
             } else if (probabilityValue > 1.0) {
-                throw new GraalInternalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
+                throw new JVMCIError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
             } else if (Double.isNaN(probabilityValue)) {
                 /*
                  * We allow NaN if the node is in unreachable code that will eventually fall away,
@@ -115,7 +115,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 }
             } else {
                 if (!isSubstitutionGraph()) {
-                    throw new GraalInternalError("Wrong usage of branch probability injection!");
+                    throw new JVMCIError("Wrong usage of branch probability injection!");
                 }
             }
         }
@@ -141,6 +141,6 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
 
     @Override
     public void lower(LoweringTool tool) {
-        throw new GraalInternalError("Branch probability could not be injected, because the probability value did not reduce to a constant value.");
+        throw new JVMCIError("Branch probability could not be injected, because the probability value did not reduce to a constant value.");
     }
 }

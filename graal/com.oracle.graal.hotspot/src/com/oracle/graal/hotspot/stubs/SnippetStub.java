@@ -27,7 +27,6 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
@@ -44,6 +43,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.jvmci.common.*;
 
 /**
  * Base class for a stub defined by a snippet.
@@ -147,7 +147,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     }
 
     protected Object getConstantParameterValue(int index, String name) {
-        throw new GraalInternalError("%s must override getConstantParameterValue() to provide a value for parameter %d%s", getClass().getName(), index, name == null ? "" : " (" + name + ")");
+        throw new JVMCIError("%s must override getConstantParameterValue() to provide a value for parameter %d%s", getClass().getName(), index, name == null ? "" : " (" + name + ")");
     }
 
     @Override

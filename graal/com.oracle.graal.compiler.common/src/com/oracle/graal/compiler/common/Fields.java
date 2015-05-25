@@ -26,6 +26,8 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 
+import com.oracle.jvmci.common.*;
+
 import sun.misc.*;
 
 /**
@@ -209,7 +211,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             return unsafe.getByte(object, offset);
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -308,7 +310,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             unsafe.putByte(object, offset, (byte) value);
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 

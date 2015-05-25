@@ -29,7 +29,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -46,6 +45,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.common.*;
 
 //JaCoCo Exclude
 
@@ -198,7 +198,7 @@ public abstract class Stub {
                     int result = runtime.getCompilerToVM().installCode(hsCompResult, installedCode, null);
                     HotSpotVMConfig config = runtime.getConfig();
                     if (result != config.codeInstallResultOk) {
-                        throw new GraalInternalError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
+                        throw new JVMCIError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
                     }
                     ((HotSpotCodeCacheProvider) codeCache).logOrDump(installedCode, compResult);
                     code = installedCode;

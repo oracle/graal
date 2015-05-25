@@ -37,7 +37,6 @@ import com.oracle.graal.api.collections.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -50,6 +49,7 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.runtime.*;
 
 //JaCoCo Exclude
@@ -137,7 +137,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             if (!GraalRuntime.getValue().equals("")) {
                 // Fail fast if a non-default value for GraalRuntime was specified
                 // and the corresponding factory is not available
-                throw new GraalInternalError("Specified runtime \"%s\" not available for the %s architecture", GraalRuntime.getValue(), architecture);
+                throw new JVMCIError("Specified runtime \"%s\" not available for the %s architecture", GraalRuntime.getValue(), architecture);
             } else if (nonBasicCount == 1) {
                 // If there is exactly one non-basic runtime, select this one.
                 return nonBasic;
@@ -239,7 +239,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                 factory = findFactory(arch);
             }
             if (factory == null) {
-                throw new GraalInternalError("No backend available for specified GPU architecture \"%s\"", arch);
+                throw new JVMCIError("No backend available for specified GPU architecture \"%s\"", arch);
             }
             try (InitTimer t = timer("create backend:", arch)) {
                 registerBackend(factory.createBackend(this, null, hostBackend));
@@ -274,7 +274,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                     case "Thread":
                         break;
                     default:
-                        throw new GraalInternalError("Unsupported value for DebugSummaryValue: %s", summary);
+                        throw new JVMCIError("Unsupported value for DebugSummaryValue: %s", summary);
                 }
             }
         }

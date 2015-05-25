@@ -50,11 +50,11 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
@@ -256,7 +256,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 // These stubs do callee saving
                 registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
                 registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-            } catch (GraalInternalError e) {
+            } catch (JVMCIError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;
                 }
@@ -265,7 +265,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 // These stubs do callee saving
                 registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
                 registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-            } catch (GraalInternalError e) {
+            } catch (JVMCIError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;
                 }

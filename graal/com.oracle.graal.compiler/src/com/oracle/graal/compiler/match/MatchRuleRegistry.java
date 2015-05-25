@@ -27,11 +27,11 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.runtime.*;
 
 public class MatchRuleRegistry {
@@ -55,7 +55,7 @@ public class MatchRuleRegistry {
                 }
             }
             if (result[i] == null) {
-                throw new GraalInternalError("unknown field \"%s\" in class %s", names[i], nodeClass);
+                throw new JVMCIError("unknown field \"%s\" in class %s", names[i], nodeClass);
             }
         }
         return result;

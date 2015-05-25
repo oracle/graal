@@ -28,7 +28,6 @@ import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
@@ -60,7 +59,7 @@ public class CipherBlockChainingSubstitutions {
             cipherBlockChainingClass = Class.forName("com.sun.crypto.provider.CipherBlockChaining", true, cl);
             rOffset = UnsafeAccess.unsafe.objectFieldOffset(cipherBlockChainingClass.getDeclaredField("r"));
         } catch (Exception ex) {
-            throw new GraalInternalError(ex);
+            throw new JVMCIError(ex);
         }
     }
 

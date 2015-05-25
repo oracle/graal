@@ -26,7 +26,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -36,6 +35,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Represents a compiler backend for Graal.
@@ -103,7 +103,7 @@ public abstract class Backend {
      * @param parser the bytecode parser the BytecodeLIRBuilder should use
      */
     public BytecodeLIRBuilder newBytecodeLIRBuilder(LIRGeneratorTool gen, BytecodeParserTool parser) {
-        throw GraalInternalError.unimplemented("Baseline compilation is not available for this Backend!");
+        throw JVMCIError.unimplemented("Baseline compilation is not available for this Backend!");
     }
 
     /**

@@ -22,18 +22,16 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
-import com.oracle.graal.api.meta.ProfilingInfo;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
+import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.*;
 
-import java.util.Map;
+import java.util.*;
 
-import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.AlwaysInlineIntrinsics;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.graal.phases.common.inlining.info.elem.*;
 
 public abstract class AbstractInliningPolicy implements InliningPolicy {
     public static final float RelevanceCapForInlining = 1.0f;

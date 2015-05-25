@@ -26,7 +26,7 @@ import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;

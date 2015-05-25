@@ -29,10 +29,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Asi;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.jvmci.common.*;
 
 @Opcode("BSWAP")
 public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
@@ -69,7 +69,7 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
                 masm.ldxa(addr.getBase(), addr.getIndex(), asLongReg(result), Asi.ASI_PRIMARY_LITTLE);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 }

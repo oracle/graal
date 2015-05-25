@@ -23,7 +23,7 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.phases.AllocationPhase.*;
+import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.stackslotalloc.*;
 
 public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {

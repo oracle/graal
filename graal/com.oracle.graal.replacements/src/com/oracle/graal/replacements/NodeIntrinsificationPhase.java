@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
@@ -45,6 +44,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Replaces calls to {@link NodeIntrinsic}s with nodes and calls to methods annotated with
@@ -294,12 +294,12 @@ public class NodeIntrinsificationPhase extends Phase {
                         break;
                     }
                 } else {
-                    throw new GraalInternalError("Found multiple constructors in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes), constructor, c);
+                    throw new JVMCIError("Found multiple constructors in %s compatible with signature %s: %s, %s", nodeClass.toJavaName(), sigString(parameterTypes), constructor, c);
                 }
             }
         }
         if (constructor == null) {
-            throw new GraalInternalError("Could not find constructor in %s compatible with signature %s", nodeClass.toJavaName(), sigString(parameterTypes));
+            throw new JVMCIError("Could not find constructor in %s compatible with signature %s", nodeClass.toJavaName(), sigString(parameterTypes));
         }
 
         try {
@@ -333,7 +333,7 @@ public class NodeIntrinsificationPhase extends Phase {
         int count = c.getSignature().getParameterCount(false);
         for (int i = start; i < count; i++) {
             if (c.getParameterAnnotation(InjectedNodeParameter.class, i) != null) {
-                throw new GraalInternalError("Injected parameter %d of type %s must precede all non-injected parameters of %s", i,
+                throw new JVMCIError("Injected parameter %d of type %s must precede all non-injected parameters of %s", i,
                                 c.getSignature().getParameterType(i, c.getDeclaringClass()).toJavaName(false), c.format("%H.%n(%p)"));
             }
         }
@@ -364,7 +364,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 } else if (signature[i].isAssignableFrom(metaAccess.lookupJavaType(StampProvider.class))) {
                     injected[injected.length - 1] = stampProvider;
                 } else {
-                    throw new GraalInternalError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
+                    throw new JVMCIError("Cannot handle injected argument of type %s in %s", signature[i].toJavaName(), c.format("%H.%n(%p)"));
                 }
             } else {
                 assert checkNoMoreInjected(c, i);

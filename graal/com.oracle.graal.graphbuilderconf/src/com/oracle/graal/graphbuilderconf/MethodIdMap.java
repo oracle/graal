@@ -28,10 +28,10 @@ import java.util.function.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graphbuilderconf.MethodIdHolder.MethodIdAllocator;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * A map whose keys are {@link MethodIdHolder}s that doesn't require eager resolution of
@@ -124,7 +124,7 @@ public class MethodIdMap<V> {
                 assert Modifier.isStatic(res.getModifiers()) == isStatic;
                 return res;
             } catch (NoSuchMethodException | SecurityException e) {
-                throw new GraalInternalError(e);
+                throw new JVMCIError(e);
             }
         }
 

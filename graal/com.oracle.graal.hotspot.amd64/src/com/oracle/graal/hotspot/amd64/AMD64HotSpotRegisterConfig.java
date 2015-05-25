@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.jvmci.*;
+import com.oracle.jvmci.common.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -207,7 +208,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
                     }
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
 
             if (locations[i] == null) {

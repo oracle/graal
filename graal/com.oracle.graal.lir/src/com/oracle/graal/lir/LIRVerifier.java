@@ -29,13 +29,13 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.ssa.*;
+import com.oracle.jvmci.common.*;
 
 public final class LIRVerifier {
 
@@ -169,7 +169,7 @@ public final class LIRVerifier {
                     TTY.println("definition of %s: %s", value, variableDefinitions[variableIdx]);
                 }
                 TTY.println("ERROR: Use of variable %s that is not defined in dominator", value);
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
 
         } else if (isAllocatableRegister(value)) {
@@ -182,7 +182,7 @@ public final class LIRVerifier {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
                 TTY.println("live registers: %s", Arrays.toString(curRegistersLive));
                 TTY.println("ERROR: Use of fixed register %s that is not defined in this block", value);
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
         }
     }
@@ -199,7 +199,7 @@ public final class LIRVerifier {
                 TTY.println("live variables: %s", curVariablesLive);
                 TTY.println("definition of %s: %s", value, variableDefinitions[variableIdx]);
                 TTY.println("ERROR: Variable %s defined multiple times", value);
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
             assert curInstruction != null;
             variableDefinitions[variableIdx] = curInstruction;
@@ -213,7 +213,7 @@ public final class LIRVerifier {
             if (curRegistersDefined.get(regNum)) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
                 TTY.println("ERROR: Same register defined twice in the same instruction: %s", value);
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
             curRegistersDefined.set(regNum);
 
@@ -236,7 +236,7 @@ public final class LIRVerifier {
             (isIllegal(value) && flags.contains(OperandFlag.ILLEGAL))) {
             return;
         }
-        throw new GraalInternalError("Invalid LIR%n  Instruction: %s%n  Mode: %s%n  Flags: %s%n  Unexpected value: %s %s",
+        throw new JVMCIError("Invalid LIR%n  Instruction: %s%n  Mode: %s%n  Flags: %s%n  Unexpected value: %s %s",
                         op, mode, flags, value.getClass().getSimpleName(), value);
     }
     // @formatter:on

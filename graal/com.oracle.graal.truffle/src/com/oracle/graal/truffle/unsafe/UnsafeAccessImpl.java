@@ -26,7 +26,6 @@ import java.lang.reflect.*;
 
 import sun.misc.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.unsafe.*;
 
 @SuppressWarnings("unused")

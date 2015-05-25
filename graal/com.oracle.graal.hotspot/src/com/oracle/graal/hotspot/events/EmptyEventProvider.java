@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.events;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * An empty implementation for {@link EventProvider}. This implementation is used when no logging is
@@ -36,7 +36,7 @@ public final class EmptyEventProvider implements EventProvider {
 
     class EmptyCompilationEvent implements CompilationEvent {
         public void commit() {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public boolean shouldWrite() {
@@ -51,31 +51,31 @@ public final class EmptyEventProvider implements EventProvider {
         }
 
         public void setMethod(String method) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setCompileId(int compileId) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setCompileLevel(int compileLevel) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setSucceeded(boolean succeeded) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setIsOsr(boolean isOsr) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setCodeSize(int codeSize) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setInlinedBytes(int inlinedBytes) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -85,7 +85,7 @@ public final class EmptyEventProvider implements EventProvider {
 
     class EmptyCompilerFailureEvent implements CompilerFailureEvent {
         public void commit() {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public boolean shouldWrite() {
@@ -94,11 +94,11 @@ public final class EmptyEventProvider implements EventProvider {
         }
 
         public void setCompileId(int compileId) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         public void setMessage(String message) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 

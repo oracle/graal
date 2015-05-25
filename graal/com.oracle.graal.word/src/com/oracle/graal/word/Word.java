@@ -28,11 +28,11 @@ import java.lang.annotation.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.jvmci.common.*;
 
 public abstract class Word implements Signed, Unsigned, Pointer {
 
@@ -1087,17 +1087,17 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     public final boolean equals(Object obj) {
-        throw GraalInternalError.shouldNotReachHere("equals must not be called on words");
+        throw JVMCIError.shouldNotReachHere("equals must not be called on words");
     }
 
     @Override
     public final int hashCode() {
-        throw GraalInternalError.shouldNotReachHere("hashCode must not be called on words");
+        throw JVMCIError.shouldNotReachHere("hashCode must not be called on words");
     }
 
     @Override
     public String toString() {
-        throw GraalInternalError.shouldNotReachHere("toString must not be called on words");
+        throw JVMCIError.shouldNotReachHere("toString must not be called on words");
     }
 }
 

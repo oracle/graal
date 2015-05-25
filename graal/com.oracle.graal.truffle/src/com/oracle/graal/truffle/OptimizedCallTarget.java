@@ -31,9 +31,9 @@ import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.truffle.debug.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
@@ -517,7 +517,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         try {
             return OptimizedCallTarget.class.getDeclaredMethod("callDirect", Object[].class);
         } catch (NoSuchMethodException | SecurityException e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 
@@ -525,7 +525,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         try {
             return OptimizedCallTarget.class.getDeclaredMethod("callInlined", Object[].class);
         } catch (NoSuchMethodException | SecurityException e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

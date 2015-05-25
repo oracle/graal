@@ -32,7 +32,7 @@ import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.unsafe.*;

@@ -25,10 +25,10 @@ package com.oracle.graal.virtual.phases.ea;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a
@@ -171,7 +171,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 } catch (Throwable t) {
                     StringBuilder str = new StringBuilder();
                     toString(str, i);
-                    throw new GraalInternalError(t).addContext("effect", str);
+                    throw new JVMCIError(t).addContext("effect", str);
                 }
                 if (effect.isVisible() && Debug.isLogEnabled()) {
                     StringBuilder str = new StringBuilder();

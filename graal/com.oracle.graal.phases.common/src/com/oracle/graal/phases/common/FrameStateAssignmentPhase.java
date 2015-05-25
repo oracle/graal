@@ -24,7 +24,6 @@ package com.oracle.graal.phases.common;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
@@ -33,6 +32,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
+import com.oracle.jvmci.common.*;
 
 /**
  * This phase transfers {@link FrameState} nodes from {@link StateSplit} nodes to
@@ -54,7 +54,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptBefore) {
                 DeoptimizingNode.DeoptBefore deopt = (DeoptimizingNode.DeoptBefore) node;
                 if (deopt.canDeoptimize() && deopt.stateBefore() == null) {
-                    GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    JVMCIError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateBefore(currentState);
                 }
             }
@@ -71,7 +71,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptDuring) {
                 DeoptimizingNode.DeoptDuring deopt = (DeoptimizingNode.DeoptDuring) node;
                 if (deopt.canDeoptimize()) {
-                    GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    JVMCIError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.computeStateDuring(currentState);
                 }
             }
@@ -79,7 +79,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode.DeoptAfter) {
                 DeoptimizingNode.DeoptAfter deopt = (DeoptimizingNode.DeoptAfter) node;
                 if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
-                    GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
+                    JVMCIError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateAfter(currentState);
                 }
             }

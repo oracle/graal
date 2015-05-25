@@ -28,7 +28,6 @@ import static com.oracle.graal.nodes.ConstantNode.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.hotspot.nodes.type.*;
@@ -37,10 +36,11 @@ import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Extends {@link WordOperationPlugin} to handle {@linkplain HotSpotOperation HotSpot word
@@ -129,7 +129,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 break;
 
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown operation: " + operation.opcode());
+                throw JVMCIError.shouldNotReachHere("unknown operation: " + operation.opcode());
         }
     }
 }

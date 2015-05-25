@@ -35,7 +35,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.*;
+import com.oracle.graal.lir.alloc.lsra.Interval.UsePosList;
 import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;

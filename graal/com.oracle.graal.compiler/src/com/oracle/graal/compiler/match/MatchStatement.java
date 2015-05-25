@@ -124,7 +124,7 @@ public class MatchStatement {
             } else {
                 result[i] = context.namedNode(arguments[i]);
                 if (result[i] == null) {
-                    throw new GraalGraphInternalError("Can't find named node %s", arguments[i]);
+                    throw new GraalGraphJVMCIError("Can't find named node %s", arguments[i]);
                 }
             }
         }

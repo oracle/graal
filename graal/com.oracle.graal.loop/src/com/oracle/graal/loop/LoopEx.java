@@ -26,7 +26,6 @@ import static com.oracle.graal.graph.Node.*;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -39,6 +38,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.common.*;
 
 public class LoopEx {
 
@@ -243,7 +243,7 @@ public class LoopEx {
                     }
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
             counted = new CountedLoopInfo(this, iv, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor());
             return true;

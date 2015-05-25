@@ -30,10 +30,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.common.*;
 
 public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 
@@ -178,7 +178,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         if (type == Type.JavaCallee) {
             return callingConvention(cpuCalleeParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
         }
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public Register[] getCallingConventionRegisters(Type type, Kind kind) {
@@ -230,7 +230,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                     }
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
 
             if (locations[i] == null) {

@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.sparc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.lir.*;
@@ -35,6 +34,7 @@ import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -99,7 +99,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
                 fromKind = Kind.Int;
                 break;
             default:
-                throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
 
         Kind localFromKind = fromKind;

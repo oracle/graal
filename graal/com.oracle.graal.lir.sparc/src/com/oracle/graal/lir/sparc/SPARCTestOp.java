@@ -28,9 +28,9 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.common.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCTestOp> TYPE = LIRInstructionClass.create(SPARCTestOp.class);
@@ -59,7 +59,7 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                     masm.andcc(asLongReg(x), asLongReg(y), g0);
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else if (isConstant(y)) {
             switch (x.getKind()) {
@@ -74,10 +74,10 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                     masm.andcc(asLongReg(x), crb.asIntConst(y), g0);
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 

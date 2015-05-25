@@ -23,7 +23,9 @@
 package com.oracle.graal.lir.alloc.lsra;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.*;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBindingLists;
+import com.oracle.graal.lir.alloc.lsra.Interval.State;
 
 /**
  */

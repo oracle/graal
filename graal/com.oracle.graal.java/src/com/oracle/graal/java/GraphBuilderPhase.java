@@ -26,13 +26,13 @@ import static com.oracle.graal.api.code.TypeCheckHints.*;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 import static java.lang.String.*;
 
 import java.util.*;
@@ -67,6 +67,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
@@ -431,7 +432,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         @SuppressWarnings("serial")
-        public class BytecodeParserError extends GraalInternalError {
+        public class BytecodeParserError extends JVMCIError {
 
             public BytecodeParserError(Throwable cause) {
                 super(cause);
@@ -2836,7 +2837,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         break;
                     }
                     default:
-                        throw GraalInternalError.shouldNotReachHere();
+                        throw JVMCIError.shouldNotReachHere();
                 }
             }
 
@@ -2878,7 +2879,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         v = genFloatRem(x, y);
                         break;
                     default:
-                        throw new GraalInternalError("should not reach");
+                        throw new JVMCIError("should not reach");
                 }
                 frameState.push(result, append(v));
             }
@@ -2897,7 +2898,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         v = genIntegerRem(x, y);
                         break;
                     default:
-                        throw new GraalInternalError("should not reach");
+                        throw new JVMCIError("should not reach");
                 }
                 frameState.push(result, append(v));
             }
@@ -2924,7 +2925,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         v = genUnsignedRightShift(x, s);
                         break;
                     default:
-                        throw new GraalInternalError("should not reach");
+                        throw new JVMCIError("should not reach");
                 }
                 frameState.push(kind, append(v));
             }
@@ -2947,7 +2948,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         v = genXor(x, y);
                         break;
                     default:
-                        throw new GraalInternalError("should not reach");
+                        throw new JVMCIError("should not reach");
                 }
                 frameState.push(kind, append(v));
             }

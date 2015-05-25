@@ -32,7 +32,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -54,6 +53,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -296,10 +296,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                         if (!peephole(valueNode)) {
                             try {
                                 doRoot(valueNode);
-                            } catch (GraalInternalError e) {
-                                throw GraalGraphInternalError.transformAndAddContext(e, valueNode);
+                            } catch (JVMCIError e) {
+                                throw GraalGraphJVMCIError.transformAndAddContext(e, valueNode);
                             } catch (Throwable e) {
-                                throw new GraalGraphInternalError(e).addContext(valueNode);
+                                throw new GraalGraphJVMCIError(e).addContext(valueNode);
                             }
                         }
                     } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
@@ -327,7 +327,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                      * If we have more than one successor, we cannot just use the first one. Since
                      * successors are unordered, this would be a random choice.
                      */
-                    throw new GraalInternalError("Block without BlockEndOp: " + block.getEndNode());
+                    throw new JVMCIError("Block without BlockEndOp: " + block.getEndNode());
                 }
                 gen.emitJump(getLIRBlock((FixedNode) successors.first()));
             }
@@ -389,7 +389,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (node instanceof ArithmeticLIRLowerable) {
             ((ArithmeticLIRLowerable) node).generate(this, gen);
         } else {
-            throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
+            throw JVMCIError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }
     }
 
@@ -488,7 +488,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (node instanceof IntegerTestNode) {
             emitIntegerTestBranch((IntegerTestNode) node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else {
-            throw GraalInternalError.unimplemented(node.toString());
+            throw JVMCIError.unimplemented(node.toString());
         }
     }
 
@@ -533,7 +533,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             IntegerTestNode test = (IntegerTestNode) node;
             return gen.emitIntegerTestMove(operand(test.getX()), operand(test.getY()), trueValue, falseValue);
         } else {
-            throw GraalInternalError.unimplemented(node.toString());
+            throw JVMCIError.unimplemented(node.toString());
         }
     }
 
@@ -558,7 +558,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (callTarget instanceof IndirectCallTargetNode) {
             emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         if (isLegal(result)) {
@@ -586,7 +586,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 result[j] = operand;
                 j++;
             } else {
-                throw GraalInternalError.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
+                throw JVMCIError.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
             }
         }
         return result;

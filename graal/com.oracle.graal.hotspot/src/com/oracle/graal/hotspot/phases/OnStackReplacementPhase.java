@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.phases;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -36,6 +35,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.jvmci.common.*;
 
 public class OnStackReplacementPhase extends Phase {
 
@@ -55,7 +55,7 @@ public class OnStackReplacementPhase extends Phase {
                 throw new BailoutException("No OnStackReplacementNode generated");
             }
             if (osrNodes.count() > 1) {
-                throw new GraalInternalError("Multiple OnStackReplacementNodes generated");
+                throw new JVMCIError("Multiple OnStackReplacementNodes generated");
             }
             if (osr.stateAfter().locksSize() != 0) {
                 throw new BailoutException("OSR with locks not supported");

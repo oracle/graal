@@ -28,8 +28,9 @@ import java.util.*;
 import java.util.stream.*;
 import java.util.zip.*;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.runtime.*;
 
 /**
@@ -220,6 +221,6 @@ public class GenGraalRuntimeInlineHpp {
         if (desc.getType() == Double.class) {
             return 'd';
         }
-        throw GraalInternalError.shouldNotReachHere("Unexpected primitive option type: " + desc.getType().getName());
+        throw JVMCIError.shouldNotReachHere("Unexpected primitive option type: " + desc.getType().getName());
     }
 }

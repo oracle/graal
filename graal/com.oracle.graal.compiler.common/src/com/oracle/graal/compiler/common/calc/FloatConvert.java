@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.calc;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.common.*;
 
 public enum FloatConvert {
     F2I,
@@ -59,7 +59,7 @@ public enum FloatConvert {
             case L2F:
                 return F2L;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 }

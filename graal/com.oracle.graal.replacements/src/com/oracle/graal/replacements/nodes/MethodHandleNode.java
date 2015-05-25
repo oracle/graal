@@ -28,7 +28,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -38,6 +37,7 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
@@ -77,7 +77,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
             case LINK_TO_INTERFACE:
                 return getLinkToTarget(assumptions, intrinsicMethod, methodHandleAccess, original, bci, returnType, arguments);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -251,7 +251,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
                 targetArguments = Arrays.copyOfRange(arguments, 0, arguments.length - 1);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
 
         MethodCallTargetNode callTarget = ResolvedMethodHandleCallTargetNode.create(targetInvokeKind, target, targetArguments, targetReturnType, original, arguments, returnType);

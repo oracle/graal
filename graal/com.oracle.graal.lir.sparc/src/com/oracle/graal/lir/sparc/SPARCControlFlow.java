@@ -43,13 +43,13 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
+import com.oracle.jvmci.common.*;
 
 public class SPARCControlFlow {
 
@@ -260,7 +260,7 @@ public class SPARCControlFlow {
                     }
                     break;
                 default:
-                    GraalInternalError.shouldNotReachHere();
+                    JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -439,7 +439,7 @@ public class SPARCControlFlow {
                             break;
                         }
                         default:
-                            throw new GraalInternalError("switch only supported for int, long and object");
+                            throw new JVMCIError("switch only supported for int, long and object");
                     }
                     ConditionFlag conditionFlag = ConditionFlag.fromCondtition(conditionCode, condition, false);
                     masm.cmp(keyRegister, scratchRegister);
@@ -600,7 +600,7 @@ public class SPARCControlFlow {
                 masm.fmovdcc(cond, cc, asDoubleReg(other), asDoubleReg(result));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 }

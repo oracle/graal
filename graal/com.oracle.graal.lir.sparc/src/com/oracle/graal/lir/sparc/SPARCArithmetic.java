@@ -37,12 +37,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.common.*;
 
 public enum SPARCArithmetic {
     // @formatter:off
@@ -262,7 +263,7 @@ public enum SPARCArithmetic {
                 masm.mulx(asIntReg(src1), constant, asIntReg(dst));
                 break;
             case IMULCC:
-                throw GraalInternalError.unimplemented();
+                throw JVMCIError.unimplemented();
             case IDIV:
                 masm.sra(asRegister(src1), 0, asRegister(src1));
                 masm.sdivx(asIntReg(src1), constant, asIntReg(dst));
@@ -338,7 +339,7 @@ public enum SPARCArithmetic {
             case DMUL:
             case DDIV:
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         if (info != null) {
             assert exceptionOffset != -1;
@@ -431,7 +432,7 @@ public enum SPARCArithmetic {
                 masm.srl(asIntReg(src1), asIntReg(src2), asIntReg(dst));
                 break;
             case IREM:
-                throw GraalInternalError.unimplemented();
+                throw JVMCIError.unimplemented();
             case LADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.add(asLongReg(src1), asLongReg(src2), asLongReg(dst));
@@ -453,7 +454,7 @@ public enum SPARCArithmetic {
                 masm.mulx(asLongReg(src1), asLongReg(src2), asLongReg(dst));
                 break;
             case LMULCC:
-                throw GraalInternalError.unimplemented();
+                throw JVMCIError.unimplemented();
             case LDIV:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 exceptionOffset = masm.position();
@@ -510,7 +511,7 @@ public enum SPARCArithmetic {
                 masm.fdivs(asFloatReg(src1), asFloatReg(src2), asFloatReg(dst));
                 break;
             case FREM:
-                throw GraalInternalError.unimplemented();
+                throw JVMCIError.unimplemented();
             case DADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.faddd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
@@ -529,13 +530,13 @@ public enum SPARCArithmetic {
                 masm.fdivd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             case DREM:
-                throw GraalInternalError.unimplemented();
+                throw JVMCIError.unimplemented();
             case DAND:
                 delaySlotLir.emitControlTransfer(crb, masm);
                 masm.fandd(asDoubleReg(src1), asDoubleReg(src2), asDoubleReg(dst));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         if (info != null) {
             assert exceptionOffset != -1;
@@ -575,10 +576,10 @@ public enum SPARCArithmetic {
                     masm.sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst));
                     break;
                 case IUREM:
-                    GraalInternalError.unimplemented();
+                    JVMCIError.unimplemented();
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else if (isRegister(src1) && isRegister(src2)) {
             Value srcLeft = src1;
@@ -637,10 +638,10 @@ public enum SPARCArithmetic {
                     masm.sub(asIntReg(scratch1), asIntReg(dst), asIntReg(dst));
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
         if (info != null) {
             assert exceptionOffset != -1;
@@ -761,7 +762,7 @@ public enum SPARCArithmetic {
                 masm.fnegd(asDoubleReg(src), asDoubleReg(dst));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
+                throw JVMCIError.shouldNotReachHere("missing: " + opcode);
         }
         if (info != null) {
             assert exceptionOffset != -1;
@@ -850,7 +851,7 @@ public enum SPARCArithmetic {
                 assert rk == Kind.Double && xk == Kind.Double && yk == Kind.Double : "opcode=" + opcode + ", result kind=" + rk + ", x kind=" + xk + ", y kind=" + yk;
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
+                throw JVMCIError.shouldNotReachHere("missing: " + opcode);
         }
     }
 
@@ -905,7 +906,7 @@ public enum SPARCArithmetic {
                     masm.umulxhi(asLongReg(x), asLongReg(y), asLongReg(result));
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     }

@@ -28,7 +28,6 @@ import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -39,6 +38,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Base class for LIR tests.
@@ -76,7 +76,7 @@ public abstract class LIRTest extends JTTTest {
         }
 
         private static void defaultHandler(@SuppressWarnings("unused") LIRGeneratorTool gen, Value... args) {
-            throw new GraalInternalError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
+            throw new JVMCIError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
         }
 
         void generate(LIRGeneratorTool gen, Value[] values) {
@@ -93,7 +93,7 @@ public abstract class LIRTest extends JTTTest {
             } else if (values.length == 5) {
                 generate(gen, values[0], values[1], values[2], values[3], values[4]);
             } else {
-                GraalInternalError.unimplemented();
+                JVMCIError.unimplemented();
             }
 
         }

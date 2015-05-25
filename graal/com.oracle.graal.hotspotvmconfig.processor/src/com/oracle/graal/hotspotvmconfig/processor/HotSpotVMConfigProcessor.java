@@ -34,8 +34,8 @@ import javax.lang.model.element.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspotvmconfig.*;
+import com.oracle.jvmci.common.*;
 
 @SupportedAnnotationTypes({"com.oracle.graal.hotspotvmconfig.HotSpotVMConstant", "com.oracle.graal.hotspotvmconfig.HotSpotVMFlag", "com.oracle.graal.hotspotvmconfig.HotSpotVMField",
                 "com.oracle.graal.hotspotvmconfig.HotSpotVMType", "com.oracle.graal.hotspotvmconfig.HotSpotVMValue"})
@@ -262,7 +262,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
                     setter = String.format("set_%s(\"%s\", (%s) (intptr_t) %s);", type, field.getSimpleName(), type, name);
                     break;
                 default:
-                    throw new GraalInternalError("unexpected type: " + value.get());
+                    throw new JVMCIError("unexpected type: " + value.get());
             }
         }
 
@@ -325,7 +325,7 @@ public class HotSpotVMConfigProcessor extends AbstractProcessor {
                 case "sparc":
                     return "defined(SPARC)";
                 default:
-                    throw new GraalInternalError("unexpected arch: " + arch);
+                    throw new JVMCIError("unexpected arch: " + arch);
             }
         }
 

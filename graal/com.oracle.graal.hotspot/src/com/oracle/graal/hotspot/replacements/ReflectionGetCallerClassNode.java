@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.jvmci.*;
@@ -32,6 +31,7 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.jvmci.common.*;
 
 @NodeInfo
 public final class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
@@ -82,7 +82,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
             HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) state.method();
             switch (n) {
                 case 0:
-                    throw GraalInternalError.shouldNotReachHere("current frame state does not include the Reflection.getCallerClass frame");
+                    throw JVMCIError.shouldNotReachHere("current frame state does not include the Reflection.getCallerClass frame");
                 case 1:
                     // Frame 0 and 1 must be caller sensitive (see JVM_GetCallerClass).
                     if (!method.isCallerSensitive()) {

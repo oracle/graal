@@ -26,13 +26,13 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * The {@code ConstantNode} represents a {@link Constant constant}.
@@ -391,7 +391,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             case Long:
                 return ConstantNode.forLong(value, graph);
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
+                throw JVMCIError.shouldNotReachHere("unknown kind " + kind);
         }
     }
 
@@ -404,7 +404,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             case Long:
                 return createPrimitive(JavaConstant.forLong(value));
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
+                throw JVMCIError.shouldNotReachHere("unknown kind " + kind);
         }
     }
 
@@ -415,7 +415,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             case Double:
                 return ConstantNode.forDouble(value, graph);
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
+                throw JVMCIError.shouldNotReachHere("unknown kind " + kind);
         }
     }
 
@@ -426,7 +426,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
             case Double:
                 return ConstantNode.forDouble(value);
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
+                throw JVMCIError.shouldNotReachHere("unknown kind " + kind);
         }
     }
 

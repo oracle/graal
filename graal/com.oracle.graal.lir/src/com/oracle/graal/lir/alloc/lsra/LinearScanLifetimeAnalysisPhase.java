@@ -31,7 +31,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
@@ -48,6 +47,7 @@ import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.jvmci.common.*;
 
 class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
@@ -345,7 +345,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     reportFailure(numBlocks);
                 }
                 // bailout if this occurs in product mode.
-                throw new GraalInternalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
+                throw new JVMCIError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
             }
         }
     }

@@ -22,15 +22,11 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
+import java.util.*;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
-import java.util.LinkedList;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * Given a graph, visit all fixed nodes in dominator-based order, collecting in the process the

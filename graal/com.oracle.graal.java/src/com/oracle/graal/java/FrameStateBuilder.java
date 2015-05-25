@@ -29,7 +29,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
@@ -41,6 +40,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.common.*;
 
 public final class FrameStateBuilder implements SideEffectsState {
 
@@ -224,7 +224,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return newFrameState;
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
 
         if (pushedValues != null) {
@@ -262,7 +262,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return FrameState.toBytecodePosition(outerFrameState);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
         return new BytecodePosition(outer, method, bci);
     }

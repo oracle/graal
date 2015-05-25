@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.nodes.type;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.jvmci.common.*;
 
 public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
@@ -51,7 +51,7 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalInternalError.shouldNotReachHere("metaspace pointer has no Java type");
+        throw JVMCIError.shouldNotReachHere("metaspace pointer has no Java type");
     }
 
     protected void appendString(StringBuilder str) {

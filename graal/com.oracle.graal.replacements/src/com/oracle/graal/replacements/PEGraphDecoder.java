@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
 

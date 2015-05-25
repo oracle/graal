@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
@@ -36,6 +35,7 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.jvmci.common.*;
 
 public class MoveProfiling extends PostAllocationOptimizationPhase {
 
@@ -84,7 +84,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
                     return CONST2STACK;
                 }
             }
-            throw GraalInternalError.shouldNotReachHere(String.format("Unrecognized Move: %s dst=%s, src=%s", move, dst, src));
+            throw JVMCIError.shouldNotReachHere(String.format("Unrecognized Move: %s dst=%s, src=%s", move, dst, src));
         }
     }
 

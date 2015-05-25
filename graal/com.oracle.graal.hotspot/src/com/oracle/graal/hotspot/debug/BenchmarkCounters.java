@@ -28,12 +28,12 @@ import java.util.Map.Entry;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 
@@ -123,9 +123,9 @@ public class BenchmarkCounters {
     }
 
     @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION", justification = "concurrent abstraction calls are in synchronized block")
-    private static Counter getCounter(String name, String group, HotSpotVMConfig config) throws GraalInternalError {
+    private static Counter getCounter(String name, String group, HotSpotVMConfig config) throws JVMCIError {
         if (!enabled) {
-            throw new GraalInternalError("cannot access count index when counters are not enabled: " + group + ", " + name);
+            throw new JVMCIError("cannot access count index when counters are not enabled: " + group + ", " + name);
         }
         String nameGroup = name + "#" + group;
         Counter counter = counterMap.get(nameGroup);
@@ -141,7 +141,7 @@ public class BenchmarkCounters {
         assert counter.group.equals(group) : "mismatching groups: " + counter.group + " vs. " + group;
         int countersSize = config.graalCountersSize;
         if (counter.index >= countersSize) {
-            throw new GraalInternalError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + countersSize + ")");
+            throw new JVMCIError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + countersSize + ")");
         }
         return counter;
     }
@@ -357,7 +357,7 @@ public class BenchmarkCounters {
         if (Options.BenchmarkDynamicCounters.getValue() != null) {
             String[] arguments = Options.BenchmarkDynamicCounters.getValue().split(",");
             if (arguments.length == 0 || (arguments.length % 3) != 0) {
-                throw new GraalInternalError("invalid arguments to BenchmarkDynamicCounters: (err|out),start,end,(err|out),start,end,... (~ matches multiple digits)");
+                throw new JVMCIError("invalid arguments to BenchmarkDynamicCounters: (err|out),start,end,(err|out),start,end,... (~ matches multiple digits)");
             }
             for (int i = 0; i < arguments.length; i += 3) {
                 if (arguments[i].equals("err")) {
@@ -365,7 +365,7 @@ public class BenchmarkCounters {
                 } else if (arguments[i].equals("out")) {
                     System.setOut(new PrintStream(new BenchmarkCountersOutputStream(System.out, arguments[i + 1], arguments[i + 2])));
                 } else {
-                    throw new GraalInternalError("invalid arguments to BenchmarkDynamicCounters: err|out");
+                    throw new JVMCIError("invalid arguments to BenchmarkDynamicCounters: err|out");
                 }
             }
             enabled = true;

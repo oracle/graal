@@ -27,6 +27,7 @@ import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedObjectTypeImpl.*;
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.meta.*;
+
 import edu.umd.cs.findbugs.annotations.*;
 
 /**

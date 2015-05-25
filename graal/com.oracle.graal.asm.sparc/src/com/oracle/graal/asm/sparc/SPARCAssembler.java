@@ -34,10 +34,10 @@ import static java.lang.String.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.
@@ -580,7 +580,7 @@ public abstract class SPARCAssembler extends Assembler {
             } else if (isFloat) {
                 return Fcc0;
             } else {
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
         }
     }
@@ -696,7 +696,7 @@ public abstract class SPARCAssembler extends Assembler {
                 case OverflowSet              : return OverflowClear;
                 case OverflowClear            : return OverflowSet;
                 default:
-                    GraalInternalError.unimplemented();
+                    JVMCIError.unimplemented();
             }
             //@formatter:on
             return null;
@@ -753,7 +753,7 @@ public abstract class SPARCAssembler extends Assembler {
                         case GT:
                             return Greater;
                     }
-                    throw GraalInternalError.shouldNotReachHere("Unimplemented for: " + cond);
+                    throw JVMCIError.shouldNotReachHere("Unimplemented for: " + cond);
                 case Fcc0:
                 case Fcc1:
                 case Fcc2:
@@ -772,9 +772,9 @@ public abstract class SPARCAssembler extends Assembler {
                         case GT:
                             return unorderedIsTrue ? F_UnorderedOrGreater : F_Greater;
                     }
-                    throw GraalInternalError.shouldNotReachHere("Unkown condition: " + cond);
+                    throw JVMCIError.shouldNotReachHere("Unkown condition: " + cond);
             }
-            throw GraalInternalError.shouldNotReachHere("Unknown condition flag register " + conditionFlagsRegister);
+            throw JVMCIError.shouldNotReachHere("Unknown condition flag register " + conditionFlagsRegister);
         }
     }
 

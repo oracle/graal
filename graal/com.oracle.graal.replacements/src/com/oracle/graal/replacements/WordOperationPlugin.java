@@ -29,7 +29,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -41,6 +40,7 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * A {@link GenericInvocationPlugin} for calls to {@linkplain Operation word operations}, and a
@@ -98,7 +98,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
         return false;
     }
 
-    protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws GraalInternalError {
+    protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws JVMCIError {
         Operation operation = wordMethod.getAnnotation(Word.Operation.class);
         Kind returnKind = wordMethod.getSignature().getReturnKind();
         Kind returnStackKind = returnKind.getStackKind();
@@ -201,7 +201,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
                 break;
 
             default:
-                throw new GraalInternalError("Unknown opcode: %s", operation.opcode());
+                throw new JVMCIError("Unknown opcode: %s", operation.opcode());
         }
     }
 
@@ -215,7 +215,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
             Constructor<?> cons = nodeClass.getDeclaredConstructor(ValueNode.class, ValueNode.class);
             return (ValueNode) cons.newInstance(left, right);
         } catch (Throwable ex) {
-            throw new GraalInternalError(ex).addContext(nodeClass.getName());
+            throw new JVMCIError(ex).addContext(nodeClass.getName());
         }
     }
 

@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventListener;
+import com.oracle.graal.graph.Graph.Options;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -829,7 +830,7 @@ public abstract class Node implements Cloneable, Formattable {
                 copyOrClearEdgesForClone(newNode, Successors, edgesToCopy);
             }
         } catch (Exception e) {
-            throw new GraalGraphInternalError(e).addContext(this);
+            throw new GraalGraphJVMCIError(e).addContext(this);
         }
         newNode.graph = into;
         newNode.id = INITIAL_ID;
@@ -918,7 +919,7 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    protected VerificationError fail(String message, Object... args) throws GraalGraphInternalError {
+    protected VerificationError fail(String message, Object... args) throws GraalGraphJVMCIError {
         throw new VerificationError(message, args).addContext(this);
     }
 

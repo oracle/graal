@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 //JaCoCo Exclude
 
@@ -819,7 +820,7 @@ public class HotSpotReplacementsUtil {
         try {
             return unsafe.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
         } catch (Exception e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

@@ -26,9 +26,9 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.common.*;
 
 public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
     public static final LIRInstructionClass<SPARCMathIntrinsicOp> TYPE = LIRInstructionClass.create(SPARCMathIntrinsicOp.class);
@@ -63,7 +63,7 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
                         masm.fsqrtd(asDoubleReg(input), asDoubleReg(result));
                         break;
                     default:
-                        GraalInternalError.shouldNotReachHere();
+                        JVMCIError.shouldNotReachHere();
                 }
                 break;
             case ABS:
@@ -75,11 +75,11 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
                         masm.fabsd(asDoubleReg(input), asDoubleReg(result));
                         break;
                     default:
-                        GraalInternalError.shouldNotReachHere();
+                        JVMCIError.shouldNotReachHere();
                 }
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 

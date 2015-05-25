@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.jvmci;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.*;
+import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 
 /**
  * HotSpot specific extension of {@link MemoryAccessProvider}.

@@ -43,7 +43,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.GraalCompiler.Request;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -70,6 +69,7 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -677,7 +677,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner)) {
                 installedCode = addMethod(installedCodeOwner, compResult);
                 if (installedCode == null) {
-                    throw new GraalInternalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
+                    throw new JVMCIError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);

@@ -33,12 +33,12 @@ import com.oracle.graal.api.code.DataSection.Data;
 import com.oracle.graal.api.code.DataSection.DataBuilder;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
@@ -214,7 +214,7 @@ public class CompilationResultBuilder {
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();
         if (!NumUtil.isInt(c)) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
         return (int) c;
     }
@@ -370,7 +370,7 @@ public class CompilationResultBuilder {
 
             try {
                 emitOp(this, op);
-            } catch (GraalInternalError e) {
+            } catch (JVMCIError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + lir.codeEmittingOrder());
             }
         }
@@ -380,9 +380,9 @@ public class CompilationResultBuilder {
         try {
             op.emitCode(crb);
         } catch (AssertionError t) {
-            throw new GraalInternalError(t);
+            throw new JVMCIError(t);
         } catch (RuntimeException t) {
-            throw new GraalInternalError(t);
+            throw new JVMCIError(t);
         }
     }
 

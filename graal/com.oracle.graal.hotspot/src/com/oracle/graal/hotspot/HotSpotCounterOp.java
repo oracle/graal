@@ -29,11 +29,11 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
+import com.oracle.jvmci.common.*;
 
 public abstract class HotSpotCounterOp extends LIRInstruction {
     public static final LIRInstructionClass<HotSpotCounterOp> TYPE = LIRInstructionClass.create(HotSpotCounterOp.class);
@@ -64,7 +64,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     protected static int getDisplacementForLongIndex(TargetDescription target, long index) {
         long finalDisp = index * target.getSizeInBytes(Kind.Long);
         if (!NumUtil.isInt(finalDisp)) {
-            throw GraalInternalError.unimplemented("cannot deal with indices that big: " + index);
+            throw JVMCIError.unimplemented("cannot deal with indices that big: " + index);
         }
         return (int) finalDisp;
     }
@@ -127,7 +127,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
      * @param increment
      */
     public void patchCounterIncrement(Assembler asm, int[] increment) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     private static long asLong(JavaConstant value) {
@@ -148,7 +148,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     protected static int asInt(JavaConstant value) {
         long l = asLong(value);
         if (!NumUtil.isInt(l)) {
-            throw GraalInternalError.shouldNotReachHere("value does not fit into int: " + l);
+            throw JVMCIError.shouldNotReachHere("value does not fit into int: " + l);
         }
         return (int) l;
     }

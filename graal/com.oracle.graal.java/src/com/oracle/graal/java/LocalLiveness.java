@@ -26,7 +26,7 @@ import static com.oracle.graal.bytecode.Bytecodes.*;
 
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.java.BciBlockMapping.*;
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
 /**
  * Encapsulates the liveness calculation, so that subclasses for locals &le; 64 and locals &gt; 64

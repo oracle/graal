@@ -26,9 +26,9 @@ import java.lang.invoke.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Plugin for handling a specific method invocation.
@@ -165,7 +165,7 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      * Handles an invocation when a specific {@code apply} method is not available.
      */
     default boolean defaultHandler(@SuppressWarnings("unused") GraphBuilderContext b, ResolvedJavaMethod targetMethod, @SuppressWarnings("unused") Receiver receiver, ValueNode... args) {
-        throw new GraalInternalError("Invocation plugin for %s does not handle invocations with %d arguments", targetMethod.format("%H.%n(%p)"), args.length);
+        throw new JVMCIError("Invocation plugin for %s does not handle invocations with %d arguments", targetMethod.format("%H.%n(%p)"), args.length);
     }
 
     default StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
@@ -177,6 +177,6 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
                 return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
             }
         }
-        throw new GraalInternalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
+        throw new JVMCIError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
     }
 }

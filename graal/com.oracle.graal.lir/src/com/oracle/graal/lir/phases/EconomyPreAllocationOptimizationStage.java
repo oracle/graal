@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 public class EconomyPreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
     public EconomyPreAllocationOptimizationStage() {

@@ -34,11 +34,11 @@ import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is
@@ -360,7 +360,7 @@ public class MatchProcessor extends AbstractProcessor {
         if (p != null) {
             return p.getQualifiedName().toString();
         }
-        throw new GraalInternalError("can't find package for %s", type);
+        throw new JVMCIError("can't find package for %s", type);
     }
 
     class MatchDescriptor {
@@ -755,7 +755,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
     }
 
-    private void processMatchableNode(Element element, TypeElement topDeclaringType, MatchableNode matchable, AnnotationMirror mirror) throws GraalInternalError {
+    private void processMatchableNode(Element element, TypeElement topDeclaringType, MatchableNode matchable, AnnotationMirror mirror) throws JVMCIError {
         logMessage("processMatchableNode %s %s %s\n", topDeclaringType, element, matchable);
         String nodeClass;
         String nodePackage;
@@ -766,7 +766,7 @@ public class MatchProcessor extends AbstractProcessor {
             nodeClassMirror = e.getTypeMirror();
         }
         if (nodeClassMirror == null) {
-            throw new GraalInternalError("Can't get mirror for node class %s", element);
+            throw new JVMCIError("Can't get mirror for node class %s", element);
         }
         if (nodeClassMirror.toString().equals(MatchableNode.class.getName())) {
             nodeClass = topDeclaringType.getQualifiedName().toString();

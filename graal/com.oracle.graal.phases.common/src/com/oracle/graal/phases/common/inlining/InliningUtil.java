@@ -33,7 +33,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -49,6 +48,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.info.*;
+import com.oracle.jvmci.common.*;
 
 public class InliningUtil {
 
@@ -664,7 +664,7 @@ public class InliningUtil {
         return replacements.getSubstitution(target, invokeBci);
     }
 
-    public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalInternalError {
+    public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws JVMCIError {
         StructuredGraph graph = invoke.asNode().graph();
         if (!concrete.equals(((MethodCallTargetNode) invoke.callTarget()).targetMethod())) {
             assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind().hasReceiver();
@@ -685,12 +685,12 @@ public class InliningUtil {
         return macroNode;
     }
 
-    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws GraalInternalError {
+    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws JVMCIError {
         try {
             Constructor<?> cons = macroNodeClass.getDeclaredConstructor(Invoke.class);
             return (FixedWithNextNode) cons.newInstance(invoke);
         } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
-            throw new GraalGraphInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
+            throw new GraalGraphJVMCIError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
         }
     }
 }

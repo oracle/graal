@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
 

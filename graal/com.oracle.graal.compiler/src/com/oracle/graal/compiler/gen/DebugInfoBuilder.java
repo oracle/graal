@@ -27,7 +27,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -35,6 +34,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Builds {@link LIRFrameState}s from {@link FrameState}s.
@@ -145,7 +145,7 @@ public class DebugInfoBuilder {
                 caller = computeFrameForState(state.outerFrameState());
             }
             return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
-        } catch (GraalInternalError e) {
+        } catch (JVMCIError e) {
             throw e.addContext("FrameState: ", state);
         }
     }
@@ -192,7 +192,7 @@ public class DebugInfoBuilder {
                 EscapeObjectState state = objectStates.get(obj);
                 if (state == null && obj.entryCount() > 0) {
                     // null states occur for objects with 0 fields
-                    throw new GraalInternalError("no mapping found for virtual object %s", obj);
+                    throw new JVMCIError("no mapping found for virtual object %s", obj);
                 }
                 if (state instanceof MaterializedObjectState) {
                     return toValue(((MaterializedObjectState) state).materializedValue());
@@ -225,7 +225,7 @@ public class DebugInfoBuilder {
                     return Value.ILLEGAL;
                 }
             }
-        } catch (GraalInternalError e) {
+        } catch (JVMCIError e) {
             throw e.addContext("toValue: ", value);
         }
     }

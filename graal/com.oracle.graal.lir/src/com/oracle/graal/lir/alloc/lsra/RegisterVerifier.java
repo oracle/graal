@@ -28,13 +28,13 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.jvmci.common.*;
 
 /**
  */
@@ -179,7 +179,7 @@ final class RegisterVerifier {
     static boolean checkState(Interval[] inputState, Value reg, Interval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
-                throw new GraalInternalError("!! Error in register allocation: register %s does not contain interval %s but interval %s", reg, interval.operand, inputState[asRegister(reg).number]);
+                throw new JVMCIError("!! Error in register allocation: register %s does not contain interval %s but interval %s", reg, interval.operand, inputState[asRegister(reg).number]);
             }
         }
         return true;

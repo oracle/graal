@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -40,6 +39,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -279,7 +279,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             } else if (isStackSlot(value)) {
                 return StackSlot.get(stackKind, asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
             } else {
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
         }
         return value;
@@ -413,10 +413,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 }

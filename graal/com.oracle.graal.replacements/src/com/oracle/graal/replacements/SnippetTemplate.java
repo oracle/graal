@@ -39,7 +39,6 @@ import java.util.stream.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -65,6 +64,7 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding
@@ -657,7 +657,7 @@ public class SnippetTemplate {
                         // The template lowering doesn't really treat this as an array so you can't
                         // store back into the varargs. Allocate your own array if you really need
                         // this and EA should eliminate it.
-                        throw new GraalInternalError("Can't store into VarargsParameter array");
+                        throw new JVMCIError("Can't store into VarargsParameter array");
                     }
                 }
             } else {
