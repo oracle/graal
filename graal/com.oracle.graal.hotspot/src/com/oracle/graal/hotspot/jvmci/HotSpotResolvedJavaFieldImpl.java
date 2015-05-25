@@ -31,6 +31,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Represents a field in a HotSpot type.
@@ -277,7 +278,7 @@ public class HotSpotResolvedJavaFieldImpl implements HotSpotResolvedJavaField, H
                 MetaAccessProvider metaAccess = runtime().getHostJVMCIBackend().getMetaAccess();
                 STRING_VALUE_FIELD = metaAccess.lookupJavaField(String.class.getDeclaredField("value"));
             } catch (SecurityException | NoSuchFieldException e) {
-                throw new InternalError(e);
+                throw new JVMCIError(e);
             }
         }
     }

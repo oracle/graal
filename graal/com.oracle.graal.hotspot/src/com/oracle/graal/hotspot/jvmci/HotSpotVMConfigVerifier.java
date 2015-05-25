@@ -32,6 +32,8 @@ import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 import sun.misc.*;
 
+import com.oracle.jvmci.common.*;
+
 /**
  * A {@link ClassVisitor} that verifies {@link HotSpotVMConfig} does not access {@link Unsafe} from
  * any of its non-static, non-constructor methods. This ensures that a deserialized
@@ -51,7 +53,7 @@ final class HotSpotVMConfigVerifier extends ClassVisitor {
             cr.accept(cv, 0);
             return true;
         } catch (IOException e) {
-            throw new InternalError(e);
+            throw new JVMCIError(e);
         }
     }
 
@@ -69,7 +71,7 @@ final class HotSpotVMConfigVerifier extends ClassVisitor {
         try {
             return Class.forName(name.replace('/', '.'));
         } catch (ClassNotFoundException e) {
-            throw new InternalError(e);
+            throw new JVMCIError(e);
         }
     }
 
@@ -91,7 +93,7 @@ final class HotSpotVMConfigVerifier extends ClassVisitor {
     void error(String message) {
         String errorMessage = format("%s:%d: %s is not allowed in the context of compilation replay. The unsafe access should be moved into the %s constructor and the result cached in a field",
                         sourceFile, lineNo, message, HotSpotVMConfig.class.getSimpleName());
-        throw new InternalError(errorMessage);
+        throw new JVMCIError(errorMessage);
 
     }
 

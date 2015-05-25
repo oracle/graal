@@ -28,6 +28,7 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
@@ -138,7 +139,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
                 if (res != null) {
                     return res;
                 }
-                throw new InternalError("Unknown JVM_CONSTANT tag " + tag);
+                throw new JVMCIError("Unknown JVM_CONSTANT tag %s", tag);
             }
         }
 
@@ -451,7 +452,7 @@ public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
                 Object obj = runtime().getCompilerToVM().resolveConstantInPool(metaspaceConstantPool, cpi);
                 return HotSpotObjectConstantImpl.forObject(obj);
             default:
-                throw new InternalError("Unknown constant pool tag " + tag);
+                throw new JVMCIError("Unknown constant pool tag %s", tag);
         }
     }
 

@@ -39,6 +39,7 @@ import com.oracle.graal.api.code.DataSection.Data;
 import com.oracle.graal.api.code.DataSection.DataBuilder;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * HotSpot implementation of {@link CodeCacheProvider}.
@@ -119,7 +120,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                     return (String) processMethod.invoke(null, hcfEmbeddedString);
                 } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                     // If the tool is available, for now let's be noisy when it fails
-                    throw new InternalError(e);
+                    throw new JVMCIError(e);
                 }
             }
             return hcfEmbeddedString;
@@ -279,7 +280,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 compressed = meta.isCompressed();
                 raw = meta.rawValue();
             } else {
-                throw new InternalError(String.valueOf(constant));
+                throw new JVMCIError(String.valueOf(constant));
             }
 
             size = target.getSizeInBytes(compressed ? Kind.Int : target.wordKind);
@@ -304,7 +305,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             size = s.getSerializedSize();
             builder = DataBuilder.serializable(s);
         } else {
-            throw new InternalError(String.valueOf(constant));
+            throw new JVMCIError(String.valueOf(constant));
         }
 
         return new Data(size, size, builder);

@@ -36,6 +36,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
@@ -627,7 +628,7 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
      */
     public int vtableEntryOffset(ResolvedJavaType resolved) {
         if (!isInVirtualMethodTable(resolved)) {
-            throw new InternalError(this + " does not have a vtable entry");
+            throw new JVMCIError("%s does not have a vtable entry", this);
         }
         HotSpotVMConfig config = runtime().getConfig();
         final int vtableIndex = getVtableIndex((HotSpotResolvedObjectTypeImpl) resolved);

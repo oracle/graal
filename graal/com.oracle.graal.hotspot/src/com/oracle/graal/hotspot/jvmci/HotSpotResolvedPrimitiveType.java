@@ -30,6 +30,7 @@ import java.net.*;
 
 import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Implementation of {@link JavaType} for primitive HotSpot types.
@@ -94,7 +95,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public ResolvedJavaType getSingleImplementor() {
-        throw new InternalError("Cannot call getSingleImplementor() on a non-interface type: " + this);
+        throw new JVMCIError("Cannot call getSingleImplementor() on a non-interface type: %s", this);
     }
 
     @Override
@@ -104,12 +105,12 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public JavaConstant getObjectHub() {
-        throw new InternalError();
+        throw JVMCIError.unimplemented();
     }
 
     @Override
     public JavaConstant getJavaClass() {
-        throw new InternalError();
+        throw JVMCIError.unimplemented();
     }
 
     @Override
@@ -229,7 +230,7 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
 
     @Override
     public String getSourceFileName() {
-        throw new InternalError();
+        throw JVMCIError.unimplemented();
     }
 
     @Override

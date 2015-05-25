@@ -30,6 +30,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * HotSpot implementation of {@link MetaAccessProvider}.
@@ -76,7 +77,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             field.setAccessible(true);
             return field;
         } catch (NoSuchFieldException | SecurityException e) {
-            throw new InternalError(e);
+            throw new JVMCIError(e);
         }
     }
 
@@ -88,7 +89,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
             return HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
         } catch (IllegalArgumentException | IllegalAccessException e) {
-            throw new InternalError(e);
+            throw new JVMCIError(e);
         }
     }
 
@@ -108,7 +109,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             HotSpotResolvedObjectType resolved = holder;
             return resolved.createField(name, type, offset, modifiers);
         } else {
-            throw new InternalError("unresolved field " + reflectionField);
+            throw new JVMCIError("unresolved field %s", reflectionField);
         }
     }
 
@@ -161,7 +162,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             case InvalidateStopCompiling:
                 return config.deoptActionMakeNotCompilable;
             default:
-                throw new InternalError(action.toString());
+                throw new JVMCIError("%s", action);
         }
     }
 
@@ -182,7 +183,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
         if (action == config.deoptActionMakeNotCompilable) {
             return DeoptimizationAction.InvalidateStopCompiling;
         }
-        throw new InternalError(String.valueOf(action));
+        throw new JVMCIError("%d", action);
     }
 
     public int convertDeoptReason(DeoptimizationReason reason) {
@@ -221,7 +222,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
             case TransferToInterpreter:
                 return config.deoptReasonTransferToInterpreter;
             default:
-                throw new InternalError(reason.toString());
+                throw new JVMCIError("%s", reason);
         }
     }
 
@@ -275,7 +276,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider, HotSpotPro
         if (reason == config.deoptReasonTransferToInterpreter) {
             return DeoptimizationReason.TransferToInterpreter;
         }
-        throw new InternalError(Integer.toHexString(reason));
+        throw new JVMCIError("%x", reason);
     }
 
     @Override

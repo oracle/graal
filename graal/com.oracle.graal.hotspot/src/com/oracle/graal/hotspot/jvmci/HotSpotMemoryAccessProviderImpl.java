@@ -27,6 +27,7 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
+import com.oracle.jvmci.common.*;
 
 /**
  * HotSpot implementation of {@link MemoryAccessProvider}.
@@ -59,7 +60,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                     return ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().isArray();
                 }
             } else {
-                throw new InternalError(String.valueOf(metaspaceObject));
+                throw new JVMCIError("%s", metaspaceObject);
             }
         }
         return false;
@@ -74,7 +75,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 return prim.asLong();
             }
         }
-        throw new InternalError(String.valueOf(base));
+        throw new JVMCIError("%s", base);
     }
 
     private static long readRawValue(Constant baseConstant, long displacement, int bits) {
@@ -90,7 +91,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 case 64:
                     return unsafe.getLong(base, displacement);
                 default:
-                    throw new InternalError(String.valueOf(bits));
+                    throw new JVMCIError("%d", bits);
             }
         } else {
             long pointer = asRawPointer(baseConstant);
@@ -104,7 +105,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 case 64:
                     return unsafe.getLong(pointer + displacement);
                 default:
-                    throw new InternalError(String.valueOf(bits));
+                    throw new JVMCIError("%d", bits);
             }
         }
     }
@@ -178,7 +179,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 case Double:
                     return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
                 default:
-                    throw new InternalError("Unsupported kind: " + kind);
+                    throw new JVMCIError("Unsupported kind: %s", kind);
             }
         } catch (NullPointerException e) {
             return null;

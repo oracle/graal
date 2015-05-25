@@ -38,6 +38,7 @@ import com.oracle.graal.api.meta.Assumptions.ConcreteSubtype;
 import com.oracle.graal.api.meta.Assumptions.LeafType;
 import com.oracle.graal.api.meta.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Implementation of {@link JavaType} for resolved non-primitive HotSpot classes.
@@ -231,7 +232,7 @@ public final class HotSpotResolvedObjectTypeImpl extends HotSpotResolvedJavaType
     @Override
     public HotSpotResolvedObjectTypeImpl getSingleImplementor() {
         if (!isInterface()) {
-            throw new InternalError("Cannot call getSingleImplementor() on a non-interface type: " + this);
+            throw new JVMCIError("Cannot call getSingleImplementor() on a non-interface type: %s", this);
         }
         final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(getMetaspaceKlass());
 

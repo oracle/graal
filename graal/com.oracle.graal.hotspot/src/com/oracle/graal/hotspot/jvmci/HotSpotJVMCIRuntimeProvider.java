@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.jvmci;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.runtime.*;
 
 //JaCoCo Exclude
@@ -86,7 +87,7 @@ public interface HotSpotJVMCIRuntimeProvider extends JVMCIRuntime {
             case Object:
                 return Unsafe.ARRAY_OBJECT_BASE_OFFSET;
             default:
-                throw new InternalError(kind.toString());
+                throw new JVMCIError("%s", kind);
         }
     }
 
@@ -116,7 +117,7 @@ public interface HotSpotJVMCIRuntimeProvider extends JVMCIRuntime {
             case Object:
                 return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
             default:
-                throw new InternalError(kind.toString());
+                throw new JVMCIError("%s", kind);
         }
     }
 }

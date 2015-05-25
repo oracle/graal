@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.hotspotvmconfig.*;
+import com.oracle.jvmci.common.*;
 
 //JaCoCo Exclude
 
@@ -170,7 +171,7 @@ public class HotSpotVMConfig {
                         checkField(f, entry.getValue());
                         break;
                     default:
-                        throw new InternalError("unknown kind " + annotation.get());
+                        throw new JVMCIError("unknown kind %s", annotation.get());
                 }
             } else if (f.isAnnotationPresent(HotSpotVMType.class)) {
                 HotSpotVMType annotation = f.getAnnotation(HotSpotVMType.class);
@@ -184,7 +185,7 @@ public class HotSpotVMConfig {
                         checkField(f, entry.getSize());
                         break;
                     default:
-                        throw new InternalError("unknown kind " + annotation.get());
+                        throw new JVMCIError("unknown kind %s", annotation.get());
                 }
             } else if (f.isAnnotationPresent(HotSpotVMConstant.class)) {
                 HotSpotVMConstant annotation = f.getAnnotation(HotSpotVMConstant.class);
@@ -236,7 +237,7 @@ public class HotSpotVMConfig {
                 } else if (value instanceof Long) {
                     assert field.getBoolean(this) == (((long) value) != 0) : field + " " + value + " " + field.getBoolean(this);
                 } else {
-                    throw new InternalError(value.getClass().getSimpleName());
+                    throw new JVMCIError(value.getClass().getSimpleName());
                 }
             } else if (fieldType == int.class) {
                 if (value instanceof Integer) {
@@ -244,15 +245,15 @@ public class HotSpotVMConfig {
                 } else if (value instanceof Long) {
                     assert field.getInt(this) == (int) (long) value : field + " " + value + " " + field.getInt(this);
                 } else {
-                    throw new InternalError(value.getClass().getSimpleName());
+                    throw new JVMCIError(value.getClass().getSimpleName());
                 }
             } else if (fieldType == long.class) {
                 assert field.getLong(this) == (long) value : field + " " + value + " " + field.getLong(this);
             } else {
-                throw new InternalError(field.toString());
+                throw new JVMCIError(field.toString());
             }
         } catch (IllegalAccessException e) {
-            throw new InternalError(field.toString() + ": " + e);
+            throw new JVMCIError("%s: %s", field, e);
         }
     }
 
@@ -372,7 +373,7 @@ public class HotSpotVMConfig {
                         if (type.endsWith("*")) {
                             return unsafe.getAddress(getAddress());
                         }
-                        throw new InternalError(type);
+                        throw new JVMCIError(type);
                 }
             }
 
@@ -690,7 +691,7 @@ public class HotSpotVMConfig {
                     case "ccstrlist":
                         return readCString(getAddr());
                     default:
-                        throw new InternalError(getType());
+                        throw new JVMCIError(getType());
                 }
             }
 
@@ -1168,14 +1169,14 @@ public class HotSpotVMConfig {
 
     public long cardtableStartAddress() {
         if (cardtableStartAddress == -1) {
-            throw new InternalError();
+            throw JVMCIError.shouldNotReachHere();
         }
         return cardtableStartAddress;
     }
 
     public int cardtableShift() {
         if (cardtableShift == -1) {
-            throw new InternalError();
+            throw JVMCIError.shouldNotReachHere();
         }
         return cardtableShift;
     }

@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.jvmci.logging.*;
 import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.runtime.*;
 
 //JaCoCo Exclude
@@ -129,7 +130,7 @@ public final class HotSpotJVMCIRuntime implements HotSpotJVMCIRuntimeProvider, H
             if (!Options.JVMCIRuntime.getValue().equals("")) {
                 // Fail fast if a non-default value for JVMCIRuntime was specified
                 // and the corresponding factory is not available
-                throw new InternalError(String.format("Specified runtime \"%s\" not available for the %s architecture", Options.JVMCIRuntime.getValue(), architecture));
+                throw new JVMCIError("Specified runtime \"%s\" not available for the %s architecture", Options.JVMCIRuntime.getValue(), architecture);
             } else if (nonBasicCount == 1) {
                 // If there is exactly one non-basic runtime, select this one.
                 return nonBasic;
