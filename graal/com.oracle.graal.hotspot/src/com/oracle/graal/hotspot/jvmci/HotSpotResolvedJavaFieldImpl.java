@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-//import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedJavaFieldImpl.Options.*;
 import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedObjectTypeImpl.*;

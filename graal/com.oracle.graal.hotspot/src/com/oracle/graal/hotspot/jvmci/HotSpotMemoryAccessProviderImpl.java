@@ -26,7 +26,6 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 
 /**
@@ -60,7 +59,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                     return ((HotSpotResolvedObjectTypeImpl) metaspaceObject).mirror().isArray();
                 }
             } else {
-                throw GraalInternalError.shouldNotReachHere();
+                throw new InternalError(String.valueOf(metaspaceObject));
             }
         }
         return false;
@@ -75,7 +74,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 return prim.asLong();
             }
         }
-        throw GraalInternalError.shouldNotReachHere();
+        throw new InternalError(String.valueOf(base));
     }
 
     private static long readRawValue(Constant baseConstant, long displacement, int bits) {
@@ -91,7 +90,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 case 64:
                     return unsafe.getLong(base, displacement);
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw new InternalError(String.valueOf(bits));
             }
         } else {
             long pointer = asRawPointer(baseConstant);
@@ -105,7 +104,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 case 64:
                     return unsafe.getLong(pointer + displacement);
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw new InternalError(String.valueOf(bits));
             }
         }
     }
@@ -179,7 +178,7 @@ public class HotSpotMemoryAccessProviderImpl implements HotSpotMemoryAccessProvi
                 case Double:
                     return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
                 default:
-                    throw GraalInternalError.shouldNotReachHere("unsupported kind: " + kind);
+                    throw new InternalError("Unsupported kind: " + kind);
             }
         } catch (NullPointerException e) {
             return null;

@@ -212,9 +212,6 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> ConditionalElimination = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> UseProfilingInformation = new OptionValue<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> RemoveNeverExecutedCode = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

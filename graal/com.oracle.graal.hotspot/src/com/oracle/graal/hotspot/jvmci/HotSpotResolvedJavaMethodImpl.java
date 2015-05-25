@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.hotspot.jvmci;
 
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.*;
+import static com.oracle.graal.hotspot.jvmci.HotSpotResolvedJavaMethodImpl.Options.*;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.annotation.*;
@@ -36,11 +35,19 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.options.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
  */
 public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod, HotSpotProxified, MethodIdHolder {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "", type = OptionType.Debug)
+        public static final OptionValue<Boolean> UseProfilingInformation = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     /**
      * Reference to metaspace Method object.
@@ -619,7 +626,9 @@ public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implement
      * @return the offset of this method into the v-table
      */
     public int vtableEntryOffset(ResolvedJavaType resolved) {
-        guarantee(isInVirtualMethodTable(resolved), "%s does not have a vtable entry", this);
+        if (!isInVirtualMethodTable(resolved)) {
+            throw new InternalError(this + " does not have a vtable entry");
+        }
         HotSpotVMConfig config = runtime().getConfig();
         final int vtableIndex = getVtableIndex((HotSpotResolvedObjectTypeImpl) resolved);
         return config.instanceKlassVtableStartOffset + vtableIndex * config.vtableEntrySize + config.vtableEntryMethodOffset;
