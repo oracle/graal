@@ -34,6 +34,7 @@ import javax.lang.model.element.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.ExpectError;
 import com.oracle.truffle.api.nodes.Node.Child;
 
 @SupportedAnnotationTypes({"com.oracle.truffle.api.CompilerDirectives.TruffleBoundary", "com.oracle.truffle.api.nodes.Node.Child"})
@@ -116,10 +117,45 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
         for (Element e : roundEnv.getElementsAnnotatedWith(Child.class)) {
             if (e.getModifiers().contains(Modifier.FINAL)) {
-                errorMessage(e, "@Child field cannot be final");
+                emitError("@Child field cannot be final", e);
+                continue;
             }
+            assertNoErrorExpected(e);
         }
         return false;
+    }
+
+    void assertNoErrorExpected(Element e) {
+        TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
+        for (AnnotationMirror am : e.getAnnotationMirrors()) {
+            if (am.getAnnotationType().asElement() == eee) {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Expected an error, but none found!", e);
+            }
+        }
+    }
+
+    void emitError(String msg, Element e) {
+        TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
+        for (AnnotationMirror am : e.getAnnotationMirrors()) {
+            if (am.getAnnotationType().asElement() == eee) {
+                Map<? extends ExecutableElement, ? extends AnnotationValue> vals = am.getElementValues();
+                if (vals.size() == 1) {
+                    AnnotationValue av = vals.values().iterator().next();
+                    if (av.getValue() instanceof List) {
+                        List<?> arr = (List<?>) av.getValue();
+                        for (Object o : arr) {
+                            if (o instanceof AnnotationValue) {
+                                AnnotationValue ov = (AnnotationValue) o;
+                                if (msg.equals(ov.getValue())) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
     }
 
     /**
