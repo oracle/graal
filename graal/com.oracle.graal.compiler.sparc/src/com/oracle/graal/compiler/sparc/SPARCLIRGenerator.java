@@ -59,6 +59,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGpVIS3;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;

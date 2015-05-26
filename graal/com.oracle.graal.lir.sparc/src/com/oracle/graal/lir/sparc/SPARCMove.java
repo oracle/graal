@@ -849,7 +849,7 @@ public class SPARCMove {
                     masm.ldx(addr, dst);
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     }
@@ -888,7 +888,7 @@ public class SPARCMove {
                     masm.stdf(asRegister(input), addr);
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere("missing: " + kind);
+                    throw JVMCIError.shouldNotReachHere("missing: " + kind);
             }
         }
     }
