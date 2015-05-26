@@ -32,10 +32,10 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.hotspot.*;
 
 @Opcode("BenchMarkCounter")
 public class SPARCHotSpotCounterOp extends HotSpotCounterOp {

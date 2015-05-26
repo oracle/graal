@@ -22,19 +22,20 @@
  */
 package com.oracle.graal.hotspot.sparc.jvmci;
 
-import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
+import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.sparc.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 
+@ServiceProvider(HotSpotJVMCIBackendFactory.class)
 public class SPARCHotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFactory {
 
     protected Architecture createArchitecture(HotSpotVMConfig config) {

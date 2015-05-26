@@ -31,10 +31,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * The details required to link a HotSpot runtime or stub call.

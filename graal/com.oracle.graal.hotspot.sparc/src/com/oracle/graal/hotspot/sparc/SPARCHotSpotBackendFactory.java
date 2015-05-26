@@ -28,13 +28,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.sparc.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)

@@ -29,11 +29,11 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.options.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 

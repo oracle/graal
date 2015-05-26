@@ -29,11 +29,11 @@ import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * A register indirect call that complies with the extra conventions for such calls in HotSpot. In

@@ -27,10 +27,10 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for

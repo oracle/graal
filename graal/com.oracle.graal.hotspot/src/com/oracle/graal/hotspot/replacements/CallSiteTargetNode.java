@@ -25,12 +25,12 @@ package com.oracle.graal.hotspot.replacements;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.jvmci.hotspot.*;
 
 @NodeInfo
 public final class CallSiteTargetNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {

@@ -26,9 +26,9 @@ import static com.oracle.graal.amd64.AMD64.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.jvmci.hotspot.*;
 
 final class AMD64UncommonTrapStub extends UncommonTrapStub {
 

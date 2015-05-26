@@ -37,8 +37,8 @@ import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 

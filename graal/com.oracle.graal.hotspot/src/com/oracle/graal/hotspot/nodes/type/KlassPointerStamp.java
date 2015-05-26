@@ -27,8 +27,8 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.jvmci.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.*;
 
 public final class KlassPointerStamp extends MetaspacePointerStamp {
 

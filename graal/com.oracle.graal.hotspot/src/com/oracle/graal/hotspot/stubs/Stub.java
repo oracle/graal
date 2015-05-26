@@ -34,7 +34,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.asm.*;
@@ -46,6 +45,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 

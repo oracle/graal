@@ -36,7 +36,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
@@ -48,6 +47,7 @@ import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * use

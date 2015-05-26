@@ -43,7 +43,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotLIRGenerator.SaveRbp;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.lir.*;
@@ -56,6 +55,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.

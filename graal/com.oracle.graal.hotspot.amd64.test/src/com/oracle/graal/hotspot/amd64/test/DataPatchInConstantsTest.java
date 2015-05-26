@@ -34,7 +34,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.hotspot.nodes.type.*;
@@ -45,6 +44,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 

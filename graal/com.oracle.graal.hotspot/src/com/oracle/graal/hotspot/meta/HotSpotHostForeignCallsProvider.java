@@ -51,10 +51,10 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.

@@ -42,13 +42,13 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionUtils.OptionConsumer;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * This class implements compile-the-world functionality in Graal.

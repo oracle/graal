@@ -23,15 +23,15 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
+import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 
 /**

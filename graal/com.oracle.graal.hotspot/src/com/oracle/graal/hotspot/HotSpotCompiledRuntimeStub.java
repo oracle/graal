@@ -29,7 +29,7 @@ import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.ConstantReference;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.hotspot.jvmci.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * {@link HotSpotCompiledCode} destined for installation as a RuntimeStub.

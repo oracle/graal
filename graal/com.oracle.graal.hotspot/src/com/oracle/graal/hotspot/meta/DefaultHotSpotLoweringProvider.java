@@ -35,7 +35,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -52,6 +51,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * HotSpot implementation of {@link LoweringProvider}.

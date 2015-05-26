@@ -31,10 +31,10 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Extends {@link HotSpotConstantReflectionProvider} to override the implementation of

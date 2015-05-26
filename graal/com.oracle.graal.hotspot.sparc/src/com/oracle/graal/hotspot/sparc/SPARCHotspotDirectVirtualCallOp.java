@@ -28,11 +28,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot. In particular, for

@@ -30,12 +30,12 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 

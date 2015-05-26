@@ -41,8 +41,6 @@ import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.hotspot.jvmci.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
@@ -55,6 +53,8 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.

@@ -31,7 +31,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.hotspot.jvmci.*;
+import com.oracle.jvmci.hotspot.*;
 import com.sun.management.ThreadMXBean;
 
 @SuppressWarnings("unused")

@@ -27,12 +27,12 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Extension of {@link InvocationPlugins} that disables plugins based on runtime configuration.

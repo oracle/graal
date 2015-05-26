@@ -37,7 +37,6 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
@@ -50,6 +49,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.

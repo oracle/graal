@@ -32,13 +32,13 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
-import com.oracle.graal.hotspot.jvmci.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.*;
 
 public class AMD64HotSpotMove {
 

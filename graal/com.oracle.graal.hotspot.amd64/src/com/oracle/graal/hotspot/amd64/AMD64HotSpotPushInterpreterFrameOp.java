@@ -29,10 +29,10 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Pushes an interpreter frame to the stack.

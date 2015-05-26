@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.test;
 
 import org.junit.*;
 
-import com.oracle.graal.hotspot.jvmci.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Tests {@link HotSpotResolvedJavaMethod} functionality.

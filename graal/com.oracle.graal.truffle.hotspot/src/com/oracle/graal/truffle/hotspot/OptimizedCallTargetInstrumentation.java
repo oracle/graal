@@ -28,12 +28,12 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .

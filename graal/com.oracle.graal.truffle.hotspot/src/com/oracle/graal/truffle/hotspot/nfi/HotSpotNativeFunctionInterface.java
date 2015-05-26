@@ -33,13 +33,13 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {

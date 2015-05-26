@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
-import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -42,14 +42,14 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.events.*;
-import com.oracle.graal.hotspot.jvmci.*;
-import com.oracle.graal.hotspot.jvmci.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.logging.*;
 import com.oracle.jvmci.runtime.*;
 
 //JaCoCo Exclude

@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Implementation of {@link InstalledCode} for code installed as a RuntimeStub.

@@ -28,11 +28,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.jvmci.hotspot.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64.jvmci;
 
-import static com.oracle.graal.hotspot.jvmci.InitTimer.*;
+import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
@@ -31,10 +31,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 
+@ServiceProvider(HotSpotJVMCIBackendFactory.class)
 public class AMD64HotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFactory {
 
     protected Architecture createArchitecture(HotSpotVMConfig config) {

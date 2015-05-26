@@ -28,9 +28,9 @@ import java.util.*;
 import java.util.stream.*;
 import java.util.zip.*;
 
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.options.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 
 /**
@@ -137,7 +137,7 @@ public class GenGraalRuntimeInlineHpp {
                 out.printf("    if (strncmp(name, \"PrintFlags\", %d) == 0) {%n", len);
                 out.println("      if (value == '+') {");
                 out.println("        if (check_only) {");
-                out.println("          TempNewSymbol name = SymbolTable::new_symbol(\"Lcom/oracle/graal/hotspot/jvmci/HotSpotOptions;\", CHECK_(true));");
+                out.println("          TempNewSymbol name = SymbolTable::new_symbol(\"Lcom/oracle/jvmci/hotspot/HotSpotOptions;\", CHECK_(true));");
                 out.println("          hotSpotOptionsClass = SystemDictionary::resolve_or_fail(name, true, CHECK_(true));");
                 out.println("        }");
                 out.println("        set_option_helper(hotSpotOptionsClass, name, name_len, Handle(), '?', Handle(), 0L);");
@@ -187,7 +187,7 @@ public class GenGraalRuntimeInlineHpp {
 
     @SuppressWarnings("unchecked")
     static SortedMap<String, OptionDescriptor> getOptions() throws Exception {
-        Field field = Class.forName("com.oracle.graal.hotspot.jvmci.HotSpotOptionsLoader").getDeclaredField("options");
+        Field field = Class.forName("com.oracle.jvmci.hotspot.HotSpotOptionsLoader").getDeclaredField("options");
         field.setAccessible(true);
         SortedMap<String, OptionDescriptor> options = (SortedMap<String, OptionDescriptor>) field.get(null);
 

@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.hotspot.jvmci.HotSpotMetaAccessProvider.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.*;
@@ -32,6 +31,7 @@ import static com.oracle.graal.nodes.PiArrayNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
+import static com.oracle.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -41,7 +41,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
@@ -62,6 +61,7 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.

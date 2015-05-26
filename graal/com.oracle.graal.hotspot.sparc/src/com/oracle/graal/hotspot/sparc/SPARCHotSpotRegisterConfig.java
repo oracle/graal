@@ -30,10 +30,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 

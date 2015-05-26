@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -47,6 +46,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * HotSpot specific backend.

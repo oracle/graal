@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.hotspot.jvmci.HotSpotJVMCIRuntime.Options;
+import com.oracle.jvmci.hotspot.HotSpotJVMCIRuntime.*;
 import com.oracle.jvmci.runtime.*;
 
 public interface HotSpotBackendFactory extends Service {
