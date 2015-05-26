@@ -37,7 +37,7 @@ import com.oracle.truffle.dsl.processor.model.*;
 @DSLOptions
 public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
-    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(TypeSystem.class, ExpectError.class);
+    public static final List<Class<TypeSystem>> ANNOTATIONS = Arrays.asList(TypeSystem.class);
 
     @Override
     public Class<? extends Annotation> getAnnotationType() {

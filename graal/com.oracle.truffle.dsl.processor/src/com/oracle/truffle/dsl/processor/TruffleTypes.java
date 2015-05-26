@@ -44,6 +44,8 @@ import com.oracle.truffle.api.source.*;
  */
 public final class TruffleTypes {
 
+    public static final String EXPECT_ERROR_CLASS_NAME = "com.oracle.truffle.api.dsl.test.ExpectError";
+
     private final DeclaredType node;
     private final ArrayType nodeArray;
     private final TypeMirror unexpectedValueException;
@@ -94,7 +96,7 @@ public final class TruffleTypes {
         nodeFactory = getRequired(context, NodeFactory.class);
         nodeFactoryBase = getRequired(context, NodeFactoryBase.class);
         dslMetadata = getRequired(context, DSLMetadata.class);
-        expectError = (TypeElement) getRequired(context, ExpectError.class).asElement();
+        expectError = getOptional(context, EXPECT_ERROR_CLASS_NAME);
         generateNodeFactory = getRequired(context, GenerateNodeFactory.class);
     }
 
@@ -156,6 +158,10 @@ public final class TruffleTypes {
             errors.add(String.format("Could not find required type: %s", clazz.getSimpleName()));
         }
         return (DeclaredType) type;
+    }
+
+    private static TypeElement getOptional(ProcessorContext context, String name) {
+        return context.getEnvironment().getElementUtils().getTypeElement(name);
     }
 
     public TypeMirror getInvalidAssumption() {
