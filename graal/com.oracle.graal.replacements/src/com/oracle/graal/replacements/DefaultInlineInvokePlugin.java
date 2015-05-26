@@ -39,7 +39,8 @@ public final class DefaultInlineInvokePlugin implements InlineInvokePlugin {
     public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
         InlineInfo inlineInfo = replacements.getInlineInfo(b, method, args, returnType);
         if (inlineInfo == null) {
-            if (InlineDuringParsing.getValue() && method.hasBytecodes() && method.getCode().length <= TrivialInliningSize.getValue() && b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
+            if (InlineDuringParsing.getValue() && method.hasBytecodes() && !method.isSynchronized() && method.getCode().length <= TrivialInliningSize.getValue() &&
+                            b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
                 return new InlineInfo(method, false);
             }
         }
