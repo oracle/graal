@@ -79,7 +79,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
 
         @Option(help = "Inlines trivial methods during bytecode parsing.", type = OptionType.Expert)
-        public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(true);
+        public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(false);
 
         @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)
         public static final StableOptionValue<Boolean> InlineIntrinsicsDuringParsing = new StableOptionValue<>(true);
