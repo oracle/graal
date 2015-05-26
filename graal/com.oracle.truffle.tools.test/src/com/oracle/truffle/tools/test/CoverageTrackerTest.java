@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,16 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test.tools;
+package com.oracle.truffle.tools.test;
 
-import static com.oracle.truffle.api.test.tools.TestNodes.*;
+import static com.oracle.truffle.tools.test.TestNodes.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.tools.*;
+import com.oracle.truffle.tools.*;
 
 public class CoverageTrackerTest {
 
