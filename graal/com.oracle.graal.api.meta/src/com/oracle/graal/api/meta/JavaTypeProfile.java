@@ -174,4 +174,22 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
         }
         return buf.append(String.format("], notRecorded:%.6f>", getNotRecordedProbability())).toString();
     }
+
+    /**
+     * Returns {@code true} if all types seen at this location have been recorded in the profile.
+     */
+    public boolean allTypesRecorded() {
+        return this.getNotRecordedProbability() == 0.0;
+    }
+
+    /**
+     * Returns the single monormorphic type representing this profile or {@code null} if no such
+     * type exists.
+     */
+    public ResolvedJavaType asSingleType() {
+        if (allTypesRecorded() && this.getTypes().length == 1) {
+            return getTypes()[0].getType();
+        }
+        return null;
+    }
 }
