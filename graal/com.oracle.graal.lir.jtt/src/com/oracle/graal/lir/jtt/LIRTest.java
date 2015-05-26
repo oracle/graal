@@ -31,7 +31,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.jtt.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;

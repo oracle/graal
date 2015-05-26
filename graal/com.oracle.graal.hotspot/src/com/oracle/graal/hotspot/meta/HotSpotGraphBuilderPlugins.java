@@ -36,7 +36,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.hotspot.jvmci.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;

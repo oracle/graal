@@ -49,7 +49,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;

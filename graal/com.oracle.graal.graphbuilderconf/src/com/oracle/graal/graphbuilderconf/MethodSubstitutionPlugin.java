@@ -29,7 +29,6 @@ import java.util.stream.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.nodes.*;
 import com.oracle.jvmci.common.*;
 
@@ -66,13 +65,13 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
      * @param name the name of the substitute method
      * @param parameters the parameter types of the substitute method. If the original method is not
      *            static, then {@code parameters[0]} must be the {@link Class} value denoting
-     *            {@link Receiver}
+     *            {@link InvocationPlugin.Receiver}
      */
     public MethodSubstitutionPlugin(Class<?> declaringClass, String name, Class<?>... parameters) {
         this.declaringClass = declaringClass;
         this.name = name;
         this.parameters = parameters;
-        this.originalIsStatic = parameters.length == 0 || parameters[0] != Receiver.class;
+        this.originalIsStatic = parameters.length == 0 || parameters[0] != InvocationPlugin.Receiver.class;
     }
 
     /**
@@ -178,7 +177,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     }
 
     @Override
-    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] argsIncludingReceiver) {
+    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
         ResolvedJavaMethod subst = getSubstitute(b.getMetaAccess());
         if (receiver != null) {
             receiver.get();

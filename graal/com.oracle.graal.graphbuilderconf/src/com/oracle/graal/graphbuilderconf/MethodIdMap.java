@@ -29,8 +29,6 @@ import java.util.stream.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.MethodIdHolder.MethodIdAllocator;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.jvmci.common.*;
 
 /**
@@ -47,28 +45,6 @@ import com.oracle.jvmci.common.*;
 public class MethodIdMap<V> {
 
     /**
-     * The receiver in a non-static method. The class literal for this interface must be used with
-     * {@link MethodIdMap#put(Object, Class, String, Class...)} to denote the receiver argument for
-     * such a non-static method.
-     */
-    public interface Receiver {
-        /**
-         * Gets the receiver value, null checking it first if necessary.
-         *
-         * @return the receiver value with a {@linkplain StampTool#isPointerNonNull(ValueNode)
-         *         non-null} stamp
-         */
-        ValueNode get();
-
-        /**
-         * Determines if the receiver is constant.
-         */
-        default boolean isConstant() {
-            return false;
-        }
-    }
-
-    /**
      * Key for a method.
      */
     public static class MethodKey<T> {
@@ -79,15 +55,13 @@ public class MethodIdMap<V> {
         final T value;
         int id;
 
-        MethodKey(T data, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        MethodKey(T data, boolean isStatic, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+            assert isStatic || argumentTypes[0] == declaringClass;
             this.value = data;
-            this.isStatic = argumentTypes.length == 0 || argumentTypes[0] != Receiver.class;
+            this.isStatic = isStatic;
             this.declaringClass = declaringClass;
             this.name = name;
             this.argumentTypes = argumentTypes;
-            if (!isStatic) {
-                argumentTypes[0] = declaringClass;
-            }
             assert resolveJava() != null;
         }
 
@@ -171,14 +145,16 @@ public class MethodIdMap<V> {
      * Adds an entry to this map for a specified method.
      *
      * @param value value to be associated with the specified method
+     * @param isStatic specifies if the method is static
      * @param declaringClass the class declaring the method
      * @param name the name of the method
-     * @param argumentTypes the argument types of the method. Element 0 of this array must be the
-     *            {@link Class} value for {@link Receiver} iff the method is non-static.
+     * @param argumentTypes the argument types of the method. Element 0 of this array must be
+     *            {@code declaringClass} iff the method is non-static.
      * @return an object representing the method
      */
-    public MethodKey<V> put(V value, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
-        MethodKey<V> methodKey = new MethodKey<>(value, declaringClass, name, argumentTypes);
+    public MethodKey<V> put(V value, boolean isStatic, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        assert isStatic || argumentTypes[0] == declaringClass;
+        MethodKey<V> methodKey = new MethodKey<>(value, isStatic, declaringClass, name, argumentTypes);
         assert entries == null : "registration is closed";
         assert !registrations.contains(methodKey) : "a value is already registered for " + methodKey;
         registrations.add(methodKey);

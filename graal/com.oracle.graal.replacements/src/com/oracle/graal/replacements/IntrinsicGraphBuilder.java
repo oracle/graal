@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
