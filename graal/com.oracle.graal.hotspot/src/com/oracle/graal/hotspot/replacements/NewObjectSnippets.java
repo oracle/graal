@@ -201,13 +201,13 @@ public class NewObjectSnippets implements Snippets {
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(allocationSize);
-        if ((skipNegativeCheck || belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) && useTLAB() && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+        if (probability(FREQUENT_PROBABILITY, skipNegativeCheck || belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) && useTLAB() &&
+                        probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
             newarray_loopInit.inc();
             result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, maybeUnroll, true);
         } else {
-            newarray_stub.inc();
             result = newArray(HotSpotBackend.NEW_ARRAY, hub, length);
         }
         profileAllocation("array", allocationSize, typeContext);
@@ -233,7 +233,7 @@ public class NewObjectSnippets implements Snippets {
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
         Word hub = loadWordFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION);
-        if (hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
+        if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH))) {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
         }
 
