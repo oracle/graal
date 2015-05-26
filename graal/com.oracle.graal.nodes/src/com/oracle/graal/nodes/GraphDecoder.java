@@ -271,6 +271,13 @@ public class GraphDecoder {
         LoopScope loopScope = new LoopScope(methodScope);
         FixedNode firstNode;
         if (startNode != null) {
+            /*
+             * The start node of a graph can be referenced as the guard for a GuardedNode. We
+             * register the previous block node, so that such guards are correctly anchored when
+             * doing inlining during graph decoding.
+             */
+            registerNode(loopScope, GraphEncoder.START_NODE_ORDER_ID, AbstractBeginNode.prevBegin(startNode), false, false);
+
             firstNode = makeStubNode(methodScope, loopScope, GraphEncoder.FIRST_NODE_ORDER_ID);
             startNode.setNext(firstNode);
             loopScope.nodesToProcess.set(GraphEncoder.FIRST_NODE_ORDER_ID);
@@ -332,6 +339,10 @@ public class GraphDecoder {
                         ((AbstractMergeNode) node).forwardEndCount() == 1) {
             AbstractMergeNode merge = (AbstractMergeNode) node;
             EndNode singleEnd = merge.forwardEndAt(0);
+
+            /* Nodes that would use this merge as the guard need to use the previous block. */
+            registerNode(loopScope, nodeOrderId, AbstractBeginNode.prevBegin(singleEnd), true, false);
+
             FixedNode next = makeStubNode(methodScope, loopScope, nodeOrderId + GraphEncoder.BEGIN_NEXT_ORDER_ID_OFFSET);
             singleEnd.replaceAtPredecessor(next);
 
@@ -822,7 +833,13 @@ public class GraphDecoder {
     protected Node decodeFloatingNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {
         long readerByteIndex = methodScope.reader.getByteIndex();
         Node node = instantiateNode(methodScope, nodeOrderId);
-        assert !(node instanceof FixedNode);
+        if (node instanceof FixedNode) {
+            /*
+             * This is a severe error that will lead to a corrupted graph, so it is better not to
+             * continue decoding at all.
+             */
+            throw shouldNotReachHere("Not a floating node: " + node.getClass().getName());
+        }
 
         /* Read the properties of the node. */
         readProperties(methodScope, node);
