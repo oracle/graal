@@ -33,7 +33,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.options.*;
 import com.oracle.jvmci.common.*;
 

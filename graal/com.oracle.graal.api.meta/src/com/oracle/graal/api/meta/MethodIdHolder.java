@@ -20,19 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graphbuilderconf;
+package com.oracle.graal.api.meta;
 
 import java.util.*;
 import java.util.function.*;
 
-import com.oracle.graal.api.meta.*;
-
 /**
- * {@link ResolvedJavaMethod}s that can be assigned a globally unique identifier for use as keys in
- * a {@link MethodIdMap}. This should only be used where the cost of a {@link Map} with
- * {@link ResolvedJavaMethod}s as keys is too high.
+ * An object that can be assigned a globally unique identifier for use as a key in a
+ * {@link MethodIdMap}.
  */
-public interface MethodIdHolder extends ResolvedJavaMethod {
+public interface MethodIdHolder {
     /**
      * Sets the unique, positive, non-zero identifier for this method.
      */

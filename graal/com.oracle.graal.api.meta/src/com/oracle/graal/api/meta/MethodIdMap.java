@@ -20,21 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graphbuilderconf;
+package com.oracle.graal.api.meta;
 
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graphbuilderconf.MethodIdHolder.MethodIdAllocator;
-import com.oracle.jvmci.common.*;
+import com.oracle.graal.api.meta.MethodIdHolder.MethodIdAllocator;
 
 /**
- * A map whose keys are {@link MethodIdHolder}s that doesn't require eager resolution of
- * {@link ResolvedJavaMethod}s and has retrieval as fast as array indexing. The constraints on using
- * such a map are:
+ * A map whose keys are {@link MethodIdHolder}s. This data structure can be used for mapping
+ * identifiers to methods without requiring eager resolution of the latter (e.g., to
+ * {@link ResolvedJavaMethod}s) and has retrieval as fast as array indexing. The constraints on
+ * using such a map are:
  * <ul>
  * <li>at most one value can be added for any key</li>
  * <li>no more entries can be added after the first {@linkplain #get(MethodIdHolder) retrieval}</li>
@@ -76,6 +75,10 @@ public class MethodIdMap<V> {
             return false;
         }
 
+        public int getDeclaredParameterCount() {
+            return isStatic ? argumentTypes.length : argumentTypes.length - 1;
+        }
+
         @Override
         public int hashCode() {
             // Replay compilation mandates use of stable hash codes
@@ -98,7 +101,7 @@ public class MethodIdMap<V> {
                 assert Modifier.isStatic(res.getModifiers()) == isStatic;
                 return res;
             } catch (NoSuchMethodException | SecurityException e) {
-                throw new JVMCIError(e);
+                throw new InternalError(e);
             }
         }
 

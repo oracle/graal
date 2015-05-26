@@ -28,9 +28,9 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.MethodIdMap.MethodKey;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.MethodKey;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -163,8 +163,9 @@ public class InvocationPlugins {
          * @param substituteDeclaringClass the class declaring the substitute method
          * @param name the name of both the original and substitute method
          * @param argumentTypes the argument types of the method. Element 0 of this array must be
-         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method is non-static.
-         *            Upon returning, element 0 will have been rewritten to {@code declaringClass}
+         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
+         *            is non-static. Upon returning, element 0 will have been rewritten to
+         *            {@code declaringClass}
          */
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, Class<?>... argumentTypes) {
             MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(substituteDeclaringClass, name, argumentTypes);
@@ -206,8 +207,9 @@ public class InvocationPlugins {
      * registered for {@code method}.
      *
      * @param argumentTypes the argument types of the method. Element 0 of this array must be the
-     *            {@link Class} value for {@link InvocationPlugin.Receiver} iff the method is non-static. Upon
-     *            returning, element 0 will have been rewritten to {@code declaringClass}
+     *            {@link Class} value for {@link InvocationPlugin.Receiver} iff the method is
+     *            non-static. Upon returning, element 0 will have been rewritten to
+     *            {@code declaringClass}
      */
     public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
@@ -296,7 +298,7 @@ public class InvocationPlugins {
                 msplugin.getJavaSubstitute();
                 return true;
             }
-            int arguments = method.isStatic ? method.argumentTypes.length : method.argumentTypes.length - 1;
+            int arguments = method.getDeclaredParameterCount();
             assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, method);
             for (Method m : plugin.getClass().getDeclaredMethods()) {
                 if (m.getName().equals("apply")) {
