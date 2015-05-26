@@ -32,8 +32,11 @@ import com.oracle.truffle.api.source.Source;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.lang.reflect.Constructor;
+import java.io.Writer;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
@@ -53,10 +56,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Virtual machine for Truffle based languages. Use {@link #create()} to instantiate new isolated
- * virtual machine ready for execution of various languages. All the languages in a single virtual
- * machine see each other exported global symbols and can co-operate. Use {@link #create()} multiple
- * times to create different, isolated virtual machines completely separated from each other.
+ * Virtual machine for Truffle based languages. Use {@link #newVM()} to create new isolated virtual
+ * machine ready for execution of various languages. All the languages in a single virtual machine
+ * see each other exported global symbols and can co-operate. Use {@link #newVM()} multiple times to
+ * create different, isolated virtual machines completely separated from each other.
  * <p>
  * Once instantiated use {@link #eval(java.net.URI)} with a reference to a file or URL or directly
  * pass code snippet into the virtual machine via {@link #eval(java.lang.String, java.lang.String)}.
@@ -65,17 +68,41 @@ import java.util.logging.Logger;
  * initialized, it remains so, until the virtual machine isn't garbage collected.
  * <p>
  * The <code>TruffleVM</code> is single-threaded and tries to enforce that. It records the thread it
- * has been {@link #create() created} by and checks that all subsequent calls are coming from the
- * same thread.
+ * has been {@link Builder#build() created} by and checks that all subsequent calls are coming from
+ * the same thread.
  */
 public final class TruffleVM {
     private static final Logger LOG = Logger.getLogger(TruffleVM.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
     private final Thread initThread;
     private final Map<String, Language> langs;
+    private final Reader in;
+    private final Writer err;
+    private final Writer out;
 
+    /**
+     * Private & temporary only constructor.
+     */
     private TruffleVM() {
-        initThread = Thread.currentThread();
+        this.initThread = null;
+        this.in = null;
+        this.err = null;
+        this.out = null;
+        this.langs = null;
+    }
+
+    /**
+     * Real constructor used from the builder.
+     *
+     * @param out stdout
+     * @param err stderr
+     * @param in stdin
+     */
+    private TruffleVM(Writer out, Writer err, Reader in) {
+        this.out = out;
+        this.err = err;
+        this.in = in;
+        this.initThread = Thread.currentThread();
         this.langs = new HashMap<>();
         Enumeration<URL> en;
         try {
@@ -111,14 +138,105 @@ public final class TruffleVM {
     }
 
     /**
-     * Creates new Truffle virtual machine. It searches for {@link Registration languages
-     * registered} in the system class loader and makes them available for later evaluation via
+     * Creation of new Truffle virtual machine. Use the {@link Builder} methods to configure your
+     * virtual machine and then create one using {@link Builder#build()}:
+     *
+     * <pre>
+     * {@link TruffleVM} vm = {@link TruffleVM}.{@link TruffleVM#newVM() newVM()}
+     *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
+     *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
+     *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
+     *     .{@link Builder#build() build()};
+     * </pre>
+     *
+     * It searches for {@link Registration languages registered} in the system class loader and
+     * makes them available for later evaluation via
      * {@link #eval(java.lang.String, java.lang.String)} methods.
      *
      * @return new, isolated virtual machine with pre-registered languages
      */
-    public static TruffleVM create() {
-        return new TruffleVM();
+    public static TruffleVM.Builder newVM() {
+        // making Builder non-static inner class is a
+        // nasty trick to avoid the Builder class to appear
+        // in Javadoc next to TruffleVM class
+        TruffleVM vm = new TruffleVM();
+        return vm.new Builder();
+    }
+
+    /**
+     * Builder for a new {@link TruffleVM}. Call various configuration methods in a chain and at the
+     * end create new {@link TruffleVM virtual machine}:
+     *
+     * <pre>
+     * {@link TruffleVM} vm = {@link TruffleVM}.{@link TruffleVM#newVM() newVM()}
+     *     .{@link Builder#stdOut(java.io.Writer) stdOut}({@link Writer yourWriter})
+     *     .{@link Builder#stdErr(java.io.Writer) stdErr}({@link Writer yourWriter})
+     *     .{@link Builder#stdIn(java.io.Reader) stdIn}({@link Reader yourReader})
+     *     .{@link Builder#build() build()};
+     * </pre>
+     */
+    public final class Builder {
+        private Writer out;
+        private Writer err;
+        private Reader in;
+
+        Builder() {
+        }
+
+        /**
+         * Changes the defaut output for languages running in <em>to be created</em>
+         * {@link TruffleVM virtual machine}. The default is to use {@link System#out}.
+         *
+         * @param w the writer to use as output
+         * @return instance of this builder
+         */
+        public Builder stdOut(Writer w) {
+            out = w;
+            return this;
+        }
+
+        /**
+         * Changes the error output for languages running in <em>to be created</em>
+         * {@link TruffleVM virtual machine}. The default is to use {@link System#err}.
+         *
+         * @param w the writer to use as output
+         * @return instance of this builder
+         */
+        public Builder stdErr(Writer w) {
+            err = w;
+            return this;
+        }
+
+        /**
+         * Changes the defaut input for languages running in <em>to be created</em>
+         * {@link TruffleVM virtual machine}. The default is to use {@link System#out}.
+         *
+         * @param r the reader to use as input
+         * @return instance of this builder
+         */
+        public Builder stdIn(Reader r) {
+            in = r;
+            return this;
+        }
+
+        /**
+         * Creates the {@link TruffleVM Truffle virtual machine}. The configuration is taken from
+         * values passed into configuration methods in this class.
+         *
+         * @return new, isolated virtual machine with pre-registered languages
+         */
+        public TruffleVM build() {
+            if (out == null) {
+                out = new OutputStreamWriter(System.out);
+            }
+            if (err == null) {
+                err = new OutputStreamWriter(System.err);
+            }
+            if (in == null) {
+                in = new InputStreamReader(System.in);
+            }
+            return new TruffleVM(out, err, in);
+        }
     }
 
     /**
@@ -336,7 +454,7 @@ public final class TruffleVM {
                 try {
                     Class<?> langClazz = Class.forName(n, true, loader());
                     Constructor<?> constructor = langClazz.getConstructor(Env.class);
-                    impl = SPI.attachEnv(TruffleVM.this, constructor);
+                    impl = SPI.attachEnv(TruffleVM.this, constructor, out, err, in);
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getName() + " language with implementation " + n, ex);
                 }
@@ -368,8 +486,8 @@ public final class TruffleVM {
         }
 
         @Override
-        public TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz) {
-            return super.attachEnv(vm, langClazz);
+        public TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz, Writer stdOut, Writer stdErr, Reader stdIn) {
+            return super.attachEnv(vm, langClazz, stdOut, stdErr, stdIn);
         }
 
         @Override

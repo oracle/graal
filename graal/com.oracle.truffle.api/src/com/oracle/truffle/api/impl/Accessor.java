@@ -29,6 +29,8 @@ import com.oracle.truffle.api.vm.TruffleVM;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.ServiceLoader;
 
 /**
@@ -76,8 +78,8 @@ public abstract class Accessor {
         }
     }
 
-    protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz) {
-        return API.attachEnv(vm, langClazz);
+    protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz, Writer stdOut, Writer stdErr, Reader stdIn) {
+        return API.attachEnv(vm, langClazz, stdOut, stdErr, stdIn);
     }
 
     protected Object eval(TruffleLanguage l, Source s) throws IOException {
