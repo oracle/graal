@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.JavaTypeProfile;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

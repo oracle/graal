@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.compiler.common.calc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.UnsignedMath;
+import com.oracle.jvmci.meta.PrimitiveConstant;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.Constant;
 import com.oracle.jvmci.common.*;
 
 /**

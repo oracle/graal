@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.jvmci.common.*;

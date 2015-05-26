@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.compiler.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Assumptions;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.Assumptions.Assumption;
-import com.oracle.graal.api.meta.Assumptions.NoFinalizableSubclass;
+import com.oracle.jvmci.meta.Assumptions.Assumption;
+import com.oracle.jvmci.meta.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;

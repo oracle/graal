@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common.spi;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.LIRKind;
 
 /**
  * This interface can be used to access platform and VM specific kinds.

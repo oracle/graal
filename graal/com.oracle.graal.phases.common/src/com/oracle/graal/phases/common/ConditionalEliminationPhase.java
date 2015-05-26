@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

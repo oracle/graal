@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
@@ -34,6 +33,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.info.elem;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;

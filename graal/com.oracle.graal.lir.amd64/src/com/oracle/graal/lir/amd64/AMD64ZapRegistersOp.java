@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.code.RegisterSaveLayout;
+import com.oracle.jvmci.meta.JavaConstant;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.lir.amd64.AMD64SaveRegistersOp.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;

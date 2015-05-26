@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.VirtualStackSlot;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LIRKind;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
 
 import java.util.*;
 import java.util.function.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;

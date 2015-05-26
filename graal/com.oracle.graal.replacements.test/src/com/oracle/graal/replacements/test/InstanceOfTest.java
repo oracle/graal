@@ -26,16 +26,16 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.CompilationResult.Call;
-import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.CompilationResult.Site;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth13;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth14;
+import com.oracle.jvmci.code.CompilationResult.Call;
+import com.oracle.jvmci.code.CompilationResult.Mark;
+import com.oracle.jvmci.code.CompilationResult.Site;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Tests the implementation of instanceof, allowing profiling information to be manually specified.

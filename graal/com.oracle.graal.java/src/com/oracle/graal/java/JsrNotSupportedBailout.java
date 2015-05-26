@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.jvmci.code.BailoutException;
 
 public class JsrNotSupportedBailout extends BailoutException {
 

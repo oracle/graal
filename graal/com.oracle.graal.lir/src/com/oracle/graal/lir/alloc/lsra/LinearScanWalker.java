@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.CodeUtil.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.lir.*;

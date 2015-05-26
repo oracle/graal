@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
+import com.oracle.jvmci.meta.ProfilingInfo;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.phases.common.inlining.InliningPhase.Options.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.inlining.*;

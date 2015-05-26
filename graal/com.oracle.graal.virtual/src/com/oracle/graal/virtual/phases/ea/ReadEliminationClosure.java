@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.LocationIdentity;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;

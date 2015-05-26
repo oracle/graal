@@ -22,8 +22,14 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.jvmci.common.*;
 
 public class StampFactory {

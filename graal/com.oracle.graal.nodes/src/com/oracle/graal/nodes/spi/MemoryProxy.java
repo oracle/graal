@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.meta.*;
 
 public interface MemoryProxy extends Proxy, MemoryNode {
 

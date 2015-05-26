@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.Value;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;

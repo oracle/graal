@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.java.test;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.jvmci.meta.MetaUtil.*;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Tests for {@link MetaAccessProvider}.

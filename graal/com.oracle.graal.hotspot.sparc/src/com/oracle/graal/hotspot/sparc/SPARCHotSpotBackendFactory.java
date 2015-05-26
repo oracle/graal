@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.Value;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;

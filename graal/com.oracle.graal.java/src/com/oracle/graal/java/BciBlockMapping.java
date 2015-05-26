@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.java;
 
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ExceptionHandler;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.jvmci.debug.*;

@@ -28,10 +28,10 @@ import static com.oracle.graal.lir.LIRInstruction.OperandMode.*;
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * The base class for an {@code LIRInstruction}.

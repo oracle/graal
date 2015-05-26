@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.JavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodeinfo.*;

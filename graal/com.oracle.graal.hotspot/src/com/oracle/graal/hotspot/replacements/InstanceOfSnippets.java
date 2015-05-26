@@ -22,15 +22,20 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.TypeCheckHints;
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.Assumptions;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.Kind;
+import static com.oracle.jvmci.meta.DeoptimizationAction.*;
+import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;

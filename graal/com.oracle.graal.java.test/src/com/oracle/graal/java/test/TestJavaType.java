@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.Kind;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 
 /**
  * Tests for {@link JavaType}.

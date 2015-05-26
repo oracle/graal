@@ -22,11 +22,16 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MethodHandleAccessProvider;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.jvmci.hotspot.HotSpotResolvedJavaType.*;
 import static com.oracle.jvmci.hotspot.HotSpotResolvedObjectTypeImpl.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;

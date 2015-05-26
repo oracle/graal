@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.jtt.optimize;
 
+import com.oracle.jvmci.meta.DeoptimizationReason;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.jtt.*;
 
 public class ConditionalElimination02 extends JTTTest {

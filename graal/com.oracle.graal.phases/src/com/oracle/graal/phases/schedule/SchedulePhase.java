@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.phases.schedule;
 
+import com.oracle.jvmci.meta.LocationIdentity;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

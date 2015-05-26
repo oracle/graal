@@ -25,10 +25,10 @@ package com.oracle.graal.lir;
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Base class to represent values that need to be stored in more than one register. This is mainly

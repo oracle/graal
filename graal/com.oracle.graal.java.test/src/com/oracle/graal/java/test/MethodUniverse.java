@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-
 /**
- * Context for method related api.meta tests.
+ * Context for method related tests.
  */
 public class MethodUniverse extends TypeUniverse {
 

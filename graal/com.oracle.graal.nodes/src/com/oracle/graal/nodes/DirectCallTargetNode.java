@@ -24,11 +24,11 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 @NodeInfo
 public class DirectCallTargetNode extends LoweredCallTargetNode {

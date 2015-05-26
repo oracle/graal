@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
+import com.oracle.jvmci.code.ValueUtil;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.Value;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;

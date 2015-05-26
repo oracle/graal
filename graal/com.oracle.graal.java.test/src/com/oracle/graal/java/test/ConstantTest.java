@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Kind;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 
 public class ConstantTest extends FieldUniverse {
 

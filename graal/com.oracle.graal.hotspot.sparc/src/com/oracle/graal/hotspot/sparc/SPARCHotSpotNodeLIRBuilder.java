@@ -22,12 +22,20 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.ValueUtil;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.graph.*;

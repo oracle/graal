@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.TrustedInterface;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
@@ -31,14 +35,13 @@ import org.junit.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 
 /**
- * Context for type related api.meta tests.
+ * Context for type related tests.
  */
 public class TypeUniverse {
 

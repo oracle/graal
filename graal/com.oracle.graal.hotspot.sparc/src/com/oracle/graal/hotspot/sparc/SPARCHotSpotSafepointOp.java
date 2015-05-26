@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.InfopointReason;
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.AllocatableValue;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.*;

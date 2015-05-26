@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.Value;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;

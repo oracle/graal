@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Kind;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;

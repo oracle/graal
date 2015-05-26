@@ -28,8 +28,8 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Tests {@link HotSpotResolvedJavaField} functionality.

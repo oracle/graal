@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.meta.Value;
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 

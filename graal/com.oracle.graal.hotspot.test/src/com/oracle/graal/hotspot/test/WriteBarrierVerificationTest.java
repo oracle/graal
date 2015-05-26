@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;

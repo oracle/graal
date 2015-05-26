@@ -24,10 +24,10 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.meta.*;
 
 public class ValueNodeUtil {
 
@@ -86,7 +86,7 @@ public class ValueNodeUtil {
 
     /**
      * Converts a given instruction to a value string. The representation of an node as a value is
-     * formed by concatenating the {@linkplain com.oracle.graal.api.meta.Kind#getTypeChar character}
+     * formed by concatenating the {@linkplain com.oracle.jvmci.meta.Kind#getTypeChar character}
      * denoting its {@linkplain ValueNode#getKind kind} and its id. For example, {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-"

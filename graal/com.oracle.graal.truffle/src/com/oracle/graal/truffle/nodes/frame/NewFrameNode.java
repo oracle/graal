@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.truffle.nodes.frame;
 
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Kind;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;

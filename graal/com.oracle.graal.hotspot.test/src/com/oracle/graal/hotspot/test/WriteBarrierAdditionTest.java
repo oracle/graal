@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.ref.*;
@@ -30,7 +31,6 @@ import org.junit.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;

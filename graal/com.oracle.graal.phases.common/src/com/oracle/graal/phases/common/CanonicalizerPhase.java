@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeEventListener;

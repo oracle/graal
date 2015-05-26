@@ -22,6 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.DefaultProfilingInfo;
+import com.oracle.jvmci.meta.ConstantPool;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ProfilingInfo;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
@@ -36,7 +41,6 @@ import java.util.concurrent.atomic.*;
 import java.util.jar.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;

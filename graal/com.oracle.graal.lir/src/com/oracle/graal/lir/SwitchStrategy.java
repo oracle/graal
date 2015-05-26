@@ -24,10 +24,10 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * This class encapsulates different strategies on how to generate code for switch instructions.

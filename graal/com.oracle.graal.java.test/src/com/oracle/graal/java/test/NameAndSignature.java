@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.runtime.*;
 

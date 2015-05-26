@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import com.oracle.jvmci.code.TargetDescription;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;

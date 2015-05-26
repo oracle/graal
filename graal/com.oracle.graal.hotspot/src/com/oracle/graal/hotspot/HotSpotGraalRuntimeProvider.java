@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.stack.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.stack.StackIntrospection;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.ResolvedJavaType;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.runtime.*;

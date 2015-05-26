@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Value;
 
 /**
  * This interface can be used to generate AMD64 LIR for arithmetic operations.

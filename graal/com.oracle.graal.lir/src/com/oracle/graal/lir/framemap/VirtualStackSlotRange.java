@@ -24,8 +24,9 @@ package com.oracle.graal.lir.framemap;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
+
 
 /**
  * Represents a {@link #getSlots() numbered} range of {@link VirtualStackSlot virtual stack slot} of

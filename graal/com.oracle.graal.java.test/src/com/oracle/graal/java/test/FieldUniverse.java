@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaField;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-
 /**
- * Context for field related api.meta tests.
+ * Context for field related tests.
  */
 public class FieldUniverse extends TypeUniverse {
 

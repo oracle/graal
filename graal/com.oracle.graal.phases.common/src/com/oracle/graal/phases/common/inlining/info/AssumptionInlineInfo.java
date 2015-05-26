@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 
-import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;

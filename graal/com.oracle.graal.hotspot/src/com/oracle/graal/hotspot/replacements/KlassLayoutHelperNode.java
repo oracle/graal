@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;

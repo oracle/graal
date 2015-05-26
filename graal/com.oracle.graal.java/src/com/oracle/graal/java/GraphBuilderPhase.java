@@ -22,9 +22,33 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.api.code.TypeCheckHints.*;
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.code.InfopointReason;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.BytecodePosition;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.RawConstant;
+import com.oracle.jvmci.meta.ProfilingInfo;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.JavaField;
+import com.oracle.jvmci.meta.MetaUtil;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.JavaTypeProfile;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.LineNumberTable;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.ConstantPool;
+import static com.oracle.jvmci.code.TypeCheckHints.*;
+import static com.oracle.jvmci.meta.DeoptimizationAction.*;
+import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
@@ -37,8 +61,6 @@ import static java.lang.String.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;

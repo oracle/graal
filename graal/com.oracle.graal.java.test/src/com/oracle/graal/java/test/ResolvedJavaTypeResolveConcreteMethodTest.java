@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;

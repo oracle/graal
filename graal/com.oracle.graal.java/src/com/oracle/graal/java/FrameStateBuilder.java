@@ -22,13 +22,19 @@
  */
 package com.oracle.graal.java;
 
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.BytecodePosition;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaType;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.graphbuilderconf.*;

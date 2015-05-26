@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.util;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.JavaMethod;
 import com.oracle.graal.phases.*;
 
 /**

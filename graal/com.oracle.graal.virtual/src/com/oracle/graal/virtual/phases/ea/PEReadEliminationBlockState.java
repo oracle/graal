@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;

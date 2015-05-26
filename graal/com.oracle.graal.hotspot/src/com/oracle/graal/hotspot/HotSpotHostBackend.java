@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.spi.*;

@@ -22,12 +22,17 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.ValueUtil;
+import com.oracle.jvmci.code.RegisterSaveLayout;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.RegisterValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;

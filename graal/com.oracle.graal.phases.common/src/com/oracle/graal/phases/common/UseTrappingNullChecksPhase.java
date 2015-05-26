@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;

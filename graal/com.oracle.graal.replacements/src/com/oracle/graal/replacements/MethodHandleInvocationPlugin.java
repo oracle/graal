@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 
 public class MethodHandleInvocationPlugin implements GenericInvocationPlugin {
     private final MethodHandleAccessProvider methodHandleAccess;

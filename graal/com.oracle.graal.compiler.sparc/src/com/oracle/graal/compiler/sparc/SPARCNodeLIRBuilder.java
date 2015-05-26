@@ -23,8 +23,11 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.lir.*;

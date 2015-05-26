@@ -22,12 +22,21 @@
  */
 package com.oracle.graal.asm.test;
 
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.DisassemblerProvider;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.InvalidInstalledCodeException;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;

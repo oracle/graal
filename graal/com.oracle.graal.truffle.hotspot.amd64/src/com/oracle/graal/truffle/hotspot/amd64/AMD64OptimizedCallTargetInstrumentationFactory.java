@@ -22,10 +22,15 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;

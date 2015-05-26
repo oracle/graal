@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
+import com.oracle.jvmci.code.BailoutException;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.inlining.walker.*;

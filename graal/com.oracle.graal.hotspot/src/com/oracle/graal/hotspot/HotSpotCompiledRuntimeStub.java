@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.jvmci.code.CompilationResult;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Call;
-import com.oracle.graal.api.code.CompilationResult.ConstantReference;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.code.CompilationResult.Infopoint;
+import com.oracle.jvmci.code.CompilationResult.Call;
+import com.oracle.jvmci.code.CompilationResult.ConstantReference;
+import com.oracle.jvmci.code.CompilationResult.DataPatch;
+import com.oracle.jvmci.code.CompilationResult.Infopoint;
 import com.oracle.jvmci.hotspot.*;
 
 /**

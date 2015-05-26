@@ -23,9 +23,9 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.jtt.*;
 
 /*

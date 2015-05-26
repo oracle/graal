@@ -22,13 +22,24 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.CalleeSaveLayout;
+import com.oracle.jvmci.code.RegisterAttributes;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.sparc.*;

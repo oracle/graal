@@ -23,13 +23,19 @@
 
 package com.oracle.graal.compiler.amd64;
 
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.LIRKind;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;

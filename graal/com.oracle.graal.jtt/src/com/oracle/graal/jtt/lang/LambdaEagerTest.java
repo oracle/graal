@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.jtt.lang;
 
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 import java.util.function.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;

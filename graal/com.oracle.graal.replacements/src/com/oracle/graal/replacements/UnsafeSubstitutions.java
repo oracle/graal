@@ -28,10 +28,10 @@ import java.lang.reflect.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Substitutions for {@link sun.misc.Unsafe} methods.

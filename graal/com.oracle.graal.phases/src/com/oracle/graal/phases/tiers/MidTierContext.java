@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.SpeculationLog;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.ProfilingInfo;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 

@@ -22,14 +22,24 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;

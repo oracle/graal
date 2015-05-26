@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ResolvedJavaField;
 import com.oracle.graal.nodes.*;
 
 public interface LoadFieldPlugin extends GraphBuilderPlugin {

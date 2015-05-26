@@ -22,15 +22,21 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.SpeculationLog;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.Assumptions.Assumption;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
+import com.oracle.jvmci.meta.Assumptions.Assumption;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;

@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.ExceptionHandler;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ConstantPool;
 import static org.junit.Assert.*;
 
 import java.lang.annotation.*;
@@ -30,7 +33,6 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 
 /**
  * Tests for {@link ResolvedJavaMethod}.

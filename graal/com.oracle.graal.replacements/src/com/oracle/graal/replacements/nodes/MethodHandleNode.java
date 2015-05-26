@@ -25,9 +25,6 @@ package com.oracle.graal.replacements.nodes;
 import java.lang.invoke.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -38,6 +35,9 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
+import com.oracle.jvmci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.

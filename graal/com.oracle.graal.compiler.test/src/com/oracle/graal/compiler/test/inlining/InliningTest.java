@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.test.inlining;
 
+import com.oracle.jvmci.code.InfopointReason;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.truffle.test;
 
+import com.oracle.jvmci.code.BailoutException;
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;

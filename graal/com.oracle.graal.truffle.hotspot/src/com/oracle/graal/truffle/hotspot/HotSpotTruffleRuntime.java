@@ -22,7 +22,14 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
@@ -32,9 +39,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;

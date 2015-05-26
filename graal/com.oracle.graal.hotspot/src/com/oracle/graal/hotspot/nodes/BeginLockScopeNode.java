@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LocationIdentity;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;

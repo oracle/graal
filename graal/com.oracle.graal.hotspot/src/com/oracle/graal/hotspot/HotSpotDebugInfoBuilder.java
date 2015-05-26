@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.api.code.BytecodeFrame.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.code.StackLockValue;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.VirtualObject;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.BytecodeFrame.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

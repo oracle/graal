@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.InfopointReason;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;

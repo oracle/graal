@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import sun.misc.*;
 import sun.reflect.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;

@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.LocalVariableTable;
+import com.oracle.jvmci.meta.Local;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;

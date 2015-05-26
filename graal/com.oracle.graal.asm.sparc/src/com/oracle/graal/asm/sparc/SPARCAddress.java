@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.asm.sparc;
 
+import com.oracle.jvmci.code.AbstractAddress;
+import com.oracle.jvmci.code.Register;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 

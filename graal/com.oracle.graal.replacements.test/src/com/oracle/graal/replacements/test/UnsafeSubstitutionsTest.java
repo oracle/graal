@@ -28,9 +28,9 @@ import org.junit.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Tests the VM independent {@link UnsafeSubstitutions}.

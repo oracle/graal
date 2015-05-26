@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.JavaConstant;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

@@ -22,9 +22,18 @@
  */
 package com.oracle.graal.compiler.target;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.stack.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.stack.StackIntrospection;
+import com.oracle.jvmci.code.DisassemblerProvider;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;

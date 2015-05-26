@@ -22,10 +22,18 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.api.meta.Value.*;
+import static com.oracle.jvmci.code.CallingConvention.Type.*;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
+import static com.oracle.jvmci.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
@@ -34,8 +42,6 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.jvmci.hotspot.*;

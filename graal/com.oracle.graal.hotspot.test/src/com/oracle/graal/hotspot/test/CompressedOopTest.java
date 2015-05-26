@@ -23,12 +23,12 @@
 
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.jvmci.hotspot.*;
 

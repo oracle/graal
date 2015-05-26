@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.jvmci.meta.MetaUtil.*;
 
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
@@ -48,6 +47,7 @@ import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Information about arithmetic operations.

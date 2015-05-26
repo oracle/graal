@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.asm.sparc;
 
+import com.oracle.jvmci.code.AbstractAddress;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.Register;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.function.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
 import com.oracle.jvmci.common.*;
 

@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.jvmci.code.VirtualStackSlot;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.Kind;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;

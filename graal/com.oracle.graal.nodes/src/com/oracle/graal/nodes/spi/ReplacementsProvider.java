@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.runtime.*;
 
 /**

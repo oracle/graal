@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.io.*;
@@ -32,8 +35,6 @@ import javax.crypto.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.meta.*;

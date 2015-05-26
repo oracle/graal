@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.nodes.test;
 
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.ResolvedJavaType;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 
 public class ObjectStampMeetTest extends AbstractObjectStampTest {

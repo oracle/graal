@@ -22,16 +22,18 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;

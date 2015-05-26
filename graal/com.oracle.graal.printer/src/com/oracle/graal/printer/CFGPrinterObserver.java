@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.printer;
 
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.JavaMethod;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;

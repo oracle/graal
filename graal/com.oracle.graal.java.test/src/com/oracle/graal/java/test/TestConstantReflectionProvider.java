@@ -28,7 +28,7 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Tests for {@link ConstantReflectionProvider}. It assumes an implementation of the interface that

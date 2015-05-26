@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Value;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 

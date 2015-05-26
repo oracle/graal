@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.MemoryAccessProvider;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Constant;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.jvmci.hotspot.*;
 

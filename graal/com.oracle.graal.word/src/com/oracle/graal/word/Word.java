@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.word;
 
+import com.oracle.jvmci.code.UnsignedMath;
+import com.oracle.jvmci.meta.LocationIdentity;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.annotation.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;

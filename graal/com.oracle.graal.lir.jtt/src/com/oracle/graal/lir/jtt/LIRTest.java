@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.Kind;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;

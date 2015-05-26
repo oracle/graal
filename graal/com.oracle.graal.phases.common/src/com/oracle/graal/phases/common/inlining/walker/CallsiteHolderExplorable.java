@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 import java.util.function.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.inlining.policy.*;

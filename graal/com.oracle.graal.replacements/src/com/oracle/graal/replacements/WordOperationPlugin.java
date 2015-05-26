@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -41,6 +40,7 @@ import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.nodes.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * A {@link GenericInvocationPlugin} for calls to {@linkplain Operation word operations}, and a

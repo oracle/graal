@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.*;
 
 public final class LIRValueUtil {
 

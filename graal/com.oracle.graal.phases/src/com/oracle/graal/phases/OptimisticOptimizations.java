@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.phases;
 
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.ProfilingInfo;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.jvmci.debug.*;
 

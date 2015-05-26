@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.common.util;
 
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.BailoutException;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.jvmci.debug.*;
 
 /**

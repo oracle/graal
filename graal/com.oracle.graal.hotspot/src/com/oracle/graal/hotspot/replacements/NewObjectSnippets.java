@@ -22,7 +22,15 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.api.code.UnsignedMath.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.NamedLocationIdentity;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
+import static com.oracle.jvmci.code.UnsignedMath.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -33,8 +41,6 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 import static com.oracle.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;

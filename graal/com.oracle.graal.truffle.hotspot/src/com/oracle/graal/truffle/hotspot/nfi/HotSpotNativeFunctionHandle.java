@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
+import com.oracle.jvmci.code.InvalidInstalledCodeException;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.Kind;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;

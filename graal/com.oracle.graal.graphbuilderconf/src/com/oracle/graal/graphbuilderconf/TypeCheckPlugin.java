@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.JavaTypeProfile;
 import com.oracle.graal.nodes.*;
 
 public interface TypeCheckPlugin extends GraphBuilderPlugin {

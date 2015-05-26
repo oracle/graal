@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.word;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.LocationIdentity;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;

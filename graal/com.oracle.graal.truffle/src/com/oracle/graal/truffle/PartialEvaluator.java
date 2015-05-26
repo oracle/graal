@@ -22,6 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
@@ -29,8 +36,6 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.lang.invoke.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;

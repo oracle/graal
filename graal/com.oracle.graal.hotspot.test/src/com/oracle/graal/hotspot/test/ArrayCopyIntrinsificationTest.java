@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.JavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;

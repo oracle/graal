@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.code.CallingConvention;
+import static com.oracle.jvmci.code.CodeUtil.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.lir.gen.*;

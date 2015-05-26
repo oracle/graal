@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.jvmci.meta.*;
 
 public interface UncheckedInterfaceProvider {
     /**

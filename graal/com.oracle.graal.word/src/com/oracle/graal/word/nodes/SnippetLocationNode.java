@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.word.nodes;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LocationIdentity;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;

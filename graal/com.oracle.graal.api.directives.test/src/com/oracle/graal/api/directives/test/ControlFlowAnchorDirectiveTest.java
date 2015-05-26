@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.annotation.*;
 import java.util.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.directives.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;

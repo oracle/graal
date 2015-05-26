@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.VirtualObject;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;

@@ -22,6 +22,19 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.SpeculationLog;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.Assumptions;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ProfilingInfo;
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.DefaultProfilingInfo;
+import com.oracle.jvmci.meta.VMConstant;
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.*;
@@ -29,10 +42,8 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.ConstantReference;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CompilationResult.ConstantReference;
+import com.oracle.jvmci.code.CompilationResult.DataPatch;
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;

@@ -22,12 +22,16 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;

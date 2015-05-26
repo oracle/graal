@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import com.oracle.jvmci.meta.JavaConstant;
 import org.junit.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.jvmci.common.*;

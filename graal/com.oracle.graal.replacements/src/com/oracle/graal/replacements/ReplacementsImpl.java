@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+import static com.oracle.jvmci.meta.MetaUtil.*;
 import static java.lang.String.*;
 
 import java.lang.reflect.*;
@@ -36,8 +36,6 @@ import java.util.concurrent.atomic.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
@@ -55,9 +53,11 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 import com.oracle.jvmci.options.OptionValue.OverrideScope;
 

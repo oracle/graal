@@ -25,9 +25,9 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.meta.*;
 
 public final class DefaultInlineInvokePlugin implements InlineInvokePlugin {
     private final ReplacementsImpl replacements;

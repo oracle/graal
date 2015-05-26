@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * This node class can be used to create {@link MacroNode}s for simple pure functions like

@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.compiler.common.spi;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 
 /**
  * A set of providers which are required for LIR and/or code generation. Some may not be present

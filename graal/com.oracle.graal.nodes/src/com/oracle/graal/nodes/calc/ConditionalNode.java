@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import static com.oracle.graal.nodes.calc.CompareNode.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -32,6 +31,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note

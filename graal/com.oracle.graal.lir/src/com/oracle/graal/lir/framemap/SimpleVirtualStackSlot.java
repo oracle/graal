@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Represents a {@link VirtualStackSlot virtual stack slot} for a specific {@link LIRKind kind}.

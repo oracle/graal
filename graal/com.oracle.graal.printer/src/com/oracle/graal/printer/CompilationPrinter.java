@@ -22,12 +22,21 @@
  */
 package com.oracle.graal.printer;
 
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.code.VirtualObject;
+import com.oracle.jvmci.code.BytecodePosition;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.RegisterSaveLayout;
+import com.oracle.jvmci.code.ReferenceMap;
+import com.oracle.jvmci.meta.MetaUtil;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.JavaMethod;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CodeUtil.RefMapFormatter;
 import com.oracle.jvmci.debug.*;
 
 /**

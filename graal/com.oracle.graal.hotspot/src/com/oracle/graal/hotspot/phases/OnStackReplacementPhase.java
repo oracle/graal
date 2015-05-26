@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.phases;
 
+import com.oracle.jvmci.code.BailoutException;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;

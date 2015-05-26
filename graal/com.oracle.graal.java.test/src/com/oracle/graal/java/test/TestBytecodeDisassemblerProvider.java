@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.java.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.BytecodeDisassemblerProvider;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
 
 /**

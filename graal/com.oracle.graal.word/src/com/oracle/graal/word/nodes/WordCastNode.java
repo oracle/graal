@@ -22,7 +22,11 @@
  */
 package com.oracle.graal.word.nodes;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;

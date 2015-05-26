@@ -24,8 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * A {@link StructuredGraph} encoded in a compact binary representation as a byte[] array. See

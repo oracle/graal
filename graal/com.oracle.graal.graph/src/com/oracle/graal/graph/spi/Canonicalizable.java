@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.graph.spi;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Nodes can implement {@link Canonicalizable} or one of the two sub-interfaces {@link Unary} and

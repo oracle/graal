@@ -22,6 +22,12 @@
  */
 package com.oracle.graal.truffle.test;
 
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.ResolvedJavaField;
 import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.*;
 import static org.hamcrest.core.IsInstanceOf.*;
@@ -31,7 +37,6 @@ import org.junit.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;

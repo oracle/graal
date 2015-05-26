@@ -22,8 +22,15 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.code.CodeUtil.*;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ProfilingInfo;
+import static com.oracle.jvmci.code.CallingConvention.Type.*;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
@@ -36,9 +43,7 @@ import static com.oracle.jvmci.hotspot.InitTimer.*;
 import java.lang.management.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;

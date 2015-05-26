@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -31,7 +33,6 @@ import static com.oracle.graal.word.Word.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;

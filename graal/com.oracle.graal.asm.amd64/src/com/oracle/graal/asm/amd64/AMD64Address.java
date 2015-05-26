@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.asm.amd64;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.AbstractAddress;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base
