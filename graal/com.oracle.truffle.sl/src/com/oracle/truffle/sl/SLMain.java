@@ -248,6 +248,8 @@ public class SLMain extends TruffleLanguage {
                     }
                 } catch (UnsupportedSpecializationException ex) {
                     out.println(formatTypeError(ex));
+                } catch (SLUndefinedFunctionException ex) {
+                    out.println(String.format("Undefined function: %s", ex.getFunctionName()));
                 }
                 long end = System.nanoTime();
                 totalRuntime += end - start;
