@@ -29,9 +29,6 @@ import org.junit.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.LimitTestFactory.ConstantLimitTestFactory;
-import com.oracle.truffle.api.dsl.test.LimitTestFactory.LocalLimitTestFactory;
-import com.oracle.truffle.api.dsl.test.LimitTestFactory.MethodLimitTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardCompareWithFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardComplexTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualByteIntTestFactory;

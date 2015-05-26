@@ -28,7 +28,8 @@ import org.junit.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.LazyClassLoadingTestFactory.TestNodeFactory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class LazyClassLoadingTest {
     @Test

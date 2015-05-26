@@ -26,7 +26,8 @@ import java.lang.annotation.*;
 
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.object.*;
-import com.oracle.truffle.object.basic.BasicLocations.*;
+import com.oracle.truffle.object.basic.BasicLocations.SimpleLongFieldLocation;
+import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
 
 public class DynamicObjectBasic extends DynamicObjectImpl {
     @Retention(RetentionPolicy.RUNTIME)

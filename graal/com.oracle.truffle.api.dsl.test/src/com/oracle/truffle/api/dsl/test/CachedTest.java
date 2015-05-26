@@ -40,7 +40,6 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCached
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
-import com.oracle.truffle.api.nodes.*;
 
 @SuppressWarnings("unused")
 public class CachedTest {

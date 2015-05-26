@@ -23,7 +23,7 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.ShapeImpl.*;
+import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 
 public interface LayoutStrategy {
     boolean updateShape(DynamicObject object);

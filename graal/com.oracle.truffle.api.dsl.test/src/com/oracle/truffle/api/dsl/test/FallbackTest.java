@@ -31,7 +31,8 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback4Factory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 

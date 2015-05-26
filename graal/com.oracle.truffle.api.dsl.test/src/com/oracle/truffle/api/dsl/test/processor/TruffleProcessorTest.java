@@ -22,16 +22,18 @@
  */
 package com.oracle.truffle.api.dsl.test.processor;
 
-import com.oracle.truffle.api.dsl.ExpectError;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.dsl.processor.verify.VerifyTruffleProcessor;
-import java.util.Locale;
-import java.util.ServiceLoader;
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.JavaFileObject;
 import static org.junit.Assert.*;
-import org.junit.Test;
+
+import java.util.*;
+
+import javax.annotation.processing.*;
+import javax.tools.*;
+
+import org.junit.*;
+
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.dsl.processor.verify.*;
 
 /**
  * Verify errors emitted by the processor.

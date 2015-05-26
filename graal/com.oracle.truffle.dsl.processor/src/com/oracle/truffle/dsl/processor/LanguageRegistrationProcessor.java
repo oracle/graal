@@ -22,30 +22,19 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.dsl.ExpectError;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
+import java.io.*;
+import java.util.*;
+
+import javax.annotation.processing.*;
+import javax.lang.model.*;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.StandardLocation;
+import javax.tools.*;
+
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.dsl.*;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.*")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {

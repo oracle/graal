@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.*;
-
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
+
+import java.util.*;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;

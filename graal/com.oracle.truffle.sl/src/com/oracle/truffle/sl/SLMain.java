@@ -32,7 +32,7 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.tools.*;
-import com.oracle.truffle.api.vm.TruffleVM;
+import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.nodes.*;

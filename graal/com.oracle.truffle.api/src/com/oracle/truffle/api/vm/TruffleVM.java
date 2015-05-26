@@ -24,33 +24,18 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
+import java.io.*;
+import java.lang.reflect.*;
+import java.net.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.logging.*;
+
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.source.Source;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.lang.reflect.Constructor;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.source.*;
 
 /**
  * Virtual machine for Truffle based languages. Use {@link #create()} to instantiate new isolated

@@ -37,8 +37,8 @@ import org.junit.runners.*;
 import org.junit.runners.model.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.sl.SLMain;
+import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.runtime.*;

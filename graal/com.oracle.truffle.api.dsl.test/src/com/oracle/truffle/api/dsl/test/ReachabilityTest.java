@@ -25,7 +25,9 @@ package com.oracle.truffle.api.dsl.test;
 import java.math.*;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 public class ReachabilityTest {
 

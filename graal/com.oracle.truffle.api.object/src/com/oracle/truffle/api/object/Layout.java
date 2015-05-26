@@ -27,7 +27,7 @@ package com.oracle.truffle.api.object;
 import java.util.*;
 
 import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
-import com.oracle.truffle.api.object.Shape.*;
+import com.oracle.truffle.api.object.Shape.Allocator;
 
 public abstract class Layout {
     public static final EnumSet<ImplicitCast> NONE = EnumSet.noneOf(ImplicitCast.class);

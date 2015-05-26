@@ -34,7 +34,7 @@ import javax.lang.model.element.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.ExpectError;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 
 @SupportedAnnotationTypes({"com.oracle.truffle.api.CompilerDirectives.TruffleBoundary", "com.oracle.truffle.api.nodes.Node.Child"})

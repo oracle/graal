@@ -30,7 +30,7 @@ import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.api.utilities.JSONHelper.JSONArrayBuilder;
 import com.oracle.truffle.api.utilities.JSONHelper.JSONObjectBuilder;
 import com.oracle.truffle.object.*;
-import com.oracle.truffle.object.Transition.*;
+import com.oracle.truffle.object.Transition.PropertyTransition;
 
 public class JSONShapeVisitor extends DebugShapeVisitor<JSONObjectBuilder> {
     @Override

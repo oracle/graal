@@ -30,9 +30,9 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdditionNode;
+import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestRootNode;
 import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestValueNode;
-import com.oracle.truffle.api.test.instrument.InstrumentationTestNodes.TestAdvancedInstrumentCounterRoot;
 
 /**
  * Tests the kind of instrumentation where a client can provide an AST fragment to be

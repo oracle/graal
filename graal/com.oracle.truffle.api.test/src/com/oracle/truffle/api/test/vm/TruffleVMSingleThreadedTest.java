@@ -22,13 +22,12 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.vm.TruffleVM;
-import java.io.IOException;
-import java.io.StringReader;
-import java.net.URI;
-import java.net.URISyntaxException;
-import org.junit.Before;
-import org.junit.Test;
+import java.io.*;
+import java.net.*;
+
+import org.junit.*;
+
+import com.oracle.truffle.api.vm.*;
 
 public class TruffleVMSingleThreadedTest {
     TruffleVM tvm;

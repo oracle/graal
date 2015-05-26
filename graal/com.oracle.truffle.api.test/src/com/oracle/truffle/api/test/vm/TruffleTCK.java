@@ -22,8 +22,9 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.vm.TruffleVM;
-import java.util.Random;
+import java.util.*;
+
+import com.oracle.truffle.api.vm.*;
 
 /**
  * A collection of tests that can certify language implementaiton to be complient with most recent

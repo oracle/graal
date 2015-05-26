@@ -27,7 +27,6 @@ package com.oracle.truffle.interop.node;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.interop.InteropPredicate;
 import com.oracle.truffle.api.interop.messages.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.interop.*;
