@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
@@ -39,6 +38,7 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 public class LoopEx {
 

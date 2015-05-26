@@ -38,7 +38,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 /**
  * For AOT compilation we aren't allowed to use a {@link Class} reference ({@code javaMirror})

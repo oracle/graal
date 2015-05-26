@@ -28,7 +28,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The

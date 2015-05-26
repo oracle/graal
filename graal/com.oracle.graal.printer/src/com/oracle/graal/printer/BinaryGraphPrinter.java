@@ -33,11 +33,11 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.debug.*;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 

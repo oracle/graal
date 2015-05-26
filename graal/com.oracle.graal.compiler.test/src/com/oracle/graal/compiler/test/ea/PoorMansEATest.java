@@ -25,8 +25,6 @@ package com.oracle.graal.compiler.test.ea;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
@@ -35,6 +33,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Tests {@link AbstractNewObjectNode#simplify(com.oracle.graal.graph.spi.SimplifierTool)}.

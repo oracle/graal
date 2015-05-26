@@ -32,7 +32,7 @@ import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 
 import com.oracle.graal.hotspot.sourcegen.GenGraalRuntimeInlineHpp.GraalJars;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * A {@link ClassVisitor} that verifies a class declaring one or more {@linkplain OptionValue

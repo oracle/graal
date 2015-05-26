@@ -31,9 +31,9 @@ import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;

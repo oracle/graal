@@ -26,10 +26,10 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.jvmci.debug.*;
 
 public class SimpleCFGTest extends GraalCompilerTest {
 

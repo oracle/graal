@@ -34,7 +34,6 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
@@ -44,6 +43,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:

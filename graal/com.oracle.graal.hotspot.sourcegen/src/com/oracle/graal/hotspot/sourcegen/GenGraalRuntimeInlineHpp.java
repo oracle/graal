@@ -28,9 +28,9 @@ import java.util.*;
 import java.util.stream.*;
 import java.util.zip.*;
 
-import com.oracle.graal.options.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.options.*;
 import com.oracle.jvmci.runtime.*;
 
 /**

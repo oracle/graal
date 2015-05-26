@@ -27,10 +27,10 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 public final class VirtualUtil {
 

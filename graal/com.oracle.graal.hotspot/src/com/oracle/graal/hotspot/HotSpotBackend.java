@@ -43,10 +43,10 @@ import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * HotSpot specific backend.

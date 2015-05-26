@@ -30,9 +30,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace

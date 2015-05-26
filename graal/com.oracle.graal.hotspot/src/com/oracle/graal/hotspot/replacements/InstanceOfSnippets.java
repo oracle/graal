@@ -41,7 +41,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -50,6 +49,7 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Snippets used for implementing the type test of an instanceof instruction. Since instanceof is a

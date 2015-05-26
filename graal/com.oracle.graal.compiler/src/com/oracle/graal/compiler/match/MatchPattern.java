@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.match;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * A simple recursive pattern matcher for a DAG of nodes.

@@ -22,19 +22,19 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.*;
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
+import static com.oracle.jvmci.debug.internal.MemUseTrackerImpl.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.printer.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
 
 /**

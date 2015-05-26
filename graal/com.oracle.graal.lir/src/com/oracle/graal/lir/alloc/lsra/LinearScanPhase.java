@@ -33,8 +33,8 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.DerivedOptionValue.OptionSupplier;
 
 public final class LinearScanPhase extends AllocationPhase {
 

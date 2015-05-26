@@ -29,12 +29,12 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and operand

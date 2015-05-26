@@ -34,11 +34,11 @@ import com.oracle.graal.api.code.DataSection.DataBuilder;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.options.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.

@@ -31,7 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph

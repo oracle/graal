@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Options for the Truffle compiler.

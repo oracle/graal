@@ -24,8 +24,8 @@ package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * A utility for {@linkplain #printInstruction(ValueNode) printing} a node as an expression or

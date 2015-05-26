@@ -44,7 +44,7 @@ import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public class SPARCHotSpotMove {
 

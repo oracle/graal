@@ -37,8 +37,6 @@ import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.asm.*;
@@ -51,13 +49,15 @@ import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationO
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 /**
  * Static methods for orchestrating the compilation of a {@linkplain StructuredGraph graph}.

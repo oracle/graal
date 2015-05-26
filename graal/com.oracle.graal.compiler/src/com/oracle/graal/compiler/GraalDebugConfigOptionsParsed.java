@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.runtime.*;
 
 /**

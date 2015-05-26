@@ -25,10 +25,10 @@ package com.oracle.graal.virtual.phases.ea;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a

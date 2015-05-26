@@ -23,7 +23,7 @@
 package com.oracle.graal.truffle;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 import com.oracle.truffle.api.*;
 
 /**

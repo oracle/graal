@@ -29,7 +29,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.options.*;
 
 public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
 

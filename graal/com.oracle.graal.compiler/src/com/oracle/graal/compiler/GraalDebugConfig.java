@@ -27,13 +27,13 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.options.*;
 
 public class GraalDebugConfig implements DebugConfig {
 

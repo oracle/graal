@@ -28,7 +28,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -40,6 +39,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.elem.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Polymorphic inlining of m methods with n type checks (n &ge; m) in case that the profiling

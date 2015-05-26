@@ -31,9 +31,9 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.

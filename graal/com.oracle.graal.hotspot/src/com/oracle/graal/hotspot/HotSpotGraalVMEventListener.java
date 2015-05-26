@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
+import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 

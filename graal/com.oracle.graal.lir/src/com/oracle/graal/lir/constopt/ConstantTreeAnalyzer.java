@@ -25,10 +25,10 @@ package com.oracle.graal.lir.constopt;
 import java.util.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.constopt.ConstantTree.Flags;
 import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Analyzes a {@link ConstantTree} and marks potential materialization positions.

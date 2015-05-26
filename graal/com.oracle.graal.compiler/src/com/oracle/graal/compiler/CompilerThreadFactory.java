@@ -24,7 +24,7 @@ package com.oracle.graal.compiler;
 
 import java.util.concurrent.*;
 
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Facility for creating {@linkplain CompilerThread compiler threads}.

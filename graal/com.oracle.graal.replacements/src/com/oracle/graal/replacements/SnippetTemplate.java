@@ -23,9 +23,9 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
+import static com.oracle.jvmci.debug.Debug.*;
 import static java.util.FormattableFlags.*;
 
 import java.io.*;
@@ -40,8 +40,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
@@ -65,6 +63,8 @@ import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding

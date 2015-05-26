@@ -30,8 +30,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for

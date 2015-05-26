@@ -31,7 +31,6 @@ import java.util.function.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -42,6 +41,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.LoweringPhase.Frame;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.debug.*;
 
 public class DominatorConditionalEliminationPhase extends Phase {
 

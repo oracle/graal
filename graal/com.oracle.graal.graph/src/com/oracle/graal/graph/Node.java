@@ -32,7 +32,6 @@ import java.util.function.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.NodeEvent;
 import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.Graph.Options;
@@ -40,6 +39,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a

@@ -36,18 +36,18 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.replacements.nodes.arithmetic.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.

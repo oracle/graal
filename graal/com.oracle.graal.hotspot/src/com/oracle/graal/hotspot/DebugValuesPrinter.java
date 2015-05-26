@@ -29,9 +29,9 @@ import java.util.*;
 import java.util.regex.*;
 import java.util.stream.*;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.internal.*;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all

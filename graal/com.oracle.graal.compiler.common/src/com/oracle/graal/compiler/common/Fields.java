@@ -26,9 +26,9 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 
-import com.oracle.jvmci.common.*;
-
 import sun.misc.*;
+
+import com.oracle.jvmci.common.*;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.

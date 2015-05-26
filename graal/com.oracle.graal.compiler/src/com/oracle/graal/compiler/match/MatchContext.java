@@ -28,11 +28,11 @@ import java.util.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Container for state captured during a match.

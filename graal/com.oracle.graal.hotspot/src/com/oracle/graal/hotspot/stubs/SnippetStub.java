@@ -27,8 +27,6 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
@@ -44,6 +42,8 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Base class for a stub defined by a snippet.

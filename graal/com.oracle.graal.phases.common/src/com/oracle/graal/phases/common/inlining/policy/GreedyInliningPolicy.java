@@ -26,12 +26,12 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.*;
 import com.oracle.graal.phases.common.inlining.walker.*;
+import com.oracle.jvmci.debug.*;
 
 public class GreedyInliningPolicy extends AbstractInliningPolicy {
 

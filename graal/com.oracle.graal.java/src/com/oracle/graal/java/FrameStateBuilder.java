@@ -30,7 +30,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
@@ -41,6 +40,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 public final class FrameStateBuilder implements SideEffectsState {
 

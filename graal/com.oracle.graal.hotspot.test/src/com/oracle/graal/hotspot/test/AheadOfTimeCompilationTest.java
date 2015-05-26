@@ -42,12 +42,12 @@ import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 /**
  * use

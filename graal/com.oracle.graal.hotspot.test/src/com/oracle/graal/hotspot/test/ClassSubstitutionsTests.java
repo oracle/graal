@@ -26,11 +26,11 @@ package com.oracle.graal.hotspot.test;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 public class ClassSubstitutionsTests extends GraalCompilerTest {
 

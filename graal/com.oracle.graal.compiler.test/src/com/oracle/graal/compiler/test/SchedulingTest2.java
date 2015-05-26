@@ -27,7 +27,6 @@ import java.util.*;
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.DeoptimizingNode.DeoptDuring;
@@ -40,6 +39,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
 
 public class SchedulingTest2 extends GraphScheduleTest {
 

@@ -30,7 +30,7 @@ import java.util.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 
 public class DebugEnvironment {
 

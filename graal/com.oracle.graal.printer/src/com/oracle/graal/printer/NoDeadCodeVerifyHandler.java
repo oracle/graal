@@ -27,12 +27,12 @@ import static com.oracle.graal.printer.NoDeadCodeVerifyHandler.Options.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Verifies that graphs have no dead code.

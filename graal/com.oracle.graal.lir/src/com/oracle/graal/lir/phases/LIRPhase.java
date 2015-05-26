@@ -27,11 +27,11 @@ import java.util.regex.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.options.*;
 
 /**
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be

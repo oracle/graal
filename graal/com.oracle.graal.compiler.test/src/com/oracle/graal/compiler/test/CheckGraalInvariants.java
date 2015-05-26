@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+import static com.oracle.jvmci.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -39,7 +39,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -55,6 +54,7 @@ import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Checks that all classes in graal*.jar from the boot classpath comply with global invariants such

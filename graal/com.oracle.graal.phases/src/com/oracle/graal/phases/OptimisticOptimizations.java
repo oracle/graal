@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 
 public final class OptimisticOptimizations {
 

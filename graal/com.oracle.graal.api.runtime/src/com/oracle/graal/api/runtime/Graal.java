@@ -24,9 +24,9 @@ package com.oracle.graal.api.runtime;
 
 import java.util.*;
 
-import com.oracle.jvmci.runtime.*;
-
 import sun.reflect.*;
+
+import com.oracle.jvmci.runtime.*;
 
 /**
  * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.

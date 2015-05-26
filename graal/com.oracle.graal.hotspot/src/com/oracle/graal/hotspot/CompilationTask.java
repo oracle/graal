@@ -26,11 +26,11 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static com.oracle.jvmci.debug.Debug.*;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.lang.management.*;
@@ -40,9 +40,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;
 import com.oracle.graal.hotspot.events.EventProvider.CompilerFailureEvent;
@@ -56,6 +53,9 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.printer.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude

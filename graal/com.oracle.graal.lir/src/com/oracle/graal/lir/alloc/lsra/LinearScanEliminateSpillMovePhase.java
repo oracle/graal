@@ -31,7 +31,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
@@ -39,6 +38,7 @@ import com.oracle.graal.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.jvmci.debug.*;
 
 class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 

@@ -38,7 +38,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -48,6 +47,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 

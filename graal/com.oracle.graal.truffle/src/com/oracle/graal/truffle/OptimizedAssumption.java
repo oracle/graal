@@ -29,7 +29,7 @@ import java.util.*;
 import java.util.stream.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.*;
