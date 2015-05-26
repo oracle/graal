@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta.test;
+package com.oracle.graal.java.test;
 
 import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta.test;
+package com.oracle.graal.java.test;
 
-import static org.junit.Assert.*;
-
-import org.junit.*;
+import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 
 /**
- * Tests for {@link JavaType}.
+ * Context for method related api.meta tests.
  */
-public class TestJavaType extends TypeUniverse {
+public class MethodUniverse extends TypeUniverse {
 
-    public TestJavaType() {
-    }
+    public final Map<Method, ResolvedJavaMethod> methods = new HashMap<>();
+    public final Map<Constructor<?>, ResolvedJavaMethod> constructors = new HashMap<>();
 
-    @Test
-    public void getKindTest() {
+    public MethodUniverse() {
         for (Class<?> c : classes) {
-            JavaType type = metaAccess.lookupJavaType(c);
-            Kind expected = Kind.fromJavaClass(c);
-            Kind actual = type.getKind();
-            assertEquals(expected, actual);
+            for (Method m : c.getDeclaredMethods()) {
+                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+                methods.put(m, method);
+            }
+            for (Constructor<?> m : c.getDeclaredConstructors()) {
+                constructors.put(m, metaAccess.lookupJavaMethod(m));
+            }
         }
     }
 }

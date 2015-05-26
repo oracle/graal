@@ -20,42 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta.test;
+package com.oracle.graal.java.test;
+
+import static org.junit.Assert.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.java.*;
 
 /**
- * Tests for {@link BytecodeDisassemblerProvider}.
+ * Tests for {@link JavaType}.
  */
-public class TestBytecodeDisassemblerProvider extends MethodUniverse {
+public class TestJavaType extends TypeUniverse {
 
-    public TestBytecodeDisassemblerProvider() {
+    public TestJavaType() {
     }
 
-    /**
-     * Tests that successive disassembling of the same method produces the same result.
-     */
     @Test
-    public void disassembleTest() {
-        BytecodeDisassemblerProvider dis = new BytecodeDisassembler();
-        if (dis != null) {
-            int count = 0;
-            for (ResolvedJavaMethod m : methods.values()) {
-                String disasm1 = dis.disassemble(m);
-                String disasm2 = dis.disassemble(m);
-                if (disasm1 == null) {
-                    Assert.assertTrue(disasm2 == null);
-                } else {
-                    Assert.assertTrue(String.valueOf(m), disasm1.length() > 0);
-                    Assert.assertEquals(String.valueOf(m), disasm1, disasm2);
-                }
-                if (count++ > 20) {
-                    break;
-                }
-            }
+    public void getKindTest() {
+        for (Class<?> c : classes) {
+            JavaType type = metaAccess.lookupJavaType(c);
+            Kind expected = Kind.fromJavaClass(c);
+            Kind actual = type.getKind();
+            assertEquals(expected, actual);
         }
     }
 }

@@ -20,44 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta.test;
-
-import static org.junit.Assert.*;
-
-import java.lang.reflect.*;
-import java.util.*;
+package com.oracle.graal.java.test;
 
 import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.java.*;
 
 /**
- * Tests for {@link JavaMethod}.
+ * Tests for {@link BytecodeDisassemblerProvider}.
  */
-public class TestJavaMethod extends MethodUniverse {
+public class TestBytecodeDisassemblerProvider extends MethodUniverse {
 
-    @Test
-    public void getNameTest() {
-        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
-            String expected = e.getKey().getName();
-            String actual = e.getValue().getName();
-            assertEquals(expected, actual);
-        }
+    public TestBytecodeDisassemblerProvider() {
     }
 
+    /**
+     * Tests that successive disassembling of the same method produces the same result.
+     */
     @Test
-    public void getDeclaringClassTest() {
-        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
-            Class<?> expected = e.getKey().getDeclaringClass();
-            ResolvedJavaType actual = e.getValue().getDeclaringClass();
-            assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
-        }
-    }
-
-    @Test
-    public void getSignatureTest() {
-        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
-            assertTrue(new NameAndSignature(e.getKey()).signatureEquals(e.getValue()));
+    public void disassembleTest() {
+        BytecodeDisassemblerProvider dis = new BytecodeDisassembler();
+        if (dis != null) {
+            int count = 0;
+            for (ResolvedJavaMethod m : methods.values()) {
+                String disasm1 = dis.disassemble(m);
+                String disasm2 = dis.disassemble(m);
+                if (disasm1 == null) {
+                    Assert.assertTrue(disasm2 == null);
+                } else {
+                    Assert.assertTrue(String.valueOf(m), disasm1.length() > 0);
+                    Assert.assertEquals(String.valueOf(m), disasm1, disasm2);
+                }
+                if (count++ > 20) {
+                    break;
+                }
+            }
         }
     }
 }

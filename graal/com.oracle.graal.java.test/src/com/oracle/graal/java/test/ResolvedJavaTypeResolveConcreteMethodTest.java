@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta.test;
+package com.oracle.graal.java.test;
 
 import static org.junit.Assert.*;
 
@@ -31,10 +31,10 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 
-public class ResolvedJavaTypeResolveMethodTest {
+public class ResolvedJavaTypeResolveConcreteMethodTest {
     public final MetaAccessProvider metaAccess;
 
-    public ResolvedJavaTypeResolveMethodTest() {
+    public ResolvedJavaTypeResolveConcreteMethodTest() {
         Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
         metaAccess = providers.getMetaAccess();
     }
@@ -97,9 +97,9 @@ public class ResolvedJavaTypeResolveMethodTest {
         ResolvedJavaMethod di = getMethod(i, "d");
         ResolvedJavaMethod dc = getMethod(c, "d");
 
-        assertEquals(di, i.resolveMethod(di, c, true));
-        assertEquals(di, b.resolveMethod(di, c, true));
-        assertEquals(dc, c.resolveMethod(di, c, true));
+        assertEquals(di, i.resolveConcreteMethod(di, c));
+        assertEquals(di, b.resolveConcreteMethod(di, c));
+        assertEquals(dc, c.resolveConcreteMethod(di, c));
     }
 
     @Test
@@ -109,8 +109,8 @@ public class ResolvedJavaTypeResolveMethodTest {
         ResolvedJavaType c = getType(C.class);
         ResolvedJavaMethod priv = getMethod(a, "priv");
 
-        assertNull(a.resolveMethod(priv, c, true));
-        assertNull(b.resolveMethod(priv, c, true));
+        assertNull(a.resolveConcreteMethod(priv, c));
+        assertNull(b.resolveConcreteMethod(priv, c));
     }
 
     @Test
@@ -124,16 +124,16 @@ public class ResolvedJavaTypeResolveMethodTest {
         ResolvedJavaMethod absb = getMethod(b, "abs");
         ResolvedJavaMethod abse = getMethod(e, "abs");
 
-        assertEquals(absa, a.resolveMethod(absa, c, true));
-        assertEquals(absa, d.resolveMethod(absa, c, true));
+        assertNull(a.resolveConcreteMethod(absa, c));
+        assertNull(d.resolveConcreteMethod(absa, c));
 
-        assertEquals(absb, b.resolveMethod(absa, c, true));
-        assertEquals(absb, b.resolveMethod(absb, c, true));
-        assertEquals(absb, c.resolveMethod(absa, c, true));
-        assertEquals(absb, c.resolveMethod(absb, c, true));
-        assertEquals(abse, e.resolveMethod(absa, c, true));
-        assertNull(e.resolveMethod(absb, c, true));
-        assertEquals(abse, e.resolveMethod(abse, c, true));
+        assertEquals(absb, b.resolveConcreteMethod(absa, c));
+        assertEquals(absb, b.resolveConcreteMethod(absb, c));
+        assertEquals(absb, c.resolveConcreteMethod(absa, c));
+        assertEquals(absb, c.resolveConcreteMethod(absb, c));
+        assertEquals(abse, e.resolveConcreteMethod(absa, c));
+        assertNull(e.resolveConcreteMethod(absb, c));
+        assertEquals(abse, e.resolveConcreteMethod(abse, c));
     }
 
     @Test
@@ -145,14 +145,14 @@ public class ResolvedJavaTypeResolveMethodTest {
         ResolvedJavaMethod v2a = getMethod(a, "v2");
         ResolvedJavaMethod v2b = getMethod(b, "v2");
 
-        assertEquals(v1a, a.resolveMethod(v1a, c, true));
-        assertEquals(v1a, b.resolveMethod(v1a, c, true));
-        assertEquals(v1a, c.resolveMethod(v1a, c, true));
-        assertEquals(v2a, a.resolveMethod(v2a, c, true));
-        assertEquals(v2b, b.resolveMethod(v2a, c, true));
-        assertEquals(v2b, b.resolveMethod(v2b, c, true));
-        assertEquals(v2b, c.resolveMethod(v2a, c, true));
-        assertEquals(v2b, c.resolveMethod(v2b, c, true));
+        assertEquals(v1a, a.resolveConcreteMethod(v1a, c));
+        assertEquals(v1a, b.resolveConcreteMethod(v1a, c));
+        assertEquals(v1a, c.resolveConcreteMethod(v1a, c));
+        assertEquals(v2a, a.resolveConcreteMethod(v2a, c));
+        assertEquals(v2b, b.resolveConcreteMethod(v2a, c));
+        assertEquals(v2b, b.resolveConcreteMethod(v2b, c));
+        assertEquals(v2b, c.resolveConcreteMethod(v2a, c));
+        assertEquals(v2b, c.resolveConcreteMethod(v2b, c));
 
     }
 
