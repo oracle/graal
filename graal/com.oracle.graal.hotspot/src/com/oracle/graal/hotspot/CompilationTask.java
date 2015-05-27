@@ -358,11 +358,11 @@ public class CompilationTask {
      *
      * @param metaspaceMethod
      * @param entryBCI
-     * @param graalEnv address of native GraalEnv object
+     * @param jvmciEnv address of native GraalEnv object
      * @param id CompileTask::_compile_id
      */
     @SuppressWarnings("unused")
-    private static void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long graalEnv, int id) {
+    private static void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long jvmciEnv, int id) {
         // Ensure a Graal runtime is initialized prior to Debug being initialized as the former
         // may include processing command line options used by the latter.
         Graal.getRuntime();
@@ -373,7 +373,7 @@ public class CompilationTask {
         }
 
         HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
-        compileMethod(method, entryBCI, graalEnv, id);
+        compileMethod(method, entryBCI, jvmciEnv, id);
     }
 
     /**
