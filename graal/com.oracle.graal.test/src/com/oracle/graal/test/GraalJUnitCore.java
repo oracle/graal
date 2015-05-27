@@ -23,6 +23,7 @@
 package com.oracle.graal.test;
 
 import java.io.*;
+import java.lang.reflect.Modifier;
 import java.nio.file.*;
 import java.util.*;
 
@@ -104,7 +105,10 @@ public class GraalJUnitCore {
                     }
                 }
                 try {
-                    classes.add(Class.forName(each));
+                    Class<?> cls = Class.forName(each);
+                    if ((cls.getModifiers() & Modifier.ABSTRACT) == 0) {
+                        classes.add(cls);
+                    }
                 } catch (ClassNotFoundException e) {
                     system.out().println("Could not find class: " + each);
                     Description description = Description.createSuiteDescription(each);
