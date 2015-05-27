@@ -30,7 +30,6 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.local.*;
@@ -158,12 +157,6 @@ public final class SLContext extends ExecutionContext {
      */
     public void executeMain(Source source) {
         Parser.parseSL(this, source);
-        SLFunction main = getFunctionRegistry().lookup("main");
-        if (main.getCallTarget() == null) {
-            throw new SLException("No function main() defined in SL source file.");
-        }
-        main.getCallTarget().call();
-        output.flush();
     }
 
     public DynamicObject createObject() {

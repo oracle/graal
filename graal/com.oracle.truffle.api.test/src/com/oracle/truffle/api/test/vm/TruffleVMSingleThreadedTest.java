@@ -34,10 +34,11 @@ public class TruffleVMSingleThreadedTest {
 
     @Before
     public void initInDifferentThread() throws InterruptedException {
+        final TruffleVM.Builder b = TruffleVM.newVM();
         Thread t = new Thread("Initializer") {
             @Override
             public void run() {
-                tvm = TruffleVM.create();
+                tvm = b.build();
             }
         };
         t.start();

@@ -25,7 +25,7 @@ package com.oracle.truffle.api.dsl.test.processor;
 import java.io.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.test.*;
 import com.oracle.truffle.api.source.*;
 
 public class LanguageRegistrationTest {

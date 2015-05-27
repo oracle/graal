@@ -34,7 +34,6 @@ import javax.tools.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.dsl.*;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.*")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -112,35 +111,14 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
     }
 
     void assertNoErrorExpected(Element e) {
-        TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
-        for (AnnotationMirror am : e.getAnnotationMirrors()) {
-            if (am.getAnnotationType().asElement().equals(eee)) {
-                processingEnv.getMessager().printMessage(Kind.ERROR, "Expected an error, but none found!", e);
-            }
-        }
+        ExpectError.assertNoErrorExpected(processingEnv, e);
     }
 
     void emitError(String msg, Element e) {
-        TypeElement eee = processingEnv.getElementUtils().getTypeElement(ExpectError.class.getName());
-        for (AnnotationMirror am : e.getAnnotationMirrors()) {
-            if (am.getAnnotationType().asElement().equals(eee)) {
-                Map<? extends ExecutableElement, ? extends AnnotationValue> vals = am.getElementValues();
-                if (vals.size() == 1) {
-                    AnnotationValue av = vals.values().iterator().next();
-                    if (av.getValue() instanceof List) {
-                        List<?> arr = (List<?>) av.getValue();
-                        for (Object o : arr) {
-                            if (o instanceof AnnotationValue) {
-                                AnnotationValue ov = (AnnotationValue) o;
-                                if (msg.equals(ov.getValue())) {
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+            return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
     }
+
 }

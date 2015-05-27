@@ -31,7 +31,7 @@ import javax.tools.*;
 
 import org.junit.*;
 
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.test.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.verify.*;
 
