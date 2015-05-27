@@ -30,6 +30,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
@@ -49,6 +50,10 @@ class LinearScanWalker extends IntervalWalker {
     protected List<Interval>[] spillIntervals;
 
     private MoveResolver moveResolver; // for ordering spill moves
+
+    private int minReg;
+
+    private int maxReg;
 
     /**
      * Only 10% of the lists in {@link #spillIntervals} are actually used. But when they are used,
@@ -95,10 +100,22 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
+    int maxRegisterNumber() {
+        return maxReg;
+    }
+
+    int minRegisterNumber() {
+        return minReg;
+    }
+
+    boolean isRegisterInRange(int reg) {
+        return reg >= minRegisterNumber() && reg <= maxRegisterNumber();
+    }
+
     void excludeFromUse(Interval i) {
         Value location = i.location();
         int i1 = asRegister(location).number;
-        if (i1 >= availableRegs[0].number && i1 <= availableRegs[availableRegs.length - 1].number) {
+        if (isRegisterInRange(i1)) {
             usePos[i1] = 0;
         }
     }
@@ -107,7 +124,7 @@ class LinearScanWalker extends IntervalWalker {
         if (usePos != -1) {
             assert usePos != 0 : "must use excludeFromUse to set usePos to 0";
             int i = asRegister(interval.location()).number;
-            if (i >= availableRegs[0].number && i <= availableRegs[availableRegs.length - 1].number) {
+            if (isRegisterInRange(i)) {
                 if (this.usePos[i] > usePos) {
                     this.usePos[i] = usePos;
                 }
@@ -126,7 +143,7 @@ class LinearScanWalker extends IntervalWalker {
     void setBlockPos(Interval i, int blockPos) {
         if (blockPos != -1) {
             int reg = asRegister(i.location()).number;
-            if (reg >= availableRegs[0].number && reg <= availableRegs[availableRegs.length - 1].number) {
+            if (isRegisterInRange(reg)) {
                 if (this.blockPos[reg] > blockPos) {
                     this.blockPos[reg] = blockPos;
                 }
@@ -696,8 +713,7 @@ class LinearScanWalker extends IntervalWalker {
             Register minFullReg = null;
             Register maxPartialReg = null;
 
-            for (int i = 0; i < availableRegs.length; ++i) {
-                Register availableReg = availableRegs[i];
+            for (Register availableReg : availableRegs) {
                 int number = availableReg.number;
                 if (usePos[number] >= intervalTo) {
                     // this register is free for the full interval
@@ -858,7 +874,10 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        availableRegs = allocator.regAllocConfig.getAllocatableRegisters(interval.kind().getPlatformKind()).allocatableRegisters;
+        AllocatableRegisters allocatableRegisters = allocator.regAllocConfig.getAllocatableRegisters(interval.kind().getPlatformKind());
+        availableRegs = allocatableRegisters.allocatableRegisters;
+        minReg = allocatableRegisters.minRegisterNumber;
+        maxReg = allocatableRegisters.maxRegisterNumber;
     }
 
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {
