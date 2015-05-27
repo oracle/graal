@@ -33,10 +33,10 @@ import org.junit.Test;
  * requirements of the Truffle infrastructure and tooling. Subclass, implement abstract methods and
  * include in your test suite.
  */
-public class TruffleTCK { // abstract
+public abstract class TruffleTCK {
     private TruffleVM tckVM;
 
-    public TruffleTCK() { // protected
+    protected TruffleTCK() {
     }
 
     /**
@@ -50,9 +50,7 @@ public class TruffleTCK { // abstract
      * @return initialized Truffle virtual machine
      * @throws java.lang.Exception thrown when the VM preparation fails
      */
-    protected TruffleVM prepareVM() throws Exception { // abstract
-        return null;
-    }
+    protected abstract TruffleVM prepareVM() throws Exception;
 
     /**
      * Mimetype associated with your language. The mimetype will be passed to
@@ -61,9 +59,7 @@ public class TruffleTCK { // abstract
      *
      * @return mime type of the tested language
      */
-    protected String mimeType() { // abstract
-        return null;
-    }
+    protected abstract String mimeType();
 
     /**
      * Name of function which will return value 42 as a number. The return value of the method
@@ -72,9 +68,7 @@ public class TruffleTCK { // abstract
      *
      * @return name of globally exported symbol
      */
-    protected String fourtyTwo() { // abstract
-        return null;
-    }
+    protected abstract String fourtyTwo();
 
     /**
      * Name of function to add two integer values together. The symbol will be invoked with two
@@ -83,9 +77,7 @@ public class TruffleTCK { // abstract
      *
      * @return name of globally exported symbol
      */
-    protected String plusInt() {  // abstract
-        return null;
-    }
+    protected abstract String plusInt();
 
     /**
      * Return a code snippet that is invalid in your language. Its
@@ -94,9 +86,7 @@ public class TruffleTCK { // abstract
      *
      * @return code snippet invalid in the tested language
      */
-    protected String invalidCode() { // abstract
-        return null;
-    }
+    protected abstract String invalidCode();
 
     private TruffleVM vm() throws Exception {
         if (tckVM == null) {
@@ -111,9 +101,6 @@ public class TruffleTCK { // abstract
 
     @Test
     public void testFortyTwo() throws Exception {
-        if (getClass() == TruffleTCK.class) {
-            return;
-        }
         TruffleVM.Symbol fourtyTwo = findGlobalSymbol(fourtyTwo());
 
         Object res = fourtyTwo.invoke(null);
@@ -127,9 +114,6 @@ public class TruffleTCK { // abstract
 
     @Test
     public void testPlusWithInts() throws Exception {
-        if (getClass() == TruffleTCK.class) {
-            return;
-        }
         Random r = new Random();
         int a = r.nextInt(100);
         int b = r.nextInt(100);
@@ -147,9 +131,6 @@ public class TruffleTCK { // abstract
 
     @Test(expected = IOException.class)
     public void testInvalidTestMethod() throws Exception {
-        if (getClass() == TruffleTCK.class) {
-            return;
-        }
         String mime = mimeType();
         String code = invalidCode();
         Object ret = vm().eval(mime, code);
