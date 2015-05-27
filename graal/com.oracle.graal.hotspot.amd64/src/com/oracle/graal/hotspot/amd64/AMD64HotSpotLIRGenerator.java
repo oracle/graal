@@ -131,7 +131,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    SaveRbp saveRbp;
+    private SaveRbp saveRbp;
+
+    protected void emitSaveRbp() {
+        NoOp placeholder = new NoOp(getCurrentBlock(), getResult().getLIR().getLIRforBlock(getCurrentBlock()).size());
+        append(placeholder);
+        saveRbp = new SaveRbp(placeholder);
+    }
+
+    protected SaveRbp getSaveRbp() {
+        return saveRbp;
+    }
 
     /**
      * Helper instruction to reserve a stack slot for the whole method. Note that the actual users
