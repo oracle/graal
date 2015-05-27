@@ -20,18 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.options;
 
 import java.util.*;
 
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.options.*;
 
 /**
- * Helper class for separating loading of options from option initialization at runtime.
+ * Helper class used to load option descriptors. Only to be used in the slow-path.
  */
-class HotSpotOptionsLoader {
-    static final SortedMap<String, OptionDescriptor> options = new TreeMap<>();
+public class OptionsLoader {
+    public static final SortedMap<String, OptionDescriptor> options = new TreeMap<>();
 
     /**
      * Initializes {@link #options} from {@link Options} services.
@@ -39,19 +38,10 @@ class HotSpotOptionsLoader {
     static {
         for (Options opts : Services.load(Options.class)) {
             for (OptionDescriptor desc : opts) {
-                if (isHotSpotOption(desc)) {
-                    String name = desc.getName();
-                    OptionDescriptor existing = options.put(name, desc);
-                    assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
-                }
+                String name = desc.getName();
+                OptionDescriptor existing = options.put(name, desc);
+                assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-    }
-
-    /**
-     * Determines if a given option is a HotSpot command line option.
-     */
-    private static boolean isHotSpotOption(OptionDescriptor desc) {
-        return desc.getClass().getName().startsWith("com.oracle.graal");
     }
 }

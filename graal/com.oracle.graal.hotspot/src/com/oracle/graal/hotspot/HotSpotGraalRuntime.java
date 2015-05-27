@@ -65,10 +65,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
     private static final HotSpotGraalRuntime instance;
 
     static {
-        try (InitTimer t = timer("initialize HotSpotOptions")) {
-            HotSpotOptions.initialize();
-        }
-
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
             instance = new HotSpotGraalRuntime();
         }

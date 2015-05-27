@@ -42,7 +42,7 @@ public class StableOptionValue<T> extends OptionValue<T> {
 
     /**
      * Creates an uninitialized stable option value for a subclass that initializes itself
-     * {@link #initialValue() lazily}.
+     * {@link #defaultValue() lazily}.
      */
     public StableOptionValue() {
     }

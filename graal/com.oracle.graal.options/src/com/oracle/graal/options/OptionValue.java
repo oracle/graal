@@ -30,7 +30,6 @@ import java.util.Map.Entry;
  * An option value.
  */
 public class OptionValue<T> {
-
     /**
      * Temporarily changes the value for an option. The {@linkplain OptionValue#getValue() value} of
      * {@code option} is set to {@code value} until {@link OverrideScope#close()} is called on the
@@ -138,7 +137,7 @@ public class OptionValue<T> {
         overrideScopeTL.set(overrideScope);
     }
 
-    private T initialValue;
+    private T defaultValue;
 
     /**
      * The raw option value.
@@ -164,29 +163,30 @@ public class OptionValue<T> {
 
     @SuppressWarnings("unchecked")
     public OptionValue(T value) {
-        this.initialValue = value;
-        this.value = (T) UNINITIALIZED;
+        this.defaultValue = value;
+        this.value = (T) DEFAULT;
         addToHistogram(this);
     }
 
+    private static final Object DEFAULT = "DEFAULT";
     private static final Object UNINITIALIZED = "UNINITIALIZED";
 
     /**
      * Creates an uninitialized option value for a subclass that initializes itself
-     * {@link #initialValue() lazily}.
+     * {@link #defaultValue() lazily}.
      */
     @SuppressWarnings("unchecked")
     protected OptionValue() {
-        this.initialValue = (T) UNINITIALIZED;
-        this.value = (T) UNINITIALIZED;
+        this.defaultValue = (T) UNINITIALIZED;
+        this.value = (T) DEFAULT;
         addToHistogram(this);
     }
 
     /**
-     * Lazy initialization of value.
+     * Lazy initialization of default value.
      */
-    protected T initialValue() {
-        throw new InternalError("Uninitialized option value must override initialValue()");
+    protected T defaultValue() {
+        throw new InternalError("Option without a default value value must override defaultValue()");
     }
 
     /**
@@ -223,27 +223,19 @@ public class OptionValue<T> {
      * {@link #setValue(Object)} or registering {@link OverrideScope}s. Therefore, it is also not
      * affected by options set on the command line.
      */
-    public T getInitialValue() {
-        if (initialValue == UNINITIALIZED) {
-            initialValue = initialValue();
+    public T getDefaultValue() {
+        if (defaultValue == UNINITIALIZED) {
+            defaultValue = defaultValue();
         }
-        return initialValue;
+        return defaultValue;
     }
 
     /**
      * Returns true if the option has the same value that was set in the source code.
      */
-    public boolean hasInitialValue() {
-        if (!(this instanceof StableOptionValue)) {
-            OverrideScope overrideScope = getOverrideScope();
-            if (overrideScope != null) {
-                T override = overrideScope.getOverride(this);
-                if (override != null) {
-                    return false;
-                }
-            }
-        }
-        return value == UNINITIALIZED || Objects.equals(value, getInitialValue());
+    public boolean hasDefaultValue() {
+        getValue(); // ensure initialized
+        return value == DEFAULT || Objects.equals(value, getDefaultValue());
     }
 
     /**
@@ -262,10 +254,10 @@ public class OptionValue<T> {
                 }
             }
         }
-        if (value != UNINITIALIZED) {
+        if (value != DEFAULT) {
             return value;
         } else {
-            return getInitialValue();
+            return getDefaultValue();
         }
     }
 
@@ -285,10 +277,10 @@ public class OptionValue<T> {
                 overrideScope.getOverrides(this, (Collection<Object>) values);
             }
         }
-        if (value != UNINITIALIZED) {
+        if (value != DEFAULT) {
             values.add(value);
         } else {
-            values.add(getInitialValue());
+            values.add(getDefaultValue());
         }
         return values;
     }

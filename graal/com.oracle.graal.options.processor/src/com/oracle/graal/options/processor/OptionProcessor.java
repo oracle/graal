@@ -229,6 +229,7 @@ public class OptionProcessor extends AbstractProcessor {
         String filename = "META-INF/options/" + pkg + "." + relativeName;
         FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
+        Types types = processingEnv.getTypeUtils();
         for (OptionInfo option : info.options) {
             String help = option.help;
             if (help.indexOf('\t') >= 0 || help.indexOf('\r') >= 0 || help.indexOf('\n') >= 0) {
@@ -237,11 +238,18 @@ public class OptionProcessor extends AbstractProcessor {
             }
             try {
                 char optionTypeToChar = optionTypeToChar(option);
-                writer.printf("%s\t%s\t%s%n", option.name, optionTypeToChar, help);
+                String fqDeclaringClass = className(types.erasure(option.field.getEnclosingElement().asType()));
+                String fqFieldType = className(types.erasure(option.field.asType()));
+                writer.printf("%s\t%s\t%s\t%s\t%s%n", option.name, optionTypeToChar, help, fqDeclaringClass, fqFieldType);
             } catch (IllegalArgumentException iae) {
             }
         }
         writer.close();
+    }
+
+    private String className(TypeMirror t) {
+        DeclaredType dt = (DeclaredType) t;
+        return processingEnv.getElementUtils().getBinaryName((TypeElement) dt.asElement()).toString();
     }
 
     private char optionTypeToChar(OptionInfo option) {
