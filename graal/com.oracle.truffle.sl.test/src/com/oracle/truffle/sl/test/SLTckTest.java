@@ -41,15 +41,22 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected TruffleVM prepareVM() throws Exception {
         TruffleVM vm = TruffleVM.newVM().build();
-        vm.eval("application/x-sl", // your langage
-                        "function fourtyTwo() {\n" + // your script
-                                        "  return 42;\n" + //
-                                        "}\n" + //
-                                        "function plus(a, b) {\n" + //
-                                        "  return a + b;\n" + //
-                                        "}\n" //
+        // @formatter:off
+        vm.eval("application/x-sl",
+            "function fourtyTwo() {\n" +
+            "  return 42;\n" +
+            "}\n" +
+            "function plus(a, b) {\n" +
+            "  return a + b;\n" +
+            "}\n"
         );
+        // @formatter:on
         return vm;
+    }
+
+    @Override
+    protected String mimeType() {
+        return "application/x-sl";
     }
 
     @Override
@@ -61,4 +68,15 @@ public class SLTckTest extends TruffleTCK {
     protected String plusInt() {
         return "plus";
     }
+
+    @Override
+    protected String invalidCode() {
+        // @formatter:off
+        return
+            "f unction main() {\n" +
+            "  retu rn 42;\n" +
+            "}\n";
+        // @formatter:on
+    }
+
 }

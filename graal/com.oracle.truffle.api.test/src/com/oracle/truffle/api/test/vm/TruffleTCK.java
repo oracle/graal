@@ -23,7 +23,9 @@
 package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.vm.TruffleVM;
+import java.io.IOException;
 import java.util.Random;
+import static org.junit.Assert.*;
 import org.junit.Test;
 
 /**
@@ -53,6 +55,17 @@ public class TruffleTCK { // abstract
     }
 
     /**
+     * Mimetype associated with your language. The mimetype will be passed to
+     * {@link TruffleVM#eval(java.lang.String, java.lang.String)} method of the {@link #prepareVM()
+     * created TruffleVM}.
+     *
+     * @return mime type of the tested language
+     */
+    protected String mimeType() { // abstract
+        return null;
+    }
+
+    /**
      * Name of function which will return value 42 as a number. The return value of the method
      * should be instance of {@link Number} and its {@link Number#intValue()} should return
      * <code>42</code>.
@@ -71,6 +84,17 @@ public class TruffleTCK { // abstract
      * @return name of globally exported symbol
      */
     protected String plusInt() {  // abstract
+        return null;
+    }
+
+    /**
+     * Return a code snippet that is invalid in your language. Its
+     * {@link TruffleVM#eval(java.lang.String, java.lang.String) evaluation} should fail and yield
+     * an exception.
+     *
+     * @return code snippet invalid in the tested language
+     */
+    protected String invalidCode() { // abstract
         return null;
     }
 
@@ -119,6 +143,17 @@ public class TruffleTCK { // abstract
         Number n = (Number) res;
 
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+    }
+
+    @Test(expected = IOException.class)
+    public void testInvalidTestMethod() throws Exception {
+        if (getClass() == TruffleTCK.class) {
+            return;
+        }
+        String mime = mimeType();
+        String code = invalidCode();
+        Object ret = vm().eval(mime, code);
+        fail("Should yield IOException, but returned " + ret);
     }
 
     private TruffleVM.Symbol findGlobalSymbol(String name) throws Exception {

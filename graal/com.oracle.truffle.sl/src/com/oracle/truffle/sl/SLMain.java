@@ -372,7 +372,11 @@ public class SLMain extends TruffleLanguage {
 
     @Override
     protected Object eval(Source code) throws IOException {
-        context.executeMain(code);
+        try {
+            context.executeMain(code);
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
         return null;
     }
 
