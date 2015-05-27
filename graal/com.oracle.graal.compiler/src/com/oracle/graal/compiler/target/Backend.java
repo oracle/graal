@@ -27,6 +27,7 @@ import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -81,6 +82,8 @@ public abstract class Backend {
      * the CodeCacheProvider will be used.
      */
     public abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig);
+
+    public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig);
 
     public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
 
