@@ -105,7 +105,6 @@ public class MathPow extends Node {
         }
 
         @Specialization(contains = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"})
-        @ExplodeLoop
         double doPowCachedExponent(double base, int exponent, @Cached("exponent") int cachedExponent) {
             doPowCachedExponent++;
             double result = 1.0;

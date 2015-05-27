@@ -29,10 +29,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.TruffleVM;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing
@@ -42,7 +45,17 @@ import java.lang.annotation.Target;
  * language support, multi tennat hosting, debugging, etc.) will be made available to them.
  */
 public abstract class TruffleLanguage {
-    private Env env;
+    private final Env env;
+
+    /**
+     * Constructor to be called by subclasses.
+     *
+     * @param env language environment that will be available via {@link #env()} method to
+     *            subclasses.
+     */
+    protected TruffleLanguage(Env env) {
+        this.env = env;
+    }
 
     /**
      * The annotation to use to register your language to the {@link TruffleVM Truffle} system. By
@@ -70,11 +83,6 @@ public abstract class TruffleLanguage {
          * @return array of mime types assigned to your language files
          */
         String[] mimeType();
-    }
-
-    @SuppressWarnings("all")
-    void attachEnv(Env env) {
-        this.env = env;
     }
 
     protected final Env env() {
@@ -129,10 +137,20 @@ public abstract class TruffleLanguage {
     public static final class Env {
         private final TruffleVM vm;
         private final TruffleLanguage lang;
+        private final Reader in;
+        private final Writer err;
+        private final Writer out;
 
-        Env(TruffleVM vm, TruffleLanguage lang) {
+        Env(TruffleVM vm, Constructor<?> langConstructor, Writer out, Writer err, Reader in) {
             this.vm = vm;
-            this.lang = lang;
+            this.in = in;
+            this.err = err;
+            this.out = out;
+            try {
+                this.lang = (TruffleLanguage) langConstructor.newInstance(this);
+            } catch (Exception ex) {
+                throw new IllegalStateException("Cannot construct language " + langConstructor.getDeclaringClass().getName(), ex);
+            }
         }
 
         /**
@@ -147,17 +165,42 @@ public abstract class TruffleLanguage {
         public Object importSymbol(String globalName) {
             return API.importSymbol(vm, lang, globalName);
         }
+
+        /**
+         * Input associated with this {@link TruffleVM}.
+         *
+         * @return reader, never <code>null</code>
+         */
+        public Reader stdIn() {
+            return in;
+        }
+
+        /**
+         * Standard output writer for this {@link TruffleVM}.
+         *
+         * @return writer, never <code>null</code>
+         */
+        public Writer stdOut() {
+            return out;
+        }
+
+        /**
+         * Standard error writer for this {@link TruffleVM}.
+         *
+         * @return writer, never <code>null</code>
+         */
+        public Writer stdErr() {
+            return err;
+        }
     }
 
     private static final AccessAPI API = new AccessAPI();
 
     private static final class AccessAPI extends Accessor {
-
         @Override
-        protected Env attachEnv(TruffleVM vm, TruffleLanguage l) {
-            Env env = new Env(vm, l);
-            l.attachEnv(env);
-            return env;
+        protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz, Writer stdOut, Writer stdErr, Reader stdIn) {
+            Env env = new Env(vm, langClazz, stdOut, stdErr, stdIn);
+            return env.lang;
         }
 
         @Override

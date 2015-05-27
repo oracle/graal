@@ -52,7 +52,7 @@ public abstract class SLLogicalOrNode extends SLBinaryNode {
         return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());
     }
 
-    @Specialization(rewriteOn = RuntimeException.class)
+    @Specialization
     protected boolean doBoolean(boolean left, boolean hasRight, boolean right) {
         return left || right;
     }

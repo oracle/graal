@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.interop.*;
 import com.oracle.truffle.api.utilities.*;
 
 /**
@@ -41,7 +42,7 @@ import com.oracle.truffle.api.utilities.*;
  * per name exists, the {@link SLFunctionRegistry} creates an instance also when performing name
  * lookup. A function that has been looked up, i.e., used, but not defined, has no call target.
  */
-public final class SLFunction {
+public final class SLFunction implements TruffleObject {
 
     /** The name of the function. */
     private final String name;
@@ -89,5 +90,15 @@ public final class SLFunction {
     @Override
     public String toString() {
         return name;
+    }
+
+    /**
+     * In case you want some of your objects to co-operate with other languages, you need to make
+     * them implement {@link TruffleObject} and provide additional {@link SLFunctionForeignAccess
+     * foreign access implementation}.
+     */
+    @Override
+    public ForeignAccessFactory getForeignAccessFactory() {
+        return SLFunctionForeignAccess.INSTANCE;
     }
 }

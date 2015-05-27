@@ -22,22 +22,18 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Properties;
-import java.util.Set;
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
+import java.io.*;
+import java.util.*;
+
+import javax.annotation.processing.*;
+import javax.lang.model.*;
+import javax.lang.model.element.*;
+import javax.lang.model.type.*;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.StandardLocation;
+import javax.tools.*;
+
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.*")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -72,12 +68,57 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             Registration annotation = e.getAnnotation(Registration.class);
             if (annotation != null && e.getKind() == ElementKind.CLASS) {
                 if (!e.getModifiers().contains(Modifier.PUBLIC)) {
-                    processingEnv.getMessager().printMessage(Kind.ERROR, "Registered language class must be public", e);
+                    emitError("Registered language class must be public", e);
+                    continue;
                 }
+                if (e.getEnclosingElement().getKind() != ElementKind.PACKAGE && !e.getModifiers().contains(Modifier.STATIC)) {
+                    emitError("Registered language inner-class must be static", e);
+                    continue;
+                }
+                TypeMirror truffleLang = processingEnv.getElementUtils().getTypeElement(TruffleLanguage.class.getName()).asType();
+                if (!processingEnv.getTypeUtils().isAssignable(e.asType(), truffleLang)) {
+                    emitError("Registered language class must subclass TruffleLanguage", e);
+                    continue;
+                }
+                boolean found = false;
+                for (Element mem : e.getEnclosedElements()) {
+                    if (mem.getKind() != ElementKind.CONSTRUCTOR) {
+                        continue;
+                    }
+                    ExecutableElement ee = (ExecutableElement) mem;
+                    if (ee.getParameters().size() != 1) {
+                        continue;
+                    }
+                    if (!ee.getModifiers().contains(Modifier.PUBLIC)) {
+                        continue;
+                    }
+                    TypeMirror env = processingEnv.getElementUtils().getTypeElement(TruffleLanguage.Env.class.getCanonicalName()).asType();
+                    if (processingEnv.getTypeUtils().isSameType(ee.getParameters().get(0).asType(), env)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    emitError("Language must have a public constructor accepting TruffleLanguage.Env as parameter", e);
+                    continue;
+                }
+                assertNoErrorExpected(e);
                 createProviderFile((TypeElement) e, annotation);
             }
         }
 
         return true;
     }
+
+    void assertNoErrorExpected(Element e) {
+        ExpectError.assertNoErrorExpected(processingEnv, e);
+    }
+
+    void emitError(String msg, Element e) {
+        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+            return;
+        }
+        processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
+    }
+
 }

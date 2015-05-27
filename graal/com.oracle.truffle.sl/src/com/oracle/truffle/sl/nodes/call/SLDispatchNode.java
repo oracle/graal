@@ -34,6 +34,11 @@ public abstract class SLDispatchNode extends Node {
 
     public abstract Object executeDispatch(VirtualFrame frame, SLFunction function, Object[] arguments);
 
+    @Specialization(guards = "function.getCallTarget() == null")
+    protected Object doUndefinedFunction(SLFunction function, @SuppressWarnings("unused") Object[] arguments) {
+        throw new SLUndefinedFunctionException(function.getName());
+    }
+
     /**
      * Inline cached specialization of the dispatch.
      *
