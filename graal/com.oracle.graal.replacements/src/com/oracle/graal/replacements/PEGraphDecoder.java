@@ -390,7 +390,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (graphBuilderContext.lastInstr != null) {
                 registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
                 invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
-                graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData));
+                graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
             } else {
                 assert graphBuilderContext.pushedNode == null : "Why push a node when the invoke does not return anyway?";
                 invoke.asNode().replaceAtUsages(null);
@@ -469,16 +469,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         ValueNode returnValue;
         List<ReturnNode> returnNodes = inlineScope.returnNodes;
         if (!returnNodes.isEmpty()) {
-            FixedNode n;
-            n = nodeAfterInvoke(methodScope, loopScope, invokeData);
             if (returnNodes.size() == 1) {
                 ReturnNode returnNode = returnNodes.get(0);
                 returnValue = returnNode.result();
+                FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(returnNode));
                 returnNode.replaceAndDelete(n);
             } else {
                 AbstractMergeNode merge = methodScope.graph.add(new MergeNode());
                 merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
                 returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
+                FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, merge);
                 merge.setNext(n);
             }
         } else {
@@ -508,9 +508,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return true;
     }
 
-    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, AbstractBeginNode lastBlock) {
+        assert lastBlock.isAlive();
         FixedNode n;
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
+            registerNode(loopScope, invokeData.nextOrderId, lastBlock, false, false);
             n = makeStubNode(methodScope, loopScope, invokeData.nextNextOrderId);
         } else {
             n = makeStubNode(methodScope, loopScope, invokeData.nextOrderId);

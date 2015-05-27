@@ -22,33 +22,6 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.code.InfopointReason;
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.code.BytecodePosition;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.RawConstant;
-import com.oracle.jvmci.meta.ProfilingInfo;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.TriState;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.JavaField;
-import com.oracle.jvmci.meta.MetaUtil;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaTypeProfile;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.LineNumberTable;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.ConstantPool;
-import static com.oracle.jvmci.code.TypeCheckHints.*;
-import static com.oracle.jvmci.meta.DeoptimizationAction.*;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
@@ -56,7 +29,10 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
+import static com.oracle.jvmci.code.TypeCheckHints.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
+import static com.oracle.jvmci.meta.DeoptimizationAction.*;
+import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static java.lang.String.*;
 
 import java.util.*;
@@ -86,9 +62,11 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 
 /**
@@ -3091,7 +3069,26 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
                     TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
                     if (typeCheckPlugin == null || !typeCheckPlugin.checkCast(this, object, resolvedType, profile)) {
-                        ValueNode checkCastNode = append(createCheckCast(resolvedType, object, profile, false));
+                        ValueNode checkCastNode = null;
+                        if (profile != null) {
+                            if (profile.getNullSeen().isFalse()) {
+                                object = append(GuardingPiNode.createNullCheck(object));
+                                ResolvedJavaType singleType = profile.asSingleType();
+                                if (singleType != null) {
+                                    LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
+                                    if (typeCheck.isTautology()) {
+                                        checkCastNode = object;
+                                    } else {
+                                        GuardingPiNode piNode = append(new GuardingPiNode(object, typeCheck, false, DeoptimizationReason.TypeCheckedInliningViolated,
+                                                        DeoptimizationAction.InvalidateReprofile, StampFactory.exactNonNull(singleType)));
+                                        checkCastNode = piNode;
+                                    }
+                                }
+                            }
+                        }
+                        if (checkCastNode == null) {
+                            checkCastNode = append(createCheckCast(resolvedType, object, profile, false));
+                        }
                         frameState.apush(checkCastNode);
                     }
                 } else {
@@ -3108,7 +3105,21 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
                     TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
                     if (typeCheckPlugin == null || !typeCheckPlugin.instanceOf(this, object, resolvedType, profile)) {
-                        ValueNode instanceOfNode = createInstanceOf(resolvedType, object, profile);
+                        ValueNode instanceOfNode = null;
+                        if (profile != null) {
+                            if (profile.getNullSeen().isFalse()) {
+                                object = append(GuardingPiNode.createNullCheck(object));
+                                ResolvedJavaType singleType = profile.asSingleType();
+                                if (singleType != null) {
+                                    LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
+                                    append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+                                    instanceOfNode = LogicConstantNode.forBoolean(resolvedType.isAssignableFrom(singleType));
+                                }
+                            }
+                        }
+                        if (instanceOfNode == null) {
+                            instanceOfNode = createInstanceOf(resolvedType, object, profile);
+                        }
                         frameState.ipush(append(genConditional(genUnique(instanceOfNode))));
                     }
                 } else {

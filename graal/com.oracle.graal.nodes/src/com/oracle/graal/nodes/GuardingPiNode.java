@@ -81,6 +81,15 @@ public final class GuardingPiNode extends FixedWithNextNode implements Lowerable
         this.negated = negateCondition;
     }
 
+    public static ValueNode createNullCheck(ValueNode object) {
+        ObjectStamp objectStamp = (ObjectStamp) object.stamp();
+        if (objectStamp.nonNull()) {
+            return object;
+        } else {
+            return new GuardingPiNode(object);
+        }
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         GuardingNode guard = tool.createGuard(next(), condition, reason, action, negated);
