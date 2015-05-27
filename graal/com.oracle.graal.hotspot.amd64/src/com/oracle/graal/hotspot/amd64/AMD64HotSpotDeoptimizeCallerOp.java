@@ -29,6 +29,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
@@ -38,8 +39,8 @@ final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp implem
 
     public static final LIRInstructionClass<AMD64HotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotDeoptimizeCallerOp.class);
 
-    protected AMD64HotSpotDeoptimizeCallerOp() {
-        super(TYPE);
+    protected AMD64HotSpotDeoptimizeCallerOp(AllocatableValue savedRbp) {
+        super(TYPE, savedRbp);
     }
 
     @Override

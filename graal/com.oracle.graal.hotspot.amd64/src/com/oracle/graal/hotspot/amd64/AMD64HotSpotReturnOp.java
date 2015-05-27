@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Value;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Returns from a function.
@@ -44,8 +44,8 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp implements Block
     private final Register scratchForSafepointOnReturn;
     private final HotSpotVMConfig config;
 
-    AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn, HotSpotVMConfig config) {
-        super(TYPE);
+    AMD64HotSpotReturnOp(Value value, boolean isStub, Register scratchForSafepointOnReturn, HotSpotVMConfig config, AllocatableValue savedRbp) {
+        super(TYPE, savedRbp);
         this.value = value;
         this.isStub = isStub;
         this.scratchForSafepointOnReturn = scratchForSafepointOnReturn;

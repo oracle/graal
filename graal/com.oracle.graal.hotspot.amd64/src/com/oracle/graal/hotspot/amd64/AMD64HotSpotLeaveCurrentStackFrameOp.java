@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.RegisterSaveLayout;
-import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
 
 import com.oracle.graal.asm.amd64.*;
@@ -33,6 +29,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Pops the current frame off the stack including the return address and restores the return
@@ -45,8 +43,8 @@ final class AMD64HotSpotLeaveCurrentStackFrameOp extends AMD64HotSpotEpilogueOp 
 
     private final SaveRegistersOp saveRegisterOp;
 
-    public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp) {
-        super(TYPE);
+    public AMD64HotSpotLeaveCurrentStackFrameOp(SaveRegistersOp saveRegisterOp, AllocatableValue savedRbp) {
+        super(TYPE, savedRbp);
         this.saveRegisterOp = saveRegisterOp;
     }
 
