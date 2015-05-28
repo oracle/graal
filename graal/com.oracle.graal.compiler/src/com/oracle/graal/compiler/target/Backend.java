@@ -22,19 +22,8 @@
  */
 package com.oracle.graal.compiler.target;
 
-import com.oracle.jvmci.code.stack.StackIntrospection;
-import com.oracle.jvmci.code.DisassemblerProvider;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -44,7 +33,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.stack.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Represents a compiler backend for Graal.
@@ -98,6 +90,8 @@ public abstract class Backend {
      * the CodeCacheProvider will be used.
      */
     public abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig);
+
+    public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig);
 
     public abstract FrameMap newFrameMap(RegisterConfig registerConfig);
 

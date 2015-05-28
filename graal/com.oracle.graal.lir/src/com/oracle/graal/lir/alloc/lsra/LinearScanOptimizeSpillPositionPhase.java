@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.AllocatableValue;
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -36,7 +35,9 @@ import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
 
@@ -50,7 +51,8 @@ final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
         optimizeSpillPosition();
         allocator.printIntervals("After optimize spill position");
     }
