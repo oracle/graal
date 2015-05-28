@@ -26,7 +26,6 @@ import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.Kind;
 import org.junit.*;
 
-
 public class ConstantTest extends FieldUniverse {
 
     @Test

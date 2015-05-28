@@ -57,8 +57,7 @@ public class GraalGraphJVMCIError extends JVMCIError {
     }
 
     /**
-     * This constructor creates a {@link GraalGraphJVMCIError} from a given JVMCIError
-     * instance.
+     * This constructor creates a {@link GraalGraphJVMCIError} from a given JVMCIError instance.
      *
      * @param e the original JVMCIError
      */

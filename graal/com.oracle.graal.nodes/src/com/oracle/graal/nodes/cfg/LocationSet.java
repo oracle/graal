@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.jvmci.meta.*;
 
-
 public class LocationSet {
     private LocationIdentity firstLocation;
     private List<LocationIdentity> list;

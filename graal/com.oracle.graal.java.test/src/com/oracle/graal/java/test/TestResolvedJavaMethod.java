@@ -33,7 +33,6 @@ import java.util.*;
 
 import org.junit.*;
 
-
 /**
  * Tests for {@link ResolvedJavaMethod}.
  */

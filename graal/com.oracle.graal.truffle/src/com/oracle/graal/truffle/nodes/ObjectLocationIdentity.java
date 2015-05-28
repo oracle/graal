@@ -27,7 +27,6 @@ import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
 
-
 /**
  * A {@link LocationIdentity} wrapping an object.
  */

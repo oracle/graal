@@ -26,7 +26,6 @@ import com.oracle.jvmci.meta.SerializableConstant;
 import java.nio.*;
 import java.util.*;
 
-
 /**
  * Type describing values that support arithmetic operations.
  */

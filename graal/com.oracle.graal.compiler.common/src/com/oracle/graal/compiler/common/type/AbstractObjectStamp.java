@@ -29,7 +29,6 @@ import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.jvmci.meta.Constant;
 import java.util.*;
 
-
 /**
  * Type describing all pointers to Java objects.
  */

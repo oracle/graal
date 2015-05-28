@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.jvmci.meta.*;
 
-
 /**
  * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the
  * location.

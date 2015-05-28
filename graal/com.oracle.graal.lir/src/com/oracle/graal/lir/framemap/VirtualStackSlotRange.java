@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.meta.*;
 
-
 /**
  * Represents a {@link #getSlots() numbered} range of {@link VirtualStackSlot virtual stack slot} of
  * size {@link TargetDescription#wordSize}.

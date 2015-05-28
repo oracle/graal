@@ -31,7 +31,6 @@ import java.io.*;
 
 import org.junit.*;
 
-
 /**
  * Tests profiling information provided by the runtime.
  * <p>

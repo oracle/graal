@@ -28,7 +28,6 @@ import com.oracle.jvmci.meta.Signature;
 import java.util.*;
 import java.util.regex.*;
 
-
 /**
  * This class implements a method filter that can filter based on class name, method name and
  * parameters. The syntax for the source pattern that is passed to the constructor is as follows:
