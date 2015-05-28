@@ -31,7 +31,6 @@ import java.util.*;
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 
-import com.oracle.graal.hotspot.sourcegen.GenGraalRuntimeInlineHpp.GraalJars;
 import com.oracle.graal.options.*;
 
 /**
