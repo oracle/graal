@@ -3068,7 +3068,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     ResolvedJavaType resolvedType = (ResolvedJavaType) type;
                     JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
                     TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
-                    if (typeCheckPlugin == null || !typeCheckPlugin.checkCast(this, object, resolvedType, profile)) {
+                    if (typeCheckPlugin == null || !this.parsingIntrinsic() || !typeCheckPlugin.checkCast(this, object, resolvedType, profile)) {
                         ValueNode checkCastNode = null;
                         if (profile != null) {
                             if (profile.getNullSeen().isFalse()) {
