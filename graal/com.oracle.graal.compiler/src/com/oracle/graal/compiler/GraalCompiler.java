@@ -300,7 +300,7 @@ public class GraalCompiler {
             }
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
-                return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites);
+                return emitLowLevel(target, codeEmittingOrder, linearScanOrder, lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig));
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -310,11 +310,11 @@ public class GraalCompiler {
     }
 
     public static <T extends AbstractBlockBase<T>> LIRGenerationResult emitLowLevel(TargetDescription target, List<T> codeEmittingOrder, List<T> linearScanOrder, LIRGenerationResult lirGenRes,
-                    LIRGeneratorTool lirGen, LIRSuites lirSuites) {
+                    LIRGeneratorTool lirGen, LIRSuites lirSuites, RegisterAllocationConfig registerAllocationConfig) {
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
         lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, preAllocOptContext);
 
-        AllocationContext allocContext = new AllocationContext(lirGen.getSpillMoveFactory());
+        AllocationContext allocContext = new AllocationContext(lirGen.getSpillMoveFactory(), registerAllocationConfig);
         lirSuites.getAllocationStage().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, allocContext);
 
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGen);
