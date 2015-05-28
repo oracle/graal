@@ -962,7 +962,7 @@ public class GraphDecoder {
             return true;
 
         } else if (node instanceof Invoke) {
-            assert node instanceof InvokeNode || node instanceof InvokeWithExceptionNode : "The only two Invoke node classes";
+            assert node instanceof InvokeNode || node instanceof InvokeWithExceptionNode : "The only two Invoke node classes. Got " + node.getClass();
             assert direct : "Invoke and InvokeWithException only have direct successor and input edges";
             if (edges.type() == Edges.Type.Successors) {
                 assert edges.getCount() == (node instanceof InvokeWithExceptionNode ? 2 : 1) : "InvokeNode has one successor (next); InvokeWithExceptionNode has two successors (next, exceptionEdge)";

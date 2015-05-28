@@ -318,7 +318,7 @@ public final class GraalOptions {
     @Option(help = "Enable expensive assertions", type = OptionType.Debug)
     public static final OptionValue<Boolean> DetailedAsserts = new StableOptionValue<Boolean>() {
         @Override
-        protected Boolean initialValue() {
+        protected Boolean defaultValue() {
             boolean enabled = false;
             // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
             assert (enabled = true) == true;

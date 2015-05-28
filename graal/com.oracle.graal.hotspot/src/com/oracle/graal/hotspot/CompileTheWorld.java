@@ -22,11 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.meta.TriState;
-import com.oracle.jvmci.meta.DefaultProfilingInfo;
-import com.oracle.jvmci.meta.ConstantPool;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ProfilingInfo;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
@@ -46,10 +41,10 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 import com.oracle.jvmci.options.OptionUtils.OptionConsumer;
 import com.oracle.jvmci.options.OptionValue.OverrideScope;
@@ -124,14 +119,12 @@ public final class CompileTheWorld {
          *
          * @param options a space separated set of option value settings with each option setting in
          *            a format compatible with
-         *            {@link HotSpotOptions#parseOption(String, OptionConsumer)}. Ignored if null.
+         *            {@link OptionUtils#parseOption(String, OptionConsumer)}. Ignored if null.
          */
         public Config(String options) {
             if (options != null) {
                 for (String option : options.split("\\s+")) {
-                    if (!HotSpotOptions.parseOption(option, this)) {
-                        throw new JVMCIError("Invalid option specified: %s", option);
-                    }
+                    OptionUtils.parseOption(option, this);
                 }
             }
         }
@@ -217,7 +210,7 @@ public final class CompileTheWorld {
      */
     public void compile() throws Throwable {
         // By default only report statistics for the CTW threads themselves
-        if (GraalDebugConfig.DebugValueThreadFilter.hasInitialValue()) {
+        if (GraalDebugConfig.DebugValueThreadFilter.hasDefaultValue()) {
             GraalDebugConfig.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
 

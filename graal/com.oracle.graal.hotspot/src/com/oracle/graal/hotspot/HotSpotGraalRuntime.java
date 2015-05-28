@@ -22,12 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.stack.InspectedFrameVisitor;
-import com.oracle.jvmci.code.stack.StackIntrospection;
-import com.oracle.jvmci.code.Architecture;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
@@ -48,10 +42,13 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.stack.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.hotspot.logging.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 import com.oracle.jvmci.runtime.*;
 

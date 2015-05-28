@@ -22,28 +22,19 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ProfilingInfo;
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
+import static com.oracle.jvmci.code.CallingConvention.Type.*;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 import static com.oracle.jvmci.debug.Debug.*;
-import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.lang.management.*;
 import java.util.concurrent.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;
@@ -58,23 +49,17 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.printer.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 //JaCoCo Exclude
 
 public class CompilationTask {
-
-    static {
-        try (InitTimer t = timer("initialize CompilationTask")) {
-            // Must be first to ensure any options accessed by the rest of the class
-            // initializer are initialized from the command line.
-            HotSpotOptions.initialize();
-        }
-    }
-
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
 
     private final HotSpotBackend backend;

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common.test;
 
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.Kind;
 import java.lang.reflect.*;
 
 import org.junit.*;
@@ -31,6 +29,7 @@ import org.junit.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.meta.*;
 
 public class StampFactoryTest {
 

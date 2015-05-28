@@ -22,18 +22,13 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
+import static com.oracle.jvmci.code.CodeUtil.*;
 
 import org.junit.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
@@ -47,7 +42,10 @@ import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
