@@ -41,7 +41,7 @@ import com.oracle.truffle.tools.debug.engine.*;
  */
 public final class SLSourceExecutionProvider extends SourceExecutionProvider {
 
-    private final SLContext slContext;
+    @SuppressWarnings("unused") private final SLContext slContext;
 
     public SLSourceExecutionProvider(SLContext context) {
         this.slContext = context;
