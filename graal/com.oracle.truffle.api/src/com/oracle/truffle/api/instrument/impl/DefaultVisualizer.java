@@ -52,6 +52,9 @@ public class DefaultVisualizer implements Visualizer {
             section = node.getEncapsulatingSourceSection();
             estimated = true;
         }
+        if (section == null) {
+            return "<error: source location>";
+        }
         return section.getShortDescription() + (estimated ? "~" : "");
     }
 
