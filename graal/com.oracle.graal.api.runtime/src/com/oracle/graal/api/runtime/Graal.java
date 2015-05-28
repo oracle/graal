@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.runtime;
 
-import java.io.*;
 import java.util.*;
 
 import sun.reflect.*;
@@ -43,22 +42,12 @@ public class Graal {
             rt = factory.getRuntime();
         }
         if (rt != null) {
-            updateGraalVersionProperty();
+            // The constant is patched in-situ by the build system
+            System.setProperty("graal.version", "@@graal.version@@");
+            assert !System.getProperty("graal.version").startsWith("@@") && !System.getProperty("graal.version").endsWith("@@") : "Graal version string constant was not patched by build system";
             return rt;
         }
         return new InvalidGraalRuntime();
-    }
-
-    private static void updateGraalVersionProperty() {
-        try {
-            InputStream s = Graal.class.getResourceAsStream("graal.version");
-            byte[] buf = new byte[s.available()];
-            new DataInputStream(s).readFully(buf);
-            String version = new String(buf);
-            System.setProperty("graal.version", version);
-        } catch (IOException e) {
-            throw new InternalError(e);
-        }
     }
 
     /**
