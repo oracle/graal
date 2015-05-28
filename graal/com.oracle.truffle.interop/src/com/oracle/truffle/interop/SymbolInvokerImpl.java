@@ -28,12 +28,14 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.impl.SymbolInvoker;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.interop.messages.Execute;
 import com.oracle.truffle.interop.messages.Receiver;
 import com.oracle.truffle.interop.node.ForeignObjectAccessNode;
+
 import java.io.IOException;
 
 public final class SymbolInvokerImpl extends SymbolInvoker {
@@ -56,6 +58,11 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
             this.foreignAccess = foreignAccess;
             this.function = function;
             this.args = args;
+        }
+
+        @Override
+        public void applyInstrumentation() {
+            Probe.applyASTProbers(foreignAccess);
         }
 
         @Override

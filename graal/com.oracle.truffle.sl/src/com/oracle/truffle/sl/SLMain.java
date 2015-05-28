@@ -181,6 +181,17 @@ public class SLMain extends TruffleLanguage {
         }
     }
 
+    public static void run(Source source) throws IOException {
+        TruffleVM vm = TruffleVM.newVM().build();
+        assert vm.getLanguages().containsKey("application/x-sl");
+        vm.eval(new File(source.getPath()).toURI());
+        Symbol main = vm.findGlobalSymbol("main");
+        if (main == null) {
+            throw new SLException("No function main() defined in SL source file.");
+        }
+        main.invoke(null);
+    }
+
     /**
      * Parse and run the specified SL source. Factored out in a separate method so that it can also
      * be used by the unit test harness.
