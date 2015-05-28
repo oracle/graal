@@ -1,10 +1,3 @@
-package com.oracle.graal.options.processor;
-
-import java.io.*;
-import java.util.*;
-import java.util.stream.*;
-import java.util.zip.*;
-
 /*
  * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -27,6 +20,13 @@ import java.util.zip.*;
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.options.processor;
+
+import java.io.*;
+import java.util.*;
+import java.util.stream.*;
+import java.util.zip.*;
+
 public class GraalJars implements Iterable<ZipEntry> {
     private final List<ZipFile> jars = new ArrayList<>(2);
 

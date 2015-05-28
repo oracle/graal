@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -305,20 +305,52 @@ public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private static void computeLoopBlocks(Block block, Loop<Block> loop) {
-        if (block.getLoop() == loop) {
-            return;
-        }
-        assert block.loop == loop.getParent();
-        block.loop = loop;
+    private static void computeLoopBlocks(Block ablock, Loop<Block> aloop) {
+        final int process = 0;
+        final int stepOut = 1;
+        class Frame {
+            final Iterator<Block> blocks;
+            final Loop<Block> loop;
+            final Frame parent;
 
-        assert !loop.getBlocks().contains(block);
-        loop.getBlocks().add(block);
-
-        if (block != loop.getHeader()) {
-            for (Block pred : block.getPredecessors()) {
-                computeLoopBlocks(pred, loop);
+            public Frame(Iterator<Block> blocks, Loop<Block> loop, Frame parent) {
+                this.blocks = blocks;
+                this.loop = loop;
+                this.parent = parent;
             }
+        }
+        int state = process;
+        Frame c = new Frame(Arrays.asList(ablock).iterator(), aloop, null);
+        while (c != null) {
+            int nextState = state;
+            if (state == process) {
+                Loop<Block> loop = c.loop;
+                Block block = c.blocks.next();
+                if (block.getLoop() == loop) {
+                    nextState = stepOut;
+                } else {
+                    assert block.loop == loop.getParent();
+                    block.loop = c.loop;
+
+                    assert !c.loop.getBlocks().contains(block);
+                    c.loop.getBlocks().add(block);
+
+                    if (block != c.loop.getHeader()) {
+                        c = new Frame(block.getPredecessors().iterator(), loop, c);
+                    } else {
+                        nextState = stepOut;
+                    }
+                }
+            } else if (state == stepOut) {
+                if (c.blocks.hasNext()) {
+                    nextState = process;
+                } else {
+                    c = c.parent;
+                }
+            } else {
+                GraalInternalError.shouldNotReachHere();
+            }
+            state = nextState;
         }
     }
 

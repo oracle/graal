@@ -45,12 +45,8 @@ public class CompilerToVMImpl implements CompilerToVM {
         }
     }
 
-    private native int installCode0(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
-
     @Override
-    public CodeInstallResult installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog) {
-        return CodeInstallResult.getEnum(installCode0(compiledCode, code, speculationLog));
-    }
+    public native int installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
     @Override
     public native long getMetaspaceMethod(Class<?> holder, int slot);

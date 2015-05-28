@@ -48,12 +48,15 @@ public final class LinearScanPhase extends AllocationPhase {
     });
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
+        final LinearScan allocator;
         if (LinearScanPhase.SSA_LSRA.getValue()) {
-            new SSALinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
+            allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig);
         } else {
-            new LinearScan(target, lirGenRes, spillMoveFactory, new RegisterAllocationConfig(lirGenRes.getFrameMapBuilder().getRegisterConfig())).allocate();
+            allocator = new LinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig);
         }
+        allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
     }
 
 }

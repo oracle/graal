@@ -53,12 +53,6 @@ import com.oracle.graal.phases.common.inlining.info.*;
 public class InliningUtil {
 
     private static final String inliningDecisionsScopeString = "InliningDecisions";
-    /**
-     * Meters the size (in bytecodes) of all methods processed during compilation (i.e., top level
-     * and all inlined methods), irrespective of how many bytecodes in each method are actually
-     * parsed (which may be none for methods whose IR is retrieved from a cache).
-     */
-    public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
 
     /**
      * Print a HotSpot-style inlining message to the console.
@@ -321,7 +315,7 @@ public class InliningUtil {
             unwindNode = (UnwindNode) duplicates.get(unwindNode);
         }
 
-        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph.getInlinedMethods(), canonicalizedNodes);
+        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
 
         GraphUtil.killCFG(invokeNode);
 
@@ -329,7 +323,7 @@ public class InliningUtil {
     }
 
     public static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
-                    Set<ResolvedJavaMethod> inlinedMethods, List<Node> canonicalizedNodes) {
+                    StructuredGraph inlineGraph, List<Node> canonicalizedNodes) {
         FixedNode invokeNode = invoke.asNode();
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
@@ -401,9 +395,7 @@ public class InliningUtil {
         }
 
         // Copy inlined methods from inlinee to caller
-        if (inlinedMethods != null && graph.getInlinedMethods() != null) {
-            graph.getInlinedMethods().addAll(inlinedMethods);
-        }
+        graph.updateInlinedMethods(inlineGraph);
 
         return returnValue;
     }
@@ -427,9 +419,16 @@ public class InliningUtil {
     }
 
     public static BytecodePosition processSimpleInfopoint(Invoke invoke, SimpleInfopointNode infopointNode, BytecodePosition incomingPos) {
-        BytecodePosition pos = incomingPos != null ? incomingPos : new BytecodePosition(toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.asNode().graph().method(), invoke.bci());
+        BytecodePosition pos = processBytecodePosition(invoke, incomingPos);
         infopointNode.addCaller(pos);
+        assert infopointNode.verify();
         return pos;
+    }
+
+    public static BytecodePosition processBytecodePosition(Invoke invoke, BytecodePosition incomingPos) {
+        assert invoke.stateAfter() != null;
+        assert incomingPos == null || incomingPos.equals(InliningUtil.processBytecodePosition(invoke, null)) : incomingPos + " " + InliningUtil.processBytecodePosition(invoke, null);
+        return incomingPos != null ? incomingPos : new BytecodePosition(FrameState.toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.stateAfter().method(), invoke.bci());
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
@@ -437,13 +436,6 @@ public class InliningUtil {
             int callerLockDepth = stateAfter.nestedLockDepth();
             monitorIdNode.setLockDepth(monitorIdNode.getLockDepth() + callerLockDepth);
         }
-    }
-
-    private static BytecodePosition toBytecodePosition(FrameState fs) {
-        if (fs == null) {
-            return null;
-        }
-        return new BytecodePosition(toBytecodePosition(fs.outerFrameState()), fs.method(), fs.bci);
     }
 
     protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge, boolean alwaysDuplicateStateAfter) {
@@ -468,14 +460,28 @@ public class InliningUtil {
         Kind invokeReturnKind = invoke.asNode().getKind();
 
         if (frameState.bci == BytecodeFrame.AFTER_BCI) {
+            FrameState stateAfterReturn = stateAtReturn;
+            if (frameState.method() == null) {
+                // This is a frame state for a side effect within an intrinsic
+                // that was parsed for post-parse intrinsification
+                for (Node usage : frameState.usages()) {
+                    if (usage instanceof ForeignCallNode) {
+                        // A foreign call inside an intrinsic needs to have
+                        // the BCI of the invoke being intrinsified
+                        ForeignCallNode foreign = (ForeignCallNode) usage;
+                        foreign.setBci(invoke.bci());
+                    }
+                }
+            }
+
             /*
              * pop return kind from invoke's stateAfter and replace with this frameState's return
              * value (top of stack)
              */
-            FrameState stateAfterReturn = stateAtReturn;
-            if (invokeReturnKind != Kind.Void && (alwaysDuplicateStateAfter || (frameState.stackSize() > 0 && stateAfterReturn.stackAt(0) != frameState.stackAt(0)))) {
+            if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                 stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
             }
+
             frameState.replaceAndDelete(stateAfterReturn);
             return stateAfterReturn;
         } else if (stateAtExceptionEdge != null && isStateAfterException(frameState)) {
@@ -527,8 +533,11 @@ public class InliningUtil {
                 // in the intrinsic code.
                 assert inlinedMethod.getAnnotation(MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
                                 frameState;
+            } else if (frameState.method().getName().equals(inlinedMethod.getName())) {
+                // This can happen for method substitutions.
             } else {
-                throw new AssertionError(frameState.toString());
+                throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, frameState.method(), frameState,
+                                invoke.callTarget().targetMethod()));
             }
         }
         return true;
@@ -581,25 +590,26 @@ public class InliningUtil {
         ValueNode singleReturnValue = null;
         PhiNode returnValuePhi = null;
         for (ReturnNode returnNode : returnNodes) {
-            if (returnNode.result() != null) {
-                if (returnValuePhi == null && (singleReturnValue == null || singleReturnValue == returnNode.result())) {
+            ValueNode result = returnNode.result();
+            if (result != null) {
+                if (returnValuePhi == null && (singleReturnValue == null || singleReturnValue == result)) {
                     /* Only one return value, so no need yet for a phi node. */
-                    singleReturnValue = returnNode.result();
+                    singleReturnValue = result;
 
                 } else if (returnValuePhi == null) {
                     /* Found a second return value, so create phi node. */
-                    returnValuePhi = merge.graph().addWithoutUnique(new ValuePhiNode(returnNode.result().stamp().unrestricted(), merge));
+                    returnValuePhi = merge.graph().addWithoutUnique(new ValuePhiNode(result.stamp().unrestricted(), merge));
                     if (canonicalizedNodes != null) {
                         canonicalizedNodes.add(returnValuePhi);
                     }
                     for (int i = 0; i < merge.forwardEndCount(); i++) {
                         returnValuePhi.addInput(singleReturnValue);
                     }
-                    returnValuePhi.addInput(returnNode.result());
+                    returnValuePhi.addInput(result);
 
                 } else {
                     /* Multiple return values, just add to existing phi node. */
-                    returnValuePhi.addInput(returnNode.result());
+                    returnValuePhi.addInput(result);
                 }
             }
 

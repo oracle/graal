@@ -62,7 +62,7 @@ public interface MethodIdHolder extends ResolvedJavaMethod {
                     idVerifierMap.put(holder, id);
                 }
             } else {
-                assert idVerifierMap.get(holder) == id;
+                assert !idVerifierMap.containsKey(holder) || idVerifierMap.get(holder) == id;
             }
             return id;
         }

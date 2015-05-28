@@ -23,14 +23,11 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Common base class for all HotSpot {@link JavaType} implementations.
  */
-public abstract class HotSpotJavaType extends CompilerObject implements JavaType {
-
-    private static final long serialVersionUID = -4252886265301910771L;
+public abstract class HotSpotJavaType implements JavaType {
 
     private final String name;
 

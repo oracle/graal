@@ -256,16 +256,18 @@ public interface JavaConstant extends Constant, JavaValue, Value {
      */
     static PrimitiveConstant forIntegerKind(Kind kind, long i) {
         switch (kind) {
+            case Boolean:
+                return forBoolean(i != 0);
             case Byte:
-                return new PrimitiveConstant(kind, (byte) i);
+                return forByte((byte) i);
             case Short:
-                return new PrimitiveConstant(kind, (short) i);
+                return forShort((short) i);
             case Char:
-                return new PrimitiveConstant(kind, (char) i);
+                return forChar((char) i);
             case Int:
-                return new PrimitiveConstant(kind, (int) i);
+                return forInt((int) i);
             case Long:
-                return new PrimitiveConstant(kind, i);
+                return forLong(i);
             default:
                 throw new IllegalArgumentException("not an integer kind: " + kind);
         }

@@ -131,9 +131,10 @@ public class GraphBuilderConfiguration {
 
     private final boolean eagerResolving;
     private final boolean omitAllExceptionEdges;
+    private final boolean omitAssertions;
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final DebugInfoMode debugInfoMode;
-    private final boolean doLivenessAnalysis;
+    private final boolean clearNonLiveLocals;
     private boolean useProfiling;
     private final Plugins plugins;
 
@@ -161,13 +162,14 @@ public class GraphBuilderConfiguration {
         Full,
     }
 
-    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes, boolean doLivenessAnalysis,
-                    Plugins plugins) {
+    protected GraphBuilderConfiguration(boolean eagerResolving, boolean omitAllExceptionEdges, boolean omitAssertions, DebugInfoMode debugInfoMode, ResolvedJavaType[] skippedExceptionTypes,
+                    boolean clearNonLiveLocals, Plugins plugins) {
         this.eagerResolving = eagerResolving;
         this.omitAllExceptionEdges = omitAllExceptionEdges;
+        this.omitAssertions = omitAssertions;
         this.debugInfoMode = debugInfoMode;
         this.skippedExceptionTypes = skippedExceptionTypes;
-        this.doLivenessAnalysis = doLivenessAnalysis;
+        this.clearNonLiveLocals = clearNonLiveLocals;
         this.useProfiling = true;
         this.plugins = plugins;
     }
@@ -179,7 +181,7 @@ public class GraphBuilderConfiguration {
      */
     public GraphBuilderConfiguration copy() {
         Plugins newPlugins = new Plugins(plugins);
-        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, newPlugins);
+        GraphBuilderConfiguration result = new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, omitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, newPlugins);
         result.useProfiling = useProfiling;
         return result;
     }
@@ -193,20 +195,24 @@ public class GraphBuilderConfiguration {
     }
 
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, omitAssertions, debugInfoMode, newSkippedExceptionTypes, clearNonLiveLocals, plugins);
     }
 
     public GraphBuilderConfiguration withOmitAllExceptionEdges(boolean newOmitAllExceptionEdges) {
-        return new GraphBuilderConfiguration(eagerResolving, newOmitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, doLivenessAnalysis, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, newOmitAllExceptionEdges, omitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, plugins);
+    }
+
+    public GraphBuilderConfiguration withOmitAssertions(boolean newOmitAssertions) {
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newOmitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, plugins);
     }
 
     public GraphBuilderConfiguration withDebugInfoMode(DebugInfoMode newDebugInfoMode) {
         ResolvedJavaType[] newSkippedExceptionTypes = skippedExceptionTypes == EMPTY ? EMPTY : Arrays.copyOf(skippedExceptionTypes, skippedExceptionTypes.length);
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, newDebugInfoMode, newSkippedExceptionTypes, doLivenessAnalysis, plugins);
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, omitAssertions, newDebugInfoMode, newSkippedExceptionTypes, clearNonLiveLocals, plugins);
     }
 
-    public GraphBuilderConfiguration withDoLivenessAnalysis(boolean newLivenessAnalysis) {
-        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, debugInfoMode, skippedExceptionTypes, newLivenessAnalysis, plugins);
+    public GraphBuilderConfiguration withClearNonLiveLocals(boolean newClearNonLiveLocals) {
+        return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, omitAssertions, debugInfoMode, skippedExceptionTypes, newClearNonLiveLocals, plugins);
     }
 
     public ResolvedJavaType[] getSkippedExceptionTypes() {
@@ -221,6 +227,10 @@ public class GraphBuilderConfiguration {
         return omitAllExceptionEdges;
     }
 
+    public boolean omitAssertions() {
+        return omitAssertions;
+    }
+
     public boolean insertNonSafepointDebugInfo() {
         return debugInfoMode.ordinal() >= DebugInfoMode.Simple.ordinal();
     }
@@ -229,32 +239,36 @@ public class GraphBuilderConfiguration {
         return debugInfoMode.ordinal() >= DebugInfoMode.Full.ordinal();
     }
 
-    public boolean doLivenessAnalysis() {
-        return doLivenessAnalysis;
+    public boolean insertSimpleDebugInfo() {
+        return debugInfoMode == DebugInfoMode.Simple;
+    }
+
+    public boolean clearNonLiveLocals() {
+        return clearNonLiveLocals;
     }
 
     public static GraphBuilderConfiguration getDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+        return new GraphBuilderConfiguration(false, false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getInfopointDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, false, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getEagerDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, false, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getInfopointEagerDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, false, false, DebugInfoMode.Simple, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getSnippetDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, true, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, true, false, DebugInfoMode.SafePointsOnly, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     public static GraphBuilderConfiguration getFullDebugDefault(Plugins plugins) {
-        return new GraphBuilderConfiguration(true, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptLivenessAnalysis.getValue(), plugins);
+        return new GraphBuilderConfiguration(true, false, false, DebugInfoMode.Full, EMPTY, GraalOptions.OptClearNonLiveLocals.getValue(), plugins);
     }
 
     /**

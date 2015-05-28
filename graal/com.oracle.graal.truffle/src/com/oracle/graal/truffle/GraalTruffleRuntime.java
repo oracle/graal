@@ -31,6 +31,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.stack.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.unsafe.*;
@@ -55,7 +57,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final List<GraalTruffleCompilationListener> compilationListeners = new ArrayList<>();
     private final GraalTruffleCompilationListener compilationNotify = new DispatchTruffleCompilationListener();
 
-    private LoopNodeFactory loopNodeFactory;
+    protected TruffleCompiler truffleCompiler;
+    protected LoopNodeFactory loopNodeFactory;
 
     public GraalTruffleRuntime() {
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
@@ -101,11 +104,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         if (!(repeatingNode instanceof Node)) {
             throw new IllegalArgumentException("Repeating node must be of type Node.");
         }
+        return getLoopNodeFactory().create(repeatingNode);
+    }
+
+    protected LoopNodeFactory getLoopNodeFactory() {
         if (loopNodeFactory == null) {
             loopNodeFactory = loadPrioritizedServiceProvider(LoopNodeFactory.class);
         }
-
-        return loopNodeFactory.create(repeatingNode);
+        return loopNodeFactory;
     }
 
     @Override
@@ -271,6 +277,18 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     public abstract void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous);
 
+    protected void doCompile(OptimizedCallTarget optimizedCallTarget) {
+        boolean success = true;
+        try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
+            truffleCompiler.compileMethod(optimizedCallTarget);
+        } catch (Throwable e) {
+            optimizedCallTarget.notifyCompilationFailed(e);
+            success = false;
+        } finally {
+            optimizedCallTarget.notifyCompilationFinished(success);
+        }
+    }
+
     public abstract boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason);
 
     public abstract void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException;
@@ -281,7 +299,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     public abstract void reinstallStubs();
 
-    public abstract boolean enableInfopoints();
+    public final boolean enableInfopoints() {
+        /* Currently infopoints can change code generation so don't enable them automatically */
+        return platformEnableInfopoints() && TruffleEnableInfopoints.getValue();
+    }
+
+    protected abstract boolean platformEnableInfopoints();
 
     private final class DispatchTruffleCompilationListener implements GraalTruffleCompilationListener {
 

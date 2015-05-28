@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,8 @@ public abstract class AbstractPointerStamp extends Stamp {
         return alwaysNull;
     }
 
+    protected abstract AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull);
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -52,6 +54,36 @@ public abstract class AbstractPointerStamp extends Stamp {
         result = prime * result + (alwaysNull ? 1231 : 1237);
         result = prime * result + (nonNull ? 1231 : 1237);
         return result;
+    }
+
+    @Override
+    public Stamp join(Stamp stamp) {
+        AbstractPointerStamp other = (AbstractPointerStamp) stamp;
+        boolean joinNonNull = this.nonNull || other.nonNull;
+        boolean joinAlwaysNull = this.alwaysNull || other.alwaysNull;
+        if (joinNonNull && joinAlwaysNull) {
+            return empty();
+        } else {
+            return copyWith(joinNonNull, joinAlwaysNull);
+        }
+    }
+
+    @Override
+    public Stamp improveWith(Stamp other) {
+        return join(other);
+    }
+
+    @Override
+    public Stamp meet(Stamp stamp) {
+        AbstractPointerStamp other = (AbstractPointerStamp) stamp;
+        boolean meetNonNull = this.nonNull && other.nonNull;
+        boolean meetAlwaysNull = this.alwaysNull && other.alwaysNull;
+        return copyWith(meetNonNull, meetAlwaysNull);
+    }
+
+    @Override
+    public Stamp unrestricted() {
+        return copyWith(false, false);
     }
 
     @Override

@@ -39,28 +39,6 @@ public abstract class MetaspacePointerStamp extends AbstractPointerStamp {
     }
 
     @Override
-    public Stamp meet(Stamp other) {
-        assert isCompatible(other);
-        return this;
-    }
-
-    @Override
-    public Stamp improveWith(Stamp other) {
-        return this;
-    }
-
-    @Override
-    public Stamp join(Stamp other) {
-        assert isCompatible(other);
-        return this;
-    }
-
-    @Override
-    public Stamp unrestricted() {
-        return this;
-    }
-
-    @Override
     public Stamp empty() {
         // there is no empty pointer stamp
         return this;

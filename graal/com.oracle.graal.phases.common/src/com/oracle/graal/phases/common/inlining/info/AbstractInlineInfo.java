@@ -57,11 +57,8 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck, canonicalizeNodes);
         getInlinedParameterUsages(canonicalizeNodes, calleeGraph, duplicateMap);
 
-        InliningUtil.InlinedBytecodes.add(concrete.getCodeSize());
         StructuredGraph graph = invoke.asNode().graph();
-        if (graph.isInlinedMethodRecordingEnabled()) {
-            graph.getInlinedMethods().add(concrete);
-        }
+        graph.recordInlinedMethod(concrete);
         return canonicalizeNodes;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.LoweringTool.StandardLoweringStage;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -147,7 +148,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final class InlineEverythingPlugin implements InlineInvokePlugin {
         public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
             assert method.hasBytecodes();
-            return new InlineInfo(method, false, false);
+            return new InlineInfo(method, false);
         }
     }
 

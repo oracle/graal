@@ -38,13 +38,12 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
-import com.oracle.graal.lir.amd64.AMD64Call.CallOp;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64ControlFlow {
 
     public static final class ReturnOp extends AMD64LIRInstruction implements BlockEndOp {
-        public static final LIRInstructionClass<CallOp> TYPE = LIRInstructionClass.create(CallOp.class);
+        public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
 
         public ReturnOp(Value x) {

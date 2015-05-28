@@ -29,7 +29,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
@@ -52,14 +52,17 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
 
     @Use({REG}) protected Value metaspaceMethod;
 
-    SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
+    private final HotSpotVMConfig config;
+
+    SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state, HotSpotVMConfig config) {
         super(TYPE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
+        this.config = config;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        MarkId.recordMark(crb, MarkId.INLINE_INVOKE);
+        crb.recordMark(config.MARKID_INLINE_INVOKE);
         Register callReg = asRegister(targetAddress);
         assert !callReg.equals(METHOD);
         SPARCCall.indirectCall(crb, masm, callReg, callTarget, state);

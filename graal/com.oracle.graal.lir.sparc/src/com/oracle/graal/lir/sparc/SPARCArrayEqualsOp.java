@@ -133,6 +133,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
      * Emits code that uses 8-byte vector compares.
      */
     private void emit8ByteCompare(SPARCMacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
+        assert lengthValue.getPlatformKind().equals(Kind.Int);
         Label loop = new Label();
         Label compareTail = new Label();
         Label compareTailCorrectVectorEnd = new Label();
@@ -142,6 +143,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
 
         boolean hasCBcond = masm.hasFeature(CPUFeature.CBCOND);
 
+        masm.sra(length, 0, length);
         masm.and(result, VECTOR_SIZE - 1, result); // tail count (in bytes)
         masm.andcc(length, ~(VECTOR_SIZE - 1), length);  // vector count (in bytes)
         masm.bpcc(ConditionFlag.Equal, NOT_ANNUL, compareTail, CC.Xcc, PREDICT_NOT_TAKEN);

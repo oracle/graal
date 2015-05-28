@@ -227,6 +227,14 @@ public class InvocationPlugins {
     }
 
     /**
+     * Disallows new registrations of new plugins, and creates the internal tables for method
+     * lookup.
+     */
+    public void closeRegistration() {
+        plugins.createEntries();
+    }
+
+    /**
      * Gets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched}
      * before searching in this object.
      */

@@ -33,7 +33,6 @@ import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
  */
 public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, ResolvedJavaType> {
 
-    private static final long serialVersionUID = -6877016333706838441L;
     private static final ProfiledType[] EMPTY_ARRAY = new ProfiledType[0];
 
     private final TriState nullSeen;
@@ -145,8 +144,6 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
     public static class ProfiledType extends AbstractProfiledItem<ResolvedJavaType> {
 
-        private static final long serialVersionUID = 1481773321889860837L;
-
         public ProfiledType(ResolvedJavaType type, double probability) {
             super(type, probability);
             assert type.isArray() || type.isConcrete() : type;
@@ -176,5 +173,23 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
             buf.append(String.format("%.6f:%s", ptype.getProbability(), ptype.getType()));
         }
         return buf.append(String.format("], notRecorded:%.6f>", getNotRecordedProbability())).toString();
+    }
+
+    /**
+     * Returns {@code true} if all types seen at this location have been recorded in the profile.
+     */
+    public boolean allTypesRecorded() {
+        return this.getNotRecordedProbability() == 0.0;
+    }
+
+    /**
+     * Returns the single monormorphic type representing this profile or {@code null} if no such
+     * type exists.
+     */
+    public ResolvedJavaType asSingleType() {
+        if (allTypesRecorded() && this.getTypes().length == 1) {
+            return getTypes()[0].getType();
+        }
+        return null;
     }
 }

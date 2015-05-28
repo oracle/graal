@@ -35,7 +35,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
 public final class SPARCAddressValue extends CompositeValue {
-    private static final long serialVersionUID = -3583286416638228207L;
 
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;

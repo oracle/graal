@@ -30,7 +30,6 @@ import com.oracle.graal.api.meta.*;
  */
 public abstract class VirtualStackSlot extends StackSlotValue {
 
-    private static final long serialVersionUID = 2823688688873398219L;
     private final int id;
 
     public VirtualStackSlot(int id, LIRKind lirKind) {

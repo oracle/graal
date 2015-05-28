@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.*;
@@ -39,16 +39,18 @@ final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
     public static final LIRInstructionClass<AMD64HotspotDirectStaticCallOp> TYPE = LIRInstructionClass.create(AMD64HotspotDirectStaticCallOp.class);
 
     private final InvokeKind invokeKind;
+    private final HotSpotVMConfig config;
 
-    AMD64HotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
+    AMD64HotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
         super(TYPE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;
+        this.config = config;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        MarkId.recordMark(crb, invokeKind == InvokeKind.Static ? MarkId.INVOKESTATIC : MarkId.INVOKESPECIAL);
+        crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
         super.emitCode(crb, masm);
     }
 }

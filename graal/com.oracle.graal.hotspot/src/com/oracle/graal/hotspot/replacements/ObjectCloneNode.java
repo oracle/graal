@@ -56,14 +56,14 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(method);
                     final Replacements replacements = tool.getReplacements();
                     StructuredGraph snippetGraph = null;
-                    try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
+                    try (Scope s = Debug.scope("ArrayCloneSnippet", snippetMethod)) {
                         snippetGraph = replacements.getSnippet(snippetMethod, null);
                     } catch (Throwable e) {
                         throw Debug.handle(e);
                     }
 
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
-                    return lowerReplacement(snippetGraph.copy(), tool);
+                    return lowerReplacement((StructuredGraph) snippetGraph.copy(), tool);
                 }
                 assert false : "unhandled array type " + type.getComponentType().getKind();
             } else {

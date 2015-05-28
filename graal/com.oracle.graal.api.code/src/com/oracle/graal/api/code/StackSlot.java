@@ -30,8 +30,6 @@ import com.oracle.graal.api.meta.*;
  */
 public final class StackSlot extends StackSlotValue {
 
-    private static final long serialVersionUID = -7725071921307318433L;
-
     private final int offset;
     private final boolean addFrameSize;
 

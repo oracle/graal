@@ -52,8 +52,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
@@ -87,6 +87,7 @@ public class SnippetTemplate {
     public abstract static class SnippetInfo {
 
         protected final ResolvedJavaMethod method;
+        protected ResolvedJavaMethod original;
         protected final LocationIdentity[] privateLocations;
 
         /**
@@ -150,7 +151,7 @@ public class SnippetTemplate {
 
         protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
             this.method = method;
-            this.privateLocations = privateLocations;
+            this.privateLocations = SnippetCounterNode.addSnippetCounters(privateLocations);
             instantiationCounter = Debug.metric("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = Debug.timer("SnippetInstantiationTime[%s]", method.getName());
             assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
@@ -175,6 +176,10 @@ public class SnippetTemplate {
             return lazy().constantParameters.length;
         }
 
+        public void setOriginalMethod(ResolvedJavaMethod original) {
+            this.original = original;
+        }
+
         public boolean isConstantParameter(int paramIdx) {
             return lazy().constantParameters[paramIdx];
         }
@@ -189,6 +194,11 @@ public class SnippetTemplate {
                 return names[paramIdx];
             }
             return null;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + method.format("%h.%n");
         }
     }
 
@@ -263,6 +273,7 @@ public class SnippetTemplate {
         }
 
         public Arguments addConst(String name, Object value) {
+            assert value != null;
             return addConst(name, value, null);
         }
 
@@ -560,7 +571,7 @@ public class SnippetTemplate {
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, constantArgs);
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs);
         instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[%#s]", args);
         instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[%#s]", args);
 
@@ -781,6 +792,8 @@ public class SnippetTemplate {
         for (int i = 0; i < args.info.getParameterCount(); i++) {
             if (!args.info.isConstantParameter(i)) {
                 constantArgs[i] = null;
+            } else {
+                assert constantArgs[i] != null : "Can't pass raw null through as argument";
             }
         }
         return constantArgs;
@@ -1098,11 +1111,12 @@ public class SnippetTemplate {
             // rewire outgoing memory edges
             replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
 
-            ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
-            MemoryMapNode memoryMap = ret.getMemoryMap();
-            ret.setMemoryMap(null);
-            memoryMap.safeDelete();
-
+            if (returnNode != null) {
+                ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
+                MemoryMapNode memoryMap = ret.getMemoryMap();
+                ret.setMemoryMap(null);
+                memoryMap.safeDelete();
+            }
             if (memoryAnchor != null) {
                 // rewire incoming memory edges
                 MemoryAnchorNode memoryDuplicate = (MemoryAnchorNode) duplicates.get(memoryAnchor);
@@ -1298,7 +1312,7 @@ public class SnippetTemplate {
      * Gets a copy of the specialized graph.
      */
     public StructuredGraph copySpecializedGraph() {
-        return snippet.copy();
+        return (StructuredGraph) snippet.copy();
     }
 
     /**

@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
@@ -34,13 +33,10 @@ import java.util.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MROp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -52,8 +48,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
-import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.asm.*;
@@ -261,14 +255,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Value emitCardTableShift() {
         Variable result = newVariable(LIRKind.value(Kind.Long));
-        append(new AMD64HotSpotCardTableShiftOp(result));
+        append(new AMD64HotSpotCardTableShiftOp(result, config));
         return result;
     }
 
     @Override
     public Value emitCardTableAddress() {
         Variable result = newVariable(LIRKind.value(Kind.Long));
-        append(new AMD64HotSpotCardTableAddressOp(result));
+        append(new AMD64HotSpotCardTableAddressOp(result, config));
         return result;
     }
 
@@ -494,15 +488,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    private static LIRKind toStackKind(LIRKind kind) {
-        if (kind.getPlatformKind() instanceof Kind) {
-            Kind stackKind = ((Kind) kind.getPlatformKind()).getStackKind();
-            return kind.changeType(stackKind);
-        } else {
-            return kind;
-        }
-    }
-
     public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
         Variable frameSizeVariable = load(frameSize);
         Variable framePcVariable = load(framePc);
@@ -512,47 +497,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
-        AMD64AddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(toStackKind(kind));
-        switch ((Kind) kind.getPlatformKind()) {
-            case Boolean:
-                append(new AMD64Unary.MemoryOp(MOVZXB, DWORD, result, loadAddress, state));
-                break;
-            case Byte:
-                append(new AMD64Unary.MemoryOp(MOVSXB, DWORD, result, loadAddress, state));
-                break;
-            case Char:
-                append(new AMD64Unary.MemoryOp(MOVZX, DWORD, result, loadAddress, state));
-                break;
-            case Short:
-                append(new AMD64Unary.MemoryOp(MOVSX, DWORD, result, loadAddress, state));
-                break;
-            case Int:
-                append(new AMD64Unary.MemoryOp(MOV, DWORD, result, loadAddress, state));
-                break;
-            case Long:
-            case Object:
-                append(new AMD64Unary.MemoryOp(MOV, QWORD, result, loadAddress, state));
-                break;
-            case Float:
-                append(new AMD64Unary.MemoryOp(MOVSS, SS, result, loadAddress, state));
-                break;
-            case Double:
-                append(new AMD64Unary.MemoryOp(MOVSD, SD, result, loadAddress, state));
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-        return result;
-    }
-
-    private void emitStoreConst(Kind kind, AMD64AddressValue address, JavaConstant value, LIRFrameState state) {
-        if (value.isNull()) {
-            assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object;
-            OperandSize size = kind == Kind.Int ? DWORD : QWORD;
-            append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, size, address, 0, state));
-        } else if (value instanceof HotSpotConstant) {
+    protected void emitStoreConst(Kind kind, AMD64AddressValue address, JavaConstant value, LIRFrameState state) {
+        if (value instanceof HotSpotConstant && value.isNonNull()) {
             HotSpotConstant c = (HotSpotConstant) value;
             if (c.isCompressed()) {
                 assert kind == Kind.Int;
@@ -565,86 +511,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 emitStore(kind, address, asAllocatable(value), state);
             }
         } else {
-            AMD64MIOp op = AMD64MIOp.MOV;
-            OperandSize size;
-            long imm;
-
-            switch (kind) {
-                case Boolean:
-                case Byte:
-                    op = AMD64MIOp.MOVB;
-                    size = BYTE;
-                    imm = value.asInt();
-                    break;
-                case Char:
-                case Short:
-                    size = WORD;
-                    imm = value.asInt();
-                    break;
-                case Int:
-                    size = DWORD;
-                    imm = value.asInt();
-                    break;
-                case Long:
-                    size = QWORD;
-                    imm = value.asLong();
-                    break;
-                case Float:
-                    size = DWORD;
-                    imm = Float.floatToRawIntBits(value.asFloat());
-                    break;
-                case Double:
-                    size = QWORD;
-                    imm = Double.doubleToRawLongBits(value.asDouble());
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere("unexpected kind " + kind);
-            }
-
-            if (NumUtil.isInt(imm)) {
-                append(new AMD64BinaryConsumer.MemoryConstOp(op, size, address, (int) imm, state));
-            } else {
-                emitStore(kind, address, asAllocatable(value), state);
-            }
-        }
-    }
-
-    private void emitStore(Kind kind, AMD64AddressValue address, AllocatableValue value, LIRFrameState state) {
-        switch (kind) {
-            case Boolean:
-            case Byte:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVB, BYTE, address, value, state));
-                break;
-            case Char:
-            case Short:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOV, WORD, address, value, state));
-                break;
-            case Int:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOV, DWORD, address, value, state));
-                break;
-            case Long:
-            case Object:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOV, QWORD, address, value, state));
-                break;
-            case Float:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVSS, SS, address, value, state));
-                break;
-            case Double:
-                append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVSD, SD, address, value, state));
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
-    }
-
-    @Override
-    public void emitStore(LIRKind lirKind, Value address, Value input, LIRFrameState state) {
-        AMD64AddressValue storeAddress = asAddressValue(address);
-        Kind kind = (Kind) lirKind.getPlatformKind();
-        if (isConstant(input)) {
-            emitStoreConst(kind, storeAddress, asConstant(input), state);
-        } else {
-            emitStore(kind, storeAddress, asAllocatable(input), state);
+            super.emitStoreConst(kind, address, value, state);
         }
     }
 
@@ -699,40 +566,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
-    public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-        LIRKind kind = newValue.getLIRKind();
-        assert kind.equals(expectedValue.getLIRKind());
-        Kind memKind = (Kind) kind.getPlatformKind();
-
-        AMD64AddressValue addressValue = asAddressValue(address);
-        RegisterValue raxRes = AMD64.rax.asValue(kind);
-        emitMove(raxRes, expectedValue);
-        append(new CompareAndSwapOp(memKind, raxRes, addressValue, raxRes, asAllocatable(newValue)));
-
-        assert trueValue.getLIRKind().equals(falseValue.getLIRKind());
-        Variable result = newVariable(trueValue.getLIRKind());
-        append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
-        return result;
-    }
-
-    public Value emitAtomicReadAndAdd(Value address, Value delta) {
-        LIRKind kind = delta.getLIRKind();
-        Kind memKind = (Kind) kind.getPlatformKind();
-        Variable result = newVariable(kind);
-        AMD64AddressValue addressValue = asAddressValue(address);
-        append(new AMD64Move.AtomicReadAndAddOp(memKind, result, addressValue, asAllocatable(delta)));
-        return result;
-    }
-
-    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        LIRKind kind = newValue.getLIRKind();
-        Kind memKind = (Kind) kind.getPlatformKind();
-        Variable result = newVariable(kind);
-        AMD64AddressValue addressValue = asAddressValue(address);
-        append(new AMD64Move.AtomicReadAndWriteOp(memKind, result, addressValue, asAllocatable(newValue)));
-        return result;
-    }
-
+    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         if (address.getLIRKind().getPlatformKind() == Kind.Int) {
             CompressEncoding encoding = config.getOopEncoding();
@@ -744,8 +578,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             }
             append(new AMD64Move.NullCheckOp(asAddressValue(uncompressed), state));
         } else {
-            assert address.getKind() == Kind.Object || address.getKind() == Kind.Long : address + " - " + address.getKind() + " not a pointer!";
-            append(new AMD64Move.NullCheckOp(asAddressValue(address), state));
+            super.emitNullCheck(address, state);
         }
     }
 

@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.io.*;
-
 /**
  * Abstract base class for values.
  */
-public abstract class AbstractValue implements Serializable, Value, KindProvider {
-
-    private static final long serialVersionUID = -6909397188697766469L;
+public abstract class AbstractValue implements Value, KindProvider {
 
     public static final AllocatableValue ILLEGAL = Value.ILLEGAL;
 

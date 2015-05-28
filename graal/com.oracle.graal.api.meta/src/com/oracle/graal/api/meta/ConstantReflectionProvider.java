@@ -63,6 +63,14 @@ public interface ConstantReflectionProvider {
     JavaConstant readConstantArrayElement(JavaConstant array, int index);
 
     /**
+     * Reads a value from the given array at the given offset if it is a stable array. The offset
+     * will decoded relative to the platform addressing into an index into the array. Returns
+     * {@code null} if the constant is not a stable array, if it is a default value, if the offset
+     * is out of bounds, or if the value is not available at this point.
+     */
+    JavaConstant readConstantArrayElementForOffset(JavaConstant array, long offset);
+
+    /**
      * Gets the constant value of this field. Note that a {@code static final} field may not be
      * considered constant if its declaring class is not yet initialized or if it is a well known
      * field that can be updated via other means (e.g., {@link System#setOut(java.io.PrintStream)}).

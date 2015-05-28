@@ -30,8 +30,6 @@ import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public final class HotSpotMetaspaceConstantImpl extends PrimitiveConstant implements HotSpotMetaspaceConstant, VMConstant, HotSpotProxified {
 
-    private static final long serialVersionUID = 1003463314013122983L;
-
     static HotSpotMetaspaceConstantImpl forMetaspaceObject(Kind kind, long primitive, Object metaspaceObject, boolean compressed) {
         return new HotSpotMetaspaceConstantImpl(kind, primitive, metaspaceObject, compressed);
     }

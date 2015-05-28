@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
+
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -35,6 +38,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
@@ -85,6 +89,34 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
         }
     }
 
+    /**
+     * When {@link #SnippetCounters} are enabled make sure {@link #SNIPPET_COUNTER_LOCATION} is part
+     * of the private locations.
+     *
+     * @param privateLocations
+     * @return a copy of privateLocations with any needed locations added
+     */
+    public static LocationIdentity[] addSnippetCounters(LocationIdentity[] privateLocations) {
+        if (SnippetCounters.getValue()) {
+            for (LocationIdentity location : privateLocations) {
+                if (location.equals(SNIPPET_COUNTER_LOCATION)) {
+                    return privateLocations;
+                }
+            }
+            LocationIdentity[] result = Arrays.copyOf(privateLocations, privateLocations.length + 1);
+            result[result.length - 1] = SnippetCounterNode.SNIPPET_COUNTER_LOCATION;
+            return result;
+        }
+        return privateLocations;
+    }
+
+    /**
+     * We do not want to use the {@link LocationIdentity} of the {@link SnippetCounter#value} field,
+     * so that the usage in snippets is always possible. If a method accesses the counter via the
+     * field and the snippet, the result might not be correct though.
+     */
+    public static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.mutable("SnippetCounter");
+
     static class SnippetCounterSnippets implements Snippets {
 
         @Fold
@@ -96,15 +128,8 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
             }
         }
 
-        /**
-         * We do not want to use the {@link LocationIdentity} of the {@link SnippetCounter#value}
-         * field, so that the usage in snippets is always possible. If a method accesses the counter
-         * via the field and the snippet, the result might not be correct though.
-         */
-        protected static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.mutable("SnippetCounter");
-
         @Snippet
-        public static void add(SnippetCounter counter, int increment) {
+        public static void add(@ConstantParameter SnippetCounter counter, int increment) {
             long loadedValue = ObjectAccess.readLong(counter, countOffset(), SNIPPET_COUNTER_LOCATION);
             ObjectAccess.writeLong(counter, countOffset(), loadedValue + increment, SNIPPET_COUNTER_LOCATION);
         }

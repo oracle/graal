@@ -36,9 +36,8 @@ import com.oracle.graal.hotspot.*;
 /**
  * Represents a field in a HotSpot type.
  */
-public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotSpotResolvedJavaField, HotSpotProxified {
+public class HotSpotResolvedJavaFieldImpl implements HotSpotResolvedJavaField, HotSpotProxified {
 
-    private static final long serialVersionUID = 7692985878836955683L;
     private final HotSpotResolvedObjectTypeImpl holder;
     private final String name;
     private JavaType type;
@@ -54,8 +53,12 @@ public class HotSpotResolvedJavaFieldImpl extends CompilerObject implements HotS
         HotSpotResolvedJavaField inner;
 
         public FieldLocationIdentity(HotSpotResolvedJavaFieldImpl inner) {
-            super(false);
             this.inner = inner;
+        }
+
+        @Override
+        public boolean isImmutable() {
+            return false;
         }
 
         @Override

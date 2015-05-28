@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,12 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -106,7 +106,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
         Kind localToKind = toKind;
         return builder -> {
             Value address = access.accessLocation().generateAddress(builder, gen, operand(access.object()));
-            Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), address, getState(access));
+            Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), address, getState(access));
             return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
         };
     }
@@ -115,5 +115,10 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
     @MatchRule("(SignExtend FloatingRead=access)")
     public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
         return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
+    }
+
+    @Override
+    public SPARCLIRGenerator getLIRGeneratorTool() {
+        return (SPARCLIRGenerator) super.getLIRGeneratorTool();
     }
 }

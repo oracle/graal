@@ -79,6 +79,30 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
         GraphUtil.normalizeLoops(methodScope.graph);
         super.cleanupGraph(methodScope, start);
+
+        for (Node node : methodScope.graph.getNewNodes(start)) {
+            if (node instanceof MergeNode) {
+                MergeNode mergeNode = (MergeNode) node;
+                if (mergeNode.forwardEndCount() == 1) {
+                    methodScope.graph.reduceTrivialMerge(mergeNode);
+                }
+            }
+        }
+
+        for (Node node : methodScope.graph.getNewNodes(start)) {
+            if (node instanceof BeginNode || node instanceof KillingBeginNode) {
+                if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
+                    GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
+                    node.safeDelete();
+                }
+            }
+        }
+
+        for (Node node : methodScope.graph.getNewNodes(start)) {
+            if (!(node instanceof FixedNode) && node.hasNoUsages()) {
+                GraphUtil.killCFG(node);
+            }
+        }
     }
 
     @Override
@@ -91,7 +115,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     }
 
     @Override
-    protected void simplifyFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+    protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         if (node instanceof IfNode) {
             IfNode ifNode = (IfNode) node;
             if (ifNode.condition() instanceof LogicNegationNode) {

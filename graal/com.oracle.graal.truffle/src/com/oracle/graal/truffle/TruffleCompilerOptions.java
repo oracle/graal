@@ -170,5 +170,8 @@ public class TruffleCompilerOptions {
 
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", type = OptionType.Debug)
     public static final OptionValue<Boolean> TruffleCompilationStatisticDetails = new OptionValue<>(false);
+
+    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
+    public static final OptionValue<Boolean> TruffleEnableInfopoints = new OptionValue<>(false);
     // @formatter:on
 }

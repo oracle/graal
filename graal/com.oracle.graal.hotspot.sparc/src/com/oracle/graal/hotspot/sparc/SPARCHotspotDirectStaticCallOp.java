@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
@@ -39,15 +39,17 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
     public static final LIRInstructionClass<SPARCHotspotDirectStaticCallOp> TYPE = LIRInstructionClass.create(SPARCHotspotDirectStaticCallOp.class);
 
     private final InvokeKind invokeKind;
+    private final HotSpotVMConfig config;
 
-    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
+    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
         super(TYPE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;
+        this.config = config;
     }
 
     @Override
     public void emitCallPrefixCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        MarkId.recordMark(crb, invokeKind == InvokeKind.Static ? MarkId.INVOKESTATIC : MarkId.INVOKESPECIAL);
+        crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
     }
 }

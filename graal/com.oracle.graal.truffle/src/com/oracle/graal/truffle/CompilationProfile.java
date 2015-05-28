@@ -28,8 +28,6 @@ import java.util.*;
 
 public class CompilationProfile {
 
-    private static final int TIMESTAMP_THRESHOLD = Math.max(TruffleCompilationThreshold.getValue() / 2, 1);
-
     /**
      * Number of times an installed code for this tree was invalidated.
      */
@@ -112,7 +110,7 @@ public class CompilationProfile {
         interpreterCallAndLoopCount++;
 
         int callsMissing = compilationCallAndLoopThreshold - interpreterCallAndLoopCount;
-        if (callsMissing == TIMESTAMP_THRESHOLD) {
+        if (callsMissing == getTimestampThreshold()) {
             timestamp = System.nanoTime();
         }
     }
@@ -130,7 +128,7 @@ public class CompilationProfile {
     }
 
     public void deferCompilation() {
-        ensureProfiling(0, TIMESTAMP_THRESHOLD + 1);
+        ensureProfiling(0, getTimestampThreshold() + 1);
         timestamp = 0;
         deferedCount++;
     }
@@ -139,7 +137,7 @@ public class CompilationProfile {
         interpreterCallAndLoopCount += count;
 
         int callsMissing = compilationCallAndLoopThreshold - interpreterCallAndLoopCount;
-        if (callsMissing <= TIMESTAMP_THRESHOLD && callsMissing + count > TIMESTAMP_THRESHOLD) {
+        if (callsMissing <= getTimestampThreshold() && callsMissing + count > getTimestampThreshold()) {
             timestamp = System.nanoTime();
         }
     }
@@ -154,4 +152,7 @@ public class CompilationProfile {
         return timestamp;
     }
 
+    private static int getTimestampThreshold() {
+        return Math.max(TruffleCompilationThreshold.getValue() / 2, 1);
+    }
 }

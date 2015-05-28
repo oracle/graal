@@ -74,7 +74,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return new HotSpotTruffleRuntime();
     }
 
-    private TruffleCompilerImpl truffleCompiler;
     private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
     private final ThreadPoolExecutor compileQueue;
 
@@ -213,21 +212,12 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public void compile(OptimizedCallTarget optimizedCallTarget, boolean mayBeAsynchronous) {
         if (truffleCompiler == null) {
-            truffleCompiler = new TruffleCompilerImpl();
+            truffleCompiler = DefaultTruffleCompiler.create();
         }
         Runnable r = new Runnable() {
             @Override
             public void run() {
-                boolean success = true;
-                try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-                    truffleCompiler.compileMethod(optimizedCallTarget);
-                } catch (Throwable e) {
-                    optimizedCallTarget.notifyCompilationFailed(e);
-                    success = false;
-                } finally {
-                    optimizedCallTarget.notifyCompilationFinished(success);
-
-                }
+                doCompile(optimizedCallTarget);
             }
         };
         Future<?> future = compileQueue.submit(r);
@@ -306,7 +296,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean enableInfopoints() {
+    public boolean platformEnableInfopoints() {
         return HotSpotGraalRuntime.runtime().getCompilerToVM().shouldDebugNonSafepoints();
     }
 

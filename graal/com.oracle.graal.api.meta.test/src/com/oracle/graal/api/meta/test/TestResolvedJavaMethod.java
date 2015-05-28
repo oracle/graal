@@ -312,6 +312,25 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         }
     }
 
+    @Test
+    public void isJavaLangObjectInitTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(Object.class.getConstructor());
+        assertTrue(method.isJavaLangObjectInit());
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertFalse(m.isJavaLangObjectInit());
+        }
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            Constructor<?> key = e.getKey();
+            if (key.getDeclaringClass() == Object.class && key.getParameters().length == 0) {
+                assertTrue(m.isJavaLangObjectInit());
+            } else {
+                assertFalse(m.isJavaLangObjectInit());
+            }
+        }
+    }
+
     private Method findTestMethod(Method apiMethod) {
         String testName = apiMethod.getName() + "Test";
         for (Method m : getClass().getDeclaredMethods()) {

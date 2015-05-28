@@ -175,7 +175,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
              * interface methods calls.
              */
             if (declaredReceiverType.isInterface()) {
-                tryCheckCastSingleImplementor(receiver, declaredReceiverType);
+                tryCheckCastSingleImplementor(graph().getAssumptions(), receiver, declaredReceiverType);
             }
 
             if (receiver instanceof UncheckedInterfaceProvider) {
@@ -184,14 +184,22 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 if (uncheckedStamp != null) {
                     ResolvedJavaType uncheckedReceiverType = StampTool.typeOrNull(uncheckedStamp);
                     if (uncheckedReceiverType.isInterface()) {
-                        tryCheckCastSingleImplementor(receiver, uncheckedReceiverType);
+                        tryCheckCastSingleImplementor(graph().getAssumptions(), receiver, uncheckedReceiverType);
                     }
                 }
             }
         }
     }
 
-    private void tryCheckCastSingleImplementor(ValueNode receiver, ResolvedJavaType declaredReceiverType) {
+    private void tryCheckCastSingleImplementor(Assumptions assumptions, ValueNode receiver, ResolvedJavaType declaredReceiverType) {
+        if (assumptions == null) {
+            /*
+             * Even though we are not registering an assumption (see comment below), the
+             * optimization is only valid when speculative optimizations are enabled.
+             */
+            return;
+        }
+
         ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
         if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
             ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);

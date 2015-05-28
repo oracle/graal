@@ -32,7 +32,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.util.*;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for
@@ -272,6 +271,13 @@ public class GraphDecoder {
         LoopScope loopScope = new LoopScope(methodScope);
         FixedNode firstNode;
         if (startNode != null) {
+            /*
+             * The start node of a graph can be referenced as the guard for a GuardedNode. We
+             * register the previous block node, so that such guards are correctly anchored when
+             * doing inlining during graph decoding.
+             */
+            registerNode(loopScope, GraphEncoder.START_NODE_ORDER_ID, AbstractBeginNode.prevBegin(startNode), false, false);
+
             firstNode = makeStubNode(methodScope, loopScope, GraphEncoder.FIRST_NODE_ORDER_ID);
             startNode.setNext(firstNode);
             loopScope.nodesToProcess.set(GraphEncoder.FIRST_NODE_ORDER_ID);
@@ -333,6 +339,10 @@ public class GraphDecoder {
                         ((AbstractMergeNode) node).forwardEndCount() == 1) {
             AbstractMergeNode merge = (AbstractMergeNode) node;
             EndNode singleEnd = merge.forwardEndAt(0);
+
+            /* Nodes that would use this merge as the guard need to use the previous block. */
+            registerNode(loopScope, nodeOrderId, AbstractBeginNode.prevBegin(singleEnd), true, false);
+
             FixedNode next = makeStubNode(methodScope, loopScope, nodeOrderId + GraphEncoder.BEGIN_NEXT_ORDER_ID_OFFSET);
             singleEnd.replaceAtPredecessor(next);
 
@@ -409,7 +419,7 @@ public class GraphDecoder {
             methodScope.unwindNode = (UnwindNode) node;
 
         } else {
-            simplifyFixedNode(methodScope, loopScope, nodeOrderId, node);
+            handleFixedNode(methodScope, loopScope, nodeOrderId, node);
         }
 
         return resultScope;
@@ -527,7 +537,7 @@ public class GraphDecoder {
      * @param nodeOrderId The orderId of the node.
      * @param node The node to be simplified.
      */
-    protected void simplifyFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+    protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
     }
 
     protected void handleProxyNodes(MethodScope methodScope, LoopScope loopScope, LoopExitNode loopExit) {
@@ -823,7 +833,13 @@ public class GraphDecoder {
     protected Node decodeFloatingNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {
         long readerByteIndex = methodScope.reader.getByteIndex();
         Node node = instantiateNode(methodScope, nodeOrderId);
-        assert !(node instanceof FixedNode);
+        if (node instanceof FixedNode) {
+            /*
+             * This is a severe error that will lead to a corrupted graph, so it is better not to
+             * continue decoding at all.
+             */
+            throw shouldNotReachHere("Not a floating node: " + node.getClass().getName());
+        }
 
         /* Read the properties of the node. */
         readProperties(methodScope, node);
@@ -1154,32 +1170,14 @@ public class GraphDecoder {
         }
     }
 
+    /**
+     * Removes unnecessary nodes from the graph after decoding.
+     *
+     * @param methodScope The current method.
+     * @param start Marker for the begin of the current method in the graph.
+     */
     protected void cleanupGraph(MethodScope methodScope, Graph.Mark start) {
         assert verifyEdges(methodScope);
-
-        for (Node node : methodScope.graph.getNewNodes(start)) {
-            if (node instanceof MergeNode) {
-                MergeNode mergeNode = (MergeNode) node;
-                if (mergeNode.forwardEndCount() == 1) {
-                    methodScope.graph.reduceTrivialMerge(mergeNode);
-                }
-            }
-        }
-
-        for (Node node : methodScope.graph.getNewNodes(start)) {
-            if (node instanceof BeginNode || node instanceof KillingBeginNode) {
-                if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
-                    GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
-                    node.safeDelete();
-                }
-            }
-        }
-
-        for (Node node : methodScope.graph.getNewNodes(start)) {
-            if (!(node instanceof FixedNode) && node.hasNoUsages()) {
-                GraphUtil.killCFG(node);
-            }
-        }
     }
 
     protected boolean verifyEdges(MethodScope methodScope) {

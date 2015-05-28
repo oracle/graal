@@ -241,6 +241,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return shortName;
     }
 
+    @Override
+    public Fields[] getAllFields() {
+        return new Fields[]{data, inputs, successors};
+    }
+
     public int[] iterableIds() {
         nodeIterableCount.increment();
         return iterableIds;
@@ -288,8 +293,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     protected static class EdgeInfo extends FieldsScanner.FieldInfo {
 
-        public EdgeInfo(long offset, String name, Class<?> type) {
-            super(offset, name, type);
+        public EdgeInfo(long offset, String name, Class<?> type, Class<?> declaringClass) {
+            super(offset, name, type, declaringClass);
         }
 
         /**
@@ -317,8 +322,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         final InputType inputType;
         final boolean optional;
 
-        public InputInfo(long offset, String name, Class<?> type, InputType inputType, boolean optional) {
-            super(offset, name, type);
+        public InputInfo(long offset, String name, Class<?> type, Class<?> declaringClass, InputType inputType, boolean optional) {
+            super(offset, name, type, declaringClass);
             this.inputType = inputType;
             this.optional = optional;
         }
@@ -375,7 +380,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     } else {
                         inputType = optionalInputAnnotation.value();
                     }
-                    inputs.add(new InputInfo(offset, field.getName(), type, inputType, field.isAnnotationPresent(Node.OptionalInput.class)));
+                    inputs.add(new InputInfo(offset, field.getName(), type, field.getDeclaringClass(), inputType, field.isAnnotationPresent(Node.OptionalInput.class)));
                 } else if (successorAnnotation != null) {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
                         // NodeSuccessorList fields should not be final since they are
@@ -387,7 +392,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                         GraalInternalError.guarantee(!Modifier.isFinal(modifiers), "Node successor field %s should not be final", field);
                         directSuccessors++;
                     }
-                    successors.add(new EdgeInfo(offset, field.getName(), type));
+                    successors.add(new EdgeInfo(offset, field.getName(), type, field.getDeclaringClass()));
                 } else {
                     GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
                     GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);

@@ -120,7 +120,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return true;
     }
 
-    @SuppressWarnings("serial") public static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
+    public static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
         @Override
         public boolean equals(Object o) {
             return this == o;

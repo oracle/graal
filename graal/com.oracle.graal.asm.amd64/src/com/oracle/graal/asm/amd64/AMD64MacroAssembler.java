@@ -27,6 +27,7 @@ import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -256,9 +257,14 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * volatile field!
      */
     public final void movlong(AMD64Address dst, long src) {
-        AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
-        movl(dst, (int) (src & 0xFFFFFFFF));
-        movl(high, (int) (src >> 32));
+        if (NumUtil.isInt(src)) {
+            AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, (int) src);
+        } else {
+            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+            movl(dst, (int) (src & 0xFFFFFFFF));
+            movl(high, (int) (src >> 32));
+        }
+
     }
 
     public final void flog(Register dest, Register value, boolean base10) {

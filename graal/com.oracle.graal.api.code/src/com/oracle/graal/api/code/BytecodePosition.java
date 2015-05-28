@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -33,9 +32,7 @@ import com.oracle.graal.api.meta.*;
  * system to reconstruct a source-level stack trace for exceptions and to create
  * {@linkplain BytecodeFrame frames} for deoptimization.
  */
-public class BytecodePosition implements Serializable {
-
-    private static final long serialVersionUID = 8633885274526033515L;
+public class BytecodePosition {
 
     private final BytecodePosition caller;
     private final ResolvedJavaMethod method;
@@ -108,5 +105,16 @@ public class BytecodePosition implements Serializable {
      */
     public BytecodePosition getCaller() {
         return caller;
+    }
+
+    /**
+     * Adds a caller to the current position returning the new position.
+     */
+    public BytecodePosition addCaller(BytecodePosition link) {
+        if (getCaller() == null) {
+            return new BytecodePosition(link, getMethod(), getBCI());
+        } else {
+            return new BytecodePosition(getCaller().addCaller(link), getMethod(), getBCI());
+        }
     }
 }

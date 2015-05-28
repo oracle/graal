@@ -31,9 +31,8 @@ import com.oracle.graal.hotspot.*;
 /**
  * Represents a method signature.
  */
-public class HotSpotSignature extends CompilerObject implements Signature {
+public class HotSpotSignature implements Signature {
 
-    private static final long serialVersionUID = -2890917956072366116L;
     private final List<String> parameters = new ArrayList<>();
     private final String returnType;
     private final String originalString;

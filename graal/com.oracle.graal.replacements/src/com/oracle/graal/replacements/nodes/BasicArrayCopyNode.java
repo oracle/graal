@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,109 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 @NodeInfo
-public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements Virtualizable {
+public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virtualizable, MemoryCheckpoint.Single, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 
-    public BasicArrayCopyNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
-        super(c, invokeKind, targetMethod, bci, returnType, arguments);
+    @Input protected ValueNode src;
+    @Input protected ValueNode srcPos;
+    @Input protected ValueNode dest;
+    @Input protected ValueNode destPos;
+    @Input protected ValueNode length;
+
+    @OptionalInput(InputType.State) FrameState stateDuring;
+
+    @OptionalInput(InputType.Memory) protected MemoryNode lastLocationAccess;
+
+    protected Kind elementKind;
+
+    protected int bci;
+
+    public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, int bci) {
+        super(type, StampFactory.forKind(Kind.Void));
+        this.bci = bci;
+        this.src = src;
+        this.srcPos = srcPos;
+        this.dest = dest;
+        this.destPos = destPos;
+        this.length = length;
+        this.elementKind = elementKind != Kind.Illegal ? elementKind : null;
     }
 
-    protected ValueNode getSource() {
-        return arguments.get(0);
+    public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
+        super(type, StampFactory.forKind(Kind.Void));
+        this.bci = -6;
+        this.src = src;
+        this.srcPos = srcPos;
+        this.dest = dest;
+        this.destPos = destPos;
+        this.length = length;
+        this.elementKind = elementKind != Kind.Illegal ? elementKind : null;
     }
 
-    protected ValueNode getSourcePosition() {
-        return arguments.get(1);
+    public ValueNode getSource() {
+        return src;
     }
 
-    protected ValueNode getDestination() {
-        return arguments.get(2);
+    public ValueNode getSourcePosition() {
+        return srcPos;
     }
 
-    protected ValueNode getDestinationPosition() {
-        return arguments.get(3);
+    public ValueNode getDestination() {
+        return dest;
     }
 
-    protected ValueNode getLength() {
-        return arguments.get(4);
+    public ValueNode getDestinationPosition() {
+        return destPos;
+    }
+
+    public ValueNode getLength() {
+        return length;
+    }
+
+    public int getBci() {
+        return bci;
+    }
+
+    public Kind getElementKind() {
+        return elementKind;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        if (elementKind != null) {
+            return NamedLocationIdentity.getArrayLocation(elementKind);
+        }
+        return any();
+    }
+
+    public MemoryNode getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    public void setLastLocationAccess(MemoryNode lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
     private static boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
@@ -89,16 +154,37 @@ public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements 
         return true;
     }
 
+    /*
+     * Returns true if this copy doesn't require store checks. Trivially true for primitive arrays.
+     */
+    public boolean isExact() {
+        ResolvedJavaType srcType = StampTool.typeOrNull(getSource().stamp());
+        ResolvedJavaType destType = StampTool.typeOrNull(getDestination().stamp());
+        if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
+            return false;
+        }
+        if (srcType.getComponentType().getKind().isPrimitive() || getSource() == getDestination()) {
+            return true;
+        }
+
+        if (StampTool.isExactType(getDestination().stamp())) {
+            if (destType != null && destType.isAssignableFrom(srcType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode sourcePosition = tool.getReplacedValue(getSourcePosition());
         ValueNode destinationPosition = tool.getReplacedValue(getDestinationPosition());
-        ValueNode length = tool.getReplacedValue(getLength());
+        ValueNode replacedLength = tool.getReplacedValue(getLength());
 
-        if (sourcePosition.isConstant() && destinationPosition.isConstant() && length.isConstant()) {
-            int srcPos = sourcePosition.asJavaConstant().asInt();
-            int destPos = destinationPosition.asJavaConstant().asInt();
-            int len = length.asJavaConstant().asInt();
+        if (sourcePosition.isConstant() && destinationPosition.isConstant() && replacedLength.isConstant()) {
+            int srcPosInt = sourcePosition.asJavaConstant().asInt();
+            int destPosInt = destinationPosition.asJavaConstant().asInt();
+            int len = replacedLength.asJavaConstant().asInt();
             State destState = tool.getObjectState(getDestination());
 
             if (destState != null && destState.getState() == EscapeState.Virtual) {
@@ -106,7 +192,7 @@ public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements 
                 if (!(destVirtual instanceof VirtualArrayNode)) {
                     return;
                 }
-                if (len < 0 || !checkBounds(destPos, len, destVirtual)) {
+                if (len < 0 || !checkBounds(destPosInt, len, destVirtual)) {
                     return;
                 }
                 State srcState = tool.getObjectState(getSource());
@@ -121,18 +207,18 @@ public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements 
                     if (((VirtualArrayNode) srcVirtual).componentType().getKind() != Kind.Object) {
                         return;
                     }
-                    if (!checkBounds(srcPos, len, srcVirtual)) {
+                    if (!checkBounds(srcPosInt, len, srcVirtual)) {
                         return;
                     }
-                    if (!checkEntryTypes(srcPos, len, srcState, destVirtual.type().getComponentType(), tool)) {
+                    if (!checkEntryTypes(srcPosInt, len, srcState, destVirtual.type().getComponentType(), tool)) {
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        tool.setVirtualEntry(destState, destPos + i, srcState.getEntry(srcPos + i), false);
+                        tool.setVirtualEntry(destState, destPosInt + i, srcState.getEntry(srcPosInt + i), false);
                     }
                     tool.delete();
                     if (Debug.isLogEnabled()) {
-                        Debug.log("virtualized arraycopyf(%s, %d, %s, %d, %d)", getSource(), srcPos, getDestination(), destPos, len);
+                        Debug.log("virtualized arraycopyf(%s, %d, %s, %d, %d)", getSource(), srcPosInt, getDestination(), destPosInt, len);
                     }
                 } else {
                     ValueNode source = srcState == null ? tool.getReplacedValue(getSource()) : srcState.getMaterializedValue();
@@ -146,13 +232,31 @@ public abstract class BasicArrayCopyNode extends MacroStateSplitNode implements 
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        LoadIndexedNode load = new LoadIndexedNode(source, ConstantNode.forInt(i + srcPos, graph()), destComponentType.getKind());
+                        LoadIndexedNode load = new LoadIndexedNode(source, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getKind());
                         tool.addNode(load);
-                        tool.setVirtualEntry(destState, destPos + i, load, false);
+                        tool.setVirtualEntry(destState, destPosInt + i, load, false);
                     }
                     tool.delete();
                 }
             }
         }
+    }
+
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    public FrameState stateDuring() {
+        return stateDuring;
+    }
+
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
+    }
+
+    public void computeStateDuring(FrameState currentStateAfter) {
+        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(getBci(), asNode().getKind());
+        setStateDuring(newStateDuring);
     }
 }

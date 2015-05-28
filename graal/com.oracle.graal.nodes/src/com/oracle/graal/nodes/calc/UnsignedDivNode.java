@@ -31,12 +31,16 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "|/|")
-public final class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
+public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
 
     public static final NodeClass<UnsignedDivNode> TYPE = NodeClass.create(UnsignedDivNode.class);
 
     public UnsignedDivNode(ValueNode x, ValueNode y) {
-        super(TYPE, x.stamp().unrestricted(), x, y);
+        this(TYPE, x, y);
+    }
+
+    protected UnsignedDivNode(NodeClass<? extends UnsignedDivNode> c, ValueNode x, ValueNode y) {
+        super(c, x.stamp().unrestricted(), x, y);
     }
 
     @Override

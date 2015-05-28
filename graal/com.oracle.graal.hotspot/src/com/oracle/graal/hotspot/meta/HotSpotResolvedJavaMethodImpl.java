@@ -36,15 +36,12 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
  */
 public final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSpotResolvedJavaMethod, HotSpotProxified, MethodIdHolder {
-
-    private static final long serialVersionUID = -5486975070147586588L;
 
     /**
      * Reference to metaspace Method object.

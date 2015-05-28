@@ -42,9 +42,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
-import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
-import com.oracle.graal.java.*;
-import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.printer.*;
 
 /**
@@ -53,63 +50,15 @@ import com.oracle.graal.printer.*;
 public class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     protected final HotSpotGraalRuntimeProvider runtime;
+    public final HotSpotVMConfig config;
     protected final TargetDescription target;
     protected final RegisterConfig regConfig;
 
-    public HotSpotCodeCacheProvider(HotSpotGraalRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
+    public HotSpotCodeCacheProvider(HotSpotGraalRuntimeProvider runtime, HotSpotVMConfig config, TargetDescription target, RegisterConfig regConfig) {
         this.runtime = runtime;
+        this.config = config;
         this.target = target;
         this.regConfig = regConfig;
-    }
-
-    /**
-     * Constants used to mark special positions in code being installed into the code cache by Graal
-     * C++ code.
-     */
-    public enum MarkId {
-        VERIFIED_ENTRY(config().codeInstallerMarkIdVerifiedEntry),
-        UNVERIFIED_ENTRY(config().codeInstallerMarkIdUnverifiedEntry),
-        OSR_ENTRY(config().codeInstallerMarkIdOsrEntry),
-        EXCEPTION_HANDLER_ENTRY(config().codeInstallerMarkIdExceptionHandlerEntry),
-        DEOPT_HANDLER_ENTRY(config().codeInstallerMarkIdDeoptHandlerEntry),
-        INVOKEINTERFACE(config().codeInstallerMarkIdInvokeinterface),
-        INVOKEVIRTUAL(config().codeInstallerMarkIdInvokevirtual),
-        INVOKESTATIC(config().codeInstallerMarkIdInvokestatic),
-        INVOKESPECIAL(config().codeInstallerMarkIdInvokespecial),
-        INLINE_INVOKE(config().codeInstallerMarkIdInlineInvoke),
-        POLL_NEAR(config().codeInstallerMarkIdPollNear),
-        POLL_RETURN_NEAR(config().codeInstallerMarkIdPollReturnNear),
-        POLL_FAR(config().codeInstallerMarkIdPollFar),
-        POLL_RETURN_FAR(config().codeInstallerMarkIdPollReturnFar),
-        CARD_TABLE_SHIFT(config().codeInstallerMarkIdCardTableShift),
-        CARD_TABLE_ADDRESS(config().codeInstallerMarkIdCardTableAddress);
-
-        private final int value;
-
-        private MarkId(int value) {
-            this.value = value;
-        }
-
-        private static HotSpotVMConfig config() {
-            return HotSpotGraalRuntime.runtime().getConfig();
-        }
-
-        public static MarkId getEnum(int value) {
-            for (MarkId e : values()) {
-                if (e.value == value) {
-                    return e;
-                }
-            }
-            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
-        }
-
-        /**
-         * Helper method to {@link CompilationResultBuilder#recordMark(Object) record a mark} with a
-         * {@link CompilationResultBuilder}.
-         */
-        public static void recordMark(CompilationResultBuilder crb, MarkId mark) {
-            crb.recordMark(mark.value);
-        }
     }
 
     @Override
@@ -144,7 +93,7 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
                 hcf.addOperandComment(site.pcOffset, "{" + site.reference.toString() + "}");
             }
             for (Mark mark : compResult.getMarks()) {
-                hcf.addComment(mark.pcOffset, MarkId.getEnum((int) mark.id).toString());
+                hcf.addComment(mark.pcOffset, getMarkIdName((int) mark.id));
             }
         }
         String hcfEmbeddedString = hcf.toEmbeddedString();
@@ -179,6 +128,22 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             }
             return hcfEmbeddedString;
         }
+    }
+
+    private String getMarkIdName(int markId) {
+        Field[] fields = runtime.getConfig().getClass().getDeclaredFields();
+        for (Field f : fields) {
+            if (f.getName().startsWith("MARKID_")) {
+                f.setAccessible(true);
+                try {
+                    if (f.getInt(runtime.getConfig()) == markId) {
+                        return f.getName();
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+        return String.valueOf(markId);
     }
 
     /**
@@ -260,18 +225,19 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             installedCode = code;
         }
         HotSpotCompiledNmethod compiledCode = new HotSpotCompiledNmethod(hotspotMethod, compResult);
-        CodeInstallResult result = runtime.getCompilerToVM().installCode(compiledCode, installedCode, log);
-        if (result != CodeInstallResult.OK) {
+        int result = runtime.getCompilerToVM().installCode(compiledCode, installedCode, log);
+        if (result != config.codeInstallResultOk) {
             String msg = compiledCode.getInstallationFailureMessage();
+            String resultDesc = config.getCodeInstallResultDescription(result);
             if (msg != null) {
-                msg = String.format("Code installation failed: %s%n%s", result, msg);
+                msg = String.format("Code installation failed: %s%n%s", resultDesc, msg);
             } else {
-                msg = String.format("Code installation failed: %s", result);
+                msg = String.format("Code installation failed: %s", resultDesc);
             }
-            if (result == CodeInstallResult.DEPENDENCIES_INVALID) {
-                throw new AssertionError(result + " " + msg);
+            if (result == config.codeInstallResultDependenciesInvalid) {
+                throw new AssertionError(resultDesc + " " + msg);
             }
-            throw new BailoutException(result != CodeInstallResult.DEPENDENCIES_FAILED, msg);
+            throw new BailoutException(result != config.codeInstallResultDependenciesFailed, msg);
         }
         return logOrDump(installedCode, compResult);
     }
@@ -290,8 +256,8 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
         HotSpotNmethod code = new HotSpotNmethod(javaMethod, compResult.getName(), false, true);
         HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(javaMethod, compResult);
         CompilerToVM vm = runtime.getCompilerToVM();
-        CodeInstallResult result = vm.installCode(compiled, code, null);
-        if (result != CodeInstallResult.OK) {
+        int result = vm.installCode(compiled, code, null);
+        if (result != runtime.getConfig().codeInstallResultOk) {
             return null;
         }
         return code;
@@ -359,10 +325,6 @@ public class HotSpotCodeCacheProvider implements CodeCacheProvider {
             return runtime.getCompilerToVM().disassembleCodeBlob(codeBlob);
         }
         return null;
-    }
-
-    public String disassemble(ResolvedJavaMethod method) {
-        return new BytecodeDisassembler().disassemble(method);
     }
 
     public SpeculationLog createSpeculationLog() {

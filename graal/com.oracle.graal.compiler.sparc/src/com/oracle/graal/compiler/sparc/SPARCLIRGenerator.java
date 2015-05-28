@@ -52,15 +52,7 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadDataAddressOp;
-import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGpVIS3;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
-import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
-import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
-import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
+import com.oracle.graal.lir.sparc.SPARCMove.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
@@ -82,7 +74,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
         @Override
         public LIRInstruction createStackMove(AllocatableValue result, Value input) {
-            return new SPARCStackMove(result, input);
+            return SPARCLIRGenerator.this.createStackMove(result, input);
         }
     }
 
@@ -125,6 +117,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
+    protected LIRInstruction createStackMove(AllocatableValue result, Value input) {
+        return new SPARCStackMove(result, input);
+    }
+
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
         append(createMove(dst, src));
@@ -158,15 +154,15 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 finalDisp += asConstant(index).asLong() * scale;
                 indexRegister = Value.ILLEGAL;
             } else {
+                Value longIndex = index.getKind() == Kind.Long ? index : emitSignExtend(index, 32, 64);
                 if (scale != 1) {
-                    Value longIndex = index.getKind() == Kind.Long ? index : emitSignExtend(index, 32, 64);
                     if (CodeUtil.isPowerOf2(scale)) {
                         indexRegister = emitShl(longIndex, JavaConstant.forLong(CodeUtil.log2(scale)));
                     } else {
                         indexRegister = emitMul(longIndex, JavaConstant.forLong(scale), false);
                     }
                 } else {
-                    indexRegister = asAllocatable(index);
+                    indexRegister = asAllocatable(longIndex);
                 }
             }
         } else {
@@ -856,9 +852,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case F2D:
                 return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Double), F2D, input);
             case I2F: {
-                AllocatableValue convertedFloatReg = newVariable(LIRKind.derive(input).changeType(Kind.Float));
-                moveBetweenFpGp(convertedFloatReg, input);
-                append(new Unary2Op(I2F, convertedFloatReg, convertedFloatReg));
+                AllocatableValue intEncodedFloatReg = newVariable(LIRKind.derive(input).changeType(Kind.Float));
+                moveBetweenFpGp(intEncodedFloatReg, input);
+                AllocatableValue convertedFloatReg = newVariable(intEncodedFloatReg.getLIRKind());
+                append(new Unary2Op(I2F, convertedFloatReg, intEncodedFloatReg));
                 return convertedFloatReg;
             }
             case I2D: {
@@ -871,9 +868,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 return convertedDoubleReg;
             }
             case L2D: {
-                AllocatableValue convertedDoubleReg = newVariable(LIRKind.derive(input).changeType(Kind.Double));
-                moveBetweenFpGp(convertedDoubleReg, input);
-                append(new Unary2Op(L2D, convertedDoubleReg, convertedDoubleReg));
+                AllocatableValue longEncodedDoubleReg = newVariable(LIRKind.derive(input).changeType(Kind.Double));
+                moveBetweenFpGp(longEncodedDoubleReg, input);
+                AllocatableValue convertedDoubleReg = newVariable(longEncodedDoubleReg.getLIRKind());
+                append(new Unary2Op(L2D, convertedDoubleReg, longEncodedDoubleReg));
                 return convertedDoubleReg;
             }
             case D2I: {
@@ -1070,4 +1068,16 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new ReturnOp(Value.ILLEGAL));
     }
 
+    public Value emitSignExtendLoad(LIRKind kind, Value address, LIRFrameState state) {
+        SPARCAddressValue loadAddress = asAddressValue(address);
+        Variable result = newVariable(kind);
+        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state, true));
+        return result;
+    }
+
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        PlatformKind kind = address.getPlatformKind();
+        assert kind == Kind.Object || kind == Kind.Long : address + " - " + kind + " not an object!";
+        append(new NullCheckOp(asAddressValue(address), state));
+    }
 }

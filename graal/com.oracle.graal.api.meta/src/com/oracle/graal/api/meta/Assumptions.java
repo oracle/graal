@@ -22,25 +22,20 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.io.*;
 import java.lang.invoke.*;
 import java.util.*;
 
 /**
  * Class for recording assumptions made during compilation.
  */
-public final class Assumptions implements Serializable, Iterable<Assumptions.Assumption> {
-
-    private static final long serialVersionUID = 5152062717588239131L;
+public final class Assumptions implements Iterable<Assumptions.Assumption> {
 
     /**
      * Abstract base class for assumptions. An assumption assumes a property of the runtime that may
      * be invalidated by subsequent execution (e.g., that a class has no subclasses implementing
      * {@link NoFinalizableSubclass Object.finalize()}).
      */
-    public abstract static class Assumption implements Serializable {
-
-        private static final long serialVersionUID = -1936652569665112915L;
+    public abstract static class Assumption {
     }
 
     /**
@@ -68,6 +63,10 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
             return result;
         }
 
+        public boolean isAssumptionFree() {
+            return assumptions.length == 0;
+        }
+
         public void add(AssumptionResult<T> other) {
             Assumption[] newAssumptions = Arrays.copyOf(this.assumptions, this.assumptions.length + other.assumptions.length);
             System.arraycopy(other.assumptions, 0, newAssumptions, this.assumptions.length, other.assumptions.length);
@@ -79,8 +78,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * An assumption that a given class has no subclasses implementing {@link Object#finalize()}).
      */
     public static final class NoFinalizableSubclass extends Assumption {
-
-        private static final long serialVersionUID = 6451169735564055081L;
 
         private ResolvedJavaType receiverType;
 
@@ -114,8 +111,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * is no requirement that the subtype is a leaf type.
      */
     public static final class ConcreteSubtype extends Assumption {
-
-        private static final long serialVersionUID = -1457173265437676252L;
 
         /**
          * Type the assumption is made about.
@@ -164,8 +159,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      */
     public static final class LeafType extends Assumption {
 
-        private static final long serialVersionUID = -1457173265437676252L;
-
         /**
          * Type the assumption is made about.
          */
@@ -202,8 +195,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * An assumption that a given virtual method has a given unique implementation.
      */
     public static final class ConcreteMethod extends Assumption {
-
-        private static final long serialVersionUID = -7636746737947390059L;
 
         /**
          * A virtual (or interface) method whose unique implementation for the receiver type in
@@ -256,8 +247,6 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * An assumption that a given call site's method handle did not change.
      */
     public static final class CallSiteTargetValue extends Assumption {
-
-        private static final long serialVersionUID = 1732459941784550371L;
 
         public final CallSite callSite;
         public final MethodHandle methodHandle;

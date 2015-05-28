@@ -36,41 +36,10 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Used by a {@link GraphBuilderPlugin} to interface with a graph builder object.
+ * Used by a {@link GraphBuilderPlugin} to interface with an object that parses the bytecode of a
+ * single {@linkplain #getMethod() method} as part of building a {@linkplain #getGraph() graph} .
  */
 public interface GraphBuilderContext {
-
-    /**
-     * Information about a snippet or method substitution currently being processed by the graph
-     * builder. When in the scope of a replacement, the graph builder does not check the value kinds
-     * flowing through the JVM state since replacements can employ non-Java kinds to represent
-     * values such as raw machine words and pointers.
-     */
-    public interface Replacement {
-
-        /**
-         * Gets the method being replaced.
-         */
-        ResolvedJavaMethod getOriginalMethod();
-
-        /**
-         * Gets the replacement method.
-         */
-        ResolvedJavaMethod getReplacementMethod();
-
-        /**
-         * Determines if this replacement is being inlined as a compiler intrinsic. A compiler
-         * intrinsic is atomic with respect to deoptimization. Deoptimization within a compiler
-         * intrinsic will restart the interpreter at the intrinsified call.
-         */
-        boolean isIntrinsic();
-
-        /**
-         * Determines if a call within the compilation scope of this replacement represents a call
-         * to the {@linkplain #getOriginalMethod() original} method.
-         */
-        boolean isCallToOriginal(ResolvedJavaMethod method);
-    }
 
     /**
      * Raw operation for adding a node to the graph when neither {@link #add},
@@ -115,8 +84,8 @@ public interface GraphBuilderContext {
         T equivalentValue = append(value);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null) {
-                stateSplit.setStateAfter(createStateAfter());
+            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
+                setStateAfter(stateSplit);
             }
         }
         return equivalentValue;
@@ -149,8 +118,8 @@ public interface GraphBuilderContext {
         push(kind.getStackKind(), equivalentValue);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null) {
-                stateSplit.setStateAfter(createStateAfter());
+            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
+                setStateAfter(stateSplit);
             }
         }
         return equivalentValue;
@@ -194,9 +163,12 @@ public interface GraphBuilderContext {
 
     /**
      * Creates a snap shot of the current frame state with the BCI of the instruction after the one
-     * currently being parsed.
+     * currently being parsed and assigns it to a given {@linkplain StateSplit#hasSideEffect() side
+     * effect} node.
+     *
+     * @param sideEffect a side effect node just appended to the graph
      */
-    FrameState createStateAfter();
+    void setStateAfter(StateSplit sideEffect);
 
     /**
      * Gets the parsing context for the method that inlines the method being parsed by this context.
@@ -204,7 +176,19 @@ public interface GraphBuilderContext {
     GraphBuilderContext getParent();
 
     /**
-     * Gets the method currently being parsed.
+     * Gets the first ancestor parsing context that is not parsing a
+     * {@linkplain #parsingIntrinsic() intrinsic}.
+     */
+    default GraphBuilderContext getNonIntrinsicAncestor() {
+        GraphBuilderContext ancestor = getParent();
+        while (ancestor != null && ancestor.parsingIntrinsic()) {
+            ancestor = ancestor.getParent();
+        }
+        return ancestor;
+    }
+
+    /**
+     * Gets the method being parsed by this context.
      */
     ResolvedJavaMethod getMethod();
 
@@ -223,9 +207,18 @@ public interface GraphBuilderContext {
      */
     JavaType getInvokeReturnType();
 
+    default Stamp getInvokeReturnStamp() {
+        JavaType returnType = getInvokeReturnType();
+        if (returnType.getKind() == Kind.Object && returnType instanceof ResolvedJavaType) {
+            return StampFactory.declared((ResolvedJavaType) returnType);
+        } else {
+            return StampFactory.forKind(returnType.getKind());
+        }
+    }
+
     /**
-     * Gets the inline depth of this context. 0 implies this is the context for the compilation root
-     * method.
+     * Gets the inline depth of this context. A return value of 0 implies that this is the context
+     * for the parse root.
      */
     default int getDepth() {
         GraphBuilderContext parent = getParent();
@@ -233,17 +226,18 @@ public interface GraphBuilderContext {
     }
 
     /**
-     * Determines if the current parsing context is a snippet or method substitution.
+     * Determines if this parsing context is within the bytecode of an intrinsic or a method inlined
+     * by an intrinsic.
      */
-    default boolean parsingReplacement() {
-        return getReplacement() != null;
+    default boolean parsingIntrinsic() {
+        return getIntrinsic() != null;
     }
 
     /**
-     * Gets the replacement of the current parsing context or {@code null} if not
-     * {@link #parsingReplacement() parsing a replacement}.
+     * Gets the intrinsic of the current parsing context or {@code null} if not
+     * {@link #parsingIntrinsic() parsing an intrinsic}.
      */
-    Replacement getReplacement();
+    IntrinsicContext getIntrinsic();
 
     BailoutException bailout(String string);
 
@@ -268,5 +262,4 @@ public interface GraphBuilderContext {
         }
         return value;
     }
-
 }

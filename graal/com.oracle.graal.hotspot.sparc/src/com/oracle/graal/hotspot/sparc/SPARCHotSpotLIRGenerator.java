@@ -49,6 +49,7 @@ import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
+import com.oracle.graal.sparc.*;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -214,6 +215,17 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
+    public boolean canInlineConstant(JavaConstant c) {
+        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+            return true;
+        } else if (c instanceof HotSpotObjectConstant) {
+            return ((HotSpotObjectConstant) c).isCompressed();
+        } else {
+            return super.canInlineConstant(c);
+        }
+    }
+
+    @Override
     public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
@@ -243,15 +255,85 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
+    protected SPARCLIRInstruction createMove(AllocatableValue dst, Value src) {
+        if (src instanceof JavaConstant) {
+            return new SPARCHotSpotMove.HotSpotLoadConstantOp(dst, (JavaConstant) src);
+        } else {
+            return super.createMove(dst, src);
+        }
+    }
+
+    @Override
+    public void emitCompareBranch(PlatformKind cmpKind, Value x, Value y, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
+                    double trueDestinationProbability) {
+        Value localX = x;
+        Value localY = y;
+        if (localX instanceof HotSpotObjectConstant) {
+            localX = load(localX);
+        }
+        if (localY instanceof HotSpotObjectConstant) {
+            localY = load(localY);
+        }
+        super.emitCompareBranch(cmpKind, localX, localY, cond, unorderedIsTrue, trueDestination, falseDestination, trueDestinationProbability);
+    }
+
+    @Override
+    protected boolean emitCompare(PlatformKind cmpKind, Value a, Value b) {
+        Value localA = a;
+        Value localB = b;
+        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(localA)) {
+            localA = SPARC.g0.asValue(LIRKind.value(Kind.Int));
+        } else if (localA instanceof HotSpotObjectConstant) {
+            localA = load(localA);
+        }
+        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(localB)) {
+            localB = SPARC.g0.asValue(LIRKind.value(Kind.Int));
+        } else if (localB instanceof HotSpotObjectConstant) {
+            localB = load(localB);
+        }
+        return super.emitCompare(cmpKind, localA, localB);
+    }
+
+    @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        // TODO
-        throw GraalInternalError.unimplemented();
+        LIRKind inputKind = pointer.getLIRKind();
+        assert inputKind.getPlatformKind() == Kind.Long || inputKind.getPlatformKind() == Kind.Object;
+        if (inputKind.isReference(0)) {
+            // oop
+            Variable result = newVariable(LIRKind.reference(Kind.Int));
+            append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
+            return result;
+        } else {
+            // metaspace pointer
+            Variable result = newVariable(LIRKind.value(Kind.Int));
+            AllocatableValue base = Value.ILLEGAL;
+            if (encoding.base != 0) {
+                base = emitMove(JavaConstant.forLong(encoding.base));
+            }
+            append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
+            return result;
+        }
     }
 
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
-        // TODO
-        throw GraalInternalError.unimplemented();
+        LIRKind inputKind = pointer.getLIRKind();
+        assert inputKind.getPlatformKind() == Kind.Int;
+        if (inputKind.isReference(0)) {
+            // oop
+            Variable result = newVariable(LIRKind.reference(Kind.Object));
+            append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
+            return result;
+        } else {
+            // metaspace pointer
+            Variable result = newVariable(LIRKind.value(Kind.Long));
+            AllocatableValue base = Value.ILLEGAL;
+            if (encoding.base != 0) {
+                base = emitMove(JavaConstant.forLong(encoding.base));
+            }
+            append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
+            return result;
+        }
     }
 
     /**
@@ -358,10 +440,16 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         return result;
     }
 
+    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
-        PlatformKind kind = address.getLIRKind().getPlatformKind();
-        assert kind == Kind.Object || kind == Kind.Long : address + " - " + kind + " not an object!";
-        append(new NullCheckOp(load(address), state));
+        PlatformKind kind = address.getPlatformKind();
+        if (kind == Kind.Int) {
+            CompressEncoding encoding = config.getOopEncoding();
+            Value uncompressed = emitUncompress(address, encoding, false);
+            append(new NullCheckOp(asAddressValue(uncompressed), state));
+        } else {
+            super.emitNullCheck(address, state);
+        }
     }
 
     @Override

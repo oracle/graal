@@ -28,8 +28,6 @@ import com.oracle.truffle.api.nodes.*;
 
 public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObserver {
 
-    private static final int OSR_THRESHOLD = TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue();
-
     private int interpreterLoopCount;
     private OptimizedCallTarget compiledTarget;
 
@@ -75,7 +73,8 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
     }
 
     private boolean profilingLoop(VirtualFrame frame) {
-        int overflowLoopCount = Integer.MAX_VALUE - OSR_THRESHOLD + interpreterLoopCount;
+        int osrThreshold = TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue();
+        int overflowLoopCount = Integer.MAX_VALUE - osrThreshold + interpreterLoopCount;
         try {
             while (repeatableNode.executeRepeating(frame)) {
                 try {
@@ -86,7 +85,7 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
                 }
             }
         } finally {
-            reportLoopCount(overflowLoopCount - Integer.MAX_VALUE + OSR_THRESHOLD - interpreterLoopCount);
+            reportLoopCount(overflowLoopCount - Integer.MAX_VALUE + osrThreshold - interpreterLoopCount);
         }
         return true;
     }

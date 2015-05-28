@@ -48,6 +48,7 @@ public class HotSpotClassSubstitutions {
     public static boolean isInterface(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
+            // Class for primitive type
             return false;
         } else {
             int accessFlags = klass.readInt(klassAccessFlagsOffset(), KLASS_ACCESS_FLAGS_LOCATION);
@@ -58,6 +59,7 @@ public class HotSpotClassSubstitutions {
     public static boolean isArray(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (klass.isNull()) {
+            // Class for primitive type
             return false;
         } else {
             return klassIsArray(klass);
@@ -85,6 +87,8 @@ public class HotSpotClassSubstitutions {
                     }
                 }
             }
+        } else {
+            // Class for primitive type
         }
         return null;
     }
@@ -99,6 +103,8 @@ public class HotSpotClassSubstitutions {
             if (klassIsArray(klass)) {
                 return PiNode.asNonNullClass(klass.readObject(arrayKlassComponentMirrorOffset(), ARRAY_KLASS_COMPONENT_MIRROR));
             }
+        } else {
+            // Class for primitive type
         }
         return null;
     }

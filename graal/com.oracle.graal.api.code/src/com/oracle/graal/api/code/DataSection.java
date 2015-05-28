@@ -24,7 +24,6 @@ package com.oracle.graal.api.code;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
 
-import java.io.*;
 import java.nio.*;
 import java.util.*;
 import java.util.function.*;
@@ -34,9 +33,7 @@ import com.oracle.graal.api.code.CompilationResult.DataSectionReference;
 import com.oracle.graal.api.code.DataSection.Data;
 import com.oracle.graal.api.meta.*;
 
-public final class DataSection implements Serializable, Iterable<Data> {
-
-    private static final long serialVersionUID = -1375715553825731716L;
+public final class DataSection implements Iterable<Data> {
 
     @FunctionalInterface
     public interface DataBuilder {
@@ -77,9 +74,7 @@ public final class DataSection implements Serializable, Iterable<Data> {
         }
     }
 
-    public static final class Data implements Serializable {
-
-        private static final long serialVersionUID = -719932751800916080L;
+    public static final class Data {
 
         private int alignment;
         private final int size;

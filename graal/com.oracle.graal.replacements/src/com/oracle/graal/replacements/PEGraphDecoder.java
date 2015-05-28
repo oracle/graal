@@ -23,13 +23,14 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalInternalError.*;
-import static com.oracle.graal.java.AbstractBytecodeParser.Options.*;
+import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -97,6 +98,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public boolean isInlinedMethod() {
             return caller != null;
         }
+
+        public BytecodePosition getBytecodePosition() {
+            if (bytecodePosition == null) {
+                ensureOuterStateDecoded(this);
+                ensureExceptionStateDecoded(this);
+                bytecodePosition = InliningUtil.processBytecodePosition(invokeData.invoke, null);
+            }
+            return bytecodePosition;
+        }
     }
 
     protected class PENonAppendGraphBuilderContext implements GraphBuilderContext {
@@ -139,7 +149,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public Replacement getReplacement() {
+        public IntrinsicContext getIntrinsic() {
             return null;
         }
 
@@ -169,7 +179,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public FrameState createStateAfter() {
+        public void setStateAfter(StateSplit stateSplit) {
             throw unimplemented();
         }
 
@@ -217,10 +227,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public FrameState createStateAfter() {
+        public void setStateAfter(StateSplit stateSplit) {
             Node stateAfter = decodeFloatingNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.stateAfterOrderId);
             getGraph().add(stateAfter);
-            return (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
+            FrameState fs = (FrameState) handleFloatingNodeAfterAdd(methodScope.caller, methodScope.callerLoopScope, stateAfter);
+            stateSplit.setStateAfter(fs);
         }
 
         @Override
@@ -379,7 +390,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (graphBuilderContext.lastInstr != null) {
                 registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
                 invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
-                graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData));
+                graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
             } else {
                 assert graphBuilderContext.pushedNode == null : "Why push a node when the invoke does not return anyway?";
                 invoke.asNode().replaceAtUsages(null);
@@ -411,7 +422,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (inlineInfo == null) {
             return false;
         }
-        assert !inlineInfo.isIntrinsic && !inlineInfo.isReplacement : "not supported";
+        assert !inlineInfo.isIntrinsic : "not supported";
 
         ResolvedJavaMethod inlineMethod = inlineInfo.methodToInline;
         EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod);
@@ -458,16 +469,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         ValueNode returnValue;
         List<ReturnNode> returnNodes = inlineScope.returnNodes;
         if (!returnNodes.isEmpty()) {
-            FixedNode n;
-            n = nodeAfterInvoke(methodScope, loopScope, invokeData);
             if (returnNodes.size() == 1) {
                 ReturnNode returnNode = returnNodes.get(0);
                 returnValue = returnNode.result();
+                FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(returnNode));
                 returnNode.replaceAndDelete(n);
             } else {
                 AbstractMergeNode merge = methodScope.graph.add(new MergeNode());
                 merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
                 returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
+                FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, merge);
                 merge.setNext(n);
             }
         } else {
@@ -484,17 +495,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             registerNode(loopScope, invokeData.exceptionOrderId, exceptionValue, true, true);
         }
         if (inlineScope.exceptionPlaceholderNode != null) {
-            inlineScope.exceptionPlaceholderNode.replaceAndDelete(exceptionValue);
+            inlineScope.exceptionPlaceholderNode.replaceAtUsages(exceptionValue);
+            inlineScope.exceptionPlaceholderNode.safeDelete();
         }
         deleteInvoke(invoke);
 
         methodScope.inlineInvokePlugin.postInline(inlineMethod);
+
+        if (Debug.isDumpEnabled() && DumpDuringGraphBuilding.getValue()) {
+            Debug.dump(methodScope.graph, "Inline finished: " + inlineMethod.getDeclaringClass().getUnqualifiedName() + "." + inlineMethod.getName());
+        }
         return true;
     }
 
-    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, AbstractBeginNode lastBlock) {
+        assert lastBlock.isAlive();
         FixedNode n;
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
+            registerNode(loopScope, invokeData.nextOrderId, lastBlock, false, false);
             n = makeStubNode(methodScope, loopScope, invokeData.nextNextOrderId);
         } else {
             n = makeStubNode(methodScope, loopScope, invokeData.nextOrderId);
@@ -516,6 +534,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method);
+
+    @Override
+    protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
+        PEMethodScope methodScope = (PEMethodScope) s;
+        if (node instanceof SimpleInfopointNode && methodScope.isInlinedMethod()) {
+            InliningUtil.processSimpleInfopoint(methodScope.invokeData.invoke, (SimpleInfopointNode) node, methodScope.getBytecodePosition());
+        }
+        super.handleFixedNode(s, loopScope, nodeOrderId, node);
+    }
 
     @Override
     protected Node handleFloatingNodeBeforeAdd(MethodScope s, LoopScope loopScope, Node node) {
@@ -590,11 +617,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         if (methodScope.isInlinedMethod()) {
-            if (node instanceof SimpleInfopointNode) {
-                methodScope.bytecodePosition = InliningUtil.processSimpleInfopoint(methodScope.invokeData.invoke, (SimpleInfopointNode) node, methodScope.bytecodePosition);
-                return node;
-
-            } else if (node instanceof FrameState) {
+            if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
 
                 ensureOuterStateDecoded(methodScope);

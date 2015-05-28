@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -32,9 +31,7 @@ import com.oracle.graal.api.meta.*;
  * where to find the local variables, operand stack values and locked objects of the bytecode
  * frame(s).
  */
-public class BytecodeFrame extends BytecodePosition implements Serializable {
-
-    private static final long serialVersionUID = -345025397165977565L;
+public class BytecodeFrame extends BytecodePosition {
 
     /**
      * An array of values representing how to reconstruct the state of the Java frame. This is array

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -75,7 +76,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
             }
             if (clazz instanceof GetClassNode) {
                 GetClassNode getClass = (GetClassNode) clazz;
-                return new LoadHubNode(KlassPointerStamp.klass(), getClass.getObject(), null);
+                return new LoadHubNode(KlassPointerStamp.klassNonNull(), getClass.getObject(), null);
             }
             if (clazz instanceof HubGetClassNode) {
                 // replace _klass._java_mirror._klass -> _klass

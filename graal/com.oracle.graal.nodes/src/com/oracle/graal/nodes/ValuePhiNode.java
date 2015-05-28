@@ -59,6 +59,10 @@ public class ValuePhiNode extends PhiNode {
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.meet(values()));
+        Stamp valuesStamp = StampTool.meet(values());
+        if (stamp.isCompatible(valuesStamp)) {
+            valuesStamp = stamp.join(valuesStamp);
+        }
+        return updateStamp(valuesStamp);
     }
 }

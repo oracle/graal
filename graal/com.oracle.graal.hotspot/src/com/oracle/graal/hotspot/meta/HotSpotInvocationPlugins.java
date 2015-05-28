@@ -22,23 +22,14 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.meta.HotSpotMethodHandleAccessProvider.*;
-
-import java.lang.invoke.*;
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 import com.oracle.graal.replacements.nodes.*;
@@ -48,12 +39,10 @@ import com.oracle.graal.replacements.nodes.*;
  */
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     final HotSpotVMConfig config;
-    final MethodHandleAccessProvider methodHandleAccess;
 
-    public HotSpotInvocationPlugins(HotSpotVMConfig config, MetaAccessProvider metaAccess, MethodHandleAccessProvider methodHandleAccess) {
+    public HotSpotInvocationPlugins(HotSpotVMConfig config, MetaAccessProvider metaAccess) {
         super(metaAccess);
         this.config = config;
-        this.methodHandleAccess = methodHandleAccess;
     }
 
     @Override
@@ -74,68 +63,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         super.register(plugin, declaringClass, name, argumentTypes);
     }
 
-    private ResolvedJavaType methodHandleClass;
-    private final Map<IntrinsicMethod, InvocationPlugin> methodHandlePlugins = new EnumMap<>(IntrinsicMethod.class);
-
-    @Override
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
-        if (methodHandleClass == null) {
-            methodHandleClass = plugins.getMetaAccess().lookupJavaType(MethodHandle.class);
-        }
-        if (method.getDeclaringClass().equals(methodHandleClass)) {
-            HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
-            int intrinsicId = hsMethod.intrinsicId();
-            if (intrinsicId != 0) {
-                /*
-                 * The methods of MethodHandle that need substitution are signature-polymorphic,
-                 * i.e., the VM replicates them for every signature that they are actually used for.
-                 */
-                IntrinsicMethod intrinsicMethod = getMethodHandleIntrinsic(intrinsicId);
-                if (intrinsicMethod != null) {
-                    InvocationPlugin plugin = methodHandlePlugins.get(intrinsicMethod);
-                    if (plugin == null) {
-                        plugin = new InvocationPlugin() {
-                            public boolean applyPolymorphic(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... argsIncludingReceiver) {
-                                InvokeKind invokeKind = b.getInvokeKind();
-                                if (invokeKind != InvokeKind.Static) {
-                                    receiver.get();
-                                }
-                                JavaType invokeReturnType = b.getInvokeReturnType();
-                                InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(b.getAssumptions(), b.getConstantReflection().getMethodHandleAccess(), intrinsicMethod, targetMethod,
-                                                b.bci(), invokeReturnType, argsIncludingReceiver);
-                                if (invoke == null) {
-                                    MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, invokeKind, targetMethod, b.bci(), invokeReturnType, argsIncludingReceiver);
-                                    if (invokeReturnType.getKind() == Kind.Void) {
-                                        b.add(methodHandleNode);
-                                    } else {
-                                        b.addPush(methodHandleNode);
-                                    }
-                                } else {
-                                    CallTargetNode callTarget = invoke.callTarget();
-                                    NodeInputList<ValueNode> argumentsList = callTarget.arguments();
-                                    ValueNode[] args = argumentsList.toArray(new ValueNode[argumentsList.size()]);
-                                    for (ValueNode arg : args) {
-                                        b.recursiveAppend(arg);
-                                    }
-                                    b.handleReplacedInvoke(invoke.getInvokeKind(), callTarget.targetMethod(), args);
-                                }
-                                return true;
-                            }
-
-                            public boolean isSignaturePolymorphic() {
-                                return true;
-                            }
-                        };
-                        methodHandlePlugins.put(intrinsicMethod, plugin);
-                    }
-                    return plugin;
-                }
-            }
-
-        }
-        return super.lookupInvocation(method);
-    }
-
     @Override
     public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
         for (Node node : newNodes) {
@@ -154,7 +81,10 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                         if (isClass(c)) {
                             // This will be handled later by LoadJavaMirrorWithKlassPhase
                         } else {
-                            throw new AssertionError("illegal constant node in AOT: " + node);
+                            // Tolerate uses in unused FrameStates
+                            if (node.usages().filter((n) -> !(n instanceof FrameState) || n.hasUsages()).isNotEmpty()) {
+                                throw new AssertionError("illegal constant node in AOT: " + node);
+                            }
                         }
                     }
                 }

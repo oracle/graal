@@ -30,7 +30,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 

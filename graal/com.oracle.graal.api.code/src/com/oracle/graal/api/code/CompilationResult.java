@@ -25,27 +25,23 @@ package com.oracle.graal.api.code;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static java.util.Collections.*;
 
-import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
+import com.oracle.graal.api.meta.Assumptions.Assumption;
 import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the output from compiling a method, including the compiled machine code, associated
  * data and references, relocation information, deoptimization information, etc.
  */
-public class CompilationResult implements Serializable {
-
-    private static final long serialVersionUID = -1319947729753702434L;
+public class CompilationResult {
 
     /**
      * Represents a code position with associated additional information.
      */
-    public abstract static class Site implements Serializable {
+    public abstract static class Site {
 
-        private static final long serialVersionUID = -8214214947651979102L;
         /**
          * The position (or offset) of this site with respect to the start of the target method.
          */
@@ -74,7 +70,6 @@ public class CompilationResult implements Serializable {
      */
     public static class Infopoint extends Site implements Comparable<Infopoint> {
 
-        private static final long serialVersionUID = 2479806696381720162L;
         public final DebugInfo debugInfo;
 
         public final InfopointReason reason;
@@ -123,8 +118,6 @@ public class CompilationResult implements Serializable {
      * Represents a call in the code.
      */
     public static final class Call extends Infopoint {
-
-        private static final long serialVersionUID = 1440741241631046954L;
 
         /**
          * The target of the call.
@@ -183,9 +176,7 @@ public class CompilationResult implements Serializable {
     /**
      * Represents some external data that is referenced by the code.
      */
-    public abstract static class Reference implements Serializable {
-
-        private static final long serialVersionUID = 4841246083028477946L;
+    public abstract static class Reference {
 
         @Override
         public abstract int hashCode();
@@ -195,8 +186,6 @@ public class CompilationResult implements Serializable {
     }
 
     public static final class ConstantReference extends Reference {
-
-        private static final long serialVersionUID = 5841121930949053612L;
 
         private final VMConstant constant;
 
@@ -232,8 +221,6 @@ public class CompilationResult implements Serializable {
     }
 
     public static final class DataSectionReference extends Reference {
-
-        private static final long serialVersionUID = 9011681879878139182L;
 
         private boolean initialized;
         private int offset;
@@ -281,7 +268,6 @@ public class CompilationResult implements Serializable {
      */
     public static final class DataPatch extends Site {
 
-        private static final long serialVersionUID = 5771730331604867476L;
         public Reference reference;
 
         public DataPatch(int pcOffset, Reference reference) {
@@ -314,9 +300,8 @@ public class CompilationResult implements Serializable {
      * {@link CompilationResult#getTargetCode()}. This is optional information that can be used to
      * enhance a disassembly of the code.
      */
-    public abstract static class CodeAnnotation implements Serializable {
+    public abstract static class CodeAnnotation {
 
-        private static final long serialVersionUID = -7903959680749520748L;
         public final int position;
 
         public CodeAnnotation(int position) {
@@ -342,10 +327,6 @@ public class CompilationResult implements Serializable {
      */
     public static final class CodeComment extends CodeAnnotation {
 
-        /**
-         *
-         */
-        private static final long serialVersionUID = 6802287188701961401L;
         public final String value;
 
         public CodeComment(int position, String comment) {
@@ -383,8 +364,6 @@ public class CompilationResult implements Serializable {
      * inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
-
-        private static final long serialVersionUID = 2222194398353801831L;
 
         /**
          * The low value in the key range (inclusive).
@@ -434,7 +413,6 @@ public class CompilationResult implements Serializable {
      */
     public static final class ExceptionHandler extends Site {
 
-        private static final long serialVersionUID = 4897339464722665281L;
         public final int handlerPos;
 
         ExceptionHandler(int pcOffset, int handlerPos) {
@@ -468,7 +446,6 @@ public class CompilationResult implements Serializable {
      */
     public static final class Mark extends Site {
 
-        private static final long serialVersionUID = 3612943150662354844L;
         public final Object id;
 
         public Mark(int pcOffset, Object id) {
@@ -625,11 +602,10 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions made during
-     * compilation.
+     * Gets the assumptions made during compilation.
      */
-    public Collection<Assumption> getAssumptions() {
-        return assumptions == null ? Collections.emptyList() : Arrays.asList(assumptions);
+    public Assumption[] getAssumptions() {
+        return assumptions;
     }
 
     /**
@@ -664,15 +640,14 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the methods whose bytecodes
-     * were used as input to the compilation.
+     * Gets the methods whose bytecodes were used as input to the compilation.
      *
      * @return {@code null} if the compilation did not record method dependencies otherwise the
      *         methods whose bytecodes were used as input to the compilation with the first element
      *         being the root method of the compilation
      */
-    public Collection<ResolvedJavaMethod> getMethods() {
-        return methods == null ? null : Arrays.asList(methods);
+    public ResolvedJavaMethod[] getMethods() {
+        return methods;
     }
 
     public DataSection getDataSection() {

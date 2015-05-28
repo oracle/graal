@@ -31,13 +31,12 @@ import com.oracle.graal.compiler.gen.*;
  * usually occur here.
  */
 public class ComplexMatchValue extends AbstractValue {
-    private static final long serialVersionUID = -4734670273590368770L;
 
     /**
      * This is the Value of a node which was matched as part of a complex match. The value isn't
      * actually useable but this marks it as having been evaluated.
      */
-    @SuppressWarnings("serial") public static final Value INTERIOR_MATCH = new AbstractValue(LIRKind.Illegal) {
+    public static final Value INTERIOR_MATCH = new AbstractValue(LIRKind.Illegal) {
 
         @Override
         public String toString() {

@@ -27,9 +27,9 @@ import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+
 import com.oracle.graal.hotspotvmconfig.*;
 
 /**
@@ -176,66 +176,19 @@ public interface CompilerToVM {
 
     Object lookupAppendixInPool(long metaspaceConstantPool, int cpi);
 
-    public enum CodeInstallResult {
-        OK("ok"),
-        DEPENDENCIES_FAILED("dependencies failed"),
-        DEPENDENCIES_INVALID("dependencies invalid"),
-        CACHE_FULL("code cache is full"),
-        CODE_TOO_LARGE("code is too large");
-
-        private int value;
-        private String message;
-
-        private CodeInstallResult(String name) {
-            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
-            switch (name) {
-                case "ok":
-                    this.value = config.codeInstallResultOk;
-                    break;
-                case "dependencies failed":
-                    this.value = config.codeInstallResultDependenciesFailed;
-                    break;
-                case "dependencies invalid":
-                    this.value = config.codeInstallResultDependenciesInvalid;
-                    break;
-                case "code cache is full":
-                    this.value = config.codeInstallResultCacheFull;
-                    break;
-                case "code is too large":
-                    this.value = config.codeInstallResultCodeTooLarge;
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere("unknown enum name " + name);
-            }
-            this.message = name;
-        }
-
-        /**
-         * Returns the enum object for the given value.
-         */
-        public static CodeInstallResult getEnum(int value) {
-            for (CodeInstallResult e : values()) {
-                if (e.value == value) {
-                    return e;
-                }
-            }
-            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
-        }
-
-        @Override
-        public String toString() {
-            return message;
-        }
-    }
-
     /**
      * Installs the result of a compilation into the code cache.
      *
      * @param compiledCode the result of a compilation
      * @param code the details of the installed CodeBlob are written to this object
-     * @return the outcome of the installation as a {@link CodeInstallResult}.
+     * @return the outcome of the installation which will be one of
+     *         {@link HotSpotVMConfig#codeInstallResultOk},
+     *         {@link HotSpotVMConfig#codeInstallResultCacheFull},
+     *         {@link HotSpotVMConfig#codeInstallResultCodeTooLarge},
+     *         {@link HotSpotVMConfig#codeInstallResultDependenciesFailed} or
+     *         {@link HotSpotVMConfig#codeInstallResultDependenciesInvalid}.
      */
-    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
+    int installCode(HotSpotCompiledCode compiledCode, InstalledCode code, SpeculationLog speculationLog);
 
     /**
      * Notifies the VM of statistics for a completed compilation.
@@ -294,8 +247,8 @@ public interface CompilerToVM {
     long readUnsafeKlassPointer(Object o);
 
     /**
-     * Reads an object pointer within a VM data structures. That is, any {@link HotSpotVMField}
-     * whose {@link HotSpotVMField#type() type} is {@code "oop"} (e.g.,
+     * Reads an object pointer within a VM data structure. That is, any {@link HotSpotVMField} whose
+     * {@link HotSpotVMField#type() type} is {@code "oop"} (e.g.,
      * {@code ArrayKlass::_component_mirror}, {@code Klass::_java_mirror},
      * {@code JavaThread::_threadObj}).
      *

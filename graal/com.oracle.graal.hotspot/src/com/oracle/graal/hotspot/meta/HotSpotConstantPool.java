@@ -35,9 +35,7 @@ import com.oracle.graal.hotspot.*;
 /**
  * Implementation of {@link ConstantPool} for HotSpot.
  */
-public class HotSpotConstantPool extends CompilerObject implements ConstantPool, HotSpotProxified {
-
-    private static final long serialVersionUID = -5443206401485234850L;
+public class HotSpotConstantPool implements ConstantPool, HotSpotProxified {
 
     /**
      * Enum of all {@code JVM_CONSTANT} constants used in the VM. This includes the public and
@@ -115,13 +113,23 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool,
         }
     }
 
+    private static class LookupTypeCacheElement {
+        int lastCpi = Integer.MIN_VALUE;
+        JavaType javaType;
+
+        public LookupTypeCacheElement(int lastCpi, JavaType javaType) {
+            super();
+            this.lastCpi = lastCpi;
+            this.javaType = javaType;
+        }
+    }
+
     /**
      * Reference to the C++ ConstantPool object.
      */
     private final long metaspaceConstantPool;
     private final Object[] cache;
-    private ResolvedJavaType lastType;
-    private int lastTypeCpi = Integer.MIN_VALUE;
+    private volatile LookupTypeCacheElement lastLookupType;
 
     public HotSpotConstantPool(long metaspaceConstantPool) {
         this.metaspaceConstantPool = metaspaceConstantPool;
@@ -489,22 +497,17 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool,
 
     @Override
     public JavaType lookupType(int cpi, int opcode) {
-        if (cpi == this.lastTypeCpi) {
-            synchronized (this) {
-                if (cpi == this.lastTypeCpi) {
-                    return this.lastType;
-                }
+        final LookupTypeCacheElement elem = this.lastLookupType;
+        if (elem != null && elem.lastCpi == cpi) {
+            return elem.javaType;
+        } else {
+            final long metaspacePointer = runtime().getCompilerToVM().lookupKlassInPool(metaspaceConstantPool, cpi);
+            JavaType result = getJavaType(metaspacePointer);
+            if (result instanceof ResolvedJavaType) {
+                this.lastLookupType = new LookupTypeCacheElement(cpi, result);
             }
+            return result;
         }
-        final long metaspacePointer = runtime().getCompilerToVM().lookupKlassInPool(metaspaceConstantPool, cpi);
-        JavaType result = getJavaType(metaspacePointer);
-        if (result instanceof ResolvedJavaType) {
-            synchronized (this) {
-                this.lastType = (ResolvedJavaType) result;
-                this.lastTypeCpi = cpi;
-            }
-        }
-        return result;
     }
 
     @Override

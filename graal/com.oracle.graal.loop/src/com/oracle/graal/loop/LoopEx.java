@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,7 +162,7 @@ public class LoopEx {
     public boolean detectCounted() {
         LoopBeginNode loopBegin = loopBegin();
         FixedNode next = loopBegin.next();
-        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode) {
+        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof InfopointNode) {
             next = ((FixedWithNextNode) next).next();
         }
         if (next instanceof IfNode) {
@@ -333,6 +333,16 @@ public class LoopEx {
                     iv = new DerivedScaledInductionVariable(loop, baseIv, (NegateNode) op);
                 } else if ((scale = mul(loop, op, baseIvNode)) != null) {
                     iv = new DerivedScaledInductionVariable(loop, baseIv, scale, op);
+                } else {
+                    boolean isValidConvert = op instanceof PiNode || op instanceof SignExtendNode;
+                    if (!isValidConvert && op instanceof ZeroExtendNode) {
+                        IntegerStamp inputStamp = (IntegerStamp) ((ZeroExtendNode) op).getValue().stamp();
+                        isValidConvert = inputStamp.isPositive();
+                    }
+
+                    if (isValidConvert) {
+                        iv = new DerivedConvertedInductionVariable(loop, baseIv, op.stamp(), op);
+                    }
                 }
 
                 if (iv != null) {
@@ -368,7 +378,7 @@ public class LoopEx {
         if (op instanceof LeftShiftNode) {
             LeftShiftNode shift = (LeftShiftNode) op;
             if (shift.getX() == base && shift.getY().isConstant()) {
-                return ConstantNode.forInt(1 << shift.getY().asJavaConstant().asInt(), base.graph());
+                return ConstantNode.forIntegerStamp(base.stamp(), 1 << shift.getY().asJavaConstant().asInt(), base.graph());
             }
         }
         return null;

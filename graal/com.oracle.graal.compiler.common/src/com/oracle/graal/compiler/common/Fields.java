@@ -48,6 +48,8 @@ public class Fields {
      */
     private final Class<?>[] types;
 
+    private final Class<?>[] declaringClasses;
+
     public static Fields forClass(Class<?> clazz, Class<?> endClazz, boolean includeTransient, FieldsScanner.CalcOffset calcOffset) {
         FieldsScanner scanner = new FieldsScanner(calcOffset == null ? new FieldsScanner.DefaultCalcOffset() : calcOffset);
         scanner.scan(clazz, endClazz, includeTransient);
@@ -59,11 +61,13 @@ public class Fields {
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
         this.types = new Class[offsets.length];
+        this.declaringClasses = new Class[offsets.length];
         int index = 0;
         for (FieldsScanner.FieldInfo f : fields) {
             offsets[index] = f.offset;
             names[index] = f.name;
             types[index] = f.type;
+            declaringClasses[index] = f.declaringClass;
             index++;
         }
     }
@@ -77,7 +81,7 @@ public class Fields {
 
     public static void translateInto(Fields fields, ArrayList<FieldsScanner.FieldInfo> infos) {
         for (int index = 0; index < fields.getCount(); index++) {
-            infos.add(new FieldsScanner.FieldInfo(fields.offsets[index], fields.names[index], fields.types[index]));
+            infos.add(new FieldsScanner.FieldInfo(fields.offsets[index], fields.names[index], fields.types[index], fields.declaringClasses[index]));
         }
     }
 
@@ -217,6 +221,10 @@ public class Fields {
         return other.offsets[index] == offsets[index];
     }
 
+    public long[] getOffsets() {
+        return offsets;
+    }
+
     /**
      * Gets the name of a field.
      *
@@ -233,6 +241,10 @@ public class Fields {
      */
     public Class<?> getType(int index) {
         return types[index];
+    }
+
+    public Class<?> getDeclaringClass(int index) {
+        return declaringClasses[index];
     }
 
     /**

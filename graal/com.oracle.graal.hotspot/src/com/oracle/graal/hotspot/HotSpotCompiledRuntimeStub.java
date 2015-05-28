@@ -37,8 +37,6 @@ import com.oracle.graal.hotspot.stubs.*;
  */
 public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
-    private static final long serialVersionUID = -4506206868419153274L;
-
     public final String stubName;
 
     public HotSpotCompiledRuntimeStub(Stub stub, CompilationResult compResult) {
@@ -55,7 +53,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
         // Stubs cannot be recompiled so they cannot be compiled with
         // assumptions and there is no point in recording evol_method dependencies
-        assert compResult.getAssumptions().isEmpty() : "stubs should not use assumptions: " + this;
+        assert compResult.getAssumptions() == null : "stubs should not use assumptions: " + this;
         assert compResult.getMethods() == null : "stubs should not record evol_method dependencies: " + this;
 
         for (DataPatch data : compResult.getDataPatches()) {

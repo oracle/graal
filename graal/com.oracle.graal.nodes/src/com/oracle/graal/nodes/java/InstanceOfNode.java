@@ -36,14 +36,18 @@ import com.oracle.graal.nodes.spi.*;
  * The {@code InstanceOfNode} represents an instanceof test.
  */
 @NodeInfo
-public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
+public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
     protected final ResolvedJavaType type;
     protected JavaTypeProfile profile;
 
     public InstanceOfNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
-        super(TYPE, object);
+        this(TYPE, type, object, profile);
+    }
+
+    protected InstanceOfNode(NodeClass<? extends InstanceOfNode> c, ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+        super(c, object);
         this.type = type;
         this.profile = profile;
         assert type != null;
@@ -128,7 +132,7 @@ public final class InstanceOfNode extends UnaryOpLogicNode implements Lowerable,
                 return LogicConstantNode.contradiction();
             } else {
                 boolean superType = inputType.isAssignableFrom(type);
-                if (!superType && !isInterfaceOrArrayOfInterface(inputType) && !isInterfaceOrArrayOfInterface(type)) {
+                if (!superType && (type.asExactType() != null || (!isInterfaceOrArrayOfInterface(inputType) && !isInterfaceOrArrayOfInterface(type)))) {
                     return LogicConstantNode.contradiction();
                 }
                 // since the subtype comparison was only performed on a declared type we don't

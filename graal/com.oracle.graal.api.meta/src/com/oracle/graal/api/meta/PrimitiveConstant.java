@@ -30,8 +30,6 @@ import java.nio.*;
  */
 public class PrimitiveConstant extends AbstractValue implements JavaConstant, SerializableConstant {
 
-    private static final long serialVersionUID = 8787949721295655376L;
-
     /**
      * The boxed primitive value as a {@code long}. For {@code float} and {@code double} values,
      * this value is the result of {@link Float#floatToRawIntBits(float)} and

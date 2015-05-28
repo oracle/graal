@@ -205,19 +205,19 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
     }
 
     @Test
-    public void constantValueInertToolEvalNodeFactory() {
+    public void constantValueInertAdvancedInstrumentRootFactory() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new ConstantTestNode(42);
         RootTestNode root = new RootTestNode(fd, "constantValue", result);
         root.adoptChildren();
         Probe testProbe = result.probe();
-        // A factory that could insert a ToolEvalNode into the AST, but which never does.
-        Instrument instrument = Instrument.create(new ToolEvalNodeFactory() {
+        // A factory that could insert a AdvancedInstrumentRoot into the AST, but which never does.
+        Instrument instrument = Instrument.create(null, new AdvancedInstrumentRootFactory() {
 
-            public ToolEvalNode createToolEvalNode(Probe probe, Node node) {
+            public AdvancedInstrumentRoot createInstrumentRoot(Probe probe, Node node) {
                 return null;
             }
-        }, null);
+        }, null, "test AdvancedInstrument");
         testProbe.attach(instrument);
 
         // It all gets compiled away
@@ -225,29 +225,30 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
     }
 
     @Test
-    public void constantValueInertToolEvalNode() {
+    public void constantValueInertAdvancedInstrumentRoot() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode resultTestNode = new ConstantTestNode(42);
         RootTestNode rootTestNode = new RootTestNode(fd, "constantValue", resultTestNode);
         rootTestNode.adoptChildren();
         Probe testProbe = resultTestNode.probe();
-        // A factory that inserts a ToolEvalNode with empty methods into the instrumentation chain.
-        Instrument instrument = Instrument.create(new ToolEvalNodeFactory() {
+        // Factory inserts a AdvancedInstrumentRoot with empty methods into instrumentation .
+        Instrument instrument = Instrument.create(null, new AdvancedInstrumentRootFactory() {
 
-            public ToolEvalNode createToolEvalNode(Probe probe, Node node) {
-                return new ToolEvalNode() {
+            @Override
+            public AdvancedInstrumentRoot createInstrumentRoot(Probe probe, Node node) {
+                return new AdvancedInstrumentRoot() {
 
                     public String instrumentationInfo() {
                         return null;
                     }
 
                     @Override
-                    public Object executeToolEvalNode(Node n, VirtualFrame frame) {
+                    public Object executeRoot(Node n, VirtualFrame frame) {
                         return null;
                     }
                 };
             }
-        }, null);
+        }, null, "test AdvancedInstrument");
         testProbe.attach(instrument);
 
         // It all gets compiled away.
@@ -351,6 +352,7 @@ public class InstrumentationPartialEvaluationTest extends PartialEvaluationTest 
             final boolean[] isCurrentlyCompiled = {false};
             final Instrument optInstrument = Instrument.create(new Instrument.TruffleOptListener() {
 
+                @Override
                 public void notifyIsCompiled(boolean isCompiled) {
                     isCurrentlyCompiled[0] = isCompiled;
                 }

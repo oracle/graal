@@ -33,8 +33,6 @@ import com.oracle.graal.api.meta.*;
  */
 public final class VirtualObject extends AbstractValue implements JavaValue {
 
-    private static final long serialVersionUID = -2907197776426346021L;
-
     private final ResolvedJavaType type;
     private Value[] values;
     private final int id;

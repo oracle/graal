@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode.*;
 import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
@@ -32,7 +33,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.HotSpotCodeCacheProvider.MarkId;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.*;
@@ -40,10 +40,10 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.*;
 
 /**
- * Stub called by the {@linkplain MarkId#EXCEPTION_HANDLER_ENTRY exception handler entry point} in a
- * compiled method. This entry point is used when returning to a method to handle an exception
- * thrown by a callee. It is not used for routing implicit exceptions. Therefore, it does not need
- * to save any registers as HotSpot uses a caller save convention.
+ * Stub called by the {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler
+ * entry point} in a compiled method. This entry point is used when returning to a method to handle
+ * an exception thrown by a callee. It is not used for routing implicit exceptions. Therefore, it
+ * does not need to save any registers as HotSpot uses a caller save convention.
  * <p>
  * The descriptor for a call to this stub is {@link HotSpotBackend#EXCEPTION_HANDLER}.
  */
@@ -96,7 +96,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         }
 
         // patch the return address so that this stub returns to the exception handler
-        patchReturnAddress(handlerPc);
+        jumpToExceptionHandler(handlerPc);
     }
 
     static void checkNoExceptionInThread(Word thread, boolean enabled) {

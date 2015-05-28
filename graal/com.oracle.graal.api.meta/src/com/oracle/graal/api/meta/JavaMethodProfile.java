@@ -31,8 +31,6 @@ import com.oracle.graal.api.meta.JavaMethodProfile.ProfiledMethod;
  */
 public final class JavaMethodProfile extends AbstractJavaProfile<ProfiledMethod, ResolvedJavaMethod> {
 
-    private static final long serialVersionUID = -1440572119913692689L;
-
     public JavaMethodProfile(double notRecordedProbability, ProfiledMethod[] pitems) {
         super(notRecordedProbability, pitems);
     }
@@ -42,8 +40,6 @@ public final class JavaMethodProfile extends AbstractJavaProfile<ProfiledMethod,
     }
 
     public static class ProfiledMethod extends AbstractProfiledItem<ResolvedJavaMethod> {
-
-        private static final long serialVersionUID = 5418813647187024693L;
 
         public ProfiledMethod(ResolvedJavaMethod method, double probability) {
             super(method, probability);

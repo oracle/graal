@@ -31,7 +31,6 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.jtt.*;
@@ -49,26 +48,30 @@ import com.oracle.graal.nodes.spi.*;
  */
 public abstract class LIRTest extends JTTTest {
 
-    protected abstract static class LIRTestSpecification {
+    public abstract static class LIRTestSpecification {
         private Value result;
 
-        void generate(LIRGeneratorTool gen, Value arg0) {
+        public void generate(LIRGeneratorTool gen) {
+            defaultHandler(gen);
+        }
+
+        public void generate(LIRGeneratorTool gen, Value arg0) {
             defaultHandler(gen, arg0);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1) {
             defaultHandler(gen, arg0, arg1);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2) {
             defaultHandler(gen, arg0, arg1, arg2);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3) {
             defaultHandler(gen, arg0, arg1, arg2, arg3);
         }
 
-        void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3, Value arg4) {
+        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3, Value arg4) {
             defaultHandler(gen, arg0, arg1, arg2, arg3, arg4);
         }
 
@@ -77,7 +80,9 @@ public abstract class LIRTest extends JTTTest {
         }
 
         void generate(LIRGeneratorTool gen, Value[] values) {
-            if (values.length == 1) {
+            if (values.length == 0) {
+                generate(gen);
+            } else if (values.length == 1) {
                 generate(gen, values[0]);
             } else if (values.length == 2) {
                 generate(gen, values[0], values[1]);
@@ -142,7 +147,7 @@ public abstract class LIRTest extends JTTTest {
     }
 
     @NodeInfo
-    private static final class FloatingLIRTestNode extends FloatingNode implements LIRLowerable, Simplifiable {
+    private static final class FloatingLIRTestNode extends FloatingNode implements LIRLowerable {
 
         public static final NodeClass<FloatingLIRTestNode> TYPE = NodeClass.create(FloatingLIRTestNode.class);
         @Input protected ValueNode opsNode;
@@ -162,13 +167,6 @@ public abstract class LIRTest extends JTTTest {
 
         public ValueNode getLIROpsNode() {
             return opsNode;
-        }
-
-        @Override
-        public void simplify(SimplifierTool tool) {
-            if (tool.allUsagesAvailable() && getLIROpsNode().isConstant()) {
-                getLIROpsNode().asConstant();
-            }
         }
 
         @Override
@@ -252,7 +250,7 @@ public abstract class LIRTest extends JTTTest {
                 assert Modifier.isStatic(m.getModifiers());
                 Class<?>[] p = m.getParameterTypes();
                 assert p.length > 0;
-                assert p[0].equals(LIRTestSpecification.class);
+                assert LIRTestSpecification.class.isAssignableFrom(p[0]);
 
                 if (m.getReturnType().equals(void.class)) {
                     invocationPlugins.register(fixedLIRNodePlugin, c, m.getName(), p);

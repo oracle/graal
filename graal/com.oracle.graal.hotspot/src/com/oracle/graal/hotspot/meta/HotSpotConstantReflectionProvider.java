@@ -35,7 +35,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.ReplacementsImpl.FrameStateProcessing;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 /**
@@ -93,6 +92,40 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             if (element != null && (((HotSpotObjectConstantImpl) array).isDefaultStable() || !element.isDefaultForKind())) {
                 return element;
             }
+        }
+        return null;
+    }
+
+    /**
+     * Try to convert {@code offset} into an an index into {@code array}.
+     *
+     * @return -1 if the offset isn't within the array or the computed index
+     */
+    private int indexForOffset(JavaConstant array, long offset) {
+        if (array.getKind() != Kind.Object || array.isNull()) {
+            return -1;
+        }
+        Class<?> componentType = ((HotSpotObjectConstantImpl) array).object().getClass().getComponentType();
+        Kind kind = runtime.getHostProviders().getMetaAccess().lookupJavaType(componentType).getKind();
+        int arraybase = runtime.getArrayBaseOffset(kind);
+        int scale = runtime.getArrayIndexScale(kind);
+        if (offset < arraybase) {
+            return -1;
+        }
+        long index = offset - arraybase;
+        if (index % scale != 0) {
+            return -1;
+        }
+        long result = index / scale;
+        if (result >= Integer.MAX_VALUE) {
+            return -1;
+        }
+        return (int) result;
+    }
+
+    public JavaConstant readConstantArrayElementForOffset(JavaConstant array, long offset) {
+        if (array instanceof HotSpotObjectConstantImpl && ((HotSpotObjectConstantImpl) array).getStableDimension() > 0) {
+            return readConstantArrayElement(array, indexForOffset(array, offset));
         }
         return null;
     }
@@ -198,8 +231,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         assert !ImmutableCode.getValue() || isCalledForSnippets() || SnippetGraphUnderConstruction.get() != null || HotSpotLoadFieldPlugin.FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : receiver;
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
 
-        if (receiver == null) {
-            assert hotspotField.isStatic();
+        if (hotspotField.isStatic()) {
             if (hotspotField.isFinal() || hotspotField.isStable()) {
                 ResolvedJavaType holder = hotspotField.getDeclaringClass();
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable(hotspotField)) {
@@ -214,7 +246,6 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
              * for non-static final fields, we must assume that they are only initialized if they
              * have a non-default value.
              */
-            assert !hotspotField.isStatic();
             Object object = receiver.isNull() ? null : ((HotSpotObjectConstantImpl) receiver).object();
 
             // Canonicalization may attempt to process an unsafe read before
@@ -260,18 +291,17 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
 
     private JavaConstant readNonStableFieldValue(JavaField field, JavaConstant receiver) {
         HotSpotResolvedJavaField hotspotField = (HotSpotResolvedJavaField) field;
-        if (receiver == null) {
-            assert hotspotField.isStatic();
+        if (hotspotField.isStatic()) {
             HotSpotResolvedJavaType holder = (HotSpotResolvedJavaType) hotspotField.getDeclaringClass();
             if (holder.isInitialized()) {
                 return memoryAccess.readUnsafeConstant(hotspotField.getKind(), HotSpotObjectConstantImpl.forObject(holder.mirror()), hotspotField.offset());
             }
-            return null;
         } else {
-            assert !hotspotField.isStatic();
-            assert receiver.isNonNull() && hotspotField.isInObject(((HotSpotObjectConstantImpl) receiver).object());
-            return memoryAccess.readUnsafeConstant(hotspotField.getKind(), receiver, hotspotField.offset());
+            if (receiver.isNonNull() && hotspotField.isInObject(((HotSpotObjectConstantImpl) receiver).object())) {
+                return memoryAccess.readUnsafeConstant(hotspotField.getKind(), receiver, hotspotField.offset());
+            }
         }
+        return null;
     }
 
     public JavaConstant readStableFieldValue(JavaField field, JavaConstant receiver, boolean isDefaultStable) {
@@ -314,7 +344,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
         ResolvedJavaMethod initMethod = null;
         try {
             Class<?> rjm = ResolvedJavaMethod.class;
-            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm, FrameStateProcessing.class));
+            makeGraphMethod = metaAccess.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, Object[].class, rjm));
             initMethod = metaAccess.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);

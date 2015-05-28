@@ -182,7 +182,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     /**
      * Collects the effects of virtualizing the given node.
-     * 
+     *
      * @return {@code true} if the effects include removing the node, {@code false} otherwise.
      */
     protected abstract boolean processNode(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode);
@@ -210,6 +210,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         BlockT loopEntryState = initialState;
         BlockT lastMergedState = cloneState(initialState);
+        processInitialLoopState(loop, lastMergedState);
         MergeProcessor mergeProcessor = createMergeProcessor(loop.getHeader());
         for (int iteration = 0; iteration < 10; iteration++) {
             LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(lastMergedState));
@@ -243,6 +244,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
         }
         throw new GraalInternalError("too many iterations at %s", loop);
+    }
+
+    @SuppressWarnings("unused")
+    protected void processInitialLoopState(Loop<Block> loop, BlockT initialState) {
+        // nothing to do
     }
 
     private void doMergeWithoutDead(MergeProcessor mergeProcessor, List<BlockT> states) {
