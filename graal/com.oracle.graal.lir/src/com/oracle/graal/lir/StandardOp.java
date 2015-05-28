@@ -227,6 +227,19 @@ public class StandardOp {
     }
 
     /**
+     * An operation that takes one input and stores it in a stack slot as well as on an ordinary
+     * variable.
+     */
+    public interface StackStoreOp {
+
+        Value getInput();
+
+        AllocatableValue getResult();
+
+        StackSlotValue getStackSlot();
+    }
+
+    /**
      * A LIR operation that does nothing. If the operation records its position, it can be
      * subsequently {@linkplain #replace(LIR, LIRInstruction) replaced}.
      */

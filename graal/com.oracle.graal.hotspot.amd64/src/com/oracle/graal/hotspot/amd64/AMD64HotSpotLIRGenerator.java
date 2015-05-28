@@ -22,23 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.RegisterValue;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.ForeignCallLinkage;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.VirtualStackSlot;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.PlatformKind;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.PrimitiveConstant;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
@@ -54,6 +37,7 @@ import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreRbpOp;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -66,10 +50,12 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.jvmci.meta.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -99,8 +85,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      */
     class SaveRbp {
 
-        private final NoOp placeholder0;
-        private final NoOp placeholder1;
+        private final NoOp placeholder;
 
         /**
          * The slot reserved for saving RBP.
@@ -113,9 +98,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          */
         private final AllocatableValue rescueSlot;
 
-        public SaveRbp(NoOp placeholder0, NoOp placeholder1) {
-            this.placeholder0 = placeholder0;
-            this.placeholder1 = placeholder1;
+        public SaveRbp(NoOp placeholder0) {
+            this.placeholder = placeholder0;
             AMD64FrameMapBuilder frameMapBuilder = (AMD64FrameMapBuilder) getResult().getFrameMapBuilder();
             this.reservedSlot = frameMapBuilder.allocateRBPSpillSlot();
             this.rescueSlot = newVariable(LIRKind.value(Kind.Long));
@@ -125,21 +109,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          * Replaces this operation with the appropriate move for saving rbp.
          *
          * @param useStack specifies if rbp must be saved to the stack
-         * @return true if an instruction has been remove (i.e. replace by {@code null}).
          */
-        public boolean finalize(boolean useStack) {
-            // move to variable
-            placeholder0.replace(getResult().getLIR(), new MoveFromRegOp(Kind.Long, rescueSlot, rbp.asValue(LIRKind.value(Kind.Long))));
-            // move to stack
-            MoveFromRegOp moveToStack;
+        public void finalize(boolean useStack) {
+            RegisterValue rbpValue = rbp.asValue(LIRKind.value(Kind.Long));
+            LIRInstruction move;
             if (useStack) {
-                moveToStack = new MoveFromRegOp(Kind.Long, reservedSlot, rescueSlot);
+                move = new StoreRbpOp(rescueSlot, rbpValue, reservedSlot);
             } else {
                 ((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).freeRBPSpillSlot();
-                moveToStack = null;
+                move = new MoveFromRegOp(Kind.Long, rescueSlot, rbpValue);
             }
-            placeholder1.replace(getResult().getLIR(), moveToStack);
-            return moveToStack == null;
+            placeholder.replace(getResult().getLIR(), move);
 
         }
 
@@ -151,11 +131,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private SaveRbp saveRbp;
 
     protected void emitSaveRbp() {
-        NoOp placeholder0 = new NoOp(getCurrentBlock(), getResult().getLIR().getLIRforBlock(getCurrentBlock()).size());
-        append(placeholder0);
-        NoOp placeholder1 = new NoOp(getCurrentBlock(), getResult().getLIR().getLIRforBlock(getCurrentBlock()).size());
-        append(placeholder1);
-        saveRbp = new SaveRbp(placeholder0, placeholder1);
+        NoOp placeholder = new NoOp(getCurrentBlock(), getResult().getLIR().getLIRforBlock(getCurrentBlock()).size());
+        append(placeholder);
+        saveRbp = new SaveRbp(placeholder);
     }
 
     protected SaveRbp getSaveRbp() {
@@ -501,7 +479,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void beforeRegisterAllocation() {
         super.beforeRegisterAllocation();
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
-        boolean removedInstruction = saveRbp.finalize(hasDebugInfo);
+        saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
             ((AMD64HotSpotLIRGenerationResult) getResult()).setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
         }
@@ -514,12 +492,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
             instructions.add(1, op);
             Debug.dump(lir, "created rescue dummy op");
-        }
-        if (removedInstruction) {
-            // remove null from instruction list
-            LIR lir = getResult().getLIR();
-            List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
-            instructions.remove(null);
         }
     }
 
