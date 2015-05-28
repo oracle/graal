@@ -63,6 +63,7 @@ public abstract class AssemblerTest extends GraalTest {
             CompilationResult compResult = new CompilationResult();
             byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
             compResult.setTargetCode(targetCode, targetCode.length);
+            compResult.setTotalFrameSize(0);
 
             InstalledCode code = codeCache.addMethod(method, compResult, null, null);
 

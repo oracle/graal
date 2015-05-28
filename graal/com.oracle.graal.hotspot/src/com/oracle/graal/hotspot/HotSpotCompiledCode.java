@@ -36,6 +36,8 @@ import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Site;
+import com.oracle.graal.api.meta.Assumptions.Assumption;
+import com.oracle.graal.api.meta.*;
 
 /**
  * A {@link CompilationResult} with additional HotSpot-specific information required for installing
@@ -43,15 +45,27 @@ import com.oracle.graal.api.code.CompilationResult.Site;
  */
 public abstract class HotSpotCompiledCode {
 
-    public final CompilationResult comp;
-
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
     public final Comment[] comments;
+    public final Assumption[] assumptions;
+
+    public final byte[] targetCode;
+    public final int targetCodeSize;
 
     public final byte[] dataSection;
     public final int dataSectionAlignment;
     public final DataPatch[] dataSectionPatches;
+
+    public final int totalFrameSize;
+    public final int customStackAreaOffset;
+
+    /**
+     * The list of the methods whose bytecodes were used as input to the compilation. If
+     * {@code null}, then the compilation did not record method dependencies. Otherwise, the first
+     * element of this array is the root method of the compilation.
+     */
+    public final ResolvedJavaMethod[] methods;
 
     public static class Comment {
 
@@ -65,7 +79,6 @@ public abstract class HotSpotCompiledCode {
     }
 
     public HotSpotCompiledCode(CompilationResult compResult) {
-        this.comp = compResult;
         sites = getSortedSites(compResult);
         if (compResult.getExceptionHandlers().isEmpty()) {
             exceptionHandlers = null;
@@ -90,7 +103,11 @@ public abstract class HotSpotCompiledCode {
                 comments[i] = new Comment(annotation.position, text);
             }
         }
+        assumptions = compResult.getAssumptions();
         assert validateFrames();
+
+        targetCode = compResult.getTargetCode();
+        targetCodeSize = compResult.getTargetCodeSize();
 
         DataSection data = compResult.getDataSection();
         data.finalizeLayout();
@@ -102,6 +119,11 @@ public abstract class HotSpotCompiledCode {
 
         dataSectionAlignment = data.getSectionAlignment();
         dataSectionPatches = patchBuilder.build().toArray(len -> new DataPatch[len]);
+
+        totalFrameSize = compResult.getTotalFrameSize();
+        customStackAreaOffset = compResult.getCustomStackAreaOffset();
+
+        methods = compResult.getMethods();
     }
 
     /**
