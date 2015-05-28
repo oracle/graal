@@ -32,7 +32,8 @@ import com.oracle.jvmci.runtime.*;
 @ServiceProvider(OptionsParsed.class)
 class GraalDebugConfigOptionsParsed implements OptionsParsed {
 
-    public void apply() {
+    @Override
+    public void run() {
         assert !Debug.Initialization.isDebugInitialized();
         if (GraalDebugConfig.areDebugScopePatternsEnabled()) {
             System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
