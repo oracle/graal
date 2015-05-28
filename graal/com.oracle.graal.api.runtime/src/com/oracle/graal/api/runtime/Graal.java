@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.api.runtime;
 
+import java.io.*;
 import java.util.*;
 
 import sun.reflect.*;
@@ -42,9 +43,22 @@ public class Graal {
             rt = factory.getRuntime();
         }
         if (rt != null) {
+            updateGraalVersionProperty();
             return rt;
         }
         return new InvalidGraalRuntime();
+    }
+
+    private static void updateGraalVersionProperty() {
+        try {
+            InputStream s = Graal.class.getResourceAsStream("graal.version");
+            byte[] buf = new byte[s.available()];
+            new DataInputStream(s).readFully(buf);
+            String version = new String(buf);
+            System.setProperty("graal.version", version);
+        } catch (IOException e) {
+            throw new InternalError(e);
+        }
     }
 
     /**

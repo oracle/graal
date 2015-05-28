@@ -31,7 +31,6 @@ import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 import java.util.*;
 
-
 /**
  * Reflection operations on values represented as {@linkplain JavaConstant constants} for the
  * processing of snippets. Snippets need a direct access to the value of object constants, which is
@@ -93,7 +92,7 @@ public interface SnippetReflectionProvider {
         try {
             return Class.forName(type.toClassName());
         } catch (ClassNotFoundException e) {
-            // Support for -XX:-UseGraalClassLoader
+            // Support for -XX:-UseJVMCIClassLoader
             return Class.forName(type.toClassName(), false, ClassLoader.getSystemClassLoader());
         }
     }

@@ -73,7 +73,7 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         }
 
         // address for counters array
-        AMD64Address countersArrayAddr = new AMD64Address(thread, config.graalCountersThreadOffset);
+        AMD64Address countersArrayAddr = new AMD64Address(thread, config.jvmciCountersThreadOffset);
         Register countersArrayReg = scratch;
 
         // backup scratch register

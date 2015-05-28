@@ -139,7 +139,7 @@ public class BenchmarkCounters {
             }
         }
         assert counter.group.equals(group) : "mismatching groups: " + counter.group + " vs. " + group;
-        int countersSize = config.graalCountersSize;
+        int countersSize = config.jvmciCountersSize;
         if (counter.index >= countersSize) {
             throw new JVMCIError("too many counters, reduce number of counters or increase -XX:GraalCounterSize=... (current value: " + countersSize + ")");
         }

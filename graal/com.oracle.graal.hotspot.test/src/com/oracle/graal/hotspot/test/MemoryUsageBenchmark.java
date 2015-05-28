@@ -43,13 +43,13 @@ import com.oracle.jvmci.hotspot.*;
  * To benchmark:
  *
  * <pre>
- *     mx vm -XX:-UseGraalClassLoader -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
+ *     mx vm -XX:-UseJVMCIClassLoader -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
  * </pre>
  *
  * Memory analysis for a {@link CompileTheWorld} execution can also be performed. For example:
  *
  * <pre>
- *     mx --vm server vm -XX:-UseGraalClassLoader -G:CompileTheWorldClasspath=$HOME/SPECjvm2008/SPECjvm2008.jar -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
+ *     mx --vm server vm -XX:-UseJVMCIClassLoader -G:CompileTheWorldClasspath=$HOME/SPECjvm2008/SPECjvm2008.jar -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
  * </pre>
  */
 public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {

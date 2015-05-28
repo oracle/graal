@@ -60,7 +60,7 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
         TargetDescription target = crb.target;
 
         // address for counters array
-        SPARCAddress countersArrayAddr = new SPARCAddress(thread, config.graalCountersThreadOffset);
+        SPARCAddress countersArrayAddr = new SPARCAddress(thread, config.jvmciCountersThreadOffset);
         try (ScratchRegister scratch = masm.getScratchRegister()) {
             Register countersArrayReg = scratch.getRegister();
 

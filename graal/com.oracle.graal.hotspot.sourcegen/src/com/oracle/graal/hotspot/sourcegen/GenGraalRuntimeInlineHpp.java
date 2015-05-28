@@ -100,8 +100,8 @@ public class GenGraalRuntimeInlineHpp {
     }
 
     /**
-     * Generates code for {@code GraalRuntime::set_option()} and
-     * {@code GraalRuntime::set_option_bool()}.
+     * Generates code for {@code JVMCIRuntime::set_option()} and
+     * {@code JVMCIRuntime::set_option_bool()}.
      */
     private static void genSetOption(PrintStream out) throws Exception {
         SortedMap<String, OptionDescriptor> options = getOptions();
@@ -112,12 +112,12 @@ public class GenGraalRuntimeInlineHpp {
         }
         lengths.add("PrintFlags".length());
 
-        out.println("bool GraalRuntime::set_option_bool(KlassHandle hotSpotOptionsClass, char* name, size_t name_len, char value, TRAPS) {");
+        out.println("bool JVMCIRuntime::set_option_bool(KlassHandle hotSpotOptionsClass, char* name, size_t name_len, char value, TRAPS) {");
         out.println("  bool check_only = hotSpotOptionsClass.is_null();");
         genMatchers(out, lengths, options, true);
         out.println("  return false;");
         out.println("}");
-        out.println("bool GraalRuntime::set_option(KlassHandle hotSpotOptionsClass, char* name, size_t name_len, const char* value, TRAPS) {");
+        out.println("bool JVMCIRuntime::set_option(KlassHandle hotSpotOptionsClass, char* name, size_t name_len, const char* value, TRAPS) {");
         out.println("  bool check_only = hotSpotOptionsClass.is_null();");
         genMatchers(out, lengths, options, false);
         out.println("  return false;");

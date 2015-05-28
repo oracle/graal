@@ -301,7 +301,7 @@ public class CompilationTask {
             }
 
             if (graalEnv != 0) {
-                long ctask = unsafe.getAddress(graalEnv + config.graalEnvTaskOffset);
+                long ctask = unsafe.getAddress(graalEnv + config.jvmciEnvTaskOffset);
                 assert ctask != 0L;
                 unsafe.putInt(ctask + config.compileTaskNumInlinedBytecodesOffset, compiledBytecodes);
             }
@@ -324,7 +324,7 @@ public class CompilationTask {
         if (config.ciTime || config.ciTimeEach || CompiledBytecodes.isEnabled()) {
             return false;
         }
-        if (graalEnv == 0 || unsafe.getByte(graalEnv + config.graalEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
+        if (graalEnv == 0 || unsafe.getByte(graalEnv + config.jvmciEnvJvmtiCanHotswapOrPostBreakpointOffset) != 0) {
             return false;
         }
         return true;
