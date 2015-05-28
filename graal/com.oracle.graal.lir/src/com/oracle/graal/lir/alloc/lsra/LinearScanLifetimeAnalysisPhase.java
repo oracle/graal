@@ -46,6 +46,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
@@ -319,7 +320,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             * 
+                             *
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */
@@ -561,6 +562,12 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 interval.setSpillSlot(slot);
                 interval.assignLocation(slot);
             }
+        } else if (op instanceof StackStoreOp) {
+            StackStoreOp store = (StackStoreOp) op;
+            StackSlot slot = asStackSlot(store.getStackSlot());
+            Interval interval = allocator.intervalFor(store.getResult());
+            interval.setSpillSlot(slot);
+            interval.setSpillState(SpillState.StartInMemory);
         }
     }
 
@@ -644,6 +651,8 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             if (label.isPhiIn()) {
                 return RegisterPriority.None;
             }
+        } else if (op instanceof StackStoreOp) {
+            return RegisterPriority.ShouldHaveRegister;
         }
 
         // all other operands require a register
