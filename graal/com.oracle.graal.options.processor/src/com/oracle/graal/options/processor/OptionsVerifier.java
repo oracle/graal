@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sourcegen;
+package com.oracle.graal.options.processor;
 
 import static java.lang.String.*;
 
