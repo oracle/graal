@@ -25,6 +25,7 @@ package com.oracle.graal.lir.alloc.lsra;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.gen.*;
@@ -40,7 +41,8 @@ final class LinearScanRegisterAllocationPhase extends AllocationPhase {
     }
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
         allocator.printIntervals("Before register allocation");
         allocateRegisters();
         allocator.printIntervals("After register allocation");

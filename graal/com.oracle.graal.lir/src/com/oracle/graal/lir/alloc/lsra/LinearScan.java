@@ -621,13 +621,14 @@ class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-    <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
+    <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
-            AllocationContext context = new AllocationContext(spillMoveFactory);
+            AllocationContext context = new AllocationContext(spillMoveFactory, registerAllocationConfig);
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 

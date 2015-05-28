@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sourcegen;
+package com.oracle.graal.options.processor;
 
 import static java.lang.String.*;
 
@@ -31,7 +31,6 @@ import java.util.*;
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 
-import com.oracle.graal.hotspot.sourcegen.GenGraalRuntimeInlineHpp.GraalJars;
 import com.oracle.graal.options.*;
 
 /**

@@ -34,23 +34,18 @@ public class OptionUtils {
      * Parses a given option value specification.
      *
      * @param option the specification of an option and its value
-     * @param setter the object to notify of the parsed option and value. If null, the
-     *            {@link OptionValue#setValue(Object)} method of the specified option is called
-     *            instead.
+     * @param setter the object to notify of the parsed option and value.
      */
-    public static boolean parseOption(SortedMap<String, OptionDescriptor> options, String option, String prefix, OptionConsumer setter) {
+    public static void parseOption(String option, OptionConsumer setter) {
+        SortedMap<String, OptionDescriptor> options = OptionsLoader.options;
+        Objects.requireNonNull(setter);
         if (option.length() == 0) {
-            return false;
+            return;
         }
 
         Object value = null;
         String optionName = null;
         String valueString = null;
-
-        if (option.equals("+PrintFlags")) {
-            printFlags(options, prefix);
-            return true;
-        }
 
         char first = option.charAt(0);
         if (first == '+' || first == '-') {
@@ -69,21 +64,18 @@ public class OptionUtils {
 
         OptionDescriptor desc = options.get(optionName);
         if (desc == null) {
-            printNoMatchMessage(options, optionName, prefix);
-            return false;
+            throw new IllegalArgumentException("Option '" + optionName + "' not found");
         }
 
         Class<?> optionType = desc.getType();
 
         if (value == null) {
             if (optionType == Boolean.TYPE || optionType == Boolean.class) {
-                System.err.println("Value for boolean option '" + optionName + "' must use '" + prefix + "+" + optionName + "' or '" + prefix + "-" + optionName + "' format");
-                return false;
+                throw new IllegalArgumentException("Boolean option '" + optionName + "' must use +/- prefix");
             }
 
             if (valueString == null) {
-                System.err.println("Value for option '" + optionName + "' must use '" + prefix + optionName + "=<value>' format");
-                return false;
+                throw new IllegalArgumentException("Missing value for non-boolean option '" + optionName + "' must use " + optionName + "=<value> format");
             }
 
             if (optionType == Float.class) {
@@ -96,28 +88,16 @@ public class OptionUtils {
                 value = Long.valueOf(parseLong(valueString));
             } else if (optionType == String.class) {
                 value = valueString;
+            } else {
+                throw new IllegalArgumentException("Wrong value for option '" + optionName + "'");
             }
         } else {
             if (optionType != Boolean.class) {
-                System.err.println("Value for option '" + optionName + "' must use '" + prefix + optionName + "=<value>' format");
-                return false;
+                throw new IllegalArgumentException("Non-boolean option '" + optionName + "' can not use +/- prefix. Use " + optionName + "=<value> format");
             }
         }
 
-        if (value != null) {
-            if (setter != null) {
-                setter.set(desc, value);
-            } else {
-                OptionValue<?> optionValue = desc.getOptionValue();
-                optionValue.setValue(value);
-                // System.err.println("Set option " + desc.getName() + " to " + value);
-            }
-        } else {
-            System.err.println("Wrong value \"" + valueString + "\" for option " + optionName);
-            return false;
-        }
-
-        return true;
+        setter.set(desc, value);
     }
 
     private static long parseLong(String v) {
@@ -139,27 +119,6 @@ public class OptionUtils {
         }
 
         return Long.parseLong(valueString) * scale;
-    }
-
-    public static void printNoMatchMessage(SortedMap<String, OptionDescriptor> options, String optionName, String prefix) {
-        OptionDescriptor desc = options.get(optionName);
-        if (desc != null) {
-            if (desc.getType() == Boolean.class) {
-                System.err.println("Boolean option " + optionName + " must be prefixed with '+' or '-'");
-            } else {
-                System.err.println(desc.getType().getSimpleName() + " option " + optionName + " must not be prefixed with '+' or '-'");
-            }
-        } else {
-            System.err.println("Could not find option " + optionName + " (use " + prefix + "+PrintFlags to see options)");
-            List<OptionDescriptor> matches = fuzzyMatch(options, optionName);
-            if (!matches.isEmpty()) {
-                System.err.println("Did you mean one of the following?");
-                for (OptionDescriptor match : matches) {
-                    boolean isBoolean = match.getType() == Boolean.class;
-                    System.err.println(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
-                }
-            }
-        }
     }
 
     /**
@@ -219,39 +178,5 @@ public class OptionUtils {
         }
 
         System.exit(0);
-    }
-
-    /**
-     * Compute string similarity based on Dice's coefficient.
-     *
-     * Ported from str_similar() in globals.cpp.
-     */
-    static float stringSimiliarity(String str1, String str2) {
-        int hit = 0;
-        for (int i = 0; i < str1.length() - 1; ++i) {
-            for (int j = 0; j < str2.length() - 1; ++j) {
-                if ((str1.charAt(i) == str2.charAt(j)) && (str1.charAt(i + 1) == str2.charAt(j + 1))) {
-                    ++hit;
-                    break;
-                }
-            }
-        }
-        return 2.0f * hit / (str1.length() + str2.length());
-    }
-
-    private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
-
-    /**
-     * Returns the set of options that fuzzy match a given option name.
-     */
-    private static List<OptionDescriptor> fuzzyMatch(SortedMap<String, OptionDescriptor> options, String optionName) {
-        List<OptionDescriptor> matches = new ArrayList<>();
-        for (Map.Entry<String, OptionDescriptor> e : options.entrySet()) {
-            float score = stringSimiliarity(e.getKey(), optionName);
-            if (score >= FUZZY_MATCH_THRESHOLD) {
-                matches.add(e.getValue());
-            }
-        }
-        return matches;
     }
 }

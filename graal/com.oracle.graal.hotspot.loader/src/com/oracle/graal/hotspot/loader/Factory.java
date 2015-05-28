@@ -28,7 +28,7 @@ import java.util.*;
 
 /**
  * Utility to create and register a separate class loader for loading Graal classes (i.e., those in
- * found in lib/graal/graal*.jar).
+ * found in jars in lib/graal).
  */
 public class Factory {
 
@@ -69,7 +69,7 @@ public class Factory {
 
         List<URL> urls = new ArrayList<>();
         for (String fileName : graal.list()) {
-            if (fileName.startsWith("graal") && fileName.endsWith(".jar")) {
+            if (fileName.endsWith(".jar")) {
                 File file = new File(graal, fileName);
                 if (file.isDirectory()) {
                     continue;

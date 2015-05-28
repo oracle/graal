@@ -36,6 +36,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -322,6 +323,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 assert !frameMap.accessesCallerFrame();
             }
         }
+    }
+
+    @Override
+    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
+        RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
+        return new AMD64HotSpotRegisterAllocationConfig(registerConfigNonNull);
     }
 
 }

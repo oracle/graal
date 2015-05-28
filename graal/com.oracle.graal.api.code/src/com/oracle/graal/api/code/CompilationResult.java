@@ -602,11 +602,10 @@ public class CompilationResult {
     }
 
     /**
-     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the assumptions made during
-     * compilation.
+     * Gets the assumptions made during compilation.
      */
-    public Collection<Assumption> getAssumptions() {
-        return assumptions == null ? Collections.emptyList() : Arrays.asList(assumptions);
+    public Assumption[] getAssumptions() {
+        return assumptions;
     }
 
     /**
@@ -641,15 +640,14 @@ public class CompilationResult {
     }
 
     /**
-     * Gets a fixed-size {@linkplain Arrays#asList(Object...) view} of the methods whose bytecodes
-     * were used as input to the compilation.
+     * Gets the methods whose bytecodes were used as input to the compilation.
      *
      * @return {@code null} if the compilation did not record method dependencies otherwise the
      *         methods whose bytecodes were used as input to the compilation with the first element
      *         being the root method of the compilation
      */
-    public Collection<ResolvedJavaMethod> getMethods() {
-        return methods == null ? null : Arrays.asList(methods);
+    public ResolvedJavaMethod[] getMethods() {
+        return methods;
     }
 
     public DataSection getDataSection() {

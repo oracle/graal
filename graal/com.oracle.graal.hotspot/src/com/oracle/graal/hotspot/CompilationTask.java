@@ -29,7 +29,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.UnsafeAccess.*;
 import static com.oracle.graal.debug.Debug.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.InitTimer.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 
@@ -61,15 +60,6 @@ import com.oracle.graal.printer.*;
 //JaCoCo Exclude
 
 public class CompilationTask {
-
-    static {
-        try (InitTimer t = timer("initialize CompilationTask")) {
-            // Must be first to ensure any options accessed by the rest of the class
-            // initializer are initialized from the command line.
-            HotSpotOptions.initialize();
-        }
-    }
-
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
 
     private final HotSpotBackend backend;

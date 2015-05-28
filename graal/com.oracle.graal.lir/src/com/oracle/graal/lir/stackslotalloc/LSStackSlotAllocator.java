@@ -30,6 +30,7 @@ import java.util.function.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -69,7 +70,8 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     private static final DebugTimer AssignSlotsTimer = Debug.timer("LSStackSlotAllocator[AssignSlots]");
 
     @Override
-    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory) {
+    protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
+                    RegisterAllocationConfig registerAllocationConfig) {
         lirGenRes.buildFrameMap(this);
     }
 

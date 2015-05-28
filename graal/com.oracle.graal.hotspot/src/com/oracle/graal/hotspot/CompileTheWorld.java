@@ -40,7 +40,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -120,14 +119,12 @@ public final class CompileTheWorld {
          *
          * @param options a space separated set of option value settings with each option setting in
          *            a format compatible with
-         *            {@link HotSpotOptions#parseOption(String, OptionConsumer)}. Ignored if null.
+         *            {@link OptionUtils#parseOption(String, OptionConsumer)}. Ignored if null.
          */
         public Config(String options) {
             if (options != null) {
                 for (String option : options.split("\\s+")) {
-                    if (!HotSpotOptions.parseOption(option, this)) {
-                        throw new GraalInternalError("Invalid option specified: %s", option);
-                    }
+                    OptionUtils.parseOption(option, this);
                 }
             }
         }
@@ -213,7 +210,7 @@ public final class CompileTheWorld {
      */
     public void compile() throws Throwable {
         // By default only report statistics for the CTW threads themselves
-        if (GraalDebugConfig.DebugValueThreadFilter.hasInitialValue()) {
+        if (GraalDebugConfig.DebugValueThreadFilter.hasDefaultValue()) {
             GraalDebugConfig.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
 

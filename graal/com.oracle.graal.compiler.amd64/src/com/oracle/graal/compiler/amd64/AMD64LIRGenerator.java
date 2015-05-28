@@ -1269,20 +1269,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             assert inputVal.getKind().getStackKind() == Kind.Int;
 
             LIRKind resultKind = LIRKind.derive(inputVal);
-            OperandSize resultSize;
             if (toBits > 32) {
                 resultKind = resultKind.changeType(Kind.Long);
-                resultSize = QWORD;
             } else {
                 resultKind = resultKind.changeType(Kind.Int);
-                resultSize = DWORD;
             }
 
+            /*
+             * Always emit DWORD operations, even if the resultKind is Long. On AMD64, all DWORD
+             * operations implicitly set the upper half of the register to 0, which is what we want
+             * anyway. Compared to the QWORD oparations, the encoding of the DWORD operations is
+             * sometimes one byte shorter.
+             */
             switch (fromBits) {
                 case 8:
-                    return emitConvertOp(resultKind, MOVZXB, resultSize, inputVal);
+                    return emitConvertOp(resultKind, MOVZXB, DWORD, inputVal);
                 case 16:
-                    return emitConvertOp(resultKind, MOVZX, resultSize, inputVal);
+                    return emitConvertOp(resultKind, MOVZX, DWORD, inputVal);
                 case 32:
                     return emitConvertOp(resultKind, MOV, DWORD, inputVal);
             }

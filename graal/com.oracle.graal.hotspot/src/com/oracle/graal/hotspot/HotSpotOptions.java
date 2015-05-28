@@ -23,13 +23,11 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.hotspot.HotSpotOptionsLoader.*;
-import static java.lang.Double.*;
+import static com.oracle.graal.options.OptionsLoader.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionUtils.OptionConsumer;
 
 //JaCoCo Exclude
 
@@ -41,14 +39,7 @@ public class HotSpotOptions {
 
     private static final String GRAAL_OPTION_PREFIX = "-G:";
 
-    /**
-     * Parses the Graal specific options specified to HotSpot (e.g., on the command line).
-     */
-    private static native void parseVMOptions();
-
     static {
-        parseVMOptions();
-
         assert !Debug.Initialization.isDebugInitialized() : "The class " + Debug.class.getName() + " must not be initialized before the Graal runtime has been initialized. " +
                         "This can be fixed by placing a call to " + Graal.class.getName() + ".runtime() on the path that triggers initialization of " + Debug.class.getName();
         if (areDebugScopePatternsEnabled()) {
@@ -65,57 +56,9 @@ public class HotSpotOptions {
         }
     }
 
-    /**
-     * Ensures {@link HotSpotOptions} is initialized.
-     */
-    public static void initialize() {
+    static void printFlags() {
+        OptionUtils.printFlags(options, GRAAL_OPTION_PREFIX);
     }
 
-    /**
-     * Helper for the VM code called by {@link #parseVMOptions()}.
-     *
-     * @param name the name of a parsed option
-     * @param option the object encapsulating the option
-     * @param spec specification of boolean option value, type of option value or action to take
-     */
-    static void setOption(String name, OptionValue<?> option, char spec, String stringValue, long primitiveValue) {
-        switch (spec) {
-            case '+':
-                option.setValue(Boolean.TRUE);
-                break;
-            case '-':
-                option.setValue(Boolean.FALSE);
-                break;
-            case '?':
-                OptionUtils.printFlags(options, GRAAL_OPTION_PREFIX);
-                break;
-            case ' ':
-                OptionUtils.printNoMatchMessage(options, name, GRAAL_OPTION_PREFIX);
-                break;
-            case 'i':
-                option.setValue((int) primitiveValue);
-                break;
-            case 'f':
-                option.setValue((float) longBitsToDouble(primitiveValue));
-                break;
-            case 'd':
-                option.setValue(longBitsToDouble(primitiveValue));
-                break;
-            case 's':
-                option.setValue(stringValue);
-                break;
-        }
-    }
-
-    /**
-     * Parses a given option value specification.
-     *
-     * @param option the specification of an option and its value
-     * @param setter the object to notify of the parsed option and value. If null, the
-     *            {@link OptionValue#setValue(Object)} method of the specified option is called
-     *            instead.
-     */
-    public static boolean parseOption(String option, OptionConsumer setter) {
-        return OptionUtils.parseOption(options, option, GRAAL_OPTION_PREFIX, setter);
-    }
+    public native Object getOptionValue(String optionName);
 }
