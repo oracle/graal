@@ -23,19 +23,17 @@
 package com.oracle.graal.compiler;
 
 import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.runtime.*;
 import com.oracle.jvmci.service.*;
 
 /**
- * Implementation of {@link OptionsParsed} for setting system properties used in the initialization
- * of {@link Debug} based on the values specified for various {@link GraalDebugConfig} options.
+ * Sets system properties used in the initialization of {@link Debug} based on the values specified
+ * for various {@link GraalDebugConfig} options.
  */
-@ServiceProvider(OptionsParsed.class)
-class GraalDebugConfigOptionsParsed implements OptionsParsed {
+@ServiceProvider(DebugInitializationPropertyProvider.class)
+class GraalDebugInitializationPropertyProvider implements DebugInitializationPropertyProvider {
 
     @Override
-    public void run() {
-        assert !Debug.Initialization.isDebugInitialized();
+    public void apply() {
         if (GraalDebugConfig.areDebugScopePatternsEnabled()) {
             System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
         }
