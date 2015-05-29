@@ -22,12 +22,6 @@
  */
 package com.oracle.graal.truffle.test;
 
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.ResolvedJavaField;
 import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.*;
 import static org.hamcrest.core.IsInstanceOf.*;
@@ -49,6 +43,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.substitutions.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.unsafe.*;
 
@@ -146,7 +141,6 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         TruffleGraphBuilderPlugins.registerUnsafeAccessImplPlugins(conf.getPlugins().getInvocationPlugins(), false);
         // get UnsafeAccess.getInt inlined
         conf.getPlugins().setInlineInvokePlugin(new InlineEverythingPlugin());
-        conf.getPlugins().setLoadFieldPlugin(new FoldLoadsPlugins(getMetaAccess(), getConstantReflection()));
         return super.editGraphBuilderConfiguration(conf);
     }
 
@@ -154,28 +148,6 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
             assert method.hasBytecodes();
             return new InlineInfo(method, false);
-        }
-    }
-
-    private static final class FoldLoadsPlugins implements LoadFieldPlugin {
-        private final MetaAccessProvider metaAccess;
-        private final ConstantReflectionProvider constantReflection;
-
-        public FoldLoadsPlugins(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-            this.metaAccess = metaAccess;
-            this.constantReflection = constantReflection;
-        }
-
-        public boolean apply(GraphBuilderContext graphBuilderContext, ValueNode receiver, ResolvedJavaField field) {
-            if (receiver.isConstant()) {
-                JavaConstant asJavaConstant = receiver.asJavaConstant();
-                return tryConstantFold(graphBuilderContext, metaAccess, constantReflection, field, asJavaConstant);
-            }
-            return false;
-        }
-
-        public boolean apply(GraphBuilderContext graphBuilderContext, ResolvedJavaField staticField) {
-            return tryConstantFold(graphBuilderContext, metaAccess, constantReflection, staticField, null);
         }
     }
 }

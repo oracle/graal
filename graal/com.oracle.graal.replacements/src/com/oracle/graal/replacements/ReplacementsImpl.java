@@ -105,7 +105,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return null;
         }
         if (b.parsingIntrinsic()) {
-            assert !hasGenericInvocationPluginAnnotation(method) : format("%s should have been handled by %s", method.format("%H.%n(%p)"), DefaultGenericInvocationPlugin.class.getName());
+            assert !hasGenericInvocationPluginAnnotation(method) : format("%s should have been handled by %s", method.format("%H.%n(%p)"), NodeIntrinsificationPlugin.class.getName());
 
             assert b.getDepth() < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
 

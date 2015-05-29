@@ -22,26 +22,28 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Extends {@link WordOperationPlugin} to handle {@linkplain HotSpotOperation HotSpot word
@@ -53,7 +55,18 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
     }
 
     @Override
-    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index) {
+        ResolvedJavaType arrayType = StampTool.typeOrNull(array);
+        Stamp componentStamp = wordTypes.getWordStamp(arrayType.getComponentType());
+        if (componentStamp instanceof MetaspacePointerStamp) {
+            return new LoadIndexedPointerNode(componentStamp, array, index);
+        } else {
+            return super.createLoadIndexedNode(array, index);
+        }
+    }
+
+    @Override
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         if (!wordTypes.isWordOperation(method)) {
             return false;
         }
@@ -67,7 +80,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
         return true;
     }
 
-    public void processHotSpotWordOperation(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, HotSpotOperation operation) {
+    protected void processHotSpotWordOperation(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, HotSpotOperation operation) {
         Kind returnKind = method.getSignature().getReturnKind();
         switch (operation.opcode()) {
             case POINTER_EQ:

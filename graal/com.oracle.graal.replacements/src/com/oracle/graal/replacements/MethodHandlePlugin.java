@@ -30,17 +30,15 @@ import com.oracle.graal.replacements.nodes.*;
 import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 
-public class MethodHandleInvocationPlugin implements GenericInvocationPlugin {
+public class MethodHandlePlugin implements NodePlugin {
     private final MethodHandleAccessProvider methodHandleAccess;
-    private final GenericInvocationPlugin delegate;
 
-    public MethodHandleInvocationPlugin(MethodHandleAccessProvider methodHandleAccess, GenericInvocationPlugin delegate) {
+    public MethodHandlePlugin(MethodHandleAccessProvider methodHandleAccess) {
         this.methodHandleAccess = methodHandleAccess;
-        this.delegate = delegate;
     }
 
     @Override
-    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         IntrinsicMethod intrinsicMethod = methodHandleAccess.lookupMethodHandleIntrinsic(method);
         if (intrinsicMethod != null) {
             InvokeKind invokeKind = b.getInvokeKind();
@@ -67,6 +65,6 @@ public class MethodHandleInvocationPlugin implements GenericInvocationPlugin {
             }
             return true;
         }
-        return delegate.apply(b, method, args);
+        return false;
     }
 }

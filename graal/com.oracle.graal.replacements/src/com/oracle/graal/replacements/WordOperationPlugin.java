@@ -34,7 +34,9 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
@@ -43,10 +45,10 @@ import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;
 
 /**
- * A {@link GenericInvocationPlugin} for calls to {@linkplain Operation word operations}, and a
- * {@link TypeCheckPlugin} to handle casts between word types.
+ * A plugin for calls to {@linkplain Operation word operations}, as well as all other nodes that
+ * need special handling for {@link Word} types.
  */
-public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPlugin {
+public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineInvokePlugin {
     protected final WordTypes wordTypes;
     protected final Kind wordKind;
     protected final SnippetReflectionProvider snippetReflection;
@@ -64,7 +66,8 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
      * @return {@code true} iff {@code method} is annotated with {@link Operation} (and was thus
      *         processed by this method)
      */
-    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    @Override
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         if (!wordTypes.isWordOperation(method)) {
             return false;
         }
@@ -73,7 +76,79 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
     }
 
     @Override
-    public boolean checkCast(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
+    public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
+        ResolvedJavaType type = StampTool.typeOrNull(stamp);
+        if (wordTypes.isWord(type)) {
+            return new ParameterNode(index, wordTypes.getWordStamp(type));
+        }
+        return null;
+    }
+
+    @Override
+    public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
+        if (wordTypes.isWord(invoke.asNode())) {
+            invoke.asNode().setStamp(wordTypes.getWordStamp(StampTool.typeOrNull(invoke.asNode())));
+        }
+    }
+
+    @Override
+    public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
+        if (field.getType() instanceof ResolvedJavaType && wordTypes.isWord((ResolvedJavaType) field.getType())) {
+            LoadFieldNode loadFieldNode = new LoadFieldNode(receiver, field);
+            loadFieldNode.setStamp(wordTypes.getWordStamp((ResolvedJavaType) field.getType()));
+            b.addPush(field.getKind(), loadFieldNode);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField staticField) {
+        return handleLoadField(b, null, staticField);
+    }
+
+    @Override
+    public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind) {
+        ResolvedJavaType arrayType = StampTool.typeOrNull(array);
+        /*
+         * There are cases where the array does not have a known type yet, i.e., the type is null.
+         * In that case we assume it is not a word type.
+         */
+        if (arrayType != null && wordTypes.isWord(arrayType.getComponentType())) {
+            assert elementKind == Kind.Object;
+            b.addPush(elementKind, createLoadIndexedNode(array, index));
+            return true;
+        }
+        return false;
+    }
+
+    protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index) {
+        return new LoadIndexedNode(array, index, wordTypes.getWordKind());
+    }
+
+    @Override
+    public boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+        ResolvedJavaType arrayType = StampTool.typeOrNull(array);
+        if (arrayType != null && wordTypes.isWord(arrayType.getComponentType())) {
+            assert elementKind == Kind.Object;
+            if (value.getKind() != wordTypes.getWordKind()) {
+                throw b.bailout("Cannot store a non-word value into a word array: " + arrayType.toJavaName(true));
+            }
+            b.add(createStoreIndexedNode(array, index, value));
+            return true;
+        }
+        if (elementKind == Kind.Object && value.getKind() == wordTypes.getWordKind()) {
+            throw b.bailout("Cannot store a word value into a non-word array: " + arrayType.toJavaName(true));
+        }
+        return false;
+    }
+
+    protected StoreIndexedNode createStoreIndexedNode(ValueNode array, ValueNode index, ValueNode value) {
+        return new StoreIndexedNode(array, index, wordTypes.getWordKind(), value);
+    }
+
+    @Override
+    public boolean handleCheckCast(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
         if (!wordTypes.isWord(type)) {
             if (object.getKind() != Kind.Object) {
                 throw b.bailout("Cannot cast a word value to a non-word type: " + type.toJavaName(true));
@@ -89,7 +164,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
     }
 
     @Override
-    public boolean instanceOf(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
+    public boolean handleInstanceOf(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
         if (wordTypes.isWord(type)) {
             throw b.bailout("Cannot use instanceof for word a type: " + type.toJavaName(true));
         } else if (object.getKind() != Kind.Object) {

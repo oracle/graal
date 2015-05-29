@@ -73,16 +73,15 @@ public class HotSpotGraphBuilderPlugins {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, metaAccess);
 
         Plugins plugins = new Plugins(invocationPlugins);
-        NodeIntrinsificationPhase nodeIntrinsification = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
+        NodeIntrinsificationPhase nodeIntrinsificationPhase = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
+        NodeIntrinsificationPlugin nodeIntrinsificationPlugin = new NodeIntrinsificationPlugin(metaAccess, nodeIntrinsificationPhase, wordTypes, false);
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
+        HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(metaAccess, constantReflection, wordOperationPlugin, nodeIntrinsificationPlugin);
 
-        plugins.setParameterPlugin(new HotSpotParameterPlugin(wordTypes));
-        plugins.setLoadFieldPlugin(new HotSpotLoadFieldPlugin(metaAccess, constantReflection));
-        plugins.setLoadIndexedPlugin(new HotSpotLoadIndexedPlugin(wordTypes));
-        plugins.setTypeCheckPlugin(wordOperationPlugin);
+        plugins.setParameterPlugin(nodePlugin);
+        plugins.appendNodePlugin(nodePlugin);
+        plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess()));
         plugins.setInlineInvokePlugin(new DefaultInlineInvokePlugin(replacements));
-        plugins.setGenericInvocationPlugin(new MethodHandleInvocationPlugin(constantReflection.getMethodHandleAccess(), new DefaultGenericInvocationPlugin(metaAccess, nodeIntrinsification,
-                        wordOperationPlugin)));
 
         registerObjectPlugins(invocationPlugins);
         registerClassPlugins(plugins);

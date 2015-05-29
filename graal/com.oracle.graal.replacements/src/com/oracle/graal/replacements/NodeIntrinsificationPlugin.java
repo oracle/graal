@@ -41,19 +41,18 @@ import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;
 
 /**
- * An {@link GenericInvocationPlugin} that handles methods annotated by {@link Fold},
- * {@link NodeIntrinsic} and all annotations supported by a given {@link WordOperationPlugin}.
+ * An {@link NodePlugin} that handles methods annotated by {@link Fold} and {@link NodeIntrinsic}.
  */
-public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
+public class NodeIntrinsificationPlugin implements NodePlugin {
     protected final NodeIntrinsificationPhase nodeIntrinsification;
-    protected final WordOperationPlugin wordOperationPlugin;
-
+    private final WordTypes wordTypes;
     private final ResolvedJavaType structuralInputType;
+    private final boolean mustIntrinsify;
 
-    public DefaultGenericInvocationPlugin(MetaAccessProvider metaAccess, NodeIntrinsificationPhase nodeIntrinsification, WordOperationPlugin wordOperationPlugin) {
+    public NodeIntrinsificationPlugin(MetaAccessProvider metaAccess, NodeIntrinsificationPhase nodeIntrinsification, WordTypes wordTypes, boolean mustIntrinsify) {
         this.nodeIntrinsification = nodeIntrinsification;
-        this.wordOperationPlugin = wordOperationPlugin;
-
+        this.wordTypes = wordTypes;
+        this.mustIntrinsify = mustIntrinsify;
         this.structuralInputType = metaAccess.lookupJavaType(StructuralInput.class);
     }
 
@@ -72,52 +71,69 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         return null;
     }
 
-    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        if (b.parsingIntrinsic() && wordOperationPlugin.apply(b, method, args)) {
-            return true;
-        } else if (b.parsingIntrinsic()) {
-            NodeIntrinsic intrinsic = nodeIntrinsification.getIntrinsic(method);
-            if (intrinsic != null) {
-                Signature sig = method.getSignature();
-                Kind returnKind = sig.getReturnKind();
-                Stamp stamp = StampFactory.forKind(returnKind);
-                if (returnKind == Kind.Object) {
-                    JavaType returnType = sig.getReturnType(method.getDeclaringClass());
-                    if (returnType instanceof ResolvedJavaType) {
-                        ResolvedJavaType resolvedReturnType = (ResolvedJavaType) returnType;
-                        WordTypes wordTypes = wordOperationPlugin.getWordTypes();
-                        if (wordTypes.isWord(resolvedReturnType)) {
-                            stamp = wordTypes.getWordStamp(resolvedReturnType);
-                        } else {
-                            stamp = StampFactory.declared(resolvedReturnType);
-                        }
-                    }
-                }
-
-                return processNodeIntrinsic(b, method, intrinsic, Arrays.asList(args), returnKind, stamp);
-            } else if (nodeIntrinsification.isFoldable(method)) {
-                ResolvedJavaType[] parameterTypes = resolveJavaTypes(method.toParameterTypes(), method.getDeclaringClass());
-                JavaConstant constant = nodeIntrinsification.tryFold(Arrays.asList(args), parameterTypes, method);
-                if (!COULD_NOT_FOLD.equals(constant)) {
-                    if (constant != null) {
-                        // Replace the invoke with the result of the call
-                        b.push(method.getSignature().getReturnKind(), ConstantNode.forConstant(constant, b.getMetaAccess(), b.getGraph()));
+    @Override
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        NodeIntrinsic intrinsic = nodeIntrinsification.getIntrinsic(method);
+        if (intrinsic != null) {
+            Signature sig = method.getSignature();
+            Kind returnKind = sig.getReturnKind();
+            Stamp stamp = StampFactory.forKind(returnKind);
+            if (returnKind == Kind.Object) {
+                JavaType returnType = sig.getReturnType(method.getDeclaringClass());
+                if (returnType instanceof ResolvedJavaType) {
+                    ResolvedJavaType resolvedReturnType = (ResolvedJavaType) returnType;
+                    if (wordTypes.isWord(resolvedReturnType)) {
+                        stamp = wordTypes.getWordStamp(resolvedReturnType);
                     } else {
-                        // This must be a void invoke
-                        assert method.getSignature().getReturnKind() == Kind.Void;
+                        stamp = StampFactory.declared(resolvedReturnType);
                     }
-                    return true;
                 }
-            } else if (MethodsElidedInSnippets != null) {
-                if (MethodFilter.matches(MethodsElidedInSnippets, method)) {
-                    if (method.getSignature().getReturnKind() != Kind.Void) {
-                        throw new JVMCIError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
-                    }
-                    return true;
+            }
+
+            boolean result = processNodeIntrinsic(b, method, intrinsic, Arrays.asList(args), returnKind, stamp);
+            if (!result && mustIntrinsify) {
+                reportIntrinsificationFailure(b, method, args);
+            }
+            return result;
+
+        } else if (nodeIntrinsification.isFoldable(method)) {
+            ResolvedJavaType[] parameterTypes = resolveJavaTypes(method.toParameterTypes(), method.getDeclaringClass());
+            JavaConstant constant = nodeIntrinsification.tryFold(Arrays.asList(args), parameterTypes, method);
+            if (!COULD_NOT_FOLD.equals(constant)) {
+                if (constant != null) {
+                    // Replace the invoke with the result of the call
+                    b.push(method.getSignature().getReturnKind(), ConstantNode.forConstant(constant, b.getMetaAccess(), b.getGraph()));
+                } else {
+                    // This must be a void invoke
+                    assert method.getSignature().getReturnKind() == Kind.Void;
                 }
+                return true;
+            } else if (mustIntrinsify) {
+                reportIntrinsificationFailure(b, method, args);
+            }
+
+        } else if (MethodsElidedInSnippets != null) {
+            if (MethodFilter.matches(MethodsElidedInSnippets, method)) {
+                if (method.getSignature().getReturnKind() != Kind.Void) {
+                    throw new JVMCIError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
+                }
+                return true;
             }
         }
         return false;
+    }
+
+    private static boolean reportIntrinsificationFailure(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Call in ").append(b.getMethod().format("%H.%n(%p)"));
+        msg.append(" to ").append(method.format("%H.%n(%p)"));
+        msg.append(" cannot be intrisfied or folded, probably because an argument is not a constant. Arguments: ");
+        String sep = "";
+        for (ValueNode node : args) {
+            msg.append(sep).append(node.toString());
+            sep = ", ";
+        }
+        throw new JVMCIError(msg.toString());
     }
 
     private InputType getInputType(ResolvedJavaType type) {
@@ -133,7 +149,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         }
     }
 
-    protected boolean processNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Kind returnKind, Stamp stamp) {
+    private boolean processNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Kind returnKind, Stamp stamp) {
         ValueNode res = createNodeIntrinsic(b, method, intrinsic, args, stamp);
         if (res == null) {
             return false;
@@ -176,7 +192,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
         return true;
     }
 
-    protected ValueNode createNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Stamp stamp) {
+    private ValueNode createNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Stamp stamp) {
         ValueNode res = nodeIntrinsification.createIntrinsicNode(args, stamp, method, b.getGraph(), intrinsic);
         assert res != null || b.getGraph().method().getAnnotation(Snippet.class) != null : String.format(
                         "Could not create node intrinsic for call to %s as one of the arguments expected to be constant isn't: arguments=%s", method.format("%H.%n(%p)"), args);

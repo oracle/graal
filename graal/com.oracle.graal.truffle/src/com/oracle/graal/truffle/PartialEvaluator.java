@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.code.Architecture;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
@@ -60,9 +53,11 @@ import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.truffle.substitutions.*;
 import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -132,21 +127,6 @@ public class PartialEvaluator {
         }
 
         return graph;
-    }
-
-    private class InterceptLoadFieldPlugin implements LoadFieldPlugin {
-
-        public boolean apply(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
-            if (receiver.isConstant()) {
-                JavaConstant asJavaConstant = receiver.asJavaConstant();
-                return tryConstantFold(builder, providers.getMetaAccess(), providers.getConstantReflection(), field, asJavaConstant);
-            }
-            return false;
-        }
-
-        public boolean apply(GraphBuilderContext builder, ResolvedJavaField staticField) {
-            return tryConstantFold(builder, providers.getMetaAccess(), providers.getConstantReflection(), staticField, null);
-        }
     }
 
     private class InterceptReceiverPlugin implements ParameterPlugin {
@@ -309,7 +289,6 @@ public class PartialEvaluator {
 
         newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
-        plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         plugins.setParameterPlugin(new InterceptReceiverPlugin(callTarget));
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
 
@@ -334,7 +313,6 @@ public class PartialEvaluator {
 
         newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
-        plugins.setLoadFieldPlugin(new InterceptLoadFieldPlugin());
         plugins.setInlineInvokePlugin(new ParsingInlineInvokePlugin((ReplacementsImpl) providers.getReplacements(), parsingInvocationPlugins, loopExplosionPlugin,
                         !PrintTruffleExpansionHistogram.getValue()));
 

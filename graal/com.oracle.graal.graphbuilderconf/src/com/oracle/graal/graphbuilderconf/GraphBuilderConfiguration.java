@@ -32,12 +32,9 @@ public class GraphBuilderConfiguration {
 
     public static class Plugins {
         private final InvocationPlugins invocationPlugins;
-        private LoadFieldPlugin loadFieldPlugin;
-        private LoadIndexedPlugin loadIndexedPlugin;
-        private TypeCheckPlugin typeCheckPlugin;
+        private NodePlugin[] nodePlugins;
         private ParameterPlugin parameterPlugin;
         private InlineInvokePlugin inlineInvokePlugin;
-        private GenericInvocationPlugin genericInvocationPlugin;
         private LoopExplosionPlugin loopExplosionPlugin;
 
         /**
@@ -48,12 +45,9 @@ public class GraphBuilderConfiguration {
         public Plugins(Plugins copyFrom) {
             this.invocationPlugins = new InvocationPlugins(copyFrom.invocationPlugins);
             this.parameterPlugin = copyFrom.parameterPlugin;
-            this.loadFieldPlugin = copyFrom.loadFieldPlugin;
-            this.loadIndexedPlugin = copyFrom.loadIndexedPlugin;
-            this.typeCheckPlugin = copyFrom.typeCheckPlugin;
+            this.nodePlugins = copyFrom.nodePlugins;
             this.inlineInvokePlugin = copyFrom.inlineInvokePlugin;
             this.loopExplosionPlugin = copyFrom.loopExplosionPlugin;
-            this.genericInvocationPlugin = copyFrom.genericInvocationPlugin;
         }
 
         /**
@@ -64,42 +58,20 @@ public class GraphBuilderConfiguration {
          */
         public Plugins(InvocationPlugins invocationPlugins) {
             this.invocationPlugins = invocationPlugins;
+            this.nodePlugins = new NodePlugin[0];
         }
 
         public InvocationPlugins getInvocationPlugins() {
             return invocationPlugins;
         }
 
-        public GenericInvocationPlugin getGenericInvocationPlugin() {
-            return genericInvocationPlugin;
+        public NodePlugin[] getNodePlugins() {
+            return nodePlugins;
         }
 
-        public void setGenericInvocationPlugin(GenericInvocationPlugin plugin) {
-            this.genericInvocationPlugin = plugin;
-        }
-
-        public LoadFieldPlugin getLoadFieldPlugin() {
-            return loadFieldPlugin;
-        }
-
-        public void setLoadFieldPlugin(LoadFieldPlugin plugin) {
-            this.loadFieldPlugin = plugin;
-        }
-
-        public LoadIndexedPlugin getLoadIndexedPlugin() {
-            return loadIndexedPlugin;
-        }
-
-        public void setLoadIndexedPlugin(LoadIndexedPlugin plugin) {
-            this.loadIndexedPlugin = plugin;
-        }
-
-        public TypeCheckPlugin getTypeCheckPlugin() {
-            return typeCheckPlugin;
-        }
-
-        public void setTypeCheckPlugin(TypeCheckPlugin typeCheckPlugin) {
-            this.typeCheckPlugin = typeCheckPlugin;
+        public void appendNodePlugin(NodePlugin plugin) {
+            nodePlugins = Arrays.copyOf(nodePlugins, nodePlugins.length + 1);
+            nodePlugins[nodePlugins.length - 1] = plugin;
         }
 
         public ParameterPlugin getParameterPlugin() {

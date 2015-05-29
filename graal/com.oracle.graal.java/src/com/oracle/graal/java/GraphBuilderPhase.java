@@ -1488,8 +1488,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private boolean tryGenericInvocationPlugin(ValueNode[] args, ResolvedJavaMethod targetMethod) {
-                GenericInvocationPlugin plugin = graphBuilderConfig.getPlugins().getGenericInvocationPlugin();
-                return plugin != null && plugin.apply(this, targetMethod, args);
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleInvoke(this, targetMethod, args)) {
+                        return true;
+                    }
+                }
+                return false;
             }
 
             private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
@@ -2737,27 +2741,27 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void genLoadIndexed(Kind kind) {
                 ValueNode index = frameState.pop(Kind.Int);
                 ValueNode array = emitExplicitExceptions(frameState.pop(Kind.Object), index);
-                if (!tryLoadIndexedPlugin(kind, index, array)) {
-                    frameState.push(kind, append(genLoadIndexed(array, index, kind)));
-                }
-            }
 
-            protected boolean tryLoadIndexedPlugin(Kind kind, ValueNode index, ValueNode array) {
-                LoadIndexedPlugin loadIndexedPlugin = graphBuilderConfig.getPlugins().getLoadIndexedPlugin();
-                if (loadIndexedPlugin != null && loadIndexedPlugin.apply(this, array, index, kind)) {
-                    if (TraceParserPlugins.getValue()) {
-                        traceWithContext("used load indexed plugin");
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleLoadIndexed(this, array, index, kind)) {
+                        return;
                     }
-                    return true;
-                } else {
-                    return false;
                 }
+
+                frameState.push(kind, append(genLoadIndexed(array, index, kind)));
             }
 
             private void genStoreIndexed(Kind kind) {
                 ValueNode value = frameState.pop(kind);
                 ValueNode index = frameState.pop(Kind.Int);
                 ValueNode array = emitExplicitExceptions(frameState.pop(Kind.Object), index);
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleStoreIndexed(this, array, index, kind, value)) {
+                        return;
+                    }
+                }
+
                 genStoreIndexed(array, index, kind, value);
             }
 
@@ -2985,85 +2989,99 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 int cpi = getStream().readCPI();
                 JavaType type = lookupType(cpi, CHECKCAST);
                 ValueNode object = frameState.pop(Kind.Object);
-                if (type instanceof ResolvedJavaType) {
-                    ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-                    JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
-                    TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
-                    if (typeCheckPlugin == null || !this.parsingIntrinsic() || !typeCheckPlugin.checkCast(this, object, resolvedType, profile)) {
-                        ValueNode checkCastNode = null;
-                        if (profile != null) {
-                            if (profile.getNullSeen().isFalse()) {
-                                object = append(GuardingPiNode.createNullCheck(object));
-                                ResolvedJavaType singleType = profile.asSingleType();
-                                if (singleType != null) {
-                                    LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
-                                    if (typeCheck.isTautology()) {
-                                        checkCastNode = object;
-                                    } else {
-                                        GuardingPiNode piNode = append(new GuardingPiNode(object, typeCheck, false, DeoptimizationReason.TypeCheckedInliningViolated,
-                                                        DeoptimizationAction.InvalidateReprofile, StampFactory.exactNonNull(singleType)));
-                                        checkCastNode = piNode;
-                                    }
-                                }
+
+                if (!(type instanceof ResolvedJavaType)) {
+                    handleUnresolvedCheckCast(type, object);
+                    return;
+                }
+                ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+                JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleCheckCast(this, object, resolvedType, profile)) {
+                        return;
+                    }
+                }
+
+                ValueNode checkCastNode = null;
+                if (profile != null) {
+                    if (profile.getNullSeen().isFalse()) {
+                        object = append(GuardingPiNode.createNullCheck(object));
+                        ResolvedJavaType singleType = profile.asSingleType();
+                        if (singleType != null) {
+                            LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
+                            if (typeCheck.isTautology()) {
+                                checkCastNode = object;
+                            } else {
+                                GuardingPiNode piNode = append(new GuardingPiNode(object, typeCheck, false, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile,
+                                                StampFactory.exactNonNull(singleType)));
+                                checkCastNode = piNode;
                             }
                         }
-                        if (checkCastNode == null) {
-                            checkCastNode = append(createCheckCast(resolvedType, object, profile, false));
-                        }
-                        frameState.push(Kind.Object, checkCastNode);
                     }
-                } else {
-                    handleUnresolvedCheckCast(type, object);
                 }
+                if (checkCastNode == null) {
+                    checkCastNode = append(createCheckCast(resolvedType, object, profile, false));
+                }
+                frameState.push(Kind.Object, checkCastNode);
             }
 
             private void genInstanceOf() {
                 int cpi = getStream().readCPI();
                 JavaType type = lookupType(cpi, INSTANCEOF);
                 ValueNode object = frameState.pop(Kind.Object);
-                if (type instanceof ResolvedJavaType) {
-                    ResolvedJavaType resolvedType = (ResolvedJavaType) type;
-                    JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
-                    TypeCheckPlugin typeCheckPlugin = this.graphBuilderConfig.getPlugins().getTypeCheckPlugin();
-                    if (typeCheckPlugin == null || !typeCheckPlugin.instanceOf(this, object, resolvedType, profile)) {
-                        ValueNode instanceOfNode = null;
-                        if (profile != null) {
-                            if (profile.getNullSeen().isFalse()) {
-                                object = append(GuardingPiNode.createNullCheck(object));
-                                ResolvedJavaType singleType = profile.asSingleType();
-                                if (singleType != null) {
-                                    LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
-                                    append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
-                                    instanceOfNode = LogicConstantNode.forBoolean(resolvedType.isAssignableFrom(singleType));
-                                }
-                            }
-                        }
-                        if (instanceOfNode == null) {
-                            instanceOfNode = createInstanceOf(resolvedType, object, profile);
-                        }
-                        frameState.push(Kind.Int, append(genConditional(genUnique(instanceOfNode))));
-                    }
-                } else {
+
+                if (!(type instanceof ResolvedJavaType)) {
                     handleUnresolvedInstanceOf(type, object);
+                    return;
                 }
+                ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+                JavaTypeProfile profile = getProfileForTypeCheck(resolvedType);
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleInstanceOf(this, object, resolvedType, profile)) {
+                        return;
+                    }
+                }
+
+                ValueNode instanceOfNode = null;
+                if (profile != null) {
+                    if (profile.getNullSeen().isFalse()) {
+                        object = append(GuardingPiNode.createNullCheck(object));
+                        ResolvedJavaType singleType = profile.asSingleType();
+                        if (singleType != null) {
+                            LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
+                            append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+                            instanceOfNode = LogicConstantNode.forBoolean(resolvedType.isAssignableFrom(singleType));
+                        }
+                    }
+                }
+                if (instanceOfNode == null) {
+                    instanceOfNode = createInstanceOf(resolvedType, object, profile);
+                }
+                frameState.push(Kind.Int, append(genConditional(genUnique(instanceOfNode))));
             }
 
             void genNewInstance(int cpi) {
                 JavaType type = lookupType(cpi, NEW);
-                if (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isInitialized()) {
-                    ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
-                    if (skippedExceptionTypes != null) {
-                        for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
-                            if (exceptionType.isAssignableFrom((ResolvedJavaType) type)) {
-                                append(new DeoptimizeNode(DeoptimizationAction.None, TransferToInterpreter));
-                                return;
-                            }
+
+                if (!(type instanceof ResolvedJavaType) || !((ResolvedJavaType) type).isInitialized()) {
+                    handleUnresolvedNewInstance(type);
+                    return;
+                }
+                ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+
+                ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
+                if (skippedExceptionTypes != null) {
+                    for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
+                        if (exceptionType.isAssignableFrom(resolvedType)) {
+                            append(new DeoptimizeNode(DeoptimizationAction.None, TransferToInterpreter));
+                            return;
                         }
                     }
-                    frameState.push(Kind.Object, append(createNewInstance((ResolvedJavaType) type, true)));
-                } else {
-                    handleUnresolvedNewInstance(type);
                 }
+
+                frameState.push(Kind.Object, append(createNewInstance(resolvedType, true)));
             }
 
             private void genNewPrimitiveArray(int typeCode) {
@@ -3075,12 +3093,14 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void genNewObjectArray(int cpi) {
                 JavaType type = lookupType(cpi, ANEWARRAY);
                 ValueNode length = frameState.pop(Kind.Int);
-                if (type instanceof ResolvedJavaType) {
-                    frameState.push(Kind.Object, append(createNewArray((ResolvedJavaType) type, length, true)));
-                } else {
-                    handleUnresolvedNewObjectArray(type, length);
-                }
 
+                if (!(type instanceof ResolvedJavaType)) {
+                    handleUnresolvedNewObjectArray(type, length);
+                    return;
+                }
+                ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+
+                frameState.push(Kind.Object, append(createNewArray(resolvedType, length, true)));
             }
 
             private void genNewMultiArray(int cpi) {
@@ -3090,25 +3110,32 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 for (int i = rank - 1; i >= 0; i--) {
                     dims.set(i, frameState.pop(Kind.Int));
                 }
-                if (type instanceof ResolvedJavaType) {
-                    frameState.push(Kind.Object, append(createNewMultiArray((ResolvedJavaType) type, dims)));
-                } else {
+
+                if (!(type instanceof ResolvedJavaType)) {
                     handleUnresolvedNewMultiArray(type, dims);
+                    return;
                 }
+                ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+
+                frameState.push(Kind.Object, append(createNewMultiArray(resolvedType, dims)));
             }
 
             private void genGetField(JavaField field) {
                 ValueNode receiver = emitExplicitExceptions(frameState.pop(Kind.Object), null);
-                if ((field instanceof ResolvedJavaField) && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-                    ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-                    LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getPlugins().getLoadFieldPlugin();
-                    if (loadFieldPlugin == null || !loadFieldPlugin.apply(this, receiver, resolvedField)) {
-                        frameState.push(field.getKind(), append(genLoadField(receiver, resolvedField)));
-                    }
-                } else {
+                if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
                     handleUnresolvedLoadField(field, receiver);
+                    return;
                 }
+                ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleLoadField(this, receiver, resolvedField)) {
+                        return;
+                    }
+                }
+
+                frameState.push(field.getKind(), append(genLoadField(receiver, resolvedField)));
             }
 
             /**
@@ -3137,41 +3164,62 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             private void genPutField(JavaField field) {
                 ValueNode value = frameState.pop(field.getKind());
                 ValueNode receiver = emitExplicitExceptions(frameState.pop(Kind.Object), null);
-                if (field instanceof ResolvedJavaField && ((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-                    genStoreField(receiver, (ResolvedJavaField) field, value);
-                } else {
+
+                if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
                     handleUnresolvedStoreField(field, value, receiver);
+                    return;
                 }
+                ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleStoreField(this, receiver, resolvedField, value)) {
+                        return;
+                    }
+                }
+
+                genStoreField(receiver, resolvedField, value);
             }
 
             private void genGetStatic(JavaField field) {
-                if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-                    ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+                if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
+                    handleUnresolvedLoadField(field, null);
+                    return;
+                }
+                ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-                    // Javac does not allow use of "$assertionsDisabled" for a field name but
-                    // Eclipse does in which case a suffix is added to the generated field.
-                    if ((parsingIntrinsic() || graphBuilderConfig.omitAssertions()) && resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
-                        frameState.push(field.getKind(), ConstantNode.forBoolean(true, graph));
+                /*
+                 * Javac does not allow use of "$assertionsDisabled" for a field name but Eclipse
+                 * does, in which case a suffix is added to the generated field.
+                 */
+                if ((parsingIntrinsic() || graphBuilderConfig.omitAssertions()) && resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
+                    frameState.push(field.getKind(), ConstantNode.forBoolean(true, graph));
+                    return;
+                }
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleLoadStaticField(this, resolvedField)) {
                         return;
                     }
-
-                    LoadFieldPlugin loadFieldPlugin = this.graphBuilderConfig.getPlugins().getLoadFieldPlugin();
-                    if (loadFieldPlugin == null || !loadFieldPlugin.apply(this, resolvedField)) {
-                        frameState.push(field.getKind(), append(genLoadField(null, resolvedField)));
-                    }
-                } else {
-                    handleUnresolvedLoadField(field, null);
                 }
+
+                frameState.push(field.getKind(), append(genLoadField(null, resolvedField)));
             }
 
             private void genPutStatic(JavaField field) {
                 ValueNode value = frameState.pop(field.getKind());
-                if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-                    ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-                    genStoreField(null, resolvedField, value);
-                } else {
+                if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
                     handleUnresolvedStoreField(field, value, null);
+                    return;
                 }
+                ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+
+                for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                    if (plugin.handleStoreStaticField(this, resolvedField, value)) {
+                        return;
+                    }
+                }
+
+                genStoreField(null, resolvedField, value);
             }
 
             private double[] switchProbability(int numberOfCases, int bci) {
