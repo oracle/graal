@@ -22,18 +22,15 @@
  */
 package com.oracle.graal.hotspot.sparc.jvmci;
 
-import com.oracle.jvmci.code.Architecture;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.RegisterConfig;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.sparc.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 
@@ -53,10 +50,6 @@ public class SPARCHotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFacto
 
     protected HotSpotCodeCacheProvider createCodeCache(HotSpotJVMCIRuntimeProvider runtime, TargetDescription target, RegisterConfig regConfig) {
         return new HotSpotCodeCacheProvider(runtime, runtime.getConfig(), target, regConfig);
-    }
-
-    protected SPARCHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
-        return new SPARCHotSpotBackend(runtime, providers);
     }
 
     protected EnumSet<CPUFeature> computeFeatures(HotSpotVMConfig config) {
@@ -80,13 +73,9 @@ public class SPARCHotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFacto
         return "SPARC";
     }
 
-    public String getGraalRuntimeName() {
-        return "basic";
-    }
-
     @Override
     public String toString() {
-        return getGraalRuntimeName() + ":" + getArchitecture();
+        return getJVMCIRuntimeName() + ":" + getArchitecture();
     }
 
     public JVMCIBackend createJVMCIBackend(HotSpotJVMCIRuntimeProvider runtime, JVMCIBackend host) {

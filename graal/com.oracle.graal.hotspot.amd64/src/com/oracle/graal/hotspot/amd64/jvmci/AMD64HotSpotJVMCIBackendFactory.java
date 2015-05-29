@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64.jvmci;
 
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.Architecture;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
@@ -33,8 +29,9 @@ import java.util.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(HotSpotJVMCIBackendFactory.class)
@@ -110,10 +107,6 @@ public class AMD64HotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFacto
         return new HotSpotTargetDescription(createArchitecture(config), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
-    protected AMD64HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
-        return new AMD64HotSpotBackend(runtime, providers);
-    }
-
     protected HotSpotConstantReflectionProvider createConstantReflection(HotSpotJVMCIRuntimeProvider runtime) {
         return new HotSpotConstantReflectionProvider(runtime);
     }
@@ -134,13 +127,9 @@ public class AMD64HotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFacto
         return "AMD64";
     }
 
-    public String getGraalRuntimeName() {
-        return "basic";
-    }
-
     @Override
     public String toString() {
-        return getGraalRuntimeName() + ":" + getArchitecture();
+        return getJVMCIRuntimeName() + ":" + getArchitecture();
     }
 
     public JVMCIBackend createJVMCIBackend(HotSpotJVMCIRuntimeProvider runtime, JVMCIBackend host) {
