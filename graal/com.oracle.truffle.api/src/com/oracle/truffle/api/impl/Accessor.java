@@ -24,14 +24,13 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.vm.TruffleVM;
-import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.io.Reader;
-import java.io.Writer;
-import java.util.ServiceLoader;
+import java.io.*;
+import java.lang.reflect.*;
+import java.util.*;
+
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.vm.*;
 
 /**
  * Communication between TruffleVM and TruffleLanguage API/SPI.

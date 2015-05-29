@@ -33,7 +33,7 @@ import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.internal.DSLOptions.*;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.TypeBoxingOptimization;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;

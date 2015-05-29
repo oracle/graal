@@ -39,7 +39,6 @@ import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEvent5;
 import com.oracle.truffle.api.dsl.internal.SlowPathEvent.SlowPathEventN;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeFieldAccessor;
 
 /**
  * Internal implementation dependent base class for generated specialized nodes.

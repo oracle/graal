@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.IOException;
+import java.io.*;
 
 /**
  * XXX: Temporary class to make unit tests pass without messing with Message implementations and

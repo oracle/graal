@@ -22,12 +22,10 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import org.junit.*;
+import static org.junit.Assert.*;
+
 import org.junit.experimental.theories.*;
 import org.junit.runner.*;
-import org.junit.runners.Parameterized.Parameters;
-
-import static org.junit.Assert.*;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.ExecuteGroupingTestFactory.ExecuteGrouping1NodeGen;
@@ -37,7 +35,6 @@ import com.oracle.truffle.api.nodes.*;
 /*
  * This test aims to test the reuse of execute methods with evaluated parameters as much as possible.
  */
-@SuppressWarnings("unused")
 @RunWith(Theories.class)
 public class ExecuteGroupingTest {
 

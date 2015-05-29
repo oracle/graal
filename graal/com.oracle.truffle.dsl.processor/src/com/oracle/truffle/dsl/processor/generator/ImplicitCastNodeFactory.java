@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.*;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.*;
 import static javax.lang.model.element.Modifier.*;
 
@@ -31,15 +32,13 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.java.*;
 import com.oracle.truffle.dsl.processor.java.model.*;
 import com.oracle.truffle.dsl.processor.model.*;
-
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.*;
 
 public class ImplicitCastNodeFactory {
 

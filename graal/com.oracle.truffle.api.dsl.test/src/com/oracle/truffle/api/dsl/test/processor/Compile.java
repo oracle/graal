@@ -22,28 +22,14 @@
  */
 package com.oracle.truffle.api.dsl.test.processor;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticListener;
-import javax.tools.FileObject;
-import javax.tools.ForwardingJavaFileManager;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.JavaFileObject.Kind;
-import javax.tools.SimpleJavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
 import static org.junit.Assert.*;
+
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+import javax.tools.*;
+import javax.tools.JavaFileObject.Kind;
 
 final class Compile implements DiagnosticListener<JavaFileObject> {
     private final List<Diagnostic<? extends JavaFileObject>> errors = new ArrayList<>();

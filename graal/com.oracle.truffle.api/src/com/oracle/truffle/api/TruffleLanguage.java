@@ -24,18 +24,14 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.TruffleVM;
+import java.io.*;
+import java.lang.annotation.*;
+import java.lang.reflect.*;
+
+import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Constructor;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing

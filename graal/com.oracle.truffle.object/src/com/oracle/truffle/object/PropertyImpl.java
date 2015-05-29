@@ -25,7 +25,7 @@ package com.oracle.truffle.object;
 import java.util.*;
 
 import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.object.Locations.*;
+import com.oracle.truffle.object.Locations.DeclaredLocation;
 
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.

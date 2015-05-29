@@ -26,8 +26,8 @@ package com.oracle.truffle.api.object;
 
 import java.util.*;
 
-import com.oracle.truffle.api.nodes.NodeUtil.*;
-import com.oracle.truffle.api.object.Layout.*;
+import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
+import com.oracle.truffle.api.object.Layout.ImplicitCast;
 
 public class LayoutBuilder {
     private EnumSet<ImplicitCast> allowedImplicitCasts;

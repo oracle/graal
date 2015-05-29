@@ -25,7 +25,7 @@
 package com.oracle.truffle.api.utilities;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Utility class to speculate on conditions to be never true or to be never false. Additionally to
