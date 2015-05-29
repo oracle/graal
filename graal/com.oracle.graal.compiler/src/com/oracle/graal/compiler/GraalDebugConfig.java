@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.meta.JavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 
 public class GraalDebugConfig implements DebugConfig {
@@ -272,6 +272,8 @@ public class GraalDebugConfig implements DebugConfig {
         }
         Debug.setConfig(Debug.fixedConfig(Debug.DEFAULT_LOG_LEVEL, Debug.DEFAULT_LOG_LEVEL, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log(String.format("Exception occurred in scope: %s", Debug.currentScope()));
+        boolean dumpedLIR = false;
+        Interval[] intervals = null;
         for (Object o : Debug.context()) {
             if (o instanceof Graph) {
                 Debug.log("Context obj %s", o);
@@ -284,8 +286,24 @@ public class GraalDebugConfig implements DebugConfig {
                 Debug.log("Context obj %s", o);
                 if (DumpOnError.getValue()) {
                     Debug.dump(o, "Exception LIR: " + e);
+                    dumpedLIR = true;
+                    if (intervals != null) {
+                        Debug.dump(intervals, "Exception Intervals: " + e);
+                        intervals = null;
+                    }
                 } else {
                     Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
+                }
+            } else if (o instanceof Interval[]) {
+                if (DumpOnError.getValue()) {
+                    if (dumpedLIR) {
+                        // Can only dump intervals if LIR has been dumped.
+                        Debug.dump(o, "Exception Intervals: " + e);
+                    } else {
+                        intervals = (Interval[]) o;
+                    }
+                } else {
+                    Debug.log("Use -G:+DumpOnError to enable dumping of intervals on this error");
                 }
             } else if (o instanceof Node) {
                 String location = GraphUtil.approxSourceLocation((Node) o);
