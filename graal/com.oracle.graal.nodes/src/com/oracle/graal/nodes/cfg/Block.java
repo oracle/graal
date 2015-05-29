@@ -24,11 +24,11 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.meta.*;
 
 public final class Block extends AbstractBlockBase<Block> {
 

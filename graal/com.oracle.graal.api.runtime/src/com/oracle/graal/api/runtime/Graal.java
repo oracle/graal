@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,60 @@
  */
 package com.oracle.graal.api.runtime;
 
+import java.util.*;
+
 import sun.reflect.*;
 
+import com.oracle.jvmci.runtime.*;
+
+/**
+ * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.
+ */
 public class Graal {
 
-    private static final GraalRuntime runtime;
+    private static final GraalRuntime runtime = initializeRuntime();
 
-    private static native GraalRuntime initializeRuntime();
+    private static GraalRuntime initializeRuntime() {
+        GraalRuntime rt = null;
+        for (GraalRuntimeFactory factory : Services.load(GraalRuntimeFactory.class)) {
+            assert rt == null : String.format("Multiple %s implementations found: %s, %s", GraalRuntime.class.getName(), rt.getClass().getName(), factory.getRuntime().getClass().getName());
+            rt = factory.getRuntime();
+        }
+        if (rt != null) {
+            // The constant is patched in-situ by the build system
+            System.setProperty("graal.version", "@@graal.version@@");
+            assert !System.getProperty("graal.version").startsWith("@@") && !System.getProperty("graal.version").endsWith("@@") : "Graal version string constant was not patched by build system";
+            return rt;
+        }
+        return new InvalidGraalRuntime();
+    }
 
+    /**
+     * Gets the singleton {@link GraalRuntime} instance available to the application.
+     */
     public static GraalRuntime getRuntime() {
         return runtime;
     }
 
-    static {
-        GraalRuntime rt;
-        try {
-            rt = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            rt = new InvalidGraalRuntime();
-        }
-        runtime = rt;
-    }
-
+    /**
+     * Gets a capability provided by the {@link GraalRuntime} instance available to the application.
+     *
+     * @throws UnsupportedOperationException if the capability is not available
+     */
     @CallerSensitive
     public static <T> T getRequiredCapability(Class<T> clazz) {
         T t = getRuntime().getCapability(clazz);
         if (t == null) {
             String javaHome = System.getProperty("java.home");
             String vmName = System.getProperty("java.vm.name");
-            StringBuilder errorMessage = new StringBuilder();
+            Formatter errorMessage = new Formatter();
             if (runtime.getClass() == InvalidGraalRuntime.class) {
-                errorMessage.append(String.format("The VM does not support the Graal API.\n"));
+                errorMessage.format("The VM does not support the Graal API.%n");
             } else {
-                errorMessage.append(String.format("The VM does not expose required Graal capability %s.\n", clazz.getName()));
+                errorMessage.format("The VM does not expose required Graal capability %s.%n", clazz.getName());
             }
-            errorMessage.append(String.format("Currently used Java home directory is %s.\n", javaHome));
-            errorMessage.append(String.format("Currently used VM configuration is: %s", vmName));
+            errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
+            errorMessage.format("Currently used VM configuration is: %s", vmName);
             throw new UnsupportedOperationException(errorMessage.toString());
         }
         return t;

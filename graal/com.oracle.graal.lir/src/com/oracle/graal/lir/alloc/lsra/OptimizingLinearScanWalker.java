@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.AllocatableValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.lir.alloc.lsra.Interval.*;
-import com.oracle.graal.options.*;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBindingLists;
+import com.oracle.graal.lir.alloc.lsra.Interval.State;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.options.*;
 
 public class OptimizingLinearScanWalker extends LinearScanWalker {
 

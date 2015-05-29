@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
+import com.oracle.jvmci.code.InvalidInstalledCodeException;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.Kind;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
@@ -68,7 +69,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
             traceResult(res);
             return res;
         } catch (InvalidInstalledCodeException e) {
-            throw GraalInternalError.shouldNotReachHere("Execution of GNFI Callstub failed: " + name);
+            throw JVMCIError.shouldNotReachHere("Execution of GNFI Callstub failed: " + name);
         }
     }
 

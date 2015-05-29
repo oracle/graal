@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.InvokeTarget;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.stubs.*;
 
@@ -94,7 +98,8 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
 
     boolean needsJavaFrameAnchor();
 
-    CompilationResult getStubCompilationResult(final Backend backend);
-
-    Stub getStub();
+    /**
+     * Gets the VM symbol associated with the target {@linkplain #getAddress() address} of the call.
+     */
+    String getSymbol();
 }

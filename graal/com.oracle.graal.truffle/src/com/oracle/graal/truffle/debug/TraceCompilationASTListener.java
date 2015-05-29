@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.truffle.debug;
 
+import com.oracle.jvmci.code.CompilationResult;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;

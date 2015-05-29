@@ -23,23 +23,27 @@
 
 package com.oracle.graal.compiler.amd64;
 
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.LIRKind;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -48,6 +52,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
@@ -132,7 +138,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             case Double:
                 return OperandSize.SD;
             default:
-                throw GraalInternalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
+                throw JVMCIError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
         }
     }
 
@@ -258,7 +264,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     op = MOVSXD;
                     break;
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
             kind = Kind.Int;
@@ -274,7 +280,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 case 32:
                     return null;
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         }
         if (kind != null && op != null) {
@@ -460,7 +466,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             case L2F:
                 return emitConvertMemoryOp(Kind.Float, SSEOp.CVTSI2SS, QWORD, access);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 

@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.*;
+import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Sub;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.lir.gen.*;
@@ -33,6 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.meta.*;
 
 @NodeInfo(shortName = "-")
 public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArithmeticNode {

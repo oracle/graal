@@ -28,7 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.NodeUtil.*;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 
 public final class TraceSplittingListener extends AbstractDebugCompilationListener {
 

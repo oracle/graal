@@ -22,22 +22,26 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.Kind;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public class AMD64HotSpotMove {
 
@@ -77,7 +81,7 @@ public class AMD64HotSpotMove {
                         if (compressed) {
                             masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
                         } else {
-                            throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                            throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                         }
                     }
                 } else {
@@ -89,7 +93,7 @@ public class AMD64HotSpotMove {
                             masm.movq(asRegister(result), address);
                         }
                     } else {
-                        throw GraalInternalError.shouldNotReachHere("Cannot directly store data patch to memory");
+                        throw JVMCIError.shouldNotReachHere("Cannot directly store data patch to memory");
                     }
                 }
             } else if (input instanceof HotSpotMetaspaceConstant) {
@@ -122,12 +126,12 @@ public class AMD64HotSpotMove {
                     assert isStackSlot(result);
                     if (compressed) {
                         if (isImmutable && generatePIC) {
-                            throw GraalInternalError.shouldNotReachHere("Unsupported operation offset(%rip) -> mem (mem -> mem)");
+                            throw JVMCIError.shouldNotReachHere("Unsupported operation offset(%rip) -> mem (mem -> mem)");
                         } else {
                             masm.movl((AMD64Address) crb.asAddress(result), input.asInt());
                         }
                     } else {
-                        throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                        throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
                 }
             } else {

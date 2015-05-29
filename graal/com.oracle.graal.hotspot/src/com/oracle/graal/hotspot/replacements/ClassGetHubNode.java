@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Constant;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
@@ -35,6 +38,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Read {@code Class::_klass} to get the hub for a {@link java.lang.Class}. This node mostly exists

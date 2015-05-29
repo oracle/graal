@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -34,6 +33,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.meta.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Extension, InputType.Memory})
 public final class MemoryMapNode extends FloatingNode implements MemoryMap, MemoryNode, LIRLowerable {

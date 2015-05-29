@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes.test;
 
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
 import com.oracle.graal.compiler.common.type.*;

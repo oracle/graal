@@ -22,17 +22,23 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.SpeculationLog;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ProfilingInfo;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.lang.reflect.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
@@ -41,6 +47,8 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Sample code that shows how to invoke Graal from an application.

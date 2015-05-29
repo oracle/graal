@@ -23,7 +23,12 @@
 //JaCoCo Exclude
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.NamedLocationIdentity;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.PrimitiveConstant;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -38,6 +43,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.runtime.*;
+import com.oracle.jvmci.hotspot.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
 public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single, MemoryAccess, Canonicalizable {
@@ -117,7 +123,8 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), runtime.getArrayBaseOffset(elementKind), pos, runtime.getArrayIndexScale(elementKind)));
+        ValueNode loc = graph().unique(
+                        new IndexedLocationNode(getLocationIdentity(), runtime.getJVMCIRuntime().getArrayBaseOffset(elementKind), pos, runtime.getJVMCIRuntime().getArrayIndexScale(elementKind)));
         return graph().unique(new ComputeAddressNode(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 
@@ -192,7 +199,8 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
     }
 
     boolean isHeapWordAligned(JavaConstant value, Kind kind) {
-        return (runtime.getArrayBaseOffset(kind) + (long) value.asInt() * runtime.getArrayIndexScale(kind)) % runtime.getConfig().heapWordSize == 0;
+        HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
+        return (jvmciRuntime.getArrayBaseOffset(kind) + (long) value.asInt() * jvmciRuntime.getArrayIndexScale(kind)) % runtime.getConfig().heapWordSize == 0;
     }
 
     public void updateAlignedDisjoint() {

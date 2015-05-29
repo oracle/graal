@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.match;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Value;
 import com.oracle.graal.compiler.gen.*;
 
 /**

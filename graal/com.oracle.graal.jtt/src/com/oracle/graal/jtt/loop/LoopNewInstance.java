@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.jtt.loop;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.jtt.*;
 
 /*

@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.compiler.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;

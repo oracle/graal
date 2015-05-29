@@ -24,9 +24,9 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Non-modifying version of {@link ValueProcedure}.

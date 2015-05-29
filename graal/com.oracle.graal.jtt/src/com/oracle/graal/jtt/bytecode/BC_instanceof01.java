@@ -26,9 +26,9 @@ import org.junit.*;
 
 import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 /**
  * Tests the instanceof works, when casting an array of interface.

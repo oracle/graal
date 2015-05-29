@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * This class is used to build the stack frame layout for a compiled method. A {@link StackSlot} is

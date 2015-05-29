@@ -24,7 +24,7 @@ package com.oracle.graal.java;
 
 import java.util.*;
 
-import com.oracle.graal.java.BciBlockMapping.*;
+import com.oracle.graal.java.BciBlockMapping.BciBlock;
 
 public final class LargeLocalLiveness extends LocalLiveness {
     private BitSet[] localsLiveIn;

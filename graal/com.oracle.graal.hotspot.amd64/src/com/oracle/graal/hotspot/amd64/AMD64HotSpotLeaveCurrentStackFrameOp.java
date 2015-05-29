@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.RegisterSaveLayout;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;

@@ -26,13 +26,13 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Container for state captured during a match.
@@ -172,7 +172,7 @@ public class MatchContext {
      *
      * @param name the name of a node in the match rule
      * @return the matched node
-     * @throws GraalInternalError is the named node doesn't exist.
+     * @throws JVMCIError is the named node doesn't exist.
      */
     public Node namedNode(String name) {
         if (namedNodes != null) {
@@ -181,7 +181,7 @@ public class MatchContext {
                 return value.value;
             }
         }
-        throw new GraalInternalError("missing node %s", name);
+        throw new JVMCIError("missing node %s", name);
     }
 
     @Override

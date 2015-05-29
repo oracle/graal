@@ -22,23 +22,24 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.Kind;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.jtt.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Base class for LIR tests.
@@ -76,7 +77,7 @@ public abstract class LIRTest extends JTTTest {
         }
 
         private static void defaultHandler(@SuppressWarnings("unused") LIRGeneratorTool gen, Value... args) {
-            throw new GraalInternalError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
+            throw new JVMCIError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
         }
 
         void generate(LIRGeneratorTool gen, Value[] values) {
@@ -93,7 +94,7 @@ public abstract class LIRTest extends JTTTest {
             } else if (values.length == 5) {
                 generate(gen, values[0], values[1], values[2], values[3], values[4]);
             } else {
-                GraalInternalError.unimplemented();
+                JVMCIError.unimplemented();
             }
 
         }
@@ -214,27 +215,32 @@ public abstract class LIRTest extends JTTTest {
 
     private InvocationPlugin floatingLIRNodePlugin = new InvocationPlugin() {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
-            b.addPush(new FloatingLIRTestNode(getSnippetReflection(), targetMethod.getSignature().getReturnKind(), spec, new ValueNode[]{}));
+            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0) {
-            b.addPush(new FloatingLIRTestNode(getSnippetReflection(), targetMethod.getSignature().getReturnKind(), spec, new ValueNode[]{arg0}));
+            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1) {
-            b.addPush(new FloatingLIRTestNode(getSnippetReflection(), targetMethod.getSignature().getReturnKind(), spec, new ValueNode[]{arg0, arg1}));
+            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2) {
-            b.addPush(new FloatingLIRTestNode(getSnippetReflection(), targetMethod.getSignature().getReturnKind(), spec, new ValueNode[]{arg0, arg1, arg2}));
+            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
-            b.addPush(new FloatingLIRTestNode(getSnippetReflection(), targetMethod.getSignature().getReturnKind(), spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
+            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
             return true;
         }
 

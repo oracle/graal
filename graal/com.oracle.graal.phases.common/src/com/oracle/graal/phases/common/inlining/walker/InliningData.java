@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.JavaTypeProfile;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.Assumptions.AssumptionResult;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -44,6 +44,8 @@ import com.oracle.graal.phases.common.inlining.info.elem.*;
 import com.oracle.graal.phases.common.inlining.policy.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * <p>
@@ -385,8 +387,8 @@ public class InliningData {
         } catch (BailoutException bailout) {
             throw bailout;
         } catch (AssertionError | RuntimeException e) {
-            throw new GraalInternalError(e).addContext(calleeInfo.toString());
-        } catch (GraalInternalError e) {
+            throw new JVMCIError(e).addContext(calleeInfo.toString());
+        } catch (JVMCIError e) {
             throw e.addContext(calleeInfo.toString());
         } catch (Throwable e) {
             throw Debug.handle(e);

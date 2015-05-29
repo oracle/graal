@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
@@ -35,6 +36,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.hotspot.*;
 
 @Opcode("BenchMarkCounter")
 public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
@@ -58,7 +60,7 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
         TargetDescription target = crb.target;
 
         // address for counters array
-        SPARCAddress countersArrayAddr = new SPARCAddress(thread, config.graalCountersThreadOffset);
+        SPARCAddress countersArrayAddr = new SPARCAddress(thread, config.jvmciCountersThreadOffset);
         try (ScratchRegister scratch = masm.getScratchRegister()) {
             Register countersArrayReg = scratch.getRegister();
 

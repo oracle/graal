@@ -22,18 +22,20 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.JavaConstant;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.CompareBranchOp;
+import com.oracle.jvmci.common.*;
 
 public enum SPARCCompare {
     ICMP,
@@ -98,7 +100,7 @@ public enum SPARCCompare {
                     masm.fcmp(Fcc0, Fcmpd, asDoubleReg(x), asDoubleReg(y));
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else {
             assert isConstant(y);
@@ -116,7 +118,7 @@ public enum SPARCCompare {
                         masm.cmp(asObjectReg(x), 0);
                         break;
                     } else {
-                        throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
+                        throw JVMCIError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
                 case FCMP:
                     masm.fcmp(Fcc0, Fcmps, asFloatReg(x), asFloatReg(y));
@@ -125,7 +127,7 @@ public enum SPARCCompare {
                     masm.fcmp(Fcc0, Fcmpd, asDoubleReg(x), asDoubleReg(y));
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     }

@@ -23,17 +23,17 @@
 
 package com.oracle.graal.lir.ssa;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 final class SSAVerifier {
     private static class Entry {

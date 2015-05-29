@@ -22,6 +22,19 @@
  */
 package com.oracle.graal.compiler;
 
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.SpeculationLog;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.meta.Assumptions;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ProfilingInfo;
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.DefaultProfilingInfo;
+import com.oracle.jvmci.meta.VMConstant;
 import static com.oracle.graal.compiler.GraalCompiler.Options.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.*;
@@ -29,16 +42,12 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.ConstantReference;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CompilationResult.ConstantReference;
+import com.oracle.jvmci.code.CompilationResult.DataPatch;
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.asm.*;
@@ -51,13 +60,15 @@ import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationO
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 /**
  * Static methods for orchestrating the compilation of a {@linkplain StructuredGraph graph}.

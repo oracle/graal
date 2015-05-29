@@ -24,7 +24,8 @@ package com.oracle.graal.phases.common.util;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.*;
+import com.oracle.graal.graph.Graph.NodeEvent;
+import com.oracle.graal.graph.Graph.NodeEventListener;
 import com.oracle.graal.graph.*;
 
 /**

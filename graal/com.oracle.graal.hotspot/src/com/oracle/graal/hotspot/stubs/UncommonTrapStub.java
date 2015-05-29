@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.NamedLocationIdentity;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
@@ -39,6 +41,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Uncommon trap stub.
@@ -102,7 +105,7 @@ public class UncommonTrapStub extends SnippetStub {
             case 1:
                 return providers.getRegisters().getStackPointerRegister();
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
+                throw JVMCIError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }
     }
 

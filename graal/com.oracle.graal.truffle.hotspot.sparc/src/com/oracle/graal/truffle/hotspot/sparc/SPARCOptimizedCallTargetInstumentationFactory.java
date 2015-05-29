@@ -22,26 +22,30 @@
  */
 package com.oracle.graal.truffle.hotspot.sparc;
 
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.meta.Kind.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import static com.oracle.jvmci.code.CallingConvention.Type.*;
+import static com.oracle.jvmci.meta.Kind.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.runtime.*;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedCallTargetInstrumentationFactory {

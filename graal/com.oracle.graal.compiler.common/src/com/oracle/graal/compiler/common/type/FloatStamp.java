@@ -22,17 +22,24 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import com.oracle.jvmci.meta.PrimitiveConstant;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.SerializableConstant;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Constant;
 import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
 
 import java.nio.*;
 import java.util.function.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
+import com.oracle.jvmci.common.*;
 
 public class FloatStamp extends PrimitiveStamp {
 
@@ -78,7 +85,7 @@ public class FloatStamp extends PrimitiveStamp {
             case 64:
                 return JavaConstant.forDouble(buffer.getDouble());
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -109,7 +116,7 @@ public class FloatStamp extends PrimitiveStamp {
             case 64:
                 return metaAccess.lookupJavaType(Double.TYPE);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -282,7 +289,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(-value.asDouble());
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -306,7 +313,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(a.asDouble() + b.asDouble());
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -325,7 +332,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.compare(n.asDouble(), -0.0) == 0;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -343,7 +350,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(a.asDouble() - b.asDouble());
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -362,7 +369,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.compare(n.asDouble(), 0.0) == 0;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -380,7 +387,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(a.asDouble() * b.asDouble());
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -399,7 +406,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.compare(n.asDouble(), 1.0) == 0;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -417,7 +424,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(a.asDouble() / b.asDouble());
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -436,7 +443,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.compare(n.asDouble(), 1.0) == 0;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -454,7 +461,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(a.asDouble() % b.asDouble());
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -478,7 +485,7 @@ public class FloatStamp extends PrimitiveStamp {
                     long d = Double.doubleToRawLongBits(value.asDouble());
                     return JavaConstant.forDouble(Double.longBitsToDouble(~d));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -505,7 +512,7 @@ public class FloatStamp extends PrimitiveStamp {
                     long db = Double.doubleToRawLongBits(b.asDouble());
                     return JavaConstant.forDouble(Double.longBitsToDouble(da & db));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -523,7 +530,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.doubleToRawLongBits(value.asDouble()) == 0xFFFFFFFFFFFFFFFFL;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -545,7 +552,7 @@ public class FloatStamp extends PrimitiveStamp {
                     long db = Double.doubleToRawLongBits(b.asDouble());
                     return JavaConstant.forDouble(Double.longBitsToDouble(da | db));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -563,7 +570,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.doubleToRawLongBits(value.asDouble()) == 0L;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -585,7 +592,7 @@ public class FloatStamp extends PrimitiveStamp {
                     long db = Double.doubleToRawLongBits(b.asDouble());
                     return JavaConstant.forDouble(Double.longBitsToDouble(da ^ db));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -603,7 +610,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return Double.doubleToRawLongBits(value.asDouble()) == 0L;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     },
@@ -621,7 +628,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(Math.abs(value.asDouble()));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 
@@ -646,7 +653,7 @@ public class FloatStamp extends PrimitiveStamp {
                 case Double:
                     return JavaConstant.forDouble(Math.sqrt(value.asDouble()));
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
 

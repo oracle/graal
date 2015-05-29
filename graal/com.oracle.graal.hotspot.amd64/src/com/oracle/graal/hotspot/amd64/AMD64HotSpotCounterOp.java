@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.meta.Value;
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.hotspot.*;
 
 @Opcode("BenchMarkCounter")
 public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
@@ -70,7 +73,7 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         }
 
         // address for counters array
-        AMD64Address countersArrayAddr = new AMD64Address(thread, config.graalCountersThreadOffset);
+        AMD64Address countersArrayAddr = new AMD64Address(thread, config.jvmciCountersThreadOffset);
         Register countersArrayReg = scratch;
 
         // backup scratch register

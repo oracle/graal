@@ -23,10 +23,10 @@
 package com.oracle.graal.graph;
 
 import static com.oracle.graal.compiler.common.Fields.*;
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.graph.Edges.*;
 import static com.oracle.graal.graph.InputEdges.*;
 import static com.oracle.graal.graph.Node.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -34,7 +34,6 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Edges.Type;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
@@ -43,6 +42,8 @@ import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -366,11 +367,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
                         // NodeInputList fields should not be final since they are
                         // written (via Unsafe) in clearInputs()
-                        GraalInternalError.guarantee(!Modifier.isFinal(modifiers), "NodeInputList input field %s should not be final", field);
-                        GraalInternalError.guarantee(!Modifier.isPublic(modifiers), "NodeInputList input field %s should not be public", field);
+                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "NodeInputList input field %s should not be final", field);
+                        JVMCIError.guarantee(!Modifier.isPublic(modifiers), "NodeInputList input field %s should not be public", field);
                     } else {
-                        GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
-                        GraalInternalError.guarantee(!Modifier.isFinal(modifiers), "Node input field %s should not be final", field);
+                        JVMCIError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
+                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "Node input field %s should not be final", field);
                         directInputs++;
                     }
                     InputType inputType;
@@ -385,18 +386,18 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
                         // NodeSuccessorList fields should not be final since they are
                         // written (via Unsafe) in clearSuccessors()
-                        GraalInternalError.guarantee(!Modifier.isFinal(modifiers), "NodeSuccessorList successor field % should not be final", field);
-                        GraalInternalError.guarantee(!Modifier.isPublic(modifiers), "NodeSuccessorList successor field %s should not be public", field);
+                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "NodeSuccessorList successor field % should not be final", field);
+                        JVMCIError.guarantee(!Modifier.isPublic(modifiers), "NodeSuccessorList successor field %s should not be public", field);
                     } else {
-                        GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
-                        GraalInternalError.guarantee(!Modifier.isFinal(modifiers), "Node successor field %s should not be final", field);
+                        JVMCIError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
+                        JVMCIError.guarantee(!Modifier.isFinal(modifiers), "Node successor field %s should not be final", field);
                         directSuccessors++;
                     }
                     successors.add(new EdgeInfo(offset, field.getName(), type, field.getDeclaringClass()));
                 } else {
-                    GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
-                    GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
-                    GraalInternalError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
+                    JVMCIError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
+                    JVMCIError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
+                    JVMCIError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
                     super.scanField(field, offset);
                 }
             }

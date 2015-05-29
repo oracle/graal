@@ -26,11 +26,11 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Options.*;
 
 import java.util.function.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.options.*;
 
 public class DeadCodeEliminationPhase extends Phase {
 

@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Provides a capability for replacing a higher node with one or more lower level nodes.

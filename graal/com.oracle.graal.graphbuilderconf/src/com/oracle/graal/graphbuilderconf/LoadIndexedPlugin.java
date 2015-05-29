@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.nodes.*;
 
 public interface LoadIndexedPlugin extends GraphBuilderPlugin {

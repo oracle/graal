@@ -26,11 +26,11 @@ import static com.oracle.graal.phases.tiers.Suites.Options.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.runtime.*;
 
 public final class Suites {
 
@@ -98,7 +98,7 @@ public final class Suites {
              */
             defaultConfiguration = basic;
             if (defaultConfiguration == null) {
-                throw new GraalInternalError("unable to find basic compiler configuration");
+                throw new JVMCIError("unable to find basic compiler configuration");
             }
         }
     }
@@ -127,7 +127,7 @@ public final class Suites {
     public static Suites createSuites(String name) {
         CompilerConfiguration config = configurations.get(name);
         if (config == null) {
-            throw new GraalInternalError("unknown compiler configuration: " + name);
+            throw new JVMCIError("unknown compiler configuration: " + name);
         }
         return new Suites(config);
     }
@@ -145,7 +145,7 @@ public final class Suites {
     public static LIRSuites createLIRSuites(String name) {
         CompilerConfiguration config = configurations.get(name);
         if (config == null) {
-            throw new GraalInternalError("unknown compiler configuration: " + name);
+            throw new JVMCIError("unknown compiler configuration: " + name);
         }
         return new LIRSuites(config.createPreAllocationOptimizationStage(), config.createAllocationStage(), config.createPostAllocationOptimizationStage());
     }

@@ -26,13 +26,13 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace
@@ -124,7 +124,7 @@ public class MatchStatement {
             } else {
                 result[i] = context.namedNode(arguments[i]);
                 if (result[i] == null) {
-                    throw new GraalGraphInternalError("Can't find named node %s", arguments[i]);
+                    throw new GraalGraphJVMCIError("Can't find named node %s", arguments[i]);
                 }
             }
         }

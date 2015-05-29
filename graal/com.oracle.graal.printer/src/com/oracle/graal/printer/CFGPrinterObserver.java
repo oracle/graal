@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.printer;
 
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.JavaMethod;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
@@ -39,6 +40,8 @@ import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -124,7 +127,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
             } catch (FileNotFoundException e) {
-                throw new GraalInternalError("Could not open " + cfgFile.getAbsolutePath());
+                throw new JVMCIError("Could not open " + cfgFile.getAbsolutePath());
             }
             TTY.println("CFGPrinter: Output to file %s", cfgFile);
         }

@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.meta.JavaMethod;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.debug.*;
 import com.oracle.truffle.api.*;
 
 /**

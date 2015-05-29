@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,34 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage, HotSpotProxified {
-
-    /**
-     * The descriptor of the call.
-     */
-    private final ForeignCallDescriptor descriptor;
-
-    /**
-     * The entry point address of this call's target.
-     */
-    private long address;
+public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget implements HotSpotForeignCallLinkage, HotSpotProxified {
 
     /**
      * Non-null (eventually) iff this is a call to a compiled {@linkplain Stub stub}.
@@ -134,10 +135,10 @@ public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage,
 
     public HotSpotForeignCallLinkageImpl(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
                     CallingConvention incomingCallingConvention, boolean reexecutable, LocationIdentity... killedLocations) {
+        super(descriptor, address);
         this.address = address;
         this.effect = effect;
         this.transition = transition;
-        this.descriptor = descriptor;
         this.outgoingCallingConvention = outgoingCallingConvention;
         this.incomingCallingConvention = incomingCallingConvention;
         this.reexecutable = reexecutable;
@@ -243,11 +244,7 @@ public class HotSpotForeignCallLinkageImpl implements HotSpotForeignCallLinkage,
         return canDeoptimize() || transition == Transition.LEAF_SP;
     }
 
-    public CompilationResult getStubCompilationResult(final Backend backend) {
-        return stub.getCompilationResult(backend);
-    }
-
-    public Stub getStub() {
-        return stub;
+    public String getSymbol() {
+        return stub == null ? null : stub.toString();
     }
 }

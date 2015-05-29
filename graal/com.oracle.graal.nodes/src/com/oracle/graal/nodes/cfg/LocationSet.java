@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.*;
 
 public class LocationSet {
     private LocationIdentity firstLocation;

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.ssa;
 
+import com.oracle.jvmci.meta.Value;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;

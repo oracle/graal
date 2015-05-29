@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.compiler.amd64.test;
 
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.Value;
 import static org.junit.Assume.*;
 
 import org.junit.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.jtt.*;

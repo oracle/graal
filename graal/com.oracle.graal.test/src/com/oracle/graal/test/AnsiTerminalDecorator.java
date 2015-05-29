@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.test;
 
+import static com.oracle.jvmci.debug.AnsiColor.*;
+
 import org.junit.runner.*;
 import org.junit.runner.notification.*;
-
-import static com.oracle.graal.debug.AnsiColor.*;
 
 /**
  * Color support for JUnit test output using ANSI escapes codes.

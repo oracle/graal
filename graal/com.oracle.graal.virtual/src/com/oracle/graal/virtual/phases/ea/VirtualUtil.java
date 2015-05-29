@@ -22,20 +22,20 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 
 public final class VirtualUtil {
 
     private VirtualUtil() {
-        GraalInternalError.shouldNotReachHere();
+        JVMCIError.shouldNotReachHere();
     }
 
     public static boolean assertNonReachable(StructuredGraph graph, List<Node> obsoleteNodes) {

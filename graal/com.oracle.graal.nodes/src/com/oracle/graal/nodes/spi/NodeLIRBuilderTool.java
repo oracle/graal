@@ -24,8 +24,6 @@ package com.oracle.graal.nodes.spi;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -35,6 +33,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
 

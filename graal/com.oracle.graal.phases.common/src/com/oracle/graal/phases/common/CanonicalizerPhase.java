@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeEventListener;
@@ -36,6 +37,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
 
 public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 

@@ -22,13 +22,18 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.jvmci.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -40,6 +45,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.elem.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Polymorphic inlining of m methods with n type checks (n &ge; m) in case that the profiling
@@ -184,7 +190,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             FixedNode exceptionSux = exceptionEdge.next();
             graph.addBeforeFixed(exceptionSux, exceptionMerge);
             exceptionObjectPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(Kind.Object), exceptionMerge));
-            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, exceptionObjectPhi));
+            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, new Kind[]{Kind.Object}, new ValueNode[]{exceptionObjectPhi}));
         }
 
         // create one separate block for each invoked method
@@ -466,7 +472,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             ExceptionObjectNode newExceptionEdge = (ExceptionObjectNode) exceptionEdge.copyWithInputs();
             // set new state (pop old exception object, push new one)
-            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(Kind.Object, newExceptionEdge));
+            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(Kind.Object, Kind.Object, newExceptionEdge));
 
             EndNode endNode = graph.add(new EndNode());
             newExceptionEdge.setNext(endNode);

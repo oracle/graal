@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.loop;
 
+import com.oracle.jvmci.code.BailoutException;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;

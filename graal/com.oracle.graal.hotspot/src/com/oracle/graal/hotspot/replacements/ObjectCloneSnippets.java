@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import com.oracle.jvmci.meta.Kind;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.jvmci.common.*;
 
 public class ObjectCloneSnippets implements Snippets {
 
@@ -52,7 +52,7 @@ public class ObjectCloneSnippets implements Snippets {
         try {
             return ObjectCloneSnippets.class.getDeclaredMethod(name, param);
         } catch (SecurityException | NoSuchMethodException e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

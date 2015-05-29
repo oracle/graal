@@ -22,8 +22,16 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.api.meta.Value.*;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
+import static com.oracle.jvmci.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
@@ -32,10 +40,9 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 

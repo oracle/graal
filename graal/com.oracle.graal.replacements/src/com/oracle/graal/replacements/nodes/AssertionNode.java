@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Assertion nodes will go away as soon as the value evaluates to true. Compile-time assertions will
@@ -81,10 +81,10 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
         assert compileTimeAssertion;
         if (value.isConstant()) {
             if (value.asJavaConstant().asInt() == 0) {
-                throw new GraalInternalError("%s: failed compile-time assertion: %s", this, message);
+                throw new JVMCIError("%s: failed compile-time assertion: %s", this, message);
             }
         } else {
-            throw new GraalInternalError("%s: failed compile-time assertion (value %s): %s", this, value, message);
+            throw new JVMCIError("%s: failed compile-time assertion (value %s): %s", this, value, message);
         }
     }
 

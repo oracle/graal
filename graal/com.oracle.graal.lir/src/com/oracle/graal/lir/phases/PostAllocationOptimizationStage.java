@@ -27,7 +27,7 @@ import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.profiling.*;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.options.*;
 
 public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {

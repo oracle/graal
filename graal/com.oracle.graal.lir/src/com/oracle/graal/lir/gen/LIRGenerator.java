@@ -22,24 +22,38 @@
  */
 package com.oracle.graal.lir.gen;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.RegisterAttributes;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
@@ -279,7 +293,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             } else if (isStackSlot(value)) {
                 return StackSlot.get(stackKind, asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
             } else {
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
         }
         return value;
@@ -413,10 +427,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 }

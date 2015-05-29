@@ -27,12 +27,12 @@ import static com.oracle.graal.printer.NoDeadCodeVerifyHandler.Options.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Verifies that graphs have no dead code.
@@ -70,7 +70,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
                 if (discovered.put(message, Boolean.TRUE) == null) {
                     before.removeAll(after);
                     String prefix = message == null ? "" : message + ": ";
-                    GraalInternalError error = new GraalInternalError("%sfound dead nodes in %s: %s", prefix, graph, before);
+                    JVMCIError error = new JVMCIError("%sfound dead nodes in %s: %s", prefix, graph, before);
                     if (NDCV.getValue() == INFO) {
                         System.out.println(error.getMessage());
                     } else if (NDCV.getValue() == VERBOSE) {

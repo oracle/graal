@@ -22,21 +22,32 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.code.VirtualStackSlot;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -50,6 +61,9 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -158,7 +172,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public void emitTailcall(Value[] args, Value address) {
         // append(new AMD64TailcallOp(args, address));
-        throw GraalInternalError.unimplemented();
+        throw JVMCIError.unimplemented();
     }
 
     @Override

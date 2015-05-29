@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.compiler.common;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 
 import sun.misc.*;
+
+import com.oracle.jvmci.common.*;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
@@ -209,7 +211,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             return unsafe.getByte(object, offset);
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -308,7 +310,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             unsafe.putByte(object, offset, (byte) value);
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 

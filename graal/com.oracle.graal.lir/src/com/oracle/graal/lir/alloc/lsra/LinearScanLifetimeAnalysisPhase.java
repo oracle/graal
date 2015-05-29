@@ -22,21 +22,25 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.AllocatableValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.debug.LIRGenerationDebugContext.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -48,6 +52,9 @@ import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
@@ -346,7 +353,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     reportFailure(numBlocks);
                 }
                 // bailout if this occurs in product mode.
-                throw new GraalInternalError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
+                throw new JVMCIError("liveIn set of first block must be empty: " + allocator.getBlockData(startBlock).liveIn);
             }
         }
     }

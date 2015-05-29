@@ -22,13 +22,19 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MethodHandleAccessProvider;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotResolvedJavaType.*;
-import static com.oracle.graal.hotspot.meta.HotSpotResolvedObjectTypeImpl.*;
+import static com.oracle.jvmci.hotspot.HotSpotResolvedJavaType.*;
+import static com.oracle.jvmci.hotspot.HotSpotResolvedObjectTypeImpl.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProvider, HotSpotProxified {
 
@@ -89,7 +95,7 @@ public class HotSpotMethodHandleAccessProvider implements MethodHandleAccessProv
                 lambdaFormCompileToBytecodeMethod = findMethodInClass("java.lang.invoke.LambdaForm", "compileToBytecode");
                 memberNameVmtargetField = findFieldInClass("java.lang.invoke.MemberName", "vmtarget");
             } catch (Throwable ex) {
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
         }
     }

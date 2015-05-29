@@ -22,7 +22,18 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.JavaMethod;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.ExcludeFromIdentityComparisonVerification;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaField;
+import static com.oracle.jvmci.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -32,14 +43,11 @@ import java.util.zip.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterCategory;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.Register.RegisterCategory;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -55,6 +63,7 @@ import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * Checks that all classes in graal*.jar from the boot classpath comply with global invariants such

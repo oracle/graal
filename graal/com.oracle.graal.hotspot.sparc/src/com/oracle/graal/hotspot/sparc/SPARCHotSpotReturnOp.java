@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.jvmci.meta.Value;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Returns from a function.

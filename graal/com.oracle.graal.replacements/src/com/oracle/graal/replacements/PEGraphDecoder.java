@@ -22,15 +22,12 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.compiler.common.GraalInternalError.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -44,6 +41,9 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * A graph decoder that performs partial evaluation, i.e., that performs method inlining and
@@ -575,7 +575,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
 
             Kind invokeReturnKind = methodScope.invokeData.invoke.asNode().getKind();
-            FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind);
+            FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null);
 
             /*
              * When the encoded graph has methods inlining, we can already have a proper caller

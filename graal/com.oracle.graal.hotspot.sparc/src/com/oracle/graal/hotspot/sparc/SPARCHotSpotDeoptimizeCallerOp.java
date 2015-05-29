@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.jvmci.code.Register;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.lir.*;

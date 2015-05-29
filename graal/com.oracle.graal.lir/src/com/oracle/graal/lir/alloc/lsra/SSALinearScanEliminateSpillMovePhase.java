@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.jvmci.debug.*;
 
 public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 

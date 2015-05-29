@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common;
 
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
@@ -212,9 +212,6 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> ConditionalElimination = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> UseProfilingInformation = new OptionValue<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> RemoveNeverExecutedCode = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -308,12 +305,6 @@ public final class GraalOptions {
 
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionValue<Boolean> MatchExpressions = new OptionValue<>(true);
-
-    @Option(help = "Constant fold final fields with default values.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> TrustFinalDefaultFields = new OptionValue<>(true);
-
-    @Option(help = "Mark well-known stable fields as such.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> ImplicitStableValues = new OptionValue<>(true);
 
     @Option(help = "Generate SSA LIR.", type = OptionType.Debug)
     public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(false);

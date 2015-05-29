@@ -24,10 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
@@ -39,6 +37,8 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 public class PEGraphDecoderTest extends GraalCompilerTest {
 
@@ -98,7 +98,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         Registration r = new Registration(plugins, PEGraphDecoderTest.class);
         r.register2("readInt", Object.class, long.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, MethodIdMap.Receiver unused, ValueNode obj, ValueNode offset) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode obj, ValueNode offset) {
                 LocationNode location = b.add(new ConstantLocationNode(LocationIdentity.any(), offset.asJavaConstant().asLong()));
                 ReadNode read = b.addPush(Kind.Int, new ReadNode(obj, location, StampFactory.forKind(Kind.Int), BarrierType.NONE));
                 read.setGuard(AbstractBeginNode.prevBegin(read));

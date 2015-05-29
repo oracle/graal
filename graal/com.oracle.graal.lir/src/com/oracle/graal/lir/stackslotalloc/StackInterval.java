@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.VirtualStackSlot;
+import com.oracle.jvmci.meta.LIRKind;
 
 public final class StackInterval {
 

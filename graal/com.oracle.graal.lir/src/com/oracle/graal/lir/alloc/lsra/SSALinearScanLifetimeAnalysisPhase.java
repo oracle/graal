@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.ssa.*;
+import com.oracle.jvmci.debug.*;
 
 public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 

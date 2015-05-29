@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This node will be inserted at point specified by {@link StructuredGraph#getEntryBCI()}, usually
@@ -47,6 +47,6 @@ public final class EntryMarkerNode extends BeginStateSplitNode implements Iterab
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        throw new GraalInternalError("OnStackReplacementNode should not survive");
+        throw new JVMCIError("OnStackReplacementNode should not survive");
     }
 }

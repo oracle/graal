@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.lir.gen;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.api.meta.Value.*;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.*;
+import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 
 /**
  * Converts phi instructions into moves.

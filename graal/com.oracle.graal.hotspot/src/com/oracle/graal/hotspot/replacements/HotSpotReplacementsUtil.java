@@ -22,24 +22,29 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.meta.NamedLocationIdentity;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 
@@ -429,12 +434,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayBaseOffset(Kind elementKind) {
-        return runtime().getArrayBaseOffset(elementKind);
+        return runtime().getJVMCIRuntime().getArrayBaseOffset(elementKind);
     }
 
     @Fold
     public static int arrayIndexScale(Kind elementKind) {
-        return runtime().getArrayIndexScale(elementKind);
+        return runtime().getJVMCIRuntime().getArrayIndexScale(elementKind);
     }
 
     @Fold
@@ -819,7 +824,7 @@ public class HotSpotReplacementsUtil {
         try {
             return unsafe.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
         } catch (Exception e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

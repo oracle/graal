@@ -22,14 +22,17 @@
  */
 package com.oracle.graal.sparc;
 
-import static com.oracle.graal.api.code.MemoryBarriers.*;
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.PlatformKind;
+import static com.oracle.jvmci.code.MemoryBarriers.*;
 
 import java.nio.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterCategory;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.Register.RegisterCategory;
 
 /**
  * Represents the SPARC architecture.

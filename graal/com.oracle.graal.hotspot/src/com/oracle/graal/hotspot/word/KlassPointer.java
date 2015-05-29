@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.word;
 
+import com.oracle.jvmci.meta.LocationIdentity;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;

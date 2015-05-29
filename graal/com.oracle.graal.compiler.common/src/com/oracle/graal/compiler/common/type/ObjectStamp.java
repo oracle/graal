@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.MemoryAccessProvider;
+import com.oracle.jvmci.meta.Constant;
 import com.oracle.graal.compiler.common.spi.*;
 
 public class ObjectStamp extends AbstractObjectStamp {

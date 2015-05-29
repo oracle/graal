@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.debug;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -30,6 +29,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This node can be used to add a counter to the code that will estimate the dynamic number of calls
@@ -109,7 +109,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         if (counterOp != null) {
             lirGen.append(counterOp);
         } else {
-            throw GraalInternalError.unimplemented("Benchmark counters not enabled or not implemented by the back end.");
+            throw JVMCIError.unimplemented("Benchmark counters not enabled or not implemented by the back end.");
         }
     }
 

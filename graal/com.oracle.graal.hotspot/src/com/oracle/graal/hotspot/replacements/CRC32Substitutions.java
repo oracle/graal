@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.util.zip.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;

@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+import static com.oracle.jvmci.meta.MetaUtil.*;
 import static java.lang.String.*;
 
 import java.lang.reflect.*;
@@ -36,12 +36,8 @@ import java.util.concurrent.atomic.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
@@ -52,13 +48,18 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
@@ -109,7 +110,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             assert b.getDepth() < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
 
             if (method.getName().startsWith("$jacoco")) {
-                throw new GraalInternalError("Found call to JaCoCo instrumentation method " + method.format("%H.%n(%p)") + ". Placing \"//JaCoCo Exclude\" anywhere in " +
+                throw new JVMCIError("Found call to JaCoCo instrumentation method " + method.format("%H.%n(%p)") + ". Placing \"//JaCoCo Exclude\" anywhere in " +
                                 b.getMethod().getDeclaringClass().getSourceFileName() + " should fix this.");
             }
 
@@ -153,7 +154,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
                     int modifiers = substituteMethod.getModifiers();
                     if (!Modifier.isStatic(modifiers)) {
-                        throw new GraalInternalError("Substitution methods must be static: " + substituteMethod);
+                        throw new JVMCIError("Substitution methods must be static: " + substituteMethod);
                     }
 
                     if (methodSubstitution != null) {
@@ -163,7 +164,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                         }
 
                         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                            throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
+                            throw new JVMCIError("Substitution method must not be abstract or native: " + substituteMethod);
                         }
                         String originalName = originalName(substituteMethod, methodSubstitution.value());
                         JavaSignature originalSignature = originalSignature(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
@@ -224,7 +225,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return null;
         }
 
-        private Executable lookupOriginalMethod(Class<?> originalClass, String name, JavaSignature signature, boolean optional) throws GraalInternalError {
+        private Executable lookupOriginalMethod(Class<?> originalClass, String name, JavaSignature signature, boolean optional) throws JVMCIError {
             try {
                 if (name.equals("<init>")) {
                     assert signature.returnType.equals(void.class) : signature;
@@ -241,7 +242,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 if (optional) {
                     return null;
                 }
-                throw new GraalInternalError(e);
+                throw new JVMCIError(e);
             }
         }
     }
@@ -358,7 +359,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (guardClass != SubstitutionGuard.class) {
             Constructor<?>[] constructors = guardClass.getConstructors();
             if (constructors.length != 1) {
-                throw new GraalInternalError("Substitution guard " + guardClass.getSimpleName() + " must have a single public constructor");
+                throw new JVMCIError("Substitution guard " + guardClass.getSimpleName() + " must have a single public constructor");
             }
             Constructor<?> constructor = constructors[0];
             Class<?>[] paramTypes = constructor.getParameterTypes();
@@ -372,13 +373,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                     } else if (paramTypes[i].isInstance(target.arch)) {
                         args[i] = target.arch;
                     } else {
-                        throw new GraalInternalError("Unsupported type %s in substitution guard constructor: %s", paramTypes[i].getName(), constructor);
+                        throw new JVMCIError("Unsupported type %s in substitution guard constructor: %s", paramTypes[i].getName(), constructor);
                     }
                 }
 
                 return (SubstitutionGuard) constructor.newInstance(args);
             } catch (Exception e) {
-                throw new GraalInternalError(e);
+                throw new JVMCIError(e);
             }
         }
         return null;
@@ -611,7 +612,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             if (optional) {
                 return null;
             }
-            throw new GraalInternalError("Could not resolve type " + className);
+            throw new JVMCIError("Could not resolve type " + className);
         }
     }
 

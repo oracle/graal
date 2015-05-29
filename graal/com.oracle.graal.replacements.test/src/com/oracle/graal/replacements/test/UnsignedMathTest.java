@@ -24,8 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.jvmci.code.*;
 
 /**
  * Tests the substitutions for the {@link UnsignedMath} class.

@@ -22,7 +22,12 @@
  */
 package com.oracle.graal.phases.verify;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.TrustedInterface;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;

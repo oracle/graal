@@ -26,7 +26,6 @@ import java.io.*;
 
 import org.junit.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -36,6 +35,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * In the following tests, the scalar type system of the compiler should be complete enough to see

@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * An {@link InvocationPlugin} for a method where the implementation of the method is provided by a
@@ -66,13 +66,13 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
      * @param name the name of the substitute method
      * @param parameters the parameter types of the substitute method. If the original method is not
      *            static, then {@code parameters[0]} must be the {@link Class} value denoting
-     *            {@link Receiver}
+     *            {@link InvocationPlugin.Receiver}
      */
     public MethodSubstitutionPlugin(Class<?> declaringClass, String name, Class<?>... parameters) {
         this.declaringClass = declaringClass;
         this.name = name;
         this.parameters = parameters;
-        this.originalIsStatic = parameters.length == 0 || parameters[0] != Receiver.class;
+        this.originalIsStatic = parameters.length == 0 || parameters[0] != InvocationPlugin.Receiver.class;
     }
 
     /**
@@ -107,14 +107,14 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     /**
      * Gets the reflection API version of the substitution method.
      */
-    Method getJavaSubstitute() throws GraalInternalError {
+    Method getJavaSubstitute() throws JVMCIError {
         Method substituteMethod = lookupSubstitute();
         int modifiers = substituteMethod.getModifiers();
         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-            throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
+            throw new JVMCIError("Substitution method must not be abstract or native: " + substituteMethod);
         }
         if (!Modifier.isStatic(modifiers)) {
-            throw new GraalInternalError("Substitution method must be static: " + substituteMethod);
+            throw new JVMCIError("Substitution method must be static: " + substituteMethod);
         }
         return substituteMethod;
     }
@@ -153,7 +153,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                 return m;
             }
         }
-        throw new GraalInternalError("No method found specified by %s", this);
+        throw new JVMCIError("No method found specified by %s", this);
     }
 
     /**
@@ -173,12 +173,12 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
             if (optional) {
                 return null;
             }
-            throw new GraalInternalError("Could not resolve type " + className);
+            throw new JVMCIError("Could not resolve type " + className);
         }
     }
 
     @Override
-    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] argsIncludingReceiver) {
+    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
         ResolvedJavaMethod subst = getSubstitute(b.getMetaAccess());
         if (receiver != null) {
             receiver.get();
@@ -194,7 +194,7 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
                 return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
             }
         }
-        throw new GraalInternalError("could not find method named \"execute\" in " + c.getName());
+        throw new JVMCIError("could not find method named \"execute\" in " + c.getName());
     }
 
     @Override

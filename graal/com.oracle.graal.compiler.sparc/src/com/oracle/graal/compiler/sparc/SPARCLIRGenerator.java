@@ -23,18 +23,25 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.LIRKind;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.sparc.SPARCCompare.*;
 import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
@@ -52,10 +59,21 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.sparc.SPARCMove.*;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadDataAddressOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGp;
+import com.oracle.graal.lir.sparc.SPARCMove.MoveFpGpVIS3;
+import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
+import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
+import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
 import com.oracle.graal.sparc.SPARC.CPUFeature;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -270,7 +288,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 opcode = DCMP;
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere(actualCmpKind.toString());
+                throw JVMCIError.shouldNotReachHere(actualCmpKind.toString());
         }
         append(new SPARCControlFlow.CompareBranchOp(opcode, left, right, actualCondition, trueDestination, falseDestination, actualCmpKind, unorderedIsTrue, trueDestinationProbability));
     }
@@ -334,7 +352,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 actualFalseValue = load(falseValue);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         Variable result = newVariable(trueValue.getLIRKind());
         ConditionFlag finalCondition = ConditionFlag.fromCondtition(conditionFlags, mirrored ? cond.mirror() : cond, unorderedIsTrue);
@@ -388,7 +406,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new CompareOp(DCMP, left, right));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return mirrored;
     }
@@ -411,7 +429,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 conditionCode = CC.Icc;
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         ConditionFlag flag = ConditionFlag.fromCondtition(conditionCode, Condition.EQ, false);
         append(new CondMoveOp(result, conditionCode, flag, loadSimm11(trueValue), loadSimm11(falseValue)));
@@ -511,7 +529,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Double:
                 return emitUnary(DNEG, input);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -523,7 +541,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitUnary(LNOT, input);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -589,7 +607,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Double:
                 return emitBinary(DADD, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -605,7 +623,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Double:
                 return emitBinary(DSUB, false, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
     }
 
@@ -627,7 +645,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Double:
                 return emitBinary(DMUL, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
     }
 
@@ -639,7 +657,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitMulHigh(LMUL, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -651,7 +669,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitMulHigh(LUMUL, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -674,7 +692,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Double:
                 return emitBinary(DDIV, false, a, b, state);
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
     }
 
@@ -706,7 +724,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new BinaryRegReg(DSUB, result, a, q));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
         return result;
     }
@@ -722,7 +740,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new RemOp(LUREM, result, load(a), loadNonConst(b), state, this));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
 
@@ -743,7 +761,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 op = LUDIV;
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return emitBinary(op, false, actualA, actualB, state);
     }
@@ -757,7 +775,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 return emitBinary(LAND, true, a, b);
 
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
     }
 
@@ -769,7 +787,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitBinary(LOR, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+                throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
     }
 
@@ -781,7 +799,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitBinary(LXOR, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -803,7 +821,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitShift(LSHL, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -815,7 +833,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitShift(LSHR, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -827,7 +845,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Long:
                 return emitShift(LUSHR, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -907,7 +925,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 return convertedFloatReg;
             }
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -955,7 +973,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 case 32:
                     return emitConvert2Op(LIRKind.derive(inputVal).changeType(Kind.Long), I2L, asAllocatable(inputVal));
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
             // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
@@ -967,7 +985,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 case 32:
                     return inputVal;
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         }
     }

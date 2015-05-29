@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 
 public class EconomyPostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public EconomyPostAllocationOptimizationStage() {

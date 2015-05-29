@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.word;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.LocationIdentity;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 
 /**
  * Lowest-level memory access of native C memory. These methods access the raw memory without any

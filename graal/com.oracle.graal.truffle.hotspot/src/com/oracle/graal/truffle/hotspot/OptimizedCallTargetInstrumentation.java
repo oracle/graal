@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.ForeignCallsProvider;
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Mark;
+import com.oracle.jvmci.code.CompilationResult.Mark;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * Mechanism for injecting special code into {@link OptimizedCallTarget#call(Object[])} .
@@ -61,7 +64,7 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
             Field field = declaringClass.getDeclaredField(name);
             return (int) UnsafeAccess.unsafe.objectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
@@ -40,10 +40,10 @@ public final class ForeignCallPlugin implements InvocationPlugin {
         this.descriptor = descriptor;
     }
 
-    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] args) {
+    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {
         ForeignCallNode foreignCall = new ForeignCallNode(foreignCalls, descriptor, args);
         foreignCall.setBci(b.bci());
-        b.addPush(foreignCall);
+        b.addPush(targetMethod.getSignature().getReturnKind(), foreignCall);
         return true;
     }
 }

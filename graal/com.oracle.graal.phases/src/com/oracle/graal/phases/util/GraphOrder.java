@@ -24,7 +24,6 @@ package com.oracle.graal.phases.util;
 
 import java.util.*;
 
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -35,6 +34,7 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import com.oracle.jvmci.common.*;
 
 public final class GraphOrder {
 
@@ -91,7 +91,7 @@ public final class GraphOrder {
             assert node == null || node.isAlive() : node + " not alive";
             if (node != null && !visited.isMarked(node)) {
                 if (floatingOnly && node instanceof FixedNode) {
-                    throw new GraalInternalError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);
+                    throw new JVMCIError("unexpected reference to fixed node: %s (this indicates an unexpected cycle)", node);
                 }
                 visited.mark(node);
                 FrameState stateAfter = null;
@@ -120,8 +120,8 @@ public final class GraphOrder {
                     visitForward(nodes, visited, stateAfter, true);
                 }
             }
-        } catch (GraalInternalError e) {
-            throw GraalGraphInternalError.transformAndAddContext(e, node);
+        } catch (JVMCIError e) {
+            throw GraalGraphJVMCIError.transformAndAddContext(e, node);
         }
     }
 

@@ -22,20 +22,15 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.jvmci.code.CodeUtil.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -44,7 +39,12 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described in <a
@@ -745,32 +745,32 @@ class LinearScan {
                 if (i1.operandNumber != i) {
                     Debug.log("Interval %d is on position %d in list", i1.operandNumber, i);
                     Debug.log(i1.logString(this));
-                    throw new GraalInternalError("");
+                    throw new JVMCIError("");
                 }
 
                 if (isVariable(i1.operand) && i1.kind().equals(LIRKind.Illegal)) {
                     Debug.log("Interval %d has no type assigned", i1.operandNumber);
                     Debug.log(i1.logString(this));
-                    throw new GraalInternalError("");
+                    throw new JVMCIError("");
                 }
 
                 if (i1.location() == null) {
                     Debug.log("Interval %d has no register assigned", i1.operandNumber);
                     Debug.log(i1.logString(this));
-                    throw new GraalInternalError("");
+                    throw new JVMCIError("");
                 }
 
                 if (i1.first() == Range.EndMarker) {
                     Debug.log("Interval %d has no Range", i1.operandNumber);
                     Debug.log(i1.logString(this));
-                    throw new GraalInternalError("");
+                    throw new JVMCIError("");
                 }
 
                 for (Range r = i1.first(); r != Range.EndMarker; r = r.next) {
                     if (r.from >= r.to) {
                         Debug.log("Interval %d has zero length range", i1.operandNumber);
                         Debug.log(i1.logString(this));
-                        throw new GraalInternalError("");
+                        throw new JVMCIError("");
                     }
                 }
 

@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -34,6 +35,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
 
 public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 

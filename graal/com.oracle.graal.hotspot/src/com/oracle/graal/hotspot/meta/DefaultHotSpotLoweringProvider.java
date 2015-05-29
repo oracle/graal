@@ -22,7 +22,18 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -30,9 +41,6 @@ import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 
 import java.lang.ref.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -46,11 +54,13 @@ import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * HotSpot implementation of {@link LoweringProvider}.
@@ -417,7 +427,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
                     exception = Exceptions.cachedArrayIndexOutOfBoundsException;
                 } else {
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
                 }
                 FloatingNode exceptionNode = ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(exception), metaAccess, graph);
                 graph.replaceFixedWithFloating(node, exceptionNode);
@@ -429,7 +439,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
                     descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
                 } else {
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
                 }
 
                 ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(), node.getArguments()));
@@ -521,7 +531,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected int arrayBaseOffset(Kind kind) {
-        return runtime.getArrayBaseOffset(kind);
+        return runtime.getJVMCIRuntime().getArrayBaseOffset(kind);
     }
 
     @Override

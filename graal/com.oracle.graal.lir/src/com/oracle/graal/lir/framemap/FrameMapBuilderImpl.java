@@ -22,21 +22,21 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
 
 /**
  * A FrameMapBuilder that records allocation.
@@ -71,7 +71,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
             return null;
         }
         if (outObjectStackSlots != null) {
-            throw GraalInternalError.unimplemented();
+            throw JVMCIError.unimplemented();
         }
         VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects);
         stackSlots.add(slot);

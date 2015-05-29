@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.api.replacements;
 
+import com.oracle.jvmci.meta.JavaField;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 import java.util.*;
-
-import com.oracle.graal.api.meta.*;
 
 /**
  * Reflection operations on values represented as {@linkplain JavaConstant constants} for the
@@ -88,7 +92,7 @@ public interface SnippetReflectionProvider {
         try {
             return Class.forName(type.toClassName());
         } catch (ClassNotFoundException e) {
-            // Support for -XX:-UseGraalClassLoader
+            // Support for -XX:-UseJVMCIClassLoader
             return Class.forName(type.toClassName(), false, ClassLoader.getSystemClassLoader());
         }
     }

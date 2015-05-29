@@ -25,12 +25,12 @@ package com.oracle.graal.compiler.test;
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.jvmci.debug.*;
 
 public class NestedLoopTest extends GraalCompilerTest {
 

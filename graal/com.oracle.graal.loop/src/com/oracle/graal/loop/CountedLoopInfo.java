@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.loop;
 
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.JavaConstant;
 import static com.oracle.graal.loop.MathUtil.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;

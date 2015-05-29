@@ -22,16 +22,19 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.amd64.AMD64.CPUFeature;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;

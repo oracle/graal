@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.common.alloc;
 
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.PlatformKind;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 
 /**

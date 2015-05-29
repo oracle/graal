@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,13 +28,13 @@ import org.junit.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class DataPatchTest extends GraalCompilerTest {
 
@@ -70,7 +70,7 @@ public class DataPatchTest extends GraalCompilerTest {
         test("narrowOopSnippet");
     }
 
-    private static final HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+    private static final HotSpotVMConfig config = HotSpotJVMCIRuntime.runtime().getConfig();
     private static boolean initReplacements = false;
 
     @Before

@@ -22,13 +22,16 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.MetaAccessProvider;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
@@ -42,6 +45,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.
@@ -452,7 +456,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 f = f.parent;
                 nextState = ST_ENTER;
             } else {
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
             }
             state = nextState;
         }

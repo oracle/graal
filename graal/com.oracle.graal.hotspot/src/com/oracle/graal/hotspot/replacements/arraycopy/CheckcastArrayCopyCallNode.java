@@ -23,7 +23,9 @@
 //JaCoCo Exclude
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -36,6 +38,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
@@ -94,7 +97,8 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
-        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), runtime.getArrayBaseOffset(Kind.Object), pos, runtime.getArrayIndexScale(Kind.Object)));
+        HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
+        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), jvmciRuntime.getArrayBaseOffset(Kind.Object), pos, jvmciRuntime.getArrayIndexScale(Kind.Object)));
         return graph().unique(new ComputeAddressNode(basePtr, loc, StampFactory.forKind(Kind.Long)));
     }
 

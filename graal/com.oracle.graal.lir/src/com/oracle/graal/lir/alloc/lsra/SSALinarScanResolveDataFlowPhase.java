@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.ssa.*;
 import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
+import com.oracle.jvmci.debug.*;
 
 class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 

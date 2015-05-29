@@ -22,18 +22,21 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.jvmci.common.*;
 
 public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCBitManipulationOp> TYPE = LIRInstructionClass.create(SPARCBitManipulationOp.class);
@@ -85,7 +88,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                         masm.andn(dst, src, dst);
                         masm.popc(dst, dst);
                     } else {
-                        throw GraalInternalError.shouldNotReachHere("missing: " + tkind);
+                        throw JVMCIError.shouldNotReachHere("missing: " + tkind);
                     }
                     break;
                 case IBSR: {
@@ -130,7 +133,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     break;
                 }
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
 
             }
         } else if (isConstant(input) && isSimm13(crb.asIntConst(input))) {
@@ -142,10 +145,10 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     masm.popc(crb.asIntConst(input), dst);
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else {
-            throw GraalInternalError.shouldNotReachHere();
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 

@@ -25,11 +25,12 @@ package com.oracle.graal.lir;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
@@ -121,7 +122,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             } else if (field.isAnnotationPresent(LIRInstruction.Def.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(LIRInstruction.Def.class).value()));
             } else {
-                GraalInternalError.shouldNotReachHere();
+                JVMCIError.shouldNotReachHere();
             }
             return result;
         }
@@ -197,7 +198,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             case DEF:
                 return defs;
             default:
-                throw GraalInternalError.shouldNotReachHere("unknown OperandMode: " + mode);
+                throw JVMCIError.shouldNotReachHere("unknown OperandMode: " + mode);
         }
     }
 

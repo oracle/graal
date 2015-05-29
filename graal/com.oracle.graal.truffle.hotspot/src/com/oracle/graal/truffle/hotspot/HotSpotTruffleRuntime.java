@@ -22,7 +22,14 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
@@ -32,15 +39,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
@@ -58,6 +60,11 @@ import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.nfi.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.runtime.*;
 import com.oracle.nfi.api.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
@@ -332,7 +339,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         try {
             return UnsafeAccess.unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
         } catch (Exception e) {
-            throw new GraalInternalError(e);
+            throw new JVMCIError(e);
         }
     }
 

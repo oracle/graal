@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.compiler.test;
 
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.ProfilingInfo;
+import com.oracle.jvmci.meta.JavaTypeProfile;
 import java.io.*;
 
 import org.junit.*;
-
-import com.oracle.graal.api.meta.*;
 
 /**
  * Tests profiling information provided by the runtime.

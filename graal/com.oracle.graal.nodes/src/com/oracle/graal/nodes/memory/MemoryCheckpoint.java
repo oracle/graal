@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations

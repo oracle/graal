@@ -25,8 +25,8 @@ package com.oracle.graal.compiler;
 import java.util.*;
 import java.util.regex.*;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.internal.*;
 
 /**
  * Implements the filter specified by the {@link GraalDebugConfig#Dump},

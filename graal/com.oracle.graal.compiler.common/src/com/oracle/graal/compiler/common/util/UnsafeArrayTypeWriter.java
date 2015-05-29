@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.common.util;
 import static com.oracle.graal.compiler.common.util.TypeConversion.*;
 import sun.misc.*;
 
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Provides low-level sequential write access to a byte[] array for signed and unsigned values of

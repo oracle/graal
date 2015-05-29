@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;

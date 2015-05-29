@@ -22,23 +22,26 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.JavaConstant;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.CompilationResult.JumpTable;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CompilationResult.JumpTable;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.common.*;
 
 public class AMD64ControlFlow {
 
@@ -172,7 +175,7 @@ public class AMD64ControlFlow {
                             masm.cmpptr(keyRegister, asObjectReg(scratch));
                             break;
                         default:
-                            throw new GraalInternalError("switch only supported for int, long and object");
+                            throw new JVMCIError("switch only supported for int, long and object");
                     }
                     masm.jcc(intCond(condition), target);
                 }
@@ -354,7 +357,7 @@ public class AMD64ControlFlow {
                     masm.cmovq(cond, asRegister(result), asRegister(other));
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         } else {
             AMD64Address addr = (AMD64Address) crb.asAddress(other);
@@ -370,7 +373,7 @@ public class AMD64ControlFlow {
                     masm.cmovq(cond, asRegister(result), addr);
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
         }
     }
@@ -398,7 +401,7 @@ public class AMD64ControlFlow {
             case BT:
                 return ConditionFlag.Below;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -417,7 +420,7 @@ public class AMD64ControlFlow {
             case GT:
                 return ConditionFlag.Above;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -436,7 +439,7 @@ public class AMD64ControlFlow {
             case NoOverflow:
                 return true;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 }

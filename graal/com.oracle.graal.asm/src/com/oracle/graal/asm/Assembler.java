@@ -25,7 +25,7 @@ package com.oracle.graal.asm;
 import java.nio.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.jvmci.code.*;
 
 /**
  * The platform-independent base class for the assembler.

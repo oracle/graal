@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,19 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.JavaMethod;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
+import static com.oracle.jvmci.code.CallingConvention.Type.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.meta.*;
@@ -38,6 +45,8 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
@@ -122,7 +131,7 @@ public class ForeignCallStub extends Stub {
                 for (int i = 0; i < arguments.length; i++) {
                     parameters[i] = metaAccess.lookupJavaType(arguments[i]);
                 }
-                return new HotSpotSignature(runtime, metaAccess.lookupJavaType(d.getResultType()), parameters);
+                return new HotSpotSignature(runtime.getJVMCIRuntime(), metaAccess.lookupJavaType(d.getResultType()), parameters);
             }
 
             public String getName() {

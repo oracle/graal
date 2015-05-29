@@ -26,8 +26,8 @@ import static com.oracle.graal.amd64.AMD64.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.alloc.*;
+import com.oracle.jvmci.code.*;
 
 class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     /**

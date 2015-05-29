@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.truffle.debug;
 
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;

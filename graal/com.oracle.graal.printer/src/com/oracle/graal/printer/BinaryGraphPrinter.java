@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.printer;
 
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.Signature;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.JavaType;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graph.Edges.Type.*;
 
@@ -30,13 +34,13 @@ import java.nio.*;
 import java.nio.channels.*;
 import java.util.*;
 import java.util.Map.Entry;
-import com.oracle.graal.api.meta.*;
+
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.debug.*;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 

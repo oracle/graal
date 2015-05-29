@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Represents a value that is yet to be bound to a machine location (such as a {@link RegisterValue}

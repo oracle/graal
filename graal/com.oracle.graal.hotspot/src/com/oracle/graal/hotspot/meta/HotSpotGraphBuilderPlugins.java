@@ -22,6 +22,12 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import com.oracle.jvmci.code.ForeignCallsProvider;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 
@@ -30,26 +36,24 @@ import java.util.zip.*;
 
 import sun.reflect.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.memory.HeapAccess.*;
+import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -86,7 +90,7 @@ public class HotSpotGraphBuilderPlugins {
         registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
         registerCallSitePlugins(invocationPlugins);
         registerReflectionPlugins(invocationPlugins);
-        registerStableOptionPlugins(invocationPlugins);
+        registerStableOptionPlugins(invocationPlugins, snippetReflection);
         registerAESPlugins(invocationPlugins, config);
         registerCRC32Plugins(invocationPlugins, config);
         StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
@@ -164,7 +168,7 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, Reflection.class);
         r.register0("getCallerClass", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType()));
+                b.addPush(Kind.Object, new ReflectionGetCallerClassNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType()));
                 return true;
             }
 
@@ -180,7 +184,7 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
+                b.addPush(Kind.Int, new IdentityHashCodeNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnType(), object));
                 return true;
             }
 
@@ -216,13 +220,12 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerStableOptionPlugins(InvocationPlugins plugins) {
+    private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, StableOptionValue.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
-                    Object object = ((HotSpotObjectConstantImpl) receiver.get().asConstant()).object();
-                    StableOptionValue<?> option = (StableOptionValue<?>) object;
+                    StableOptionValue<?> option = snippetReflection.asObject(StableOptionValue.class, (JavaConstant) receiver.get().asConstant());
                     b.addPush(Kind.Object, ConstantNode.forConstant(HotSpotObjectConstantImpl.forObject(option.getValue()), b.getMetaAccess()));
                     return true;
                 }

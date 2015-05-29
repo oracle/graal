@@ -22,20 +22,24 @@
  */
 package com.oracle.graal.printer;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.DebugInfo;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.MetaUtil;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.*;
+import com.oracle.graal.lir.alloc.lsra.Interval.UsePosList;
 import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;

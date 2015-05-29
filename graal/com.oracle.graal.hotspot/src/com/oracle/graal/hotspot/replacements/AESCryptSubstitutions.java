@@ -22,19 +22,21 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import com.oracle.jvmci.meta.LocationIdentity;
+import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.word.Word.*;
 import sun.misc.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
 
 // JaCoCo Exclude
 
@@ -54,7 +56,7 @@ public class AESCryptSubstitutions {
             AESCryptClass = Class.forName("com.sun.crypto.provider.AESCrypt", true, cl);
             kOffset = UnsafeAccess.unsafe.objectFieldOffset(AESCryptClass.getDeclaredField("K"));
         } catch (Exception ex) {
-            throw new GraalInternalError(ex);
+            throw new JVMCIError(ex);
         }
     }
 

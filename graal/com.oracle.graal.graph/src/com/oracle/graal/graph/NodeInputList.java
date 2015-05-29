@@ -26,7 +26,7 @@ import static com.oracle.graal.graph.Edges.Type.*;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Edges.*;
+import com.oracle.graal.graph.Edges.Type;
 
 public final class NodeInputList<T extends Node> extends NodeList<T> {
 

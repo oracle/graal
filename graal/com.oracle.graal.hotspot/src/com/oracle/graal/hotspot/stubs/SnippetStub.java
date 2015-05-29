@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.LocalVariableTable;
+import com.oracle.jvmci.meta.Local;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.lang.reflect.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
@@ -44,6 +44,9 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Base class for a stub defined by a snippet.
@@ -78,7 +81,14 @@ public abstract class SnippetStub extends Stub implements Snippets {
         this.method = providers.getMetaAccess().lookupJavaMethod(javaMethod);
     }
 
-    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = new ThreadLocal<>();
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
+    }
+
+    public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = assertionsEnabled() ? new ThreadLocal<>() : null;
 
     @Override
     protected StructuredGraph getGraph() {
@@ -94,11 +104,17 @@ public abstract class SnippetStub extends Stub implements Snippets {
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
         graph.disableInlinedMethodRecording();
 
-        assert SnippetGraphUnderConstruction.get() == null;
-        SnippetGraphUnderConstruction.set(graph);
+        if (SnippetGraphUnderConstruction != null) {
+            assert SnippetGraphUnderConstruction.get() == null;
+            SnippetGraphUnderConstruction.set(graph);
+        }
+
         IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
-        SnippetGraphUnderConstruction.set(null);
+
+        if (SnippetGraphUnderConstruction != null) {
+            SnippetGraphUnderConstruction.set(null);
+        }
 
         graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
         try (Scope s = Debug.scope("LoweringStub", graph)) {
@@ -134,7 +150,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     }
 
     protected Object getConstantParameterValue(int index, String name) {
-        throw new GraalInternalError("%s must override getConstantParameterValue() to provide a value for parameter %d%s", getClass().getName(), index, name == null ? "" : " (" + name + ")");
+        throw new JVMCIError("%s must override getConstantParameterValue() to provide a value for parameter %d%s", getClass().getName(), index, name == null ? "" : " (" + name + ")");
     }
 
     @Override

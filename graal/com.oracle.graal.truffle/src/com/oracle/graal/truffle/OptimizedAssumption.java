@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.truffle;
 
+import com.oracle.jvmci.code.InstalledCode;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.lang.ref.*;
 import java.util.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.debug.*;
+import com.oracle.jvmci.debug.*;
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
 

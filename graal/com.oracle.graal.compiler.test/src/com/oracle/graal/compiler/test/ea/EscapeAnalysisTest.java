@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import com.oracle.jvmci.meta.JavaConstant;
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.extended.*;

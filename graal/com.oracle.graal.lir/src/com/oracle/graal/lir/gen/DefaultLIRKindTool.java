@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.lir.gen;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * Default implementation of {@link LIRKindTool}. Returns the normal Java kind for primitive types.
@@ -58,7 +60,7 @@ public class DefaultLIRKindTool implements LIRKindTool {
             case 64:
                 return LIRKind.value(Kind.Double);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 

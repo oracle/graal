@@ -22,18 +22,20 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import com.oracle.jvmci.code.CodeCacheProvider;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -45,6 +47,11 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.debug.internal.*;
+import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 
@@ -191,13 +198,13 @@ public abstract class Stub {
                 try (Scope s = Debug.scope("CodeInstall")) {
                     Stub stub = Stub.this;
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
+                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(compResult);
 
                     HotSpotGraalRuntime runtime = runtime();
                     int result = runtime.getCompilerToVM().installCode(hsCompResult, installedCode, null);
                     HotSpotVMConfig config = runtime.getConfig();
                     if (result != config.codeInstallResultOk) {
-                        throw new GraalInternalError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
+                        throw new JVMCIError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
                     }
                     ((HotSpotCodeCacheProvider) codeCache).logOrDump(installedCode, compResult);
                     code = installedCode;

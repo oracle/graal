@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
+import static com.oracle.jvmci.debug.internal.MemUseTrackerImpl.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -36,18 +36,18 @@ import java.util.concurrent.atomic.*;
 import java.util.jar.*;
 import java.util.stream.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.options.*;
-import com.oracle.graal.options.OptionUtils.OptionConsumer;
-import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.internal.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.options.*;
+import com.oracle.jvmci.options.OptionUtils.OptionConsumer;
+import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 /**
  * This class implements compile-the-world functionality in Graal.

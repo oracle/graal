@@ -22,6 +22,23 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.VirtualStackSlot;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.DeoptimizationAction;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.PrimitiveConstant;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
@@ -31,16 +48,12 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -53,6 +66,10 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -191,7 +208,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 return r;
             }
         }
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     private Register pollOnReturnScratchRegister;

@@ -23,7 +23,22 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.CodeUtil;
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.code.StackSlotValue;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.code.VirtualStackSlot;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.LIRKind;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
@@ -35,8 +50,6 @@ import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
@@ -49,7 +62,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.util.*;
@@ -75,6 +87,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
@@ -327,7 +340,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64Unary.MemoryOp(MOVSD, SD, result, loadAddress, state));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
     }
@@ -371,7 +384,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                     imm = Double.doubleToRawLongBits(value.asDouble());
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere("unexpected kind " + kind);
+                    throw JVMCIError.shouldNotReachHere("unexpected kind " + kind);
             }
 
             if (NumUtil.isInt(imm)) {
@@ -406,7 +419,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64BinaryConsumer.MemoryMROp(AMD64MROp.MOVSD, SD, address, value, state));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -564,7 +577,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, PD, left, asAllocatable(right)));
                 return;
             default:
-                throw GraalInternalError.shouldNotReachHere("unexpected kind: " + cmpKind);
+                throw JVMCIError.shouldNotReachHere("unexpected kind: " + cmpKind);
         }
 
         if (isConstant(right)) {
@@ -615,7 +628,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, PD, asAllocatable(a), b, state));
                 return false;
             default:
-                throw GraalInternalError.shouldNotReachHere("unexpected kind: " + cmpKind);
+                throw JVMCIError.shouldNotReachHere("unexpected kind: " + cmpKind);
         }
 
         if (isConstant(a)) {
@@ -683,7 +696,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64Binary.DataOp(SSEOp.XOR, PD, result, input, JavaConstant.forDouble(Double.longBitsToDouble(0x8000000000000000L)), 16));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
     }
@@ -700,7 +713,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64Unary.MOp(NOT, QWORD, result, input));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
     }
@@ -763,7 +776,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.ADD, SD, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -779,7 +792,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.SUB, SD, false, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -823,7 +836,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.MUL, SD, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -846,7 +859,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitMulHigh(AMD64MOp.IMUL, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -858,7 +871,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitMulHigh(AMD64MOp.MUL, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -894,7 +907,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64Unary.MemoryOp(MOV, QWORD, result, address, state));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
     }
@@ -925,7 +938,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 op = emitIDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return new Value[]{emitMove(op.getQuotient()), emitMove(op.getRemainder())};
     }
@@ -944,7 +957,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.DIV, SD, false, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -968,7 +981,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 return result;
             }
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -983,7 +996,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 op = emitDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return emitMove(op.getQuotient());
     }
@@ -999,7 +1012,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 op = emitDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return emitMove(op.getRemainder());
     }
@@ -1016,7 +1029,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.AND, PD, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1032,7 +1045,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.OR, PD, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1048,7 +1061,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Double:
                 return emitBinary(SSEOp.XOR, PD, true, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1081,7 +1094,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitShift(SHL, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1093,7 +1106,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitShift(SAR, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1105,7 +1118,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitShift(SHR, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1116,7 +1129,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitShift(ROL, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1127,7 +1140,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case Long:
                 return emitShift(ROR, QWORD, a, b);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1182,7 +1195,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 }
                 break;
         }
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public Value emitFloatConvert(FloatConvert op, Value input) {
@@ -1208,7 +1221,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             case L2F:
                 return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSI2SS, QWORD, input);
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
     }
 
@@ -1237,7 +1250,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 case 32:
                     return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSXD, QWORD, inputVal);
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
             // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
@@ -1249,7 +1262,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 case 32:
                     return inputVal;
                 default:
-                    throw GraalInternalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         }
     }
@@ -1383,7 +1396,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64Binary.DataOp(SSEOp.AND, PD, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)), 16));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
     }
@@ -1399,7 +1412,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 append(new AMD64Unary.RMOp(SSEOp.SQRT, SD, result, asAllocatable(input)));
                 break;
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw JVMCIError.shouldNotReachHere();
         }
         return result;
     }

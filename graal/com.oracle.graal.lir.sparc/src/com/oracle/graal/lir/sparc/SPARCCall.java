@@ -22,17 +22,20 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import com.oracle.jvmci.code.ForeignCallLinkage;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.InvokeTarget;
+import com.oracle.jvmci.meta.Value;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.common.*;
 
 public class SPARCCall {
 
@@ -96,7 +99,7 @@ public class SPARCCall {
                 } else if (after - before == 8) {
                     // everything is fine;
                 } else {
-                    GraalInternalError.shouldNotReachHere("" + (after - before));
+                    JVMCIError.shouldNotReachHere("" + (after - before));
                 }
                 after = masm.position();
                 crb.recordDirectCall(before, after, callTarget, state);

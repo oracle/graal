@@ -22,21 +22,21 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
 
 public class SimpleStackSlotAllocator extends AllocationPhase implements StackSlotAllocator {
 
@@ -59,7 +59,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase implements StackSl
                 slot = mapVirtualStackSlotRange(builder, slotRange);
                 virtualFramesize.add(builder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
             } else {
-                throw GraalInternalError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot);
+                throw JVMCIError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot);
             }
             allocatedSlots.increment();
             mapping[virtualSlot.getId()] = slot;

@@ -22,6 +22,11 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.code.StackLockValue;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.BytecodeFrame;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
@@ -29,12 +34,10 @@ import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Call;
-import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.code.CompilationResult.Call;
+import com.oracle.jvmci.code.CompilationResult.Infopoint;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.jvmci.common.*;
 
 public class HotSpotMonitorValueTest extends GraalCompilerTest {
 
@@ -80,7 +83,7 @@ public class HotSpotMonitorValueTest extends GraalCompilerTest {
         try {
             return getMetaAccess().lookupJavaMethod(Object.class.getDeclaredMethod("wait", long.class));
         } catch (Exception e) {
-            throw new GraalInternalError("Could not find Object.wait(long): %s", e);
+            throw new JVMCIError("Could not find Object.wait(long): %s", e);
         }
     }
 

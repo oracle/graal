@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.replacements.NodeIntrinsificationPhase.*;
+import static com.oracle.jvmci.meta.MetaUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
@@ -39,6 +37,8 @@ import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * An {@link GenericInvocationPlugin} that handles methods annotated by {@link Fold},
@@ -101,8 +101,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
                 if (!COULD_NOT_FOLD.equals(constant)) {
                     if (constant != null) {
                         // Replace the invoke with the result of the call
-                        ConstantNode res = b.add(ConstantNode.forConstant(constant, b.getMetaAccess()));
-                        b.addPush(res.getKind().getStackKind(), res);
+                        b.push(method.getSignature().getReturnKind(), ConstantNode.forConstant(constant, b.getMetaAccess(), b.getGraph()));
                     } else {
                         // This must be a void invoke
                         assert method.getSignature().getReturnKind() == Kind.Void;
@@ -112,7 +111,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             } else if (MethodsElidedInSnippets != null) {
                 if (MethodFilter.matches(MethodsElidedInSnippets, method)) {
                     if (method.getSignature().getReturnKind() != Kind.Void) {
-                        throw new GraalInternalError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
+                        throw new JVMCIError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
                     }
                     return true;
                 }
@@ -127,7 +126,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
             if (markerType != null) {
                 return markerType.value();
             } else {
-                throw GraalInternalError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
+                throw JVMCIError.shouldNotReachHere(String.format("%s extends StructuralInput, but is not annotated with @MarkerType", type));
             }
         } else {
             return InputType.Value;
@@ -168,7 +167,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
 
         if (returnKind != Kind.Void) {
             assert nonValueType || res.getKind().getStackKind() != Kind.Void;
-            res = b.addPush(returnKind.getStackKind(), res);
+            res = b.addPush(returnKind, res);
         } else {
             assert res.getKind().getStackKind() == Kind.Void;
             res = b.add(res);

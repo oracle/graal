@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.runtime;
 
-import com.oracle.graal.api.code.*;
+import com.oracle.jvmci.code.Architecture;
 import com.oracle.graal.compiler.target.*;
 
 /**

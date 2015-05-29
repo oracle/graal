@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.nodes.*;
@@ -39,6 +39,9 @@ import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 /**
  * For AOT compilation we aren't allowed to use a {@link Class} reference ({@code javaMirror})
@@ -96,7 +99,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                         }
                     }
                     if (typeField == null) {
-                        throw new GraalInternalError("Can't find TYPE field in class");
+                        throw new JVMCIError("Can't find TYPE field in class");
                     }
 
                     LocationNode location = graph.unique(new ConstantLocationNode(FINAL_LOCATION, typeField.offset()));

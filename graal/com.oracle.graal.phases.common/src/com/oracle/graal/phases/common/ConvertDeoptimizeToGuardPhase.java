@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
+import com.oracle.jvmci.meta.DeoptimizationReason;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.DeoptimizationAction;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -36,6 +37,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
 
 /**
  * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their

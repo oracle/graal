@@ -22,17 +22,23 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.CalleeSaveLayout;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.jvmci.code.CallingConvention.Type.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -49,6 +55,7 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * HotSpot AMD64 specific backend.

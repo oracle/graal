@@ -22,15 +22,12 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
@@ -45,6 +42,10 @@ import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.debug.internal.*;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * The following tests validate the write barrier verification phase. For every tested snippet, an

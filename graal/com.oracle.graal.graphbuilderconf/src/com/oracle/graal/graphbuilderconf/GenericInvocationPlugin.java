@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.nodes.*;
 
 /**

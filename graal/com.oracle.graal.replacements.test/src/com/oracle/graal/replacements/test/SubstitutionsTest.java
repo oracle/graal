@@ -27,7 +27,6 @@ import static org.hamcrest.CoreMatchers.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.test.*;
@@ -40,6 +39,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.jvmci.meta.*;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 

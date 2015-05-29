@@ -24,24 +24,20 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Call;
-import com.oracle.graal.api.code.CompilationResult.ConstantReference;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.CompilationResult.Call;
+import com.oracle.jvmci.code.CompilationResult.ConstantReference;
+import com.oracle.jvmci.code.CompilationResult.DataPatch;
+import com.oracle.jvmci.code.CompilationResult.Infopoint;
+import com.oracle.jvmci.hotspot.*;
 
 /**
  * {@link HotSpotCompiledCode} destined for installation as a RuntimeStub.
  */
 public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
-    public final String stubName;
-
-    public HotSpotCompiledRuntimeStub(Stub stub, CompilationResult compResult) {
+    public HotSpotCompiledRuntimeStub(CompilationResult compResult) {
         super(compResult);
-        this.stubName = stub.toString();
         assert checkStubInvariants(compResult);
     }
 
@@ -83,6 +79,6 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
 
     @Override
     public String toString() {
-        return stubName != null ? stubName : super.toString();
+        return name;
     }
 }

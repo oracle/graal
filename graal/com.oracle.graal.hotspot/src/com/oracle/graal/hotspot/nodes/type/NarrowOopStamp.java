@@ -22,11 +22,16 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.meta.MemoryAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Constant;
+import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public class NarrowOopStamp extends AbstractObjectStamp {
 

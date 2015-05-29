@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import static com.oracle.graal.api.code.BytecodeFrame.*;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import static com.oracle.jvmci.code.BytecodeFrame.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**

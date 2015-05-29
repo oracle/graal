@@ -22,17 +22,29 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.code.RegisterConfig;
+import com.oracle.jvmci.code.TargetDescription;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.StackSlot;
+import com.oracle.jvmci.code.RegisterAttributes;
+import com.oracle.jvmci.code.CalleeSaveLayout;
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.Value;
+import com.oracle.jvmci.meta.PlatformKind;
+import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.hotspot.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -207,7 +219,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
                     }
                     break;
                 default:
-                    throw GraalInternalError.shouldNotReachHere();
+                    throw JVMCIError.shouldNotReachHere();
             }
 
             if (locations[i] == null) {

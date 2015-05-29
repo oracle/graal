@@ -22,9 +22,15 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.meta.PrimitiveConstant;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.MemoryAccessProvider;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.Constant;
 import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.jvmci.common.*;
 
 /**
  * This stamp represents the type of the {@link Kind#Illegal} value in the second slot of
@@ -43,7 +49,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
-        throw GraalInternalError.shouldNotReachHere("illegal stamp should not reach backend");
+        throw JVMCIError.shouldNotReachHere("illegal stamp should not reach backend");
     }
 
     @Override
@@ -64,7 +70,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalInternalError.shouldNotReachHere("illegal stamp has no Java type");
+        throw JVMCIError.shouldNotReachHere("illegal stamp has no Java type");
     }
 
     @Override
@@ -102,7 +108,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        throw GraalInternalError.shouldNotReachHere("can't read values of illegal stamp");
+        throw JVMCIError.shouldNotReachHere("can't read values of illegal stamp");
     }
 
     private static final IllegalStamp instance = new IllegalStamp();

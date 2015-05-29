@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import static com.oracle.graal.api.meta.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import com.oracle.jvmci.code.BailoutException;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.Assumptions;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaType;
+import static com.oracle.jvmci.meta.DeoptimizationAction.*;
+import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
@@ -42,8 +48,8 @@ import com.oracle.graal.nodes.type.*;
 public interface GraphBuilderContext {
 
     /**
-     * Raw operation for adding a node to the graph when neither {@link #add},
-     * {@link #addPush(ValueNode)} nor {@link #addPush(Kind, ValueNode)} can be used.
+     * Raw operation for adding a node to the graph when neither {@link #add} nor
+     * {@link #addPush(Kind, ValueNode)} can be used.
      *
      * @return either the node added or an equivalent node
      */
@@ -96,26 +102,13 @@ public interface GraphBuilderContext {
      * is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the
      * frame state is initialized.
      *
-     * @param value the value to add to the graph and push to the stack. The {@code value.getKind()}
-     *            kind is used when type checking this operation.
-     * @return a node equivalent to {@code value} in the graph
-     */
-    default <T extends ValueNode> T addPush(T value) {
-        return addPush(value.getKind().getStackKind(), value);
-    }
-
-    /**
-     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the returned node
-     * is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the
-     * frame state is initialized.
-     *
      * @param kind the kind to use when type checking this operation
      * @param value the value to add to the graph and push to the stack
      * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T addPush(Kind kind, T value) {
         T equivalentValue = value.graph() != null ? value : append(value);
-        push(kind.getStackKind(), equivalentValue);
+        push(kind, equivalentValue);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
             if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {

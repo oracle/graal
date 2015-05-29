@@ -22,24 +22,27 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.compiler.common.UnsafeAccess.*;
+import com.oracle.jvmci.code.CompilationResult;
+import com.oracle.jvmci.code.CallingConvention;
+import com.oracle.jvmci.code.InstalledCode;
+import com.oracle.jvmci.meta.TriState;
+import com.oracle.jvmci.meta.DefaultProfilingInfo;
+import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.*;
+import static com.oracle.jvmci.common.UnsafeAccess.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.meta.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.hotspot.*;
 import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {

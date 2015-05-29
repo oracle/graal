@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Implementation of {@link InstalledCode} for code installed as a RuntimeStub.
@@ -59,6 +59,6 @@ public class HotSpotRuntimeStub extends HotSpotInstalledCode {
 
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
-        throw new GraalInternalError("Cannot call stub %s", stub);
+        throw new InternalError("Cannot call stub " + stub);
     }
 }

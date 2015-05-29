@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.MethodIdMap.Receiver;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
@@ -133,7 +133,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public StampProvider getStampProvider() {
@@ -187,11 +187,11 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     public IntrinsicContext getIntrinsic() {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public BailoutException bailout(String string) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     public ValueNode get() {
@@ -209,7 +209,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
-        throw GraalInternalError.shouldNotReachHere();
+        throw JVMCIError.shouldNotReachHere();
     }
 
     @Override

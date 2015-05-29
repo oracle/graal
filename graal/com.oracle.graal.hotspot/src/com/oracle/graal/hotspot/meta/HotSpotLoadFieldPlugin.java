@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.MetaAccessProvider;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ConstantReflectionProvider;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 
@@ -37,8 +41,6 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
         this.constantReflection = constantReflection;
     }
 
-    static final ThreadLocal<Boolean> FieldReadEnabledInImmutableCode = new ThreadLocal<>();
-
     public boolean apply(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
         if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {
             if (receiver.isConstant()) {
@@ -50,15 +52,16 @@ public final class HotSpotLoadFieldPlugin implements LoadFieldPlugin {
     }
 
     private boolean tryReadField(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
-        if (ImmutableCode.getValue()) {
+        // FieldReadEnabledInImmutableCode is non null only if assertions are enabled
+        if (FieldReadEnabledInImmutableCode != null && ImmutableCode.getValue()) {
             FieldReadEnabledInImmutableCode.set(Boolean.TRUE);
-        }
-        try {
-            return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
-        } finally {
-            if (ImmutableCode.getValue()) {
+            try {
+                return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
+            } finally {
                 FieldReadEnabledInImmutableCode.set(null);
             }
+        } else {
+            return tryConstantFold(b, metaAccess, constantReflection, field, receiver);
         }
     }
 

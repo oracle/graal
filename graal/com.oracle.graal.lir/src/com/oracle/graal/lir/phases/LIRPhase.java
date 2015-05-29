@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.lir.phases;
 
+import com.oracle.jvmci.code.TargetDescription;
 import java.util.*;
 import java.util.regex.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.options.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.options.*;
 
 /**
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be
@@ -84,7 +84,14 @@ public abstract class LIRPhase<C> {
         }
     };
 
-    private static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
+    }
+
+    private static final Pattern NAME_PATTERN = assertionsEnabled() ? Pattern.compile("[A-Z][A-Za-z0-9]+") : null;
 
     private static boolean checkName(String name) {
         assert name == null || NAME_PATTERN.matcher(name).matches() : "illegal phase name: " + name;

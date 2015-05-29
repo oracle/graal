@@ -22,6 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
+import com.oracle.jvmci.code.Architecture;
+import com.oracle.jvmci.meta.JavaType;
+import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.meta.ResolvedJavaField;
+import com.oracle.jvmci.meta.ResolvedJavaType;
+import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
@@ -29,13 +36,8 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.lang.invoke.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
@@ -44,7 +46,6 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -59,6 +60,10 @@ import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.truffle.substitutions.*;
 import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.options.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.*;
@@ -191,7 +196,7 @@ public class PartialEvaluator {
                 if (original.equals(callSiteProxyMethod)) {
                     ValueNode arg1 = arguments[0];
                     if (!arg1.isConstant()) {
-                        GraalInternalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                        JVMCIError.shouldNotReachHere("The direct call node does not resolve to a constant!");
                     }
 
                     Object callNode = snippetReflection.asObject(Object.class, (JavaConstant) arg1.asConstant());
