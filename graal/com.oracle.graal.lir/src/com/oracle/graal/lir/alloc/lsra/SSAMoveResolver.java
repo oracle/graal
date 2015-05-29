@@ -29,17 +29,21 @@ import java.util.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;
 
 final class SSAMoveResolver extends MoveResolver {
 
+    private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private int[] stackBlocked;
     private final int firstVirtualStackIndex;
 
     SSAMoveResolver(LinearScan allocator) {
         super(allocator);
-        this.stackBlocked = new int[((FrameMapBuilderTool) allocator.frameMapBuilder).getNumberOfStackSlots()];
-        this.firstVirtualStackIndex = 0;
+        FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.frameMapBuilder;
+        FrameMap frameMap = frameMapBuilderTool.getFrameMap();
+        this.stackBlocked = new int[frameMapBuilderTool.getNumberOfStackSlots()];
+        this.firstVirtualStackIndex = !frameMap.frameNeedsAllocating() ? 0 : frameMap.currentFrameSize() + 1;
     }
 
     @Override
@@ -76,18 +80,47 @@ final class SSAMoveResolver extends MoveResolver {
         return false;
     }
 
+    private int getStackArrayIndex(StackSlotValue stackSlotValue) {
+        if (isStackSlot(stackSlotValue)) {
+            return getStackArrayIndex(asStackSlot(stackSlotValue));
+        }
+        if (isVirtualStackSlot(stackSlotValue)) {
+            return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
+        }
+        throw JVMCIError.shouldNotReachHere("Unhandled StackSlotValue: " + stackSlotValue);
+    }
+
+    private int getStackArrayIndex(StackSlot stackSlot) {
+        int stackIdx;
+        if (stackSlot.isInCallerFrame()) {
+            // incoming stack arguments can be ignored
+            stackIdx = STACK_SLOT_IN_CALLER_FRAME_IDX;
+        } else {
+            assert stackSlot.getRawAddFrameSize() : "Unexpected stack slot: " + stackSlot;
+            int offset = -stackSlot.getRawOffset();
+            assert 0 <= offset && offset < firstVirtualStackIndex : String.format("Wrong stack slot offset: %d (first virtual stack slot index: %d", offset, firstVirtualStackIndex);
+            stackIdx = offset;
+        }
+        return stackIdx;
+    }
+
+    private int getStackArrayIndex(VirtualStackSlot virtualStackSlot) {
+        return firstVirtualStackIndex + virtualStackSlot.getId();
+    }
+
     @Override
     protected void setValueBlocked(Value location, int direction) {
         assert direction == 1 || direction == -1 : "out of bounds";
-        if (isVirtualStackSlot(location)) {
-            int stackIdx = getStackArrayIndex(asVirtualStackSlot(location));
+        if (isStackSlotValue(location)) {
+            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
+                // incoming stack arguments can be ignored
+                return;
+            }
             if (stackIdx >= stackBlocked.length) {
                 stackBlocked = Arrays.copyOf(stackBlocked, stackIdx + 1);
             }
             stackBlocked[stackIdx] += direction;
-        } else if (isStackSlot(location)) {
-            assert asStackSlot(location).isInCallerFrame() : "Unexpected stack slot: " + location;
-            // incoming stack arguments can be ignored
         } else {
             super.setValueBlocked(location, direction);
         }
@@ -95,23 +128,18 @@ final class SSAMoveResolver extends MoveResolver {
 
     @Override
     protected int valueBlocked(Value location) {
-        if (isVirtualStackSlot(location)) {
-            int stackIdx = getStackArrayIndex(asVirtualStackSlot(location));
+        if (isStackSlotValue(location)) {
+            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
+                // incoming stack arguments are always blocked (aka they can not be written)
+                return 1;
+            }
             if (stackIdx >= stackBlocked.length) {
                 return 0;
             }
             return stackBlocked[stackIdx];
         }
-        if (isStackSlot(location)) {
-            assert asStackSlot(location).isInCallerFrame() : "Unexpected stack slot: " + location;
-            // incoming stack arguments are always blocked (aka they can not be written)
-            return 1;
-        }
         return super.valueBlocked(location);
-    }
-
-    private int getStackArrayIndex(VirtualStackSlot virtualStackSlot) {
-        return firstVirtualStackIndex + virtualStackSlot.getId();
     }
 
     @Override
