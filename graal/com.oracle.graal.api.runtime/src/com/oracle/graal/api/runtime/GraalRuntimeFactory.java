@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.api.runtime;
 
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 public interface GraalRuntimeFactory extends Service {
 

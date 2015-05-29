@@ -27,7 +27,7 @@ import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {

@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.match;
 import java.util.*;
 
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 public interface MatchStatementSet extends Service {
     /**

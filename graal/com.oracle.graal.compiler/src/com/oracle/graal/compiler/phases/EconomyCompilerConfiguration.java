@@ -28,7 +28,7 @@ import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocatio
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 @ServiceProvider(CompilerConfiguration.class)
 public class EconomyCompilerConfiguration implements CompilerConfiguration {

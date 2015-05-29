@@ -26,7 +26,7 @@ import java.util.*;
 
 import sun.reflect.*;
 
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 /**
  * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.
@@ -43,7 +43,7 @@ public class Graal {
         }
         if (rt != null) {
             // The constant is patched in-situ by the build system
-            System.setProperty("graal.version", "@@graal.version@@");
+            System.setProperty("graal.version", "@@graal.version@@".trim());
             assert !System.getProperty("graal.version").startsWith("@@") && !System.getProperty("graal.version").endsWith("@@") : "Graal version string constant was not patched by build system";
             return rt;
         }

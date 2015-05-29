@@ -26,7 +26,7 @@ import java.net.*;
 
 import com.oracle.graal.hotspot.events.*;
 import com.oracle.jrockit.jfr.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 /**
  * A JFR implementation for {@link EventProvider}. This implementation is used when Flight Recorder

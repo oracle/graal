@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Value;
 import java.util.*;
 
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -36,8 +32,11 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.sparc.*;
 import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {

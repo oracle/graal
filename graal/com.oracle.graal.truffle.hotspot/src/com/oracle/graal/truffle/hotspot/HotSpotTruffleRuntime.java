@@ -29,6 +29,7 @@ import com.oracle.jvmci.code.BailoutException;
 import com.oracle.jvmci.meta.ResolvedJavaType;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.MetaAccessProvider;
+
 import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
@@ -64,7 +65,7 @@ import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 import com.oracle.nfi.api.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;

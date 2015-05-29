@@ -30,7 +30,7 @@ import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.phases.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 public final class Suites {
 

@@ -33,6 +33,7 @@ import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 @ServiceProvider(HotSpotJVMCIBackendFactory.class)
 public class AMD64HotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFactory {

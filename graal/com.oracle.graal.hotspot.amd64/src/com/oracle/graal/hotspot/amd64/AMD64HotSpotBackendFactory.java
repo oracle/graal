@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.Value;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
@@ -38,8 +34,11 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.amd64.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
@@ -173,15 +172,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             * 
+             *
              * Draft Version 0.96
-             * 
+             *
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             * 
+             *
              * 3.2.1
-             * 
+             *
              * ...
-             * 
+             *
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

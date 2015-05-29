@@ -32,7 +32,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 public class MatchRuleRegistry {
 

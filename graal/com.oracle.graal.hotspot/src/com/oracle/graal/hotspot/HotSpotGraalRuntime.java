@@ -51,6 +51,7 @@ import com.oracle.jvmci.hotspot.logging.*;
 import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 //JaCoCo Exclude
 

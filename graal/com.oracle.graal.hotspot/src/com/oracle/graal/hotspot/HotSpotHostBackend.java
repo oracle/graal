@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.ForeignCallDescriptor;
+
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.service.*;
 
 /**
  * Common functionality of HotSpot host backends.

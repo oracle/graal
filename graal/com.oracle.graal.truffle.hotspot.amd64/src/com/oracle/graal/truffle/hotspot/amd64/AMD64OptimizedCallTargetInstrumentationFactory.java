@@ -22,15 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.amd64.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -39,8 +31,11 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.runtime.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.service.*;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class AMD64OptimizedCallTargetInstrumentationFactory implements OptimizedCallTargetInstrumentationFactory {
