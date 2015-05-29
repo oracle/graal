@@ -632,7 +632,7 @@ class LinearScan {
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-            try (Scope s = Debug.scope("AfterLifetimeAnalysis", intervals)) {
+            try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals)) {
                 sortIntervalsBeforeAllocation();
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
