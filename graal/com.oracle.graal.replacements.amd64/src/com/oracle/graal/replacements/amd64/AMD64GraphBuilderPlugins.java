@@ -58,9 +58,9 @@ public class AMD64GraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountLeadingZerosNode.tryFold(value);
                     if (folded != null) {
-                        b.addPush(folded);
+                        b.addPush(Kind.Int, folded);
                     } else {
-                        b.addPush(new AMD64CountLeadingZerosNode(value));
+                        b.addPush(Kind.Int, new AMD64CountLeadingZerosNode(value));
                     }
                     return true;
                 }
@@ -73,9 +73,9 @@ public class AMD64GraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountTrailingZerosNode.tryFold(value);
                     if (folded != null) {
-                        b.addPush(folded);
+                        b.addPush(Kind.Int, folded);
                     } else {
-                        b.addPush(new AMD64CountTrailingZerosNode(value));
+                        b.addPush(Kind.Int, new AMD64CountTrailingZerosNode(value));
                     }
                     return true;
                 }
@@ -116,7 +116,7 @@ public class AMD64GraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                     // Emits a null-check for the otherwise unused receiver
                     unsafe.get();
-                    b.addPush(kind.getStackKind(), new AtomicReadAndWriteNode(object, offset, value, kind, LocationIdentity.any()));
+                    b.addPush(kind, new AtomicReadAndWriteNode(object, offset, value, kind, LocationIdentity.any()));
                     return true;
                 }
             });
@@ -125,7 +125,7 @@ public class AMD64GraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
-                        b.addPush(kind.getStackKind(), new AtomicReadAndAddNode(object, offset, delta, LocationIdentity.any()));
+                        b.addPush(kind, new AtomicReadAndAddNode(object, offset, delta, LocationIdentity.any()));
                         return true;
                     }
                 });

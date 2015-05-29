@@ -485,7 +485,7 @@ public class InliningUtil {
              * value (top of stack)
              */
             if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
-                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, frameState.stackAt(0));
+                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
             }
 
             frameState.replaceAndDelete(stateAfterReturn);
@@ -497,7 +497,7 @@ public class InliningUtil {
              */
             FrameState stateAfterException = stateAtExceptionEdge;
             if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
-                stateAfterException = stateAtExceptionEdge.duplicateModified(Kind.Object, frameState.stackAt(0));
+                stateAfterException = stateAtExceptionEdge.duplicateModified(Kind.Object, Kind.Object, frameState.stackAt(0));
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
@@ -509,7 +509,8 @@ public class InliningUtil {
             assert frameState.outerFrameState() == null;
             NodeInputList<ValueNode> invokeArgsList = invoke.callTarget().arguments();
             ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
-            FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeArgs);
+            ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
+            FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, targetMethod.getSignature().toParameterKinds(!targetMethod.isStatic()), invokeArgs);
             frameState.replaceAndDelete(stateBeforeCall);
             return stateBeforeCall;
         } else {

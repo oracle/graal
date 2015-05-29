@@ -101,24 +101,23 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
     protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws JVMCIError {
         Operation operation = wordMethod.getAnnotation(Word.Operation.class);
         Kind returnKind = wordMethod.getSignature().getReturnKind();
-        Kind returnStackKind = returnKind.getStackKind();
         switch (operation.opcode()) {
             case NODE_CLASS:
                 assert args.length == 2;
                 ValueNode left = args[0];
                 ValueNode right = operation.rightOperandIsInt() ? toUnsigned(b, args[1], Kind.Int) : fromSigned(b, args[1]);
 
-                b.addPush(returnStackKind, createBinaryNodeInstance(operation.node(), left, right));
+                b.addPush(returnKind, createBinaryNodeInstance(operation.node(), left, right));
                 break;
 
             case COMPARISON:
                 assert args.length == 2;
-                b.push(returnStackKind, comparisonOp(b, operation.condition(), args[0], fromSigned(b, args[1])));
+                b.push(returnKind, comparisonOp(b, operation.condition(), args[0], fromSigned(b, args[1])));
                 break;
 
             case NOT:
                 assert args.length == 1;
-                b.addPush(returnStackKind, new XorNode(args[0], b.add(forIntegerKind(wordKind, -1))));
+                b.addPush(returnKind, new XorNode(args[0], b.add(forIntegerKind(wordKind, -1))));
                 break;
 
             case READ_POINTER:
@@ -132,7 +131,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
                 } else {
                     location = makeLocation(b, args[1], args[2]);
                 }
-                b.push(returnStackKind, readOp(b, readKind, args[0], location, operation.opcode()));
+                b.push(returnKind, readOp(b, readKind, args[0], location, operation.opcode()));
                 break;
             }
             case READ_HEAP: {
@@ -140,7 +139,7 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
                 Kind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
                 LocationNode location = makeLocation(b, args[1], any());
                 BarrierType barrierType = snippetReflection.asObject(BarrierType.class, args[2].asJavaConstant());
-                b.push(returnStackKind, readOp(b, readKind, args[0], location, barrierType, true));
+                b.push(returnKind, readOp(b, readKind, args[0], location, barrierType, true));
                 break;
             }
             case WRITE_POINTER:
@@ -160,44 +159,44 @@ public class WordOperationPlugin implements GenericInvocationPlugin, TypeCheckPl
             }
             case ZERO:
                 assert args.length == 0;
-                b.addPush(returnStackKind, forIntegerKind(wordKind, 0L));
+                b.addPush(returnKind, forIntegerKind(wordKind, 0L));
                 break;
 
             case FROM_UNSIGNED:
                 assert args.length == 1;
-                b.push(returnStackKind, fromUnsigned(b, args[0]));
+                b.push(returnKind, fromUnsigned(b, args[0]));
                 break;
 
             case FROM_SIGNED:
                 assert args.length == 1;
-                b.push(returnStackKind, fromSigned(b, args[0]));
+                b.push(returnKind, fromSigned(b, args[0]));
                 break;
 
             case TO_RAW_VALUE:
                 assert args.length == 1;
-                b.push(returnStackKind, toUnsigned(b, args[0], Kind.Long));
+                b.push(returnKind, toUnsigned(b, args[0], Kind.Long));
                 break;
 
             case FROM_WORDBASE:
                 assert args.length == 1;
-                b.push(returnStackKind, args[0]);
+                b.push(returnKind, args[0]);
                 break;
 
             case FROM_OBJECT:
                 assert args.length == 1;
                 WordCastNode objectToWord = b.add(WordCastNode.objectToWord(args[0], wordKind));
-                b.push(returnStackKind, objectToWord);
+                b.push(returnKind, objectToWord);
                 break;
 
             case FROM_ARRAY:
                 assert args.length == 2;
-                b.addPush(returnStackKind, new ComputeAddressNode(args[0], args[1], StampFactory.forKind(wordKind)));
+                b.addPush(returnKind, new ComputeAddressNode(args[0], args[1], StampFactory.forKind(wordKind)));
                 break;
 
             case TO_OBJECT:
                 assert args.length == 1;
                 WordCastNode wordToObject = b.add(WordCastNode.wordToObject(args[0], wordKind));
-                b.push(returnStackKind, wordToObject);
+                b.push(returnKind, wordToObject);
                 break;
 
             default:

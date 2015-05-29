@@ -85,14 +85,14 @@ public class TruffleGraphBuilderPlugins {
                     OptimizedAssumption assumption = snippetReflection.asObject(OptimizedAssumption.class, (JavaConstant) constant);
                     if (assumption.isValid()) {
                         if (targetMethod.getName().equals("isValid")) {
-                            b.addPush(ConstantNode.forBoolean(true));
+                            b.addPush(Kind.Boolean, ConstantNode.forBoolean(true));
                         } else {
                             assert targetMethod.getName().equals("check") : targetMethod;
                         }
                         b.getAssumptions().record(new AssumptionValidAssumption(assumption));
                     } else {
                         if (targetMethod.getName().equals("isValid")) {
-                            b.addPush(ConstantNode.forBoolean(false));
+                            b.addPush(Kind.Boolean, ConstantNode.forBoolean(false));
                         } else {
                             assert targetMethod.getName().equals("check") : targetMethod;
                             b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.None));
@@ -116,31 +116,31 @@ public class TruffleGraphBuilderPlugins {
             Class<?> type = kind.toJavaClass();
             r.register2("addExact", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerAddExactNode(x, y));
+                    b.addPush(kind, new IntegerAddExactNode(x, y));
                     return true;
                 }
             });
             r.register2("subtractExact", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerSubExactNode(x, y));
+                    b.addPush(kind, new IntegerSubExactNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyExact", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerMulExactNode(x, y));
+                    b.addPush(kind, new IntegerMulExactNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyHigh", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerMulHighNode(x, y));
+                    b.addPush(kind, new IntegerMulHighNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyHighUnsigned", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new UnsignedMulHighNode(x, y));
+                    b.addPush(kind, new UnsignedMulHighNode(x, y));
                     return true;
                 }
             });
@@ -151,13 +151,13 @@ public class TruffleGraphBuilderPlugins {
         Registration r = new Registration(plugins, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(Kind.Boolean.getStackKind(), ConstantNode.forBoolean(false));
+                b.addPush(Kind.Boolean, ConstantNode.forBoolean(false));
                 return true;
             }
         });
         r.register0("inCompiledCode", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(Kind.Boolean.getStackKind(), ConstantNode.forBoolean(true));
+                b.addPush(Kind.Boolean, ConstantNode.forBoolean(true));
                 return true;
             }
         });
@@ -185,7 +185,7 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {
-                b.addPush(Kind.Boolean.getStackKind(), new BranchProbabilityNode(probability, condition));
+                b.addPush(Kind.Boolean, new BranchProbabilityNode(probability, condition));
                 return true;
             }
         });
@@ -200,9 +200,9 @@ public class TruffleGraphBuilderPlugins {
         r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 if ((value instanceof BoxNode ? ((BoxNode) value).getValue() : value).isConstant()) {
-                    b.addPush(Kind.Boolean.getStackKind(), ConstantNode.forBoolean(true));
+                    b.addPush(Kind.Boolean, ConstantNode.forBoolean(true));
                 } else {
-                    b.addPush(Kind.Boolean.getStackKind(), new IsCompilationConstantNode(value));
+                    b.addPush(Kind.Boolean, new IsCompilationConstantNode(value));
                 }
                 return true;
             }
@@ -375,7 +375,7 @@ public class TruffleGraphBuilderPlugins {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                 }
                 LogicNode compare = b.add(CompareNode.createCompareNode(Condition.EQ, condition, ConstantNode.forBoolean(true, object.graph()), b.getConstantReflection()));
-                b.addPush(returnKind.getStackKind(), b.add(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
+                b.addPush(returnKind, b.add(new UnsafeLoadNode(object, offset, returnKind, locationIdentity, compare)));
                 return true;
             }
             // TODO: should we throw b.bailout() here?

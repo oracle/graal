@@ -54,7 +54,7 @@ public class MethodHandleInvocationPlugin implements GenericInvocationPlugin {
                 if (invokeReturnType.getKind() == Kind.Void) {
                     b.add(methodHandleNode);
                 } else {
-                    b.addPush(methodHandleNode);
+                    b.addPush(invokeReturnType.getKind(), methodHandleNode);
                 }
             } else {
                 CallTargetNode callTarget = invoke.callTarget();

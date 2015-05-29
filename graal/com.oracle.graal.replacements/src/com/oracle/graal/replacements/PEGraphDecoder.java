@@ -575,7 +575,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
 
             Kind invokeReturnKind = methodScope.invokeData.invoke.asNode().getKind();
-            FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind);
+            FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null);
 
             /*
              * When the encoded graph has methods inlining, we can already have a proper caller

@@ -69,7 +69,6 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
 
     public void processHotSpotWordOperation(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, HotSpotOperation operation) {
         Kind returnKind = method.getSignature().getReturnKind();
-        Kind returnStackKind = returnKind.getStackKind();
         switch (operation.opcode()) {
             case POINTER_EQ:
             case POINTER_NE:
@@ -84,7 +83,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 PointerEqualsNode comparison = b.add(new PointerEqualsNode(left, right));
                 ValueNode eqValue = b.add(forBoolean(opcode == POINTER_EQ));
                 ValueNode neValue = b.add(forBoolean(opcode == POINTER_NE));
-                b.addPush(returnStackKind, new ConditionalNode(comparison, eqValue, neValue));
+                b.addPush(returnKind, new ConditionalNode(comparison, eqValue, neValue));
                 break;
 
             case IS_NULL:
@@ -93,22 +92,22 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 assert pointer.stamp() instanceof MetaspacePointerStamp;
 
                 IsNullNode isNull = b.add(new IsNullNode(pointer));
-                b.addPush(returnStackKind, new ConditionalNode(isNull, b.add(forBoolean(true)), b.add(forBoolean(false))));
+                b.addPush(returnKind, new ConditionalNode(isNull, b.add(forBoolean(true)), b.add(forBoolean(false))));
                 break;
 
             case FROM_POINTER:
                 assert args.length == 1;
-                b.addPush(returnStackKind, new PointerCastNode(StampFactory.forKind(wordKind), args[0]));
+                b.addPush(returnKind, new PointerCastNode(StampFactory.forKind(wordKind), args[0]));
                 break;
 
             case TO_KLASS_POINTER:
                 assert args.length == 1;
-                b.addPush(returnStackKind, new PointerCastNode(KlassPointerStamp.klass(), args[0]));
+                b.addPush(returnKind, new PointerCastNode(KlassPointerStamp.klass(), args[0]));
                 break;
 
             case TO_METHOD_POINTER:
                 assert args.length == 1;
-                b.addPush(returnStackKind, new PointerCastNode(MethodPointerStamp.method(), args[0]));
+                b.addPush(returnKind, new PointerCastNode(MethodPointerStamp.method(), args[0]));
                 break;
 
             case READ_KLASS_POINTER:
@@ -126,7 +125,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
                  * explicit zero check on its base address.
                  */
                 read.setGuard(AbstractBeginNode.prevBegin(read));
-                b.push(returnStackKind, read);
+                b.push(returnKind, read);
                 break;
 
             default:

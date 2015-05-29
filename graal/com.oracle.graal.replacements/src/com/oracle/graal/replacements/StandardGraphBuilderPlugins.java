@@ -104,7 +104,7 @@ public class StandardGraphBuilderPlugins {
         r.register1("getValue", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                b.addPush(new LoadFieldNode(value, field));
+                b.addPush(Kind.Object, new LoadFieldNode(value, field));
                 return true;
             }
         });
@@ -209,7 +209,7 @@ public class StandardGraphBuilderPlugins {
                 ReverseBytesNode reverse = b.add(new ReverseBytesNode(value));
                 RightShiftNode rightShift = b.add(new RightShiftNode(reverse, b.add(ConstantNode.forInt(16))));
                 ZeroExtendNode charCast = b.add(new ZeroExtendNode(b.add(new NarrowNode(rightShift, 16)), 32));
-                b.push(Kind.Char.getStackKind(), b.recursiveAppend(charCast.canonical(null, value)));
+                b.push(Kind.Char, b.recursiveAppend(charCast.canonical(null, value)));
                 return true;
             }
         });
@@ -223,7 +223,7 @@ public class StandardGraphBuilderPlugins {
                 ReverseBytesNode reverse = b.add(new ReverseBytesNode(value));
                 RightShiftNode rightShift = b.add(new RightShiftNode(reverse, b.add(ConstantNode.forInt(16))));
                 SignExtendNode charCast = b.add(new SignExtendNode(b.add(new NarrowNode(rightShift, 16)), 32));
-                b.push(Kind.Short.getStackKind(), b.recursiveAppend(charCast.canonical(null, value)));
+                b.push(Kind.Short, b.recursiveAppend(charCast.canonical(null, value)));
                 return true;
             }
         });
@@ -267,19 +267,19 @@ public class StandardGraphBuilderPlugins {
             Class<?> type = kind.toJavaClass();
             r.register2("addExact", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerAddExactNode(x, y));
+                    b.addPush(kind, new IntegerAddExactNode(x, y));
                     return true;
                 }
             });
             r.register2("subtractExact", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerSubExactNode(x, y));
+                    b.addPush(kind, new IntegerSubExactNode(x, y));
                     return true;
                 }
             });
             r.register2("multiplyExact", type, type, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(kind.getStackKind(), new IntegerMulExactNode(x, y));
+                    b.addPush(kind, new IntegerMulExactNode(x, y));
                     return true;
                 }
             });
@@ -329,7 +329,7 @@ public class StandardGraphBuilderPlugins {
             }
 
             LogicNode compare = CompareNode.createCompareNode(graph, cond, lhs, rhs, b.getConstantReflection());
-            b.addPush(Kind.Boolean.getStackKind(), new ConditionalNode(compare, trueValue, falseValue));
+            b.addPush(Kind.Boolean, new ConditionalNode(compare, trueValue, falseValue));
             return true;
         }
     }
@@ -410,14 +410,14 @@ public class StandardGraphBuilderPlugins {
         r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode object) {
                 LogicNode condition = b.add(InstanceOfDynamicNode.create(b.getConstantReflection(), type.get(), object));
-                b.push(Kind.Boolean.getStackKind(), b.recursiveAppend(new ConditionalNode(condition).canonical(null)));
+                b.push(Kind.Boolean, b.recursiveAppend(new ConditionalNode(condition).canonical(null)));
                 return true;
             }
         });
         r.register2("isAssignableFrom", Receiver.class, Class.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode otherType) {
                 ClassIsAssignableFromNode condition = b.recursiveAppend(new ClassIsAssignableFromNode(type.get(), otherType));
-                b.push(Kind.Boolean.getStackKind(), b.recursiveAppend(new ConditionalNode(condition).canonical(null)));
+                b.push(Kind.Boolean, b.recursiveAppend(new ConditionalNode(condition).canonical(null)));
                 return true;
             }
         });
@@ -496,7 +496,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ValueNode valueNode = UnboxNode.create(b.getMetaAccess(), b.getConstantReflection(), receiver.get(), kind);
-            b.addPush(kind.getStackKind(), valueNode);
+            b.addPush(kind, valueNode);
             return true;
         }
 
@@ -519,7 +519,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.addPush(returnKind.getStackKind(), new DirectReadNode(address, returnKind));
+            b.addPush(returnKind, new DirectReadNode(address, returnKind));
             return true;
         }
 
@@ -529,7 +529,7 @@ public class StandardGraphBuilderPlugins {
             if (isVolatile) {
                 b.add(new MembarNode(JMM_PRE_VOLATILE_READ));
             }
-            b.addPush(returnKind.getStackKind(), new UnsafeLoadNode(object, offset, returnKind, LocationIdentity.any()));
+            b.addPush(returnKind, new UnsafeLoadNode(object, offset, returnKind, LocationIdentity.any()));
             if (isVolatile) {
                 b.add(new MembarNode(JMM_POST_VOLATILE_READ));
             }
@@ -586,7 +586,7 @@ public class StandardGraphBuilderPlugins {
 
         r.register0("inCompiledCode", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(Kind.Int, ConstantNode.forInt(1));
+                b.addPush(Kind.Boolean, ConstantNode.forBoolean(true));
                 return true;
             }
         });
@@ -600,7 +600,7 @@ public class StandardGraphBuilderPlugins {
 
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {
-                b.addPush(Kind.Int, new BranchProbabilityNode(probability, condition));
+                b.addPush(Kind.Boolean, new BranchProbabilityNode(probability, condition));
                 return true;
             }
         });
@@ -617,10 +617,9 @@ public class StandardGraphBuilderPlugins {
                 Class<?> javaClass = kind == Kind.Object ? Object.class : kind.toJavaClass();
                 r.register1("blackhole", javaClass, blackholePlugin);
 
-                final Kind stackKind = kind.getStackKind();
                 r.register1("opaque", javaClass, new InvocationPlugin() {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                        b.addPush(stackKind, new OpaqueNode(value));
+                        b.addPush(kind, new OpaqueNode(value));
                         return true;
                     }
                 });

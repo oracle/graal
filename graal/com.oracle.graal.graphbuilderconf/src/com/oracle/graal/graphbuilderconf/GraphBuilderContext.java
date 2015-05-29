@@ -48,8 +48,8 @@ import com.oracle.graal.nodes.type.*;
 public interface GraphBuilderContext {
 
     /**
-     * Raw operation for adding a node to the graph when neither {@link #add},
-     * {@link #addPush(ValueNode)} nor {@link #addPush(Kind, ValueNode)} can be used.
+     * Raw operation for adding a node to the graph when neither {@link #add} nor
+     * {@link #addPush(Kind, ValueNode)} can be used.
      *
      * @return either the node added or an equivalent node
      */
@@ -102,26 +102,13 @@ public interface GraphBuilderContext {
      * is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the
      * frame state is initialized.
      *
-     * @param value the value to add to the graph and push to the stack. The {@code value.getKind()}
-     *            kind is used when type checking this operation.
-     * @return a node equivalent to {@code value} in the graph
-     */
-    default <T extends ValueNode> T addPush(T value) {
-        return addPush(value.getKind().getStackKind(), value);
-    }
-
-    /**
-     * Adds a node with a non-void kind to the graph, pushes it to the stack. If the returned node
-     * is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the
-     * frame state is initialized.
-     *
      * @param kind the kind to use when type checking this operation
      * @param value the value to add to the graph and push to the stack
      * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T addPush(Kind kind, T value) {
         T equivalentValue = value.graph() != null ? value : append(value);
-        push(kind.getStackKind(), equivalentValue);
+        push(kind, equivalentValue);
         if (equivalentValue instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) equivalentValue;
             if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {

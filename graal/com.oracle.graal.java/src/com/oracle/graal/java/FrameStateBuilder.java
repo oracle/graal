@@ -22,16 +22,10 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.code.BytecodePosition;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Signature;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaType;
+import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
+import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
 
@@ -45,25 +39,26 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 public final class FrameStateBuilder implements SideEffectsState {
 
-    static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
-    static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
+    private static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
+    private static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
 
-    protected final BytecodeParser parser;
-    protected final ResolvedJavaMethod method;
-    protected int stackSize;
+    private final BytecodeParser parser;
+    private final ResolvedJavaMethod method;
+    private int stackSize;
     protected final ValueNode[] locals;
     protected final ValueNode[] stack;
-    protected ValueNode[] lockedObjects;
+    private ValueNode[] lockedObjects;
 
     /**
      * @see BytecodeFrame#rethrowException
      */
-    protected boolean rethrowException;
+    private boolean rethrowException;
 
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
@@ -73,7 +68,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * The closest {@link StateSplit#hasSideEffect() side-effect} predecessors. There will be more
      * than one when the current block contains no side-effects but merging predecessor blocks do.
      */
-    protected List<StateSplit> sideEffects;
+    private List<StateSplit> sideEffects;
 
     /**
      * Creates a new frame state builder for the given method and the given target graph.
@@ -185,6 +180,10 @@ public final class FrameStateBuilder implements SideEffectsState {
         return length == 0 ? EMPTY_ARRAY : new ValueNode[length];
     }
 
+    public ResolvedJavaMethod getMethod() {
+        return method;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -214,29 +213,30 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
 
         // Skip intrinsic frames
-        return create(bci, parser.getNonIntrinsicAncestor(), false, (ValueNode[]) null);
+        return create(bci, parser.getNonIntrinsicAncestor(), false, null, null);
     }
 
     /**
      * @param pushedValues if non-null, values to {@link #push(Kind, ValueNode)} to the stack before
      *            creating the {@link FrameState}
      */
-    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, ValueNode... pushedValues) {
+    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, Kind[] pushedSlotKinds, ValueNode[] pushedValues) {
         if (outerFrameState == null && parent != null) {
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, this.peek(0));
+            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, new Kind[]{Kind.Object}, new ValueNode[]{stack[0]});
             return newFrameState;
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw JVMCIError.shouldNotReachHere();
+            throw shouldNotReachHere();
         }
 
         if (pushedValues != null) {
+            assert pushedSlotKinds.length == pushedValues.length;
             int stackSizeToRestore = stackSize;
-            for (ValueNode arg : pushedValues) {
-                push(arg.getKind(), arg);
+            for (int i = 0; i < pushedValues.length; i++) {
+                push(pushedSlotKinds[i], pushedValues[i]);
             }
             FrameState res = graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
             stackSize = stackSizeToRestore;
@@ -268,7 +268,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return FrameState.toBytecodePosition(outerFrameState);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw JVMCIError.shouldNotReachHere();
+            throw shouldNotReachHere();
         }
         return new BytecodePosition(outer, method, bci);
     }
@@ -285,8 +285,8 @@ public final class FrameStateBuilder implements SideEffectsState {
             return false;
         }
         for (int i = 0; i < stackSize(); i++) {
-            ValueNode x = stackAt(i);
-            ValueNode y = other.stackAt(i);
+            ValueNode x = stack[i];
+            ValueNode y = other.stack[i];
             if (x != y && (x == null || x.isDeleted() || y == null || y.isDeleted() || x.getKind() != y.getKind())) {
                 return false;
             }
@@ -306,18 +306,10 @@ public final class FrameStateBuilder implements SideEffectsState {
         assert isCompatibleWith(other);
 
         for (int i = 0; i < localsSize(); i++) {
-            ValueNode curLocal = localAt(i);
-            ValueNode mergedLocal = merge(curLocal, other.localAt(i), block);
-            if (curLocal != mergedLocal) {
-                storeLocal(i, mergedLocal);
-            }
+            locals[i] = merge(locals[i], other.locals[i], block);
         }
         for (int i = 0; i < stackSize(); i++) {
-            ValueNode curStack = stackAt(i);
-            ValueNode mergedStack = merge(curStack, other.stackAt(i), block);
-            if (curStack != mergedStack) {
-                storeStack(i, mergedStack);
-            }
+            stack[i] = merge(stack[i], other.stack[i], block);
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             lockedObjects[i] = merge(lockedObjects[i], other.lockedObjects[i], block);
@@ -387,11 +379,11 @@ public final class FrameStateBuilder implements SideEffectsState {
         for (int i = 0; i < localsSize(); i++) {
             boolean changedInLoop = liveness.localIsChangedInLoop(loopId, i);
             if (changedInLoop || forcePhis) {
-                storeLocal(i, createLoopPhi(loopBegin, localAt(i), !changedInLoop));
+                locals[i] = createLoopPhi(loopBegin, locals[i], !changedInLoop);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            storeStack(i, createLoopPhi(loopBegin, stackAt(i), false));
+            stack[i] = createLoopPhi(loopBegin, stack[i], false);
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i], false);
@@ -400,17 +392,17 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public void insertLoopProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
         for (int i = 0; i < localsSize(); i++) {
-            ValueNode value = localAt(i);
+            ValueNode value = locals[i];
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                storeLocal(i, ProxyNode.forValue(value, loopExit, graph));
+                locals[i] = ProxyNode.forValue(value, loopExit, graph);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            ValueNode value = stackAt(i);
+            ValueNode value = stack[i];
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 Debug.log(" inserting proxy for %s", value);
-                storeStack(i, ProxyNode.forValue(value, loopExit, graph));
+                stack[i] = ProxyNode.forValue(value, loopExit, graph);
             }
         }
         for (int i = 0; i < lockedObjects.length; i++) {
@@ -424,17 +416,17 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public void insertProxies(AbstractBeginNode begin) {
         for (int i = 0; i < localsSize(); i++) {
-            ValueNode value = localAt(i);
+            ValueNode value = locals[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                storeLocal(i, ProxyNode.forValue(value, begin, graph));
+                locals[i] = ProxyNode.forValue(value, begin, graph);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            ValueNode value = stackAt(i);
+            ValueNode value = stack[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                storeStack(i, ProxyNode.forValue(value, begin, graph));
+                stack[i] = ProxyNode.forValue(value, begin, graph);
             }
         }
         for (int i = 0; i < lockedObjects.length; i++) {
@@ -500,12 +492,12 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public boolean contains(ValueNode value) {
         for (int i = 0; i < localsSize(); i++) {
-            if (localAt(i) == value) {
+            if (locals[i] == value) {
                 return true;
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            if (stackAt(i) == value) {
+            if (stack[i] == value) {
                 return true;
             }
         }
@@ -574,61 +566,20 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     /**
-     * Gets the value in the local variables at the specified index, without any sanity checking.
-     *
-     * @param i the index into the locals
-     * @return the instruction that produced the value for the specified local
-     */
-    public ValueNode localAt(int i) {
-        return locals[i];
-    }
-
-    /**
-     * Get the value on the stack at the specified stack index.
-     *
-     * @param i the index into the stack, with {@code 0} being the bottom of the stack
-     * @return the instruction at the specified position in the stack
-     */
-    public ValueNode stackAt(int i) {
-        return stack[i];
-    }
-
-    /**
-     * Gets the value in the lock at the specified index, without any sanity checking.
-     *
-     * @param i the index into the lock
-     * @return the instruction that produced the value for the specified lock
-     */
-    public ValueNode lockAt(int i) {
-        return lockedObjects[i];
-    }
-
-    public void storeLock(int i, ValueNode lock) {
-        lockedObjects[i] = lock;
-    }
-
-    /**
      * Loads the local variable at the specified index, checking that the returned value is non-null
      * and that two-stack values are properly handled.
      *
      * @param i the index of the local variable to load
+     * @param slotKind the kind of the local variable from the point of view of the bytecodes
      * @return the instruction that produced the specified local
      */
-    public ValueNode loadLocal(int i) {
+    public ValueNode loadLocal(int i, Kind slotKind) {
+        assert slotKind.getSlotCount() > 0;
+        assert slotKind.getSlotCount() == 1 || locals[i + 1] == null;
+
         ValueNode x = locals[i];
-        assert assertLoadLocal(i, x);
-        return x;
-    }
-
-    private boolean assertLoadLocal(int i, ValueNode x) {
         assert x != null : i;
-        assert parser.parsingIntrinsic() || (x.getKind().getSlotCount() == 1 || locals[i + 1] == null);
-        assert parser.parsingIntrinsic() || (i == 0 || locals[i - 1] == null || locals[i - 1].getKind().getSlotCount() == 1);
-        return true;
-    }
-
-    public void storeLocal(int i, ValueNode x) {
-        storeLocal(i, x, x == null ? null : x.getKind());
+        return x;
     }
 
     /**
@@ -636,220 +587,66 @@ public final class FrameStateBuilder implements SideEffectsState {
      * the next local variable index is also overwritten.
      *
      * @param i the index at which to store
+     * @param slotKind the kind of the local variable from the point of view of the bytecodes
      * @param x the instruction which produces the value for the local
      */
-    public void storeLocal(int i, ValueNode x, Kind kind) {
-        assert assertStoreLocal(x);
+    public void storeLocal(int i, Kind slotKind, ValueNode x) {
+        assert slotKind.getSlotCount() > 0;
+
         locals[i] = x;
-        if (x != null) {
-            if (kind.needsTwoSlots() && !parser.parsingIntrinsic()) {
-                // if this is a double word, then kill i+1
-                locals[i + 1] = null;
-            }
-            if (i > 0 && !parser.parsingIntrinsic()) {
-                ValueNode p = locals[i - 1];
-                if (p != null && p.getKind().needsTwoSlots()) {
-                    // if there was a double word at i - 1, then kill it
-                    locals[i - 1] = null;
-                }
-            }
+        if (slotKind.needsTwoSlots()) {
+            locals[i + 1] = null;
         }
-    }
-
-    private boolean assertStoreLocal(ValueNode x) {
-        assert x == null || parser.parsingIntrinsic() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal) : "unexpected value: " + x;
-        return true;
-    }
-
-    public void storeStack(int i, ValueNode x) {
-        assert assertStoreStack(i, x);
-        stack[i] = x;
-    }
-
-    private boolean assertStoreStack(int i, ValueNode x) {
-        assert x == null || (stack[i] == null || x.getKind() == stack[i].getKind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
-        return true;
     }
 
     /**
      * Pushes an instruction onto the stack with the expected type.
      *
-     * @param kind the type expected for this instruction
+     * @param slotKind the kind of the stack element from the point of view of the bytecodes
      * @param x the instruction to push onto the stack
      */
-    public void push(Kind kind, ValueNode x) {
-        assert assertPush(kind, x);
+    public void push(Kind slotKind, ValueNode x) {
+        assert x != null;
+        assert slotKind.getSlotCount() > 0;
         xpush(x);
-        if (kind.needsTwoSlots()) {
+        if (slotKind.needsTwoSlots()) {
             xpush(null);
         }
     }
 
-    private boolean assertPush(Kind kind, ValueNode x) {
-        assert parser.parsingIntrinsic() || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal);
-        assert x != null && (parser.parsingIntrinsic() || x.getKind() == kind);
-        return true;
-    }
-
-    /**
-     * Pushes a value onto the stack without checking the type.
-     *
-     * @param x the instruction to push onto the stack
-     */
-    public void xpush(ValueNode x) {
-        assert assertXpush(x);
-        stack[stackSize++] = x;
-    }
-
-    private boolean assertXpush(ValueNode x) {
-        assert parser.parsingIntrinsic() || (x == null || (x.getKind() != Kind.Void && x.getKind() != Kind.Illegal));
-        return true;
-    }
-
-    /**
-     * Pushes a value onto the stack and checks that it is an int.
-     *
-     * @param x the instruction to push onto the stack
-     */
-    public void ipush(ValueNode x) {
-        assert assertInt(x);
-        xpush(x);
-    }
-
-    /**
-     * Pushes a value onto the stack and checks that it is a float.
-     *
-     * @param x the instruction to push onto the stack
-     */
-    public void fpush(ValueNode x) {
-        assert assertFloat(x);
-        xpush(x);
-    }
-
-    /**
-     * Pushes a value onto the stack and checks that it is an object.
-     *
-     * @param x the instruction to push onto the stack
-     */
-    public void apush(ValueNode x) {
-        assert assertObject(x);
-        xpush(x);
-    }
-
-    /**
-     * Pushes a value onto the stack and checks that it is a long.
-     *
-     * @param x the instruction to push onto the stack
-     */
-    public void lpush(ValueNode x) {
-        assert assertLong(x);
-        xpush(x);
-        xpush(null);
-    }
-
-    /**
-     * Pushes a value onto the stack and checks that it is a double.
-     *
-     * @param x the instruction to push onto the stack
-     */
-    public void dpush(ValueNode x) {
-        assert assertDouble(x);
-        xpush(x);
-        xpush(null);
-    }
-
-    public void pushReturn(Kind kind, ValueNode x) {
-        if (kind != Kind.Void) {
-            push(kind.getStackKind(), x);
+    public void pushReturn(Kind slotKind, ValueNode x) {
+        if (slotKind != Kind.Void) {
+            push(slotKind, x);
         }
     }
 
     /**
      * Pops an instruction off the stack with the expected type.
      *
-     * @param kind the expected type
+     * @param slotKind the kind of the stack element from the point of view of the bytecodes
      * @return the instruction on the top of the stack
      */
-    public ValueNode pop(Kind kind) {
-        if (kind.needsTwoSlots()) {
-            xpop();
+    public ValueNode pop(Kind slotKind) {
+        assert slotKind.getSlotCount() > 0;
+        if (slotKind.needsTwoSlots()) {
+            ValueNode s = xpop();
+            assert s == null;
         }
-        assert assertPop(kind);
-        return xpop();
+        ValueNode x = xpop();
+        assert x != null;
+        return x;
     }
 
-    private boolean assertPop(Kind kind) {
-        assert kind != Kind.Void;
-        ValueNode x = xpeek();
-        assert x != null && (parser.parsingIntrinsic() || x.getKind() == kind);
-        return true;
+    private void xpush(ValueNode x) {
+        stack[stackSize++] = x;
     }
 
-    /**
-     * Pops a value off of the stack without checking the type.
-     *
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode xpop() {
+    private ValueNode xpop() {
         return stack[--stackSize];
     }
 
-    public ValueNode xpeek() {
+    private ValueNode xpeek() {
         return stack[stackSize - 1];
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is an int.
-     *
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode ipop() {
-        assert assertIntPeek();
-        return xpop();
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is a float.
-     *
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode fpop() {
-        assert assertFloatPeek();
-        return xpop();
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is an object.
-     *
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode apop() {
-        assert assertObjectPeek();
-        return xpop();
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is a long.
-     *
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode lpop() {
-        assert assertHighPeek();
-        xpop();
-        assert assertLongPeek();
-        return xpop();
-    }
-
-    /**
-     * Pops a value off of the stack and checks that it is a double.
-     *
-     * @return x the instruction popped off the stack
-     */
-    public ValueNode dpop() {
-        assert assertHighPeek();
-        xpop();
-        assert assertDoublePeek();
-        return xpop();
     }
 
     /**
@@ -866,34 +663,11 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (stack[newStackSize] == null) {
                 /* Two-slot value. */
                 newStackSize--;
-                assert stack[newStackSize].getKind().needsTwoSlots();
-            } else {
-                assert parser.parsingIntrinsic() || (stack[newStackSize].getKind().getSlotCount() == 1);
             }
             result[i] = stack[newStackSize];
         }
         stackSize = newStackSize;
         return result;
-    }
-
-    /**
-     * Peeks an element from the operand stack.
-     *
-     * @param argumentNumber The number of the argument, relative from the top of the stack (0 =
-     *            top). Long and double arguments only count as one argument, i.e., null-slots are
-     *            ignored.
-     * @return The peeked argument.
-     */
-    public ValueNode peek(int argumentNumber) {
-        int idx = stackSize() - 1;
-        for (int i = 0; i < argumentNumber; i++) {
-            if (stackAt(idx) == null) {
-                idx--;
-                assert stackAt(idx).getKind().needsTwoSlots();
-            }
-            idx--;
-        }
-        return stackAt(idx);
     }
 
     /**
@@ -903,54 +677,87 @@ public final class FrameStateBuilder implements SideEffectsState {
         stackSize = 0;
     }
 
-    private boolean assertLongPeek() {
-        return assertLong(xpeek());
-    }
-
-    private static boolean assertLong(ValueNode x) {
-        assert x != null && (x.getKind() == Kind.Long);
-        return true;
-    }
-
-    private boolean assertIntPeek() {
-        return assertInt(xpeek());
-    }
-
-    private static boolean assertInt(ValueNode x) {
-        assert x != null && (x.getKind() == Kind.Int);
-        return true;
-    }
-
-    private boolean assertFloatPeek() {
-        return assertFloat(xpeek());
-    }
-
-    private static boolean assertFloat(ValueNode x) {
-        assert x != null && (x.getKind() == Kind.Float);
-        return true;
-    }
-
-    private boolean assertObjectPeek() {
-        return assertObject(xpeek());
-    }
-
-    private boolean assertObject(ValueNode x) {
-        assert x != null && (parser.parsingIntrinsic() || (x.getKind() == Kind.Object));
-        return true;
-    }
-
-    private boolean assertDoublePeek() {
-        return assertDouble(xpeek());
-    }
-
-    private static boolean assertDouble(ValueNode x) {
-        assert x != null && (x.getKind() == Kind.Double);
-        return true;
-    }
-
-    private boolean assertHighPeek() {
-        assert xpeek() == null;
-        return true;
+    /**
+     * Performs a raw stack operation as defined in the Java bytecode specification.
+     *
+     * @param opcode The Java bytecode.
+     */
+    public void stackOp(int opcode) {
+        switch (opcode) {
+            case POP: {
+                xpop();
+                break;
+            }
+            case POP2: {
+                xpop();
+                xpop();
+                break;
+            }
+            case DUP: {
+                xpush(xpeek());
+                break;
+            }
+            case DUP_X1: {
+                ValueNode w1 = xpop();
+                ValueNode w2 = xpop();
+                xpush(w1);
+                xpush(w2);
+                xpush(w1);
+                break;
+            }
+            case DUP_X2: {
+                ValueNode w1 = xpop();
+                ValueNode w2 = xpop();
+                ValueNode w3 = xpop();
+                xpush(w1);
+                xpush(w3);
+                xpush(w2);
+                xpush(w1);
+                break;
+            }
+            case DUP2: {
+                ValueNode w1 = xpop();
+                ValueNode w2 = xpop();
+                xpush(w2);
+                xpush(w1);
+                xpush(w2);
+                xpush(w1);
+                break;
+            }
+            case DUP2_X1: {
+                ValueNode w1 = xpop();
+                ValueNode w2 = xpop();
+                ValueNode w3 = xpop();
+                xpush(w2);
+                xpush(w1);
+                xpush(w3);
+                xpush(w2);
+                xpush(w1);
+                break;
+            }
+            case DUP2_X2: {
+                ValueNode w1 = xpop();
+                ValueNode w2 = xpop();
+                ValueNode w3 = xpop();
+                ValueNode w4 = xpop();
+                xpush(w2);
+                xpush(w1);
+                xpush(w4);
+                xpush(w3);
+                xpush(w2);
+                xpush(w1);
+                break;
+            }
+            case SWAP: {
+                ValueNode w1 = xpop();
+                ValueNode w2 = xpop();
+                xpush(w1);
+                xpush(w2);
+                break;
+            }
+            default:
+                throw shouldNotReachHere();
+        }
     }
 
     @Override
@@ -1007,19 +814,6 @@ public final class FrameStateBuilder implements SideEffectsState {
         return false;
     }
 
-    public void replace(ValueNode oldValue, ValueNode newValue) {
-        for (int i = 0; i < locals.length; i++) {
-            if (locals[i] == oldValue) {
-                locals[i] = newValue;
-            }
-        }
-        for (int i = 0; i < stackSize; i++) {
-            if (stack[i] == oldValue) {
-                stack[i] = newValue;
-            }
-        }
-    }
-
     @Override
     public boolean isAfterSideEffect() {
         return sideEffects != null;
@@ -1038,5 +832,17 @@ public final class FrameStateBuilder implements SideEffectsState {
             sideEffects = new ArrayList<>(4);
         }
         sideEffects.add(sideEffect);
+    }
+
+    public void traceState() {
+        Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", localsSize(), stackSize(), method));
+        for (int i = 0; i < localsSize(); ++i) {
+            ValueNode value = locals[i];
+            Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
+        }
+        for (int i = 0; i < stackSize(); ++i) {
+            ValueNode value = stack[i];
+            Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.getKind().getJavaName(), value));
+        }
     }
 }

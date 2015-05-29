@@ -101,8 +101,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
                 if (!COULD_NOT_FOLD.equals(constant)) {
                     if (constant != null) {
                         // Replace the invoke with the result of the call
-                        ConstantNode res = b.add(ConstantNode.forConstant(constant, b.getMetaAccess()));
-                        b.addPush(res.getKind().getStackKind(), res);
+                        b.push(method.getSignature().getReturnKind(), ConstantNode.forConstant(constant, b.getMetaAccess(), b.getGraph()));
                     } else {
                         // This must be a void invoke
                         assert method.getSignature().getReturnKind() == Kind.Void;
@@ -168,7 +167,7 @@ public class DefaultGenericInvocationPlugin implements GenericInvocationPlugin {
 
         if (returnKind != Kind.Void) {
             assert nonValueType || res.getKind().getStackKind() != Kind.Void;
-            res = b.addPush(returnKind.getStackKind(), res);
+            res = b.addPush(returnKind, res);
         } else {
             assert res.getKind().getStackKind() == Kind.Void;
             res = b.add(res);
