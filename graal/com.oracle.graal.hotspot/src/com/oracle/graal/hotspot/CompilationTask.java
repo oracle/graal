@@ -149,7 +149,7 @@ public class CompilationTask {
 
     protected ProfilingInfo getProfilingInfo() {
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
-        return method.getCompilationProfilingInfo(osrCompilation);
+        return method.getProfilingInfo(!osrCompilation, osrCompilation);
     }
 
     public void runCompilation() {
