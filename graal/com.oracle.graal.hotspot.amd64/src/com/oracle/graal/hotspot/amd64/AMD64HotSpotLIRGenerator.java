@@ -335,7 +335,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         Variable result;
-        // TODO (je) check if we can remove this
         LIRFrameState deoptInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
             deoptInfo = state;

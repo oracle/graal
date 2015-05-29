@@ -137,7 +137,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
-        // TODO (je) check if this can be removed
         LIRFrameState deoptInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
             deoptInfo = state;
