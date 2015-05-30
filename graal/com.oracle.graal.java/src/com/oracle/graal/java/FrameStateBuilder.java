@@ -24,7 +24,7 @@ package com.oracle.graal.java;
 
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
-import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
+import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.java.GraphBuilderPhase.Instance.BytecodeParser;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;

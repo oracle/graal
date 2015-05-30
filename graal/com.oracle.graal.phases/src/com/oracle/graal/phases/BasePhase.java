@@ -131,10 +131,6 @@ public abstract class BasePhase<C> {
         inputNodesCount = statistics.inputNodesCount;
     }
 
-    protected CharSequence getDetailedName() {
-        return getName();
-    }
-
     public final void apply(final StructuredGraph graph, final C context) {
         apply(graph, context, true);
     }

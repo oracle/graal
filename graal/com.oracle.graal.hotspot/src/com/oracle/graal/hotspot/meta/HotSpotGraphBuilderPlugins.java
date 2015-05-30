@@ -31,7 +31,7 @@ import com.oracle.jvmci.meta.Kind;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
-import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
+import static com.oracle.graal.java.BytecodeParser.Options.*;
 
 import java.lang.invoke.*;
 import java.util.zip.*;

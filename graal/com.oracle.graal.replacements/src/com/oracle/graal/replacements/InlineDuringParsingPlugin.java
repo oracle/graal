@@ -23,7 +23,7 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
+import static com.oracle.graal.java.BytecodeParser.Options.*;
 
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
