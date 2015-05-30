@@ -190,8 +190,6 @@ public class MonitorSnippets implements Snippets {
                         // owns the bias and we need to revoke that bias. The revocation will occur
                         // in the interpreter runtime.
                         traceObject(trace, "+lock{stub:revoke}", object, true);
-                        monitorenterStubC(MONITORENTER, object, lock);
-                        return;
                     } else {
                         // At this point we know the epoch has expired, meaning that the
                         // current bias owner, if any, is actually invalid. Under these
@@ -210,9 +208,9 @@ public class MonitorSnippets implements Snippets {
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
                         traceObject(trace, "+lock{stub:epoch-expired}", object, true);
-                        monitorenterStubC(MONITORENTER, object, lock);
-                        return;
                     }
+                    monitorenterStubC(MONITORENTER, object, lock);
+                    return;
                 } else {
                     // The prototype mark word doesn't have the bias bit set any
                     // more, indicating that objects of this data type are not supposed
