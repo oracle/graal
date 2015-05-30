@@ -29,25 +29,13 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.jvmci.meta.*;
 
-public final class DefaultInlineInvokePlugin implements InlineInvokePlugin {
-    private final ReplacementsImpl replacements;
+public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 
-    public DefaultInlineInvokePlugin(ReplacementsImpl replacements) {
-        this.replacements = replacements;
-    }
-
-    public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
-        InlineInfo inlineInfo = replacements.getInlineInfo(b, method, args, returnType);
-        if (inlineInfo == null) {
-            if (InlineDuringParsing.getValue() && method.hasBytecodes() && !method.isSynchronized() && method.getCode().length <= TrivialInliningSize.getValue() &&
-                            b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
-                return new InlineInfo(method, false);
-            }
+    @Override
+    public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+        if (method.hasBytecodes() && !method.isSynchronized() && method.getCode().length <= TrivialInliningSize.getValue() && b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
+            return new InlineInfo(method, false);
         }
-        return inlineInfo;
-    }
-
-    public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
-        replacements.notifyOfNoninlinedInvoke(b, method, invoke);
+        return null;
     }
 }

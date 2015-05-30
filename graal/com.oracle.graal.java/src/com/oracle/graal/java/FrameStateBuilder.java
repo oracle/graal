@@ -109,7 +109,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void initializeForMethodStart(boolean eagerResolve, ParameterPlugin parameterPlugin) {
+    public void initializeForMethodStart(boolean eagerResolve, ParameterPlugin[] parameterPlugins) {
 
         int javaIndex = 0;
         int index = 0;
@@ -117,8 +117,11 @@ public final class FrameStateBuilder implements SideEffectsState {
             // add the receiver
             FloatingNode receiver = null;
             Stamp receiverStamp = StampFactory.declaredNonNull(method.getDeclaringClass());
-            if (parameterPlugin != null) {
-                receiver = parameterPlugin.interceptParameter(parser, index, receiverStamp);
+            for (ParameterPlugin plugin : parameterPlugins) {
+                receiver = plugin.interceptParameter(parser, index, receiverStamp);
+                if (receiver != null) {
+                    break;
+                }
             }
             if (receiver == null) {
                 receiver = new ParameterNode(javaIndex, receiverStamp);
@@ -143,8 +146,11 @@ public final class FrameStateBuilder implements SideEffectsState {
                 stamp = StampFactory.forKind(kind);
             }
             FloatingNode param = null;
-            if (parameterPlugin != null) {
-                param = parameterPlugin.interceptParameter(parser, index, stamp);
+            for (ParameterPlugin plugin : parameterPlugins) {
+                param = plugin.interceptParameter(parser, index, stamp);
+                if (param != null) {
+                    break;
+                }
             }
             if (param == null) {
                 param = new ParameterNode(index, stamp);

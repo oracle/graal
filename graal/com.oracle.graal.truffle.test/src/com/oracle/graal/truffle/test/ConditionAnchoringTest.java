@@ -140,12 +140,13 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         // get UnsafeAccessImpl.unsafeGetInt intrinsified
         TruffleGraphBuilderPlugins.registerUnsafeAccessImplPlugins(conf.getPlugins().getInvocationPlugins(), false);
         // get UnsafeAccess.getInt inlined
-        conf.getPlugins().setInlineInvokePlugin(new InlineEverythingPlugin());
+        conf.getPlugins().appendInlineInvokePlugin(new InlineEverythingPlugin());
         return super.editGraphBuilderConfiguration(conf);
     }
 
     private static final class InlineEverythingPlugin implements InlineInvokePlugin {
-        public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+        @Override
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
             assert method.hasBytecodes();
             return new InlineInfo(method, false);
         }

@@ -345,7 +345,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                 BytecodeParser parser = new BytecodeParser(null, metaAccess, method, graphBuilderConfig, optimisticOpts, entryBCI, intrinsicContext);
                 FrameStateBuilder frameState = new FrameStateBuilder(parser, method, graph);
 
-                frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugin());
+                frameState.initializeForMethodStart(graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins().getParameterPlugins());
 
                 try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(parser) : null) {
                     parser.build(graph.start(), frameState);
@@ -1401,12 +1401,8 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                     lastInstr = beginNode;
                 }
 
-                InlineInvokePlugin plugin = graphBuilderConfig.getPlugins().getInlineInvokePlugin();
-                if (plugin != null) {
-                    if (TraceParserPlugins.getValue()) {
-                        traceWithContext("did not inline %s", targetMethod.format("%h.%n(%p)"));
-                    }
-                    plugin.notifyOfNoninlinedInvoke(this, targetMethod, invoke);
+                for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
+                    plugin.notifyNotInlined(this, targetMethod, invoke);
                 }
             }
 
@@ -1497,24 +1493,30 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
             }
 
             private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
-                InlineInvokePlugin plugin = graphBuilderConfig.getPlugins().getInlineInvokePlugin();
                 boolean canBeInlined = parsingIntrinsic() || targetMethod.canBeInlined();
-                if (plugin == null || !canBeInlined) {
+                if (!canBeInlined) {
                     return false;
                 }
-                InlineInfo inlineInfo = plugin.getInlineInfo(this, targetMethod, args, returnType);
-                if (inlineInfo != null) {
-                    return inline(plugin, targetMethod, inlineInfo.methodToInline, inlineInfo.isIntrinsic, args);
+                for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
+                    InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args, returnType);
+                    if (inlineInfo != null) {
+                        if (inlineInfo.getMethodToInline() == null) {
+                            /* Do not inline, and do not ask the remaining plugins. */
+                            return false;
+                        } else {
+                            return inline(targetMethod, inlineInfo.getMethodToInline(), inlineInfo.isIntrinsic(), args);
+                        }
+                    }
                 }
                 return false;
             }
 
             public void intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, ValueNode[] args) {
-                boolean res = inline(null, targetMethod, substitute, true, args);
+                boolean res = inline(targetMethod, substitute, true, args);
                 assert res : "failed to inline " + substitute;
             }
 
-            private boolean inline(InlineInvokePlugin plugin, ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isIntrinsic, ValueNode[] args) {
+            private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean isIntrinsic, ValueNode[] args) {
                 if (TraceInlineDuringParsing.getValue() || TraceParserPlugins.getValue()) {
                     if (targetMethod.equals(inlinedMethod)) {
                         traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
@@ -1547,9 +1549,12 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
                         intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, INLINE_DURING_PARSING);
                     }
                     if (inlinedMethod.hasBytecodes()) {
+                        for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
+                            plugin.notifyBeforeInline(targetMethod);
+                        }
                         parseAndInlineCallee(inlinedMethod, args, intrinsic);
-                        if (plugin != null) {
-                            plugin.postInline(inlinedMethod);
+                        for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
+                            plugin.notifyAfterInline(targetMethod);
                         }
                     } else {
                         return false;

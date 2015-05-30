@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.io.*;
 import java.util.*;
 
@@ -33,37 +31,32 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.jvmci.meta.*;
 
 public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
 
     private final Map<ResolvedJavaMethod, MethodStatistics> histogram = new HashMap<>();
     private final StructuredGraph graph;
-    private final InlineInvokePlugin delegate;
 
     private HistogramInlineInvokePlugin.MethodStatistic currentStatistic;
 
-    public HistogramInlineInvokePlugin(StructuredGraph graph, InlineInvokePlugin delegate) {
+    public HistogramInlineInvokePlugin(StructuredGraph graph) {
         this.graph = graph;
-        this.delegate = delegate;
     }
 
-    public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
-        InlineInfo inlineInfo = delegate.getInlineInfo(b, method, args, returnType);
-        if (inlineInfo != null) {
-            currentStatistic = new MethodStatistic(currentStatistic, inlineInfo.methodToInline, countNodes(), countCalls());
-        }
-        return inlineInfo;
+    @Override
+    public void notifyBeforeInline(ResolvedJavaMethod methodToInline) {
+        currentStatistic = new MethodStatistic(currentStatistic, methodToInline, countNodes(), countCalls());
     }
 
-    public void postInline(ResolvedJavaMethod inlinedTargetMethod) {
-        delegate.postInline(inlinedTargetMethod);
+    @Override
+    public void notifyAfterInline(ResolvedJavaMethod methodToInline) {
+        assert methodToInline.equals(currentStatistic.method);
 
-        if (currentStatistic != null) {
-            currentStatistic.applyNodeCountAfter(countNodes());
-            currentStatistic.applyCallsAfter(countCalls());
-            accept(currentStatistic);
-            currentStatistic = currentStatistic.getParent();
-        }
+        currentStatistic.applyNodeCountAfter(countNodes());
+        currentStatistic.applyCallsAfter(countCalls());
+        accept(currentStatistic);
+        currentStatistic = currentStatistic.getParent();
     }
 
     private int countNodes() {

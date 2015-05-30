@@ -34,19 +34,16 @@ import com.oracle.jvmci.meta.*;
  */
 public class ConstantBindingParameterPlugin implements ParameterPlugin {
     private final Object[] constantArgs;
-    private final ParameterPlugin delegate;
     private final MetaAccessProvider metaAccess;
     private final SnippetReflectionProvider snippetReflection;
 
     /**
      * Creates a plugin that will create {@link ConstantNode}s for each parameter with an index
      * equal to that of a non-null object in {@code constantArgs} (from which the
-     * {@link ConstantNode} is created if it isn't already a {@link ConstantNode}). For all other
-     * parameter indexes, {@code delegate} is applied if it is non-null.
+     * {@link ConstantNode} is created if it isn't already a {@link ConstantNode}).
      */
-    public ConstantBindingParameterPlugin(Object[] constantArgs, ParameterPlugin delegate, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
+    public ConstantBindingParameterPlugin(Object[] constantArgs, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
         this.constantArgs = constantArgs;
-        this.delegate = delegate;
         this.metaAccess = metaAccess;
         this.snippetReflection = snippetReflection;
     }
@@ -63,9 +60,6 @@ public class ConstantBindingParameterPlugin implements ParameterPlugin {
                 constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(stamp.getStackKind(), arg), metaAccess);
             }
             return constantNode;
-        }
-        if (delegate != null) {
-            return delegate.interceptParameter(b, index, stamp);
         }
         return null;
     }

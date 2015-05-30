@@ -33,8 +33,8 @@ public class GraphBuilderConfiguration {
     public static class Plugins {
         private final InvocationPlugins invocationPlugins;
         private NodePlugin[] nodePlugins;
-        private ParameterPlugin parameterPlugin;
-        private InlineInvokePlugin inlineInvokePlugin;
+        private ParameterPlugin[] parameterPlugins;
+        private InlineInvokePlugin[] inlineInvokePlugins;
         private LoopExplosionPlugin loopExplosionPlugin;
 
         /**
@@ -44,9 +44,9 @@ public class GraphBuilderConfiguration {
          */
         public Plugins(Plugins copyFrom) {
             this.invocationPlugins = new InvocationPlugins(copyFrom.invocationPlugins);
-            this.parameterPlugin = copyFrom.parameterPlugin;
             this.nodePlugins = copyFrom.nodePlugins;
-            this.inlineInvokePlugin = copyFrom.inlineInvokePlugin;
+            this.parameterPlugins = copyFrom.parameterPlugins;
+            this.inlineInvokePlugins = copyFrom.inlineInvokePlugins;
             this.loopExplosionPlugin = copyFrom.loopExplosionPlugin;
         }
 
@@ -59,6 +59,8 @@ public class GraphBuilderConfiguration {
         public Plugins(InvocationPlugins invocationPlugins) {
             this.invocationPlugins = invocationPlugins;
             this.nodePlugins = new NodePlugin[0];
+            this.parameterPlugins = new ParameterPlugin[0];
+            this.inlineInvokePlugins = new InlineInvokePlugin[0];
         }
 
         public InvocationPlugins getInvocationPlugins() {
@@ -74,20 +76,55 @@ public class GraphBuilderConfiguration {
             nodePlugins[nodePlugins.length - 1] = plugin;
         }
 
-        public ParameterPlugin getParameterPlugin() {
-            return parameterPlugin;
+        public void prependNodePlugin(NodePlugin plugin) {
+            NodePlugin[] newPlugins = new NodePlugin[nodePlugins.length + 1];
+            System.arraycopy(nodePlugins, 0, newPlugins, 1, nodePlugins.length);
+            newPlugins[0] = plugin;
+            nodePlugins = newPlugins;
         }
 
-        public void setParameterPlugin(ParameterPlugin plugin) {
-            this.parameterPlugin = plugin;
+        public void clearNodePlugin() {
+            nodePlugins = new NodePlugin[0];
         }
 
-        public InlineInvokePlugin getInlineInvokePlugin() {
-            return inlineInvokePlugin;
+        public ParameterPlugin[] getParameterPlugins() {
+            return parameterPlugins;
         }
 
-        public void setInlineInvokePlugin(InlineInvokePlugin plugin) {
-            this.inlineInvokePlugin = plugin;
+        public void appendParameterPlugin(ParameterPlugin plugin) {
+            parameterPlugins = Arrays.copyOf(parameterPlugins, parameterPlugins.length + 1);
+            parameterPlugins[parameterPlugins.length - 1] = plugin;
+        }
+
+        public void prependParameterPlugin(ParameterPlugin plugin) {
+            ParameterPlugin[] newPlugins = new ParameterPlugin[parameterPlugins.length + 1];
+            System.arraycopy(parameterPlugins, 0, newPlugins, 1, parameterPlugins.length);
+            newPlugins[0] = plugin;
+            parameterPlugins = newPlugins;
+        }
+
+        public void clearParameterPlugin() {
+            parameterPlugins = new ParameterPlugin[0];
+        }
+
+        public InlineInvokePlugin[] getInlineInvokePlugins() {
+            return inlineInvokePlugins;
+        }
+
+        public void appendInlineInvokePlugin(InlineInvokePlugin plugin) {
+            inlineInvokePlugins = Arrays.copyOf(inlineInvokePlugins, inlineInvokePlugins.length + 1);
+            inlineInvokePlugins[inlineInvokePlugins.length - 1] = plugin;
+        }
+
+        public void prependInlineInvokePlugin(InlineInvokePlugin plugin) {
+            InlineInvokePlugin[] newPlugins = new InlineInvokePlugin[inlineInvokePlugins.length + 1];
+            System.arraycopy(inlineInvokePlugins, 0, newPlugins, 1, inlineInvokePlugins.length);
+            newPlugins[0] = plugin;
+            inlineInvokePlugins = newPlugins;
+        }
+
+        public void clearInlineInvokePlugins() {
+            inlineInvokePlugins = new InlineInvokePlugin[0];
         }
 
         public LoopExplosionPlugin getLoopExplosionPlugin() {

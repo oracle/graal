@@ -27,55 +27,93 @@ import com.oracle.jvmci.meta.JavaType;
 import com.oracle.graal.nodes.*;
 
 /**
- * Plugin for specifying what is inlined during graph parsing. This plugin is also
- * {@linkplain #notifyOfNoninlinedInvoke notified} of non-inlined invocations (i.e., those for which
- * an {@link Invoke} node is created).
+ * Plugin for specifying what is inlined during graph parsing. This plugin is also notified
+ * {@link #notifyBeforeInline before} and {@link #notifyAfterInline} the inlining, as well as of
+ * {@link #notifyNotInlined non-inlined} invocations (i.e., those for which an {@link Invoke} node
+ * is created).
  */
 public interface InlineInvokePlugin extends GraphBuilderPlugin {
 
+    /**
+     * Result of a {@link #shouldInlineInvoke inlining decision}.
+     */
     public static class InlineInfo {
 
-        /**
-         * The method to be inlined.
-         */
-        public final ResolvedJavaMethod methodToInline;
+        /** Marker return value to use when the call site must not be inlined. */
+        public static final InlineInfo DO_NOT_INLINE = new InlineInfo(null, false);
 
-        /**
-         * Specifies if {@link #methodToInline} is an intrinsic for the original method (i.e., the
-         * {@code method} passed to {@link InlineInvokePlugin#getInlineInfo}).
-         */
-        public final boolean isIntrinsic;
+        private final ResolvedJavaMethod methodToInline;
+        private final boolean isIntrinsic;
 
         public InlineInfo(ResolvedJavaMethod methodToInline, boolean isIntrinsic) {
             this.methodToInline = methodToInline;
             this.isIntrinsic = isIntrinsic;
         }
+
+        /**
+         * Returns the method to be inlined, or {@code null} if the call site must not be inlined.
+         */
+        public ResolvedJavaMethod getMethodToInline() {
+            return methodToInline;
+        }
+
+        /**
+         * Specifies if {@link #methodToInline} is an intrinsic for the original method (i.e., the
+         * {@code method} passed to {@link InlineInvokePlugin#shouldInlineInvoke}).
+         */
+        public boolean isIntrinsic() {
+            return isIntrinsic;
+        }
     }
 
     /**
-     * Determines whether a call to a given method is to be inlined.
+     * Determines whether a call to a given method is to be inlined. The return value is a
+     * tri-state:
+     * <p>
+     * Non-null return value with a non-null {@link InlineInfo#getMethodToInline method}: That
+     * {@link InlineInfo#getMethodToInline method} is inlined. Note that it can be a different
+     * method than the one specified here as the parameter, which allows method substitutions.
+     * <p>
+     * Non-null return value with a null {@link InlineInfo#getMethodToInline method}, e.g.,
+     * {@link InlineInfo#DO_NOT_INLINE}: The method is not inlined, and other plugins with a lower
+     * priority cannot overwrite this decision.
+     * <p>
+     * Null return value: This plugin made no decision, other plugins with a lower priority are
+     * asked.
      *
+     * @param b the context
      * @param method the target method of an invoke
      * @param args the arguments to the invoke
      * @param returnType the return type derived from {@code method}'s signature
      */
-    default InlineInvokePlugin.InlineInfo getInlineInfo(@SuppressWarnings("unused") GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+    default InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
         return null;
     }
 
     /**
-     * @param inlinedTargetMethod
+     * Notification that a method is about to be inlined.
+     *
+     * @param methodToInline the inlined method
      */
-    default void postInline(ResolvedJavaMethod inlinedTargetMethod) {
+    default void notifyBeforeInline(ResolvedJavaMethod methodToInline) {
+    }
+
+    /**
+     * Notification that a method was inlined.
+     *
+     * @param methodToInline the inlined method
+     */
+    default void notifyAfterInline(ResolvedJavaMethod methodToInline) {
     }
 
     /**
      * Notifies this plugin of the {@link Invoke} node created for a method that was not inlined per
-     * {@link #getInlineInfo}.
+     * {@link #shouldInlineInvoke}.
      *
+     * @param b the context
      * @param method the method that was not inlined
      * @param invoke the invoke node created for the call to {@code method}
      */
-    default void notifyOfNoninlinedInvoke(@SuppressWarnings("unused") GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
+    default void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
     }
 }

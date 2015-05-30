@@ -95,7 +95,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      * @return an object specifying how {@code method} is to be inlined or null if it should not be
      *         inlined based on substitution related criteria
      */
-    public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+    @Override
+    public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
         ResolvedJavaMethod subst = getSubstitutionMethod(method);
         if (subst != null) {
             if (b.parsingIntrinsic() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
@@ -123,7 +124,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         return null;
     }
 
-    public void notifyOfNoninlinedInvoke(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
+    @Override
+    public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
         if (b.parsingIntrinsic()) {
             IntrinsicContext intrinsic = b.getIntrinsic();
             assert intrinsic.isCallToOriginal(method) : format("All non-recursive calls in the intrinsic %s must be inlined or intrinsified: found call to %s",
@@ -556,7 +558,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                 if (args != null) {
-                    plugins.setParameterPlugin(new ConstantBindingParameterPlugin(args, plugins.getParameterPlugin(), metaAccess, replacements.snippetReflection));
+                    plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(args, metaAccess, replacements.snippetReflection));
                 }
 
                 IntrinsicContext initialIntrinsicContext = null;

@@ -28,8 +28,10 @@ import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.ConstantReflectionProvider;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.Kind;
+
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
+import static com.oracle.graal.java.GraphBuilderPhase.Options.*;
 
 import java.lang.invoke.*;
 import java.util.zip.*;
@@ -78,10 +80,14 @@ public class HotSpotGraphBuilderPlugins {
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
         HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(metaAccess, constantReflection, wordOperationPlugin, nodeIntrinsificationPlugin);
 
-        plugins.setParameterPlugin(nodePlugin);
+        plugins.appendParameterPlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess()));
-        plugins.setInlineInvokePlugin(new DefaultInlineInvokePlugin(replacements));
+
+        plugins.appendInlineInvokePlugin(replacements);
+        if (InlineDuringParsing.getValue()) {
+            plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
+        }
 
         registerObjectPlugins(invocationPlugins);
         registerClassPlugins(plugins);

@@ -109,7 +109,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
 
     class InlineAll implements InlineInvokePlugin {
         @Override
-        public InlineInfo getInlineInfo(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, JavaType returnType) {
             return new InlineInfo(method, false);
         }
     }
@@ -124,7 +124,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
             CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch);
 
             targetGraph = new StructuredGraph(testMethod, AllowAssumptions.YES);
-            decoder.decode(targetGraph, testMethod, null, null, new InlineAll(), null);
+            decoder.decode(targetGraph, testMethod, null, null, new InlineInvokePlugin[]{new InlineAll()}, null);
             Debug.dump(targetGraph, "Target Graph");
             targetGraph.verify();
 
