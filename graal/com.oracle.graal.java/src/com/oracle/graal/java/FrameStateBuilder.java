@@ -28,6 +28,7 @@ import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
+import java.util.function.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
@@ -213,12 +214,12 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public FrameState create(int bci, StateSplit forStateSplit) {
-        if (parser.parsingIntrinsic()) {
+        if (parser != null && parser.parsingIntrinsic()) {
             return parser.intrinsicContext.createFrameState(parser.getGraph(), this, forStateSplit);
         }
 
         // Skip intrinsic frames
-        return create(bci, parser.getNonIntrinsicAncestor(), false, null, null);
+        return create(bci, parser != null ? parser.getNonIntrinsicAncestor() : null, false, null, null);
     }
 
     /**
@@ -305,6 +306,29 @@ public final class FrameStateBuilder implements SideEffectsState {
             }
         }
         return true;
+    }
+
+    /**
+     * Phi nodes are recursively deleted in {@link #propagateDelete}. However, this does not cover
+     * frame state builder objects, since these are not nodes and not in the usage list of the phi
+     * node. Therefore, we clean the frame state builder manually here, before we parse a block.
+     */
+    public void cleanDeletedNodes() {
+        for (int i = 0; i < localsSize(); i++) {
+            ValueNode node = locals[i];
+            if (node != null && node.isDeleted()) {
+                assert node instanceof ValuePhiNode || node instanceof ValueProxyNode;
+                locals[i] = null;
+            }
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            ValueNode node = stack[i];
+            assert node == null || !node.isDeleted();
+        }
+        for (int i = 0; i < lockedObjects.length; i++) {
+            ValueNode node = lockedObjects[i];
+            assert !node.isDeleted();
+        }
     }
 
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {
@@ -419,26 +443,26 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void insertProxies(AbstractBeginNode begin) {
+    public void insertProxies(Function<ValueNode, ValueNode> proxyFunction) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = locals[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                locals[i] = ProxyNode.forValue(value, begin, graph);
+                locals[i] = proxyFunction.apply(value);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stack[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                stack[i] = ProxyNode.forValue(value, begin, graph);
+                stack[i] = proxyFunction.apply(value);
             }
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             ValueNode value = lockedObjects[i];
             if (value != null) {
                 Debug.log(" inserting proxy for %s", value);
-                lockedObjects[i] = ProxyNode.forValue(value, begin, graph);
+                lockedObjects[i] = proxyFunction.apply(value);
             }
         }
     }
@@ -537,6 +561,15 @@ public final class FrameStateBuilder implements SideEffectsState {
                     locals[i] = null;
                 }
             }
+        }
+    }
+
+    /**
+     * Clears all local variables.
+     */
+    public void clearLocals() {
+        for (int i = 0; i < locals.length; i++) {
+            locals[i] = null;
         }
     }
 

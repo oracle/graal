@@ -411,8 +411,10 @@ public class BytecodeParser implements GraphBuilderContext {
                 genMonitorEnter(methodSynchronizedObject, bci());
             }
 
+            finishPrepare(lastInstr);
+
             if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-                append(createInfoPointNode(InfopointReason.METHOD_START));
+                genInfoPointNode(InfopointReason.METHOD_START, null);
             }
 
             currentBlock = blockMap.getStartBlock();
@@ -439,6 +441,14 @@ public class BytecodeParser implements GraphBuilderContext {
                 Debug.dump(graph, "Bytecodes parsed: " + method.getDeclaringClass().getUnqualifiedName() + "." + method.getName());
             }
         }
+    }
+
+    /**
+     * Hook for subclasses to modify the graph start instruction or append new instructions to it.
+     *
+     * @param startInstr the start instruction of the graph
+     */
+    protected void finishPrepare(FixedWithNextNode startInstr) {
     }
 
     protected void cleanupFinalGraph() {
@@ -1014,6 +1024,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genThrow() {
+        genInfoPointNode(InfopointReason.LINE_NUMBER, null);
+
         ValueNode exception = frameState.pop(Kind.Object);
         append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
         lastInstr.setNext(handleException(exception, bci()));
@@ -1582,7 +1594,7 @@ public class BytecodeParser implements GraphBuilderContext {
             append(new RegisterFinalizerNode(frameState.loadLocal(0, Kind.Object)));
         }
         if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
-            append(createInfoPointNode(InfopointReason.METHOD_END));
+            genInfoPointNode(InfopointReason.METHOD_END, x);
         }
 
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
@@ -2062,6 +2074,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
             lastInstr = firstInstruction;
             frameState = getEntryState(block, currentDimension);
+            frameState.cleanDeletedNodes();
             parser.setCurrentFrameState(frameState);
             currentBlock = block;
 
@@ -2228,7 +2241,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
                 currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : (graphBuilderConfig.insertFullDebugInfo() ? -1 : bci);
                 if (currentLineNumber != previousLineNumber) {
-                    append(createInfoPointNode(InfopointReason.LINE_NUMBER));
+                    genInfoPointNode(InfopointReason.LINE_NUMBER, null);
                     previousLineNumber = currentLineNumber;
                 }
             }
@@ -2242,7 +2255,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     throw new BailoutException("OSR into a JSR scope is not supported");
                 }
                 EntryMarkerNode x = append(new EntryMarkerNode());
-                frameState.insertProxies(x);
+                frameState.insertProxies(value -> ProxyNode.forValue(value, x, graph));
                 x.setStateAfter(createFrameState(bci, x));
             }
 
@@ -2301,7 +2314,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     /**
-     * A hook for derived classes to modify the last instruction or add other instructions.
+     * Hook for subclasses to modify the last instruction or add other instructions.
      *
      * @param instr The last instruction (= fixed node) which was added.
      * @param state The current frame state.
@@ -2311,20 +2324,21 @@ public class BytecodeParser implements GraphBuilderContext {
         return instr;
     }
 
-    private InfopointNode createInfoPointNode(InfopointReason reason) {
-        if (graphBuilderConfig.insertFullDebugInfo()) {
-            return new FullInfopointNode(reason, createFrameState(bci(), null));
-        } else {
-            BytecodePosition position = createBytecodePosition();
-            // Update the previous infopoint position if no new fixed nodes were inserted
-            if (lastInstr instanceof SimpleInfopointNode) {
-                SimpleInfopointNode lastInfopoint = (SimpleInfopointNode) lastInstr;
-                if (lastInfopoint.getReason() == reason) {
-                    lastInfopoint.setPosition(position);
-                    return lastInfopoint;
+    private void genInfoPointNode(InfopointReason reason, ValueNode escapedReturnValue) {
+        if (!parsingIntrinsic()) {
+            if (graphBuilderConfig.insertFullDebugInfo()) {
+                append(new FullInfopointNode(reason, createFrameState(bci(), null), escapedReturnValue));
+            } else {
+                BytecodePosition position = createBytecodePosition();
+                // Update the previous infopoint position if no new fixed nodes were inserted
+                if (lastInstr instanceof SimpleInfopointNode) {
+                    SimpleInfopointNode lastInfopoint = (SimpleInfopointNode) lastInstr;
+                    if (lastInfopoint.getReason() == reason) {
+                        lastInfopoint.setPosition(position);
+                    }
                 }
+                append(new SimpleInfopointNode(reason, position));
             }
-            return new SimpleInfopointNode(reason, position);
         }
     }
 

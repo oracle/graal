@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.code.*;
@@ -31,13 +32,29 @@ import com.oracle.jvmci.code.*;
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
 @NodeInfo
-public final class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState {
+public final class FullInfopointNode extends InfopointNode implements LIRLowerable, NodeWithState, Simplifiable {
     public static final NodeClass<FullInfopointNode> TYPE = NodeClass.create(FullInfopointNode.class);
     @Input(InputType.State) FrameState state;
+    @OptionalInput ValueNode escapedReturnValue;
 
-    public FullInfopointNode(InfopointReason reason, FrameState state) {
+    public FullInfopointNode(InfopointReason reason, FrameState state, ValueNode escapedReturnValue) {
         super(TYPE, reason);
         this.state = state;
+        this.escapedReturnValue = escapedReturnValue;
+    }
+
+    private void setEscapedReturnValue(ValueNode x) {
+        updateUsages(escapedReturnValue, x);
+        escapedReturnValue = x;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (escapedReturnValue != null && state != null && state.outerFrameState() != null) {
+            ValueNode returnValue = escapedReturnValue;
+            setEscapedReturnValue(null);
+            tool.removeIfUnused(returnValue);
+        }
     }
 
     @Override
