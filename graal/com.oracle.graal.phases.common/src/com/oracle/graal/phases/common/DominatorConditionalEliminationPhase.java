@@ -113,7 +113,7 @@ public class DominatorConditionalEliminationPhase extends Phase {
             nodeToBlock = n -> schedule.getNodeToBlockMap().get(n);
             startBlock = cfg.getStartBlock();
         } else {
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, true);
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             cfg.computePostdominators();
             BlockMap<List<FixedNode>> nodes = new BlockMap<>(cfg);
             for (Block b : cfg.getBlocks()) {
@@ -136,8 +136,8 @@ public class DominatorConditionalEliminationPhase extends Phase {
 
     private static class Instance {
 
-        private final NodeMap<Info> map;
-        private final Deque<LoopExitNode> loopExits;
+        private NodeMap<Info> map;
+        private Deque<LoopExitNode> loopExits;
         private final Function<Block, Iterable<? extends Node>> blockToNodes;
         private final Function<Node, Block> nodeToBlock;
 
@@ -187,6 +187,18 @@ public class DominatorConditionalEliminationPhase extends Phase {
                 LoopExitNode loopExitNode = (LoopExitNode) beginNode;
                 this.loopExits.push(loopExitNode);
                 undoOperations.add(() -> loopExits.pop());
+            } else if (block.getDominator() != null &&
+                            (block.getDominator().getLoopDepth() > block.getLoopDepth() || (block.getDominator().getLoopDepth() == block.getLoopDepth() && block.getDominator().getLoop() != block.getLoop()))) {
+                // We are exiting the loop, but there is not a single loop exit block along our
+                // dominator tree (e.g., we are a merge of two loop exits).
+                final NodeMap<Info> oldMap = map;
+                final Deque<LoopExitNode> oldLoopExits = loopExits;
+                map = map.graph().createNodeMap();
+                loopExits = new ArrayDeque<>();
+                undoOperations.add(() -> {
+                    map = oldMap;
+                    loopExits = oldLoopExits;
+                });
             }
             for (Node n : blockToNodes.apply(block)) {
                 if (n.isAlive()) {

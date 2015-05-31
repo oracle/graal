@@ -202,8 +202,8 @@ public final class SchedulePhase extends Phase {
     }
 
     private static boolean checkLatestEarliestRelation(Node currentNode, Block earliestBlock, Block latestBlock) {
-        assert AbstractControlFlowGraph.dominates(earliestBlock, latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()) : String.format("%s %s %s",
-                        currentNode, earliestBlock, latestBlock);
+        assert AbstractControlFlowGraph.dominates(earliestBlock, latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()) : String.format(
+                        "%s %s (%s) %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
         return true;
     }
 
