@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.nfi;
+package com.oracle.graal.api.runtime;
 
 import com.oracle.jvmci.service.*;
-import com.oracle.nfi.api.*;
 
 /**
- * Class for obtaining the {@link NativeFunctionInterface} (if any) provided by the VM.
+ * A {@linkplain Service JVMCI service} that provides access to a {@link GraalRuntime}
+ * implementation.
  */
-public final class NativeFunctionInterfaceRuntime {
-    private static final NativeFunctionInterface INSTANCE;
+public interface GraalRuntimeAccess extends Service {
 
     /**
-     * Gets the {@link NativeFunctionInterface} (if any) provided by the VM.
-     *
-     * @return null if the VM does not provide a {@link NativeFunctionInterface}
+     * Gets the {@link GraalRuntime} implementation available via this access object.
      */
-    public static NativeFunctionInterface getNativeFunctionInterface() {
-        return INSTANCE;
-    }
-
-    static {
-
-        NativeFunctionInterface instance = null;
-        NativeFunctionInterfaceAccess access = Services.loadSingle(NativeFunctionInterfaceAccess.class, false);
-        if (access != null) {
-            instance = access.getNativeFunctionInterface();
-        }
-        INSTANCE = instance;
-    }
+    GraalRuntime getRuntime();
 }

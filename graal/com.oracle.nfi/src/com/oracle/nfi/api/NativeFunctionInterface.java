@@ -22,12 +22,14 @@
  */
 package com.oracle.nfi.api;
 
+import com.oracle.jvmci.service.*;
+
 /**
  * Interface to get a {@linkplain NativeFunctionHandle handle} or {@linkplain NativeFunctionPointer
  * pointer} to a native function or a {@linkplain NativeLibraryHandle handle} to an open native
  * library.
  */
-public interface NativeFunctionInterface {
+public interface NativeFunctionInterface extends Service {
 
     /**
      * Resolves and returns a handle to an open native library. This method will open the library

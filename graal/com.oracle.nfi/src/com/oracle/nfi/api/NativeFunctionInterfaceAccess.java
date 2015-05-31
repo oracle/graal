@@ -20,11 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.runtime;
+package com.oracle.nfi.api;
 
 import com.oracle.jvmci.service.*;
 
-public interface GraalRuntimeFactory extends Service {
+/**
+ * A {@linkplain Service JVMCI service} that provides access to a {@link NativeFunctionInterface}
+ * implementation.
+ */
+public interface NativeFunctionInterfaceAccess extends Service {
 
-    GraalRuntime getRuntime();
+    /**
+     * Gets the {@link NativeFunctionInterface} implementation available via this access object.
+     */
+    NativeFunctionInterface getNativeFunctionInterface();
 }
