@@ -354,9 +354,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return null;
     }
 
-    /**
-     * Called from the VM.
-     */
     public static NativeFunctionInterface createNativeFunctionInterface() {
         HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
         Backend backend = HotSpotGraalRuntime.runtime().getHostBackend();
