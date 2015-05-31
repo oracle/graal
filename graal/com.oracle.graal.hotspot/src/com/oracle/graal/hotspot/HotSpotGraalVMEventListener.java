@@ -50,4 +50,9 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
     public void notifyShutdown() {
         HotSpotGraalRuntime.runtime().shutdown();
     }
+
+    @Override
+    public void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long jvmciEnv, int id) {
+        CompilationTask.compileMetaspaceMethod(metaspaceMethod, entryBCI, jvmciEnv, id);
+    }
 }
