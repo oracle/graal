@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,33 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.nfi;
+package com.oracle.truffle.api;
 
 import com.oracle.jvmci.service.*;
-import com.oracle.nfi.api.*;
 
 /**
- * Class for obtaining the {@link NativeFunctionInterface} (if any) provided by the VM.
+ * A {@linkplain Service JVMCI service} that provides access to a {@link TruffleRuntime}
+ * implementation.
  */
-public final class NativeFunctionInterfaceRuntime {
-    private static final NativeFunctionInterface INSTANCE;
+public interface TruffleRuntimeAccess extends Service {
 
     /**
-     * Gets the {@link NativeFunctionInterface} (if any) provided by the VM.
-     *
-     * @return null if the VM does not provide a {@link NativeFunctionInterface}
+     * Gets the {@link TruffleRuntime} implementation available via this access object.
      */
-    public static NativeFunctionInterface getNativeFunctionInterface() {
-        return INSTANCE;
-    }
-
-    static {
-
-        NativeFunctionInterface instance = null;
-        NativeFunctionInterfaceAccess access = Services.loadSingle(NativeFunctionInterfaceAccess.class, false);
-        if (access != null) {
-            instance = access.getNativeFunctionInterface();
-        }
-        INSTANCE = instance;
-    }
+    TruffleRuntime getRuntime();
 }
