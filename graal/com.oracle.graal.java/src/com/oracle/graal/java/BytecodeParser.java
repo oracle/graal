@@ -377,7 +377,7 @@ public class BytecodeParser implements GraphBuilderContext {
             stream.setBCI(0);
 
             BciBlock startBlock = blockMap.getStartBlock();
-            if (startInstruction == graph.start()) {
+            if (this.parent == null) {
                 StartNode startNode = graph.start();
                 if (method.isSynchronized()) {
                     assert !parsingIntrinsic();
