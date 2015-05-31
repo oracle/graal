@@ -120,21 +120,13 @@ public class NestedLoopTest extends GraalCompilerTest {
         }
     } // total : root = 1 exit, nested = 6, innermost = 4
 
-    private static boolean a() {
-        return false;
-    }
+    private static native boolean a();
 
-    private static boolean b() {
-        return false;
-    }
+    private static native boolean b();
 
-    private static boolean c() {
-        return false;
-    }
+    private static native boolean c();
 
-    private static boolean d() {
-        return false;
-    }
+    private static native boolean d();
 
     private static Invoke getInvoke(String name, StructuredGraph graph) {
         for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -150,7 +142,7 @@ public class NestedLoopTest extends GraalCompilerTest {
         Debug.dump(graph, "Graph");
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
 
-        Assert.assertTrue(cfg.getLoops().size() == 3);
+        Assert.assertEquals(3, cfg.getLoops().size());
         Loop<Block> rootLoop = cfg.getLoops().get(0);
         Loop<Block> nestedLoop = cfg.getLoops().get(1);
         Loop<Block> innerMostLoop = cfg.getLoops().get(2);
