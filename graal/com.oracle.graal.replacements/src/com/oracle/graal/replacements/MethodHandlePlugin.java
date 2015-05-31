@@ -57,11 +57,10 @@ public class MethodHandlePlugin implements NodePlugin {
             } else {
                 CallTargetNode callTarget = invoke.callTarget();
                 NodeInputList<ValueNode> argumentsList = callTarget.arguments();
-                ValueNode[] newArgs = argumentsList.toArray(new ValueNode[argumentsList.size()]);
-                for (ValueNode arg : newArgs) {
-                    b.recursiveAppend(arg);
+                for (int i = 0; i < argumentsList.size(); ++i) {
+                    argumentsList.initialize(i, b.recursiveAppend(argumentsList.get(i)));
                 }
-                b.handleReplacedInvoke(invoke.getInvokeKind(), callTarget.targetMethod(), newArgs);
+                b.handleReplacedInvoke(invoke.getInvokeKind(), callTarget.targetMethod(), argumentsList.toArray(new ValueNode[argumentsList.size()]));
             }
             return true;
         }
