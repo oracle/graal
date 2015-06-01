@@ -165,7 +165,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         @Override
         protected void scanField(Field field, long offset) {
             Class<?> type = field.getType();
-            if (VALUE_CLASS.isAssignableFrom(type) && type != CONSTANT_CLASS) {
+            if (VALUE_CLASS.isAssignableFrom(type) && !CONSTANT_CLASS.isAssignableFrom(type)) {
                 assert !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final because it is modified by register allocator: " + field;
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
