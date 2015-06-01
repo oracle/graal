@@ -209,8 +209,8 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         Shape oldShape = getShape();
         Property existing = oldShape.getProperty(id);
         if (existing != null) {
-            Integer newFlags = updateFunction.apply(existing.getFlags());
-            if (newFlags != null && existing.getFlags() != newFlags.intValue()) {
+            int newFlags = updateFunction.apply(existing.getFlags());
+            if (existing.getFlags() != newFlags) {
                 Property newProperty = existing.copyWithFlags(newFlags);
                 Shape newShape = oldShape.replaceProperty(existing, newProperty);
                 this.setShape(newShape);

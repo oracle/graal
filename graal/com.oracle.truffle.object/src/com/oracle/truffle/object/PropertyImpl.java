@@ -42,6 +42,8 @@ public class PropertyImpl extends Property {
      * Generic, usual-case constructor for properties storing at least a name.
      *
      * @param key the name of the property
+     * @param location the storage location used to access the property
+     * @param flags property flags (optional)
      */
     protected PropertyImpl(Object key, Location location, int flags, boolean shadow, boolean relocatable) {
         this.key = Objects.requireNonNull(key);
@@ -67,8 +69,8 @@ public class PropertyImpl extends Property {
 
     @Override
     public Property relocate(Location newLocation) {
-        if ((getLocation() == null || !getLocation().equals(newLocation)) && relocatable) {
-            return construct(getKey(), newLocation, getFlags());
+        if (!getLocation().equals(newLocation) && relocatable) {
+            return construct(key, newLocation, flags);
         }
         return this;
     }
@@ -163,8 +165,7 @@ public class PropertyImpl extends Property {
         }
 
         PropertyImpl other = (PropertyImpl) obj;
-        return key.equals(other.key) && ((location == null && other.location == null) || (location != null && location.equals(other.location))) && flags == other.flags && shadow == other.shadow &&
-                        relocatable == other.relocatable;
+        return key.equals(other.key) && location.equals(other.location) && flags == other.flags && shadow == other.shadow && relocatable == other.relocatable;
     }
 
     @Override
@@ -189,7 +190,7 @@ public class PropertyImpl extends Property {
         int result = 1;
         result = prime * result + getClass().hashCode();
         result = prime * result + key.hashCode();
-        result = prime * result + (location != null ? location.hashCode() : 0);
+        result = prime * result + location.hashCode();
         result = prime * result + flags;
         return result;
     }
@@ -240,7 +241,7 @@ public class PropertyImpl extends Property {
 
     private Property relocateShadow(Location newLocation) {
         assert !isShadow() && getLocation() instanceof DeclaredLocation && relocatable;
-        return new PropertyImpl(getKey(), newLocation, flags, true, relocatable);
+        return new PropertyImpl(key, newLocation, flags, true, relocatable);
     }
 
     @SuppressWarnings("hiding")

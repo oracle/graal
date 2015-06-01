@@ -30,6 +30,10 @@ public class DefaultLayoutFactory implements LayoutFactory {
         return BasicLayout.createLayoutImpl(layoutBuilder.getAllowedImplicitCasts(), new DefaultStrategy());
     }
 
+    public Property createProperty(Object id, Location location) {
+        return createProperty(id, location, 0);
+    }
+
     public Property createProperty(Object id, Location location, int flags) {
         return new PropertyImpl(id, location, flags);
     }

@@ -52,6 +52,23 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
     public abstract boolean set(Object key, Object value);
 
     /**
+     * Returns {@code true} if this object contains a property with the given key.
+     */
+    public final boolean containsKey(Object key) {
+        return getShape().getProperty(key) != null;
+    }
+
+    /**
+     * Define new property or redefine existing property.
+     *
+     * @param key property identifier
+     * @param value value to be set
+     */
+    public final void define(Object key, Object value) {
+        define(key, value, 0);
+    }
+
+    /**
      * Define new property or redefine existing property.
      *
      * @param key property identifier
