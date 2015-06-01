@@ -358,6 +358,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         "isInVirtualMethodTable",
         "toParameterTypes",
         "getParameterAnnotation",
+        "getSpeculationLog",
         "$jacocoInit"
     };
     // @formatter:on
