@@ -28,7 +28,7 @@ import org.junit.*;
 
 import com.oracle.truffle.api.source.*;
 
-public class SourceTest {
+public class SourceTagTest {
 
     @Test
     public void sourceTagTest() {
