@@ -37,7 +37,6 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.hotspot.events.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
@@ -246,10 +245,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
                 registerBackend(factory.createBackend(this, null, hostBackend));
             }
         }
-
-        try (InitTimer t = timer("createEventProvider")) {
-            eventProvider = createEventProvider();
-        }
     }
 
     /**
@@ -355,22 +350,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     private final NodeCollectionsProvider nodeCollectionsProvider = new DefaultNodeCollectionsProvider();
 
-    private final EventProvider eventProvider;
-
-    private EventProvider createEventProvider() {
-        if (getConfig().flightRecorder) {
-            Iterable<EventProvider> sl = Services.load(EventProvider.class);
-            EventProvider singleProvider = null;
-            for (EventProvider ep : sl) {
-                assert singleProvider == null : String.format("multiple %s service implementations found: %s and %s", EventProvider.class.getName(), singleProvider.getClass().getName(),
-                                ep.getClass().getName());
-                singleProvider = ep;
-            }
-            return singleProvider;
-        }
-        return new EmptyEventProvider();
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
@@ -382,8 +361,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
             return (T) getHostProviders().getSnippetReflection();
-        } else if (clazz == EventProvider.class) {
-            return (T) eventProvider;
         }
         return null;
     }

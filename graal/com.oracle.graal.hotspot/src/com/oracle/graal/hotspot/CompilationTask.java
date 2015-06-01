@@ -36,9 +36,6 @@ import java.lang.management.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.hotspot.events.*;
-import com.oracle.graal.hotspot.events.EventProvider.CompilationEvent;
-import com.oracle.graal.hotspot.events.EventProvider.CompilerFailureEvent;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.lir.asm.*;
@@ -55,12 +52,25 @@ import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.events.*;
+import com.oracle.jvmci.hotspot.events.EventProvider.*;
 import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.service.*;
 
 //JaCoCo Exclude
 
 public class CompilationTask {
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
+
+    private static final EventProvider eventProvider;
+    static {
+        EventProvider provider = Services.loadSingle(EventProvider.class, false);
+        if (provider == null) {
+            eventProvider = new EmptyEventProvider();
+        } else {
+            eventProvider = provider;
+        }
+    }
 
     private final HotSpotBackend backend;
     private final HotSpotResolvedJavaMethod method;
@@ -149,7 +159,7 @@ public class CompilationTask {
 
     protected ProfilingInfo getProfilingInfo() {
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
-        return method.getCompilationProfilingInfo(osrCompilation);
+        return method.getProfilingInfo(!osrCompilation, osrCompilation);
     }
 
     public void runCompilation() {
@@ -160,7 +170,6 @@ public class CompilationTask {
         final boolean isOSR = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
 
         // Log a compilation event.
-        EventProvider eventProvider = Graal.getRequiredCapability(EventProvider.class);
         CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
 
         // If there is already compiled code for this method on our level we simply return.

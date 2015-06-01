@@ -25,11 +25,9 @@ package com.oracle.graal.truffle;
 import com.oracle.jvmci.code.CallingConvention;
 import com.oracle.jvmci.code.CodeCacheProvider;
 import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.SpeculationLog;
 import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
+import com.oracle.jvmci.meta.*;
+
 import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
