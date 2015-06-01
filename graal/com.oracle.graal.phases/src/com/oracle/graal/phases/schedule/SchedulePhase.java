@@ -658,18 +658,23 @@ public final class SchedulePhase extends Phase {
                             stack.push(input);
                         }
                     }
-                } else {
-                    if (current instanceof FrameState) {
-                        for (Node input : current.inputs()) {
-                            if (input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                                // Ignore the cycle.
-                            } else {
-                                stack.push(input);
-                            }
+                } else if (current instanceof ProxyNode) {
+                    ProxyNode proxyNode = (ProxyNode) current;
+                    for (Node input : proxyNode.inputs()) {
+                        if (input != proxyNode.proxyPoint()) {
+                            stack.push(input);
                         }
-                    } else {
-                        current.pushInputs(stack);
                     }
+                } else if (current instanceof FrameState) {
+                    for (Node input : current.inputs()) {
+                        if (input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                            // Ignore the cycle.
+                        } else {
+                            stack.push(input);
+                        }
+                    }
+                } else {
+                    current.pushInputs(stack);
                 }
             } else {
 
@@ -683,7 +688,7 @@ public final class SchedulePhase extends Phase {
                         for (Node input : current.inputs()) {
                             Block inputEarliest = nodeToBlock.get(input);
                             if (inputEarliest == null) {
-                                assert current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current;
+                                assert current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current : current;
                             } else {
                                 assert inputEarliest != null;
                                 if (inputEarliest.getEndNode() == input) {
