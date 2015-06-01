@@ -24,6 +24,7 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.jvmci.meta.*;
@@ -44,7 +45,7 @@ public class ArraySubstitutions {
         if (probability(SLOW_PATH_PROBABILITY, componentType == void.class)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        return DynamicNewArrayNode.newArray(GuardingPiNode.asNonNullClass(componentType), length);
+        return DynamicNewArrayNode.newArray(GraalDirectives.guardingNonNull(componentType), length);
     }
 
     public static int getLength(Object array) {

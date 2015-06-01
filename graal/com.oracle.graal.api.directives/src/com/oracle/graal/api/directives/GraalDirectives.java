@@ -276,4 +276,11 @@ public final class GraalDirectives {
     public static <T> T opaque(T value) {
         return value;
     }
+
+    public static <T> T guardingNonNull(T value) {
+        if (value == null) {
+            deoptimize();
+        }
+        return value;
+    }
 }

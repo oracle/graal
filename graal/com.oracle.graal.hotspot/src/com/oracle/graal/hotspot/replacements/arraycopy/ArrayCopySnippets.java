@@ -30,14 +30,15 @@ import com.oracle.jvmci.meta.LocationIdentity;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.DeoptimizationAction;
 import com.oracle.jvmci.meta.Kind;
+
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.GuardingPiNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -98,8 +99,8 @@ public class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopyZeroLengthIntrinsic(Object src, int srcPos, Object dest, int destPos, int length) {
-        Object nonNullSrc = guardingNonNull(src);
-        Object nonNullDest = guardingNonNull(dest);
+        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
+        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
         KlassPointer destHub = loadHub(nonNullDest);
         checkArrayType(srcHub);
@@ -110,8 +111,8 @@ public class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopyExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter) {
-        Object nonNullSrc = guardingNonNull(src);
-        Object nonNullDest = guardingNonNull(dest);
+        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
+        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
         counter.inc();
         ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind);
@@ -128,8 +129,8 @@ public class ArrayCopySnippets implements Snippets {
      */
     @Snippet
     public static void arraycopyPredictedExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter) {
-        Object nonNullSrc = guardingNonNull(src);
-        Object nonNullDest = guardingNonNull(dest);
+        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
+        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
         KlassPointer destHub = loadHub(nonNullDest);
         if (probability(SLOW_PATH_PROBABILITY, srcHub != destHub)) {
@@ -167,8 +168,8 @@ public class ArrayCopySnippets implements Snippets {
      */
     @Snippet
     public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetInfo slowPath) {
-        Object nonNullSrc = guardingNonNull(src);
-        Object nonNullDest = guardingNonNull(dest);
+        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
+        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
         KlassPointer destHub = loadHub(nonNullDest);
         checkArrayType(srcHub);
@@ -210,8 +211,8 @@ public class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopyGeneric(Object src, int srcPos, Object dest, int destPos, int length) {
-        Object nonNullSrc = guardingNonNull(src);
-        Object nonNullDest = guardingNonNull(dest);
+        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
+        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
         KlassPointer destHub = loadHub(nonNullDest);
         if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub)) && probability(FAST_PATH_PROBABILITY, nonNullSrc != nonNullDest)) {

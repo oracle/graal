@@ -625,6 +625,24 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+
+        r.register1("guardingNonNull", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                ObjectStamp objectStamp = (ObjectStamp) value.stamp();
+                if (objectStamp.nonNull()) {
+                    b.addPush(value.getKind(), value);
+                    return true;
+                } else if (objectStamp.alwaysNull()) {
+                    b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException));
+                    return true;
+                }
+                IsNullNode isNull = b.add(new IsNullNode(value));
+                FixedGuardNode fixedGuard = b.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
+                Stamp newStamp = objectStamp.improveWith(StampFactory.objectNonNull());
+                b.addPush(value.getKind(), new PiNode(value, newStamp, fixedGuard));
+                return true;
+            }
+        });
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins) {
