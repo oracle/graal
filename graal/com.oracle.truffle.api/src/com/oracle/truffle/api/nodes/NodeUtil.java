@@ -479,23 +479,6 @@ public final class NodeUtil {
         return nodeList;
     }
 
-    /**
-     * Like {@link #findAllNodeInstances(Node, Class)} but do not visit children of found nodes.
-     */
-    public static <T> List<T> findNodeInstancesShallow(final Node root, final Class<T> clazz) {
-        final List<T> nodeList = new ArrayList<>();
-        root.accept(new NodeVisitor() {
-            public boolean visit(Node node) {
-                if (clazz.isInstance(node)) {
-                    nodeList.add(clazz.cast(node));
-                    return false;
-                }
-                return true;
-            }
-        });
-        return nodeList;
-    }
-
     public static int countNodes(Node root) {
         return countNodes(root, NodeCountFilter.NO_FILTER);
     }
