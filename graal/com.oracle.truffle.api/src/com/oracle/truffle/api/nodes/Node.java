@@ -352,7 +352,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     public final Iterable<Node> getChildren() {
         return new Iterable<Node>() {
             public Iterator<Node> iterator() {
-                return nodeClass.makeIterator(Node.this);
+                return getNodeClass().makeIterator(Node.this);
             }
         };
     }
