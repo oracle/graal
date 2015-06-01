@@ -30,6 +30,8 @@ import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.word.*;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for {@link java.lang.Class} methods.
  */
