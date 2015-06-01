@@ -31,7 +31,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -43,13 +42,13 @@ import com.oracle.jvmci.meta.*;
 
 public class AMD64HotSpotMove {
 
-    public static final class HotSpotLoadConstantOp extends AMD64LIRInstruction implements MoveOp {
-        public static final LIRInstructionClass<HotSpotLoadConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadConstantOp.class);
+    public static final class HotSpotLoadObjectConstantOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<HotSpotLoadObjectConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadObjectConstantOp.class);
 
         @Def({REG, STACK}) private AllocatableValue result;
-        private final JavaConstant input;
+        private final HotSpotObjectConstant input;
 
-        public HotSpotLoadConstantOp(AllocatableValue result, JavaConstant input) {
+        public HotSpotLoadObjectConstantOp(AllocatableValue result, HotSpotObjectConstant input) {
             super(TYPE);
             this.result = result;
             this.input = input;
@@ -57,92 +56,90 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(input)) {
-                if (isRegister(result)) {
-                    masm.movl(asRegister(result), 0);
-                } else {
-                    assert isStackSlot(result);
-                    masm.movl((AMD64Address) crb.asAddress(result), 0);
-                }
-            } else if (input instanceof HotSpotObjectConstant) {
-                boolean compressed = ((HotSpotObjectConstant) input).isCompressed();
-                if (crb.target.inlineObjects) {
-                    crb.recordInlineDataInCode(input);
-                    if (isRegister(result)) {
-                        if (compressed) {
-                            masm.movl(asRegister(result), 0xDEADDEAD);
-                        } else {
-                            masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
-                        }
-                    } else {
-                        assert isStackSlot(result);
-                        if (compressed) {
-                            masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
-                        } else {
-                            throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
-                        }
-                    }
-                } else {
-                    if (isRegister(result)) {
-                        AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(input, compressed ? 4 : 8);
-                        if (compressed) {
-                            masm.movl(asRegister(result), address);
-                        } else {
-                            masm.movq(asRegister(result), address);
-                        }
-                    } else {
-                        throw JVMCIError.shouldNotReachHere("Cannot directly store data patch to memory");
-                    }
-                }
-            } else if (input instanceof HotSpotMetaspaceConstant) {
-                assert input.getKind() == Kind.Int || input.getKind() == Kind.Long;
-                boolean compressed = input.getKind() == Kind.Int;
-                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+            boolean compressed = input.isCompressed();
+            if (crb.target.inlineObjects) {
                 crb.recordInlineDataInCode(input);
                 if (isRegister(result)) {
                     if (compressed) {
-                        if (isImmutable && generatePIC) {
-                            Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
-                            int alignment = hostWordKind.getBitCount() / Byte.SIZE;
-                            // recordDataReferenceInCode forces the mov to be rip-relative
-                            masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
-                        } else {
-                            masm.movl(asRegister(result), input.asInt());
-                        }
+                        masm.movl(asRegister(result), 0xDEADDEAD);
                     } else {
-                        if (isImmutable && generatePIC) {
-                            Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
-                            int alignment = hostWordKind.getBitCount() / Byte.SIZE;
-                            // recordDataReferenceInCode forces the mov to be rip-relative
-                            masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
-                        } else {
-                            masm.movq(asRegister(result), input.asLong());
-                        }
+                        masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                     }
                 } else {
                     assert isStackSlot(result);
                     if (compressed) {
-                        if (isImmutable && generatePIC) {
-                            throw JVMCIError.shouldNotReachHere("Unsupported operation offset(%rip) -> mem (mem -> mem)");
-                        } else {
-                            masm.movl((AMD64Address) crb.asAddress(result), input.asInt());
-                        }
+                        masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
                     } else {
                         throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
                 }
             } else {
-                AMD64Move.move(crb, masm, result, input);
+                if (isRegister(result)) {
+                    AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(input, compressed ? 4 : 8);
+                    if (compressed) {
+                        masm.movl(asRegister(result), address);
+                    } else {
+                        masm.movq(asRegister(result), address);
+                    }
+                } else {
+                    throw JVMCIError.shouldNotReachHere("Cannot directly store data patch to memory");
+                }
             }
         }
+    }
 
-        public Value getInput() {
-            return input;
+    public static final class HotSpotLoadMetaspaceConstantOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<HotSpotLoadMetaspaceConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadMetaspaceConstantOp.class);
+
+        @Def({REG, STACK}) private AllocatableValue result;
+        private final HotSpotMetaspaceConstant input;
+
+        public HotSpotLoadMetaspaceConstantOp(AllocatableValue result, HotSpotMetaspaceConstant input) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
         }
 
-        public AllocatableValue getResult() {
-            return result;
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            boolean compressed = input.isCompressed();
+            boolean isImmutable = GraalOptions.ImmutableCode.getValue();
+            boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+            crb.recordInlineDataInCode(input);
+            if (isRegister(result)) {
+                if (compressed) {
+                    if (isImmutable && generatePIC) {
+                        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+                        int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+                        // recordDataReferenceInCode forces the mov to be rip-relative
+                        masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
+                    } else {
+                        assert NumUtil.isInt(input.rawValue());
+                        masm.movl(asRegister(result), (int) input.rawValue());
+                    }
+                } else {
+                    if (isImmutable && generatePIC) {
+                        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+                        int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+                        // recordDataReferenceInCode forces the mov to be rip-relative
+                        masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
+                    } else {
+                        masm.movq(asRegister(result), input.rawValue());
+                    }
+                }
+            } else {
+                assert isStackSlot(result);
+                if (compressed) {
+                    if (isImmutable && generatePIC) {
+                        throw JVMCIError.shouldNotReachHere("Unsupported operation offset(%rip) -> mem (mem -> mem)");
+                    } else {
+                        assert NumUtil.isInt(input.rawValue());
+                        masm.movl((AMD64Address) crb.asAddress(result), (int) input.rawValue());
+                    }
+                } else {
+                    throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                }
+            }
         }
     }
 

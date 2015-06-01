@@ -565,10 +565,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
         if (src instanceof JavaConstant) {
-            return new AMD64HotSpotMove.HotSpotLoadConstantOp(dst, (JavaConstant) src);
-        } else {
-            return super.createMove(dst, src);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
+                return super.createMove(dst, JavaConstant.INT_0);
+            }
+            if (src instanceof HotSpotObjectConstant) {
+                return new AMD64HotSpotMove.HotSpotLoadObjectConstantOp(dst, (HotSpotObjectConstant) src);
+            }
+            if (src instanceof HotSpotMetaspaceConstant) {
+                return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src);
+            }
         }
+        return super.createMove(dst, src);
     }
 
     @Override
