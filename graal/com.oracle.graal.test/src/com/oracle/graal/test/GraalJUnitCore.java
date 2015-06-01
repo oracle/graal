@@ -104,7 +104,7 @@ public class GraalJUnitCore {
                     }
                 }
                 try {
-                    classes.add(Class.forName(each));
+                    classes.add(Class.forName(each, false, GraalJUnitCore.class.getClassLoader()));
                 } catch (ClassNotFoundException e) {
                     system.out().println("Could not find class: " + each);
                     Description description = Description.createSuiteDescription(each);
