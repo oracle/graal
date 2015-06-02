@@ -37,10 +37,12 @@ import com.oracle.jvmci.meta.PlatformKind;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.sparc.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
 
@@ -60,7 +62,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
-import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;

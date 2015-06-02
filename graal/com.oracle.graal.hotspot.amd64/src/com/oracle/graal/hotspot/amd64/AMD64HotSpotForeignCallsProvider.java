@@ -30,7 +30,8 @@ import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.jvmci.meta.Kind;
-import static com.oracle.graal.amd64.AMD64.*;
+
+import static com.oracle.jvmci.amd64.AMD64.*;
 import static com.oracle.jvmci.code.CallingConvention.Type.*;
 import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.jvmci.meta.Value.*;

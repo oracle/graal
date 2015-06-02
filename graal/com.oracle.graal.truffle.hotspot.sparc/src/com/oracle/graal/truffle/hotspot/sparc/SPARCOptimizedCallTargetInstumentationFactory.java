@@ -26,9 +26,9 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 import static com.oracle.jvmci.code.CallingConvention.Type.*;
 import static com.oracle.jvmci.meta.Kind.*;
+import static com.oracle.jvmci.sparc.SPARC.CPUFeature.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;

@@ -28,7 +28,7 @@ import static org.junit.Assume.*;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.backend.*;
-import com.oracle.graal.sparc.*;
+import com.oracle.jvmci.sparc.*;
 
 public class SPARCAllocatorTest extends AllocatorTest {
 

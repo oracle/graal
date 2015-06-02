@@ -26,9 +26,10 @@ import com.oracle.jvmci.code.AbstractAddress;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.Register;
+
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 
 import java.util.function.*;
 

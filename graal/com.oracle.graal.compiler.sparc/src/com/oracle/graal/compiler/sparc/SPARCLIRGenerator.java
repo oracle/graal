@@ -33,6 +33,9 @@ import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.PlatformKind;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.LIRKind;
+import com.oracle.jvmci.sparc.*;
+import com.oracle.jvmci.sparc.SPARC.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.*;
@@ -71,8 +74,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.jvmci.common.*;
 
 /**

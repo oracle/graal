@@ -28,6 +28,8 @@ import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.sparc.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
@@ -45,7 +47,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;

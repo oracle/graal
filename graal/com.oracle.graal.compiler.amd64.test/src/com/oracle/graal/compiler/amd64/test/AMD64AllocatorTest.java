@@ -27,8 +27,8 @@ import static org.junit.Assume.*;
 
 import org.junit.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.compiler.test.backend.*;
+import com.oracle.jvmci.amd64.*;
 
 public class AMD64AllocatorTest extends AllocatorTest {
 

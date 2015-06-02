@@ -32,9 +32,10 @@ import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;

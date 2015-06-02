@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.StackSlotValue;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.JavaConstant;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
