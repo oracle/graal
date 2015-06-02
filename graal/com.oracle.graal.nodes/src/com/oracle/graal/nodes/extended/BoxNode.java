@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -39,7 +40,7 @@ import com.oracle.jvmci.meta.*;
  * methods in Integer, Long, etc.
  */
 @NodeInfo
-public final class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable {
+public final class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
     @Input private ValueNode value;
@@ -62,6 +63,14 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            return null;
+        }
+        return this;
     }
 
     @Override
