@@ -32,6 +32,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.jvmci.meta.*;
@@ -90,7 +91,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     }
 
     /**
-     * Lowers a {@link CheckCastNode} to a {@link GuardingPiNode}. That is:
+     * Lowers a {@link CheckCastNode}. That is:
      *
      * <pre>
      * 1: A a = ...
@@ -118,7 +119,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     @Override
     public void lower(LoweringTool tool) {
         Stamp newStamp = StampFactory.declaredTrusted(type).improveWith(object().stamp());
-        ValueNode condition;
+        LogicNode condition;
         ValueNode theValue = object;
         if (newStamp.isEmpty()) {
             // This is a check cast that will always fail
@@ -148,9 +149,11 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
                 condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
         }
-        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(theValue, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, newStamp));
-        graph().replaceFixedWithFixed(this, checkedObject);
-        checkedObject.lower(tool);
+        GuardingNode guard = tool.createGuard(next(), condition, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, false);
+        ValueAnchorNode valueAnchor = graph().add(new ValueAnchorNode((ValueNode) guard));
+        PiNode piNode = graph().unique(new PiNode(theValue, newStamp, valueAnchor));
+        this.replaceAtUsages(piNode);
+        graph().replaceFixedWithFixed(this, valueAnchor);
     }
 
     @Override
