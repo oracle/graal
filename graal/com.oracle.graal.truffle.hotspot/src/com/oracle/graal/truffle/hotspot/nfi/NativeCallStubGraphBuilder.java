@@ -90,13 +90,14 @@ public class NativeCallStubGraphBuilder {
                     throw new IllegalArgumentException("Return type not supported: " + returnType.getName());
                 }
                 ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(callNode.getKind().toBoxedJavaClass());
-                boxedResult = g.unique(new BoxNode(callNode, type, callNode.getKind()));
+                boxedResult = g.add(new BoxNode(callNode, type, callNode.getKind()));
             } else {
-                boxedResult = g.unique(new BoxNode(ConstantNode.forLong(0, g), providers.getMetaAccess().lookupJavaType(Long.class), Kind.Long));
+                boxedResult = g.add(new BoxNode(ConstantNode.forLong(0, g), providers.getMetaAccess().lookupJavaType(Long.class), Kind.Long));
             }
 
+            callNode.setNext(boxedResult);
             ReturnNode returnNode = g.add(new ReturnNode(boxedResult));
-            callNode.setNext(returnNode);
+            boxedResult.setNext(returnNode);
             return g;
         } catch (NoSuchMethodException e) {
             throw JVMCIError.shouldNotReachHere("Call Stub method not found");
