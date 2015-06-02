@@ -540,10 +540,10 @@ public final class BciBlockMapping {
                 case INVOKESTATIC:
                 case INVOKEVIRTUAL:
                 case INVOKEDYNAMIC: {
+                    current = null;
+                    addSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
                     ExceptionDispatchBlock handler = handleExceptions(blockMap, bci);
                     if (handler != null) {
-                        current = null;
-                        addSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
                         addSuccessor(blockMap, bci, handler);
                     }
                     break;
