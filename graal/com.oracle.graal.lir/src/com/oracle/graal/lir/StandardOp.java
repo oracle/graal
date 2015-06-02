@@ -227,7 +227,7 @@ public class StandardOp {
     }
 
     /**
-     * An operation that takes one input and stores it in a stack slot as well as on an ordinary
+     * An operation that takes one input and stores it in a stack slot as well as to an ordinary
      * variable.
      */
     public interface StackStoreOp {
