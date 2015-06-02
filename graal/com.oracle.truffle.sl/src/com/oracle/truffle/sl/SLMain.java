@@ -139,6 +139,11 @@ public class SLMain extends TruffleLanguage {
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private final SLContext context;
 
+    /* Small tools that can be demonstrated */
+    NodeExecCounter nodeExecCounter = null;
+    NodeExecCounter statementExecCounter = null;
+    CoverageTracker coverageTracker = null;
+
     public SLMain(Env env) {
         super(env);
         context = SLContextFactory.create(new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
@@ -157,7 +162,10 @@ public class SLMain extends TruffleLanguage {
 
     /**
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
+     * <p>
+     * Obsolete: being replaced with new TruffleLanguage API
      */
+    @Deprecated
     public static void main(String[] args) throws IOException {
         TruffleVM vm = TruffleVM.newVM().build();
         assert vm.getLanguages().containsKey("application/x-sl");
@@ -181,6 +189,9 @@ public class SLMain extends TruffleLanguage {
         }
     }
 
+    /**
+     * Temporary method during API evolution, supports debugger integration.
+     */
     public static void run(Source source) throws IOException {
         TruffleVM vm = TruffleVM.newVM().build();
         assert vm.getLanguages().containsKey("application/x-sl");
@@ -202,28 +213,6 @@ public class SLMain extends TruffleLanguage {
         if (logOutput != null) {
             logOutput.println("== running on " + Truffle.getRuntime().getName());
             // logOutput.println("Source = " + source.getCode());
-        }
-
-        if (statementCounts || coverage) {
-            Probe.registerASTProber(new SLStandardASTProber());
-        }
-
-        NodeExecCounter nodeExecCounter = null;
-        if (nodeExecCounts) {
-            nodeExecCounter = new NodeExecCounter();
-            nodeExecCounter.install();
-        }
-
-        NodeExecCounter statementExecCounter = null;
-        if (statementCounts) {
-            statementExecCounter = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
-            statementExecCounter.install();
-        }
-
-        CoverageTracker coverageTracker = null;
-        if (coverage) {
-            coverageTracker = new CoverageTracker();
-            coverageTracker.install();
         }
 
         /* Parse the SL source file. */
@@ -271,18 +260,6 @@ public class SLMain extends TruffleLanguage {
 
         } finally {
             printScript("after execution", LAST.context, logOutput, printASTToLog, printSourceAttributionToLog, dumpASTToIGV);
-        }
-        if (nodeExecCounter != null) {
-            nodeExecCounter.print(System.out);
-            nodeExecCounter.dispose();
-        }
-        if (statementExecCounter != null) {
-            statementExecCounter.print(System.out);
-            statementExecCounter.dispose();
-        }
-        if (coverageTracker != null) {
-            coverageTracker.print(System.out);
-            coverageTracker.dispose();
         }
         return totalRuntime;
     }
@@ -382,7 +359,10 @@ public class SLMain extends TruffleLanguage {
 
     @Override
     protected Object eval(Source code) throws IOException {
+
+        setupToolDemos();
         context.executeMain(code);
+        reportToolDemos();
         return null;
     }
 
@@ -404,6 +384,41 @@ public class SLMain extends TruffleLanguage {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof SLFunction;
+    }
+
+    private void setupToolDemos() {
+        if (statementCounts || coverage) {
+            Probe.registerASTProber(new SLStandardASTProber());
+        }
+        if (nodeExecCounts) {
+            nodeExecCounter = new NodeExecCounter();
+            nodeExecCounter.install();
+        }
+
+        if (statementCounts) {
+            statementExecCounter = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
+            statementExecCounter.install();
+        }
+
+        if (coverage) {
+            coverageTracker = new CoverageTracker();
+            coverageTracker.install();
+        }
+    }
+
+    private void reportToolDemos() {
+        if (nodeExecCounter != null) {
+            nodeExecCounter.print(System.out);
+            nodeExecCounter.dispose();
+        }
+        if (statementExecCounter != null) {
+            statementExecCounter.print(System.out);
+            statementExecCounter.dispose();
+        }
+        if (coverageTracker != null) {
+            coverageTracker.print(System.out);
+            coverageTracker.dispose();
+        }
     }
 
 }

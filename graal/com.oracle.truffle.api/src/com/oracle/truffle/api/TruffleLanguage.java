@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import com.oracle.truffle.api.vm.TruffleVM.Language;
  * implementation of this type and registering it using {@link Registration} annotation, your
  * language becomes accessible to users of the {@link TruffleVM Truffle virtual machine} - all they
  * will need to do is to include your JAR into their application and all the Truffle goodies (multi
- * language support, multi tennat hosting, debugging, etc.) will be made available to them.
+ * language support, multitenant hosting, debugging, etc.) will be made available to them.
  */
 public abstract class TruffleLanguage {
     private final Env env;
@@ -56,7 +56,7 @@ public abstract class TruffleLanguage {
     /**
      * The annotation to use to register your language to the {@link TruffleVM Truffle} system. By
      * annotating your implementation of {@link TruffleLanguage} by this annotation you are just a
-     * <em>one JAR drop to the classpath</em> away from your users. Once they include your JAR in
+     * <em>one JAR drop to the class path</em> away from your users. Once they include your JAR in
      * their application, your language will be available to the {@link TruffleVM Truffle virtual
      * machine}.
      */
@@ -72,11 +72,11 @@ public abstract class TruffleLanguage {
         String name();
 
         /**
-         * List of mimetypes associated with your language. Users will use them (directly or
-         * inderectly) when {@link TruffleVM#eval(java.lang.String, java.lang.String) executing}
+         * List of MIME types associated with your language. Users will use them (directly or
+         * indirectly) when {@link TruffleVM#eval(java.lang.String, java.lang.String) executing}
          * their code snippets or their {@link TruffleVM#eval(java.net.URI) files}.
          *
-         * @return array of mime types assigned to your language files
+         * @return array of MIME types assigned to your language files
          */
         String[] mimeType();
     }
