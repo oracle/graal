@@ -27,19 +27,20 @@ import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.sparc.*;
+import com.oracle.jvmci.sparc.SPARC.*;
+
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 import static java.lang.String.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.jvmci.common.*;
 
 /**

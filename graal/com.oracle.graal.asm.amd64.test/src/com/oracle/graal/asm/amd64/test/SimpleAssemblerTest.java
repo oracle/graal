@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.asm.amd64.test;
 
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.Register;
@@ -29,13 +30,13 @@ import com.oracle.jvmci.code.CallingConvention;
 import com.oracle.jvmci.code.CompilationResult;
 import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.Kind;
+
 import static org.junit.Assume.*;
 
 import java.nio.*;
 
 import org.junit.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.jvmci.code.CompilationResult.DataSectionReference;
 import com.oracle.jvmci.code.DataSection.Data;
 import com.oracle.jvmci.code.DataSection.DataBuilder;

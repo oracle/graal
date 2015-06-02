@@ -28,6 +28,8 @@ import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.StackSlotValue;
 import com.oracle.jvmci.code.StackSlot;
 import com.oracle.jvmci.code.RegisterValue;
+import com.oracle.jvmci.sparc.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
@@ -38,7 +40,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.sparc.*;
 
 /**
  * Saves registers to stack slots.

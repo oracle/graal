@@ -26,7 +26,6 @@ import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
@@ -34,6 +33,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.amd64.*;
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.meta.*;

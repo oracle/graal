@@ -28,12 +28,12 @@ import java.util.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.sparc.*;
-import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.runtime.*;
 import com.oracle.jvmci.service.*;
+import com.oracle.jvmci.sparc.*;
+import com.oracle.jvmci.sparc.SPARC.*;
 
 @ServiceProvider(HotSpotJVMCIBackendFactory.class)
 public class SPARCHotSpotJVMCIBackendFactory implements HotSpotJVMCIBackendFactory {

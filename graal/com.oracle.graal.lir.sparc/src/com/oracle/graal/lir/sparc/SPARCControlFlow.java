@@ -26,14 +26,16 @@ import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.sparc.SPARC.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.sparc.SPARC.*;
 
 import java.util.*;
 
@@ -50,7 +52,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
 import com.oracle.jvmci.common.*;
 
 public class SPARCControlFlow {

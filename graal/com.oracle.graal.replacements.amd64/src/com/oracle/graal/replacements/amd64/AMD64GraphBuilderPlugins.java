@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.ForeignCallsProvider;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.LocationIdentity;
+
 import static com.oracle.graal.compiler.target.Backend.*;
 import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.*;
 import sun.misc.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;

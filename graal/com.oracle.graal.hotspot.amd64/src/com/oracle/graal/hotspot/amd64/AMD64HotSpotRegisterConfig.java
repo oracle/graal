@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.TargetDescription;
@@ -35,12 +36,12 @@ import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.PlatformKind;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.Kind;
-import static com.oracle.graal.amd64.AMD64.*;
+
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.jvmci.amd64.AMD64.*;
 
 import java.util.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.jvmci.common.*;

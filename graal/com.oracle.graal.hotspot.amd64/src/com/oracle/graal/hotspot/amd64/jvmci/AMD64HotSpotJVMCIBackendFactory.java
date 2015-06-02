@@ -26,9 +26,9 @@ import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.*;
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.meta.*;

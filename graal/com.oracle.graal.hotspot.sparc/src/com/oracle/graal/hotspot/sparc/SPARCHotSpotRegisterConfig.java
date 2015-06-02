@@ -35,14 +35,15 @@ import com.oracle.jvmci.meta.JavaType;
 import com.oracle.jvmci.meta.PlatformKind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
-import static com.oracle.graal.sparc.SPARC.*;
+import com.oracle.jvmci.sparc.*;
+
+import static com.oracle.jvmci.sparc.SPARC.*;
 
 import java.util.*;
 
 import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
 

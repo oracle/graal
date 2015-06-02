@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.jvmci.amd64.AMD64.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.amd64.*;
