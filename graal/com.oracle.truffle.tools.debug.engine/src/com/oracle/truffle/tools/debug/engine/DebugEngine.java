@@ -41,7 +41,6 @@ import com.oracle.truffle.tools.debug.engine.SourceExecutionProvider.ExecutionLi
 public final class DebugEngine {
 
     private static final boolean TRACE = false;
-    private static final boolean TRACE_PROBES = false;
     private static final String TRACE_PREFIX = "DEBUG ENGINE: ";
 
     private static final PrintStream OUT = System.out;
@@ -49,9 +48,8 @@ public final class DebugEngine {
     private static final SyntaxTag STEPPING_TAG = StandardSyntaxTag.STATEMENT;
     private static final SyntaxTag CALL_TAG = StandardSyntaxTag.CALL;
 
-    @SuppressWarnings("unused")
     private static void trace(String format, Object... args) {
-        if (TRACE || TRACE_PROBES) {
+        if (TRACE) {
             OUT.println(TRACE_PREFIX + String.format(format, args));
         }
     }
@@ -151,38 +149,6 @@ public final class DebugEngine {
         this.lineBreaks = new LineBreakpointFactory(sourceExecutionProvider, breakpointCallback, warningLog);
 
         this.tagBreaks = new TagBreakpointFactory(sourceExecutionProvider, breakpointCallback, warningLog);
-
-        if (TRACE_PROBES) {
-            Probe.addProbeListener(new ProbeListener() {
-
-                private Source beingProbed = null;
-
-                @Override
-                public void startASTProbing(Source source) {
-                    final String sourceName = source == null ? "<?>" : source.getShortName();
-                    trace("START PROBING %s", sourceName);
-                    beingProbed = source;
-                }
-
-                @Override
-                public void newProbeInserted(Probe probe) {
-                    trace("PROBE ADDED %s", probe.getShortDescription());
-                }
-
-                @Override
-                public void probeTaggedAs(Probe probe, SyntaxTag tag, Object tagValue) {
-                    trace("PROBE TAGGED as %s: %s", tag, probe.getShortDescription());
-                }
-
-                @Override
-                public void endASTProbing(Source source) {
-                    final String sourceName = source == null ? "<?>" : source.getShortName();
-                    trace("FINISHED PROBING %s", sourceName);
-                    assert source == beingProbed;
-                    beingProbed = null;
-                }
-            });
-        }
     }
 
     public static DebugEngine create(DebugClient debugClient, SourceExecutionProvider sourceExecutionProvider) {
