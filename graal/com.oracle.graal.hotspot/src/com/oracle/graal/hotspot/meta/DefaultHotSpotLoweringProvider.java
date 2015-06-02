@@ -33,6 +33,7 @@ import com.oracle.jvmci.meta.LocationIdentity;
 import com.oracle.jvmci.meta.ResolvedJavaType;
 import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import com.oracle.jvmci.meta.Kind;
+
 import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
@@ -129,7 +130,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof TypeCheckNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
-                instanceofSnippets.lower((TypeCheckNode) n, tool);
+                lowerTypeCheckNode((TypeCheckNode) n, tool, graph);
             }
         } else if (n instanceof InstanceOfDynamicNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
@@ -209,6 +210,13 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else {
             super.lower(n, tool);
         }
+    }
+
+    private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
+        ValueNode hub = createReadHub(graph, n.getValue(), null);
+        ValueNode clazz = graph.unique(ConstantNode.forConstant(KlassPointerStamp.klass(), n.type().getObjectHub(), tool.getMetaAccess()));
+        LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
+        n.replaceAndDelete(objectEquals);
     }
 
     private void lowerKlassLayoutHelperNode(KlassLayoutHelperNode n, LoweringTool tool) {

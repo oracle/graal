@@ -182,7 +182,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             if (x.stamp() instanceof AbstractObjectStamp) {
                 comparison = ObjectEqualsNode.create(x, y, constantReflection);
             } else if (x.stamp() instanceof AbstractPointerStamp) {
-                comparison = new PointerEqualsNode(x, y);
+                comparison = PointerEqualsNode.create(x, y);
             } else {
                 assert x.getKind().isNumericInteger();
                 comparison = IntegerEqualsNode.create(x, y, constantReflection);

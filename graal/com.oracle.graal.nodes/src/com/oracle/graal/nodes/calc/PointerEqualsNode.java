@@ -41,6 +41,14 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         this(TYPE, x, y);
     }
 
+    public static LogicNode create(ValueNode x, ValueNode y) {
+        LogicNode result = findSynonym(x, y);
+        if (result != null) {
+            return result;
+        }
+        return new PointerEqualsNode(x, y);
+    }
+
     protected PointerEqualsNode(NodeClass<? extends PointerEqualsNode> c, ValueNode x, ValueNode y) {
         super(c, Condition.EQ, false, x, y);
         assert x.stamp() instanceof AbstractPointerStamp;
