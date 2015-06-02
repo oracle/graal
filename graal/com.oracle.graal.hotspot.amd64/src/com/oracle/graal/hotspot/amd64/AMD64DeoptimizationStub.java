@@ -32,6 +32,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.amd64.*;
 
 final class AMD64DeoptimizationStub extends DeoptimizationStub {
 

@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.Register;
+import com.oracle.jvmci.hotspot.sparc.*;
 
 import static com.oracle.jvmci.sparc.SPARC.*;
 
