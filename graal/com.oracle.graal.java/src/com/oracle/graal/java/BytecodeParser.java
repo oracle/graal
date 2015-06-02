@@ -2861,6 +2861,14 @@ public class BytecodeParser implements GraphBuilderContext {
     private JavaField lookupField(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         JavaField result = constantPool.lookupField(cpi, opcode);
+        if (graphBuilderConfig.unresolvedIsError()) {
+            assert result instanceof ResolvedJavaField : "Not resolved: " + result;
+            ResolvedJavaType declaringClass = ((ResolvedJavaField) result).getDeclaringClass();
+            if (!declaringClass.isInitialized()) {
+                assert declaringClass.isInterface() : "Declaring class not initialized but not an interface? " + declaringClass;
+                declaringClass.initialize();
+            }
+        }
         assert !graphBuilderConfig.unresolvedIsError() || (result instanceof ResolvedJavaField && ((ResolvedJavaField) result).getDeclaringClass().isInitialized()) : result;
         return result;
     }
