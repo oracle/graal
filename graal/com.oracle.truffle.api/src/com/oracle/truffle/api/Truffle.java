@@ -54,7 +54,12 @@ public class Truffle {
 
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
-                TruffleRuntimeAccess access = Services.loadSingle(TruffleRuntimeAccess.class, false);
+                TruffleRuntimeAccess access = null;
+                try {
+                    access = Services.loadSingle(TruffleRuntimeAccess.class, false);
+                } catch (NoClassDefFoundError e) {
+                    // JVMCI is unavailable
+                }
                 if (access != null) {
                     return access.getRuntime();
                 }
