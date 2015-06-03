@@ -40,10 +40,14 @@ import com.oracle.truffle.dsl.processor.parser.*;
  */
 // @SupportedAnnotationTypes({"com.oracle.truffle.codegen.Operation",
 // "com.oracle.truffle.codegen.TypeLattice"})
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class TruffleProcessor extends AbstractProcessor implements ProcessCallback {
 
     private List<AnnotationProcessor<?>> generators;
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
+    }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
