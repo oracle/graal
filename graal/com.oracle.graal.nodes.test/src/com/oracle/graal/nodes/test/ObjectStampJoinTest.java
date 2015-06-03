@@ -89,7 +89,6 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp alwaysNull = StampFactory.alwaysNull();
         Stamp join = join(alwaysNull, dExactNonNull);
         Assert.assertFalse(join.hasValues());
-        Assert.assertFalse(StampTool.isPointerNonNull(join));
         Assert.assertFalse(StampTool.isPointerAlwaysNull(join));
     }
 
