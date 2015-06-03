@@ -59,6 +59,11 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
         this.wordKind = wordTypes.getWordKind();
     }
 
+    @Override
+    public boolean canChangeStackKind(GraphBuilderContext b) {
+        return true;
+    }
+
     /**
      * Processes a call to a method if it is annotated with {@link Operation} by adding nodes to the
      * graph being built that implement the denoted operation.

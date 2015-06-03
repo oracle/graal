@@ -66,6 +66,14 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     }
 
     @Override
+    public boolean canChangeStackKind(GraphBuilderContext b) {
+        if (b.parsingIntrinsic()) {
+            return wordOperationPlugin.canChangeStackKind(b) || nodeIntrinsificationPlugin.canChangeStackKind(b);
+        }
+        return false;
+    }
+
+    @Override
     public FloatingNode interceptParameter(GraphBuilderContext b, int index, Stamp stamp) {
         if (b.parsingIntrinsic()) {
             return wordOperationPlugin.interceptParameter(b, index, stamp);

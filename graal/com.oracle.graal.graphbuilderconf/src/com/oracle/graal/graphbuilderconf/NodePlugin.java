@@ -152,4 +152,15 @@ public interface NodePlugin extends GraphBuilderPlugin {
     default boolean handleInstanceOf(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
         return false;
     }
+
+    /**
+     * If the plugin {@link GraphBuilderContext#push pushes} a value with a different {@link Kind}
+     * than specified by the bytecode, it must override this method and return {@code true}. This
+     * disables assertion checking for value kinds.
+     *
+     * @param b the context
+     */
+    default boolean canChangeStackKind(GraphBuilderContext b) {
+        return false;
+    }
 }

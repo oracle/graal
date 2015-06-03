@@ -27,6 +27,7 @@ import static com.oracle.jvmci.code.BytecodeFrame.*;
 import java.util.*;
 
 import com.oracle.graal.bytecode.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
@@ -47,6 +48,22 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 
     private static final DebugMetric METRIC_FRAMESTATE_COUNT = Debug.metric("FrameStateCount");
+
+    /**
+     * Marker value for the second slot of values that occupy two local variable or expression stack
+     * slots. The marker value is used by the bytecode parser, but replaced with {@code null} in the
+     * {@link #values} of the {@link FrameState}.
+     */
+    public static final ValueNode TWO_SLOT_MARKER = new TwoSlotMarker();
+
+    @NodeInfo
+    private static final class TwoSlotMarker extends ValueNode {
+        public static final NodeClass<TwoSlotMarker> TYPE = NodeClass.create(TwoSlotMarker.class);
+
+        protected TwoSlotMarker() {
+            super(TYPE, StampFactory.forKind(Kind.Illegal));
+        }
+    }
 
     protected final int localsSize;
 
@@ -139,13 +156,23 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     private void createValues(ValueNode[] locals, ValueNode[] stack, ValueNode[] locks) {
         int index = 0;
         for (int i = 0; i < locals.length; ++i) {
-            this.values.initialize(index++, locals[i]);
+            ValueNode value = locals[i];
+            if (value == TWO_SLOT_MARKER) {
+                value = null;
+            }
+            this.values.initialize(index++, value);
         }
         for (int i = 0; i < stackSize; ++i) {
-            this.values.initialize(index++, stack[i]);
+            ValueNode value = stack[i];
+            if (value == TWO_SLOT_MARKER) {
+                value = null;
+            }
+            this.values.initialize(index++, value);
         }
         for (int i = 0; i < locks.length; ++i) {
-            this.values.initialize(index++, locks[i]);
+            ValueNode value = locks[i];
+            assert value != TWO_SLOT_MARKER;
+            this.values.initialize(index++, value);
         }
     }
 
