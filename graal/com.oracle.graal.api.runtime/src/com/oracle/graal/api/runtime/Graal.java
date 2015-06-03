@@ -40,8 +40,8 @@ public class Graal {
         if (access != null) {
             GraalRuntime rt = access.getRuntime();
             // The constant is patched in-situ by the build system
-            System.setProperty("graal.version", "@@graal.version@@".trim());
-            assert !System.getProperty("graal.version").startsWith("@@") && !System.getProperty("graal.version").endsWith("@@") : "Graal version string constant was not patched by build system";
+            System.setProperty("graal.version", "@@@@@@@@@@@@@@@@graal.version@@@@@@@@@@@@@@@@".trim());
+            assert !System.getProperty("graal.version").startsWith("@@@@@@@@@@@@@@@@") && !System.getProperty("graal.version").endsWith("@@@@@@@@@@@@@@@@") : "Graal version string constant was not patched by build system";
             return rt;
         }
         return new InvalidGraalRuntime();
