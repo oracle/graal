@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaMethod;
 import java.io.*;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
@@ -40,8 +36,16 @@ import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.CodeUtil.DefaultRefMapFormatter;
+import com.oracle.jvmci.code.CodeUtil.RefMapFormatter;
+import com.oracle.jvmci.code.CompilationResult.Call;
+import com.oracle.jvmci.code.CompilationResult.DataPatch;
+import com.oracle.jvmci.code.CompilationResult.Infopoint;
+import com.oracle.jvmci.code.CompilationResult.Mark;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -179,10 +183,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
-            cfgPrinter.printMachineCode(codeCache.disassemble(compResult, null), message);
+            cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
         } else if (isCompilationResultAndInstalledCode(object)) {
             Object[] tuple = (Object[]) object;
-            cfgPrinter.printMachineCode(codeCache.disassemble((CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
+            cfgPrinter.printMachineCode(disassemble(codeCache, (CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
         } else if (object instanceof StackInterval[]) {
@@ -195,6 +199,101 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
 
+    }
+
+    /**
+     * Returns a disassembly of some compiled code.
+     *
+     * @param compResult some compiled code
+     * @param installedCode the result of installing the code in {@code compResult} or null if the
+     *            code has not yet been installed
+     */
+    private static String disassemble(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode installedCode) {
+        TargetDescription target = codeCache.getTarget();
+        RegisterConfig regConfig = codeCache.getRegisterConfig();
+        byte[] code = installedCode == null ? Arrays.copyOf(compResult.getTargetCode(), compResult.getTargetCodeSize()) : installedCode.getCode();
+        if (code == null) {
+            // Method was deoptimized/invalidated
+            return "";
+        }
+        long start = installedCode == null ? 0L : installedCode.getStart();
+        HexCodeFile hcf = new HexCodeFile(code, start, target.arch.getName(), target.wordSize * 8);
+        if (compResult != null) {
+            HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
+            addExceptionHandlersComment(compResult, hcf);
+            Register fp = regConfig.getFrameRegister();
+            RefMapFormatter slotFormatter = new DefaultRefMapFormatter(target.arch, target.wordSize, fp, 0);
+            for (Infopoint infopoint : compResult.getInfopoints()) {
+                if (infopoint instanceof Call) {
+                    Call call = (Call) infopoint;
+                    if (call.debugInfo != null) {
+                        hcf.addComment(call.pcOffset + call.size, CodeUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
+                    }
+                    addOperandComment(hcf, call.pcOffset, "{" + codeCache.getTargetName(call) + "}");
+                } else {
+                    if (infopoint.debugInfo != null) {
+                        hcf.addComment(infopoint.pcOffset, CodeUtil.append(new StringBuilder(100), infopoint.debugInfo, slotFormatter).toString());
+                    }
+                    addOperandComment(hcf, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
+                }
+            }
+            for (DataPatch site : compResult.getDataPatches()) {
+                hcf.addOperandComment(site.pcOffset, "{" + site.reference.toString() + "}");
+            }
+            for (Mark mark : compResult.getMarks()) {
+                hcf.addComment(mark.pcOffset, codeCache.getMarkName(mark));
+            }
+        }
+        String hcfEmbeddedString = hcf.toEmbeddedString();
+        return HexCodeFileDisTool.tryDisassemble(hcfEmbeddedString);
+    }
+
+    /**
+     * Interface to the tool for disassembling an {@link HexCodeFile#toEmbeddedString() embedded}
+     * {@link HexCodeFile}.
+     */
+    static class HexCodeFileDisTool {
+        static final Method processMethod;
+        static {
+            Method toolMethod = null;
+            try {
+                Class<?> toolClass = Class.forName("com.oracle.max.hcfdis.HexCodeFileDis", true, ClassLoader.getSystemClassLoader());
+                toolMethod = toolClass.getDeclaredMethod("processEmbeddedString", String.class);
+            } catch (Exception e) {
+                // Tool not available on the class path
+            }
+            processMethod = toolMethod;
+        }
+
+        public static String tryDisassemble(String hcfEmbeddedString) {
+            if (processMethod != null) {
+                try {
+                    return (String) processMethod.invoke(null, hcfEmbeddedString);
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    // If the tool is available, for now let's be noisy when it fails
+                    throw new JVMCIError(e);
+                }
+            }
+            return hcfEmbeddedString;
+        }
+    }
+
+    private static void addExceptionHandlersComment(CompilationResult compResult, HexCodeFile hcf) {
+        if (!compResult.getExceptionHandlers().isEmpty()) {
+            String nl = HexCodeFile.NEW_LINE;
+            StringBuilder buf = new StringBuilder("------ Exception Handlers ------").append(nl);
+            for (CompilationResult.ExceptionHandler e : compResult.getExceptionHandlers()) {
+                buf.append("    ").append(e.pcOffset).append(" -> ").append(e.handlerPos).append(nl);
+                hcf.addComment(e.pcOffset, "[exception -> " + e.handlerPos + "]");
+                hcf.addComment(e.handlerPos, "[exception handler for " + e.pcOffset + "]");
+            }
+            hcf.addComment(0, buf.toString());
+        }
+    }
+
+    private static void addOperandComment(HexCodeFile hcf, int pos, String comment) {
+        String oldValue = hcf.addOperandComment(pos, comment);
+        assert oldValue == null : "multiple comments for operand of instruction at " + pos + ": " + comment + ", " + oldValue;
     }
 
     private static boolean isCompilationResultAndInstalledCode(Object object) {

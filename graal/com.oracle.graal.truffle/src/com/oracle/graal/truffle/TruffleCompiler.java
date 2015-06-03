@@ -198,9 +198,6 @@ public abstract class TruffleCompiler {
             a.getAssumption().registerInstalledCode(installedCode);
         }
 
-        if (Debug.isLogEnabled()) {
-            Debug.log(providers.getCodeCache().disassemble(result, installedCode));
-        }
         return result;
     }
 

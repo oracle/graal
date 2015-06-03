@@ -365,10 +365,6 @@ public class GraalCompiler {
                 Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
             }
 
-            if (Debug.isLogEnabled()) {
-                Debug.log("%s", backend.getProviders().getCodeCache().disassemble(compilationResult, null));
-            }
-
             Debug.dump(compilationResult, "After code generation");
         }
     }
