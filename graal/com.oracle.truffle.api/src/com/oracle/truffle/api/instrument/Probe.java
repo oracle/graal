@@ -173,9 +173,17 @@ public final class Probe {
      */
     public static void applyASTProbers(Node node) {
 
+        String name = "<?>";
         final Source source = findSource(node);
-        final String sourceName = source == null ? "<?>" : source.getShortName();
-        trace("START %s", sourceName);
+        if (source != null) {
+            name = source.getShortName();
+        } else {
+            final SourceSection sourceSection = node.getEncapsulatingSourceSection();
+            if (sourceSection != null) {
+                name = sourceSection.getShortDescription();
+            }
+        }
+        trace("START %s", name);
         for (ProbeListener listener : probeListeners) {
             listener.startASTProbing(source);
         }
@@ -185,7 +193,7 @@ public final class Probe {
         for (ProbeListener listener : probeListeners) {
             listener.endASTProbing(source);
         }
-        trace("FINISHED %s", sourceName);
+        trace("FINISHED %s", name);
     }
 
     /**
