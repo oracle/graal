@@ -109,7 +109,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     public void lower(Node n, LoweringTool tool) {
         StructuredGraph graph = (StructuredGraph) n.graph();
-
         if (n instanceof Invoke) {
             lowerInvoke((Invoke) n, tool, graph);
         } else if (n instanceof LoadMethodNode) {
@@ -127,10 +126,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof InstanceOfNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 instanceofSnippets.lower((InstanceOfNode) n, tool);
-            }
-        } else if (n instanceof TypeCheckNode) {
-            if (graph.getGuardsStage().areDeoptsFixed()) {
-                lowerTypeCheckNode((TypeCheckNode) n, tool, graph);
             }
         } else if (n instanceof InstanceOfDynamicNode) {
             if (graph.getGuardsStage().areDeoptsFixed()) {
@@ -210,13 +205,6 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else {
             super.lower(n, tool);
         }
-    }
-
-    private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
-        ValueNode hub = createReadHub(graph, n.getValue(), null);
-        ValueNode clazz = graph.unique(ConstantNode.forConstant(KlassPointerStamp.klass(), n.type().getObjectHub(), tool.getMetaAccess()));
-        LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
-        n.replaceAndDelete(objectEquals);
     }
 
     private void lowerKlassLayoutHelperNode(KlassLayoutHelperNode n, LoweringTool tool) {

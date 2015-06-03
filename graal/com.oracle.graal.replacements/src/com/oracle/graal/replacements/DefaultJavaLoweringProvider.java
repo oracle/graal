@@ -73,6 +73,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     @Override
     public void lower(Node n, LoweringTool tool) {
+        StructuredGraph graph = (StructuredGraph) n.graph();
         if (n instanceof LoadFieldNode) {
             lowerLoadFieldNode((LoadFieldNode) n, tool);
         } else if (n instanceof StoreFieldNode) {
@@ -103,11 +104,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             boxingSnippets.lower((BoxNode) n, tool);
         } else if (n instanceof UnboxNode) {
             boxingSnippets.lower((UnboxNode) n, tool);
+        } else if (n instanceof TypeCheckNode) {
+            if (graph.getGuardsStage().areDeoptsFixed()) {
+                lowerTypeCheckNode((TypeCheckNode) n, tool, graph);
+            }
         } else if (n instanceof VerifyHeapNode) {
             lowerVerifyHeap((VerifyHeapNode) n);
         } else {
             throw JVMCIError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
         }
+    }
+
+    private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
+        ValueNode hub = createReadHub(graph, n.getValue(), null);
+        ValueNode clazz = graph.unique(ConstantNode.forConstant(tool.getStampProvider().createHubStamp((ObjectStamp) n.getValue().stamp()), n.type().getObjectHub(), tool.getMetaAccess()));
+        LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
+        n.replaceAndDelete(objectEquals);
     }
 
     protected void lowerVerifyHeap(VerifyHeapNode n) {
