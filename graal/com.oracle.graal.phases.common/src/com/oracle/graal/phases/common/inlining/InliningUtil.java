@@ -628,6 +628,7 @@ public class InliningUtil {
 
         if (returnValuePhi != null) {
             assert returnValuePhi.verify();
+            returnValuePhi.inferStamp();
             return returnValuePhi;
         } else {
             return singleReturnValue;
