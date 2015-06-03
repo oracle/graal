@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.messages.Message;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.interop.ForeignAccessArguments;
 import com.oracle.truffle.interop.messages.Execute;
+import com.oracle.truffle.interop.messages.IsNull;
 import com.oracle.truffle.interop.messages.Receiver;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
@@ -55,6 +56,8 @@ final class SLFunctionForeignAccess implements ForeignAccessFactory {
     public CallTarget getAccess(Message tree) {
         if (Execute.create(Receiver.create(), 0).matchStructure(tree)) {
             return Truffle.getRuntime().createCallTarget(new SLForeignCallerRootNode());
+        } else if (IsNull.create(Receiver.create()).matchStructure(tree)) {
+            return Truffle.getRuntime().createCallTarget(new SLForeignNullCheckNode());
         } else {
             throw new UnsupportedMessageException(tree.toString() + " not supported");
         }
@@ -87,4 +90,11 @@ final class SLFunctionForeignAccess implements ForeignAccessFactory {
 
     }
 
+    private static class SLForeignNullCheckNode extends RootNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object receiver = ForeignAccessArguments.getReceiver(frame.getArguments());
+            return SLNull.SINGLETON == receiver;
+        }
+    }
 }

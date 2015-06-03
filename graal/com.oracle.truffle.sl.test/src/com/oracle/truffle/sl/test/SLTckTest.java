@@ -41,14 +41,18 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected TruffleVM prepareVM() throws Exception {
         TruffleVM vm = TruffleVM.newVM().build();
-        vm.eval("application/x-sl", // your langage
-                        "function fourtyTwo() {\n" + // your script
-                                        "  return 42;\n" + //
-                                        "}\n" + //
-                                        "function plus(a, b) {\n" + //
-                                        "  return a + b;\n" + //
-                                        "}\n" //
+        // @formatter:off
+        vm.eval("application/x-sl",
+            "function fourtyTwo() {\n" +
+            "  return 42;\n" + //
+            "}\n" +
+            "function plus(a, b) {\n" +
+            "  return a + b;\n" +
+            "}\n" +
+            "function null() {\n" +
+            "}\n"
         );
+        // @formatter:on
         return vm;
     }
 
@@ -60,5 +64,10 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String plusInt() {
         return "plus";
+    }
+
+    @Override
+    protected String returnsNull() {
+        return "null";
     }
 }

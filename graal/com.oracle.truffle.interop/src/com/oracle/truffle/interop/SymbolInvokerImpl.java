@@ -30,6 +30,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.interop.*;
+import com.oracle.truffle.api.interop.exception.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.interop.messages.*;
 import com.oracle.truffle.interop.node.*;
@@ -39,10 +40,39 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
 
     @Override
     protected Object invoke(Object symbol, Object... arr) throws IOException {
-        ForeignObjectAccessNode executeMain = ForeignObjectAccessNode.getAccess(Execute.create(Receiver.create(), arr.length));
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(executeMain, (TruffleObject) symbol, arr));
+        ForeignObjectAccessNode callMain = ForeignObjectAccessNode.getAccess(Execute.create(Receiver.create(), arr.length));
+        CallTarget callMainTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(callMain, (TruffleObject) symbol, arr));
         VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(arr, UNUSED_FRAMEDESCRIPTOR);
-        return callTarget.call(frame);
+        Object ret = callMainTarget.call(frame);
+        if (ret instanceof TruffleObject) {
+            TruffleObject tret = (TruffleObject) ret;
+            Object isBoxedResult;
+            try {
+                ForeignObjectAccessNode isBoxed = ForeignObjectAccessNode.getAccess(IsBoxed.create(Receiver.create()));
+                CallTarget isBoxedTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(isBoxed, tret));
+                isBoxedResult = isBoxedTarget.call(frame);
+            } catch (UnsupportedMessageException ex) {
+                isBoxedResult = false;
+            }
+            if (Boolean.TRUE.equals(isBoxedResult)) {
+                ForeignObjectAccessNode unbox = ForeignObjectAccessNode.getAccess(Unbox.create(Receiver.create()));
+                CallTarget unboxTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(unbox, tret));
+                Object unboxResult = unboxTarget.call(frame);
+                return unboxResult;
+            } else {
+                try {
+                    ForeignObjectAccessNode isNull = ForeignObjectAccessNode.getAccess(IsNull.create(Receiver.create()));
+                    CallTarget isNullTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(isNull, tret));
+                    Object isNullResult = isNullTarget.call(frame);
+                    if (Boolean.TRUE.equals(isNullResult)) {
+                        return null;
+                    }
+                } catch (UnsupportedMessageException ex) {
+                    // fallthrough
+                }
+            }
+        }
+        return ret;
     }
 
     private static class TemporaryRoot extends RootNode {

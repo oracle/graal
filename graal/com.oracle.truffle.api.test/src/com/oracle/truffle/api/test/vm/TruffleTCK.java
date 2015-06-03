@@ -27,6 +27,7 @@ import java.util.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.vm.*;
+import static org.junit.Assert.*;
 
 /**
  * A collection of tests that can certify language implementaiton to be complient with most recent
@@ -66,6 +67,18 @@ public class TruffleTCK { // abstract
     }
 
     /**
+     * Name of a function that returns <code>null</code>. Truffle languages are encouraged to have
+     * their own type representing <code>null</code>, but when such value is returned from
+     * {@link TruffleVM#eval}, it needs to be converted to real Java <code>null</code> by sending a
+     * foreign access <em>isNull</em> message. There is a test to verify it is really true.
+     *
+     * @return name of globally exported symbol
+     */
+    protected String returnsNull() { // abstract
+        return null;
+    }
+
+    /**
      * Name of function to add two integer values together. The symbol will be invoked with two
      * parameters of type {@link Integer} and expects result of type {@link Number} which's
      * {@link Number#intValue()} is equivalent of <code>param1 + param2</code>.
@@ -101,6 +114,18 @@ public class TruffleTCK { // abstract
         Number n = (Number) res;
 
         assert 42 == n.intValue() : "The value is 42 =  " + n.intValue();
+    }
+
+    @Test
+    public void testNull() throws Exception {
+        if (getClass() == TruffleTCK.class) {
+            return;
+        }
+        TruffleVM.Symbol retNull = findGlobalSymbol(returnsNull());
+
+        Object res = retNull.invoke(null);
+
+        assertNull("Should yield real Java null", res);
     }
 
     @Test
