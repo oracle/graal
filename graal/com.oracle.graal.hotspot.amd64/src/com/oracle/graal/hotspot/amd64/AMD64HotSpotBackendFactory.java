@@ -58,7 +58,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotLoweringProvider lowerer;
         HotSpotSnippetReflectionProvider snippetReflection;
         HotSpotReplacementsImpl replacements;
-        HotSpotDisassemblerProvider disassembler;
         HotSpotSuitesProvider suites;
         HotSpotWordTypes wordTypes;
         Plugins plugins;
@@ -84,9 +83,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(runtime, p, snippetReflection);
             }
-            try (InitTimer rt = timer("create Disassembler provider")) {
-                disassembler = createDisassembler(runtime);
-            }
             try (InitTimer rt = timer("create WordTypes")) {
                 wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
             }
@@ -97,7 +93,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Suites provider")) {
                 suites = createSuites(runtime, plugins);
             }
-            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection, wordTypes, plugins);
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, suites, registers, snippetReflection, wordTypes, plugins);
         }
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(runtime, providers);
@@ -118,10 +114,6 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     protected HotSpotRegistersProvider createRegisters() {
         return new HotSpotRegisters(AMD64.r15, AMD64.r12, AMD64.rsp);
-    }
-
-    protected HotSpotDisassemblerProvider createDisassembler(HotSpotGraalRuntimeProvider runtime) {
-        return new HotSpotDisassemblerProvider(runtime);
     }
 
     protected HotSpotReplacementsImpl createReplacements(HotSpotGraalRuntimeProvider runtime, Providers p, SnippetReflectionProvider snippetReflection) {
@@ -172,15 +164,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             *
+             * 
              * Draft Version 0.96
-             *
+             * 
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             *
+             * 
              * 3.2.1
-             *
+             * 
              * ...
-             *
+             * 
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

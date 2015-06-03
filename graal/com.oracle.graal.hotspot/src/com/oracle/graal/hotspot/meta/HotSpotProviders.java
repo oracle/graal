@@ -38,7 +38,6 @@ import com.oracle.jvmci.hotspot.*;
  */
 public class HotSpotProviders extends Providers {
 
-    private final HotSpotDisassemblerProvider disassembler;
     private final SuitesProvider suites;
     private final HotSpotRegistersProvider registers;
     private final SnippetReflectionProvider snippetReflection;
@@ -46,10 +45,9 @@ public class HotSpotProviders extends Providers {
     private final Plugins graphBuilderPlugins;
 
     public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, SuitesProvider suites, HotSpotRegistersProvider registers,
-                    SnippetReflectionProvider snippetReflection, HotSpotWordTypes wordTypes, Plugins graphBuilderPlugins) {
+                    LoweringProvider lowerer, Replacements replacements, SuitesProvider suites, HotSpotRegistersProvider registers, SnippetReflectionProvider snippetReflection,
+                    HotSpotWordTypes wordTypes, Plugins graphBuilderPlugins) {
         super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, new HotSpotStampProvider());
-        this.disassembler = disassembler;
         this.suites = suites;
         this.registers = registers;
         this.snippetReflection = snippetReflection;
@@ -60,10 +58,6 @@ public class HotSpotProviders extends Providers {
     @Override
     public HotSpotCodeCacheProvider getCodeCache() {
         return (HotSpotCodeCacheProvider) super.getCodeCache();
-    }
-
-    public HotSpotDisassemblerProvider getDisassembler() {
-        return disassembler;
     }
 
     @Override

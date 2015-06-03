@@ -22,17 +22,6 @@
  */
 package com.oracle.graal.asm.test;
 
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.DisassemblerProvider;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.InvalidInstalledCodeException;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 
 import org.junit.*;
@@ -41,8 +30,11 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.service.*;
 
 public abstract class AssemblerTest extends GraalTest {
 
@@ -76,8 +68,7 @@ public abstract class AssemblerTest extends GraalTest {
 
             InstalledCode code = codeCache.addMethod(method, compResult, null, null);
 
-            DisassemblerProvider dis = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getDisassembler();
-            if (dis != null) {
+            for (DisassemblerProvider dis : Services.load(DisassemblerProvider.class)) {
                 String disasm = dis.disassemble(code);
                 Assert.assertTrue(code.toString(), disasm == null || disasm.length() > 0);
             }

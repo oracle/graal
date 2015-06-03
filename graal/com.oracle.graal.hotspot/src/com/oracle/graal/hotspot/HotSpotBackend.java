@@ -236,11 +236,6 @@ public abstract class HotSpotBackend extends Backend {
         return getProviders().getSuites();
     }
 
-    @Override
-    public DisassemblerProvider getDisassembler() {
-        return getProviders().getDisassembler();
-    }
-
     protected void profileInstructions(LIR lir, CompilationResultBuilder crb) {
         if (HotSpotBackend.Options.ASMInstructionProfiling.getValue() != null) {
             HotSpotInstructionProfiling.countInstructions(lir, crb.asm);

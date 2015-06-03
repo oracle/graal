@@ -57,13 +57,11 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), target);
-        HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
         HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
         Plugins plugins = createGraphBuilderPlugins(runtime, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(runtime, plugins);
-        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers, snippetReflection,
-                        wordTypes, plugins);
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, suites, registers, snippetReflection, wordTypes, plugins);
 
         return createBackend(runtime, providers);
     }
