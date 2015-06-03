@@ -128,9 +128,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> VerifyPhases = new OptionValue<>(false);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<String> PrintFilter = new OptionValue<>(null);
-
     // Debug settings:
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> BootstrapReplacements = new OptionValue<>(false);
@@ -173,32 +170,15 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> PrintIdealGraphSchedule = new OptionValue<>(false);
 
     // Other printing settings
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintAfterCompilation = new OptionValue<>(false);
-
     @Option(help = "Print profiling information when parsing a method's bytecode", type = OptionType.Debug)
     public static final OptionValue<Boolean> PrintProfilingInformation = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> PrintCodeBytes = new OptionValue<>(false);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintBailout = new OptionValue<>(false);
 
     @Option(help = "", type = OptionType.Debug)
     public static final StableOptionValue<Boolean> TraceEscapeAnalysis = new StableOptionValue<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> ExitVMOnBailout = new OptionValue<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> ExitVMOnException = new OptionValue<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
 
     // HotSpot command line options
     @Option(help = "Print inlining optimizations", type = OptionType.Debug)

@@ -32,6 +32,8 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.jvmci.compiler.Compiler;
+import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.meta.Assumptions.Assumption;
 
@@ -39,7 +41,7 @@ import com.oracle.jvmci.meta.Assumptions.Assumption;
  * A graph that contains at least one distinguished node : the {@link #start() start} node. This
  * node is the start of the control flow of the graph.
  */
-public class StructuredGraph extends Graph {
+public class StructuredGraph extends Graph implements JavaMethodContex {
 
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of
@@ -97,7 +99,6 @@ public class StructuredGraph extends Graph {
         }
     }
 
-    public static final int INVOCATION_ENTRY_BCI = -1;
     public static final long INVALID_GRAPH_ID = -1;
 
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
@@ -134,11 +135,11 @@ public class StructuredGraph extends Graph {
      * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, allowAssumptions);
+        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI, allowAssumptions);
+        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions) {
@@ -208,7 +209,7 @@ public class StructuredGraph extends Graph {
     }
 
     public boolean isOSR() {
-        return entryBCI != INVOCATION_ENTRY_BCI;
+        return entryBCI != Compiler.INVOCATION_ENTRY_BCI;
     }
 
     public long graphId() {
@@ -603,5 +604,9 @@ public class StructuredGraph extends Graph {
      */
     public boolean isTrivial() {
         return !(start.next() instanceof ReturnNode);
+    }
+
+    public JavaMethod asJavaMethod() {
+        return method();
     }
 }

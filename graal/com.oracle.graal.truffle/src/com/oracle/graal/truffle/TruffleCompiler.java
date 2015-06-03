@@ -22,19 +22,11 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.meta.*;
-
-import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.jvmci.code.CodeUtil.*;
 
 import java.util.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.meta.Assumptions.Assumption;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -45,10 +37,13 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.printer.*;
 import com.oracle.graal.truffle.nodes.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.Assumptions.Assumption;
+import com.oracle.jvmci.meta.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -169,6 +164,7 @@ public abstract class TruffleCompiler {
 
         if (graph.isInlinedMethodRecordingEnabled()) {
             result.setMethods(graph.method(), graph.getInlinedMethods());
+            result.setBytecodeSize(graph.getBytecodeSize());
         } else {
             assert result.getMethods() == null;
         }

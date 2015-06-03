@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
-
-import com.oracle.graal.hotspot.CompileTheWorld.Config;
-import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.service.*;
 
@@ -34,16 +30,7 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     @Override
     public void notifyCompileTheWorld() throws Throwable {
-        CompilerToVM compilerToVM = HotSpotGraalRuntime.runtime().getJVMCIRuntime().getCompilerToVM();
-        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
-        for (int i = 0; i < iterations; i++) {
-            compilerToVM.resetCompilationStatistics();
-            TTY.println("CompileTheWorld : iteration " + i);
-            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
-                            CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
-            ctw.compile();
-        }
-        System.exit(0);
+
     }
 
     @Override
@@ -53,6 +40,6 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     @Override
     public void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long jvmciEnv, int id) {
-        CompilationTask.compileMetaspaceMethod(metaspaceMethod, entryBCI, jvmciEnv, id);
+
     }
 }

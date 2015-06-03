@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.jvmci.compiler.Compiler.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.CompileTheWorld.Config;
+import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.CompileTheWorld.Config;
 
 /**
  * Tests {@link CompileTheWorld} functionality.
@@ -41,7 +41,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         // Compile a couple classes in rt.jar
         String file = System.getProperty("java.home") + "/lib/rt.jar";
         new CompileTheWorld(file, new Config(null), 1, 5, null, null, false).compile();
-        ExitVMOnException.setValue(originalSetting);
+        assert ExitVMOnException.getValue() == originalSetting;
     }
 
 }

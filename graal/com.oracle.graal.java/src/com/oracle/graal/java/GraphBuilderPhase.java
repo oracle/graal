@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;
 
 /**
@@ -74,12 +71,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
         @Override
         protected void run(StructuredGraph graph) {
-            TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), graph.method());
-            try {
-                createBytecodeParser(graph, null, graph.method(), graph.getEntryBCI(), initialIntrinsicContext).buildRootMethod();
-            } finally {
-                filter.remove();
-            }
+            createBytecodeParser(graph, null, graph.method(), graph.getEntryBCI(), initialIntrinsicContext).buildRootMethod();
         }
 
         /* Hook for subclasses of Instance to provide a subclass of BytecodeParser. */

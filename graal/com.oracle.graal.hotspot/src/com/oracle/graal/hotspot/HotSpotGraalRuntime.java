@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
 import static com.oracle.jvmci.hotspot.InitTimer.*;
 
 import java.lang.reflect.*;
@@ -38,7 +38,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.jvmci.code.*;

@@ -28,7 +28,6 @@ import static com.oracle.jvmci.meta.MetaUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graphbuilderconf.*;
@@ -38,6 +37,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;
 
 /**

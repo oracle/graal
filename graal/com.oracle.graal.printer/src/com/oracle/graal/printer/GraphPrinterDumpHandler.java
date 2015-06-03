@@ -24,8 +24,9 @@ package com.oracle.graal.printer;
 
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.JavaMethod;
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
+
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
 
 import java.io.*;
 import java.net.*;

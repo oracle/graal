@@ -31,6 +31,7 @@ import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.Signature;
 import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import com.oracle.jvmci.meta.Kind;
+
 import static com.oracle.jvmci.code.CallingConvention.Type.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
@@ -119,33 +120,40 @@ public class ForeignCallStub extends Stub {
         return null;
     }
 
+    private class DebugScopeContext implements JavaMethod, JavaMethodContex {
+        public JavaMethod asJavaMethod() {
+            return this;
+        }
+
+        public Signature getSignature() {
+            ForeignCallDescriptor d = linkage.getDescriptor();
+            MetaAccessProvider metaAccess = providers.getMetaAccess();
+            Class<?>[] arguments = d.getArgumentTypes();
+            ResolvedJavaType[] parameters = new ResolvedJavaType[arguments.length];
+            for (int i = 0; i < arguments.length; i++) {
+                parameters[i] = metaAccess.lookupJavaType(arguments[i]);
+            }
+            return new HotSpotSignature(runtime.getJVMCIRuntime(), metaAccess.lookupJavaType(d.getResultType()), parameters);
+        }
+
+        public String getName() {
+            return linkage.getDescriptor().getName();
+        }
+
+        public JavaType getDeclaringClass() {
+            return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
+        }
+
+        @Override
+        public String toString() {
+            return format("ForeignCallStub<%n(%p)>");
+        }
+    }
+
     @Override
     protected Object debugScopeContext() {
-        return new JavaMethod() {
+        return new DebugScopeContext() {
 
-            public Signature getSignature() {
-                ForeignCallDescriptor d = linkage.getDescriptor();
-                MetaAccessProvider metaAccess = providers.getMetaAccess();
-                Class<?>[] arguments = d.getArgumentTypes();
-                ResolvedJavaType[] parameters = new ResolvedJavaType[arguments.length];
-                for (int i = 0; i < arguments.length; i++) {
-                    parameters[i] = metaAccess.lookupJavaType(arguments[i]);
-                }
-                return new HotSpotSignature(runtime.getJVMCIRuntime(), metaAccess.lookupJavaType(d.getResultType()), parameters);
-            }
-
-            public String getName() {
-                return linkage.getDescriptor().getName();
-            }
-
-            public JavaType getDeclaringClass() {
-                return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
-            }
-
-            @Override
-            public String toString() {
-                return format("ForeignCallStub<%n(%p)>");
-            }
         };
     }
 

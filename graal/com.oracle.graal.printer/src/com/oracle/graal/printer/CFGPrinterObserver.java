@@ -114,6 +114,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         return object instanceof Graph || object instanceof BciBlockMapping;
     }
 
+    private LIR lastLIR = null;
+    private Interval[] delayedIntervals = null;
+
     public void dumpSandboxed(Object object, String message) {
 
         if (!dumpFrontend && isFrontendObject(object)) {
@@ -166,7 +169,11 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (object instanceof LIR) {
             // Currently no node printing for lir
             cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);
-
+            lastLIR = (LIR) object;
+            if (delayedIntervals != null) {
+                cfgPrinter.printIntervals(message, delayedIntervals);
+                delayedIntervals = null;
+            }
         } else if (object instanceof SchedulePhase) {
             cfgPrinter.printSchedule(message, (SchedulePhase) object);
         } else if (object instanceof StructuredGraph) {
@@ -183,7 +190,14 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             Object[] tuple = (Object[]) object;
             cfgPrinter.printMachineCode(disassemble(codeCache, (CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
         } else if (object instanceof Interval[]) {
-            cfgPrinter.printIntervals(message, (Interval[]) object);
+            if (lastLIR == cfgPrinter.lir) {
+                cfgPrinter.printIntervals(message, (Interval[]) object);
+            } else {
+                if (delayedIntervals != null) {
+                    Debug.log("Some delayed intervals were dropped (%s)", (Object) delayedIntervals);
+                }
+                delayedIntervals = (Interval[]) object;
+            }
         } else if (object instanceof StackInterval[]) {
             cfgPrinter.printStackIntervals(message, (StackInterval[]) object);
         }

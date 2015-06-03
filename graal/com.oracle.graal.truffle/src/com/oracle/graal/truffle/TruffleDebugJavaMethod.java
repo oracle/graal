@@ -34,7 +34,7 @@ import com.oracle.truffle.api.*;
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in
  * {@linkplain Debug#scope(Object) debug scopes}.
  */
-public class TruffleDebugJavaMethod implements JavaMethod {
+public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContex {
     private final RootCallTarget compilable;
 
     private static final JavaType declaringClass = new JavaType() {
@@ -121,5 +121,9 @@ public class TruffleDebugJavaMethod implements JavaMethod {
     @Override
     public String toString() {
         return format("Truffle<%n(%p)>");
+    }
+
+    public JavaMethod asJavaMethod() {
+        return this;
     }
 }

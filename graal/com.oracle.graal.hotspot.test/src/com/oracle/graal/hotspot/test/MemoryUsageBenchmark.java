@@ -22,20 +22,17 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.hotspot.CompileTheWorld.*;
-import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
-import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.jvmci.debug.internal.MemUseTrackerImpl.*;
+import static com.oracle.jvmci.hotspot.CompileTheWorld.*;
+import static com.oracle.jvmci.hotspot.CompileTheWorld.Options.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.printer.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.CompileTheWorld.Config;
 
 /**
  * Used to benchmark memory usage during Graal compilation.
@@ -129,16 +126,15 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
 
     private void doCompilation(String methodName, String label) {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(methodName);
-        HotSpotBackend backend = runtime().getHostBackend();
 
         // invalidate any existing compiled code
         method.reprofile();
 
-        int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
+        int id = method.allocateCompileId(com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
         long graalEnv = 0L;
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
-            CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, graalEnv, id, false);
+            CompilationTask task = new CompilationTask(method, com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
             task.runCompilation();
         }
     }
@@ -146,15 +142,14 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     private void allocSpyCompilation(String methodName) {
         if (AllocSpy.isEnabled()) {
             HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(methodName);
-            HotSpotBackend backend = runtime().getHostBackend();
 
             // invalidate any existing compiled code
             method.reprofile();
 
-            int id = method.allocateCompileId(INVOCATION_ENTRY_BCI);
+            int id = method.allocateCompileId(com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
             long graalEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
-                CompilationTask task = new CompilationTask(backend, method, INVOCATION_ENTRY_BCI, graalEnv, id, false);
+                CompilationTask task = new CompilationTask(method, com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
                 task.runCompilation();
             }
         }

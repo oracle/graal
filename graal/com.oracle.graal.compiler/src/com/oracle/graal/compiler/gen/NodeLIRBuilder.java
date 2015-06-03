@@ -31,8 +31,9 @@ import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.PlatformKind;
 import com.oracle.jvmci.meta.JavaConstant;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 

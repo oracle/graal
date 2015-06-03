@@ -22,27 +22,17 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-
-import static com.oracle.jvmci.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
+import static com.oracle.jvmci.code.CodeUtil.*;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -57,14 +47,17 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.nfi.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.compiler.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.service.*;
 import com.oracle.nfi.api.*;
 import com.oracle.truffle.api.*;
@@ -96,9 +89,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         // Create compilation queue.
         CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", new CompilerThreadFactory.DebugConfigAccess() {
-            public GraalDebugConfig getDebugConfig() {
+            public JVMCIDebugConfig getDebugConfig() {
                 if (Debug.isEnabled()) {
-                    GraalDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
+                    JVMCIDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
                     debugConfig.dumpHandlers().add(new TruffleTreeDumpHandler());
                     return debugConfig;
                 } else {

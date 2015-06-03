@@ -23,9 +23,9 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
 import static com.oracle.jvmci.code.CodeUtil.*;
+import static com.oracle.jvmci.compiler.Compiler.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.*;
 import java.util.function.*;
 
 import org.junit.*;
-import org.junit.internal.*;
+import org.junit.internal.AssumptionViolatedException;
 
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.replacements.*;
@@ -59,7 +59,6 @@ import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
 import com.oracle.jvmci.code.*;
