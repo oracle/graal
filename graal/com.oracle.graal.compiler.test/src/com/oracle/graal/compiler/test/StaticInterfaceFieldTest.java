@@ -38,15 +38,15 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.graal.test.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.test.*;
 
 /**
  * Test that interfaces are correctly initialized by a static field resolution during eager graph
  * building.
  */
-public class StaticInterfaceFieldTest extends GraalTest {
+public class StaticInterfaceFieldTest extends TestBase {
 
     private interface I {
         Object CONST = new Object() {

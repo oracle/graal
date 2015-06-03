@@ -33,6 +33,8 @@ import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.ExcludeFromIdentityComparisonVerification;
 import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.jvmci.meta.JavaField;
+import com.oracle.jvmci.test.*;
+
 import static com.oracle.jvmci.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
@@ -62,14 +64,13 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.graal.test.*;
 import com.oracle.jvmci.debug.*;
 
 /**
  * Checks that all classes in graal*.jar from the boot classpath comply with global invariants such
  * as using {@link Object#equals(Object)} to compare certain types instead of identity comparisons.
  */
-public class CheckGraalInvariants extends GraalTest {
+public class CheckGraalInvariants extends TestBase {
 
     @Test
     public void test() {
