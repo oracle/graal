@@ -29,9 +29,9 @@ import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.JavaType;
 import com.oracle.jvmci.meta.JavaMethod;
 import com.oracle.jvmci.meta.ConstantPool;
-import static com.oracle.graal.bytecode.Bytecodes.*;
+import static com.oracle.jvmci.bytecode.Bytecodes.*;
 
-import com.oracle.graal.bytecode.*;
+import com.oracle.jvmci.bytecode.*;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.

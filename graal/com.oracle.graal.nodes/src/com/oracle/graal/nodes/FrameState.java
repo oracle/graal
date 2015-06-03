@@ -26,13 +26,13 @@ import static com.oracle.jvmci.code.BytecodeFrame.*;
 
 import java.util.*;
 
-import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.jvmci.bytecode.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;

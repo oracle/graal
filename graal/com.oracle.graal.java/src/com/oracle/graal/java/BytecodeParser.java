@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
+import static com.oracle.jvmci.bytecode.Bytecodes.*;
 import static com.oracle.jvmci.code.TypeCheckHints.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 import static com.oracle.jvmci.meta.DeoptimizationAction.*;
@@ -37,7 +37,6 @@ import static java.lang.String.*;
 
 import java.util.*;
 
-import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -60,6 +59,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.jvmci.bytecode.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;

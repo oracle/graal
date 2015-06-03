@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.graal.nodes.FrameState.*;
+import static com.oracle.jvmci.bytecode.Bytecodes.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 
 import java.util.*;
