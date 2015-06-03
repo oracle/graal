@@ -60,8 +60,8 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
     }
 
     protected CheckCastNode(NodeClass<? extends CheckCastNode> c, ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
-        super(c, StampFactory.declaredTrusted(type));
-        assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
+        super(c, StampFactory.declaredTrusted(type).improveWith(object.stamp()));
+        assert object.stamp() instanceof ObjectStamp : object;
         assert type != null;
         this.type = type;
         this.object = object;
@@ -75,7 +75,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
         if (synonym != null) {
             return synonym;
         }
-        assert object.stamp() instanceof ObjectStamp : object + ":" + object.stamp();
+        assert object.stamp() instanceof ObjectStamp : object;
         if (assumptions != null) {
             AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
             if (leafConcreteSubtype != null && !leafConcreteSubtype.getResult().equals(type)) {
