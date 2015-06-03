@@ -57,6 +57,11 @@ public class SLTckTest extends TruffleTCK {
     }
 
     @Override
+    protected String mimeType() {
+        return "application/x-sl";
+    }
+
+    @Override
     protected String fourtyTwo() {
         return "fourtyTwo";
     }
@@ -69,5 +74,15 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String returnsNull() {
         return "null";
+    }
+
+    @Override
+    protected String invalidCode() {
+        // @formatter:off
+        return
+            "f unction main() {\n" +
+            "  retu rn 42;\n" +
+            "}\n";
+        // @formatter:on
     }
 }

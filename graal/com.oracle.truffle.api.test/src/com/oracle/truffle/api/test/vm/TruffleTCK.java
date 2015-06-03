@@ -22,22 +22,21 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import java.util.*;
-
-import org.junit.*;
-
-import com.oracle.truffle.api.vm.*;
+import com.oracle.truffle.api.vm.TruffleVM;
+import java.io.IOException;
+import java.util.Random;
 import static org.junit.Assert.*;
+import org.junit.Test;
 
 /**
  * A collection of tests that can certify language implementaiton to be complient with most recent
  * requirements of the Truffle infrastructure and tooling. Subclass, implement abstract methods and
  * include in your test suite.
  */
-public class TruffleTCK { // abstract
+public abstract class TruffleTCK {
     private TruffleVM tckVM;
 
-    public TruffleTCK() { // protected
+    protected TruffleTCK() {
     }
 
     /**
@@ -45,15 +44,22 @@ public class TruffleTCK { // abstract
      * your language up, so it is ready for testing.
      * {@link TruffleVM#eval(java.lang.String, java.lang.String) Execute} any scripts you need, and
      * prepare global symbols with proper names. The symbols will then be looked up by the
-     * infastructure (using the names provided by you from methods like {@link #plusInt()}) and used
-     * for internal testing.
+     * infrastructure (using the names provided by you from methods like {@link #plusInt()}) and
+     * used for internal testing.
      *
      * @return initialized Truffle virtual machine
      * @throws java.lang.Exception thrown when the VM preparation fails
      */
-    protected TruffleVM prepareVM() throws Exception { // abstract
-        return null;
-    }
+    protected abstract TruffleVM prepareVM() throws Exception;
+
+    /**
+     * Mimetype associated with your language. The mimetype will be passed to
+     * {@link TruffleVM#eval(java.lang.String, java.lang.String)} method of the {@link #prepareVM()
+     * created TruffleVM}.
+     *
+     * @return mime type of the tested language
+     */
+    protected abstract String mimeType();
 
     /**
      * Name of function which will return value 42 as a number. The return value of the method
@@ -62,9 +68,7 @@ public class TruffleTCK { // abstract
      *
      * @return name of globally exported symbol
      */
-    protected String fourtyTwo() { // abstract
-        return null;
-    }
+    protected abstract String fourtyTwo();
 
     /**
      * Name of a function that returns <code>null</code>. Truffle languages are encouraged to have
@@ -74,9 +78,7 @@ public class TruffleTCK { // abstract
      *
      * @return name of globally exported symbol
      */
-    protected String returnsNull() { // abstract
-        return null;
-    }
+    protected abstract String returnsNull();
 
     /**
      * Name of function to add two integer values together. The symbol will be invoked with two
@@ -85,9 +87,16 @@ public class TruffleTCK { // abstract
      *
      * @return name of globally exported symbol
      */
-    protected String plusInt() {  // abstract
-        return null;
-    }
+    protected abstract String plusInt();
+
+    /**
+     * Return a code snippet that is invalid in your language. Its
+     * {@link TruffleVM#eval(java.lang.String, java.lang.String) evaluation} should fail and yield
+     * an exception.
+     *
+     * @return code snippet invalid in the tested language
+     */
+    protected abstract String invalidCode();
 
     private TruffleVM vm() throws Exception {
         if (tckVM == null) {
@@ -102,9 +111,6 @@ public class TruffleTCK { // abstract
 
     @Test
     public void testFortyTwo() throws Exception {
-        if (getClass() == TruffleTCK.class) {
-            return;
-        }
         TruffleVM.Symbol fourtyTwo = findGlobalSymbol(fourtyTwo());
 
         Object res = fourtyTwo.invoke(null);
@@ -130,9 +136,6 @@ public class TruffleTCK { // abstract
 
     @Test
     public void testPlusWithInts() throws Exception {
-        if (getClass() == TruffleTCK.class) {
-            return;
-        }
         Random r = new Random();
         int a = r.nextInt(100);
         int b = r.nextInt(100);
@@ -146,6 +149,14 @@ public class TruffleTCK { // abstract
         Number n = (Number) res;
 
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+    }
+
+    @Test(expected = IOException.class)
+    public void testInvalidTestMethod() throws Exception {
+        String mime = mimeType();
+        String code = invalidCode();
+        Object ret = vm().eval(mime, code);
+        fail("Should yield IOException, but returned " + ret);
     }
 
     private TruffleVM.Symbol findGlobalSymbol(String name) throws Exception {
