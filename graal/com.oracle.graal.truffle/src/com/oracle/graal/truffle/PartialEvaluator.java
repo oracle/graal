@@ -143,6 +143,30 @@ public class PartialEvaluator {
         }
     }
 
+    private class InterceptLoadFieldPlugin implements NodePlugin {
+        public boolean handleLoadField(GraphBuilderContext builder, ValueNode receiver, ResolvedJavaField field) {
+            if (receiver.isConstant()) {
+                JavaConstant asJavaConstant = receiver.asJavaConstant();
+                return tryConstantFold(builder, field, asJavaConstant);
+            }
+            return false;
+        }
+
+        public boolean handleLoadStaticField(GraphBuilderContext builder, ResolvedJavaField field) {
+            return tryConstantFold(builder, field, null);
+        }
+
+        private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant object) {
+            JavaConstant result = providers.getConstantReflection().readConstantFieldValue(field, object);
+            if (result != null) {
+                ConstantNode constantNode = ConstantNode.forConstant(result, providers.getMetaAccess(), b.getGraph());
+                b.push(field.getKind(), constantNode);
+                return true;
+            }
+            return false;
+        }
+    }
+
     private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
         private Deque<TruffleInlining> inlining;
@@ -273,6 +297,7 @@ public class PartialEvaluator {
         newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
         plugins.prependParameterPlugin(new InterceptReceiverPlugin(callTarget));
+        plugins.prependNodePlugin(new InterceptLoadFieldPlugin());
         callTarget.setInlining(new TruffleInlining(callTarget, new DefaultInliningPolicy()));
         plugins.setLoopExplosionPlugin(new PELoopExplosionPlugin());
 
