@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
-import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.jvmci.asm.sparc.*;
 
 @Opcode("DEOPT")
 final class SPARCDeoptimizeOp extends SPARCLIRInstruction implements BlockEndOp {

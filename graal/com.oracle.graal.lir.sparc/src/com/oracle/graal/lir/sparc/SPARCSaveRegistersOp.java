@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import com.oracle.jvmci.asm.sparc.*;
 import com.oracle.jvmci.code.ValueUtil;
 import com.oracle.jvmci.code.RegisterSaveLayout;
 import com.oracle.jvmci.code.Register;
@@ -35,7 +36,6 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;
 
-import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;

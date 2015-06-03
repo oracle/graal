@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.asm.sparc.*;
 
 /**
  * Convenience class to provide SPARCMacroAssembler for the {@link #emitCode} method.

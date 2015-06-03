@@ -24,6 +24,9 @@
 package com.oracle.graal.compiler.amd64;
 
 import com.oracle.jvmci.amd64.*;
+import com.oracle.jvmci.asm.*;
+import com.oracle.jvmci.asm.amd64.AMD64Address.*;
+import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.ForeignCallLinkage;
@@ -40,29 +43,17 @@ import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.LIRKind;
 
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.AMD64MOp.*;
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.AMD64RMOp.*;
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.AMD64Shift.*;
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
 import java.util.*;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MROp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMIOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift;
-import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
-import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
-import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.util.*;

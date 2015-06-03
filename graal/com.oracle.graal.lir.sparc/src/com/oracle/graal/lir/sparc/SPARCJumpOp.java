@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.jvmci.asm.sparc.SPARCAssembler.Annul.*;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.asm.sparc.*;
+import com.oracle.jvmci.asm.sparc.SPARCAssembler.*;
 
 public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
     public static final LIRInstructionClass<SPARCJumpOp> TYPE = LIRInstructionClass.create(SPARCJumpOp.class);

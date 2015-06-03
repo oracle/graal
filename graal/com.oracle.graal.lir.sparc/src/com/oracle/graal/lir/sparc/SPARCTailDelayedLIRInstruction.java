@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.sparc;
 
 import com.oracle.graal.lir.*;
+import com.oracle.jvmci.asm.sparc.*;
 
 /**
  * Implementors of this interface are able to place its last instruction into the delay slot of a
@@ -33,14 +34,14 @@ import com.oracle.graal.lir.*;
  * <ol>
  * <li>Emit everything up to the second last instruction.</li>
  * <li>Call
- * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, com.oracle.graal.asm.sparc.SPARCMacroAssembler)}
+ * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, SPARCMacroAssembler)}
  * to let the DelayedControlTransfer instruction emit its own code (But must not stuff the delay
  * slot with Nop)</li>
  * <li>emit the last instruction for this {@link LIRInstruction}</li>
  * </ol>
  *
  * Note: If this instruction decides not to use the delay slot, it can skip the call of
- * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, com.oracle.graal.asm.sparc.SPARCMacroAssembler)}
+ * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, SPARCMacroAssembler)}
  * . The DelayedControlTransfer instruction will emit the code just with Nop in the delay slot.
  */
 public interface SPARCTailDelayedLIRInstruction {

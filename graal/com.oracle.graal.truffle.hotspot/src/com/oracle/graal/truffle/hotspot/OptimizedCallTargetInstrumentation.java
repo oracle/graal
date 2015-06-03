@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.CodeCacheProvider;
 import com.oracle.jvmci.code.CompilationResult;
 import com.oracle.jvmci.code.ForeignCallsProvider;
+
 import java.lang.reflect.*;
 
 import com.oracle.jvmci.code.CompilationResult.Mark;
-import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;

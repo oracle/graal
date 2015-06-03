@@ -24,7 +24,8 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.jvmci.code.VirtualStackSlot;
 import com.oracle.jvmci.meta.Value;
-import static com.oracle.graal.asm.NumUtil.*;
+
+import static com.oracle.jvmci.asm.NumUtil.*;
 
 import java.util.*;
 

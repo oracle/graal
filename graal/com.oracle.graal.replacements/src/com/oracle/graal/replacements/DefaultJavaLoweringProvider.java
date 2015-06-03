@@ -31,7 +31,6 @@ import static com.oracle.jvmci.meta.LocationIdentity.*;
 import java.util.*;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -46,6 +45,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;

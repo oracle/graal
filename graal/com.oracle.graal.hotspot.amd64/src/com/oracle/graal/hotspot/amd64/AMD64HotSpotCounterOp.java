@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.StackSlotValue;
@@ -31,7 +32,6 @@ import static com.oracle.jvmci.amd64.AMD64.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 
-import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;

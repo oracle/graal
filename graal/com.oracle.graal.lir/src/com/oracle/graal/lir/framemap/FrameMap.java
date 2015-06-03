@@ -26,7 +26,7 @@ import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.asm.*;
+import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.meta.*;
 

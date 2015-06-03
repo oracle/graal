@@ -25,10 +25,10 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.jvmci.asm.sparc.*;
 
 public final class SPARCPrefetchOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCPrefetchOp> TYPE = LIRInstructionClass.create(SPARCPrefetchOp.class);

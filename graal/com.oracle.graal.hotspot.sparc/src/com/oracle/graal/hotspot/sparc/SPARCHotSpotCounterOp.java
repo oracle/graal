@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import com.oracle.jvmci.asm.*;
+import com.oracle.jvmci.asm.sparc.*;
+import com.oracle.jvmci.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.Value;
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 
-import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import static com.oracle.jvmci.asm.sparc.SPARCAssembler.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
+
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;

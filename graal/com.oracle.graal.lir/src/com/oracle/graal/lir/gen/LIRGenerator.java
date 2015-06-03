@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.gen;
 
+import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.ForeignCallLinkage;
 import com.oracle.jvmci.code.CallingConvention;
 import com.oracle.jvmci.code.RegisterAttributes;
@@ -38,12 +39,12 @@ import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.MetaAccessProvider;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;

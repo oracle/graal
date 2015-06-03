@@ -23,8 +23,10 @@
 
 package com.oracle.graal.asm.amd64.test;
 
+import com.oracle.graal.asm.test.*;
 import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.amd64.AMD64.*;
+import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.Register;
@@ -32,9 +34,9 @@ import com.oracle.jvmci.code.CallingConvention;
 import com.oracle.jvmci.code.CompilationResult;
 import com.oracle.jvmci.meta.Kind;
 
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.AMD64RMOp.*;
+import static com.oracle.jvmci.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 import static org.junit.Assume.*;
 
@@ -42,9 +44,6 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import org.junit.*;
-
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.test.*;
 
 public class BitOpsTest extends AssemblerTest {
     private static boolean lzcntSupported;

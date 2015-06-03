@@ -23,28 +23,12 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import com.oracle.jvmci.code.ForeignCallLinkage;
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.PlatformKind;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.sparc.*;
-import com.oracle.jvmci.sparc.SPARC.*;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.sparc.SPARCCompare.*;
 import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.*;
+import static com.oracle.jvmci.code.ValueUtil.*;
 
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
@@ -74,7 +58,14 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
+import com.oracle.jvmci.asm.sparc.*;
+import com.oracle.jvmci.asm.sparc.SPARCAssembler.CC;
+import com.oracle.jvmci.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.sparc.*;
+import com.oracle.jvmci.sparc.SPARC.CPUFeature;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -356,7 +347,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 throw JVMCIError.shouldNotReachHere();
         }
         Variable result = newVariable(trueValue.getLIRKind());
-        ConditionFlag finalCondition = ConditionFlag.fromCondtition(conditionFlags, mirrored ? cond.mirror() : cond, unorderedIsTrue);
+        ConditionFlag finalCondition = SPARCControlFlow.fromCondition(conditionFlags, mirrored ? cond.mirror() : cond, unorderedIsTrue);
         append(new CondMoveOp(result, conditionFlags, finalCondition, actualTrueValue, actualFalseValue));
         return result;
     }
@@ -432,7 +423,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        ConditionFlag flag = ConditionFlag.fromCondtition(conditionCode, Condition.EQ, false);
+        ConditionFlag flag = SPARCControlFlow.fromCondition(conditionCode, Condition.EQ, false);
         append(new CondMoveOp(result, conditionCode, flag, loadSimm11(trueValue), loadSimm11(falseValue)));
         return result;
     }
