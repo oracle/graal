@@ -96,14 +96,25 @@ public abstract class TruffleLanguage {
      * somebody asks for it (by calling this method).
      * <p>
      * The exported object can either be <code>TruffleObject</code> (e.g. a native object from the
-     * other language) to support interoperability between languages or one of Java primitive
-     * wrappers ( {@link Integer}, {@link Double}, {@link Short}, etc.).
+     * other language) to support inter-operability between languages, {@link String} or one of Java
+     * primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean}, etc.).
+     * <p>
+     * The way a symbol becomes <em>exported</em> is language dependant. In general it is preferred
+     * to make the export explicit - e.g. call some function or method to register an object under
+     * specific name. Some languages may however decide to support implicit export of symbols (for
+     * example from global scope, if they have one). However explicit exports should always be
+     * preferred. Implicitly exported object of some name should only be used when there is no
+     * explicit export under such <code>globalName</code>. To ensure so the infrastructure first
+     * asks all known languages for <code>onlyExplicit</code> symbols and only when none is found,
+     * it does one more round with <code>onlyExplicit</code> set to <code>false</code>.
      *
      * @param globalName the name of the global symbol to find
+     * @param onlyExplicit should the language seek for implicitly exported object or only consider
+     *            the explicitly exported ones?
      * @return an exported object or <code>null</code>, if the symbol does not represent anything
      *         meaningful in this language
      */
-    protected abstract Object findExportedSymbol(String globalName);
+    protected abstract Object findExportedSymbol(String globalName, boolean onlyExplicit);
 
     /**
      * Returns global object for the language.
@@ -210,8 +221,8 @@ public abstract class TruffleLanguage {
         }
 
         @Override
-        protected Object findExportedSymbol(TruffleLanguage l, String globalName) {
-            return l.findExportedSymbol(globalName);
+        protected Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
+            return l.findExportedSymbol(globalName, onlyExplicit);
         }
 
         @Override

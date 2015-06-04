@@ -104,9 +104,15 @@ public final class TruffleVM {
                 LOG.log(Level.CONFIG, "Cannot process " + u + " as language definition", ex);
                 continue;
             }
-            Language l = new Language(p);
-            for (String mimeType : l.getMimeTypes()) {
-                langs.put(mimeType, l);
+            for (int cnt = 1;; cnt++) {
+                String prefix = "language" + cnt + ".";
+                if (p.getProperty(prefix + "name") == null) {
+                    break;
+                }
+                Language l = new Language(prefix, p);
+                for (String mimeType : l.getMimeTypes()) {
+                    langs.put(mimeType, l);
+                }
             }
         }
     }
@@ -327,10 +333,20 @@ public final class TruffleVM {
         Object global = null;
         for (Language dl : langs.values()) {
             TruffleLanguage l = dl.getImpl();
-            obj = SPI.findExportedSymbol(l, globalName);
+            obj = SPI.findExportedSymbol(l, globalName, true);
             if (obj != null) {
                 global = SPI.languageGlobal(l);
                 break;
+            }
+        }
+        if (obj == null) {
+            for (Language dl : langs.values()) {
+                TruffleLanguage l = dl.getImpl();
+                obj = SPI.findExportedSymbol(l, globalName, false);
+                if (obj != null) {
+                    global = SPI.languageGlobal(l);
+                    break;
+                }
             }
         }
         return obj == null ? null : new Symbol(obj, global);
@@ -399,8 +415,10 @@ public final class TruffleVM {
     public final class Language {
         private final Properties props;
         private TruffleLanguage impl;
+        private final String prefix;
 
-        Language(Properties props) {
+        Language(String prefix, Properties props) {
+            this.prefix = prefix;
             this.props = props;
         }
 
@@ -412,7 +430,7 @@ public final class TruffleVM {
         public Set<String> getMimeTypes() {
             TreeSet<String> ts = new TreeSet<>();
             for (int i = 0;; i++) {
-                String mt = props.getProperty("mimeType." + i);
+                String mt = props.getProperty(prefix + "mimeType." + i);
                 if (mt == null) {
                     break;
                 }
@@ -427,12 +445,12 @@ public final class TruffleVM {
          * @return string giving the language a name
          */
         public String getName() {
-            return props.getProperty("name");
+            return props.getProperty(prefix + "name");
         }
 
         TruffleLanguage getImpl() {
             if (impl == null) {
-                String n = props.getProperty("className");
+                String n = props.getProperty(prefix + "className");
                 try {
                     Class<?> langClazz = Class.forName(n, true, loader());
                     Constructor<?> constructor = langClazz.getConstructor(Env.class);
@@ -459,7 +477,17 @@ public final class TruffleVM {
                 if (l == ownLang) {
                     continue;
                 }
-                Object obj = SPI.findExportedSymbol(l, globalName);
+                Object obj = SPI.findExportedSymbol(l, globalName, true);
+                if (obj != null) {
+                    return obj;
+                }
+            }
+            for (Language dl : uniqueLang) {
+                TruffleLanguage l = dl.getImpl();
+                if (l == ownLang) {
+                    continue;
+                }
+                Object obj = SPI.findExportedSymbol(l, globalName, false);
                 if (obj != null) {
                     return obj;
                 }
@@ -478,8 +506,8 @@ public final class TruffleVM {
         }
 
         @Override
-        public Object findExportedSymbol(TruffleLanguage l, String globalName) {
-            return super.findExportedSymbol(l, globalName);
+        public Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
+            return super.findExportedSymbol(l, globalName, onlyExplicit);
         }
 
         @Override

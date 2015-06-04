@@ -58,7 +58,7 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object findExportedSymbol(String globalName) {
+        protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
             return null;
         }
 
@@ -86,7 +86,7 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object findExportedSymbol(String globalName) {
+        protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
             return null;
         }
 
@@ -113,7 +113,7 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object findExportedSymbol(String globalName) {
+        protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
             return null;
         }
 

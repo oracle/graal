@@ -46,7 +46,7 @@ public abstract class Accessor {
             }
 
             @Override
-            protected Object findExportedSymbol(String globalName) {
+            protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
                 return null;
             }
 
@@ -89,8 +89,8 @@ public abstract class Accessor {
         return SPI.importSymbol(vm, queryingLang, globalName);
     }
 
-    protected Object findExportedSymbol(TruffleLanguage l, String globalName) {
-        return API.findExportedSymbol(l, globalName);
+    protected Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
+        return API.findExportedSymbol(l, globalName, onlyExplicit);
     }
 
     protected Object languageGlobal(TruffleLanguage l) {

@@ -368,7 +368,7 @@ public class SLMain extends TruffleLanguage {
     }
 
     @Override
-    protected Object findExportedSymbol(String globalName) {
+    protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
         for (SLFunction f : context.getFunctionRegistry().getFunctions()) {
             if (globalName.equals(f.getName())) {
                 return f;

@@ -40,6 +40,15 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
 
     @Override
     protected Object invoke(Object symbol, Object... arr) throws IOException {
+        if (symbol instanceof String) {
+            return symbol;
+        }
+        if (symbol instanceof Number) {
+            return symbol;
+        }
+        if (symbol instanceof Boolean) {
+            return symbol;
+        }
         ForeignObjectAccessNode callMain = ForeignObjectAccessNode.getAccess(Execute.create(Receiver.create(), arr.length));
         CallTarget callMainTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(callMain, (TruffleObject) symbol, arr));
         VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(arr, UNUSED_FRAMEDESCRIPTOR);
