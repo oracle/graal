@@ -122,7 +122,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                     }
                     crb.blockComment("[stack overflow check]");
                     int pos = asm.position();
-                    asm.movq(new AMD64Address(rsp, -disp), AMD64.rax);
+                    asm.movl(new AMD64Address(rsp, -disp), AMD64.rax);
                     assert i > 0 || !isVerifiedEntryPoint || asm.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
             }
