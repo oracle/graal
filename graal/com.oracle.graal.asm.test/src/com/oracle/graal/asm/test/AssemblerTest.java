@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 
 import org.junit.*;
 
+import com.oracle.graal.code.*;
 import com.oracle.graal.test.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
@@ -67,8 +68,10 @@ public abstract class AssemblerTest extends GraalTest {
             InstalledCode code = codeCache.addMethod(method, compResult, null, null);
 
             for (DisassemblerProvider dis : Services.load(DisassemblerProvider.class)) {
-                String disasm = dis.disassemble(code);
-                Assert.assertTrue(code.toString(), disasm == null || disasm.length() > 0);
+                String disasm1 = dis.disassembleCompiledCode(codeCache, compResult);
+                Assert.assertTrue(compResult.toString(), disasm1 == null || disasm1.length() > 0);
+                String disasm2 = dis.disassembleInstalledCode(codeCache, compResult, code);
+                Assert.assertTrue(code.toString(), disasm2 == null || disasm2.length() > 0);
             }
             return code;
         } catch (Throwable e) {
