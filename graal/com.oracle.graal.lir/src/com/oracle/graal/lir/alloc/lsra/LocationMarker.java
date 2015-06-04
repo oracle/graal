@@ -269,7 +269,7 @@ public final class LocationMarker extends AllocationPhase {
                     assert index >= 0;
                     if (index % 4 == 0) {
                         stack.put(index / 4, null);
-                    } else {
+                    } else if (extraStack != null) {
                         extraStack.remove(v);
                     }
                 }
