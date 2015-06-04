@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common;
 
 import com.oracle.jvmci.meta.JavaConstant;
+
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
@@ -62,7 +63,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
-        private final Map<ValueNode, GuardNode> nullGuarded = Node.newIdentityMap();
+        private final Map<ValueNode, ValueNode> nullGuarded = Node.newIdentityMap();
         private final int implicitNullCheckLimit;
 
         UseImplicitNullChecks(int implicitNullCheckLimit) {
@@ -75,48 +76,85 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 processGuard(node);
             } else if (node instanceof Access) {
                 processAccess((Access) node);
+            } else if (node instanceof PiNode) {
+                processPi((PiNode) node);
             }
             if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
                 nullGuarded.clear();
             } else {
-                Iterator<Entry<ValueNode, GuardNode>> it = nullGuarded.entrySet().iterator();
+                Iterator<Entry<ValueNode, ValueNode>> it = nullGuarded.entrySet().iterator();
                 while (it.hasNext()) {
-                    Entry<ValueNode, GuardNode> entry = it.next();
-                    GuardNode guard = entry.getValue();
+                    Entry<ValueNode, ValueNode> entry = it.next();
+                    ValueNode guard = entry.getValue();
                     if (guard.usages().contains(node)) {
                         it.remove();
+                    } else if (guard instanceof PiNode && guard != node) {
+                        PiNode piNode = (PiNode) guard;
+                        if (piNode.getGuard().asNode().usages().contains(node)) {
+                            it.remove();
+                        }
                     }
                 }
             }
         }
 
+        private boolean processPi(PiNode node) {
+            ValueNode guardNode = nullGuarded.get(node.object());
+            if (guardNode != null && node.getGuard() == guardNode) {
+                nullGuarded.put(node, node);
+                return true;
+            }
+            return false;
+        }
+
         private void processAccess(Access access) {
             if (access.canNullCheck()) {
-                GuardNode guard = nullGuarded.get(access.object());
-                if (guard != null && isImplicitNullCheck(access.accessLocation())) {
-                    metricImplicitNullCheck.increment();
-                    access.setGuard(null);
-                    FixedAccessNode fixedAccess;
-                    if (access instanceof FloatingAccessNode) {
-                        FloatingAccessNode floatingAccessNode = (FloatingAccessNode) access;
-                        MemoryNode lastLocationAccess = floatingAccessNode.getLastLocationAccess();
-                        fixedAccess = floatingAccessNode.asFixedNode();
-                        replaceCurrent(fixedAccess);
-                        if (lastLocationAccess != null) {
-                            // fixed accesses are not currently part of the memory graph
-                            GraphUtil.tryKillUnused(lastLocationAccess.asNode());
-                        }
-                    } else {
-                        fixedAccess = (FixedAccessNode) access;
+                ValueNode object = access.object();
+                check(access, object);
+            }
+        }
+
+        private void check(Access access, ValueNode object) {
+            ValueNode guard = nullGuarded.get(object);
+            if (guard != null && isImplicitNullCheck(access.accessLocation())) {
+                if (object instanceof PiNode) {
+                    PiNode piNode = (PiNode) object;
+                    if (access.object() == object) {
+                        access.asNode().replaceFirstInput(object, piNode.getOriginalNode());
                     }
-                    fixedAccess.setNullCheck(true);
-                    LogicNode condition = guard.condition();
-                    guard.replaceAndDelete(fixedAccess);
-                    if (condition.hasNoUsages()) {
-                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    if (!(piNode.getGuard() instanceof GuardNode)) {
+                        return;
                     }
-                    nullGuarded.remove(fixedAccess.object());
                 }
+                metricImplicitNullCheck.increment();
+                access.setGuard(null);
+                FixedAccessNode fixedAccess;
+                if (access instanceof FloatingAccessNode) {
+                    FloatingAccessNode floatingAccessNode = (FloatingAccessNode) access;
+                    MemoryNode lastLocationAccess = floatingAccessNode.getLastLocationAccess();
+                    fixedAccess = floatingAccessNode.asFixedNode();
+                    replaceCurrent(fixedAccess);
+                    if (lastLocationAccess != null) {
+                        // fixed accesses are not currently part of the memory graph
+                        GraphUtil.tryKillUnused(lastLocationAccess.asNode());
+                    }
+                } else {
+                    fixedAccess = (FixedAccessNode) access;
+                }
+                fixedAccess.setNullCheck(true);
+                GuardNode guardNode = null;
+                if (guard instanceof GuardNode) {
+                    guardNode = (GuardNode) guard;
+                } else {
+                    PiNode piNode = (PiNode) guard;
+                    guardNode = (GuardNode) piNode.getGuard();
+                }
+                LogicNode condition = guardNode.condition();
+                guardNode.replaceAndDelete(fixedAccess);
+                if (condition.hasNoUsages()) {
+                    GraphUtil.killWithUnusedFloatingInputs(condition);
+                }
+                nullGuarded.remove(fixedAccess.object());
             }
         }
 
