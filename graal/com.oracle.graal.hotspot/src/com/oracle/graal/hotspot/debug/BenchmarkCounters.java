@@ -37,6 +37,8 @@ import com.oracle.jvmci.options.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 
+//JaCoCo Exclude
+
 /**
  * This class contains infrastructure to maintain counters based on {@link DynamicCounterNode}s. The
  * infrastructure is enabled by specifying either the GenericDynamicCounters or

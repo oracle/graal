@@ -78,7 +78,7 @@ public class HotSpotGraphBuilderPlugins {
         NodeIntrinsificationPhase nodeIntrinsificationPhase = new NodeIntrinsificationPhase(metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider);
         NodeIntrinsificationPlugin nodeIntrinsificationPlugin = new NodeIntrinsificationPlugin(metaAccess, nodeIntrinsificationPhase, wordTypes, false);
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
-        HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(metaAccess, constantReflection, wordOperationPlugin, nodeIntrinsificationPlugin);
+        HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, nodeIntrinsificationPlugin);
 
         plugins.appendParameterPlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);

@@ -22,18 +22,14 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import com.oracle.jvmci.code.AbstractAddress;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.Register;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 
 import java.util.function.*;
 
 import com.oracle.graal.asm.*;
-import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.code.*;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -106,7 +102,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 }
                 break;
             default:
-                throw JVMCIError.shouldNotReachHere("Unknown op2 " + op2);
+                throw new InternalError("Unknown op2 " + op2);
         }
         int newInst = ~maskBits & inst;
         newInst |= setBits;

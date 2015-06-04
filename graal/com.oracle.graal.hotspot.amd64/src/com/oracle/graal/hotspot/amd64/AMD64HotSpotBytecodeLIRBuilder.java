@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.jvmci.amd64.AMD64.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.gen.*;

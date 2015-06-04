@@ -27,12 +27,13 @@ import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.InvokeTarget;
 import com.oracle.jvmci.meta.Value;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.jvmci.common.*;

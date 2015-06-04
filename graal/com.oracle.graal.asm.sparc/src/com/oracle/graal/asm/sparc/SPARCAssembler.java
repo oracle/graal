@@ -22,25 +22,19 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 import static java.lang.String.*;
 
 import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.common.calc.*;
-import com.oracle.graal.sparc.*;
-import com.oracle.graal.sparc.SPARC.CPUFeature;
-import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.sparc.*;
+import com.oracle.jvmci.sparc.SPARC.CPUFeature;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.
@@ -545,7 +539,6 @@ public abstract class SPARCAssembler extends Assembler {
          * Condition is considered as 64bit operation condition.
          */
         Xcc(0b10, "xcc", false),
-        Ptrcc(getHostWordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc", false),
         Fcc0(0b00, "fcc0", true),
         Fcc1(0b01, "fcc1", true),
         Fcc2(0b10, "fcc2", true),
@@ -583,7 +576,7 @@ public abstract class SPARCAssembler extends Assembler {
             } else if (isFloat) {
                 return Fcc0;
             } else {
-                throw JVMCIError.shouldNotReachHere();
+                throw new InternalError();
             }
         }
     }
@@ -699,10 +692,9 @@ public abstract class SPARCAssembler extends Assembler {
                 case OverflowSet              : return OverflowClear;
                 case OverflowClear            : return OverflowSet;
                 default:
-                    JVMCIError.unimplemented();
+                    throw new InternalError();
             }
             //@formatter:on
-            return null;
         }
 
         public ConditionFlag mirror() {
@@ -730,55 +722,6 @@ public abstract class SPARCAssembler extends Assembler {
             }
         }
 
-        public static ConditionFlag fromCondtition(CC conditionFlagsRegister, Condition cond, boolean unorderedIsTrue) {
-            switch (conditionFlagsRegister) {
-                case Xcc:
-                case Icc:
-                    switch (cond) {
-                        case EQ:
-                            return Equal;
-                        case NE:
-                            return NotEqual;
-                        case BT:
-                            return LessUnsigned;
-                        case LT:
-                            return Less;
-                        case BE:
-                            return LessEqualUnsigned;
-                        case LE:
-                            return LessEqual;
-                        case AE:
-                            return GreaterEqualUnsigned;
-                        case GE:
-                            return GreaterEqual;
-                        case AT:
-                            return GreaterUnsigned;
-                        case GT:
-                            return Greater;
-                    }
-                    throw JVMCIError.shouldNotReachHere("Unimplemented for: " + cond);
-                case Fcc0:
-                case Fcc1:
-                case Fcc2:
-                case Fcc3:
-                    switch (cond) {
-                        case EQ:
-                            return unorderedIsTrue ? F_UnorderedOrEqual : F_Equal;
-                        case NE:
-                            return ConditionFlag.F_NotEqual;
-                        case LT:
-                            return unorderedIsTrue ? F_UnorderedOrLess : F_Less;
-                        case LE:
-                            return unorderedIsTrue ? F_UnorderedOrLessOrEqual : F_LessOrEqual;
-                        case GE:
-                            return unorderedIsTrue ? F_UnorderedGreaterOrEqual : F_GreaterOrEqual;
-                        case GT:
-                            return unorderedIsTrue ? F_UnorderedOrGreater : F_Greater;
-                    }
-                    throw JVMCIError.shouldNotReachHere("Unkown condition: " + cond);
-            }
-            throw JVMCIError.shouldNotReachHere("Unknown condition flag register " + conditionFlagsRegister);
-        }
     }
 
     public enum RCondition {

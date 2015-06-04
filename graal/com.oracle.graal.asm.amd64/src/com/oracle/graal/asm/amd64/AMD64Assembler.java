@@ -22,21 +22,22 @@
  */
 package com.oracle.graal.asm.amd64;
 
+import com.oracle.graal.asm.*;
+import com.oracle.jvmci.amd64.*;
+import com.oracle.jvmci.amd64.AMD64.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.RegisterConfig;
-import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.jvmci.code.MemoryBarriers.*;
+
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
+import static com.oracle.jvmci.amd64.AMD64.*;
+import static com.oracle.jvmci.code.MemoryBarriers.*;
 
-import com.oracle.graal.amd64.*;
-import com.oracle.graal.amd64.AMD64.CPUFeature;
 import com.oracle.jvmci.code.Register.RegisterCategory;
-import com.oracle.graal.asm.*;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.

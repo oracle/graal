@@ -22,17 +22,15 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.jvmci.amd64.AMD64.*;
 
 import java.util.*;
 
-import com.oracle.graal.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -50,6 +48,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
@@ -335,7 +334,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         Variable result;
-        // TODO (je) check if we can remove this
         LIRFrameState deoptInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
             deoptInfo = state;

@@ -33,7 +33,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -185,15 +184,14 @@ public class BoxingSnippets implements Snippets {
             FloatingNode canonical = canonicalizeBoxing(box, providers.getMetaAccess(), providers.getConstantReflection());
             // if in AOT mode, we don't want to embed boxed constants.
             if (canonical != null && !ImmutableCode.getValue()) {
-                box.graph().replaceFloating(box, canonical);
+                box.graph().replaceFixedWithFloating(box, canonical);
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("value", box.getValue());
 
                 SnippetTemplate template = template(args);
                 Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
-                template.instantiate(providers.getMetaAccess(), box, DEFAULT_REPLACER, tool, args);
-                GraphUtil.killWithUnusedFloatingInputs(box);
+                template.instantiate(providers.getMetaAccess(), box, DEFAULT_REPLACER, args);
             }
         }
 

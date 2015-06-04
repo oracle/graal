@@ -22,15 +22,11 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaMethod;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
+import com.oracle.graal.code.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
@@ -40,8 +36,11 @@ import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.service.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -179,10 +178,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
-            cfgPrinter.printMachineCode(codeCache.disassemble(compResult, null), message);
+            cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
         } else if (isCompilationResultAndInstalledCode(object)) {
             Object[] tuple = (Object[]) object;
-            cfgPrinter.printMachineCode(codeCache.disassemble((CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
+            cfgPrinter.printMachineCode(disassemble(codeCache, (CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
         } else if (object instanceof StackInterval[]) {
@@ -195,6 +194,37 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
 
+    }
+
+    private static DisassemblerProvider disassembler;
+
+    private static final DisassemblerProvider NOP_DISASSEMBLER = new DisassemblerProvider() {
+        public String getName() {
+            return null;
+        }
+    };
+
+    private static DisassemblerProvider getDisassembler() {
+        if (disassembler == null) {
+            DisassemblerProvider selected = NOP_DISASSEMBLER;
+            for (DisassemblerProvider d : Services.load(DisassemblerProvider.class)) {
+                String name = d.getName().toLowerCase();
+                if (name.contains("hcf") || name.contains("hexcodefile")) {
+                    selected = d;
+                    break;
+                }
+            }
+            disassembler = selected;
+        }
+        return disassembler;
+    }
+
+    private static String disassemble(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode installedCode) {
+        DisassemblerProvider dis = getDisassembler();
+        if (installedCode != null) {
+            return dis.disassembleInstalledCode(codeCache, compResult, installedCode);
+        }
+        return dis.disassembleCompiledCode(codeCache, compResult);
     }
 
     private static boolean isCompilationResultAndInstalledCode(Object object) {

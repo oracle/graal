@@ -36,6 +36,8 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 
+// JaCoCo Exclude
+
 /**
  * Substitutions for {@link CRC32}.
  */

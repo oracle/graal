@@ -39,6 +39,8 @@ import com.oracle.graal.phases.schedule.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 
+//JaCoCo Exclude
+
 /**
  * Observes compilation events and uses {@link IdealGraphPrinter} to generate a graph representation
  * that can be inspected with the <a href="http://kenai.com/projects/igv">Ideal Graph

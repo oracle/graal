@@ -25,12 +25,14 @@ package com.oracle.graal.hotspot.amd64;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.TargetDescription;
-import static com.oracle.graal.amd64.AMD64.*;
+
+import static com.oracle.jvmci.amd64.AMD64.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.hotspot.amd64.*;
 
 final class AMD64DeoptimizationStub extends DeoptimizationStub {
 

@@ -25,6 +25,7 @@ package com.oracle.graal.lir.sparc;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.JavaConstant;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;

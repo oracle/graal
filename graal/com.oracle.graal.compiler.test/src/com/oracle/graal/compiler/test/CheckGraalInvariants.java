@@ -22,17 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaMethod;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.ExcludeFromIdentityComparisonVerification;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaField;
 import static com.oracle.jvmci.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
@@ -43,7 +32,6 @@ import java.util.zip.*;
 
 import org.junit.*;
 
-import com.oracle.jvmci.code.Register.RegisterCategory;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
@@ -63,13 +51,36 @@ import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.Register.RegisterCategory;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
- * Checks that all classes in graal*.jar from the boot classpath comply with global invariants such
- * as using {@link Object#equals(Object)} to compare certain types instead of identity comparisons.
+ * Checks that all classes in *graal*.jar and *jvmci*.jar entries on the boot class path comply with
+ * global invariants such as using {@link Object#equals(Object)} to compare certain types instead of
+ * identity comparisons.
  */
 public class CheckGraalInvariants extends GraalTest {
+
+    private static boolean shouldVerifyEquals(ResolvedJavaMethod m) {
+        if (m.getName().equals("identityEquals")) {
+            ResolvedJavaType c = m.getDeclaringClass();
+            if (c.getName().equals("Lcom/oracle/jvmci/meta/AbstractValue;") || c.getName().equals("com/oracle/jvmci/meta/Value")) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static boolean shouldProcess(String classpathEntry) {
+        if (classpathEntry.endsWith(".jar")) {
+            String name = new File(classpathEntry).getName();
+            return name.contains("jvmci") || name.contains("graal");
+        }
+        return false;
+    }
 
     @Test
     public void test() {
@@ -91,11 +102,9 @@ public class CheckGraalInvariants extends GraalTest {
 
         final List<String> classNames = new ArrayList<>();
         for (String path : bootclasspath.split(File.pathSeparator)) {
-            File file = new File(path);
-            String fileName = file.getName();
-            if (fileName.startsWith("graal") && fileName.endsWith(".jar")) {
+            if (shouldProcess(path)) {
                 try {
-                    final ZipFile zipFile = new ZipFile(file);
+                    final ZipFile zipFile = new ZipFile(new File(path));
                     for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
                         final ZipEntry zipEntry = entry.nextElement();
                         String name = zipEntry.getName();
@@ -140,7 +149,6 @@ public class CheckGraalInvariants extends GraalTest {
                         // ignore
                     } else {
                         String methodName = className + "." + m.getName();
-                        boolean verifyEquals = !m.isAnnotationPresent(ExcludeFromIdentityComparisonVerification.class);
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
@@ -149,7 +157,7 @@ public class CheckGraalInvariants extends GraalTest {
                                     graphBuilderSuite.apply(graph, context);
                                     // update phi stamps
                                     graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
-                                    checkGraph(context, graph, verifyEquals);
+                                    checkGraph(context, graph);
                                 } catch (VerificationError e) {
                                     errors.add(e.getMessage());
                                 } catch (LinkageError e) {
@@ -203,8 +211,8 @@ public class CheckGraalInvariants extends GraalTest {
     /**
      * Checks the invariants for a single graph.
      */
-    private static void checkGraph(HighTierContext context, StructuredGraph graph, boolean verifyEquals) {
-        if (verifyEquals) {
+    private static void checkGraph(HighTierContext context, StructuredGraph graph) {
+        if (shouldVerifyEquals(graph.method())) {
             new VerifyUsageWithEquals(Value.class).apply(graph, context);
             new VerifyUsageWithEquals(Register.class).apply(graph, context);
             new VerifyUsageWithEquals(RegisterCategory.class).apply(graph, context);

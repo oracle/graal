@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.java;
 
+import com.oracle.graal.bytecode.*;
 import com.oracle.jvmci.meta.JavaField;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.BytecodeDisassemblerProvider;
@@ -29,9 +30,8 @@ import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.JavaType;
 import com.oracle.jvmci.meta.JavaMethod;
 import com.oracle.jvmci.meta.ConstantPool;
-import static com.oracle.graal.bytecode.Bytecodes.*;
 
-import com.oracle.graal.bytecode.*;
+import static com.oracle.graal.bytecode.Bytecodes.*;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.

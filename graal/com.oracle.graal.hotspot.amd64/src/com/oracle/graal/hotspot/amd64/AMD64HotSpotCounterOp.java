@@ -26,7 +26,8 @@ import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.code.StackSlotValue;
 import com.oracle.jvmci.meta.Value;
-import static com.oracle.graal.amd64.AMD64.*;
+
+import static com.oracle.jvmci.amd64.AMD64.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 

@@ -27,6 +27,7 @@ import com.oracle.jvmci.code.RegisterValue;
 import com.oracle.jvmci.code.ValueUtil;
 import com.oracle.jvmci.code.StackSlotValue;
 import com.oracle.jvmci.code.StackSlot;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 

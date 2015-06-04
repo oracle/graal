@@ -79,8 +79,6 @@ public abstract class Backend {
 
     public abstract SuitesProvider getSuites();
 
-    public abstract DisassemblerProvider getDisassembler();
-
     public TargetDescription getTarget() {
         return providers.getCodeCache().getTarget();
     }

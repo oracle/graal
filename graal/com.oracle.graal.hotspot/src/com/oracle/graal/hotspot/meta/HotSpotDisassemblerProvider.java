@@ -22,27 +22,33 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.jvmci.code.DisassemblerProvider;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.graal.hotspot.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
+import com.oracle.graal.code.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.service.*;
 
 /**
  * HotSpot implementation of {@link DisassemblerProvider}.
  */
+@ServiceProvider(DisassemblerProvider.class)
 public class HotSpotDisassemblerProvider implements DisassemblerProvider {
 
-    protected final HotSpotGraalRuntimeProvider runtime;
-
-    public HotSpotDisassemblerProvider(HotSpotGraalRuntimeProvider runtime) {
-        this.runtime = runtime;
+    public String disassembleCompiledCode(CodeCacheProvider codeCache, CompilationResult compResult) {
+        return null;
     }
 
-    public String disassemble(InstalledCode code) {
+    @Override
+    public String disassembleInstalledCode(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode code) {
         if (code.isValid()) {
             long codeBlob = ((HotSpotInstalledCode) code).getAddress();
-            return runtime.getCompilerToVM().disassembleCodeBlob(codeBlob);
+            return runtime().getCompilerToVM().disassembleCodeBlob(codeBlob);
         }
         return null;
+    }
+
+    public String getName() {
+        return "hsdis";
     }
 }

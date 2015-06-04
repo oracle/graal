@@ -165,7 +165,6 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
 
     @Test
     public void testPeel() {
-        test("verifyPeelSnippet", 42);
         test("preventPeelSnippet", 42);
     }
 

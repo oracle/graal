@@ -27,6 +27,7 @@ import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.Kind;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;

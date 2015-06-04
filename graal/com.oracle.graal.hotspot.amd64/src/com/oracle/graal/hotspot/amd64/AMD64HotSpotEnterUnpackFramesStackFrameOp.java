@@ -27,7 +27,8 @@ import com.oracle.jvmci.code.RegisterConfig;
 import com.oracle.jvmci.code.RegisterSaveLayout;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.Kind;
-import static com.oracle.graal.amd64.AMD64.*;
+
+import static com.oracle.jvmci.amd64.AMD64.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 

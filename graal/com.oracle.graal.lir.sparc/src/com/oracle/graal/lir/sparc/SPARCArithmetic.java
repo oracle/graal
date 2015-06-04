@@ -28,7 +28,11 @@ import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.JavaConstant;
+import com.oracle.jvmci.sparc.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
+import static com.oracle.jvmci.sparc.SPARC.CPUFeature.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
@@ -36,17 +40,13 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.sparc.SPARC.CPUFeature.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 
 public enum SPARCArithmetic {

@@ -29,7 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -41,18 +40,24 @@ import com.oracle.jvmci.meta.*;
  * methods in Integer, Long, etc.
  */
 @NodeInfo
-public final class BoxNode extends UnaryNode implements VirtualizableAllocation, Lowerable {
+public final class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode> {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
-    protected final Kind boxingKind;
+    @Input private ValueNode value;
+    private final Kind boxingKind;
 
     public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
-        super(TYPE, StampFactory.exactNonNull(resultType), value);
+        super(TYPE, StampFactory.exactNonNull(resultType));
+        this.value = value;
         this.boxingKind = boxingKind;
     }
 
     public Kind getBoxingKind() {
         return boxingKind;
+    }
+
+    public ValueNode getValue() {
+        return value;
     }
 
     @Override
@@ -62,10 +67,9 @@ public final class BoxNode extends UnaryNode implements VirtualizableAllocation,
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        /*
-         * Constant values are not canonicalized into their constant boxing objects because this
-         * would mean that the information that they came from a valueOf is lost.
-         */
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            return null;
+        }
         return this;
     }
 

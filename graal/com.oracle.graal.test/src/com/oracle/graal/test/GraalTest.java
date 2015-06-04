@@ -30,9 +30,7 @@ import org.junit.*;
 import org.junit.internal.*;
 
 /**
- * Base class for Graal tests.
- * <p>
- * This contains common utility methods and classes that are used in tests.
+ * Base class that contains common utility methods and classes useful in unit tests.
  */
 public class GraalTest {
 

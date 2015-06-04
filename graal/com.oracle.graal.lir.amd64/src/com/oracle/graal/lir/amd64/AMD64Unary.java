@@ -24,14 +24,12 @@ package com.oracle.graal.lir.amd64;
 
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.Value;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MROp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp;
-import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.asm.*;

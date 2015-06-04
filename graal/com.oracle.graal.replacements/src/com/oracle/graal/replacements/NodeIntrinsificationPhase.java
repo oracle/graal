@@ -489,12 +489,6 @@ public class NodeIntrinsificationPhase extends Phase {
             for (Node piUsage : usage.usages().snapshot()) {
                 checkCheckCastUsage(graph, intrinsifiedNode, usage, piUsage);
             }
-        } else if (usage instanceof GuardingPiNode) {
-            GuardingPiNode pi = (GuardingPiNode) usage;
-            for (Node piUsage : pi.usages().snapshot()) {
-                checkCheckCastUsage(graph, intrinsifiedNode, usage, piUsage);
-            }
-            graph.removeFixed(pi);
         } else {
             DebugScope.forceDump(graph, "exception");
             assert false : sourceLocation(usage) + " has unexpected usage " + usage + " of checkcast " + input + " at " + sourceLocation(input);

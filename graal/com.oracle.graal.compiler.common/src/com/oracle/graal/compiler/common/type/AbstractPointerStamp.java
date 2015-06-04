@@ -40,7 +40,7 @@ public abstract class AbstractPointerStamp extends Stamp {
     }
 
     public boolean nonNull() {
-        return nonNull;
+        return nonNull || this.isEmpty();
     }
 
     public boolean alwaysNull() {

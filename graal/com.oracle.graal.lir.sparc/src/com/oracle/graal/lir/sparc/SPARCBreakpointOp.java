@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.sparc;
 
 import com.oracle.jvmci.meta.Value;
+
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.sparc.*;

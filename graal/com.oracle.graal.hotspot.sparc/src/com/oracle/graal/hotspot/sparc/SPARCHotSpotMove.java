@@ -28,24 +28,21 @@ import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
+import com.oracle.jvmci.sparc.*;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Annul;
-import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCAssembler.RCondition;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.sparc.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;

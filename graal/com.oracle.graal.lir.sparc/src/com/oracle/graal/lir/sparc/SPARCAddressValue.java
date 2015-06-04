@@ -27,6 +27,7 @@ import com.oracle.jvmci.code.RegisterValue;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.AllocatableValue;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 

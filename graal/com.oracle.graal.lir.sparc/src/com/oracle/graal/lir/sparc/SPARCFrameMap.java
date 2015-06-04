@@ -27,9 +27,9 @@ import com.oracle.jvmci.code.CodeCacheProvider;
 import com.oracle.jvmci.code.StackSlot;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.Kind;
+import com.oracle.jvmci.sparc.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.graal.sparc.*;
 
 /**
  * SPARC specific frame map.

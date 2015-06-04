@@ -27,6 +27,7 @@ import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.NamedLocationIdentity;
 import com.oracle.jvmci.meta.LocationIdentity;
 import com.oracle.jvmci.meta.ForeignCallDescriptor;
+
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;

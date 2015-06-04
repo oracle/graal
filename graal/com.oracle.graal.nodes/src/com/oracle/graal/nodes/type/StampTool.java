@@ -129,7 +129,7 @@ public class StampTool {
      *         always null
      */
     public static boolean isPointerNonNull(Stamp stamp) {
-        if (stamp instanceof AbstractPointerStamp && stamp.hasValues()) {
+        if (stamp instanceof AbstractPointerStamp) {
             return ((AbstractPointerStamp) stamp).nonNull();
         }
         return false;

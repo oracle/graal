@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.jvmci.amd64.AMD64.*;
 
 import java.util.*;
 
@@ -55,12 +55,11 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     @Override
     protected Register[] initAllocatable(Register[] registers) {
         BitSet regMap = new BitSet(registerConfig.getAllocatableRegisters().length);
-        Register[] regs = super.initAllocatable(registers);
-        for (Register reg : regs) {
+        for (Register reg : registers) {
             regMap.set(reg.number);
         }
 
-        Register[] allocatableRegisters = new Register[regs.length];
+        Register[] allocatableRegisters = new Register[registers.length];
         int i = 0;
         for (Register reg : registerAllocationOrder) {
             if (regMap.get(reg.number)) {
@@ -69,7 +68,7 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
         }
 
         assert i == allocatableRegisters.length;
-        return allocatableRegisters;
+        return super.initAllocatable(allocatableRegisters);
     }
 
     @Override

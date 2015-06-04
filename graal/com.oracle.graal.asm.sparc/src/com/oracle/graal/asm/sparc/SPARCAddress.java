@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import com.oracle.jvmci.code.AbstractAddress;
-import com.oracle.jvmci.code.Register;
-import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.jvmci.sparc.SPARC.*;
 
-import com.oracle.graal.sparc.*;
-import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.sparc.*;
 
 public class SPARCAddress extends AbstractAddress {
 
@@ -114,7 +112,7 @@ public class SPARCAddress extends AbstractAddress {
      */
     public int getDisplacement() {
         if (hasIndex()) {
-            throw JVMCIError.shouldNotReachHere("address has index register");
+            throw new InternalError("address has index register");
         }
         // TODO Should we also hide the register save area size here?
         if (getBase().equals(sp) || getBase().equals(fp)) {

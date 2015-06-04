@@ -25,10 +25,11 @@ package com.oracle.graal.hotspot;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.Value;
+
 import java.util.*;
 
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.Assembler.InstructionCounter;
+import com.oracle.graal.asm.Assembler.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;

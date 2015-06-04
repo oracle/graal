@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ExceptionHandler;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
@@ -33,7 +29,9 @@ import java.util.*;
 
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph
@@ -540,10 +538,10 @@ public final class BciBlockMapping {
                 case INVOKESTATIC:
                 case INVOKEVIRTUAL:
                 case INVOKEDYNAMIC: {
+                    current = null;
+                    addSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
                     ExceptionDispatchBlock handler = handleExceptions(blockMap, bci);
                     if (handler != null) {
-                        current = null;
-                        addSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
                         addSuccessor(blockMap, bci, handler);
                     }
                     break;
