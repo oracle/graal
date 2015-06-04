@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
@@ -31,6 +30,7 @@ import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;

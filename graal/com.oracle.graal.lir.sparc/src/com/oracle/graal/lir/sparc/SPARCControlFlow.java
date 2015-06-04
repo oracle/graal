@@ -22,36 +22,34 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.Assembler.*;
-import com.oracle.jvmci.asm.sparc.*;
-import com.oracle.jvmci.asm.sparc.SPARCAssembler.CC;
-import com.oracle.jvmci.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.jvmci.asm.sparc.SPARCAssembler.*;
-import com.oracle.jvmci.asm.sparc.SPARCMacroAssembler.*;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.sparc.SPARC.*;
-
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.Annul.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.BranchPredict.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.CC.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.jvmci.sparc.SPARC.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.Assembler.LabelHint;
+import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.sparc.SPARC.CPUFeature;
 
 public class SPARCControlFlow {
 

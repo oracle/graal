@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.NamedLocationIdentity;
@@ -34,6 +33,7 @@ import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;

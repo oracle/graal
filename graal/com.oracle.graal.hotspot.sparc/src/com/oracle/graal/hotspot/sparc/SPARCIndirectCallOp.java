@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.asm.sparc.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.jvmci.meta.Value;
@@ -31,6 +30,7 @@ import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.jvmci.sparc.SPARC.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;

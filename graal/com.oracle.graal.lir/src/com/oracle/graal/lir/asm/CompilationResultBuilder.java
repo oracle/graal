@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.asm;
 
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.CompilationResult;
 import com.oracle.jvmci.code.StackSlot;
 import com.oracle.jvmci.code.TargetDescription;
@@ -46,6 +45,7 @@ import com.oracle.jvmci.code.CompilationResult.ConstantReference;
 import com.oracle.jvmci.code.CompilationResult.DataSectionReference;
 import com.oracle.jvmci.code.DataSection.Data;
 import com.oracle.jvmci.code.DataSection.DataBuilder;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;

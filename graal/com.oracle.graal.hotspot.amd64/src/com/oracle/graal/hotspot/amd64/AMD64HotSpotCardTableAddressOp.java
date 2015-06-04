@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.code.ValueUtil;
 import com.oracle.jvmci.meta.JavaConstant;
 import com.oracle.jvmci.meta.AllocatableValue;
 import com.oracle.jvmci.meta.Kind;
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;

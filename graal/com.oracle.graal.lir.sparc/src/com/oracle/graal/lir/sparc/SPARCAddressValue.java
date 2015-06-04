@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.jvmci.asm.sparc.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.RegisterValue;
 import com.oracle.jvmci.meta.LIRKind;
@@ -34,6 +33,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import java.util.*;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;

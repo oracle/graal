@@ -23,9 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.amd64.*;
-import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.CompilationResult;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.RegisterConfig;
@@ -43,6 +40,9 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;

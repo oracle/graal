@@ -27,9 +27,9 @@ import com.oracle.jvmci.meta.Value;
 
 import static com.oracle.jvmci.code.ValueUtil.*;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.asm.sparc.*;
 import com.oracle.jvmci.common.*;
 
 public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {

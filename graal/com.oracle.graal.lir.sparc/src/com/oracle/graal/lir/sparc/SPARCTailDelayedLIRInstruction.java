@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.jvmci.asm.sparc.*;
 
 /**
  * Implementors of this interface are able to place its last instruction into the delay slot of a

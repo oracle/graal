@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.JavaConstant;
@@ -33,6 +32,7 @@ import static com.oracle.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;

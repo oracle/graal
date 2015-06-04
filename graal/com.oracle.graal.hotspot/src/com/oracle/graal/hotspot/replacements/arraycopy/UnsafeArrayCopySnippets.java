@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.NamedLocationIdentity;
 import com.oracle.jvmci.meta.LocationIdentity;
@@ -35,6 +34,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.extended.*;

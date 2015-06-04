@@ -27,10 +27,10 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 
 import java.util.*;
 
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;

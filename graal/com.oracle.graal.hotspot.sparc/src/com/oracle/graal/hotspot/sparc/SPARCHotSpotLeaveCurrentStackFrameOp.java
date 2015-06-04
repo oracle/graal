@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.jvmci.sparc.SPARC.*;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.jvmci.asm.sparc.*;
 
 /**
  * Pops the current frame off the stack.

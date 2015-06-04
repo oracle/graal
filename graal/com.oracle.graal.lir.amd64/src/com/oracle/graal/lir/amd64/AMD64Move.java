@@ -23,9 +23,6 @@
 package com.oracle.graal.lir.amd64;
 
 import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.amd64.*;
-import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.StackSlotValue;
 import com.oracle.jvmci.meta.Kind;
@@ -38,6 +35,9 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;

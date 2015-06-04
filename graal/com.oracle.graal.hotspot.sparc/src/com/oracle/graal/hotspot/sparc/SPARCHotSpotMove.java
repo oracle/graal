@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.sparc.*;
-import com.oracle.jvmci.asm.sparc.SPARCAssembler.*;
-import com.oracle.jvmci.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.jvmci.code.StackSlot;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.JavaConstant;
@@ -37,6 +33,10 @@ import com.oracle.jvmci.sparc.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;

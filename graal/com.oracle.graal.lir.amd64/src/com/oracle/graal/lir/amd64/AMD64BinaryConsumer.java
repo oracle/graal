@@ -29,10 +29,10 @@ import com.oracle.jvmci.meta.Value;
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.amd64.*;
-import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.CompilationResult.DataSectionReference;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.asm.*;

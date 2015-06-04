@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.asm.sparc.*;
 
 /**
  * This interface is used for {@link LIRInstruction}s which provide a delay slot for one instruction

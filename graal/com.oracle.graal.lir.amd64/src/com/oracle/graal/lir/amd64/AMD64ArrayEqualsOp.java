@@ -24,10 +24,6 @@ package com.oracle.graal.lir.amd64;
 
 import com.oracle.jvmci.amd64.*;
 import com.oracle.jvmci.amd64.AMD64.*;
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.amd64.*;
-import com.oracle.jvmci.asm.amd64.AMD64Address.*;
-import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.TargetDescription;
 import com.oracle.jvmci.meta.Kind;
@@ -40,6 +36,10 @@ import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Address.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;

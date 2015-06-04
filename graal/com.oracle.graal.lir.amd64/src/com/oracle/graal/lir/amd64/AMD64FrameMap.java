@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.CodeCacheProvider;
 import com.oracle.jvmci.code.StackSlot;
 import com.oracle.jvmci.code.RegisterConfig;
@@ -31,6 +30,7 @@ import com.oracle.jvmci.meta.LIRKind;
 
 import static com.oracle.jvmci.code.ValueUtil.*;
 
+import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.framemap.*;
 
 /**

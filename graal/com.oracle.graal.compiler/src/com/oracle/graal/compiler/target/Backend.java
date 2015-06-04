@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.target;
 
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
@@ -32,7 +33,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.asm.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.code.stack.*;
 import com.oracle.jvmci.common.*;

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.java;
 
+import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.jvmci.bytecode.Bytecodes.*;
 
 import java.util.*;
 
+import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.jvmci.bytecode.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;

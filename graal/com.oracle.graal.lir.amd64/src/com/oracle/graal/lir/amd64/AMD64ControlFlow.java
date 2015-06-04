@@ -23,10 +23,6 @@
 package com.oracle.graal.lir.amd64;
 
 import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.amd64.*;
-import com.oracle.jvmci.asm.amd64.AMD64Address.*;
-import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.meta.Kind;
 import com.oracle.jvmci.meta.AllocatableValue;
@@ -37,6 +33,10 @@ import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.jvmci.code.CompilationResult.JumpTable;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Address.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;

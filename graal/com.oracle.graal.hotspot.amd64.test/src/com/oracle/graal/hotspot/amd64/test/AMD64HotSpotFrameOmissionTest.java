@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
-import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.code.InstalledCode;
 import com.oracle.jvmci.code.Register;
 import com.oracle.jvmci.code.CallingConvention;
@@ -37,6 +36,7 @@ import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.compiler.test.*;
 
 /**

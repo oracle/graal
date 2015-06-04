@@ -32,6 +32,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -45,7 +46,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.hotspot.*;
 
 public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {

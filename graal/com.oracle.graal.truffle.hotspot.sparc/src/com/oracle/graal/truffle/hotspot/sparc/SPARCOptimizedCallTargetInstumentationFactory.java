@@ -22,22 +22,22 @@
  */
 package com.oracle.graal.truffle.hotspot.sparc;
 
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.Annul.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.BranchPredict.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.CC.*;
-import static com.oracle.jvmci.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.jvmci.code.CallingConvention.Type.*;
 import static com.oracle.jvmci.meta.Kind.*;
 import static com.oracle.jvmci.sparc.SPARC.CPUFeature.*;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.sparc.*;
-import com.oracle.jvmci.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.meta.*;

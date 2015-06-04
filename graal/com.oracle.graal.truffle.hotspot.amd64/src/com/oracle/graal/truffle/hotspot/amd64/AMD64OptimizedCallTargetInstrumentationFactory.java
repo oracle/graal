@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
 import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.asm.*;
-import com.oracle.jvmci.asm.amd64.*;
-import com.oracle.jvmci.asm.amd64.AMD64Assembler.*;
 import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;

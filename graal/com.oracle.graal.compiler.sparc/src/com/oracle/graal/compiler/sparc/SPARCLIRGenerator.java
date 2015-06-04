@@ -29,6 +29,8 @@ import static com.oracle.graal.lir.sparc.SPARCCompare.*;
 import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.*;
 import static com.oracle.jvmci.code.ValueUtil.*;
 
+import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
@@ -58,9 +60,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.asm.sparc.*;
-import com.oracle.jvmci.asm.sparc.SPARCAssembler.CC;
-import com.oracle.jvmci.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;

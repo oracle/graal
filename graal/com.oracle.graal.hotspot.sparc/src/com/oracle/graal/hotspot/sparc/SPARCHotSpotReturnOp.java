@@ -27,10 +27,10 @@ import com.oracle.jvmci.sparc.*;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
-import com.oracle.jvmci.asm.sparc.*;
 import com.oracle.jvmci.hotspot.*;
 
 /**

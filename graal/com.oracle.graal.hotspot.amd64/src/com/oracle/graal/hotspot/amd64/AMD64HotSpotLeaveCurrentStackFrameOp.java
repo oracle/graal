@@ -24,11 +24,11 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.jvmci.amd64.AMD64.*;
 
+import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.jvmci.asm.amd64.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.meta.*;
 

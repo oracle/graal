@@ -36,11 +36,11 @@ import java.util.concurrent.atomic.*;
 import java.util.jar.*;
 import java.util.stream.*;
 
+import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.jvmci.bytecode.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.internal.*;
 import com.oracle.jvmci.hotspot.*;
