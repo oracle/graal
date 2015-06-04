@@ -294,9 +294,12 @@ public final class LocationMarker extends AllocationPhase {
             }
 
             ReferenceMap refMap = info.debugInfo().getReferenceMap();
+            refMap.reset();
+            frameMap.addLiveValues(refMap);
             for (Value v : values) {
-                frameMap.setReference(v, refMap);
+                refMap.addLiveValue(v);
             }
+            refMap.finish();
         }
 
         /**

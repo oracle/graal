@@ -22,22 +22,12 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.code.Architecture;
-import com.oracle.jvmci.code.VirtualObject;
-import com.oracle.jvmci.code.BytecodePosition;
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.RegisterSaveLayout;
-import com.oracle.jvmci.code.ReferenceMap;
-import com.oracle.jvmci.meta.MetaUtil;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaMethod;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.jvmci.code.CodeUtil.RefMapFormatter;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The
@@ -122,19 +112,10 @@ public class CompilationPrinter implements Closeable {
     /**
      * Formats given debug info as a multi line string.
      */
-    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, RegisterSaveLayout calleeSaveInfo, Architecture arch) {
+    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, RegisterSaveLayout calleeSaveInfo) {
         StringBuilder sb = new StringBuilder();
-        RefMapFormatter formatter = new CodeUtil.NumberedRefMapFormatter();
-
-        if (refMap != null && refMap.hasRegisterRefMap()) {
-            sb.append("reg-ref-map:");
-            refMap.appendRegisterMap(sb, arch != null ? new CodeUtil.DefaultRegFormatter(arch) : formatter);
-            sb.append("\n");
-        }
-
-        if (refMap != null && refMap.hasFrameRefMap()) {
-            sb.append("frame-ref-map:");
-            refMap.appendFrameMap(sb, formatter);
+        if (refMap != null) {
+            sb.append(refMap.toString());
             sb.append("\n");
         }
 

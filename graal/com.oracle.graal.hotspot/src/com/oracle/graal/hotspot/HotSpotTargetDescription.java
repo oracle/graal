@@ -35,6 +35,6 @@ public class HotSpotTargetDescription extends TargetDescription {
 
     @Override
     public ReferenceMap createReferenceMap(boolean hasRegisters, int stackSlotCount) {
-        return new HotSpotReferenceMap(hasRegisters ? arch.getRegisterReferenceMapSize() : 0, stackSlotCount, this);
+        return new HotSpotReferenceMap(this);
     }
 }
