@@ -504,12 +504,19 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            int sideEffectCount = 0;
-            assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
-            new ConvertDeoptimizeToGuardPhase().apply(graph, null);
-            assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
+            if (!GraalOptions.SnippetCounters.getValue() || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
+                int sideEffectCount = 0;
+                assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
+                new ConvertDeoptimizeToGuardPhase().apply(graph, null);
+                assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 
-            new DeadCodeEliminationPhase(Required).apply(graph);
+                new DeadCodeEliminationPhase(Required).apply(graph);
+            } else {
+                // ConvertDeoptimizeToGuardPhase will eliminate snippet counters on paths
+                // that terminate in a deopt so we disable it if the graph contains
+                // snippet counters. The trade off is that we miss out on guard
+                // coalescing opportunities.
+            }
         }
 
         /**

@@ -110,16 +110,19 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     @Snippet
-    public static void arraycopyExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter) {
+    public static void arraycopyExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter,
+                    @ConstantParameter SnippetCounter copiedCounter) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
         counter.inc();
+        copiedCounter.add(length);
         ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind);
         if (length == 0) {
             zeroLengthDynamicCounter.inc();
         } else {
             nonZeroLengthDynamicCounter.inc();
+            nonZeroLengthDynamicCopiedCounter.add(length);
         }
     }
 
@@ -128,7 +131,8 @@ public class ArrayCopySnippets implements Snippets {
      * inputs but not the other.
      */
     @Snippet
-    public static void arraycopyPredictedExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter) {
+    public static void arraycopyPredictedExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter,
+                    @ConstantParameter SnippetCounter copiedCounter) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
@@ -138,25 +142,31 @@ public class ArrayCopySnippets implements Snippets {
         }
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
         counter.inc();
+        copiedCounter.add(length);
         ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind);
         if (length == 0) {
             zeroLengthDynamicCounter.inc();
         } else {
             nonZeroLengthDynamicCounter.inc();
+            nonZeroLengthDynamicCopiedCounter.add(length);
         }
     }
 
     @Snippet
-    public static void arraycopyPredictedObjectWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, KlassPointer objectArrayKlass, @ConstantParameter SnippetCounter counter) {
+    public static void arraycopyPredictedObjectWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, KlassPointer objectArrayKlass,
+                    @ConstantParameter SnippetCounter counter, @ConstantParameter SnippetCounter copiedCounter) {
         if (length > 0) {
             KlassPointer srcHub = loadHub(nonNullSrc);
             KlassPointer destHub = loadHub(nonNullDest);
             if (probability(FAST_PATH_PROBABILITY, srcHub == destHub || destHub == objectArrayKlass)) {
                 counter.inc();
+                copiedCounter.add(length);
                 predictedObjectArrayCopyFastPathCounter.inc();
+                predictedObjectArrayCopyFastPathCopiedCounter.add(length);
                 ArrayCopyCallNode.arraycopyObjectKillsAny(nonNullSrc, srcPos, nonNullDest, destPos, length);
             } else {
                 predictedObjectArrayCopySlowPathCounter.inc();
+                predictedObjectArrayCopySlowPathCopiedCounter.add(length);
                 System.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
             }
         }
@@ -179,6 +189,7 @@ public class ArrayCopySnippets implements Snippets {
             zeroLengthDynamicCounter.inc();
         } else {
             nonZeroLengthDynamicCounter.inc();
+            nonZeroLengthDynamicCopiedCounter.add(length);
         }
         ArrayCopySlowPathNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, slowPath);
     }
@@ -191,11 +202,13 @@ public class ArrayCopySnippets implements Snippets {
             if (probability(SLOW_PATH_PROBABILITY, srcKlass == destKlass)) {
                 // no storecheck required.
                 objectCheckcastSameTypeCounter.inc();
+                objectCheckcastSameTypeCopiedCounter.add(length);
                 ArrayCopyCallNode.arraycopyObjectKillsAny(nonNullSrc, srcPos, nonNullDest, destPos, length);
             } else {
                 KlassPointer destElemKlass = destKlass.readKlassPointer(arrayClassElementOffset(), OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION);
                 Word superCheckOffset = Word.signed(destElemKlass.readInt(superCheckOffsetOffset(), KLASS_SUPER_CHECK_OFFSET_LOCATION));
                 objectCheckcastCounter.inc();
+                objectCheckcastCopiedCounter.add(length);
                 int copiedElements = CheckcastArrayCopyCallNode.checkcastArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, superCheckOffset, destElemKlass, false);
                 if (copiedElements != 0) {
                     /*
@@ -221,13 +234,16 @@ public class ArrayCopySnippets implements Snippets {
             checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
+                genericObjectExactCallCopiedCounter.add(length);
                 ArrayCopyCallNode.disjointArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, Kind.Object);
             } else {
                 genericPrimitiveCallCounter.inc();
+                genericPrimitiveCallCopiedCounter.add(length);
                 UnsafeArrayCopyNode.arraycopyPrimitive(nonNullSrc, srcPos, nonNullDest, destPos, length, layoutHelper);
             }
         } else {
             SystemArraycopyCounter.inc();
+            SystemArraycopyCopiedCounter.add(length);
             System.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
         }
     }
@@ -273,17 +289,23 @@ public class ArrayCopySnippets implements Snippets {
 
     private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy") : null;
 
-    private static final SnippetCounter objectCheckcastCounter = new SnippetCounter(counters, "Object[]", "arraycopy for non-exact Object[] arrays");
-    private static final SnippetCounter objectCheckcastSameTypeCounter = new SnippetCounter(counters, "Object[]", "arraycopy call for src.klass == dest.klass Object[] arrays");
-    private static final SnippetCounter predictedObjectArrayCopySlowPathCounter = new SnippetCounter(counters, "Object[]", "used System.arraycopy slow path for predicted Object[] arrays");
-    private static final SnippetCounter predictedObjectArrayCopyFastPathCounter = new SnippetCounter(counters, "Object[]", "used oop_arraycopy for predicted Object[] arrays");
+    private static final SnippetCounter objectCheckcastCounter = new SnippetCounter(counters, "Object[]{non-exact}", "arraycopy for non-exact Object[] arrays");
+    private static final SnippetCounter objectCheckcastSameTypeCounter = new SnippetCounter(counters, "Object[]{same-type}", "arraycopy call for src.klass == dest.klass Object[] arrays");
+    private static final SnippetCounter predictedObjectArrayCopySlowPathCounter = new SnippetCounter(counters, "Object[]{slow-path}", "used System.arraycopy slow path for predicted Object[] arrays");
+    private static final SnippetCounter predictedObjectArrayCopyFastPathCounter = new SnippetCounter(counters, "Object[]{fast-path}", "used oop_arraycopy for predicted Object[] arrays");
 
     private static final EnumMap<Kind, SnippetCounter> arraycopyCallCounters = new EnumMap<>(Kind.class);
     private static final EnumMap<Kind, SnippetCounter> arraycopyCounters = new EnumMap<>(Kind.class);
 
+    private static final EnumMap<Kind, SnippetCounter> arraycopyCallCopiedCounters = new EnumMap<>(Kind.class);
+    private static final EnumMap<Kind, SnippetCounter> arraycopyCopiedCounters = new EnumMap<>(Kind.class);
+
     static void createArraycopyCounter(Kind kind) {
-        arraycopyCallCounters.put(kind, new SnippetCounter(counters, kind + "[]", "arraycopy call for " + kind + "[] arrays"));
-        arraycopyCounters.put(kind, new SnippetCounter(counters, kind + "[]", "inline arraycopy for " + kind + "[] arrays"));
+        arraycopyCallCounters.put(kind, new SnippetCounter(counters, kind + "[]{stub}", "arraycopy call for " + kind + "[] arrays"));
+        arraycopyCounters.put(kind, new SnippetCounter(counters, kind + "[]{inline}", "inline arraycopy for " + kind + "[] arrays"));
+
+        arraycopyCallCopiedCounters.put(kind, new SnippetCounter(copiedCounters, kind + "[]{stub}", "arraycopy call for " + kind + "[] arrays"));
+        arraycopyCopiedCounters.put(kind, new SnippetCounter(copiedCounters, kind + "[]{inline}", "inline arraycopy for " + kind + "[] arrays"));
     }
 
     static {
@@ -307,6 +329,19 @@ public class ArrayCopySnippets implements Snippets {
     private static final SnippetCounter zeroLengthStaticCounter = new SnippetCounter(lengthCounters, "0-lengthcopy static", "arraycopy where the length is statically 0");
     private static final SnippetCounter zeroLengthDynamicCounter = new SnippetCounter(lengthCounters, "0-lengthcopy dynamically", "arraycopy where the length is dynamically 0");
     private static final SnippetCounter nonZeroLengthDynamicCounter = new SnippetCounter(lengthCounters, "non-0-lengthcopy dynamically", "arraycopy where the length is dynamically not zero");
+
+    private static final SnippetCounter.Group copiedCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy copied elements") : null;
+
+    private static final SnippetCounter nonZeroLengthDynamicCopiedCounter = new SnippetCounter(copiedCounters, "non-0-lengthcopy dynamically", "arraycopy where the length is dynamically not zero");
+    private static final SnippetCounter genericPrimitiveCallCopiedCounter = new SnippetCounter(copiedCounters, "genericPrimitive", "generic arraycopy snippet for primitive arrays");
+    private static final SnippetCounter genericObjectExactCallCopiedCounter = new SnippetCounter(copiedCounters, "genericObjectExact", "generic arraycopy snippet for special object arrays");
+    private static final SnippetCounter SystemArraycopyCopiedCounter = new SnippetCounter(copiedCounters, "genericObject", "call to System.arraycopy");
+
+    private static final SnippetCounter objectCheckcastCopiedCounter = new SnippetCounter(copiedCounters, "Object[]{non-exact}", "arraycopy for non-exact Object[] arrays");
+    private static final SnippetCounter objectCheckcastSameTypeCopiedCounter = new SnippetCounter(copiedCounters, "Object[]{same-type}", "arraycopy call for src.klass == dest.klass Object[] arrays");
+    private static final SnippetCounter predictedObjectArrayCopySlowPathCopiedCounter = new SnippetCounter(copiedCounters, "Object[]{slow-path}",
+                    "used System.arraycopy slow path for predicted Object[] arrays");
+    private static final SnippetCounter predictedObjectArrayCopyFastPathCopiedCounter = new SnippetCounter(copiedCounters, "Object[]{fast-path}", "used oop_arraycopy for predicted Object[] arrays");
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
@@ -474,6 +509,7 @@ public class ArrayCopySnippets implements Snippets {
                 assert componentKind != null;
                 args.addConst("elementKind", componentKind);
                 args.addConst("counter", arraycopyCallCounters.get(componentKind));
+                args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(componentKind));
             }
             instantiate(args, arraycopy);
         }
@@ -501,6 +537,7 @@ public class ArrayCopySnippets implements Snippets {
                 ValueNode objectArrayKlass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayKlass.klass(), tool.getMetaAccess(), arraycopy.graph());
                 args.add("objectArrayKlass", objectArrayKlass);
                 args.addConst("counter", arraycopyCallCounters.get(Kind.Object));
+                args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(Kind.Object));
             }
             instantiate(args, arraycopy);
         }

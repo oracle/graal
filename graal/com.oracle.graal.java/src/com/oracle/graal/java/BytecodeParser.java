@@ -931,8 +931,8 @@ public class BytecodeParser implements GraphBuilderContext {
         } else {
             dispatchBegin = graph.add(new DispatchBeginNode());
             dispatchState.push(Kind.Object, exceptionObject);
-            dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
             dispatchState.setRethrowException(true);
+            dispatchBegin.setStateAfter(dispatchState.create(bci, dispatchBegin));
         }
         this.controlFlowSplit = true;
         FixedNode target = createTarget(dispatchBlock, dispatchState);

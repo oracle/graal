@@ -58,10 +58,13 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
 
             StringBuilder buf = new StringBuilder(String.format("Counters: %s%n", name));
 
+            String formatString = "  %" + maxNameLen + "s: %6.2f%%%," + (String.format("%,d", total).length() + 2) + "d  // %s%n";
             for (SnippetCounter c : counters) {
                 double percent = total == 0D ? 0D : ((double) (c.value * 100)) / total;
-                buf.append(String.format("  %" + maxNameLen + "s: %5.2f%%%10d  // %s%n", c.name, percent, c.value, c.description));
+                buf.append(String.format(formatString, c.name, percent, c.value, c.description));
             }
+            buf.append(String.format(formatString, "TOTAL", 100.0D, total, ""));
+
             return buf.toString();
         }
     }
@@ -112,12 +115,22 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
     }
 
     /**
-     * Increments the value of this counter. This method can be safely used in a snippet if it is
-     * invoked on a compile-time constant {@link SnippetCounter} object.
+     * Increments the value of this counter. This method can only be used in a snippet on a
+     * compile-time constant {@link SnippetCounter} object.
      */
     public void inc() {
         if (group != null) {
             SnippetCounterNode.increment(this);
+        }
+    }
+
+    /**
+     * Increments the value of this counter. This method can only be used in a snippet on a
+     * compile-time constant {@link SnippetCounter} object.
+     */
+    public void add(int increment) {
+        if (group != null) {
+            SnippetCounterNode.add(this, increment);
         }
     }
 
