@@ -28,7 +28,7 @@ import com.oracle.graal.graph.iterators.*;
 
 class NodeUsageIterable implements NodeIterable<Node> {
 
-    final Node node;
+    private final Node node;
 
     NodeUsageIterable(Node node) {
         this.node = node;
@@ -40,6 +40,11 @@ class NodeUsageIterable implements NodeIterable<Node> {
         } else {
             return new NodeUsageIterator(node);
         }
+    }
+
+    @Override
+    public Node first() {
+        return node.usage0;
     }
 
     @Override
