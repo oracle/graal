@@ -115,12 +115,22 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
     }
 
     /**
-     * Increments the value of this counter. This method can be safely used in a snippet if it is
-     * invoked on a compile-time constant {@link SnippetCounter} object.
+     * Increments the value of this counter. This method can only be used in a snippet on a
+     * compile-time constant {@link SnippetCounter} object.
      */
     public void inc() {
         if (group != null) {
             SnippetCounterNode.increment(this);
+        }
+    }
+
+    /**
+     * Increments the value of this counter. This method can only be used in a snippet on a
+     * compile-time constant {@link SnippetCounter} object.
+     */
+    public void add(int increment) {
+        if (group != null) {
+            SnippetCounterNode.add(this, increment);
         }
     }
 
