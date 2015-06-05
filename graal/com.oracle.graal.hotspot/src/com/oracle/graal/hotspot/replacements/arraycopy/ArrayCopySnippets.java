@@ -273,17 +273,17 @@ public class ArrayCopySnippets implements Snippets {
 
     private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy") : null;
 
-    private static final SnippetCounter objectCheckcastCounter = new SnippetCounter(counters, "Object[]", "arraycopy for non-exact Object[] arrays");
-    private static final SnippetCounter objectCheckcastSameTypeCounter = new SnippetCounter(counters, "Object[]", "arraycopy call for src.klass == dest.klass Object[] arrays");
-    private static final SnippetCounter predictedObjectArrayCopySlowPathCounter = new SnippetCounter(counters, "Object[]", "used System.arraycopy slow path for predicted Object[] arrays");
-    private static final SnippetCounter predictedObjectArrayCopyFastPathCounter = new SnippetCounter(counters, "Object[]", "used oop_arraycopy for predicted Object[] arrays");
+    private static final SnippetCounter objectCheckcastCounter = new SnippetCounter(counters, "Object[]{non-exact}", "arraycopy for non-exact Object[] arrays");
+    private static final SnippetCounter objectCheckcastSameTypeCounter = new SnippetCounter(counters, "Object[]{same-type}", "arraycopy call for src.klass == dest.klass Object[] arrays");
+    private static final SnippetCounter predictedObjectArrayCopySlowPathCounter = new SnippetCounter(counters, "Object[]{slow-path}", "used System.arraycopy slow path for predicted Object[] arrays");
+    private static final SnippetCounter predictedObjectArrayCopyFastPathCounter = new SnippetCounter(counters, "Object[]{fast-path}", "used oop_arraycopy for predicted Object[] arrays");
 
     private static final EnumMap<Kind, SnippetCounter> arraycopyCallCounters = new EnumMap<>(Kind.class);
     private static final EnumMap<Kind, SnippetCounter> arraycopyCounters = new EnumMap<>(Kind.class);
 
     static void createArraycopyCounter(Kind kind) {
-        arraycopyCallCounters.put(kind, new SnippetCounter(counters, kind + "[]", "arraycopy call for " + kind + "[] arrays"));
-        arraycopyCounters.put(kind, new SnippetCounter(counters, kind + "[]", "inline arraycopy for " + kind + "[] arrays"));
+        arraycopyCallCounters.put(kind, new SnippetCounter(counters, kind + "[]{stub}", "arraycopy call for " + kind + "[] arrays"));
+        arraycopyCounters.put(kind, new SnippetCounter(counters, kind + "[]{inline}", "inline arraycopy for " + kind + "[] arrays"));
     }
 
     static {
