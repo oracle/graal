@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.lir.framemap;
 
-import static com.oracle.jvmci.code.ValueUtil.*;
-
 import java.util.*;
 
 import com.oracle.graal.asm.*;
@@ -101,6 +99,12 @@ public abstract class FrameMap {
 
     public TargetDescription getTarget() {
         return target;
+    }
+
+    public void addLiveValues(ReferenceMap refMap) {
+        for (Value value : objectStackSlots) {
+            refMap.addLiveValue(value);
+        }
     }
 
     protected int returnAddressSize() {
@@ -322,29 +326,6 @@ public abstract class FrameMap {
 
     public ReferenceMap initReferenceMap(boolean hasRegisters) {
         ReferenceMap refMap = getTarget().createReferenceMap(hasRegisters, frameSize() / getTarget().wordSize);
-        for (StackSlot slot : objectStackSlots) {
-            setReference(slot, refMap);
-        }
         return refMap;
-    }
-
-    /**
-     * Marks the specified location as a reference in the reference map of the debug information.
-     * The tracked location can be a {@link RegisterValue} or a {@link StackSlot}. Note that a
-     * {@link JavaConstant} is automatically tracked.
-     *
-     * @param location The location to be added to the reference map.
-     * @param refMap A reference map, as created by {@link #initReferenceMap(boolean)}.
-     */
-    public void setReference(Value location, ReferenceMap refMap) {
-        LIRKind kind = location.getLIRKind();
-        if (isRegister(location)) {
-            refMap.setRegister(asRegister(location).getReferenceMapIndex(), kind);
-        } else if (isStackSlot(location)) {
-            int offset = offsetForStackSlot(asStackSlot(location));
-            refMap.setStackSlot(offset, kind);
-        } else {
-            assert isConstant(location);
-        }
     }
 }
