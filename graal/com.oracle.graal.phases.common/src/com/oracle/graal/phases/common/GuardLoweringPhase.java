@@ -119,12 +119,11 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             if (guard != null && isImplicitNullCheck(access.accessLocation())) {
                 if (object instanceof PiNode) {
                     PiNode piNode = (PiNode) object;
-                    if (access.object() == object) {
-                        access.asNode().replaceFirstInput(object, piNode.getOriginalNode());
-                    }
-                    if (!(piNode.getGuard() instanceof GuardNode)) {
-                        return;
-                    }
+                    assert piNode.getGuard() instanceof GuardNode;
+                    assert access.object() == object;
+                    access.asNode().replaceFirstInput(object, piNode.getOriginalNode());
+                } else {
+                    assert guard instanceof GuardNode;
                 }
                 metricImplicitNullCheck.increment();
                 access.setGuard(null);
@@ -154,7 +153,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 if (condition.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(condition);
                 }
-                nullGuarded.remove(fixedAccess.object());
+                nullGuarded.remove(object);
             }
         }
 
