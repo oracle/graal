@@ -146,6 +146,7 @@ public class TypeCheckSnippetUtils {
 
     private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("TypeCheck") : null;
     static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
+    static final SnippetCounter hintsMiss = new SnippetCounter(counters, "hintsMiss", "missed a hint type");
     static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
     static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");
     static final SnippetCounter isNull = new SnippetCounter(counters, "isNull", "object tested was null");
