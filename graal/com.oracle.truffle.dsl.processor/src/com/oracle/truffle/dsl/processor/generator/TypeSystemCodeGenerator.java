@@ -410,6 +410,11 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 builder.end();
             }
 
+            builder.startElseIf().string(LOCAL_VALUE).string(" == ").nullLiteral().end();
+            builder.startBlock();
+            builder.startReturn().typeLiteral(context.getType(Object.class)).end();
+            builder.end();
+
             builder.startElseBlock();
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Illegal type ").end().end();

@@ -29,6 +29,7 @@ import org.junit.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.DoubleChildNodeFactory;
+import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.ShortCircuitWithImplicitCastNodeFactory;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.SingleChildNodeFactory;
 import com.oracle.truffle.api.dsl.test.ShortCircuitTestFactory.VarArgsNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
@@ -156,6 +157,40 @@ public class ShortCircuitTest {
         @SuppressWarnings("unused")
         int doIt(int child0, boolean hasChild1, int child1) {
             return child1;
+        }
+
+    }
+
+    @Test
+    public void testShortCircuitWithImplicitCastNode() {
+        ArgumentNode arg0 = new ArgumentNode(0);
+        ArgumentNode arg1 = new ArgumentNode(1);
+        CallTarget callTarget = TestHelper.createCallTarget(ShortCircuitWithImplicitCastNodeFactory.create(new ValueNode[]{arg0, arg1}));
+        assertEquals(42, callTarget.call(new Object[]{42, 41}));
+    }
+
+    @TypeSystem(int.class)
+    abstract static class ShortCircuitWithImplicitCastTypes {
+
+        @ImplicitCast
+        public static int doAnImplicitCast(String foo) {
+            return Integer.parseInt(foo);
+        }
+
+    }
+
+    @NodeChild(value = "children", type = ValueNode[].class)
+    @TypeSystemReference(ShortCircuitWithImplicitCastTypes.class)
+    abstract static class ShortCircuitWithImplicitCastNode extends ValueNode {
+
+        @ShortCircuit("children[1]")
+        public boolean needsRightNode(Object left) {
+            return (int) left == 41;
+        }
+
+        @Specialization
+        public int doInteger(int left, boolean needsRight, int right) {
+            return needsRight ? right : left;
         }
 
     }
