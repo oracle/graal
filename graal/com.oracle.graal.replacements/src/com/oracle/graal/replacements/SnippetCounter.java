@@ -58,7 +58,7 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
 
             StringBuilder buf = new StringBuilder(String.format("Counters: %s%n", name));
 
-            String formatString = "  %" + maxNameLen + "s: %6.2f%%%" + (String.valueOf(total).length() + 2) + "d  // %s%n";
+            String formatString = "  %" + maxNameLen + "s: %6.2f%%%," + (String.format("%,d", total).length() + 2) + "d  // %s%n";
             for (SnippetCounter c : counters) {
                 double percent = total == 0D ? 0D : ((double) (c.value * 100)) / total;
                 buf.append(String.format(formatString, c.name, percent, c.value, c.description));
