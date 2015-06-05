@@ -93,8 +93,8 @@ public class InstanceOfSnippets implements Snippets {
                 hintsHit.inc();
                 return positive ? trueValue : falseValue;
             }
+            hintsMiss.inc();
         }
-        hintsMiss.inc();
         // This maybe just be a rare event but it might also indicate a phase change
         // in the application. Ideally we want to use DeoptimizationAction.None for
         // the former but the cost is too high if indeed it is the latter. As such,
