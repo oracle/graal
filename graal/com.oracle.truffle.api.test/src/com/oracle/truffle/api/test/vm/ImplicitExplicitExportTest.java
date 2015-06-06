@@ -165,21 +165,21 @@ public class ImplicitExplicitExportTest {
     private static final String L2 = "application/x-test-import-export-2";
     private static final String L3 = "application/x-test-import-export-3";
 
-    @TruffleLanguage.Registration(mimeType = L1, name = "ImportExport1")
+    @TruffleLanguage.Registration(mimeType = L1, name = "ImportExport1", version = "0")
     public static final class ExportImportLanguage1 extends AbstractExportImportLanguage {
         public ExportImportLanguage1(Env env) {
             super(env);
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = L2, name = "ImportExport2")
+    @TruffleLanguage.Registration(mimeType = L2, name = "ImportExport2", version = "0")
     public static final class ExportImportLanguage2 extends AbstractExportImportLanguage {
         public ExportImportLanguage2(Env env) {
             super(env);
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = L3, name = "ImportExport3")
+    @TruffleLanguage.Registration(mimeType = L3, name = "ImportExport3", version = "0")
     public static final class ExportImportLanguage3 extends AbstractExportImportLanguage {
         public ExportImportLanguage3(Env env) {
             super(env);

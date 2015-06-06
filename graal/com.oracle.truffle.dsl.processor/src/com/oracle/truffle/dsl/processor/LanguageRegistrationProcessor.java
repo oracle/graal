@@ -56,6 +56,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             String prefix = "language" + ++cnt + ".";
             String className = processingEnv.getElementUtils().getBinaryName(l).toString();
             p.setProperty(prefix + "name", annotation.name());
+            p.setProperty(prefix + "version", annotation.version());
             p.setProperty(prefix + "className", className);
             String[] mimes = annotation.mimeType();
             for (int i = 0; i < mimes.length; i++) {

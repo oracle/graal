@@ -133,7 +133,7 @@ import com.oracle.truffle.tools.*;
  * <em>default printer</em>.
  *
  */
-@TruffleLanguage.Registration(name = "sl", mimeType = "application/x-sl")
+@TruffleLanguage.Registration(name = "sl", version = "0.5", mimeType = "application/x-sl")
 public class SLMain extends TruffleLanguage {
     private static SLMain LAST;
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();

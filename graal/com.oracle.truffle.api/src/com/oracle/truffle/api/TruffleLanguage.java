@@ -72,6 +72,14 @@ public abstract class TruffleLanguage {
         String name();
 
         /**
+         * Unique string identifying the language version. This name will be exposed to users via
+         * the {@link Language#getVersion()} getter.
+         *
+         * @return version of your language
+         */
+        String version();
+
+        /**
          * List of MIME types associated with your language. Users will use them (directly or
          * indirectly) when {@link TruffleVM#eval(java.lang.String, java.lang.String) executing}
          * their code snippets or their {@link TruffleVM#eval(java.net.URI) files}.

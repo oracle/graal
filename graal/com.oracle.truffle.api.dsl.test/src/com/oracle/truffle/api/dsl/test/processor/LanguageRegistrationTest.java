@@ -31,22 +31,22 @@ import com.oracle.truffle.api.source.*;
 public class LanguageRegistrationTest {
 
     @ExpectError("Registered language class must be public")
-    @TruffleLanguage.Registration(name = "myLang", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(name = "myLang", version = "0", mimeType = "text/x-my")
     private static final class MyLang {
     }
 
     @ExpectError("Registered language inner-class must be static")
-    @TruffleLanguage.Registration(name = "myLangNonStatic", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(name = "myLangNonStatic", version = "0", mimeType = "text/x-my")
     public final class MyLangNonStatic {
     }
 
     @ExpectError("Registered language class must subclass TruffleLanguage")
-    @TruffleLanguage.Registration(name = "myLang", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(name = "myLang", version = "0", mimeType = "text/x-my")
     public static final class MyLangNoSubclass {
     }
 
     @ExpectError("Language must have a public constructor accepting TruffleLanguage.Env as parameter")
-    @TruffleLanguage.Registration(name = "myLangNoCnstr", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(name = "myLangNoCnstr", version = "0", mimeType = "text/x-my")
     public static final class MyLangWrongConstr extends TruffleLanguage {
         private MyLangWrongConstr() {
             super(null);
@@ -74,7 +74,7 @@ public class LanguageRegistrationTest {
     }
 
     @ExpectError("Language must have a public constructor accepting TruffleLanguage.Env as parameter")
-    @TruffleLanguage.Registration(name = "myLangNoCnstr", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(name = "myLangNoCnstr", version = "0", mimeType = "text/x-my")
     public static final class MyLangNoConstr extends TruffleLanguage {
         public MyLangNoConstr() {
             super(null);
@@ -101,7 +101,7 @@ public class LanguageRegistrationTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "myLangGood", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(name = "myLangGood", version = "0", mimeType = "text/x-my")
     public static final class MyLangGood extends TruffleLanguage {
         public MyLangGood(TruffleLanguage.Env env) {
             super(env);
