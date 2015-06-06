@@ -2203,7 +2203,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     ValueNode exception = frameState.stack[0];
                     FixedNode trueSuccessor = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
                     FixedNode nextDispatch = createTarget(nextBlock, frameState);
-                    append(new IfNode(graph.unique(new InstanceOfNode((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
+                    append(new IfNode(graph.unique(InstanceOfNode.create((ResolvedJavaType) catchType, exception, null)), trueSuccessor, nextDispatch, 0));
                     return;
                 }
             }

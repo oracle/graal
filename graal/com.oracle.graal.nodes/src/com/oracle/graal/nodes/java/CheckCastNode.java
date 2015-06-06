@@ -126,7 +126,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             condition = LogicConstantNode.contradiction(graph());
             newStamp = StampFactory.declaredTrusted(type);
         } else if (StampTool.isPointerNonNull(object)) {
-            condition = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
+            condition = graph().addWithoutUnique(InstanceOfNode.create(type, object, profile));
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
                 FixedGuardNode nullCheck = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, InvalidateReprofile, true));

@@ -69,7 +69,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
                 if (t.isPrimitive()) {
                     return LogicConstantNode.contradiction();
                 } else {
-                    return new InstanceOfNode(t, forObject, null);
+                    return InstanceOfNode.create(t, forObject, null);
                 }
             }
         }
