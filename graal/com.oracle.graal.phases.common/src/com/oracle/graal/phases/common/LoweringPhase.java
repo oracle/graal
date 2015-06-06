@@ -256,6 +256,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public void run(StructuredGraph graph) {
             schedule.apply(graph, false);
+            schedule.getCFG().computePostdominators();
             Block startBlock = schedule.getCFG().getStartBlock();
             ProcessFrame rootFrame = new ProcessFrame(startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null);
             LoweringPhase.processBlock(rootFrame);
@@ -400,7 +401,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     *
+     * 
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {
