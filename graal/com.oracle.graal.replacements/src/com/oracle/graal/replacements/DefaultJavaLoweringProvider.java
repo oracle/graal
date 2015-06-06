@@ -86,6 +86,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             lowerArrayLengthNode((ArrayLengthNode) n, tool);
         } else if (n instanceof LoadHubNode) {
             lowerLoadHubNode((LoadHubNode) n);
+        } else if (n instanceof MonitorEnterNode) {
+            lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
         } else if (n instanceof CompareAndSwapNode) {
             lowerCompareAndSwapNode((CompareAndSwapNode) n);
         } else if (n instanceof AtomicReadAndWriteNode) {
@@ -242,6 +244,19 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard());
         graph.replaceFloating(loadHub, hub);
+    }
+
+    protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
+        ValueNode object = monitorEnter.object();
+        GuardingNode nullCheck = createNullCheck(object, monitorEnter, tool);
+        if (nullCheck != null) {
+            object = graph.unique(new PiNode(object, ((ObjectStamp) object.stamp()).improveWith(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        }
+        ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess()));
+        RawMonitorEnterNode rawMonitorEnter = graph.add(new RawMonitorEnterNode(object, hub, monitorEnter.getMonitorId()));
+        rawMonitorEnter.setStateBefore(monitorEnter.stateBefore());
+        rawMonitorEnter.setStateAfter(monitorEnter.stateAfter());
+        graph.replaceFixedWithFixed(monitorEnter, rawMonitorEnter);
     }
 
     protected void lowerCompareAndSwapNode(CompareAndSwapNode cas) {

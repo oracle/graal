@@ -49,6 +49,15 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
         return stampProvider.createHubStamp(((ObjectStamp) value.stamp()));
     }
 
+    public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess) {
+        Stamp stamp = hubStamp(stampProvider, value);
+        ValueNode synonym = findSynonym(value, stamp, null, metaAccess);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new LoadHubNode(stamp, value, null);
+    }
+
     public LoadHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode value) {
         this(stampProvider, value, null);
     }
@@ -74,25 +83,33 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
-        if (metaAccess != null && getValue().stamp() instanceof ObjectStamp) {
-            ObjectStamp objectStamp = (ObjectStamp) getValue().stamp();
+        ValueNode curValue = getValue();
+        ValueNode newNode = findSynonym(curValue, stamp(), graph(), metaAccess);
+        if (newNode != null) {
+            return newNode;
+        }
+        return this;
+    }
 
+    private static ValueNode findSynonym(ValueNode curValue, Stamp stamp, StructuredGraph graph, MetaAccessProvider metaAccess) {
+        if (metaAccess != null && curValue.stamp() instanceof ObjectStamp) {
+            ObjectStamp objectStamp = (ObjectStamp) curValue.stamp();
             ResolvedJavaType exactType = null;
             if (objectStamp.isExactType()) {
                 exactType = objectStamp.type();
-            } else if (objectStamp.type() != null && graph() != null && graph().getAssumptions() != null) {
+            } else if (objectStamp.type() != null && graph != null && graph.getAssumptions() != null) {
                 AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
                 if (leafConcreteSubtype != null) {
                     exactType = leafConcreteSubtype.getResult();
-                    graph().getAssumptions().record(leafConcreteSubtype);
+                    graph.getAssumptions().record(leafConcreteSubtype);
                 }
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(stamp(), exactType.getObjectHub(), metaAccess);
+                return ConstantNode.forConstant(stamp, exactType.getObjectHub(), metaAccess);
             }
         }
-        return this;
+        return null;
     }
 
     @Override

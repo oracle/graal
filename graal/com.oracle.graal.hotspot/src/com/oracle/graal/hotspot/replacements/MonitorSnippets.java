@@ -46,6 +46,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 import java.util.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.*;
@@ -107,14 +108,9 @@ public class MonitorSnippets implements Snippets {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(Object object, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister,
+    public static void monitorenter(Object object, KlassPointer hub, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister,
                     @ConstantParameter boolean trace) {
         verifyOop(object);
-
-        if (object == null) {
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
-        }
-        GuardingNode anchorNode = SnippetAnchorNode.anchor();
 
         // Load the mark word - this includes a null-check on object
         final Word mark = loadWordFromObject(object, markOffset());
@@ -141,7 +137,6 @@ public class MonitorSnippets implements Snippets {
             } else {
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
-                KlassPointer hub = loadHubIntrinsic(object, anchorNode);
                 final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                 final Word thread = registerAsWord(threadRegister);
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
@@ -445,9 +440,11 @@ public class MonitorSnippets implements Snippets {
             this.useFastLocking = useFastLocking;
         }
 
-        public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
+        public void lower(RawMonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorenterNode.graph();
             checkBalancedMonitors(graph, tool);
+
+            assert ((ObjectStamp) monitorenterNode.object().stamp()).nonNull();
 
             Arguments args;
             if (useFastLocking) {
@@ -456,6 +453,7 @@ public class MonitorSnippets implements Snippets {
                 args = new Arguments(monitorenterStub, graph.getGuardsStage(), tool.getLoweringStage());
             }
             args.add("object", monitorenterNode.object());
+            args.add("hub", monitorenterNode.getHub());
             args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("stackPointerRegister", registers.getStackPointerRegister());

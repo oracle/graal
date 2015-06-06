@@ -1156,7 +1156,7 @@ public class SnippetTemplate {
                         MemoryNode replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
                             assert LocationIdentity.any().equals(location) || Arrays.stream(info.privateLocations).anyMatch(Predicate.isEqual(location)) : "Snippet " + info.method.format("%h.%n") +
-                                            " contains access to the non-private location " + location + ", but replacee doesn't access this location.";
+                                            " contains access to the non-private location " + location + ", but replacee doesn't access this location." + map.getLocations();
                         } else {
                             pos.set(usage, replacement.asNode());
                         }

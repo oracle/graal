@@ -33,9 +33,9 @@ public class LockEliminationPhase extends Phase {
     protected void run(StructuredGraph graph) {
         for (MonitorExitNode node : graph.getNodes(MonitorExitNode.TYPE)) {
             FixedNode next = node.next();
-            if (next instanceof MonitorEnterNode) {
-                MonitorEnterNode monitorEnterNode = (MonitorEnterNode) next;
-                if (monitorEnterNode.object() == node.object()) {
+            if (next instanceof MonitorEnterNode || next instanceof RawMonitorEnterNode) {
+                AccessMonitorNode monitorEnterNode = (AccessMonitorNode) next;
+                if (GraphUtil.unproxify(monitorEnterNode.object()) == GraphUtil.unproxify(node.object())) {
                     GraphUtil.removeFixedWithUnusedInputs(monitorEnterNode);
                     GraphUtil.removeFixedWithUnusedInputs(node);
                 }
