@@ -73,6 +73,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     @Override
     public void lower(Node n, LoweringTool tool) {
+        assert n instanceof Lowerable;
         StructuredGraph graph = (StructuredGraph) n.graph();
         if (n instanceof LoadFieldNode) {
             lowerLoadFieldNode((LoadFieldNode) n, tool);
@@ -107,9 +108,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else if (n instanceof UnboxNode) {
             boxingSnippets.lower((UnboxNode) n, tool);
         } else if (n instanceof TypeCheckNode) {
-            if (graph.getGuardsStage().areDeoptsFixed()) {
-                lowerTypeCheckNode((TypeCheckNode) n, tool, graph);
-            }
+            lowerTypeCheckNode((TypeCheckNode) n, tool, graph);
         } else if (n instanceof VerifyHeapNode) {
             lowerVerifyHeap((VerifyHeapNode) n);
         } else {
