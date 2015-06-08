@@ -24,20 +24,19 @@
  */
 
 /**
- * Inter-operability between different languages is covered by this package.
- * In case you are implementing own {@link com.oracle.truffle.api.TruffleLanguage} and you want
- * to interact with other {@link com.oracle.truffle.api.TruffleLanguage language implementations}
- * you need to use types from this package.
+ * This package provides inter-operability between different
+ * {@link com.oracle.truffle.api.TruffleLanguage Truffle languages}.
  * <p>
- * Different languages can exchange either wrappers of primitive Java
- * types (like {@link Integer}, {@link Double}, {@link String}), or they
- * can export their own types (if they implement {@link TruffleObject} interface).
- * Btw. One can recognize foreign object if it implements {@link TruffleObject}.
+ * Languages can exchange primitive Java type wrapper objects (e.g., {@link java.lang.Integer},
+ * {@link java.lang.Double}, {@link java.lang.String}, etc) as well as any type
+ * implementing {@link com.oracle.truffle.api.interop.TruffleObject}. Foreign objects are
+ * precisely those implementing {@link com.oracle.truffle.api.interop.TruffleObject}.
  * <p>
- * To use {@link TruffleObject} from a different language one needs to ask
- * the language to build appropriate AST for a given {@link Message}. To do
- * so use {@link ForeignAccess#node(com.oracle.truffle.api.interop.Message)}
- * and when calling it {@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...)}.
+ * To use a {@link com.oracle.truffle.api.interop.TruffleObject} from a different language,
+ * you need to ask the language to build appropriate AST for a given
+ * {@link com.oracle.truffle.api.interop.Message} with
+ * {@link com.oracle.truffle.api.interop.Message#createNode}. The message can then
+ * be executed with {@link com.oracle.truffle.api.interop.ForeignAccess#execute}.
  */
 package com.oracle.truffle.api.interop;
 
