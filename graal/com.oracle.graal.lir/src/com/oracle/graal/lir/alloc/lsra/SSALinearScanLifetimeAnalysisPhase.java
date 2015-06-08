@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
 import java.util.*;
 
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.ssa.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 
@@ -71,5 +71,16 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
                 Debug.log("operation at opId %d: added hint from interval %d to %d", op.id(), source.operandNumber, target.operandNumber);
             }
         }
+    }
+
+    @Override
+    protected RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
+        if (op instanceof LabelOp) {
+            LabelOp label = (LabelOp) op;
+            if (label.isPhiIn()) {
+                return RegisterPriority.None;
+            }
+        }
+        return super.registerPriorityOfOutputOperand(op);
     }
 }
