@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.amd64;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.memory.address.*;
@@ -56,13 +57,13 @@ public class AMD64AddressLowering extends AddressLowering {
     }
 
     protected boolean improve(AMD64AddressNode ret) {
-        ValueNode newBase = improveConstDisp(ret, ret.getBase(), 0);
+        ValueNode newBase = improveInput(ret, ret.getBase(), 0);
         if (newBase != ret.getBase()) {
             ret.setBase(newBase);
             return true;
         }
 
-        ValueNode newIdx = improveConstDisp(ret, ret.getIndex(), ret.getScale().log2);
+        ValueNode newIdx = improveInput(ret, ret.getIndex(), ret.getScale().log2);
         if (newIdx != ret.getIndex()) {
             ret.setIndex(newIdx);
             return true;
@@ -107,19 +108,31 @@ public class AMD64AddressLowering extends AddressLowering {
         return false;
     }
 
-    private ValueNode improveConstDisp(AMD64AddressNode address, ValueNode node, int shift) {
+    private ValueNode improveInput(AMD64AddressNode address, ValueNode node, int shift) {
         if (node == null) {
             return null;
         }
 
         if (node.isConstant()) {
             return improveConstDisp(address, node, node.asJavaConstant(), null, shift);
-        } else if (node instanceof AddNode) {
-            AddNode add = (AddNode) node;
-            if (add.getX().isConstant()) {
-                return improveConstDisp(address, node, add.getX().asJavaConstant(), add.getY(), shift);
-            } else if (add.getY().isConstant()) {
-                return improveConstDisp(address, node, add.getY().asJavaConstant(), add.getX(), shift);
+        } else {
+            if (node.stamp() instanceof IntegerStamp && ((IntegerStamp) node.stamp()).getBits() == 64) {
+                if (node instanceof ZeroExtendNode) {
+                    if (((ZeroExtendNode) node).getInputBits() == 32) {
+                        /*
+                         * We can just swallow a zero-extend from 32 bit to 64 bit because the upper
+                         * half of the register will always be zero.
+                         */
+                        return ((ZeroExtendNode) node).getValue();
+                    }
+                } else if (node instanceof AddNode) {
+                    AddNode add = (AddNode) node;
+                    if (add.getX().isConstant()) {
+                        return improveConstDisp(address, node, add.getX().asJavaConstant(), add.getY(), shift);
+                    } else if (add.getY().isConstant()) {
+                        return improveConstDisp(address, node, add.getY().asJavaConstant(), add.getX(), shift);
+                    }
+                }
             }
         }
 

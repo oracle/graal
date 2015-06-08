@@ -204,11 +204,19 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind elementKind = loadIndexed.elementKind();
         Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
-        AddressNode address = createArrayAddress(graph, loadIndexed.array(), elementKind, loadIndexed.index());
+        PiNode pi = getBoundsCheckedIndex(loadIndexed, tool);
+        ValueNode checkedIndex = pi;
+        if (checkedIndex == null) {
+            checkedIndex = loadIndexed.index();
+        }
+
+        AddressNode address = createArrayAddress(graph, loadIndexed.array(), elementKind, checkedIndex);
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
 
-        memoryRead.setGuard(createBoundsCheck(loadIndexed, tool));
+        if (pi != null) {
+            memoryRead.setGuard(pi.getGuard());
+        }
 
         loadIndexed.replaceAtUsages(readValue);
         graph.replaceFixed(loadIndexed, memoryRead);
@@ -216,7 +224,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
         StructuredGraph graph = storeIndexed.graph();
-        GuardingNode boundsCheck = createBoundsCheck(storeIndexed, tool);
+
+        PiNode pi = getBoundsCheckedIndex(storeIndexed, tool);
+        ValueNode checkedIndex;
+        GuardingNode boundsCheck;
+        if (pi == null) {
+            checkedIndex = storeIndexed.index();
+            boundsCheck = null;
+        } else {
+            checkedIndex = pi;
+            boundsCheck = pi.getGuard();
+        }
+
         Kind elementKind = storeIndexed.elementKind();
 
         ValueNode value = storeIndexed.value();
@@ -241,7 +260,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        AddressNode address = createArrayAddress(graph, array, elementKind, storeIndexed.index());
+        AddressNode address = createArrayAddress(graph, array, elementKind, checkedIndex);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(elementKind), implicitStoreConvert(graph, elementKind, value),
                         arrayStoreBarrierType(storeIndexed.elementKind())));
         memoryWrite.setGuard(boundsCheck);
@@ -639,7 +658,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
-    protected GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
+    protected PiNode getBoundsCheckedIndex(AccessIndexedNode n, LoweringTool tool) {
         StructuredGraph graph = n.graph();
         ValueNode array = n.array();
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
@@ -663,7 +682,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        return tool.createGuard(n, graph.unique(new IntegerBelowNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
+        GuardingNode guard = tool.createGuard(n, graph.unique(new IntegerBelowNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
+        IntegerStamp lengthStamp = (IntegerStamp) arrayLength.stamp();
+        IntegerStamp indexStamp = StampFactory.forInteger(32, 0, lengthStamp.upperBound());
+        return graph.unique(new PiNode(n.index(), indexStamp, guard.asNode()));
     }
 
     protected GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
