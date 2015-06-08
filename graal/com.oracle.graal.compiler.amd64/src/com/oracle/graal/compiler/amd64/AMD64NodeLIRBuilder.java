@@ -140,10 +140,6 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         }
     }
 
-    protected AMD64AddressValue makeAddress(Access access) {
-        return (AMD64AddressValue) access.accessLocation().generateAddress(this, gen, operand(access.object()));
-    }
-
     protected ValueNode uncast(ValueNode value) {
         if (value instanceof UnsafeCastNode) {
             UnsafeCastNode cast = (UnsafeCastNode) value;
@@ -197,7 +193,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     other = operand(value);
                 }
 
-                getLIRGeneratorTool().emitCompareBranchMemory(kind, other, makeAddress(access), getState(access), finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability);
+                AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
+                getLIRGeneratorTool().emitCompareBranchMemory(kind, other, address, getState(access), finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability);
                 return null;
             }
         };
@@ -219,13 +216,15 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 return null;
             }
             return builder -> {
-                gen.append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.TEST, size, makeAddress(access), (int) constant.asLong(), getState(access)));
+                AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
+                gen.append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.TEST, size, address, (int) constant.asLong(), getState(access)));
                 gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
         } else {
             return builder -> {
-                gen.append(new AMD64BinaryConsumer.MemoryRMOp(AMD64RMOp.TEST, size, gen.asAllocatable(operand(value)), makeAddress(access), getState(access)));
+                AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
+                gen.append(new AMD64BinaryConsumer.MemoryRMOp(AMD64RMOp.TEST, size, gen.asAllocatable(operand(value)), address, getState(access)));
                 gen.append(new BranchOp(Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
@@ -234,7 +233,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, Access access) {
         return builder -> {
-            AMD64AddressValue address = makeAddress(access);
+            AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
             LIRFrameState state = getState(access);
             return getLIRGeneratorTool().emitConvertMemoryOp(kind, op, size, address, state);
         };
@@ -288,7 +287,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     private Value emitReinterpretMemory(LIRKind to, Access access) {
-        AMD64AddressValue address = makeAddress(access);
+        AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
         LIRFrameState state = getState(access);
         return getLIRGeneratorTool().emitLoad(to, address, state);
     }
@@ -338,7 +337,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     }
 
     private ComplexMatchResult binaryRead(AMD64RMOp op, OperandSize size, ValueNode value, Access access) {
-        return builder -> getLIRGeneratorTool().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), makeAddress(access), getState(access));
+        return builder -> getLIRGeneratorTool().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()), getState(access));
     }
 
     @MatchRule("(Add value Read=access)")
@@ -407,13 +406,11 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         }
     }
 
-    @MatchRule("(Write object location Narrow=narrow)")
+    @MatchRule("(Write object Narrow=narrow)")
     public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
         return builder -> {
             LIRKind writeKind = getLIRGeneratorTool().getLIRKind(root.value().stamp());
-            Value address = root.location().generateAddress(builder, getLIRGeneratorTool(), operand(root.object()));
-            Value v = operand(narrow.getValue());
-            getLIRGeneratorTool().emitStore(writeKind, address, v, state(root));
+            getLIRGeneratorTool().emitStore(writeKind, operand(root.getAddress()), operand(narrow.getValue()), state(root));
             return null;
         };
     }
@@ -436,7 +433,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
              */
             return null;
         }
-        return builder -> getLIRGeneratorTool().emitZeroExtendMemory(memoryKind == Kind.Short ? Kind.Char : memoryKind, root.getResultBits(), makeAddress(access), getState(access));
+        return builder -> getLIRGeneratorTool().emitZeroExtendMemory(memoryKind == Kind.Short ? Kind.Char : memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()),
+                        getState(access));
     }
 
     @MatchRule("(FloatConvert Read=access)")

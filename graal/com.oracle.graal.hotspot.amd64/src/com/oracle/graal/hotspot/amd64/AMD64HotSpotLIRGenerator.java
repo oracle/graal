@@ -30,7 +30,9 @@ import static com.oracle.jvmci.amd64.AMD64.*;
 
 import java.util.*;
 
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
+import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MIOp;
+import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -584,7 +586,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed;
             if (encoding.shift <= 3) {
-                uncompressed = emitAddress(getProviders().getRegisters().getHeapBaseRegister().asValue(), 0, load(address), 1 << encoding.shift);
+                LIRKind wordKind = LIRKind.derivedReference(target().wordKind);
+                uncompressed = new AMD64AddressValue(wordKind, getProviders().getRegisters().getHeapBaseRegister().asValue(wordKind), asAllocatable(address), Scale.fromInt(1 << encoding.shift), 0);
             } else {
                 uncompressed = emitUncompress(address, encoding, false);
             }
@@ -654,4 +657,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
         return null;
     }
+
+    @Override
+    public void emitPrefetchAllocate(Value address) {
+        append(new AMD64PrefetchOp(asAddressValue(address), config.allocatePrefetchInstr));
+    }
+
 }

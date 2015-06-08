@@ -34,6 +34,8 @@ import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.options.*;
@@ -48,6 +50,8 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     protected final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
     private final DerivedOptionValue<LIRSuites> defaultLIRSuites;
     protected final HotSpotGraalRuntimeProvider runtime;
+
+    private final AddressLowering addressLowering;
 
     private class SuitesSupplier implements OptionSupplier<Suites> {
 
@@ -69,8 +73,9 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
     }
 
-    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime, Plugins plugins) {
+    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime, Plugins plugins, AddressLowering addressLowering) {
         this.runtime = runtime;
+        this.addressLowering = addressLowering;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);
         this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
         this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
@@ -99,6 +104,8 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         if (VerifyPhases.getValue()) {
             ret.getMidTier().appendPhase(new WriteBarrierVerificationPhase());
         }
+
+        ret.getLowTier().findPhase(ExpandLogicPhase.class).add(new AddressLoweringPhase(addressLowering));
 
         return ret;
     }
