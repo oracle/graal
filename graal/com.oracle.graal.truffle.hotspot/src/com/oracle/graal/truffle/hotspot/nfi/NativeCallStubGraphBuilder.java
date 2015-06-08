@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
@@ -39,9 +32,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.word.nodes.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Utility creating a graph for a stub used to call a native function.
@@ -122,15 +118,13 @@ public class NativeCallStubGraphBuilder {
             if (kind == Kind.Object) {
                 // array value
                 Kind arrayElementKind = getElementKind(type);
-                LocationIdentity locationIdentity = NamedLocationIdentity.getArrayLocation(arrayElementKind);
                 HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime().getJVMCIRuntime();
                 int displacement = jvmciRuntime.getArrayBaseOffset(arrayElementKind);
-                ConstantNode index = ConstantNode.forInt(0, g);
-                int indexScaling = jvmciRuntime.getArrayIndexScale(arrayElementKind);
-                IndexedLocationNode locationNode = g.unique(new IndexedLocationNode(locationIdentity, displacement, index, indexScaling));
-                Stamp wordStamp = StampFactory.forKind(providers.getWordTypes().getWordKind());
-                ComputeAddressNode arrayAddress = g.unique(new ComputeAddressNode(boxedElement, locationNode, wordStamp));
-                args.add(arrayAddress);
+                AddressNode arrayAddress = g.unique(new OffsetAddressNode(boxedElement, ConstantNode.forLong(displacement, g)));
+                WordCastNode cast = g.add(WordCastNode.addressToWord(arrayAddress, providers.getWordTypes().getWordKind()));
+                last.setNext(cast);
+                last = cast;
+                args.add(cast);
             } else {
                 // boxed primitive value
                 try {

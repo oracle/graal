@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 import com.oracle.jvmci.code.*;
@@ -97,19 +98,18 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     private static void assertRead(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
         JavaReadNode read = (JavaReadNode) graph.start().next();
         Assert.assertEquals(kind.getStackKind(), read.stamp().getStackKind());
-        Assert.assertEquals(graph.getParameter(0), read.object());
 
-        IndexedLocationNode location = (IndexedLocationNode) read.location();
-        Assert.assertEquals(locationIdentity, location.getLocationIdentity());
-        Assert.assertEquals(1, location.getIndexScaling());
+        OffsetAddressNode address = (OffsetAddressNode) read.getAddress();
+        Assert.assertEquals(graph.getParameter(0), address.getBase());
+        Assert.assertEquals(locationIdentity, read.getLocationIdentity());
 
         if (indexConvert) {
-            SignExtendNode convert = (SignExtendNode) location.getIndex();
+            SignExtendNode convert = (SignExtendNode) address.getOffset();
             Assert.assertEquals(convert.getInputBits(), 32);
             Assert.assertEquals(convert.getResultBits(), 64);
             Assert.assertEquals(graph.getParameter(1), convert.getValue());
         } else {
-            Assert.assertEquals(graph.getParameter(1), location.getIndex());
+            Assert.assertEquals(graph.getParameter(1), address.getOffset());
         }
 
         ReturnNode ret = (ReturnNode) read.next();
@@ -119,20 +119,20 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     private static void assertWrite(StructuredGraph graph, boolean indexConvert, LocationIdentity locationIdentity) {
         JavaWriteNode write = (JavaWriteNode) graph.start().next();
         Assert.assertEquals(graph.getParameter(2), write.value());
-        Assert.assertEquals(graph.getParameter(0), write.object());
+
+        OffsetAddressNode address = (OffsetAddressNode) write.getAddress();
+        Assert.assertEquals(graph.getParameter(0), address.getBase());
         Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci);
 
-        IndexedLocationNode location = (IndexedLocationNode) write.location();
-        Assert.assertEquals(locationIdentity, location.getLocationIdentity());
-        Assert.assertEquals(1, location.getIndexScaling());
+        Assert.assertEquals(locationIdentity, write.getLocationIdentity());
 
         if (indexConvert) {
-            SignExtendNode convert = (SignExtendNode) location.getIndex();
+            SignExtendNode convert = (SignExtendNode) address.getOffset();
             Assert.assertEquals(convert.getInputBits(), 32);
             Assert.assertEquals(convert.getResultBits(), 64);
             Assert.assertEquals(graph.getParameter(1), convert.getValue());
         } else {
-            Assert.assertEquals(graph.getParameter(1), location.getIndex());
+            Assert.assertEquals(graph.getParameter(1), address.getOffset());
         }
 
         ReturnNode ret = (ReturnNode) write.next();

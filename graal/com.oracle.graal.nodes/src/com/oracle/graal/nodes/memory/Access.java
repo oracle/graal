@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.jvmci.meta.*;
 
 public interface Access extends GuardedNode, HeapAccess {
 
-    ValueNode object();
+    AddressNode getAddress();
 
-    LocationNode accessLocation();
+    LocationIdentity getLocationIdentity();
 
     boolean canNullCheck();
 

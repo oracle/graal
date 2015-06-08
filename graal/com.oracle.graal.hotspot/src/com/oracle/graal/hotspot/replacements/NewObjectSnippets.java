@@ -54,6 +54,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.*;
@@ -135,7 +136,7 @@ public class NewObjectSnippets implements Snippets {
             int distance = config().allocatePrefetchDistance;
             ExplodeLoopNode.explodeLoop();
             for (int i = 0; i < lines; i++) {
-                PrefetchAllocateNode.prefetch(address, Word.signed(distance));
+                PrefetchAllocateNode.prefetch(OffsetAddressNode.address(address, distance));
                 distance += stepSize;
             }
         }

@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.word;
 
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Lowest-level memory access of native C memory. These methods access the raw memory without any
@@ -55,7 +54,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     byte readByte(WordBase offset, LocationIdentity locationIdentity);
@@ -69,7 +68,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     char readChar(WordBase offset, LocationIdentity locationIdentity);
@@ -83,7 +82,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     short readShort(WordBase offset, LocationIdentity locationIdentity);
@@ -97,7 +96,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     int readInt(WordBase offset, LocationIdentity locationIdentity);
@@ -111,7 +110,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     long readLong(WordBase offset, LocationIdentity locationIdentity);
@@ -125,7 +124,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     float readFloat(WordBase offset, LocationIdentity locationIdentity);
@@ -139,7 +138,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     double readDouble(WordBase offset, LocationIdentity locationIdentity);
@@ -153,7 +152,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     Word readWord(WordBase offset, LocationIdentity locationIdentity);
@@ -167,7 +166,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     Object readObject(WordBase offset, LocationIdentity locationIdentity);
@@ -177,7 +176,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     byte readByte(int offset, LocationIdentity locationIdentity);
@@ -187,7 +186,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     char readChar(int offset, LocationIdentity locationIdentity);
@@ -197,7 +196,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     short readShort(int offset, LocationIdentity locationIdentity);
@@ -207,7 +206,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     int readInt(int offset, LocationIdentity locationIdentity);
@@ -217,7 +216,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     long readLong(int offset, LocationIdentity locationIdentity);
@@ -227,7 +226,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     float readFloat(int offset, LocationIdentity locationIdentity);
@@ -237,7 +236,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     double readDouble(int offset, LocationIdentity locationIdentity);
@@ -247,7 +246,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     Word readWord(int offset, LocationIdentity locationIdentity);
@@ -257,7 +256,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the read (see {@link LocationNode})
+     * @param locationIdentity the identity of the read
      * @return the result of the memory access
      */
     Object readObject(int offset, LocationIdentity locationIdentity);
@@ -271,7 +270,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeByte(WordBase offset, byte val, LocationIdentity locationIdentity);
@@ -285,7 +284,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeChar(WordBase offset, char val, LocationIdentity locationIdentity);
@@ -299,7 +298,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeShort(WordBase offset, short val, LocationIdentity locationIdentity);
@@ -313,7 +312,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeInt(WordBase offset, int val, LocationIdentity locationIdentity);
@@ -327,7 +326,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeLong(WordBase offset, long val, LocationIdentity locationIdentity);
@@ -341,7 +340,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeFloat(WordBase offset, float val, LocationIdentity locationIdentity);
@@ -355,7 +354,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeDouble(WordBase offset, double val, LocationIdentity locationIdentity);
@@ -369,7 +368,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeWord(WordBase offset, WordBase val, LocationIdentity locationIdentity);
@@ -383,7 +382,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity);
@@ -397,7 +396,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * knows that the highest-order bit of the unsigned value is never used).
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeObject(WordBase offset, Object val, LocationIdentity locationIdentity);
@@ -407,7 +406,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeByte(int offset, byte val, LocationIdentity locationIdentity);
@@ -417,7 +416,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeChar(int offset, char val, LocationIdentity locationIdentity);
@@ -427,7 +426,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeShort(int offset, short val, LocationIdentity locationIdentity);
@@ -437,7 +436,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeInt(int offset, int val, LocationIdentity locationIdentity);
@@ -447,7 +446,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeLong(int offset, long val, LocationIdentity locationIdentity);
@@ -457,7 +456,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeFloat(int offset, float val, LocationIdentity locationIdentity);
@@ -467,7 +466,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeDouble(int offset, double val, LocationIdentity locationIdentity);
@@ -477,7 +476,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeWord(int offset, WordBase val, LocationIdentity locationIdentity);
@@ -487,7 +486,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * are in bytes. The memory must be uninitialized or zero prior to this operation.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void initializeLong(int offset, long val, LocationIdentity locationIdentity);
@@ -497,7 +496,7 @@ public interface Pointer extends Unsigned, PointerBase {
      * bytes.
      *
      * @param offset the signed offset for the memory access
-     * @param locationIdentity the identity of the write (see {@link LocationNode})
+     * @param locationIdentity the identity of the write
      * @param val the value to be written to memory
      */
     void writeObject(int offset, Object val, LocationIdentity locationIdentity);

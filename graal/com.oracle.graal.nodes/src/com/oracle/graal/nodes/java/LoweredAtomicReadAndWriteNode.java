@@ -27,8 +27,8 @@ import sun.misc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -43,8 +43,8 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
     @Input ValueNode newValue;
     @OptionalInput(InputType.State) FrameState stateAfter;
 
-    public LoweredAtomicReadAndWriteNode(ValueNode object, LocationNode location, ValueNode newValue, BarrierType barrierType) {
-        super(TYPE, object, location, newValue.stamp().unrestricted(), barrierType);
+    public LoweredAtomicReadAndWriteNode(AddressNode address, LocationIdentity location, ValueNode newValue, BarrierType barrierType) {
+        super(TYPE, address, location, newValue.stamp().unrestricted(), barrierType);
         this.newValue = newValue;
     }
 
@@ -62,13 +62,8 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
         return true;
     }
 
-    public LocationIdentity getLocationIdentity() {
-        return location().getLocationIdentity();
-    }
-
     public void generate(NodeLIRBuilderTool gen) {
-        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
-        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(address, gen.operand(getNewValue()));
+        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(gen.operand(getAddress()), gen.operand(getNewValue()));
         gen.setResult(this, result);
     }
 

@@ -68,16 +68,16 @@ import com.oracle.jvmci.debug.Debug.Scope;
  */
 @MatchableNode(nodeClass = ConstantNode.class, shareable = true)
 @MatchableNode(nodeClass = FloatConvertNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = FloatingReadNode.class, inputs = {"object", "location"})
+@MatchableNode(nodeClass = FloatingReadNode.class, inputs = {"address"})
 @MatchableNode(nodeClass = IfNode.class, inputs = {"condition"})
 @MatchableNode(nodeClass = SubNode.class, inputs = {"x", "y"})
 @MatchableNode(nodeClass = LeftShiftNode.class, inputs = {"x", "y"})
 @MatchableNode(nodeClass = NarrowNode.class, inputs = {"value"})
-@MatchableNode(nodeClass = ReadNode.class, inputs = {"object", "location"})
+@MatchableNode(nodeClass = ReadNode.class, inputs = {"address"})
 @MatchableNode(nodeClass = ReinterpretNode.class, inputs = {"value"})
 @MatchableNode(nodeClass = SignExtendNode.class, inputs = {"value"})
 @MatchableNode(nodeClass = UnsignedRightShiftNode.class, inputs = {"x", "y"})
-@MatchableNode(nodeClass = WriteNode.class, inputs = {"object", "location", "value"})
+@MatchableNode(nodeClass = WriteNode.class, inputs = {"address", "value"})
 @MatchableNode(nodeClass = ZeroExtendNode.class, inputs = {"value"})
 @MatchableNode(nodeClass = AndNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = FloatEqualsNode.class, inputs = {"x", "y"}, commutative = true)
@@ -92,7 +92,6 @@ import com.oracle.jvmci.debug.Debug.Scope;
 @MatchableNode(nodeClass = OrNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = XorNode.class, inputs = {"x", "y"}, commutative = true)
 @MatchableNode(nodeClass = PiNode.class, inputs = {"object"})
-@MatchableNode(nodeClass = ConstantLocationNode.class, shareable = true)
 public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGenerationDebugContext {
 
     private final NodeMap<Value> nodeOperands;

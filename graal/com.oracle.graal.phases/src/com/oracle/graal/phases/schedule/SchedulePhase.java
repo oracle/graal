@@ -768,9 +768,9 @@ public final class SchedulePhase extends Phase {
             }
         } else if (n instanceof FloatingReadNode) {
             FloatingReadNode frn = (FloatingReadNode) n;
-            buf.format(" // from %s", frn.location().getLocationIdentity());
+            buf.format(" // from %s", frn.getLocationIdentity());
             buf.format(", lastAccess: %s", frn.getLastLocationAccess());
-            buf.format(", object: %s", frn.object());
+            buf.format(", address: %s", frn.getAddress());
         } else if (n instanceof GuardNode) {
             buf.format(", anchor: %s", ((GuardNode) n).getAnchor());
         }

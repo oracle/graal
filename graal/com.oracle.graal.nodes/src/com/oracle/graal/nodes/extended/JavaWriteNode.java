@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -40,8 +41,8 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
     protected final Kind writeKind;
     protected final boolean compressible;
 
-    public JavaWriteNode(Kind writeKind, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
-        super(TYPE, object, value, location, barrierType, initialization);
+    public JavaWriteNode(Kind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible, boolean initialization) {
+        super(TYPE, address, location, value, barrierType, initialization);
         this.writeKind = writeKind;
         this.compressible = compressible;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 
 /**
  * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
@@ -39,8 +39,8 @@ public final class G1ReferentFieldReadBarrier extends WriteBarrier {
 
     protected final boolean doLoad;
 
-    public G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
-        super(TYPE, object, expectedObject, location, true);
+    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad) {
+        super(TYPE, address, expectedObject, true);
         this.doLoad = doLoad;
     }
 

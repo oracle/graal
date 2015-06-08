@@ -23,9 +23,6 @@
 //JaCoCo Exclude
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import com.oracle.jvmci.meta.Kind;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -36,9 +33,12 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value})
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
@@ -97,9 +97,12 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
     private ValueNode computeBase(ValueNode base, ValueNode pos) {
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
+
         HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
-        ValueNode loc = graph().unique(new IndexedLocationNode(getLocationIdentity(), jvmciRuntime.getArrayBaseOffset(Kind.Object), pos, jvmciRuntime.getArrayIndexScale(Kind.Object)));
-        return graph().unique(new ComputeAddressNode(basePtr, loc, StampFactory.forKind(Kind.Long)));
+        int shift = CodeUtil.log2(jvmciRuntime.getArrayIndexScale(Kind.Object));
+        ValueNode scaledIndex = graph().unique(new LeftShiftNode(pos, ConstantNode.forInt(shift, graph())));
+        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(jvmciRuntime.getArrayBaseOffset(Kind.Object), graph())));
+        return graph().unique(new OffsetAddressNode(basePtr, offset));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.inlining.*;
@@ -180,7 +181,7 @@ public class MonitorSnippets implements Snippets {
                         Word biasedMark = unbiasedMark.or(thread);
                         trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(object, markOffset(), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
+                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(OffsetAddressNode.address(object, markOffset()), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:acquired}", object, true);
                             lockBiasAcquired.inc();
@@ -200,7 +201,7 @@ public class MonitorSnippets implements Snippets {
                         // the bias from one thread to another directly in this situation.
                         Word biasedMark = prototypeMarkWord.or(thread);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(object, markOffset(), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
+                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(OffsetAddressNode.address(object, markOffset()), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:transfer}", object, true);
                             lockBiasTransfer.inc();
@@ -223,7 +224,7 @@ public class MonitorSnippets implements Snippets {
                     // that another thread raced us for the privilege of revoking the
                     // bias of this particular object, so it's okay to continue in the
                     // normal locking code.
-                    Word result = compareAndSwap(object, markOffset(), mark, prototypeMarkWord, MARK_WORD_LOCATION);
+                    Word result = compareAndSwap(OffsetAddressNode.address(object, markOffset()), mark, prototypeMarkWord, MARK_WORD_LOCATION);
 
                     // Fall through to the normal CAS-based lock, because no matter what
                     // the result of the above CAS, some thread must have succeeded in
@@ -246,7 +247,7 @@ public class MonitorSnippets implements Snippets {
 
         // Test if the object's mark word is unlocked, and if so, store the
         // (address of) the lock slot into the object's mark word.
-        Word currentMark = compareAndSwap(object, markOffset(), unlockedMark, lock, MARK_WORD_LOCATION);
+        Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset()), unlockedMark, lock, MARK_WORD_LOCATION);
         if (currentMark.notEqual(unlockedMark)) {
             trace(trace, "      currentMark: 0x%016lx\n", currentMark);
             // The mark word in the object header was not the same.
@@ -337,7 +338,8 @@ public class MonitorSnippets implements Snippets {
             // Test if object's mark word is pointing to the displaced mark word, and if so, restore
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
-            if (probability(VERY_SLOW_PATH_PROBABILITY, DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock))) {
+            if (probability(VERY_SLOW_PATH_PROBABILITY,
+                            DirectCompareAndSwapNode.compareAndSwap(OffsetAddressNode.address(object, markOffset()), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock))) {
                 // The object's mark word was not pointing to the displaced header,
                 // we do unlocking via runtime call.
                 traceObject(trace, "-lock{stub}", object, false);

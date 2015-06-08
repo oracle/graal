@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 
 @NodeInfo
 public final class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode.DeoptBefore {
@@ -36,8 +36,8 @@ public final class G1PreWriteBarrier extends WriteBarrier implements Deoptimizin
     protected final boolean nullCheck;
     protected final boolean doLoad;
 
-    public G1PreWriteBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad, boolean nullCheck) {
-        super(TYPE, object, expectedObject, location, true);
+    public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad, boolean nullCheck) {
+        super(TYPE, address, expectedObject, true);
         this.doLoad = doLoad;
         this.nullCheck = nullCheck;
     }

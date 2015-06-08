@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.jvmci.meta.*;
 
 @NodeInfo(allowedUsageTypes = {InputType.Memory})
@@ -66,18 +67,19 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         return initialization;
     }
 
-    protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
-        this(c, object, value, location, barrierType, false);
+    protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        this(c, address, location, value, barrierType, false);
     }
 
-    protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
-        super(c, object, location, StampFactory.forVoid(), barrierType);
+    protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean initialization) {
+        super(c, address, location, StampFactory.forVoid(), barrierType);
         this.value = value;
         this.initialization = initialization;
     }
 
-    protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        super(c, object, location, StampFactory.forVoid(), guard, barrierType, false, null);
+    protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, GuardingNode guard,
+                    boolean initialization) {
+        super(c, address, location, StampFactory.forVoid(), guard, barrierType, false, null);
         this.value = value;
         this.initialization = initialization;
     }
@@ -85,11 +87,6 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
     @Override
     public boolean isAllowedUsageType(InputType type) {
         return (type == InputType.Guard && getNullCheck()) ? true : super.isAllowedUsageType(type);
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return location().getLocationIdentity();
     }
 
     public MemoryNode getLastLocationAccess() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.replacements.*;
 
 public class AMD64GraphBuilderPlugins {
@@ -126,7 +127,8 @@ public class AMD64GraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
-                        b.addPush(kind, new AtomicReadAndAddNode(object, offset, delta, LocationIdentity.any()));
+                        AddressNode address = b.add(new OffsetAddressNode(object, offset));
+                        b.addPush(kind, new AtomicReadAndAddNode(address, delta, LocationIdentity.any()));
                         return true;
                     }
                 });

@@ -27,43 +27,39 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.jvmci.meta.*;
 
 @NodeInfo
 public abstract class FloatingAccessNode extends FloatingGuardedNode implements Access, MemoryAccess {
     public static final NodeClass<FloatingAccessNode> TYPE = NodeClass.create(FloatingAccessNode.class);
 
-    @Input ValueNode object;
-    @Input(InputType.Association) LocationNode location;
+    @Input(InputType.Association) AddressNode address;
+    protected final LocationIdentity location;
+
     protected BarrierType barrierType;
 
-    public ValueNode object() {
-        return object;
-    }
-
-    public LocationNode location() {
-        return location;
-    }
-
-    public LocationNode accessLocation() {
-        return location;
-    }
-
-    public LocationIdentity getLocationIdentity() {
-        return location.getLocationIdentity();
-    }
-
-    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, ValueNode object, LocationNode location, Stamp stamp) {
+    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp) {
         super(c, stamp);
-        this.object = object;
+        this.address = address;
         this.location = location;
     }
 
-    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, ValueNode object, LocationNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(c, stamp, guard);
-        this.object = object;
+        this.address = address;
         this.location = location;
         this.barrierType = barrierType;
+    }
+
+    @Override
+    public AddressNode getAddress() {
+        return address;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return location;
     }
 
     @Override
@@ -71,6 +67,7 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
         return barrierType;
     }
 
+    @Override
     public boolean canNullCheck() {
         return true;
     }

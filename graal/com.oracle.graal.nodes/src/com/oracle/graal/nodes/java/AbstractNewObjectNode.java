@@ -31,6 +31,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -62,24 +63,43 @@ public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNod
                 if (((FixedValueAnchorNode) usage).usages().isNotEmpty()) {
                     return;
                 }
-            } else if (usage instanceof WriteNode) {
-                if (((WriteNode) usage).object() != this || usage.usages().isNotEmpty()) {
-                    // we would need to fix up the memory graph if the write has usages
+            } else if (usage instanceof OffsetAddressNode) {
+                if (((OffsetAddressNode) usage).getBase() != this) {
                     return;
+                }
+                for (Node access : usage.usages()) {
+                    if (access instanceof WriteNode) {
+                        if (access.usages().isNotEmpty()) {
+                            // we would need to fix up the memory graph if the write has usages
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
                 }
             } else {
                 return;
             }
         }
         for (Node usage : usages().distinct().snapshot()) {
-            List<Node> snapshot = usage.inputs().snapshot();
-            graph().removeFixed((FixedWithNextNode) usage);
-            for (Node input : snapshot) {
-                tool.removeIfUnused(input);
+            if (usage instanceof OffsetAddressNode) {
+                for (Node access : usage.usages().snapshot()) {
+                    removeUsage(tool, (FixedWithNextNode) access);
+                }
+            } else {
+                removeUsage(tool, (FixedWithNextNode) usage);
             }
         }
         List<Node> snapshot = inputs().snapshot();
         graph().removeFixed(this);
+        for (Node input : snapshot) {
+            tool.removeIfUnused(input);
+        }
+    }
+
+    private void removeUsage(SimplifierTool tool, FixedWithNextNode usage) {
+        List<Node> snapshot = usage.inputs().snapshot();
+        graph().removeFixed(usage);
         for (Node input : snapshot) {
             tool.removeIfUnused(input);
         }

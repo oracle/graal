@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,40 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes.memory.address;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
-@NodeInfo
-public final class ComputeAddressNode extends FloatingNode implements LIRLowerable {
+/**
+ * Base class for nodes that deal with addressing calculation.
+ */
+@NodeInfo(allowedUsageTypes = InputType.Association)
+public abstract class AddressNode extends FloatingNode {
+    public static final NodeClass<AddressNode> TYPE = NodeClass.create(AddressNode.class);
 
-    public static final NodeClass<ComputeAddressNode> TYPE = NodeClass.create(ComputeAddressNode.class);
-    @Input ValueNode object;
-    @Input(InputType.Association) ValueNode location;
-
-    public ValueNode getObject() {
-        return object;
+    protected AddressNode(NodeClass<? extends AddressNode> c) {
+        super(c, StampFactory.pointer());
     }
 
-    public LocationNode getLocation() {
-        return (LocationNode) location;
-    }
-
-    public ComputeAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
-        super(TYPE, stamp);
-        this.object = object;
-        this.location = location;
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value addr = getLocation().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(getObject()));
-        gen.setResult(this, gen.getLIRGeneratorTool().asAllocatable(addr));
+    public abstract static class Address extends StructuralInput.Association {
     }
 }

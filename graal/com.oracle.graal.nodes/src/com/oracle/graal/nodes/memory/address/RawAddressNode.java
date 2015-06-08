@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.nodes.memory.address;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.memory.address.*;
 
-@NodeInfo
-public class G1PostWriteBarrier extends WriteBarrier {
+/**
+ * Convert a word-sized integer to a raw address.
+ */
+@NodeInfo(allowedUsageTypes = InputType.Association)
+public class RawAddressNode extends AddressNode {
+    public static final NodeClass<RawAddressNode> TYPE = NodeClass.create(RawAddressNode.class);
 
-    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
-    protected final boolean alwaysNull;
+    @Input ValueNode address;
 
-    public G1PostWriteBarrier(AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        this(TYPE, address, value, precise, alwaysNull);
+    public RawAddressNode(ValueNode address) {
+        super(TYPE);
+        this.address = address;
     }
 
-    protected G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        super(c, address, value, precise);
-        this.alwaysNull = alwaysNull;
+    public ValueNode getAddress() {
+        return address;
     }
 
-    public boolean alwaysNull() {
-        return alwaysNull;
+    public void setAddress(ValueNode address) {
+        updateUsages(this.address, address);
+        this.address = address;
     }
+
+    @NodeIntrinsic
+    public static native Address address(long address);
+
+    @NodeIntrinsic
+    public static native Address address(Object address);
 }

@@ -26,8 +26,10 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -66,8 +68,9 @@ public final class DirectObjectStoreNode extends FixedWithNextNode implements Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        IndexedLocationNode location = graph().unique(new IndexedLocationNode(locationIdentity, displacement, offset, 1));
-        JavaWriteNode write = graph().add(new JavaWriteNode(storeKind, object, value, location, BarrierType.NONE, storeKind == Kind.Object, false));
+        ValueNode off = graph().unique(new AddNode(offset, ConstantNode.forIntegerStamp(offset.stamp(), displacement, graph())));
+        AddressNode address = graph().unique(new OffsetAddressNode(object, off));
+        JavaWriteNode write = graph().add(new JavaWriteNode(storeKind, address, locationIdentity, value, BarrierType.NONE, storeKind == Kind.Object, false));
         graph().replaceFixedWithFixed(this, write);
 
         tool.getLowerer().lower(write, tool);

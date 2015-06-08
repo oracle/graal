@@ -22,22 +22,20 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaField;
 import org.junit.*;
 
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
 
 public class PushNodesThroughPiTest extends GraalCompilerTest {
 
@@ -72,17 +70,17 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
         try (Scope s = Debug.scope("PushThroughPi", new DebugDumpScope(snippet))) {
             StructuredGraph graph = compileTestSnippet(snippet);
             for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
-                if (rn.location() instanceof ConstantLocationNode && rn.object().stamp() instanceof ObjectStamp) {
-                    long disp = ((ConstantLocationNode) rn.location()).getDisplacement();
-                    ResolvedJavaType receiverType = StampTool.typeOrNull(rn.object());
-                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp, rn.getKind());
+                OffsetAddressNode address = (OffsetAddressNode) rn.getAddress();
+                long disp = address.getOffset().asJavaConstant().asLong();
 
-                    assert field != null : "Node " + rn + " tries to access a field which doesn't exists for this type";
-                    if (field.getName().equals("x")) {
-                        Assert.assertTrue(rn.object() instanceof ParameterNode);
-                    } else {
-                        Assert.assertTrue(rn.object().toString(), rn.object() instanceof PiNode);
-                    }
+                ResolvedJavaType receiverType = StampTool.typeOrNull(address.getBase());
+                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp, rn.getKind());
+
+                assert field != null : "Node " + rn + " tries to access a field which doesn't exists for this type";
+                if (field.getName().equals("x")) {
+                    Assert.assertTrue(address.getBase() instanceof ParameterNode);
+                } else {
+                    Assert.assertTrue(address.getBase().toString(), address.getBase() instanceof PiNode);
                 }
             }
 

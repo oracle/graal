@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
-
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
@@ -48,13 +41,15 @@ import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.replacements.arraycopy.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 
 /**
@@ -214,9 +209,10 @@ public class HotSpotGraphBuilderPlugins {
         r.register0("currentThread", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(wordTypes.getWordKind()));
-                ConstantLocationNode location = b.add(new ConstantLocationNode(JAVA_THREAD_THREAD_OBJECT_LOCATION, config.threadObjectOffset));
                 boolean compressible = false;
-                ValueNode javaThread = WordOperationPlugin.readOp(b, Kind.Object, thread, location, BarrierType.NONE, compressible);
+                ValueNode offset = b.add(ConstantNode.forLong(config.threadObjectOffset));
+                AddressNode address = b.add(new OffsetAddressNode(thread, offset));
+                ValueNode javaThread = WordOperationPlugin.readOp(b, Kind.Object, address, JAVA_THREAD_THREAD_OBJECT_LOCATION, BarrierType.NONE, compressible);
                 boolean exactType = compressible;
                 boolean nonNull = true;
                 b.addPush(Kind.Object, new PiNode(javaThread, metaAccess.lookupJavaType(Thread.class), exactType, nonNull));

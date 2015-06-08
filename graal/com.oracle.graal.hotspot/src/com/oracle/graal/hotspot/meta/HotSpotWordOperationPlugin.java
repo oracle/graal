@@ -35,10 +35,10 @@ import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -126,13 +126,15 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
             case READ_KLASS_POINTER:
                 assert args.length == 2 || args.length == 3;
                 Stamp readStamp = KlassPointerStamp.klass();
-                LocationNode location;
+                AddressNode address = makeAddress(b, args[0], args[1]);
+                LocationIdentity location;
                 if (args.length == 2) {
-                    location = makeLocation(b, args[1], any());
+                    location = any();
                 } else {
-                    location = makeLocation(b, args[1], args[2]);
+                    assert args[2].isConstant();
+                    location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                 }
-                ReadNode read = b.add(new ReadNode(args[0], location, readStamp, BarrierType.NONE));
+                ReadNode read = b.add(new ReadNode(address, location, readStamp, BarrierType.NONE));
                 /*
                  * The read must not float outside its block otherwise it may float above an
                  * explicit zero check on its base address.

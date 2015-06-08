@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.jvmci.meta.JavaConstant;
-
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
@@ -35,8 +33,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -44,6 +42,7 @@ import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.debug.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
@@ -82,16 +81,23 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
                 nullGuarded.clear();
             } else {
-                Iterator<Entry<ValueNode, ValueNode>> it = nullGuarded.entrySet().iterator();
-                while (it.hasNext()) {
-                    Entry<ValueNode, ValueNode> entry = it.next();
-                    ValueNode guard = entry.getValue();
-                    if (guard.usages().contains(node)) {
-                        it.remove();
-                    } else if (guard instanceof PiNode && guard != node) {
-                        PiNode piNode = (PiNode) guard;
-                        if (piNode.getGuard().asNode().usages().contains(node)) {
+                /*
+                 * The OffsetAddressNode itself never forces materialization of a null check, even
+                 * if its input is a PiNode. The null check will be folded into the first usage of
+                 * the OffsetAddressNode, so we need to keep it in the nullGuarded map.
+                 */
+                if (!(node instanceof OffsetAddressNode)) {
+                    Iterator<Entry<ValueNode, ValueNode>> it = nullGuarded.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Entry<ValueNode, ValueNode> entry = it.next();
+                        ValueNode guard = entry.getValue();
+                        if (guard.usages().contains(node)) {
                             it.remove();
+                        } else if (guard instanceof PiNode && guard != node) {
+                            PiNode piNode = (PiNode) guard;
+                            if (piNode.getGuard().asNode().usages().contains(node)) {
+                                it.remove();
+                            }
                         }
                     }
                 }
@@ -108,21 +114,21 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         }
 
         private void processAccess(Access access) {
-            if (access.canNullCheck()) {
-                ValueNode object = access.object();
-                check(access, object);
+            if (access.canNullCheck() && access.getAddress() instanceof OffsetAddressNode) {
+                OffsetAddressNode address = (OffsetAddressNode) access.getAddress();
+                check(access, address);
             }
         }
 
-        private void check(Access access, ValueNode object) {
-            ValueNode guard = nullGuarded.get(object);
-            if (guard != null && isImplicitNullCheck(access.accessLocation())) {
+        private void check(Access access, OffsetAddressNode address) {
+            ValueNode base = address.getBase();
+            ValueNode guard = nullGuarded.get(base);
+            if (guard != null && isImplicitNullCheck(address.getOffset())) {
                 if (guard instanceof PiNode) {
                     PiNode piNode = (PiNode) guard;
-                    assert guard == object;
+                    assert guard == address.getBase();
                     assert piNode.getGuard() instanceof GuardNode : piNode;
-                    assert access.object() == guard;
-                    access.asNode().replaceFirstInput(piNode, piNode.getOriginalNode());
+                    address.setBase(piNode.getOriginalNode());
                 } else {
                     assert guard instanceof GuardNode;
                 }
@@ -154,7 +160,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 if (condition.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(condition);
                 }
-                nullGuarded.remove(object);
+                nullGuarded.remove(base);
             }
         }
 
@@ -166,9 +172,10 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             }
         }
 
-        private boolean isImplicitNullCheck(LocationNode location) {
-            if (location instanceof ConstantLocationNode) {
-                return ((ConstantLocationNode) location).getDisplacement() < implicitNullCheckLimit;
+        private boolean isImplicitNullCheck(ValueNode offset) {
+            JavaConstant c = offset.asJavaConstant();
+            if (c != null) {
+                return c.asLong() < implicitNullCheckLimit;
             } else {
                 return false;
             }

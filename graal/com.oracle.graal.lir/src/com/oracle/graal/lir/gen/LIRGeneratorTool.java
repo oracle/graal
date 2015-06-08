@@ -142,8 +142,6 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
      */
     void emitData(AllocatableValue dst, byte[] data);
 
-    Value emitAddress(Value base, long displacement, Value index, int scale);
-
     Variable emitAddress(StackSlotValue slot);
 
     void emitMembar(int barriers);

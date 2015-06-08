@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.jvmci.common.*;
@@ -151,9 +152,11 @@ public class WriteBarrierVerificationPhase extends Phase {
 
     private static boolean validateBarrier(FixedAccessNode write, WriteBarrier barrier) {
         assert write instanceof WriteNode || write instanceof LoweredCompareAndSwapNode || write instanceof LoweredAtomicReadAndWriteNode : "Node must be of type requiring a write barrier " + write;
-        if ((barrier.getObject() == write.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == write.location()))) {
-            return true;
+        if (!barrier.usePrecise()) {
+            if (barrier.getAddress() instanceof OffsetAddressNode && write.getAddress() instanceof OffsetAddressNode) {
+                return ((OffsetAddressNode) barrier.getAddress()).getBase() == ((OffsetAddressNode) write.getAddress()).getBase();
+            }
         }
-        return false;
+        return barrier.getAddress() == write.getAddress();
     }
 }

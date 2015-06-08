@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.ref.*;
@@ -38,9 +37,9 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -50,6 +49,7 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.
@@ -284,9 +284,10 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
             for (ReadNode read : graph.getNodes().filter(ReadNode.class)) {
                 if (read.getBarrierType() != BarrierType.NONE) {
-                    if (read.location() instanceof ConstantLocationNode) {
-                        Assert.assertEquals(referentOffset, ((ConstantLocationNode) (read.location())).getDisplacement());
-                    }
+                    Assert.assertTrue(read.getAddress() instanceof OffsetAddressNode);
+                    JavaConstant constDisp = ((OffsetAddressNode) read.getAddress()).getOffset().asJavaConstant();
+                    Assert.assertNotNull(constDisp);
+                    Assert.assertEquals(referentOffset, constDisp.asLong());
                     Assert.assertTrue(config.useG1GC);
                     Assert.assertEquals(BarrierType.PRECISE, read.getBarrierType());
                     Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);

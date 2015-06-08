@@ -94,7 +94,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             for (FloatingReadNode node : graph.getNodes(ParameterNode.TYPE).first().usages().filter(FloatingReadNode.class)) {
                 // Checking that the parameter a is not directly used for the access to field
                 // x10 (because x10 must be guarded by the checkcast).
-                Assert.assertTrue(node.location().getLocationIdentity().isImmutable());
+                Assert.assertTrue(node.getLocationIdentity().isImmutable());
             }
         } catch (Throwable e) {
             throw Debug.handle(e);

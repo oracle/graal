@@ -26,8 +26,8 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -64,16 +64,11 @@ public final class LoweredCompareAndSwapNode extends FixedAccessNode implements 
         return newValue;
     }
 
-    public LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
-        super(TYPE, object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
+    public LoweredCompareAndSwapNode(AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
+        super(TYPE, address, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
         assert expectedValue.getKind() == newValue.getKind();
         this.expectedValue = expectedValue;
         this.newValue = newValue;
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return location().getLocationIdentity();
     }
 
     public boolean canNullCheck() {
@@ -83,8 +78,7 @@ public final class LoweredCompareAndSwapNode extends FixedAccessNode implements 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert getNewValue().stamp().isCompatible(getExpectedValue().stamp());
-        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
-        Value result = gen.getLIRGeneratorTool().emitCompareAndSwap(address, gen.operand(getExpectedValue()), gen.operand(getNewValue()), JavaConstant.INT_1, JavaConstant.INT_0);
+        Value result = gen.getLIRGeneratorTool().emitCompareAndSwap(gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()), JavaConstant.INT_1, JavaConstant.INT_0);
         gen.setResult(this, result);
     }
 }

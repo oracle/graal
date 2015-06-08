@@ -22,17 +22,11 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import com.oracle.jvmci.meta.Kind;
-import static com.oracle.jvmci.code.MemoryBarriers.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
+import static com.oracle.jvmci.code.MemoryBarriers.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -43,6 +37,8 @@ import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.graal.nodes.memory.address.AddressNode.Address;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -51,7 +47,9 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
+import com.oracle.jvmci.meta.*;
 
 public class WriteBarrierSnippets implements Snippets {
 
@@ -72,14 +70,8 @@ public class WriteBarrierSnippets implements Snippets {
     public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Index");
 
     @Snippet
-    public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise) {
-        Object fixedObject = FixedValueAnchorNode.getObject(object);
-        Pointer oop;
-        if (usePrecise) {
-            oop = Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location));
-        } else {
-            oop = Word.fromObject(fixedObject);
-        }
+    public static void serialWriteBarrier(Address address) {
+        Pointer oop = Word.fromAddress(address);
         serialWriteBarrierCounter.inc();
         int cardTableShift = (isImmutableCode() && generatePIC()) ? CardTableShiftNode.cardTableShift() : cardTableShift();
         long cardTableAddress = (isImmutableCode() && generatePIC()) ? CardTableAddressNode.cardTableAddress() : cardTableStart();
@@ -114,16 +106,15 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void g1PreWriteBarrier(Object object, Object expectedObject, Object location, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
+    public static void g1PreWriteBarrier(Address address, Object object, Object expectedObject, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
                     @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
         if (nullCheck) {
-            NullCheckNode.nullCheck(object);
+            NullCheckNode.nullCheck(address);
         }
         Word thread = registerAsWord(threadRegister);
-        Object fixedObject = FixedValueAnchorNode.getObject(object);
-        verifyOop(fixedObject);
+        verifyOop(object);
         Object fixedExpectedObject = FixedValueAnchorNode.getObject(expectedObject);
-        Word field = Word.fromWordBase(Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location)));
+        Word field = Word.fromWordBase(Word.fromAddress(address));
         Word previousOop = Word.fromWordBase(Word.fromObject(fixedExpectedObject));
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
@@ -132,7 +123,7 @@ public class WriteBarrierSnippets implements Snippets {
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
-            log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
+            log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.fromObject(object).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedExpectedObject).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
             log(trace, "[%d] G1-Pre Thread %p Marking %d\n", gcCycle, thread.rawValue(), markingValue);
@@ -170,24 +161,17 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void g1PostWriteBarrier(Object object, Object value, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter Register threadRegister,
-                    @ConstantParameter boolean trace) {
+    public static void g1PostWriteBarrier(Address address, Object object, Object value, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
         Word thread = registerAsWord(threadRegister);
-        Object fixedObject = FixedValueAnchorNode.getObject(object);
         Object fixedValue = FixedValueAnchorNode.getObject(value);
-        verifyOop(fixedObject);
+        verifyOop(object);
         verifyOop(fixedValue);
-        validateObject(fixedObject, fixedValue);
-        Word oop;
-        if (usePrecise) {
-            oop = Word.fromWordBase(Word.fromArray(fixedObject, SnippetLocationProxyNode.location(location)));
-        } else {
-            oop = Word.fromWordBase(Word.fromObject(fixedObject));
-        }
+        validateObject(object, fixedValue);
+        Word oop = Word.fromWordBase(Word.fromAddress(address));
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
-            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
         Word writtenValue = Word.fromWordBase(Word.fromObject(fixedValue));
@@ -355,9 +339,7 @@ public class WriteBarrierSnippets implements Snippets {
 
         public void lower(SerialWriteBarrier writeBarrier, LoweringTool tool) {
             Arguments args = new Arguments(serialWriteBarrier, writeBarrier.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("object", writeBarrier.getObject());
-            args.add("location", writeBarrier.getLocation());
-            args.addConst("usePrecise", writeBarrier.usePrecise());
+            args.add("address", writeBarrier.getAddress());
             template(args).instantiate(providers.getMetaAccess(), writeBarrier, DEFAULT_REPLACER, args);
         }
 
@@ -371,7 +353,13 @@ public class WriteBarrierSnippets implements Snippets {
 
         public void lower(G1PreWriteBarrier writeBarrierPre, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(g1PreWriteBarrier, writeBarrierPre.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("object", writeBarrierPre.getObject());
+            AddressNode address = writeBarrierPre.getAddress();
+            args.add("address", address);
+            if (address instanceof OffsetAddressNode) {
+                args.add("object", ((OffsetAddressNode) address).getBase());
+            } else {
+                args.add("object", null);
+            }
 
             ValueNode expected = writeBarrierPre.getExpectedObject();
             if (expected != null && expected.stamp() instanceof NarrowOopStamp) {
@@ -380,7 +368,6 @@ public class WriteBarrierSnippets implements Snippets {
             }
             args.add("expectedObject", expected);
 
-            args.add("location", writeBarrierPre.getLocation());
             args.addConst("doLoad", writeBarrierPre.doLoad());
             args.addConst("nullCheck", writeBarrierPre.getNullCheck());
             args.addConst("threadRegister", registers.getThreadRegister());
@@ -390,7 +377,13 @@ public class WriteBarrierSnippets implements Snippets {
 
         public void lower(G1ReferentFieldReadBarrier readBarrier, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(g1ReferentReadBarrier, readBarrier.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("object", readBarrier.getObject());
+            AddressNode address = readBarrier.getAddress();
+            args.add("address", address);
+            if (address instanceof OffsetAddressNode) {
+                args.add("object", ((OffsetAddressNode) address).getBase());
+            } else {
+                args.add("object", null);
+            }
 
             ValueNode expected = readBarrier.getExpectedObject();
             if (expected != null && expected.stamp() instanceof NarrowOopStamp) {
@@ -399,7 +392,6 @@ public class WriteBarrierSnippets implements Snippets {
             }
 
             args.add("expectedObject", expected);
-            args.add("location", readBarrier.getLocation());
             args.addConst("doLoad", readBarrier.doLoad());
             args.addConst("nullCheck", false);
             args.addConst("threadRegister", registers.getThreadRegister());
@@ -414,7 +406,13 @@ public class WriteBarrierSnippets implements Snippets {
                 return;
             }
             Arguments args = new Arguments(g1PostWriteBarrier, graph.getGuardsStage(), tool.getLoweringStage());
-            args.add("object", writeBarrierPost.getObject());
+            AddressNode address = writeBarrierPost.getAddress();
+            args.add("address", address);
+            if (address instanceof OffsetAddressNode) {
+                args.add("object", ((OffsetAddressNode) address).getBase());
+            } else {
+                args.add("object", null);
+            }
 
             ValueNode value = writeBarrierPost.getValue();
             if (value.stamp() instanceof NarrowOopStamp) {
@@ -423,8 +421,6 @@ public class WriteBarrierSnippets implements Snippets {
             }
             args.add("value", value);
 
-            args.add("location", writeBarrierPost.getLocation());
-            args.addConst("usePrecise", writeBarrierPost.usePrecise());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", traceBarrier());
             template(args).instantiate(providers.getMetaAccess(), writeBarrierPost, DEFAULT_REPLACER, args);

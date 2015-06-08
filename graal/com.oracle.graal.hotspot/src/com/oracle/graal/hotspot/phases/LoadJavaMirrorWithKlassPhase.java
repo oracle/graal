@@ -34,8 +34,8 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -74,8 +74,8 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
 
                 if (type instanceof HotSpotResolvedObjectType) {
                     ConstantNode klass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) type).klass(), metaAccess, graph);
-                    LocationNode location = graph.unique(new ConstantLocationNode(CLASS_MIRROR_LOCATION, classMirrorOffset));
-                    ValueNode read = graph.unique(new FloatingReadNode(klass, location, null, stamp));
+                    AddressNode address = graph.unique(new OffsetAddressNode(klass, ConstantNode.forLong(classMirrorOffset, graph)));
+                    ValueNode read = graph.unique(new FloatingReadNode(address, CLASS_MIRROR_LOCATION, null, stamp));
 
                     if (((HotSpotObjectConstant) constant).isCompressed()) {
                         return CompressionNode.compress(read, oopEncoding);
@@ -102,11 +102,11 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                         throw new JVMCIError("Can't find TYPE field in class");
                     }
 
-                    LocationNode location = graph.unique(new ConstantLocationNode(FINAL_LOCATION, typeField.offset()));
                     if (oopEncoding != null) {
                         stamp = NarrowOopStamp.compressed((AbstractObjectStamp) stamp, oopEncoding);
                     }
-                    ValueNode read = graph.unique(new FloatingReadNode(clazz, location, null, stamp));
+                    AddressNode address = graph.unique(new OffsetAddressNode(clazz, ConstantNode.forLong(typeField.offset(), graph)));
+                    ValueNode read = graph.unique(new FloatingReadNode(address, FINAL_LOCATION, null, stamp));
 
                     if (oopEncoding == null || ((HotSpotObjectConstant) constant).isCompressed()) {
                         return read;

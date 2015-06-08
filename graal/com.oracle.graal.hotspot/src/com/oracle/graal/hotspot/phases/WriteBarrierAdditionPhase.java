@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.jvmci.common.*;
@@ -66,34 +67,33 @@ public class WriteBarrierAdditionPhase extends Phase {
     private void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
         if (node.getBarrierType() == BarrierType.PRECISE) {
             assert config.useG1GC;
-            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.object(), node, node.location(), false));
+            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node, false));
             graph.addAfterFixed(node, barrier);
         } else {
             assert node.getBarrierType() == BarrierType.NONE : "Non precise read barrier has been attached to read node.";
         }
     }
 
-    protected static void addG1PreWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
-        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(object, value, location, doLoad, nullCheck));
+    protected static void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
+        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, value, doLoad, nullCheck));
         preBarrier.setStateBefore(node.stateBefore());
         node.setNullCheck(false);
         node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);
     }
 
-    protected void addG1PostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
+    protected void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
-        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(object, value, location, precise, alwaysNull)));
+        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(address, value, precise, alwaysNull)));
     }
 
-    protected void addSerialPostWriteBarrier(FixedAccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
+    protected void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
         if (alwaysNull) {
             // Serial barrier isn't needed for null value
             return;
         }
-        final LocationNode loc = (precise ? location : null);
-        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, loc, precise)));
+        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(address, precise)));
     }
 
     private void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
@@ -107,11 +107,11 @@ public class WriteBarrierAdditionPhase extends Phase {
                 boolean precise = barrierType == BarrierType.PRECISE;
                 if (config.useG1GC) {
                     if (!node.isInitialization()) {
-                        addG1PreWriteBarrier(node, node.object(), null, node.location(), true, node.getNullCheck(), graph);
+                        addG1PreWriteBarrier(node, node.getAddress(), null, true, node.getNullCheck(), graph);
                     }
-                    addG1PostWriteBarrier(node, node.object(), node.value(), node.location(), precise, graph);
+                    addG1PostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);
                 } else {
-                    addSerialPostWriteBarrier(node, node.object(), node.value(), node.location(), precise, graph);
+                    addSerialPostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);
                 }
                 break;
             default:
@@ -129,10 +129,10 @@ public class WriteBarrierAdditionPhase extends Phase {
             case PRECISE:
                 boolean precise = barrierType == BarrierType.PRECISE;
                 if (config.useG1GC) {
-                    addG1PreWriteBarrier(node, node.object(), null, node.location(), true, node.getNullCheck(), graph);
-                    addG1PostWriteBarrier(node, node.object(), node.getNewValue(), node.location(), precise, graph);
+                    addG1PreWriteBarrier(node, node.getAddress(), null, true, node.getNullCheck(), graph);
+                    addG1PostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
                 } else {
-                    addSerialPostWriteBarrier(node, node.object(), node.getNewValue(), node.location(), precise, graph);
+                    addSerialPostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
                 }
                 break;
             default:
@@ -150,10 +150,10 @@ public class WriteBarrierAdditionPhase extends Phase {
             case PRECISE:
                 boolean precise = barrierType == BarrierType.PRECISE;
                 if (config.useG1GC) {
-                    addG1PreWriteBarrier(node, node.object(), node.getExpectedValue(), node.location(), false, false, graph);
-                    addG1PostWriteBarrier(node, node.object(), node.getNewValue(), node.location(), precise, graph);
+                    addG1PreWriteBarrier(node, node.getAddress(), node.getExpectedValue(), false, false, graph);
+                    addG1PostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
                 } else {
-                    addSerialPostWriteBarrier(node, node.object(), node.getNewValue(), node.location(), precise, graph);
+                    addSerialPostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
                 }
                 break;
             default:

@@ -27,6 +27,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * An {@link FixedAccessNode} that can be converted to a {@link FloatingAccessNode}.
@@ -35,17 +37,17 @@ import com.oracle.graal.nodes.extended.*;
 public abstract class FloatableAccessNode extends FixedAccessNode {
     public static final NodeClass<FloatableAccessNode> TYPE = NodeClass.create(FloatableAccessNode.class);
 
-    protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, ValueNode object, ValueNode location, Stamp stamp) {
-        super(c, object, location, stamp);
+    protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp) {
+        super(c, address, location, stamp);
     }
 
-    protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(c, object, location, stamp, guard, barrierType, false, null);
+    protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        super(c, address, location, stamp, guard, barrierType, false, null);
     }
 
-    protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
-                    FrameState stateBefore) {
-        super(c, object, location, stamp, guard, barrierType, nullCheck, stateBefore);
+    protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType,
+                    boolean nullCheck, FrameState stateBefore) {
+        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
     public abstract FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess);
@@ -62,6 +64,6 @@ public abstract class FloatableAccessNode extends FixedAccessNode {
      * an attached write barrier with pre-semantics can not also float.
      */
     public boolean canFloat() {
-        return !forceFixed && location().getLocationIdentity().isSingle() && getBarrierType() == BarrierType.NONE;
+        return !forceFixed && getLocationIdentity().isSingle() && getBarrierType() == BarrierType.NONE;
     }
 }

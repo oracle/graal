@@ -28,6 +28,7 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -41,16 +42,16 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
 
     @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
-        this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE);
+    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp) {
+        this(address, location, lastLocationAccess, stamp, null, BarrierType.NONE);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
-        this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
+    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
+        this(address, location, lastLocationAccess, stamp, guard, BarrierType.NONE);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(TYPE, object, location, stamp, guard, barrierType);
+    public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
+        super(TYPE, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
     }
 
@@ -65,22 +66,25 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(stamp());
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, address, null));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoad(readKind, gen.operand(address), null));
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            return new FloatingReadNode(((PiNode) object()).getOriginalNode(), location(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
+        if (getAddress() instanceof OffsetAddressNode) {
+            OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
+            if (objAddress.getBase() instanceof PiNode && ((PiNode) objAddress.getBase()).getGuard() == getGuard()) {
+                OffsetAddressNode newAddress = new OffsetAddressNode(((PiNode) objAddress.getBase()).getOriginalNode(), objAddress.getOffset());
+                return new FloatingReadNode(newAddress, getLocationIdentity(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
+            }
         }
-        return ReadNode.canonicalizeRead(this, location(), object(), tool);
+        return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
     }
 
     @Override
     public FixedAccessNode asFixedNode() {
-        return graph().add(new ReadNode(object(), accessLocation(), stamp(), getGuard(), getBarrierType()));
+        return graph().add(new ReadNode(getAddress(), getLocationIdentity(), stamp(), getGuard(), getBarrierType()));
     }
 
     @Override

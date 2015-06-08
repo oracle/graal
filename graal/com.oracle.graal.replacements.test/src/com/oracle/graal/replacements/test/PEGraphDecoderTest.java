@@ -30,9 +30,9 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -99,8 +99,8 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         r.register2("readInt", Object.class, long.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode obj, ValueNode offset) {
-                LocationNode location = b.add(new ConstantLocationNode(LocationIdentity.any(), offset.asJavaConstant().asLong()));
-                ReadNode read = b.addPush(Kind.Int, new ReadNode(obj, location, StampFactory.forKind(Kind.Int), BarrierType.NONE));
+                AddressNode address = b.add(new OffsetAddressNode(obj, offset));
+                ReadNode read = b.addPush(Kind.Int, new ReadNode(address, LocationIdentity.any(), StampFactory.forKind(Kind.Int), BarrierType.NONE));
                 read.setGuard(AbstractBeginNode.prevBegin(read));
                 return true;
             }

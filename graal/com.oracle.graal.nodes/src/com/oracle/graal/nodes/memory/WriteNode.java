@@ -27,7 +27,8 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.Location;
+import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.graal.nodes.memory.address.AddressNode.Address;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;
@@ -40,34 +41,42 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType) {
-        super(TYPE, object, value, location, barrierType);
+    private WriteNode(ValueNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        this((AddressNode) address, location, value, barrierType);
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean initialization) {
-        super(TYPE, object, value, location, barrierType, initialization);
+    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+        super(TYPE, address, location, value, barrierType);
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        super(TYPE, object, value, location, barrierType, guard, initialization);
+    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean initialization) {
+        super(TYPE, address, location, value, barrierType, initialization);
+    }
+
+    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+        super(TYPE, address, location, value, barrierType, guard, initialization);
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value address = location().generateAddress(gen, gen.getLIRGeneratorTool(), gen.operand(object()));
         LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp());
-        gen.getLIRGeneratorTool().emitStore(writeKind, address, gen.operand(value()), gen.state(this));
+        gen.getLIRGeneratorTool().emitStore(writeKind, gen.operand(address), gen.operand(value()), gen.state(this));
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (object() instanceof PiNode && ((PiNode) object()).getGuard() == getGuard()) {
-            setObject(((PiNode) object()).getOriginalNode());
+        if (getAddress() instanceof OffsetAddressNode) {
+            OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
+            if (objAddress.getBase() instanceof PiNode && ((PiNode) objAddress.getBase()).getGuard() == getGuard()) {
+                OffsetAddressNode newAddress = graph().unique(new OffsetAddressNode(((PiNode) objAddress.getBase()).getOriginalNode(), objAddress.getOffset()));
+                setAddress(newAddress);
+                tool.addToWorkList(newAddress);
+            }
         }
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter BarrierType barrierType);
+    public static native void writeMemory(Address address, @ConstantNodeParameter LocationIdentity location, Object value, @ConstantNodeParameter BarrierType barrierType);
 
     @Override
     public void virtualize(VirtualizerTool tool) {

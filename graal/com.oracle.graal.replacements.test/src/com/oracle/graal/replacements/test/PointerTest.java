@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -106,21 +107,20 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         JavaReadNode read = (JavaReadNode) cast.next();
         Assert.assertEquals(kind.getStackKind(), read.stamp().getStackKind());
 
-        Assert.assertEquals(cast, read.object());
+        OffsetAddressNode address = (OffsetAddressNode) read.getAddress();
+        Assert.assertEquals(cast, address.getBase());
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
         Assert.assertEquals(target.wordKind, cast.stamp().getStackKind());
 
-        IndexedLocationNode location = (IndexedLocationNode) read.location();
-        Assert.assertEquals(locationIdentity, location.getLocationIdentity());
-        Assert.assertEquals(1, location.getIndexScaling());
+        Assert.assertEquals(locationIdentity, read.getLocationIdentity());
 
         if (indexConvert) {
-            SignExtendNode convert = (SignExtendNode) location.getIndex();
+            SignExtendNode convert = (SignExtendNode) address.getOffset();
             Assert.assertEquals(convert.getInputBits(), 32);
             Assert.assertEquals(convert.getResultBits(), 64);
             Assert.assertEquals(graph.getParameter(1), convert.getValue());
         } else {
-            Assert.assertEquals(graph.getParameter(1), location.getIndex());
+            Assert.assertEquals(graph.getParameter(1), address.getOffset());
         }
 
         ReturnNode ret = (ReturnNode) read.next();
@@ -134,21 +134,20 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Assert.assertEquals(graph.getParameter(2), write.value());
         Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci);
 
-        Assert.assertEquals(cast, write.object());
+        OffsetAddressNode address = (OffsetAddressNode) write.getAddress();
+        Assert.assertEquals(cast, address.getBase());
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
         Assert.assertEquals(target.wordKind, cast.stamp().getStackKind());
 
-        IndexedLocationNode location = (IndexedLocationNode) write.location();
-        Assert.assertEquals(locationIdentity, location.getLocationIdentity());
-        Assert.assertEquals(1, location.getIndexScaling());
+        Assert.assertEquals(locationIdentity, write.getLocationIdentity());
 
         if (indexConvert) {
-            SignExtendNode convert = (SignExtendNode) location.getIndex();
+            SignExtendNode convert = (SignExtendNode) address.getOffset();
             Assert.assertEquals(convert.getInputBits(), 32);
             Assert.assertEquals(convert.getResultBits(), 64);
             Assert.assertEquals(graph.getParameter(1), convert.getValue());
         } else {
-            Assert.assertEquals(graph.getParameter(1), location.getIndex());
+            Assert.assertEquals(graph.getParameter(1), address.getOffset());
         }
 
         ReturnNode ret = (ReturnNode) write.next();

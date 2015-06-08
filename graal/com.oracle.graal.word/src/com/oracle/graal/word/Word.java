@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.word;
 
-import com.oracle.jvmci.code.UnsignedMath;
-import com.oracle.jvmci.meta.LocationIdentity;
 import static com.oracle.jvmci.common.UnsafeAccess.*;
 
 import java.lang.annotation.*;
@@ -32,7 +30,10 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.memory.address.AddressNode.Address;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 public abstract class Word implements Signed, Unsigned, Pointer {
 
@@ -73,7 +74,7 @@ public abstract class Word implements Signed, Unsigned, Pointer {
          FROM_SIGNED,
          FROM_OBJECT,
          FROM_WORDBASE,
-         FROM_ARRAY,
+         FROM_ADDRESS,
          TO_OBJECT,
          TO_RAW_VALUE,
     }
@@ -177,8 +178,8 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     @Operation(opcode = Opcode.FROM_OBJECT)
     public static native Pointer fromObject(Object val);
 
-    @Operation(opcode = Opcode.FROM_ARRAY)
-    public static native Pointer fromArray(Object oop, Object location);
+    @Operation(opcode = Opcode.FROM_ADDRESS)
+    public static native Pointer fromAddress(Address address);
 
     @Override
     @Operation(opcode = Opcode.TO_OBJECT)

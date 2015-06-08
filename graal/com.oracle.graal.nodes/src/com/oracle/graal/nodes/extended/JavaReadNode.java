@@ -26,8 +26,8 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -42,8 +42,8 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
     protected final Kind readKind;
     protected final boolean compressible;
 
-    public JavaReadNode(Kind readKind, ValueNode object, LocationNode location, BarrierType barrierType, boolean compressible) {
-        super(TYPE, object, location, StampFactory.forKind(readKind), barrierType);
+    public JavaReadNode(Kind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
+        super(TYPE, address, location, StampFactory.forKind(readKind), barrierType);
         this.readKind = readKind;
         this.compressible = compressible;
     }
@@ -66,6 +66,6 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        return ReadNode.canonicalizeRead(this, location(), object(), tool);
+        return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
     }
 }

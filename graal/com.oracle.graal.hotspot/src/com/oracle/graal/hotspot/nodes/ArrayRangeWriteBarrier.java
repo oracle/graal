@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,29 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
+public abstract class ArrayRangeWriteBarrier extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
+    @Input ValueNode object;
     @Input ValueNode startIndex;
     @Input ValueNode length;
 
     protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, ValueNode object, ValueNode startIndex, ValueNode length) {
-        super(c, object, null, null, true);
+        super(c, StampFactory.forVoid());
+        this.object = object;
         this.startIndex = startIndex;
         this.length = length;
+    }
+
+    public ValueNode getObject() {
+        return object;
     }
 
     public ValueNode getStartIndex() {
@@ -45,5 +53,11 @@ public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
 
     public ValueNode getLength() {
         return length;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        assert graph().getGuardsStage().areFrameStatesAtDeopts();
+        tool.getLowerer().lower(this, tool);
     }
 }

@@ -27,36 +27,36 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.jvmci.meta.*;
 
 /**
- * Accesses a value at an memory address specified by an {@linkplain #object object} and a
- * {@linkplain #accessLocation() location}. The access does not include a null check on the object.
+ * Accesses a value at an memory address specified by an {@linkplain #address address}. The access
+ * does not include a null check on the object.
  */
 @NodeInfo
 public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access {
     public static final NodeClass<FixedAccessNode> TYPE = NodeClass.create(FixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
-    @Input protected ValueNode object;
-    @Input(InputType.Association) protected ValueNode location;
+
+    @Input(InputType.Association) AddressNode address;
+    protected final LocationIdentity location;
+
     protected boolean nullCheck;
     protected BarrierType barrierType;
 
-    public ValueNode object() {
-        return object;
+    public AddressNode getAddress() {
+        return address;
     }
 
-    protected void setObject(ValueNode x) {
-        updateUsages(object, x);
-        object = x;
+    public void setAddress(AddressNode address) {
+        updateUsages(this.address, address);
+        this.address = address;
     }
 
-    public LocationNode location() {
-        return (LocationNode) location;
-    }
-
-    public LocationNode accessLocation() {
-        return (LocationNode) location;
+    public LocationIdentity getLocationIdentity() {
+        return location;
     }
 
     public boolean getNullCheck() {
@@ -67,18 +67,18 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
         this.nullCheck = check;
     }
 
-    protected FixedAccessNode(NodeClass<? extends FixedAccessNode> c, ValueNode object, ValueNode location, Stamp stamp) {
-        this(c, object, location, stamp, BarrierType.NONE);
+    protected FixedAccessNode(NodeClass<? extends FixedAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp) {
+        this(c, address, location, stamp, BarrierType.NONE);
     }
 
-    protected FixedAccessNode(NodeClass<? extends FixedAccessNode> c, ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType) {
-        this(c, object, location, stamp, null, barrierType, false, null);
+    protected FixedAccessNode(NodeClass<? extends FixedAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
+        this(c, address, location, stamp, null, barrierType, false, null);
     }
 
-    protected FixedAccessNode(NodeClass<? extends FixedAccessNode> c, ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
+    protected FixedAccessNode(NodeClass<? extends FixedAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
                     FrameState stateBefore) {
         super(c, stamp, stateBefore);
-        this.object = object;
+        this.address = address;
         this.location = location;
         this.guard = guard;
         this.barrierType = barrierType;

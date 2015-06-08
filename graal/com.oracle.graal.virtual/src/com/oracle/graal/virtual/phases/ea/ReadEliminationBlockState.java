@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ import java.util.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 
 public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 
@@ -111,20 +110,38 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         }
     }
 
-    static class ReadCacheEntry extends CacheEntry<LocationNode> {
+    static class ReadCacheEntry extends CacheEntry<ValueNode> {
 
-        public ReadCacheEntry(ValueNode object, LocationNode identity) {
-            super(object, identity);
+        private final LocationIdentity location;
+
+        public ReadCacheEntry(ValueNode object, ValueNode offset, LocationIdentity location) {
+            super(object, offset);
+            this.location = location;
         }
 
         @Override
-        public CacheEntry<LocationNode> duplicateWithObject(ValueNode newObject) {
-            return new ReadCacheEntry(newObject, identity);
+        public CacheEntry<ValueNode> duplicateWithObject(ValueNode newObject) {
+            return new ReadCacheEntry(newObject, identity, location);
         }
 
         @Override
         public boolean conflicts(LocationIdentity other) {
-            return identity.getLocationIdentity().equals(other);
+            return location.equals(other);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof ReadCacheEntry)) {
+                return false;
+            }
+
+            ReadCacheEntry other = (ReadCacheEntry) obj;
+            return this.location.equals(other.location) && super.equals(other);
+        }
+
+        @Override
+        public int hashCode() {
+            return location.hashCode() * 23 + super.hashCode();
         }
     }
 
