@@ -108,8 +108,7 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
         Kind localFromKind = fromKind;
         Kind localToKind = toKind;
         return builder -> {
-            Value address = access.accessLocation().generateAddress(builder, gen, operand(access.object()));
-            Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), address, getState(access));
+            Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
             return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
         };
     }

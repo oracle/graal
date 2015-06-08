@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.sparc;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -60,7 +61,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
         Plugins plugins = createGraphBuilderPlugins(runtime, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
-        HotSpotSuitesProvider suites = createSuites(runtime, plugins);
+        HotSpotSuitesProvider suites = createSuites(runtime, plugins, codeCache);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, suites, registers, snippetReflection, wordTypes, plugins);
 
         return createBackend(runtime, providers);
@@ -74,8 +75,8 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         return plugins;
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins) {
-        return new HotSpotSuitesProvider(runtime, plugins);
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins, CodeCacheProvider codeCache) {
+        return new HotSpotSuitesProvider(runtime, plugins, new SPARCAddressLowering(codeCache));
     }
 
     protected SPARCHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {

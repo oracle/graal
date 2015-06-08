@@ -338,7 +338,7 @@ public class SPARCMove {
         }
 
         public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
-            if (state == null && value.equals(address.base) && address.index.equals(Value.ILLEGAL) && address.displacement >= 0 && address.displacement < implicitNullCheckLimit) {
+            if (state == null && address.isValidImplicitNullCheckFor(value, implicitNullCheckLimit)) {
                 state = nullCheckState;
                 return true;
             }

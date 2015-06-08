@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,7 +193,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     private void moveValueToThread(Value v, int offset) {
         LIRKind wordKind = LIRKind.value(getProviders().getCodeCache().getTarget().wordKind);
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(wordKind, thread, offset);
+        SPARCAddressValue pendingDeoptAddress = new SPARCImmediateAddressValue(wordKind, thread, offset);
         append(new StoreOp(v.getKind(), pendingDeoptAddress, load(v), null));
     }
 
@@ -258,10 +258,14 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
         Kind memKind = (Kind) kind.getPlatformKind();
-        SPARCAddressValue addressValue = asAddressValue(address);
         Variable result = newVariable(newValue.getLIRKind());
-        append(new CompareAndSwapOp(result, asAllocatable(addressValue), asAllocatable(expectedValue), asAllocatable(newValue)));
+        append(new CompareAndSwapOp(result, asAllocatable(address), asAllocatable(expectedValue), asAllocatable(newValue)));
         return emitConditionalMove(memKind, expectedValue, result, Condition.EQ, true, trueValue, falseValue);
+    }
+
+    public void emitPrefetchAllocate(Value address) {
+        SPARCAddressValue addr = asAddressValue(address);
+        append(new SPARCPrefetchOp(addr, config.allocatePrefetchInstr));
     }
 
     public StackSlot getDeoptimizationRescueSlot() {

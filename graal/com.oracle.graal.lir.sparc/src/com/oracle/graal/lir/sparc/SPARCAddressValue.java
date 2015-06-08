@@ -22,108 +22,17 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterValue;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-
-import java.util.*;
-
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.jvmci.meta.*;
 
-public final class SPARCAddressValue extends CompositeValue {
+public abstract class SPARCAddressValue extends CompositeValue {
 
-    @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
-    @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;
-    protected final int displacement;
-
-    private static final EnumSet<OperandFlag> flags = EnumSet.of(OperandFlag.REG, OperandFlag.ILLEGAL);
-
-    public SPARCAddressValue(LIRKind kind, AllocatableValue base, int displacement) {
-        this(kind, base, Value.ILLEGAL, displacement);
-    }
-
-    public SPARCAddressValue(LIRKind kind, AllocatableValue base, AllocatableValue index, int displacement) {
+    public SPARCAddressValue(LIRKind kind) {
         super(kind);
-        assert isIllegal(index) || displacement == 0;
-        this.base = base;
-        this.index = index;
-        this.displacement = displacement;
     }
 
-    @Override
-    public CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc) {
-        AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
-        AllocatableValue newIndex = (AllocatableValue) proc.doValue(inst, index, mode, flags);
-        if (!base.identityEquals(newBase) || !index.identityEquals(newIndex)) {
-            return new SPARCAddressValue(getLIRKind(), newBase, newIndex, displacement);
-        }
-        return this;
-    }
+    public abstract SPARCAddress toAddress();
 
-    @Override
-    protected void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
-        proc.visitValue(inst, base, mode, flags);
-        proc.visitValue(inst, index, mode, flags);
-    }
-
-    private static Register toRegister(AllocatableValue value) {
-        if (isIllegal(value)) {
-            return Register.None;
-        } else {
-            RegisterValue reg = (RegisterValue) value;
-            return reg.getRegister();
-        }
-    }
-
-    public SPARCAddress toAddress() {
-        if (isLegal(index)) {
-            return new SPARCAddress(toRegister(base), toRegister(index));
-        } else {
-            return new SPARCAddress(toRegister(base), displacement);
-        }
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder s = new StringBuilder("[");
-        String sep = "";
-        if (isLegal(base)) {
-            s.append(base);
-            sep = " + ";
-        }
-        if (isLegal(index)) {
-            s.append(sep).append(index);
-            sep = " + ";
-        } else {
-            if (displacement < 0) {
-                s.append(" - ").append(-displacement);
-            } else if (displacement > 0) {
-                s.append(sep).append(displacement);
-            }
-        }
-        s.append("]");
-        return s.toString();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof SPARCAddressValue) {
-            SPARCAddressValue addr = (SPARCAddressValue) obj;
-            return getLIRKind().equals(addr.getLIRKind()) && displacement == addr.displacement && base.equals(addr.base) && index.equals(addr.index);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ getLIRKind().hashCode();
-    }
+    public abstract boolean isValidImplicitNullCheckFor(Value value, int implicitNullCheckLimit);
 }
