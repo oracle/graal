@@ -31,6 +31,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -42,7 +43,7 @@ import com.oracle.jvmci.meta.*;
 
 public class AMD64HotSpotMove {
 
-    public static final class HotSpotLoadObjectConstantOp extends AMD64LIRInstruction {
+    public static final class HotSpotLoadObjectConstantOp extends AMD64LIRInstruction implements MoveOp {
         public static final LIRInstructionClass<HotSpotLoadObjectConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadObjectConstantOp.class);
 
         @Def({REG, STACK}) private AllocatableValue result;
@@ -86,9 +87,17 @@ public class AMD64HotSpotMove {
                 }
             }
         }
+
+        public Value getInput() {
+            return input;
+        }
+
+        public AllocatableValue getResult() {
+            return result;
+        }
     }
 
-    public static final class HotSpotLoadMetaspaceConstantOp extends AMD64LIRInstruction {
+    public static final class HotSpotLoadMetaspaceConstantOp extends AMD64LIRInstruction implements MoveOp {
         public static final LIRInstructionClass<HotSpotLoadMetaspaceConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadMetaspaceConstantOp.class);
 
         @Def({REG, STACK}) private AllocatableValue result;
@@ -140,6 +149,14 @@ public class AMD64HotSpotMove {
                     throw JVMCIError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                 }
             }
+        }
+
+        public Value getInput() {
+            return (Value) input;
+        }
+
+        public AllocatableValue getResult() {
+            return result;
         }
     }
 
