@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.interop.ForeignAccessFactory;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
@@ -57,7 +57,7 @@ public final class SLNull implements TruffleObject {
     }
 
     @Override
-    public ForeignAccessFactory getForeignAccessFactory() {
+    public ForeignAccess getForeignAccess() {
         return SLFunctionForeignAccess.INSTANCE;
     }
 }

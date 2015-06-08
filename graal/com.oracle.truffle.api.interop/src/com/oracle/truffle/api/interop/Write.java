@@ -22,35 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.api.interop;
 
-package com.oracle.truffle.interop.node;
+final class Write extends KnownMessage {
+    public static final int HASH = 423431;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.interop.messages.*;
+    static Message INSTANCE = new Write();
 
-final class ForeignObjectAccessHeadNode extends ForeignObjectAccessNode {
-
-    @Child private ObjectAccessNode first;
-    private final Message accessTree;
-
-    protected ForeignObjectAccessHeadNode(Message tree) {
-        this.accessTree = tree;
-        this.first = new UnresolvedObjectAccessNode();
-        adoptChildren();
-    }
-
-    protected Message getAccessTree() {
-        return accessTree;
-    }
-
-    protected ObjectAccessNode getFirst() {
-        return first;
+    @Override
+    public boolean equals(Object message) {
+        return message instanceof Write;
     }
 
     @Override
-    public Object executeForeign(VirtualFrame frame, TruffleObject receiver, Object... arguments) {
-        return first.executeWith(frame, receiver, arguments);
+    public int hashCode() {
+        return HASH;
+    }
+
+    @Override
+    public String toString() {
+        return "msgWrite";
     }
 
 }

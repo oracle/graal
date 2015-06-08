@@ -22,17 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.exception;
+package com.oracle.truffle.api.interop;
 
-/**
- * An exception thrown if the receiver of a guest language implementation cannot resolve a message.
- */
-public final class UnsupportedMessageException extends RuntimeException {
+final class Read extends KnownMessage {
+    public static final int HASH = 423438;
+    static Message INSTANCE = new Read();
 
-    private static final long serialVersionUID = -2014660135608964970L;
-
-    public UnsupportedMessageException(String reason) {
-        super(reason);
+    private Read() {
     }
 
+    @Override
+    public boolean equals(Object message) {
+        return message instanceof Read;
+    }
+
+    @Override
+    public int hashCode() {
+        return HASH;
+    }
+
+    @Override
+    public String toString() {
+        return "msgRead";
+    }
 }

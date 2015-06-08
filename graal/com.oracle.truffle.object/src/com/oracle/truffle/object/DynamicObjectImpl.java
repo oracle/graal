@@ -376,7 +376,8 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         ShapeProfiler.getInstance().track(obj);
     }
 
-    public ForeignAccessFactory getForeignAccessFactory() {
+    @Override
+    public ForeignAccess getForeignAccess() {
         return getShape().getForeignAccessFactory();
     }
 }

@@ -22,47 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
 
-import com.oracle.truffle.api.interop.messages.*;
+/**
+ * Inter-operability between different languages is covered by this package.
+ * In case you are implementing own {@link com.oracle.truffle.api.TruffleLanguage} and you want
+ * to interact with other {@link com.oracle.truffle.api.TruffleLanguage language implementations}
+ * you need to use types from this package.
+ * <p>
+ * Different languages can exchange either wrappers of primitive Java
+ * types (like {@link Integer}, {@link Double}, {@link String}), or they
+ * can export their own types (if they implement {@link TruffleObject} interface).
+ * Btw. One can recognize foreign object if it implements {@link TruffleObject}.
+ * <p>
+ * To use {@link TruffleObject} from a different language one needs to ask
+ * the language to build appropriate AST for a given {@link Message}. To do
+ * so use {@link ForeignAccess#node(com.oracle.truffle.api.interop.Message)}
+ * and when calling it {@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...)}.
+ */
+package com.oracle.truffle.api.interop;
 
-public final class Execute implements Message {
-    private final Object receiver;
-    private final int arity;
-
-    public static Execute create(Receiver receiver, int arity) {
-        return new Execute(receiver, arity);
-    }
-
-    public static Execute create(Message receiver, int arity) {
-        return new Execute(receiver, arity);
-    }
-
-    private Execute(Object receiver, int arity) {
-        this.receiver = receiver;
-        this.arity = arity;
-    }
-
-    public Object getReceiver() {
-        return receiver;
-    }
-
-    public int getArity() {
-        return arity;
-    }
-
-    public boolean matchStructure(Object message) {
-        if (!(message instanceof Execute)) {
-            return false;
-        }
-        Execute m1 = this;
-        Execute m2 = (Execute) message;
-        return MessageUtil.compareMessage(m1.getReceiver(), m2.getReceiver());
-    }
-
-    @Override
-    public String toString() {
-        return String.format("Execute(%s)", receiver.toString());
-    }
-
-}

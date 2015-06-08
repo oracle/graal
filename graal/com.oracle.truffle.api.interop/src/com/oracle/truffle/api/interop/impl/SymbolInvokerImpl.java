@@ -22,18 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop;
+package com.oracle.truffle.api.interop.impl;
 
 import java.io.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.interop.exception.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.interop.messages.*;
-import com.oracle.truffle.interop.node.*;
 
 public final class SymbolInvokerImpl extends SymbolInvoker {
     static final FrameDescriptor UNUSED_FRAMEDESCRIPTOR = new FrameDescriptor();
@@ -49,34 +48,34 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
         if (symbol instanceof Boolean) {
             return symbol;
         }
-        ForeignObjectAccessNode callMain = ForeignObjectAccessNode.getAccess(Execute.create(Receiver.create(), arr.length));
-        CallTarget callMainTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(callMain, (TruffleObject) symbol, arr));
+        Node executeMain = Message.createExecute(arr.length).createNode();
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(executeMain, (TruffleObject) symbol, arr));
         VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(arr, UNUSED_FRAMEDESCRIPTOR);
-        Object ret = callMainTarget.call(frame);
+        Object ret = callTarget.call(frame);
         if (ret instanceof TruffleObject) {
             TruffleObject tret = (TruffleObject) ret;
             Object isBoxedResult;
             try {
-                ForeignObjectAccessNode isBoxed = ForeignObjectAccessNode.getAccess(IsBoxed.create(Receiver.create()));
+                Node isBoxed = Message.IS_BOXED.createNode();
                 CallTarget isBoxedTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(isBoxed, tret));
                 isBoxedResult = isBoxedTarget.call(frame);
-            } catch (UnsupportedMessageException ex) {
+            } catch (IllegalArgumentException ex) {
                 isBoxedResult = false;
             }
             if (Boolean.TRUE.equals(isBoxedResult)) {
-                ForeignObjectAccessNode unbox = ForeignObjectAccessNode.getAccess(Unbox.create(Receiver.create()));
+                Node unbox = Message.UNBOX.createNode();
                 CallTarget unboxTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(unbox, tret));
                 Object unboxResult = unboxTarget.call(frame);
                 return unboxResult;
             } else {
                 try {
-                    ForeignObjectAccessNode isNull = ForeignObjectAccessNode.getAccess(IsNull.create(Receiver.create()));
+                    Node isNull = Message.IS_NULL.createNode();
                     CallTarget isNullTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(isNull, tret));
                     Object isNullResult = isNullTarget.call(frame);
                     if (Boolean.TRUE.equals(isNullResult)) {
                         return null;
                     }
-                } catch (UnsupportedMessageException ex) {
+                } catch (IllegalArgumentException ex) {
                     // fallthrough
                 }
             }
@@ -85,11 +84,11 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
     }
 
     private static class TemporaryRoot extends RootNode {
-        @Child private ForeignObjectAccessNode foreignAccess;
+        @Child private Node foreignAccess;
         private final TruffleObject function;
         private final Object[] args;
 
-        public TemporaryRoot(ForeignObjectAccessNode foreignAccess, TruffleObject function, Object... args) {
+        public TemporaryRoot(Node foreignAccess, TruffleObject function, Object... args) {
             this.foreignAccess = foreignAccess;
             this.function = function;
             this.args = args;
@@ -97,7 +96,7 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return foreignAccess.executeForeign(frame, function, args);
+            return ForeignAccess.execute(foreignAccess, frame, function, args);
         }
     }
 

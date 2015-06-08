@@ -22,25 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.messages.*;
+final class GetSize extends UnaryMessage {
+    public static final int HASH = 423432;
 
-public final class Unbox extends UnaryMessage {
-    public static Unbox create(Receiver receiver) {
-        return new Unbox(receiver);
-    }
-
-    public static Unbox create(Message receiver) {
-        return new Unbox(receiver);
-    }
-
-    private Unbox(Object receiver) {
-        super(receiver);
-    }
+    static Message INSTANCE = new GetSize();
 
     @Override
     public String toString() {
-        return String.format("Unbox(%s)", receiver.toString());
+        return "msgGetSize";
+    }
+
+    @Override
+    public int hashCode() {
+        return HASH;
     }
 }

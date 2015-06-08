@@ -1107,7 +1107,7 @@ public abstract class ShapeImpl extends Shape {
     protected static final DebugCounter propertyListAllocCount = DebugCounter.create("Property lists allocated");
     protected static final DebugCounter propertyListShareCount = DebugCounter.create("Property lists shared");
 
-    public ForeignAccessFactory getForeignAccessFactory() {
+    public ForeignAccess getForeignAccessFactory() {
         return getObjectType().getForeignAccessFactory();
     }
 }

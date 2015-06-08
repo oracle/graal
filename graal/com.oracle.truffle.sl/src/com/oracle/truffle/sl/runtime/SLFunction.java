@@ -98,7 +98,7 @@ public final class SLFunction implements TruffleObject {
      * foreign access implementation}.
      */
     @Override
-    public ForeignAccessFactory getForeignAccessFactory() {
+    public ForeignAccess getForeignAccess() {
         return SLFunctionForeignAccess.INSTANCE;
     }
 }

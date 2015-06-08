@@ -22,14 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.node;
+package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.interop.messages.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.interop.*;
 
 abstract class ObjectAccessNode extends Node {
 
@@ -57,8 +54,12 @@ class UnresolvedObjectAccessNode extends ObjectAccessNode {
     }
 
     private static CachedObjectAccessNode createCachedAccess(TruffleObject receiver, Message accessTree, ObjectAccessNode next) {
-        ForeignAccessFactory accessFactory = receiver.getForeignAccessFactory();
-        return new CachedObjectAccessNode(Truffle.getRuntime().createDirectCallNode(accessFactory.getAccess(accessTree)), next, accessFactory.getLanguageCheck());
+        ForeignAccess fa = receiver.getForeignAccess();
+        final CallTarget ct = fa.access(accessTree);
+        if (ct == null) {
+            throw new IllegalArgumentException("Message " + accessTree + " not recognized by " + fa);
+        }
+        return new CachedObjectAccessNode(Truffle.getRuntime().createDirectCallNode(ct), next, fa);
     }
 
     private static GenericObjectAccessNode createGenericAccess(Message access) {
@@ -82,7 +83,12 @@ class GenericObjectAccessNode extends ObjectAccessNode {
 
     @Override
     public Object executeWith(VirtualFrame frame, TruffleObject truffleObject, Object[] arguments) {
-        return indirectCallNode.call(frame, truffleObject.getForeignAccessFactory().getAccess(access), ForeignAccessArguments.create(truffleObject, arguments));
+        final ForeignAccess fa = truffleObject.getForeignAccess();
+        final CallTarget ct = fa.access(access);
+        if (ct == null) {
+            throw new IllegalStateException("Message " + access + " not recognized by " + fa);
+        }
+        return indirectCallNode.call(frame, ct, ForeignAccessArguments.create(truffleObject, arguments));
     }
 }
 
@@ -90,9 +96,9 @@ class CachedObjectAccessNode extends ObjectAccessNode {
     @Child private DirectCallNode callTarget;
     @Child private ObjectAccessNode next;
 
-    private final InteropPredicate languageCheck;
+    private final ForeignAccess languageCheck;
 
-    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, InteropPredicate languageCheck) {
+    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, ForeignAccess languageCheck) {
         this.callTarget = callTarget;
         this.next = next;
         this.languageCheck = languageCheck;
@@ -109,7 +115,7 @@ class CachedObjectAccessNode extends ObjectAccessNode {
     }
 
     private Object doAccess(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        if (languageCheck.test(receiver)) {
+        if (languageCheck.canHandle(receiver)) {
             return callTarget.call(frame, ForeignAccessArguments.create(receiver, arguments));
         } else {
             return doNext(frame, receiver, arguments);
