@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -43,4 +44,9 @@ public interface LoweringProvider {
      * @return a node that gives the index of the element
      */
     ValueNode reconstructArrayIndex(Kind elementKind, LocationNode location);
+
+    /**
+     * Gets the platform specific size of a type in bytes.
+     */
+    int getSizeInBytes(Stamp stamp);
 }

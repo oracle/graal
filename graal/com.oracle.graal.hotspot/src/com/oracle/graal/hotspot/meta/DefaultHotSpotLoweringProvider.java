@@ -539,4 +539,13 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected LocationIdentity initLocationIdentity() {
         return INIT_LOCATION;
     }
+
+    @Override
+    public int getSizeInBytes(Stamp stamp) {
+        if (stamp instanceof NarrowOopStamp || (stamp instanceof KlassPointerStamp && ((KlassPointerStamp) stamp).isCompressed())) {
+            return Kind.Int.getByteCount();
+        } else {
+            return super.getSizeInBytes(stamp);
+        }
+    }
 }

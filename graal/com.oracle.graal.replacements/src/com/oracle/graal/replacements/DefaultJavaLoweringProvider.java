@@ -791,4 +791,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
     }
+
+    @Override
+    public int getSizeInBytes(Stamp stamp) {
+        if (stamp instanceof PrimitiveStamp) {
+            return ((PrimitiveStamp) stamp).getBits() / 8;
+        } else if (stamp instanceof AbstractPointerStamp) {
+            return target.wordSize;
+        } else {
+            throw JVMCIError.shouldNotReachHere("stamp " + stamp + " has no size");
+        }
+    }
 }
