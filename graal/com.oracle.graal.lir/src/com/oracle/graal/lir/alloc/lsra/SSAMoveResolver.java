@@ -149,4 +149,20 @@ final class SSAMoveResolver extends MoveResolver {
         }
         return super.createMove(fromOpr, toOpr, fromLocation, toLocation);
     }
+
+    @Override
+    protected void breakCycle(int spillCandidate) {
+        if (spillCandidate != -1) {
+            super.breakCycle(spillCandidate);
+            return;
+        }
+        assert mappingFrom.size() > 1;
+        // Arbitrarily select the first entry for spilling.
+        int stackSpillCandidate = 0;
+        Interval fromInterval = mappingFrom.get(stackSpillCandidate);
+        assert isStackSlotValue(fromInterval.location());
+        // allocate new stack slot
+        StackSlotValue spillSlot = getAllocator().frameMapBuilder.allocateSpillSlot(fromInterval.kind());
+        spillInterval(stackSpillCandidate, fromInterval, spillSlot);
+    }
 }

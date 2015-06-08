@@ -26,6 +26,7 @@ import com.oracle.jvmci.code.StackSlotValue;
 import com.oracle.jvmci.meta.Value;
 import com.oracle.jvmci.meta.LIRKind;
 import com.oracle.jvmci.meta.AllocatableValue;
+
 import static com.oracle.jvmci.code.ValueUtil.*;
 import static java.lang.String.*;
 
@@ -44,7 +45,7 @@ class MoveResolver {
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
-    private final List<Interval> mappingFrom;
+    protected final List<Interval> mappingFrom;
     private final List<Value> mappingFromOpr;
     private final List<Interval> mappingTo;
     private boolean multipleReadsAllowed;
@@ -320,39 +321,7 @@ class MoveResolver {
                 }
 
                 if (!processedInterval) {
-                    // no move could be processed because there is a cycle in the move list
-                    // (e.g. r1 . r2, r2 . r1), so one interval must be spilled to memory
-                    assert spillCandidate != -1 : "no interval in register for spilling found";
-
-                    // create a new spill interval and assign a stack slot to it
-                    Interval fromInterval = mappingFrom.get(spillCandidate);
-                    Interval spillInterval = getAllocator().createDerivedInterval(fromInterval);
-                    spillInterval.setKind(fromInterval.kind());
-
-                    // add a dummy range because real position is difficult to calculate
-                    // Note: this range is a special case when the integrity of the allocation is
-                    // checked
-                    spillInterval.addRange(1, 2);
-
-                    // do not allocate a new spill slot for temporary interval, but
-                    // use spill slot assigned to fromInterval. Otherwise moves from
-                    // one stack slot to another can happen (not allowed by LIRAssembler
-                    StackSlotValue spillSlot = fromInterval.spillSlot();
-                    if (spillSlot == null) {
-                        spillSlot = getAllocator().frameMapBuilder.allocateSpillSlot(spillInterval.kind());
-                        fromInterval.setSpillSlot(spillSlot);
-                    }
-                    spillInterval.assignLocation(spillSlot);
-
-                    if (Debug.isLogEnabled()) {
-                        Debug.log("created new Interval for spilling: %s", spillInterval);
-                    }
-                    blockRegisters(spillInterval);
-
-                    // insert a move from register to stack and update the mapping
-                    insertMove(fromInterval, spillInterval);
-                    mappingFrom.set(spillCandidate, spillInterval);
-                    unblockRegisters(fromInterval);
+                    breakCycle(spillCandidate);
                 }
             }
         }
@@ -362,6 +331,47 @@ class MoveResolver {
 
         // check that all intervals have been processed
         assert checkEmpty();
+    }
+
+    protected void breakCycle(int spillCandidate) {
+        // no move could be processed because there is a cycle in the move list
+        // (e.g. r1 . r2, r2 . r1), so one interval must be spilled to memory
+        assert spillCandidate != -1 : "no interval in register for spilling found";
+
+        // create a new spill interval and assign a stack slot to it
+        Interval fromInterval = mappingFrom.get(spillCandidate);
+        // do not allocate a new spill slot for temporary interval, but
+        // use spill slot assigned to fromInterval. Otherwise moves from
+        // one stack slot to another can happen (not allowed by LIRAssembler
+        StackSlotValue spillSlot = fromInterval.spillSlot();
+        if (spillSlot == null) {
+            spillSlot = getAllocator().frameMapBuilder.allocateSpillSlot(fromInterval.kind());
+            fromInterval.setSpillSlot(spillSlot);
+        }
+        spillInterval(spillCandidate, fromInterval, spillSlot);
+    }
+
+    protected void spillInterval(int spillCandidate, Interval fromInterval, StackSlotValue spillSlot) {
+        assert mappingFrom.get(spillCandidate).equals(fromInterval);
+        Interval spillInterval = getAllocator().createDerivedInterval(fromInterval);
+        spillInterval.setKind(fromInterval.kind());
+
+        // add a dummy range because real position is difficult to calculate
+        // Note: this range is a special case when the integrity of the allocation is
+        // checked
+        spillInterval.addRange(1, 2);
+
+        spillInterval.assignLocation(spillSlot);
+
+        if (Debug.isLogEnabled()) {
+            Debug.log("created new Interval for spilling: %s", spillInterval);
+        }
+        blockRegisters(spillInterval);
+
+        // insert a move from register to stack and update the mapping
+        insertMove(fromInterval, spillInterval);
+        mappingFrom.set(spillCandidate, spillInterval);
+        unblockRegisters(fromInterval);
     }
 
     private void printMapping() {
