@@ -154,6 +154,10 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
         throw JVMCIError.shouldNotReachHere(String.format("Unexpected input stamp %s", input));
     }
 
+    public CompressionOp getOp() {
+        return op;
+    }
+
     public CompressEncoding getEncoding() {
         return encoding;
     }
