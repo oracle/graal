@@ -33,7 +33,8 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.engine.SourceExecutionProvider.ExecutionListener;
+import com.oracle.truffle.api.vm.TruffleVM.Language;
+import com.oracle.truffle.tools.debug.engine.DebugExecutionSupport.DebugExecutionListener;
 
 /**
  * Language-agnostic engine for running Truffle languages under debugging control.
@@ -70,12 +71,14 @@ public final class DebugEngine {
         void addWarning(String warning);
     }
 
+    private final Language language;
+
     /**
      * The client of this engine.
      */
     private final DebugClient debugClient;
 
-    private final SourceExecutionProvider sourceExecutionProvider;
+    private final DebugExecutionSupport executionSupport;
 
     /**
      * Implementation of line-oriented breakpoints.
@@ -94,11 +97,12 @@ public final class DebugEngine {
 
     /**
      * @param debugClient
-     * @param sourceExecutionProvider
+     * @param language
      */
-    private DebugEngine(DebugClient debugClient, SourceExecutionProvider sourceExecutionProvider) {
+    private DebugEngine(DebugClient debugClient, Language language) {
         this.debugClient = debugClient;
-        this.sourceExecutionProvider = sourceExecutionProvider;
+        this.language = language;
+        this.executionSupport = new DebugExecutionSupport(language.getShortName(), language.getDebugSupport());
 
         Source.setFileCaching(true);
 
@@ -107,7 +111,7 @@ public final class DebugEngine {
         prepareContinue();
         debugContext.contextTrace("START EXEC DEFAULT");
 
-        sourceExecutionProvider.addExecutionListener(new ExecutionListener() {
+        executionSupport.addExecutionListener(new DebugExecutionListener() {
 
             public void executionStarted(Source source, boolean stepInto) {
                 // Push a new execution context onto stack
@@ -146,13 +150,13 @@ public final class DebugEngine {
             }
         };
 
-        this.lineBreaks = new LineBreakpointFactory(sourceExecutionProvider, breakpointCallback, warningLog);
+        this.lineBreaks = new LineBreakpointFactory(executionSupport, breakpointCallback, warningLog);
 
-        this.tagBreaks = new TagBreakpointFactory(sourceExecutionProvider, breakpointCallback, warningLog);
+        this.tagBreaks = new TagBreakpointFactory(executionSupport, breakpointCallback, warningLog);
     }
 
-    public static DebugEngine create(DebugClient debugClient, SourceExecutionProvider sourceExecutionProvider) {
-        return new DebugEngine(debugClient, sourceExecutionProvider);
+    public static DebugEngine create(DebugClient debugClient, Language language) {
+        return new DebugEngine(debugClient, language);
     }
 
     /**
@@ -162,7 +166,7 @@ public final class DebugEngine {
      * @throws DebugException if an unexpected failure occurs
      */
     public void run(Source source, boolean stepInto) throws DebugException {
-        sourceExecutionProvider.run(source, stepInto);
+        executionSupport.run(source, stepInto);
     }
 
     /**
@@ -316,9 +320,11 @@ public final class DebugEngine {
 
     /**
      * Evaluates code in a halted execution context, at top-level if <code>mFrame==null</code>.
+     *
+     * @throws DebugException
      */
-    public Object eval(Source source, Node node, MaterializedFrame mFrame) {
-        return sourceExecutionProvider.eval(source, node, mFrame);
+    public Object eval(Source source, Node node, MaterializedFrame mFrame) throws DebugException {
+        return executionSupport.evalInContext(source, node, mFrame);
     }
 
     /**
@@ -806,9 +812,7 @@ public final class DebugEngine {
             if (frames == null) {
                 stream.println("<empty stack>");
             } else {
-                // TODO (mlvdv) get visualizer via the (to be developed) Truffle langauge API
-                final Visualizer visualizer = debugClient.getExecutionContext().getVisualizer();
-
+                final Visualizer visualizer = language.getDebugSupport().getVisualizer();
                 for (FrameDebugDescription frameDesc : frames) {
                     final StringBuilder sb = new StringBuilder("    frame " + Integer.toString(frameDesc.index()));
                     sb.append(":at " + visualizer.displaySourceLocation(frameDesc.node()));

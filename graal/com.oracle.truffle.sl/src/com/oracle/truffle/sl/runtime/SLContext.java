@@ -62,11 +62,6 @@ public final class SLContext extends ExecutionContext {
         this.emptyShape = LAYOUT.createShape(new ObjectType());
     }
 
-    @Override
-    public String getLanguageShortName() {
-        return "Simple";
-    }
-
     /**
      * Returns the default input, i.e., the source for the {@link SLReadlnBuiltin}. To allow unit
      * testing, we do not use {@link System#in} directly.
@@ -146,16 +141,11 @@ public final class SLContext extends ExecutionContext {
     }
 
     /**
-     * This function will parse the given source code, parse the code using the {@link Parser}, and
-     * then execute the function named main. To use this method with instrumentation,
-     * setASTNodeProber must have been already called. There is currently no guard to check if this
-     * is the case. <br/>
-     * Due to the experimental nature of the instrumentation framework, the parse that happens in
-     * this method will remove any previously added instrumentation.
+     * Evaluate a source, causing any definitions to be registered (but not executed).
      *
-     * @param source The {@link Source} to execute.
+     * @param source The {@link Source} to parse.
      */
-    public void executeMain(Source source) {
+    public void evalSource(Source source) {
         Parser.parseSL(this, source);
     }
 

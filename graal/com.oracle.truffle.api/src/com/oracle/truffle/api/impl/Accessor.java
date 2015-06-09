@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.debug.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 
@@ -58,6 +60,16 @@ public abstract class Accessor {
             @Override
             protected boolean isObjectOfLanguage(Object object) {
                 return false;
+            }
+
+            @Override
+            protected ToolSupportProvider getToolSupport() {
+                return null;
+            }
+
+            @Override
+            protected DebugSupportProvider getDebugSupport() {
+                return null;
             }
         };
         lng.hashCode();
@@ -95,6 +107,14 @@ public abstract class Accessor {
 
     protected Object languageGlobal(TruffleLanguage l) {
         return API.languageGlobal(l);
+    }
+
+    protected ToolSupportProvider getToolSupport(TruffleLanguage l) {
+        return API.getToolSupport(l);
+    }
+
+    protected DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+        return API.getDebugSupport(l);
     }
 
     protected Object invoke(Object obj, Object[] args) throws IOException {

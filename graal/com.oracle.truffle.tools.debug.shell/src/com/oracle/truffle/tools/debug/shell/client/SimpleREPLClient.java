@@ -29,7 +29,6 @@ import java.util.*;
 
 import jline.console.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.tools.debug.shell.*;
 
@@ -84,7 +83,7 @@ public class SimpleREPLClient implements REPLClient {
     private static final String STACK_FRAME_FORMAT = "    %3d: at %s in %s    line =\"%s\"\n";
     private static final String STACK_FRAME_SELECTED_FORMAT = "==> %3d: at %s in %s    line =\"%s\"\n";
 
-    private final ExecutionContext executionContext;  // Language context
+    private final String languageName;
 
     // Top level commands
     private final Map<String, REPLCommand> commandMap = new HashMap<>();
@@ -139,8 +138,8 @@ public class SimpleREPLClient implements REPLClient {
      */
     private Source selectedSource = null;
 
-    public SimpleREPLClient(ExecutionContext context, REPLServer replServer) {
-        this.executionContext = context;
+    public SimpleREPLClient(String languageName, REPLServer replServer) {
+        this.languageName = languageName;
         this.replServer = replServer;
         this.writer = System.out;
         try {
@@ -211,7 +210,7 @@ public class SimpleREPLClient implements REPLClient {
         try {
             clientContext.startSession();
         } finally {
-            clientContext.displayReply("Goodbye from " + executionContext.getLanguageShortName() + "/REPL");
+            clientContext.displayReply("Goodbye from " + languageName + "/REPL");
         }
 
     }
@@ -282,8 +281,7 @@ public class SimpleREPLClient implements REPLClient {
             if (level == 0) {
                 // 0-level context; no executions halted.
                 if (selectedSource == null) {
-                    final String languageName = executionContext.getLanguageShortName();
-                    currentPrompt = languageName == null ? "() " : "(" + languageName + ") ";
+                    currentPrompt = languageName == null ? "() " : "( " + languageName + " ) ";
                 } else {
                     currentPrompt = "(" + selectedSource.getShortName() + ") ";
                 }

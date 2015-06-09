@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.impl.*;
+public class DebugSupportException extends Exception {
 
-/**
- * Access to information and basic services in the runtime context for a Truffle-implemented guest
- * language.
- */
-public abstract class ExecutionContext {
+    private static final long serialVersionUID = 3039074861617372741L;
 
-    protected ExecutionContext() {
+    public DebugSupportException(String string) {
+        super(string);
     }
 
-    /**
-     * Get compiler options specific to this <code>ExecutionContext</code>.
-     */
-    public CompilerOptions getCompilerOptions() {
-        return DefaultCompilerOptions.INSTANCE;
+    public DebugSupportException(Exception ex) {
+        super(ex);
     }
 
 }

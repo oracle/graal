@@ -29,7 +29,9 @@ import java.util.*;
 import java.util.Scanner;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -133,13 +135,16 @@ import com.oracle.truffle.tools.*;
  * <em>default printer</em>.
  *
  */
-@TruffleLanguage.Registration(name = "sl", version = "0.5", mimeType = "application/x-sl")
-public class SLMain extends TruffleLanguage {
-    private static SLMain LAST;
+@TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
+public class SLLanguage extends TruffleLanguage {
+    private static SLLanguage LAST;
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
+    private static Visualizer visualizer = new SLDefaultVisualizer();
+    private static ASTProber registeredASTProber; // non-null if prober already registered
     private final SLContext context;
+    private DebugSupportProvider debugSupport;
 
-    public SLMain(Env env) {
+    public SLLanguage(Env env) {
         super(env);
         context = SLContextFactory.create(new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
         LAST = this;
@@ -148,11 +153,12 @@ public class SLMain extends TruffleLanguage {
         }
     }
 
+    // TODO (mlvdv) command line options
     /* Enables demonstration of per-type tabulation of node execution counts */
     private static boolean nodeExecCounts = false;
     /* Enables demonstration of per-line tabulation of STATEMENT node execution counts */
     private static boolean statementCounts = false;
-    /* Enables demonstration of er-line tabulation of STATEMENT coverage */
+    /* Enables demonstration of per-line tabulation of STATEMENT coverage */
     private static boolean coverage = false;
 
     /* Small tools that can be installed for demonstration */
@@ -360,7 +366,7 @@ public class SLMain extends TruffleLanguage {
     @Override
     protected Object eval(Source code) throws IOException {
         try {
-            context.executeMain(code);
+            context.evalSource(code);
         } catch (Exception e) {
             throw new IOException(e);
         }
@@ -387,9 +393,27 @@ public class SLMain extends TruffleLanguage {
         return object instanceof SLFunction;
     }
 
+    @Override
+    protected ToolSupportProvider getToolSupport() {
+        return getDebugSupport();
+    }
+
+    @Override
+    protected DebugSupportProvider getDebugSupport() {
+        if (debugSupport == null) {
+            debugSupport = new SLDebugProvider();
+        }
+        return debugSupport;
+    }
+
+    // TODO (mlvdv) remove the static hack when we no longer have the static demo variables
     private static void setupToolDemos() {
         if (statementCounts || coverage) {
-            Probe.registerASTProber(new SLStandardASTProber());
+            if (registeredASTProber == null) {
+                registeredASTProber = new SLStandardASTProber();
+                // This should be registered on the TruffleVM
+                Probe.registerASTProber(registeredASTProber);
+            }
         }
         if (nodeExecCounts) {
             nodeExecCounter = new NodeExecCounter();
@@ -420,6 +444,49 @@ public class SLMain extends TruffleLanguage {
             coverageTracker.print(System.out);
             coverageTracker.dispose();
         }
+    }
+
+    private final class SLDebugProvider implements DebugSupportProvider {
+
+        public SLDebugProvider() {
+            if (registeredASTProber == null) {
+                registeredASTProber = new SLStandardASTProber();
+                // This should be registered on the TruffleVM
+                Probe.registerASTProber(registeredASTProber);
+            }
+        }
+
+        public Visualizer getVisualizer() {
+            if (visualizer == null) {
+                visualizer = new SLDefaultVisualizer();
+            }
+            return visualizer;
+        }
+
+        public void enableASTProbing(ASTProber prober) {
+            if (prober != null) {
+                // This should be registered on the TruffleVM
+                Probe.registerASTProber(prober);
+            }
+        }
+
+        public void run(Source source) throws DebugSupportException {
+            // TODO (mlvdv) fix to run properly in the current VM
+            try {
+                SLLanguage.run(source);
+            } catch (Exception e) {
+                throw new DebugSupportException(e);
+            }
+        }
+
+        public Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws DebugSupportException {
+            throw new DebugSupportException("evalInContext not supported in this language");
+        }
+
+        public AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws DebugSupportException {
+            throw new DebugSupportException("createAdvancedInstrumentRootFactory not supported in this language");
+        }
+
     }
 
 }

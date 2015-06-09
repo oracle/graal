@@ -73,7 +73,7 @@ public class SLDefaultVisualizer extends DefaultVisualizer {
     }
 
     @Override
-    public String displayValue(ExecutionContext context, Object value, int trim) {
+    public String displayValue(Object value, int trim) {
         if (value == SLNull.SINGLETON) {
             return "null";
         }

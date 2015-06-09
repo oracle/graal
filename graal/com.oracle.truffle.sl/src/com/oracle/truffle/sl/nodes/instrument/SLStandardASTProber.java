@@ -44,7 +44,7 @@ public class SLStandardASTProber implements NodeVisitor, ASTProber {
      */
     public boolean visit(Node node) {
 
-        if (node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
+        if (!(node instanceof InstrumentationNode) && node instanceof SLStatementNode && node.getParent() != null && node.getSourceSection() != null) {
             // All SL nodes are instrumentable, but treat expressions specially
 
             if (node instanceof SLExpressionNode) {

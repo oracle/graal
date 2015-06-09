@@ -25,7 +25,9 @@ package com.oracle.truffle.api.dsl.test.processor;
 import java.io.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.dsl.test.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 public class LanguageRegistrationTest {
@@ -71,6 +73,17 @@ public class LanguageRegistrationTest {
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
+
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            return null;
+        }
+
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            return null;
+        }
+
     }
 
     @ExpectError("Language must have a public constructor accepting TruffleLanguage.Env as parameter")
@@ -99,6 +112,17 @@ public class LanguageRegistrationTest {
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
+
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            return null;
+        }
+
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            return null;
+        }
+
     }
 
     @TruffleLanguage.Registration(name = "myLangGood", version = "0", mimeType = "text/x-my")
@@ -126,5 +150,16 @@ public class LanguageRegistrationTest {
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
+
+        @Override
+        protected ToolSupportProvider getToolSupport() {
+            return null;
+        }
+
+        @Override
+        protected DebugSupportProvider getDebugSupport() {
+            return null;
+        }
+
     }
 }

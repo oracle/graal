@@ -73,7 +73,7 @@ public class DefaultVisualizer implements Visualizer {
         return callTarget.toString();
     }
 
-    public String displayValue(ExecutionContext context, Object value, int trim) {
+    public String displayValue(Object value, int trim) {
         return trim(value.toString(), trim);
     }
 

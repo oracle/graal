@@ -33,6 +33,10 @@ public class DebugException extends Exception {
         super(string);
     }
 
+    public DebugException(Exception ex) {
+        super(ex);
+    }
+
     private static final long serialVersionUID = 3307454453821997224L;
 
 }

@@ -86,7 +86,7 @@ final class TagBreakpointFactory {
         }
     };
 
-    private final SourceExecutionProvider sourceExecutionProvider;
+    private final DebugExecutionSupport executionSupport;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -102,8 +102,8 @@ final class TagBreakpointFactory {
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
 
-    TagBreakpointFactory(SourceExecutionProvider sourceExecutionProvider, BreakpointCallback breakpointCallback, WarningLog warningLog) {
-        this.sourceExecutionProvider = sourceExecutionProvider;
+    TagBreakpointFactory(DebugExecutionSupport executionSupport, BreakpointCallback breakpointCallback, WarningLog warningLog) {
+        this.executionSupport = executionSupport;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
 
@@ -338,7 +338,7 @@ final class TagBreakpointFactory {
             if (conditionExpr == null) {
                 newInstrument = Instrument.create(new UnconditionalTagBreakInstrumentListener(), BREAKPOINT_NAME);
             } else {
-                newInstrument = Instrument.create(this, sourceExecutionProvider.createAdvancedInstrumentRootFactory(conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
+                newInstrument = Instrument.create(this, executionSupport.createAdvancedInstrumentRootFactory(conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
             }
             newProbe.attach(newInstrument);
             instruments.add(newInstrument);

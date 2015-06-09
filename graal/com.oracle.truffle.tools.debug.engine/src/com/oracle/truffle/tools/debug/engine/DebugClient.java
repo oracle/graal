@@ -26,9 +26,9 @@ package com.oracle.truffle.tools.debug.engine;
 
 import java.util.*;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.vm.TruffleVM.Language;
 
 /**
  * A client of the debugger where certain events should be posted.
@@ -43,13 +43,12 @@ public interface DebugClient {
      *
      * @param astNode AST node that is just about to be executed
      * @param mFrame frame that will be passed to the node when executed
-     * @param warnings any warnings generated since thie most recent halt.
+     * @param warnings any warnings generated since the most recent halt.
      */
     void haltedAt(Node astNode, MaterializedFrame mFrame, List<String> warnings);
 
-    // TODO (mlvdv) temporary; will eventually be accessible by a new Truffle language API
     /**
-     * Gets the context for the language being debugged.
+     * Gets information and services for the language being debugged.
      */
-    ExecutionContext getExecutionContext();
+    Language getLanguage();
 }

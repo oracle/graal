@@ -24,7 +24,6 @@ package com.oracle.truffle.sl.factory;
 
 import java.io.*;
 
-import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.runtime.*;
 
 public final class SLContextFactory {
@@ -33,8 +32,6 @@ public final class SLContextFactory {
     }
 
     public static SLContext create(BufferedReader input, PrintWriter output) {
-        final SLContext slContext = new SLContext(input, output);
-        slContext.setVisualizer(new SLDefaultVisualizer());
-        return slContext;
+        return new SLContext(input, output);
     }
 }

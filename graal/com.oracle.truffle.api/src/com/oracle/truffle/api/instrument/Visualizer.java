@@ -61,11 +61,11 @@ public interface Visualizer {
 
     /**
      * Converts a value in the guest language to a display string. If
-     *
+     * 
      * @param trim if {@code > 0}, them limit size of String to either the value of trim or the
      *            number of characters in the first line, whichever is lower.
      */
-    String displayValue(ExecutionContext context, Object value, int trim);
+    String displayValue(Object value, int trim);
 
     /**
      * Converts a slot identifier in the guest language to a display string.

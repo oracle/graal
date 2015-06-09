@@ -28,7 +28,9 @@ import java.io.*;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
+import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
@@ -104,10 +106,10 @@ public abstract class TruffleLanguage {
      * somebody asks for it (by calling this method).
      * <p>
      * The exported object can either be <code>TruffleObject</code> (e.g. a native object from the
-     * other language) to support inter-operability between languages, {@link String} or one of Java
+     * other language) to support interoperability between languages, {@link String} or one of Java
      * primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean}, etc.).
      * <p>
-     * The way a symbol becomes <em>exported</em> is language dependant. In general it is preferred
+     * The way a symbol becomes <em>exported</em> is language dependent. In general it is preferred
      * to make the export explicit - e.g. call some function or method to register an object under
      * specific name. Some languages may however decide to support implicit export of symbols (for
      * example from global scope, if they have one). However explicit exports should always be
@@ -142,6 +144,10 @@ public abstract class TruffleLanguage {
      * @return <code>true</code> if this language can deal with such object in native way
      */
     protected abstract boolean isObjectOfLanguage(Object object);
+
+    protected abstract ToolSupportProvider getToolSupport();
+
+    protected abstract DebugSupportProvider getDebugSupport();
 
     /**
      * Represents execution environment of the {@link TruffleLanguage}. Each active
@@ -237,5 +243,16 @@ public abstract class TruffleLanguage {
         protected Object languageGlobal(TruffleLanguage l) {
             return l.getLanguageGlobal();
         }
+
+        @Override
+        protected ToolSupportProvider getToolSupport(TruffleLanguage l) {
+            return l.getToolSupport();
+        }
+
+        @Override
+        protected DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+            return l.getDebugSupport();
+        }
     }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
-
-import com.oracle.truffle.api.impl.*;
+package com.oracle.truffle.api.instrument;
 
 /**
- * Access to information and basic services in the runtime context for a Truffle-implemented guest
- * language.
+ * Access to language-specific information and execution services for external tools.
  */
-public abstract class ExecutionContext {
-
-    protected ExecutionContext() {
-    }
+public interface ToolSupportProvider {
 
     /**
-     * Get compiler options specific to this <code>ExecutionContext</code>.
+     * Gets visualization services for language-specific information.
      */
-    public CompilerOptions getCompilerOptions() {
-        return DefaultCompilerOptions.INSTANCE;
-    }
+    Visualizer getVisualizer();
+
+    /**
+     * Enables AST probing on all subsequently created ASTs (sources parsed).
+     *
+     * @param astProber optional AST prober to enable; the default for the language used if
+     *            {@code null}
+     */
+    void enableASTProbing(ASTProber astProber);
 
 }

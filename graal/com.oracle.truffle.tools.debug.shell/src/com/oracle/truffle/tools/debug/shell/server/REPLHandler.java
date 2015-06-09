@@ -26,13 +26,13 @@ package com.oracle.truffle.tools.debug.shell.server;
 
 import java.util.*;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.vm.TruffleVM.Language;
 import com.oracle.truffle.tools.debug.engine.*;
+import com.oracle.truffle.tools.debug.shell.*;
 
 /**
  * Server-side REPL implementation of an {@linkplain REPLMessage "op"}.
@@ -115,7 +115,7 @@ public abstract class REPLHandler {
     }
 
     protected static REPLMessage createFrameInfoMessage(final REPLServerContext serverContext, FrameDebugDescription frame) {
-        final Visualizer visualizer = serverContext.getLanguageContext().getVisualizer();
+        final Visualizer visualizer = serverContext.getLanguage().getDebugSupport().getVisualizer();
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.FRAME_INFO);
         infoMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(frame.index()));
         final Node node = frame.node();
@@ -402,15 +402,16 @@ public abstract class REPLHandler {
             final FrameDebugDescription frameDescription = stack.get(frameNumber);
             final REPLMessage frameMessage = createFrameInfoMessage(serverContext, frameDescription);
             final Frame frame = frameDescription.frameInstance().getFrame(FrameInstance.FrameAccess.READ_ONLY, true);
-            final ExecutionContext context = serverContext.getLanguageContext();
+            final Language language = serverContext.getLanguage();
+            final Visualizer visualizer = language.getDebugSupport().getVisualizer();
             final FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
             try {
                 final StringBuilder sb = new StringBuilder();
                 for (FrameSlot slot : frameDescriptor.getSlots()) {
-                    sb.append(Integer.toString(slot.getIndex()) + ": " + context.getVisualizer().displayIdentifier(slot) + " = ");
+                    sb.append(Integer.toString(slot.getIndex()) + ": " + visualizer.displayIdentifier(slot) + " = ");
                     try {
                         final Object value = frame.getValue(slot);
-                        sb.append(context.getVisualizer().displayValue(context, value, 0));
+                        sb.append(visualizer.displayValue(value, 0));
                     } catch (Exception ex) {
                         sb.append("???");
                     }
@@ -513,7 +514,7 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = serverContext.getLanguageContext().getVisualizer().getASTPrinter();
+            final ASTPrinter astPrinter = serverContext.getLanguage().getDebugSupport().getVisualizer().getASTPrinter();
             final String topic = request.get(REPLMessage.TOPIC);
             reply.put(REPLMessage.TOPIC, topic);
             Node node = serverContext.getNode();
@@ -574,7 +575,7 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = serverContext.getLanguageContext().getVisualizer().getASTPrinter();
+            final ASTPrinter astPrinter = serverContext.getLanguage().getDebugSupport().getVisualizer().getASTPrinter();
             final Node node = serverContext.getNode();
             if (node == null) {
                 return finishReplyFailed(reply, "no current AST node");

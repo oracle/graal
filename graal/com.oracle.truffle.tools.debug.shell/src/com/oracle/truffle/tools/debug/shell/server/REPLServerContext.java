@@ -24,11 +24,11 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.tools.debug.shell.*;
+import com.oracle.truffle.api.vm.TruffleVM.Language;
 import com.oracle.truffle.tools.debug.engine.*;
+import com.oracle.truffle.tools.debug.shell.*;
 
 public abstract class REPLServerContext {
 
@@ -63,7 +63,7 @@ public abstract class REPLServerContext {
         return mFrame;
     }
 
-    public abstract ExecutionContext getLanguageContext();
+    public abstract Language getLanguage();
 
     public abstract DebugEngine getDebugEngine();
 

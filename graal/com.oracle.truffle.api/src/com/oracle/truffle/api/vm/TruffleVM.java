@@ -34,7 +34,9 @@ import java.util.logging.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 /**
@@ -416,6 +418,7 @@ public final class TruffleVM {
         private final Properties props;
         private TruffleLanguage impl;
         private final String prefix;
+        private String shortName;
 
         Language(String prefix, Properties props) {
             this.prefix = prefix;
@@ -463,7 +466,18 @@ public final class TruffleVM {
          * @return string describing the specific language version
          */
         public String getShortName() {
-            return getName() + getVersion();
+            if (shortName == null) {
+                shortName = getName() + "(" + getVersion() + ")";
+            }
+            return shortName;
+        }
+
+        public ToolSupportProvider getToolSupport() {
+            return SPI.getToolSupport(getImpl());
+        }
+
+        public DebugSupportProvider getDebugSupport() {
+            return SPI.getDebugSupport(getImpl());
         }
 
         TruffleLanguage getImpl() {
@@ -536,6 +550,16 @@ public final class TruffleVM {
         @Override
         public Object invoke(Object obj, Object[] args) throws IOException {
             return super.invoke(obj, args);
+        }
+
+        @Override
+        public ToolSupportProvider getToolSupport(TruffleLanguage l) {
+            return super.getToolSupport(l);
+        }
+
+        @Override
+        public DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+            return super.getDebugSupport(l);
         }
     } // end of SPIAccessor
 }
