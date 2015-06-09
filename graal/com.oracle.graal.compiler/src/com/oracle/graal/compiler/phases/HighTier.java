@@ -67,16 +67,12 @@ public class HighTier extends PhaseSuite<HighTierContext> {
 
         appendPhase(new CleanTypeProfileProxyPhase(canonicalizer));
 
-        if (FullUnroll.getValue()) {
-            appendPhase(new LoopFullUnrollPhase(canonicalizer));
-        }
-
-        if (PartialEscapeAnalysis.getValue()) {
-            appendPhase(new PartialEscapePhase(true, canonicalizer));
-        }
-
         if (OptConvertDeoptsToGuards.getValue()) {
             appendPhase(new ConvertDeoptimizeToGuardPhase());
+        }
+
+        if (FullUnroll.getValue()) {
+            appendPhase(new LoopFullUnrollPhase(canonicalizer));
         }
 
         if (OptLoopTransform.getValue()) {
@@ -87,11 +83,15 @@ public class HighTier extends PhaseSuite<HighTierContext> {
                 appendPhase(new LoopUnswitchingPhase());
             }
         }
-        appendPhase(new RemoveValueProxyPhase());
 
         if (OptCanonicalizer.getValue()) {
             appendPhase(canonicalizer);
         }
+
+        if (PartialEscapeAnalysis.getValue()) {
+            appendPhase(new PartialEscapePhase(true, canonicalizer));
+        }
+        appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
     }
