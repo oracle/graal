@@ -68,6 +68,7 @@ public class NodeGenFactory {
     private final Set<TypeMirror> expectedTypes = new HashSet<>();
     private final Set<NodeExecutionData> usedExecuteChildMethods = new HashSet<>();
     private boolean nextUsed;
+    private boolean singleSpecializableUnsupportedUsed;
 
     private List<ExecutableTypeData> usedTypes;
     private List<SpecializationData> reachableSpecializations;
@@ -239,7 +240,7 @@ public class NodeGenFactory {
                 clazz.add(createExecutableTypeOverride(usedTypes, execType));
             }
 
-            if (node.needsRewrites(context)) {
+            if (singleSpecializableUnsupportedUsed) {
                 clazz.add(createUnsupportedMethod());
             }
         } else {
@@ -300,7 +301,6 @@ public class NodeGenFactory {
     private Element createUnsupportedMethod() {
         LocalContext locals = LocalContext.load(this);
         CodeExecutableElement method = locals.createMethod(modifiers(PROTECTED), getType(UnsupportedSpecializationException.class), "unsupported", varArgsThreshold);
-
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
         builder.startNew(getType(UnsupportedSpecializationException.class));
@@ -1512,7 +1512,8 @@ public class NodeGenFactory {
         }
     }
 
-    private static CodeTree createThrowUnsupported(LocalContext currentValues) {
+    private CodeTree createThrowUnsupported(LocalContext currentValues) {
+        singleSpecializableUnsupportedUsed = true;
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startThrow().startCall("unsupported");
         currentValues.addReferencesTo(builder);
