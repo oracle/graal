@@ -258,7 +258,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         }
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.initialize(TTY.cachedOut);
+            DebugEnvironment.initialize(TTY.out);
 
             String summary = DebugValueSummary.getValue();
             if (summary != null) {
