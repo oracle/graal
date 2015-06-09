@@ -26,7 +26,7 @@ import com.oracle.jvmci.service.*;
 import com.oracle.truffle.api.*;
 
 @ServiceProvider(TruffleRuntimeAccess.class)
-public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
+public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess, Service {
     public TruffleRuntime getRuntime() {
         return HotSpotTruffleRuntime.makeInstance();
     }
