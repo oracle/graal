@@ -26,6 +26,7 @@ package com.oracle.truffle.api.dsl;
 
 import java.util.*;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -40,8 +41,8 @@ public final class UnsupportedSpecializationException extends RuntimeException {
     private final Node[] suppliedNodes;
     private final Object[] suppliedValues;
 
+    @TruffleBoundary
     public UnsupportedSpecializationException(Node node, Node[] suppliedNodes, Object... suppliedValues) {
-        super("Unexpected values provided for " + node + ": " + Arrays.toString(suppliedValues));
         Objects.requireNonNull(suppliedNodes, "The suppliedNodes parameter must not be null.");
         if (suppliedNodes.length != suppliedValues.length) {
             throw new IllegalArgumentException("The length of suppliedNodes must match the length of suppliedValues.");
@@ -49,6 +50,11 @@ public final class UnsupportedSpecializationException extends RuntimeException {
         this.node = node;
         this.suppliedNodes = suppliedNodes;
         this.suppliedValues = suppliedValues;
+    }
+
+    @Override
+    public String getMessage() {
+        return String.format("Unexpected values provided for %s: %s", node, Arrays.toString(suppliedValues));
     }
 
     /**
