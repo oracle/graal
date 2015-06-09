@@ -127,8 +127,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         GraphUtil.removeFixedWithUnusedInputs(n);
     }
 
-    protected static AddressNode createOffsetAddress(StructuredGraph graph, ValueNode object, long offset) {
-        ValueNode o = ConstantNode.forLong(offset, graph);
+    protected AddressNode createOffsetAddress(StructuredGraph graph, ValueNode object, long offset) {
+        ValueNode o = ConstantNode.forIntegerKind(target.wordKind, offset, graph);
         return graph.unique(new OffsetAddressNode(object, o));
     }
 
@@ -188,13 +188,19 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, Kind elementKind, ValueNode index) {
-        ValueNode longIndex = graph.unique(new SignExtendNode(index, 64));
+        ValueNode wordIndex;
+        if (target.wordSize > 4) {
+            wordIndex = graph.unique(new SignExtendNode(index, target.wordSize * 8));
+        } else {
+            assert target.wordSize == 4 : "unsupported word size";
+            wordIndex = index;
+        }
 
         int shift = CodeUtil.log2(arrayScalingFactor(elementKind));
-        ValueNode scaledIndex = graph.unique(new LeftShiftNode(longIndex, ConstantNode.forInt(shift, graph)));
+        ValueNode scaledIndex = graph.unique(new LeftShiftNode(wordIndex, ConstantNode.forInt(shift, graph)));
 
         int base = arrayBaseOffset(elementKind);
-        ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forLong(base, graph)));
+        ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordKind, base, graph)));
 
         return graph.unique(new OffsetAddressNode(array, offset));
     }
