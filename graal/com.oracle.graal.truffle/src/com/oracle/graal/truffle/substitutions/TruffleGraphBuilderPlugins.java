@@ -61,7 +61,7 @@ import com.oracle.truffle.api.frame.*;
 public class TruffleGraphBuilderPlugins {
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
 
-        registerOptimizedAssumptionPlugins(plugins, canDelayIntrinsification, snippetReflection);
+        registerOptimizedAssumptionPlugins(plugins, snippetReflection);
         registerExactMathPlugins(plugins);
         registerCompilerDirectivesPlugins(plugins);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
@@ -76,7 +76,7 @@ public class TruffleGraphBuilderPlugins {
 
     }
 
-    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {
+    public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, OptimizedAssumption.class);
         InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -99,10 +99,8 @@ public class TruffleGraphBuilderPlugins {
                         }
                     }
                     return true;
-                } else if (canDelayIntrinsification) {
-                    return false;
                 } else {
-                    throw b.bailout("assumption could not be reduced to a constant");
+                    return false;
                 }
             }
         };
