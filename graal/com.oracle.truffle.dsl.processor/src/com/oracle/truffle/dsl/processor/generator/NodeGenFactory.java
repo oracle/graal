@@ -32,6 +32,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
@@ -241,7 +242,7 @@ public class NodeGenFactory {
             }
 
             if (singleSpecializableUnsupportedUsed) {
-                clazz.add(createUnsupportedMethod());
+                addUnsupportedMethod(clazz);
             }
         } else {
 
@@ -298,10 +299,18 @@ public class NodeGenFactory {
         }
     }
 
-    private Element createUnsupportedMethod() {
+    private void addUnsupportedMethod(CodeTypeElement clazz) {
+        CodeVariableElement seenUnsupportedField = new CodeVariableElement(modifiers(PRIVATE), getType(boolean.class), "seenUnsupported0");
+        seenUnsupportedField.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(CompilationFinal.class)));
+        clazz.add(seenUnsupportedField);
         LocalContext locals = LocalContext.load(this);
-        CodeExecutableElement method = locals.createMethod(modifiers(PROTECTED), getType(UnsupportedSpecializationException.class), "unsupported", varArgsThreshold);
+        CodeExecutableElement method = locals.createMethod(modifiers(PRIVATE), getType(UnsupportedSpecializationException.class), "unsupported", varArgsThreshold);
         CodeTreeBuilder builder = method.createBuilder();
+        builder.startIf().string("!").string(seenUnsupportedField.getName()).end().startBlock();
+        builder.startStatement().startStaticCall(getType(CompilerDirectives.class), "transferToInterpreterAndInvalidate").end().end();
+        builder.startStatement().string(seenUnsupportedField.getName()).string(" = true").end();
+        builder.end();
+
         builder.startReturn();
         builder.startNew(getType(UnsupportedSpecializationException.class));
         builder.string("this");
@@ -309,7 +318,7 @@ public class NodeGenFactory {
         locals.addReferencesTo(builder);
         builder.end();
         builder.end();
-        return method;
+        clazz.add(method);
     }
 
     private CodeExecutableElement createNodeConstructor(CodeTypeElement clazz, ExecutableElement superConstructor) {
