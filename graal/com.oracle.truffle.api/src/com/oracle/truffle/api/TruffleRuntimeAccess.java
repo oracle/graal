@@ -24,13 +24,10 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.jvmci.service.*;
-
 /**
- * A {@linkplain Service JVMCI service} that provides access to a {@link TruffleRuntime}
- * implementation.
+ * A service that provides access to a {@link TruffleRuntime} implementation.
  */
-public interface TruffleRuntimeAccess extends Service {
+public interface TruffleRuntimeAccess {
 
     /**
      * Gets the {@link TruffleRuntime} implementation available via this access object.
