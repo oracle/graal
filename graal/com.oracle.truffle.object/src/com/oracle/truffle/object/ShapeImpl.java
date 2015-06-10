@@ -332,9 +332,14 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public ShapeImpl addProperty(Property property) {
         assert isValid();
-        ShapeImpl nextShape = addPropertyInternal(property);
-        objectType.onPropertyAdded(property, this, nextShape);
-        return nextShape;
+        onPropertyTransition(property);
+        return addPropertyInternal(property);
+    }
+
+    protected final void onPropertyTransition(Property property) {
+        if (sharedData instanceof ShapeListener) {
+            ((ShapeListener) sharedData).onPropertyTransition(property.getKey());
+        }
     }
 
     /**
@@ -627,6 +632,8 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
+        onPropertyTransition(prop);
+
         RemovePropertyTransition transition = new RemovePropertyTransition(prop);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {

@@ -61,16 +61,6 @@ public class ObjectType {
         return null;
     }
 
-    /**
-     * Called when a new property is added to a shape.
-     *
-     * @param property the added property
-     * @param shapeBefore shape before the property was added
-     * @param shapeAfter shape after the property was added
-     */
-    public void onPropertyAdded(Property property, Shape shapeBefore, Shape shapeAfter) {
-    }
-
     public ForeignAccess getForeignAccessFactory() {
         return ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
 
