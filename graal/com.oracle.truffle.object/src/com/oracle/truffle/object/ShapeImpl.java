@@ -23,6 +23,7 @@
 package com.oracle.truffle.object;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -90,7 +91,7 @@ public abstract class ShapeImpl extends Shape {
      * @see #getTransitionMapForRead()
      * @see #getTransitionMapForWrite()
      */
-    private HashMap<Transition, ShapeImpl> transitionMap;
+    private volatile Map<Transition, ShapeImpl> transitionMap;
 
     private final Transition transitionFromParent;
 
@@ -303,8 +304,13 @@ public abstract class ShapeImpl extends Shape {
         if (transitionMap != null) {
             return transitionMap;
         } else {
-            invalidateLeafAssumption();
-            return transitionMap = new HashMap<>();
+            synchronized (getMutex()) {
+                if (transitionMap != null) {
+                    return transitionMap;
+                }
+                invalidateLeafAssumption();
+                return transitionMap = new ConcurrentHashMap<>();
+            }
         }
     }
 
