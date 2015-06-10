@@ -353,7 +353,7 @@ public class IntegerStamp extends PrimitiveStamp {
         return null;
     }
 
-    private static boolean addOverflowsPositively(long x, long y, int bits) {
+    public static boolean addOverflowsPositively(long x, long y, int bits) {
         long result = x + y;
         if (bits == 64) {
             return (~x & ~y & result) < 0;
@@ -362,7 +362,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     }
 
-    private static boolean addOverflowsNegatively(long x, long y, int bits) {
+    public static boolean addOverflowsNegatively(long x, long y, int bits) {
         long result = x + y;
         if (bits == 64) {
             return (x & y & ~result) < 0;
@@ -371,7 +371,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     }
 
-    private static long carryBits(long x, long y) {
+    public static long carryBits(long x, long y) {
         return (x + y) ^ x ^ y;
     }
 
