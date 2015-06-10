@@ -42,6 +42,10 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
         this(action, reason, DEFAULT_DEBUG_ID, JavaConstant.NULL_POINTER, null);
     }
 
+    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, JavaConstant speculation) {
+        this(action, reason, DEFAULT_DEBUG_ID, speculation, null);
+    }
+
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, JavaConstant speculation, FrameState stateBefore) {
         super(TYPE, stateBefore);
         assert action != null;

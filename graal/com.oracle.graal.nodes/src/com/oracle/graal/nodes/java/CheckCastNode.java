@@ -131,7 +131,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             innerNode = condition;
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
-                FixedGuardNode nullCheck = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, InvalidateReprofile, true));
+                FixedGuardNode nullCheck = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, InvalidateReprofile, JavaConstant.NULL_POINTER, true));
                 PiNode nullGuarded = graph().unique(new PiNode(object, object().stamp().join(StampFactory.objectNonNull()), nullCheck));
                 LogicNode typeTest = graph().addWithoutUnique(InstanceOfNode.create(type, nullGuarded, profile));
                 innerNode = typeTest;
@@ -153,7 +153,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
                 condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
         }
-        GuardingNode guard = tool.createGuard(next(), condition, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, false);
+        GuardingNode guard = tool.createGuard(next(), condition, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile);
         ValueAnchorNode valueAnchor = graph().add(new ValueAnchorNode((ValueNode) guard));
         PiNode piNode = graph().unique(new PiNode(theValue, newStamp, (ValueNode) guard));
         this.replaceAtUsages(piNode);

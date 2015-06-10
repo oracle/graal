@@ -50,4 +50,8 @@ public abstract class AccessArrayNode extends FixedWithNextNode {
         this.array = array;
     }
 
+    public void setArray(ValueNode array) {
+        updateUsages(this.array, array);
+        this.array = array;
+    }
 }
