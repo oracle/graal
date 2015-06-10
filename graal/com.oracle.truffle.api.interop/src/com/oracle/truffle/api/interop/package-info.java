@@ -22,47 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
 
-import com.oracle.truffle.api.interop.messages.*;
+/**
+ * This package provides inter-operability between different
+ * {@link com.oracle.truffle.api.TruffleLanguage Truffle languages}.
+ * <p>
+ * Languages can exchange primitive Java type wrapper objects (e.g., {@link java.lang.Integer},
+ * {@link java.lang.Double}, {@link java.lang.String}, etc) as well as any type
+ * implementing {@link com.oracle.truffle.api.interop.TruffleObject}. Foreign objects are
+ * precisely those implementing {@link com.oracle.truffle.api.interop.TruffleObject}.
+ * <p>
+ * To use a {@link com.oracle.truffle.api.interop.TruffleObject} from a different language,
+ * you need to ask the language to build appropriate AST for a given
+ * {@link com.oracle.truffle.api.interop.Message} with
+ * {@link com.oracle.truffle.api.interop.Message#createNode}. The message can then
+ * be executed with {@link com.oracle.truffle.api.interop.ForeignAccess#execute}.
+ */
+package com.oracle.truffle.api.interop;
 
-public final class Execute implements Message {
-    private final Object receiver;
-    private final int arity;
-
-    public static Execute create(Receiver receiver, int arity) {
-        return new Execute(receiver, arity);
-    }
-
-    public static Execute create(Message receiver, int arity) {
-        return new Execute(receiver, arity);
-    }
-
-    private Execute(Object receiver, int arity) {
-        this.receiver = receiver;
-        this.arity = arity;
-    }
-
-    public Object getReceiver() {
-        return receiver;
-    }
-
-    public int getArity() {
-        return arity;
-    }
-
-    public boolean matchStructure(Object message) {
-        if (!(message instanceof Execute)) {
-            return false;
-        }
-        Execute m1 = this;
-        Execute m2 = (Execute) message;
-        return MessageUtil.compareMessage(m1.getReceiver(), m2.getReceiver());
-    }
-
-    @Override
-    public String toString() {
-        return String.format("Execute(%s)", receiver.toString());
-    }
-
-}

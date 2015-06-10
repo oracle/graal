@@ -34,5 +34,5 @@ public interface TruffleObject {
      *
      * @return the {@code ForeignAccessFactory} instance for this {@code TruffleObject} instance.
      */
-    ForeignAccessFactory getForeignAccessFactory();
+    ForeignAccess getForeignAccess();
 }

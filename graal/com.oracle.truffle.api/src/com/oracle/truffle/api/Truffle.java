@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api;
 
+import java.lang.reflect.*;
 import java.security.*;
 
-import com.oracle.jvmci.service.*;
 import com.oracle.truffle.api.impl.*;
 
 /**
@@ -55,11 +55,22 @@ public class Truffle {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
                 TruffleRuntimeAccess access = null;
+                Class<?> servicesClass = null;
                 try {
-                    access = Services.loadSingle(TruffleRuntimeAccess.class, false);
-                } catch (NoClassDefFoundError e) {
+                    servicesClass = Class.forName("com.oracle.jvmci.service.Services");
+                } catch (ClassNotFoundException e) {
                     // JVMCI is unavailable
                 }
+                if (servicesClass != null) {
+                    try {
+                        Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                        access = (TruffleRuntimeAccess) m.invoke(null, TruffleRuntimeAccess.class, false);
+                    } catch (Throwable e) {
+                        // Fail fast for other errors
+                        throw (InternalError) new InternalError().initCause(e);
+                    }
+                }
+                // TODO: try standard ServiceLoader?
                 if (access != null) {
                     return access.getRuntime();
                 }

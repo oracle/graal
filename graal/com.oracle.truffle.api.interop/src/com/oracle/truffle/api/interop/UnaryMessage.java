@@ -22,25 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.messages.*;
-
-public final class IsNull extends UnaryMessage {
-    public static IsNull create(Receiver receiver) {
-        return new IsNull(receiver);
-    }
-
-    public static IsNull create(Message receiver) {
-        return new IsNull(receiver);
-    }
-
-    private IsNull(Object receiver) {
-        super(receiver);
+abstract class UnaryMessage extends KnownMessage {
+    protected UnaryMessage() {
     }
 
     @Override
-    public String toString() {
-        return String.format("IsNull(%s)", receiver.toString());
+    public boolean equals(Object message) {
+        if (message == null) {
+            return false;
+        }
+        return this.getClass() == message.getClass();
     }
+
+    @Override
+    public abstract int hashCode();
+
+    @Override
+    public abstract String toString();
 }

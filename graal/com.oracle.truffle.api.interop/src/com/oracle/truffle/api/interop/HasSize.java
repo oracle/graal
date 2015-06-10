@@ -22,25 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.messages.*;
+final class HasSize extends UnaryMessage {
+    public static final int HASH = 423433;
+    static Message INSTANCE = new HasSize();
 
-public final class IsBoxed extends UnaryMessage {
-    public static IsBoxed create(Receiver receiver) {
-        return new IsBoxed(receiver);
-    }
-
-    public static IsBoxed create(Message receiver) {
-        return new IsBoxed(receiver);
-    }
-
-    private IsBoxed(Object receiver) {
-        super(receiver);
+    @Override
+    public int hashCode() {
+        return HASH;
     }
 
     @Override
     public String toString() {
-        return String.format("IsBoxed(%s)", receiver.toString());
+        return "msgHasSize";
     }
 }

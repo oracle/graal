@@ -22,20 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-public final class Receiver {
+final class IsNull extends UnaryMessage {
+    public static final int HASH = 423436;
+    static Message INSTANCE = new IsNull();
 
-    private Receiver() {
-
-    }
-
-    public static Receiver create() {
-        return new Receiver();
+    @Override
+    public int hashCode() {
+        return HASH;
     }
 
     @Override
     public String toString() {
-        return String.format("Receiver");
+        return "msgIsNull";
     }
 }

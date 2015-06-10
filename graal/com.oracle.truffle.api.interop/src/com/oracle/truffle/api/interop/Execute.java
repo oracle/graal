@@ -22,46 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.messages.*;
+final class Execute extends KnownMessage {
+    public static final int HASH1 = 423430;
+    public static final int HASH2 = 423429;
 
-public final class Read implements Message {
-    private final Object receiver;
-    private final Argument id;
+    private final int arity;
+    private final boolean invoke;
 
-    private Read(Object receiver, Argument id) {
-        this.receiver = receiver;
-        this.id = id;
+    public static Execute create(boolean invoke, int arity) {
+        return new Execute(invoke, arity);
     }
 
-    public static Read create(Receiver receiver, Argument id) {
-        return new Read(receiver, id);
+    private Execute(boolean invoke, int arity) {
+        this.invoke = invoke;
+        this.arity = arity;
     }
 
-    public static Read create(Message receiver, Argument id) {
-        return new Read(receiver, id);
+    public int getArity() {
+        return arity;
     }
 
-    public Argument getId() {
-        return id;
-    }
-
-    public Object getReceiver() {
-        return receiver;
-    }
-
-    public boolean matchStructure(Object message) {
-        if (!(message instanceof Read)) {
+    @Override
+    public boolean equals(Object message) {
+        if (!(message instanceof Execute)) {
             return false;
         }
-        Read m1 = this;
-        Read m2 = (Read) message;
-        return MessageUtil.compareMessage(m1.getReceiver(), m2.getReceiver());
+        Execute m1 = this;
+        Execute m2 = (Execute) message;
+        return m1.invoke == m2.invoke;
+    }
+
+    @Override
+    public int hashCode() {
+        return invoke ? HASH1 : HASH2;
     }
 
     @Override
     public String toString() {
-        return String.format("Read(%s, %s)", receiver.toString(), id.toString());
+        return invoke ? "msgInvoke" : "msgExecute";
     }
+
 }

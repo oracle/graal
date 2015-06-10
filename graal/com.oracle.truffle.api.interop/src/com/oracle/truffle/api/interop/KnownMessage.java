@@ -22,25 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.messages.*;
-
-public final class IsExecutable extends UnaryMessage {
-    public static IsExecutable create(Receiver receiver) {
-        return new IsExecutable(receiver);
-    }
-
-    public static IsExecutable create(Message receiver) {
-        return new IsExecutable(receiver);
-    }
-
-    private IsExecutable(Object receiver) {
-        super(receiver);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("IsExecutable(%s)", receiver.toString());
-    }
+/**
+ * Marker class.
+ */
+abstract class KnownMessage extends Message {
 }

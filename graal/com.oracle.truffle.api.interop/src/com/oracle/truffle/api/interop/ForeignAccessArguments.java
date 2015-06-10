@@ -22,55 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.*;
+final class ForeignAccessArguments {
+    static final Object[] EMPTY_ARGUMENTS_ARRAY = new Object[0];
+    static final int RECEIVER_INDEX = 0;
+    static final int RUNTIME_ARGUMENT_COUNT = 1;
 
-public final class ForeignAccessArguments {
-    public static final Object[] EMPTY_ARGUMENTS_ARRAY = new Object[0];
-    public static final int RECEIVER_INDEX = 0;
-    public static final int RUNTIME_ARGUMENT_COUNT = 1;
-
-    public static Object[] create(Object receiver) {
-        return new Object[]{receiver};
-    }
-
-    public static Object[] create(Object receiver, Object[] arguments) {
+    static Object[] create(Object receiver, Object... arguments) {
+        if (arguments.length == 0) {
+            return new Object[]{receiver};
+        }
         Object[] objectArguments = new Object[RUNTIME_ARGUMENT_COUNT + arguments.length];
         objectArguments[RECEIVER_INDEX] = receiver;
         arraycopy(arguments, 0, objectArguments, RUNTIME_ARGUMENT_COUNT, arguments.length);
         return objectArguments;
-    }
-
-    public static Object getArgument(Object[] arguments, int index) {
-        return arguments[RUNTIME_ARGUMENT_COUNT + index];
-    }
-
-    public static Object getReceiver(Object[] arguments) {
-        return arguments[RECEIVER_INDEX];
-    }
-
-    public static Object[] extractUserArguments(Object[] arguments) {
-        return copyOfRange(arguments, RUNTIME_ARGUMENT_COUNT, arguments.length);
-    }
-
-    public static Object[] extractUserArguments(int skip, Object[] arguments) {
-        return copyOfRange(arguments, RUNTIME_ARGUMENT_COUNT + skip, arguments.length);
-    }
-
-    public static int getUserArgumentCount(Object[] arguments) {
-        return arguments.length - RUNTIME_ARGUMENT_COUNT;
-    }
-
-    private static Object[] copyOfRange(Object[] original, int from, int to) {
-        int newLength = to - from;
-        if (newLength < 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException(from + " > " + to);
-        }
-        Object[] copy = new Object[newLength];
-        arraycopy(original, from, copy, 0, Math.min(original.length - from, newLength));
-        return copy;
     }
 
     private static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {

@@ -22,18 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.messages.*;
+final class IsBoxed extends UnaryMessage {
+    public static final int HASH = 423434;
+    static Message INSTANCE = new IsBoxed();
 
-final class MessageUtil {
+    @Override
+    public int hashCode() {
+        return HASH;
+    }
 
-    static boolean compareMessage(Object o1, Object o2) {
-        if (o1 instanceof Message && o2 instanceof Message) {
-            return ((Message) o1).matchStructure(o2);
-        } else if (o1 instanceof Receiver && o2 instanceof Receiver) {
-            return true;
-        }
-        return false;
+    @Override
+    public String toString() {
+        return "msgIsBoxed";
     }
 }

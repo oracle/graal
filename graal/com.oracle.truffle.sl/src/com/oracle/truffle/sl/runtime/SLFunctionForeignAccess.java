@@ -25,41 +25,37 @@ package com.oracle.truffle.sl.runtime;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccessFactory;
-import com.oracle.truffle.api.interop.InteropPredicate;
-import com.oracle.truffle.api.interop.exception.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.messages.Message;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.interop.ForeignAccessArguments;
-import com.oracle.truffle.interop.messages.Execute;
-import com.oracle.truffle.interop.messages.IsNull;
-import com.oracle.truffle.interop.messages.Receiver;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import java.math.BigInteger;
+import java.util.List;
 
 /**
- * Implementation of foreing access for {@link SLFunction}.
+ * Implementation of foreign access for {@link SLFunction}.
  */
-final class SLFunctionForeignAccess implements ForeignAccessFactory {
-    public static final ForeignAccessFactory INSTANCE = new SLFunctionForeignAccess();
+final class SLFunctionForeignAccess implements ForeignAccess.Factory {
+    public static final ForeignAccess INSTANCE = ForeignAccess.create(new SLFunctionForeignAccess());
 
     private SLFunctionForeignAccess() {
     }
 
     @Override
-    public InteropPredicate getLanguageCheck() {
-        return (com.oracle.truffle.api.interop.TruffleObject o) -> o instanceof SLFunction;
+    public boolean canHandle(TruffleObject o) {
+        return o instanceof SLFunction;
     }
 
     @Override
-    public CallTarget getAccess(Message tree) {
-        if (Execute.create(Receiver.create(), 0).matchStructure(tree)) {
+    public CallTarget accessMessage(Message tree) {
+        if (Message.createExecute(0).equals(tree)) {
             return Truffle.getRuntime().createCallTarget(new SLForeignCallerRootNode());
-        } else if (IsNull.create(Receiver.create()).matchStructure(tree)) {
+        } else if (Message.IS_NULL.equals(tree)) {
             return Truffle.getRuntime().createCallTarget(new SLForeignNullCheckNode());
         } else {
-            throw new UnsupportedMessageException(tree.toString() + " not supported");
+            throw new IllegalArgumentException(tree.toString() + " not supported");
         }
     }
 
@@ -68,24 +64,25 @@ final class SLFunctionForeignAccess implements ForeignAccessFactory {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            SLFunction function = (SLFunction) ForeignAccessArguments.getReceiver(frame.getArguments());
+            SLFunction function = (SLFunction) ForeignAccess.getReceiver(frame);
             // the calling convention of interop passes the receiver of a
             // function call (the this object)
             // as an implicit 1st argument; we need to ignore this argument for SL
-            Object[] arguments = ForeignAccessArguments.extractUserArguments(1, frame.getArguments());
-            for (int i = 0; i < arguments.length; i++) {
-                if (arguments[i] instanceof Long) {
+            List<Object> args = ForeignAccess.getArguments(frame);
+            Object[] arr = args.subList(1, args.size()).toArray();
+            for (int i = 0; i < arr.length; i++) {
+                Object a = arr[i];
+                if (a instanceof Long) {
                     continue;
                 }
-                if (arguments[i] instanceof BigInteger) {
+                if (a instanceof BigInteger) {
                     continue;
                 }
-                if (arguments[i] instanceof Number) {
-                    arguments[i] = ((Number) arguments[i]).longValue();
+                if (a instanceof Number) {
+                    arr[i] = ((Number) a).longValue();
                 }
             }
-
-            return dispatch.executeDispatch(frame, function, arguments);
+            return dispatch.executeDispatch(frame, function, arr);
         }
 
     }
@@ -93,7 +90,7 @@ final class SLFunctionForeignAccess implements ForeignAccessFactory {
     private static class SLForeignNullCheckNode extends RootNode {
         @Override
         public Object execute(VirtualFrame frame) {
-            Object receiver = ForeignAccessArguments.getReceiver(frame.getArguments());
+            Object receiver = ForeignAccess.getReceiver(frame);
             return SLNull.SINGLETON == receiver;
         }
     }

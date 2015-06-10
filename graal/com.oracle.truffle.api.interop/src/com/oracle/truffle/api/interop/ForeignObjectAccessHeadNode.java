@@ -22,33 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.interop.messages;
 
-import com.oracle.truffle.api.interop.messages.*;
+package com.oracle.truffle.api.interop;
 
-abstract class UnaryMessage implements Message {
-    protected final Object receiver;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.Node;
 
-    protected UnaryMessage(Object receiver) {
-        this.receiver = receiver;
+final class ForeignObjectAccessHeadNode extends Node {
+
+    @Child private ObjectAccessNode first;
+    private final Message accessTree;
+
+    protected ForeignObjectAccessHeadNode(Message tree) {
+        this.accessTree = tree;
+        this.first = new UnresolvedObjectAccessNode();
+        adoptChildren();
     }
 
-    public Object getReceiver() {
-        return receiver;
+    protected Message getAccessTree() {
+        return accessTree;
     }
 
-    public boolean matchStructure(Object message) {
-        if (message == null) {
-            return false;
-        }
-        if (this.getClass() != message.getClass()) {
-            return false;
-        }
-        UnaryMessage m1 = this;
-        UnaryMessage m2 = (UnaryMessage) message;
-        return MessageUtil.compareMessage(m1.getReceiver(), m2.getReceiver());
+    protected ObjectAccessNode getFirst() {
+        return first;
     }
 
-    @Override
-    public abstract String toString();
+    public Object executeForeign(VirtualFrame frame, TruffleObject receiver, Object... arguments) {
+        return first.executeWith(frame, receiver, arguments);
+    }
+
 }

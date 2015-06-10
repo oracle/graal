@@ -24,11 +24,10 @@
  */
 package com.oracle.truffle.api.object;
 
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.interop.exception.*;
-import com.oracle.truffle.api.interop.messages.*;
 
 public class ObjectType {
     /**
@@ -72,16 +71,16 @@ public class ObjectType {
     public void onPropertyAdded(Property property, Shape shapeBefore, Shape shapeAfter) {
     }
 
-    public ForeignAccessFactory getForeignAccessFactory() {
-        return new ForeignAccessFactory() {
+    public ForeignAccess getForeignAccessFactory() {
+        return ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
 
-            public InteropPredicate getLanguageCheck() {
-                throw new UnsupportedMessageException(this.toString() + " cannot be shared");
+            public boolean canHandle(TruffleObject obj) {
+                throw new IllegalArgumentException(this.toString() + " cannot be shared");
             }
 
-            public CallTarget getAccess(Message tree) {
-                throw new UnsupportedMessageException(this.toString() + " cannot be shared; Message not possible: " + tree.toString());
+            public CallTarget accessMessage(Message tree) {
+                throw new IllegalArgumentException(this.toString() + " cannot be shared; Message not possible: " + tree.toString());
             }
-        };
+        });
     }
 }
