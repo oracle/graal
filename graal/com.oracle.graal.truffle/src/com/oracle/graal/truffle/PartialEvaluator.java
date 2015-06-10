@@ -422,17 +422,6 @@ public class PartialEvaluator {
         }
     }
 
-    public StructuredGraph createRootGraph(StructuredGraph graph) {
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompiler.Optimizations, null).apply(graph);
-        return graph;
-    }
-
-    public StructuredGraph createInlineGraph(String name, StructuredGraph caller) {
-        StructuredGraph graph = new StructuredGraph(name, callInlinedMethod, AllowAssumptions.from(caller.getAssumptions() != null));
-        new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), configForRoot, TruffleCompiler.Optimizations, null).apply(graph);
-        return graph;
-    }
-
     private static void postPartialEvaluation(final StructuredGraph graph) {
         NeverPartOfCompilationNode.verifyNotFoundIn(graph);
         for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.TYPE).snapshot()) {
