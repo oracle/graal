@@ -410,9 +410,10 @@ public class SLLanguage extends TruffleLanguage {
     private static void setupToolDemos() {
         if (statementCounts || coverage) {
             if (registeredASTProber == null) {
-                registeredASTProber = new SLStandardASTProber();
+                final ASTProber newProber = new SLStandardASTProber();
                 // This should be registered on the TruffleVM
-                Probe.registerASTProber(registeredASTProber);
+                Probe.registerASTProber(newProber);
+                registeredASTProber = newProber;
             }
         }
         if (nodeExecCounts) {
