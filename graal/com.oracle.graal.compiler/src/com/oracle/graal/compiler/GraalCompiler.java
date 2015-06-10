@@ -197,7 +197,7 @@ public class GraalCompiler {
                 speculationLog.collectFailedSpeculations();
             }
 
-            HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
+            HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts, speculationLog);
             if (graph.start().next() == null) {
                 graphBuilderSuite.apply(graph, highTierContext);
                 new DeadCodeEliminationPhase(Optional).apply(graph);

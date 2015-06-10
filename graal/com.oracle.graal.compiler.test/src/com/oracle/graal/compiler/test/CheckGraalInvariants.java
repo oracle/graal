@@ -90,7 +90,7 @@ public class CheckGraalInvariants extends GraalTest {
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(metaAccess)));
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
-        HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
+        HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE, null);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 
