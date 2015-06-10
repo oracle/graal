@@ -36,7 +36,7 @@ import com.oracle.jvmci.meta.*;
  * A floating read of a value from memory specified in terms of an object base and an object
  * relative location. This node does not null check the object.
  */
-@NodeInfo
+@NodeInfo(nameTemplate = "Read#{p#location/s}")
 public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerable, Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 

@@ -37,7 +37,7 @@ import com.oracle.jvmci.meta.*;
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
-@NodeInfo
+@NodeInfo(nameTemplate = "Read#{p#location/s}")
 public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, Virtualizable, GuardingNode {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);

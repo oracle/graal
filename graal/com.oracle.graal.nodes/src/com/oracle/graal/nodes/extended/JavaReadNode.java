@@ -35,7 +35,7 @@ import com.oracle.jvmci.meta.*;
  * Read a raw memory location according to Java field or array read semantics. It will perform read
  * barriers, implicit conversions and optionally oop uncompression.
  */
-@NodeInfo
+@NodeInfo(nameTemplate = "JavaRead#{p#location/s}")
 public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
 
     public static final NodeClass<JavaReadNode> TYPE = NodeClass.create(JavaReadNode.class);

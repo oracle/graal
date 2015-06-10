@@ -36,7 +36,7 @@ import com.oracle.jvmci.meta.*;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
-@NodeInfo
+@NodeInfo(nameTemplate = "Write#{p#location/s}")
 public final class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
