@@ -22,7 +22,8 @@
  */
 package com.oracle.nfi;
 
-import com.oracle.jvmci.service.*;
+import java.lang.reflect.*;
+
 import com.oracle.nfi.api.*;
 
 /**
@@ -43,7 +44,24 @@ public final class NativeFunctionInterfaceRuntime {
     static {
 
         NativeFunctionInterface instance = null;
-        NativeFunctionInterfaceAccess access = Services.loadSingle(NativeFunctionInterfaceAccess.class, false);
+
+        NativeFunctionInterfaceAccess access = null;
+        Class<?> servicesClass = null;
+        try {
+            servicesClass = Class.forName("com.oracle.jvmci.service.Services");
+        } catch (ClassNotFoundException e) {
+            // JVMCI is unavailable
+        }
+        if (servicesClass != null) {
+            try {
+                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                access = (NativeFunctionInterfaceAccess) m.invoke(null, NativeFunctionInterfaceAccess.class, false);
+            } catch (Throwable e) {
+                // Fail fast for other errors
+                throw (InternalError) new InternalError().initCause(e);
+            }
+        }
+        // TODO: try standard ServiceLoader?
         if (access != null) {
             instance = access.getNativeFunctionInterface();
         }

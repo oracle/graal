@@ -34,11 +34,15 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     public static final NodeClass<FixedGuardNode> TYPE = NodeClass.create(FixedGuardNode.class);
 
     public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
-        this(condition, deoptReason, action, false);
+        this(condition, deoptReason, action, JavaConstant.NULL_POINTER, false);
     }
 
     public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-        super(TYPE, condition, deoptReason, action, negated);
+        this(condition, deoptReason, action, JavaConstant.NULL_POINTER, negated);
+    }
+
+    public FixedGuardNode(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, JavaConstant speculation, boolean negated) {
+        super(TYPE, condition, deoptReason, action, speculation, negated);
     }
 
     @Override
@@ -53,7 +57,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
                     tool.deleteBranch(currentNext);
                 }
 
-                DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason()));
+                DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason(), getSpeculation()));
                 deopt.setStateBefore(stateBefore());
                 setNext(deopt);
             }
@@ -62,8 +66,8 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         } else if (condition() instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) condition();
             if (isNegated() && hasNoUsages()) {
-                graph().addAfterFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), !shortCircuitOr.isYNegated())));
-                graph().replaceFixedWithFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), !shortCircuitOr.isXNegated())));
+                graph().addAfterFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getY(), getReason(), getAction(), getSpeculation(), !shortCircuitOr.isYNegated())));
+                graph().replaceFixedWithFixed(this, graph().add(new FixedGuardNode(shortCircuitOr.getX(), getReason(), getAction(), getSpeculation(), !shortCircuitOr.isXNegated())));
             }
         }
     }
@@ -80,7 +84,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
              * case.
              */
             if (getAction() != DeoptimizationAction.None || getReason() != DeoptimizationReason.RuntimeConstraint) {
-                ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
+                ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), getSpeculation(), isNegated()).asNode();
                 this.replaceAtUsages(guard);
                 ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
                 graph().replaceFixedWithFixed(this, newAnchor);

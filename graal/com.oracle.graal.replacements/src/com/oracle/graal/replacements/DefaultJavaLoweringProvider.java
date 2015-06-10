@@ -253,9 +253,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             if (arrayType != null && StampTool.isExactType(array)) {
                 ResolvedJavaType elementType = arrayType.getComponentType();
                 if (!elementType.isJavaLangObject()) {
-                    checkCastNode = graph.add(new CheckCastNode(elementType, value, null, true));
-                    graph.addBeforeFixed(storeIndexed, checkCastNode);
-                    value = checkCastNode;
+                    ValueNode storeCheck = CheckCastNode.create(elementType, value, null, true, graph.getAssumptions());
+                    if (storeCheck.graph() == null) {
+                        checkCastNode = (CheckCastNode) storeCheck;
+                        checkCastNode = graph.add(checkCastNode);
+                        graph.addBeforeFixed(storeIndexed, checkCastNode);
+                    }
+                    value = storeCheck;
                 }
             } else {
                 ValueNode arrayClass = createReadHub(graph, array, boundsCheck);
@@ -698,7 +702,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (StampTool.isPointerNonNull(object)) {
             return null;
         }
-        return tool.createGuard(before, before.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
+        return tool.createGuard(before, before.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, JavaConstant.NULL_POINTER,
+                        true);
     }
 
     @Override

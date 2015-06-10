@@ -395,7 +395,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     private void assertNumWordCasts(String snippetName, int expectedWordCasts) {
-        HighTierContext context = new HighTierContext(getProviders(), null, OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), null, OptimisticOptimizations.ALL, null);
 
         StructuredGraph graph = parseEager(snippetName, AllowAssumptions.YES);
         new CanonicalizerPhase().apply(graph, context);

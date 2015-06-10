@@ -22,13 +22,10 @@
  */
 package com.oracle.nfi.api;
 
-import com.oracle.jvmci.service.*;
-
 /**
- * A {@linkplain Service JVMCI service} that provides access to a {@link NativeFunctionInterface}
- * implementation.
+ * A service that provides access to a {@link NativeFunctionInterface} implementation.
  */
-public interface NativeFunctionInterfaceAccess extends Service {
+public interface NativeFunctionInterfaceAccess {
 
     /**
      * Gets the {@link NativeFunctionInterface} implementation available via this access object.

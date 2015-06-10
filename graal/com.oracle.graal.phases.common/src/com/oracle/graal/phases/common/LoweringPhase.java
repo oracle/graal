@@ -123,7 +123,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         @Override
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
-            return createGuard(before, condition, deoptReason, action, false);
+            return createGuard(before, condition, deoptReason, action, JavaConstant.NULL_POINTER, false);
         }
 
         public StampProvider getStampProvider() {
@@ -131,7 +131,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+        public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, JavaConstant speculation, boolean negated) {
             if (OptEliminateGuards.getValue()) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated) {
@@ -141,7 +141,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
             StructuredGraph graph = before.graph();
             if (!condition.graph().getGuardsStage().allowsFloatingGuards()) {
-                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, deoptReason, action, negated));
+                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, deoptReason, action, speculation, negated));
                 graph.addBeforeFixed(before, fixedGuard);
                 DummyGuardHandle handle = graph.add(new DummyGuardHandle(fixedGuard));
                 fixedGuard.lower(this);
@@ -149,7 +149,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 handle.safeDelete();
                 return result;
             } else {
-                GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, JavaConstant.NULL_POINTER));
+                GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, speculation));
                 if (OptEliminateGuards.getValue()) {
                     activeGuards.markAndGrow(newGuard);
                 }
@@ -407,7 +407,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     *
+     * 
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

@@ -29,7 +29,10 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.meta.*;
+
+import static com.oracle.graal.compiler.common.type.IntegerStamp.*;
 
 /**
  * Node representing an exact integer addition that will throw an {@link ArithmeticException} in
@@ -41,14 +44,59 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
 
     public IntegerAddExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
-        setStamp(x.stamp().unrestricted());
+        setStamp(foldStamp(x.stamp(), y.stamp()));
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
     public boolean inferStamp() {
-        // TODO Should probably use a specialized version which understands that it can't overflow
-        return false;
+        return updateStamp(foldStamp(x.stamp(), y.stamp()));
+    }
+
+    private static Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+        IntegerStamp a = (IntegerStamp) stamp1;
+        IntegerStamp b = (IntegerStamp) stamp2;
+
+        int bits = a.getBits();
+        assert bits == b.getBits();
+
+        long defaultMask = CodeUtil.mask(bits);
+        long variableBits = (a.downMask() ^ a.upMask()) | (b.downMask() ^ b.upMask());
+        long variableBitsWithCarry = variableBits | (carryBits(a.downMask(), b.downMask()) ^ carryBits(a.upMask(), b.upMask()));
+        long newDownMask = (a.downMask() + b.downMask()) & ~variableBitsWithCarry;
+        long newUpMask = (a.downMask() + b.downMask()) | variableBitsWithCarry;
+
+        newDownMask &= defaultMask;
+        newUpMask &= defaultMask;
+
+        long newLowerBound;
+        long newUpperBound;
+        boolean lowerOverflowsPositively = addOverflowsPositively(a.lowerBound(), b.lowerBound(), bits);
+        boolean upperOverflowsPositively = addOverflowsPositively(a.upperBound(), b.upperBound(), bits);
+        boolean lowerOverflowsNegatively = addOverflowsNegatively(a.lowerBound(), b.lowerBound(), bits);
+        boolean upperOverflowsNegatively = addOverflowsNegatively(a.upperBound(), b.upperBound(), bits);
+        if (lowerOverflowsPositively) {
+            newLowerBound = CodeUtil.maxValue(bits);
+        } else if (lowerOverflowsNegatively) {
+            newLowerBound = CodeUtil.minValue(bits);
+        } else {
+            newLowerBound = CodeUtil.signExtend((a.lowerBound() + b.lowerBound()) & defaultMask, bits);
+        }
+
+        if (upperOverflowsPositively) {
+            newUpperBound = CodeUtil.maxValue(bits);
+        } else if (upperOverflowsNegatively) {
+            newUpperBound = CodeUtil.minValue(bits);
+        } else {
+            newUpperBound = CodeUtil.signExtend((a.upperBound() + b.upperBound()) & defaultMask, bits);
+        }
+
+        IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+        newUpMask &= limit.upMask();
+        newUpperBound = CodeUtil.signExtend(newUpperBound & newUpMask, bits);
+        newDownMask |= limit.downMask();
+        newLowerBound |= newDownMask;
+        return new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
     }
 
     @Override
