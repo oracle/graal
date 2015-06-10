@@ -327,8 +327,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             if (plugin != null) {
                 if (!plugin.inlineOnly() || invokeBci >= 0) {
                     if (plugin instanceof MethodSubstitutionPlugin) {
-                        MethodSubstitutionPlugin msplugin = (MethodSubstitutionPlugin) plugin;
-                        substitute = msplugin.getSubstitute(providers.getMetaAccess());
+                        MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
+                        substitute = msPlugin.getSubstitute(providers.getMetaAccess());
                     } else {
                         StructuredGraph graph = new IntrinsicGraphBuilder(providers.getMetaAccess(), providers.getConstantReflection(), providers.getStampProvider(), original, invokeBci).buildGraph(plugin);
                         if (graph != null) {
@@ -682,6 +682,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     public ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod original) {
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(original);
+        if (plugin instanceof MethodSubstitutionPlugin) {
+            MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
+            return msPlugin.getSubstitute(providers.getMetaAccess());
+        }
         ClassReplacements cr = getClassReplacements(original.getDeclaringClass().getName());
         return cr == null ? null : cr.methodSubstitutions.get(original);
     }
