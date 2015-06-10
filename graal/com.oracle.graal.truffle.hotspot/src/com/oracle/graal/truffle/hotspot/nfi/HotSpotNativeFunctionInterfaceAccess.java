@@ -27,7 +27,7 @@ import com.oracle.jvmci.service.*;
 import com.oracle.nfi.api.*;
 
 @ServiceProvider(NativeFunctionInterfaceAccess.class)
-public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess {
+public class HotSpotNativeFunctionInterfaceAccess implements NativeFunctionInterfaceAccess, Service {
     private final NativeFunctionInterface instance = HotSpotTruffleRuntime.createNativeFunctionInterface();
 
     public NativeFunctionInterface getNativeFunctionInterface() {
