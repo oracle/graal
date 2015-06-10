@@ -133,10 +133,10 @@ public abstract class Transition {
         }
     }
 
-    public static final class ReplacePropertyTransition extends PropertyTransition {
+    public abstract static class AbstractReplacePropertyTransition extends PropertyTransition {
         private final Property after;
 
-        public ReplacePropertyTransition(Property before, Property after) {
+        public AbstractReplacePropertyTransition(Property before, Property after) {
             super(before);
             this.after = after;
         }
@@ -150,8 +150,38 @@ public abstract class Transition {
         }
 
         @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && this.after.equals(((AbstractReplacePropertyTransition) obj).after);
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = super.hashCode();
+            result = prime * result + after.hashCode();
+            return result;
+        }
+    }
+
+    public static final class IndirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
+        public IndirectReplacePropertyTransition(Property before, Property after) {
+            super(before, after);
+        }
+
+        @Override
         public boolean isDirect() {
             return false;
+        }
+    }
+
+    public static final class DirectReplacePropertyTransition extends AbstractReplacePropertyTransition {
+        public DirectReplacePropertyTransition(Property before, Property after) {
+            super(before, after);
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
         }
     }
 

@@ -39,4 +39,20 @@ public final class ShapeBasic extends ShapeImpl {
     protected ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
         return new ShapeBasic(layout, sharedData, parent, objectType, propertyMap, transition, allocator, id);
     }
+
+    @Override
+    public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
+        assert oldProperty.getKey().equals(newProperty.getKey());
+        onPropertyTransition(oldProperty);
+
+        Transition replacePropertyTransition = new Transition.DirectReplacePropertyTransition(oldProperty, newProperty);
+        ShapeImpl cachedShape = queryTransition(replacePropertyTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+        PropertyMap newPropertyMap = this.getPropertyMap().replaceCopy(oldProperty, newProperty);
+        ShapeImpl newShape = createShape(getLayout(), getSharedData(), this, getObjectType(), newPropertyMap, replacePropertyTransition, allocator(), getId());
+        addDirectTransition(replacePropertyTransition, newShape);
+        return newShape;
+    }
 }
