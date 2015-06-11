@@ -22,9 +22,11 @@
  */
 package com.oracle.graal.truffle.test;
 
-import com.oracle.jvmci.code.SourceStackTrace;
+import com.oracle.jvmci.code.*;
+
 import org.junit.*;
 
+import com.oracle.graal.replacements.*;
 import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -149,5 +151,21 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new LambdaTestNode();
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "constantValue", result));
+    }
+
+    @Test
+    public void allowedRecursion() {
+        /* Recursion depth just below the threshold that reports it as too deep recursion. */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue() - 5);
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "allowedRecursion", result));
+    }
+
+    @Test(expected = BailoutException.class)
+    public void tooDeepRecursion() {
+        /* Recursion depth just above the threshold that reports it as too deep recursion. */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue());
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "tooDeepRecursion", result));
     }
 }

@@ -44,6 +44,7 @@ import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.options.*;
 
 /**
  * A graph decoder that performs partial evaluation, i.e., that performs method inlining and
@@ -58,6 +59,11 @@ import com.oracle.jvmci.meta.*;
  * {@link IntegerSwitchNode switches} with constant conditions are simplified.
  */
 public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
+
+    public static class Options {
+        @Option(help = "Maximum inlining depth during partial evaluation before reporting an infinite recursion")//
+        public static final OptionValue<Integer> InliningDepthError = new OptionValue<>(200);
+    }
 
     protected class PEMethodScope extends MethodScope {
         /** The state of the caller method. Only non-null during method inlining. */
@@ -439,6 +445,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return false;
         }
 
+        if (methodScope.inliningDepth > Options.InliningDepthError.getValue()) {
+            throw tooDeepInlining(methodScope);
+        }
+
         for (InlineInvokePlugin plugin : methodScope.inlineInvokePlugins) {
             plugin.notifyBeforeInline(inlineMethod);
         }
@@ -521,6 +531,23 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             Debug.dump(methodScope.graph, "Inline finished: " + inlineMethod.getDeclaringClass().getUnqualifiedName() + "." + inlineMethod.getName());
         }
         return true;
+    }
+
+    private static RuntimeException tooDeepInlining(PEMethodScope methodScope) {
+        HashMap<ResolvedJavaMethod, Integer> methodCounts = new HashMap<>();
+        for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
+            Integer oldCount = methodCounts.get(cur.method);
+            methodCounts.put(cur.method, oldCount == null ? 1 : oldCount + 1);
+        }
+
+        List<Map.Entry<ResolvedJavaMethod, Integer>> methods = new ArrayList<>(methodCounts.entrySet());
+        methods.sort((e1, e2) -> -Integer.compare(e1.getValue(), e2.getValue()));
+
+        StringBuilder msg = new StringBuilder("Too deep inlining, probably caused by recursive inlining. Inlined methods ordered by inlining frequency:");
+        for (Map.Entry<ResolvedJavaMethod, Integer> entry : methods) {
+            msg.append(System.lineSeparator()).append(entry.getKey().format("%H.%n(%p) [")).append(entry.getValue()).append("]");
+        }
+        throw new BailoutException(msg.toString());
     }
 
     public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, AbstractBeginNode lastBlock) {
