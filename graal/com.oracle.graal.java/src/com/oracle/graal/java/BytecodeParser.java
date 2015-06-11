@@ -2974,6 +2974,13 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private ValueNode appendNullCheck(ValueNode object) {
+        if (object.stamp() instanceof AbstractPointerStamp) {
+            AbstractPointerStamp stamp = (AbstractPointerStamp) object.stamp();
+            if (stamp.nonNull()) {
+                return object;
+            }
+        }
+
         IsNullNode isNull = append(new IsNullNode(object));
         FixedGuardNode fixedGuard = append(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true));
         return append(new PiNode(object, object.stamp().join(StampFactory.objectNonNull()), fixedGuard));

@@ -34,7 +34,7 @@ import com.oracle.jvmci.meta.*;
  * Write a raw memory location according to Java field or array write semantics. It will perform
  * write barriers, implicit conversions and optionally oop compression.
  */
-@NodeInfo
+@NodeInfo(nameTemplate = "JavaWrite#{p#location/s}")
 public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
 
     public static final NodeClass<JavaWriteNode> TYPE = NodeClass.create(JavaWriteNode.class);
