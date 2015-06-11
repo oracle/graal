@@ -333,12 +333,6 @@ public class MatchProcessor extends AbstractProcessor {
      */
     Map<String, TypeDescriptor> knownTypes = new HashMap<>();
 
-    /**
-     * The mapping between elements with MatchRules and the wrapper class used invoke the code
-     * generation after the match.
-     */
-    private Map<String, MethodInvokerItem> invokers = new LinkedHashMap<>();
-
     private TypeDescriptor valueType;
 
     private TypeMirror matchRulesTypeMirror;
@@ -500,7 +494,7 @@ public class MatchProcessor extends AbstractProcessor {
             out.println();
 
             // Generate declarations for the wrapper class to invoke the code generation methods.
-            for (MethodInvokerItem invoker : invokers.values()) {
+            for (MethodInvokerItem invoker : info.invokers.values()) {
                 StringBuilder args = new StringBuilder();
                 StringBuilder types = new StringBuilder();
                 int count = invoker.fields.size();
@@ -644,6 +638,12 @@ public class MatchProcessor extends AbstractProcessor {
         final List<MatchRuleItem> matchRules = new ArrayList<>();
         private final Set<Element> originatingElements = new HashSet<>();
         public Set<String> positionDeclarations = new LinkedHashSet<>();
+
+        /**
+         * The mapping between elements with MatchRules and the wrapper class used invoke the code
+         * generation after the match.
+         */
+        Map<String, MethodInvokerItem> invokers = new LinkedHashMap<>();
 
         /**
          * The set of packages which must be imported to refer the classes mention in matchRules.
@@ -919,14 +919,15 @@ public class MatchProcessor extends AbstractProcessor {
             }
 
             String methodName = method.getSimpleName().toString();
-            MethodInvokerItem invoker = invokers.get(methodName);
+            MethodInvokerItem invoker = info.invokers.get(methodName);
             if (invoker == null) {
                 invoker = new MethodInvokerItem(methodName, topDeclaringType(method).getSimpleName().toString(), method, actualParameters);
-                invokers.put(methodName, invoker);
+                info.invokers.put(methodName, invoker);
             } else if (invoker.method != method) {
                 // This could be supported but it's easier if they are unique since the names
                 // are used in log output and snippet counters.
-                errorMessage(method, "Use unique method names for match methods.");
+                errorMessage(method, "Use unique method names for match methods: %s.%s != %s.%s", method.getReceiverType(), method.getSimpleName(), invoker.method.getReceiverType(),
+                                invoker.method.getSimpleName());
                 return;
             }
 
