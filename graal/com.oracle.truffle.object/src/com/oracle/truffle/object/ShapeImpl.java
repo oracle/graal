@@ -316,7 +316,7 @@ public abstract class ShapeImpl extends Shape {
         return addPropertyInternal(property);
     }
 
-    protected final void onPropertyTransition(Property property) {
+    private void onPropertyTransition(Property property) {
         if (sharedData instanceof ShapeListener) {
             ((ShapeListener) sharedData).onPropertyTransition(property.getKey());
         }
@@ -671,6 +671,10 @@ public abstract class ShapeImpl extends Shape {
      */
     @Override
     public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
+        return indirectReplaceProperty(oldProperty, newProperty);
+    }
+
+    protected final ShapeImpl indirectReplaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
 
         Transition replacePropertyTransition = new Transition.IndirectReplacePropertyTransition(oldProperty, newProperty);
@@ -699,7 +703,24 @@ public abstract class ShapeImpl extends Shape {
                 newShape = newShape.applyTransition(transition, false);
             }
         }
+
         addIndirectTransition(replacePropertyTransition, newShape);
+        return newShape;
+    }
+
+    protected final ShapeImpl directReplaceProperty(Property oldProperty, Property newProperty) {
+        assert oldProperty.getKey().equals(newProperty.getKey());
+        onPropertyTransition(oldProperty);
+
+        Transition replacePropertyTransition = new Transition.DirectReplacePropertyTransition(oldProperty, newProperty);
+        ShapeImpl cachedShape = queryTransition(replacePropertyTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+        PropertyMap newPropertyMap = this.getPropertyMap().replaceCopy(oldProperty, newProperty);
+        ShapeImpl newShape = createShape(getLayout(), getSharedData(), this, getObjectType(), newPropertyMap, replacePropertyTransition, allocator(), getId());
+
+        addDirectTransition(replacePropertyTransition, newShape);
         return newShape;
     }
 
