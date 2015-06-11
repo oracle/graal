@@ -25,12 +25,11 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 
 /**
  * Interface for service providers that register replacements with the compiler.
  */
-public interface ReplacementsProvider extends Service {
+public interface ReplacementsProvider {
 
     void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider lowerer, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target);
 }

@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.api.runtime;
 
-import com.oracle.jvmci.service.*;
-
 /**
- * A {@linkplain Service JVMCI service} that provides access to a {@link GraalRuntime}
- * implementation.
+ * A service that provides access to a {@link GraalRuntime} implementation.
  */
-public interface GraalRuntimeAccess extends Service {
+public interface GraalRuntimeAccess {
 
     /**
      * Gets the {@link GraalRuntime} implementation available via this access object.

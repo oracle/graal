@@ -24,9 +24,8 @@ package com.oracle.graal.hotspot;
 
 import com.oracle.jvmci.hotspot.HotSpotJVMCIRuntime.Options;
 import com.oracle.jvmci.runtime.*;
-import com.oracle.jvmci.service.*;
 
-public interface HotSpotBackendFactory extends Service {
+public interface HotSpotBackendFactory {
 
     HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, JVMCIBackend jvmciBackend, HotSpotBackend host);
 

@@ -27,9 +27,8 @@ import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.service.*;
 
-public interface CompilerConfiguration extends Service {
+public interface CompilerConfiguration {
 
     PhaseSuite<HighTierContext> createHighTier();
 

@@ -24,13 +24,12 @@ package com.oracle.graal.truffle;
 
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.service.*;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
  * {@link OptimizedCallTarget#call(Object[])}.
  */
-public interface OptimizedCallTargetInstrumentationFactory extends CompilationResultBuilderFactory, Service {
+public interface OptimizedCallTargetInstrumentationFactory extends CompilationResultBuilderFactory {
 
     /**
      * Gets the architecture supported by this factory.

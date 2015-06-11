@@ -38,8 +38,12 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.unsafe.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.code.stack.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.meta.*;
+import com.oracle.jvmci.service.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
@@ -69,9 +73,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
-        ServiceLoader<T> serviceLoader = ServiceLoader.load(clazz, GraalTruffleRuntime.class.getClassLoader());
+        Iterable<T> providers = Services.load(clazz);
         T bestFactory = null;
-        for (T factory : serviceLoader) {
+        for (T factory : providers) {
             if (bestFactory == null) {
                 bestFactory = factory;
             } else if (factory.getPriority() > bestFactory.getPriority()) {

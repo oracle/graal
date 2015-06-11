@@ -25,9 +25,8 @@ package com.oracle.graal.compiler.match;
 import java.util.*;
 
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.jvmci.service.*;
 
-public interface MatchStatementSet extends Service {
+public interface MatchStatementSet {
     /**
      * @return the {@link NodeLIRBuilder} subclass which defined this set of {@link MatchStatement}
      *         instances.
