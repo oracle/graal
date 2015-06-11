@@ -32,13 +32,17 @@ import com.oracle.graal.nodes.*;
 import com.oracle.jvmci.meta.*;
 
 @NodeInfo
-public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
+public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
     public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.create(DynamicNewInstanceNode.class);
 
     @Input ValueNode clazz;
 
     public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
-        super(TYPE, StampFactory.objectNonNull(), fillContents);
+        this(TYPE, clazz, fillContents);
+    }
+
+    protected DynamicNewInstanceNode(NodeClass<? extends DynamicNewInstanceNode> c, ValueNode clazz, boolean fillContents) {
+        super(c, StampFactory.objectNonNull(), fillContents);
         this.clazz = clazz;
     }
 
@@ -59,10 +63,15 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
             if (type != null && type.isInitialized() && !throwsInstantiationException(type, tool.getMetaAccess())) {
-                return new NewInstanceNode(type, fillContents());
+                return createNewInstanceNode(type);
             }
         }
         return this;
+    }
+
+    /** Hook for subclasses to instantiate a subclass of {@link NewInstanceNode}. */
+    protected NewInstanceNode createNewInstanceNode(ResolvedJavaType type) {
+        return new NewInstanceNode(type, fillContents());
     }
 
     public static boolean throwsInstantiationException(Class<?> type) {

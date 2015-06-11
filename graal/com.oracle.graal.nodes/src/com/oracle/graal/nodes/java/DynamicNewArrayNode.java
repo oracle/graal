@@ -79,10 +79,15 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
         if (elementType.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (type != null && !throwsIllegalArgumentException(type)) {
-                return new NewArrayNode(type, length(), fillContents());
+                return createNewArrayNode(type);
             }
         }
         return this;
+    }
+
+    /** Hook for subclasses to instantiate a subclass of {@link NewArrayNode}. */
+    protected NewArrayNode createNewArrayNode(ResolvedJavaType type) {
+        return new NewArrayNode(type, length(), fillContents());
     }
 
     public static boolean throwsIllegalArgumentException(Class<?> elementType) {
