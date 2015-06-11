@@ -99,12 +99,16 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     public AbstractBeginNode successorAtKey(int key) {
+        return blockSuccessor(successorIndexAtKey(key));
+    }
+
+    public int successorIndexAtKey(int key) {
         for (int i = 0; i < keyCount(); i++) {
             if (keys[i] == key) {
-                return blockSuccessor(keySuccessorIndex(i));
+                return keySuccessorIndex(i);
             }
         }
-        return blockSuccessor(keySuccessorIndex(keyCount()));
+        return keySuccessorIndex(keyCount());
     }
 
     @Override
@@ -113,18 +117,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             tool.addToWorkList(defaultSuccessor());
             graph().removeSplitPropagate(this, defaultSuccessor());
         } else if (value() instanceof ConstantNode) {
-            int constant = value().asJavaConstant().asInt();
-            AbstractBeginNode survivingSuccessor = successorAtKey(constant);
-            for (Node successor : successors()) {
-                if (successor != survivingSuccessor) {
-                    tool.deleteBranch(successor);
-                    // deleteBranch can change the successors so reload it
-                    survivingSuccessor = successorAtKey(constant);
-                }
-            }
-            tool.addToWorkList(survivingSuccessor);
-            graph().removeSplit(this, survivingSuccessor);
-
+            killOtherSuccessors(tool, successorIndexAtKey(value().asJavaConstant().asInt()));
         } else if (value().stamp() instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) value().stamp();
             if (!integerStamp.isUnrestricted()) {
@@ -179,7 +172,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                     }
 
                     AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-                    IntegerSwitchNode newSwitch = graph().add(new IntegerSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
+                    SwitchNode newSwitch = graph().add(new IntegerSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
                 }

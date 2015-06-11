@@ -131,13 +131,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     survivingEdge = keySuccessorIndex(i);
                 }
             }
-            for (int i = 0; i < blockSuccessorCount(); i++) {
-                if (i != survivingEdge) {
-                    tool.deleteBranch(blockSuccessor(i));
-                }
-            }
-            tool.addToWorkList(blockSuccessor(survivingEdge));
-            graph().removeSplit(this, blockSuccessor(survivingEdge));
+            killOtherSuccessors(tool, survivingEdge);
         }
         if (value() instanceof LoadHubNode && ((LoadHubNode) value()).getValue().stamp() instanceof ObjectStamp) {
             ObjectStamp objectStamp = (ObjectStamp) ((LoadHubNode) value()).getValue().stamp();
