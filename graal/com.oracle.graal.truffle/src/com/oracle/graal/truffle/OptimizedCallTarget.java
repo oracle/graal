@@ -105,6 +105,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         this.nodeRewritingAssumption = new CyclicAssumption("nodeRewritingAssumption of " + rootNode.toString());
     }
 
+    public final void log(String message) {
+        runtime.log(message);
+    }
+
     public final boolean isCompiling() {
         return compiling;
     }

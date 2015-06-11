@@ -22,15 +22,14 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import com.oracle.jvmci.code.CompilationResult;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
+import com.oracle.jvmci.code.*;
 import com.oracle.truffle.api.nodes.*;
 
 public final class TraceCompilationASTListener extends AbstractDebugCompilationListener {
@@ -43,11 +42,11 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
 
     @Override
     public void notifyCompilationSuccess(OptimizedCallTarget target, StructuredGraph graph, CompilationResult result) {
-        log(0, "opt AST", target.toString(), target.getDebugProperties());
-        printCompactTree(new PrintWriter(OUT), target);
+        log(target, 0, "opt AST", target.toString(), target.getDebugProperties());
+        printCompactTree(target);
     }
 
-    private static void printCompactTree(PrintWriter p, OptimizedCallTarget target) {
+    private static void printCompactTree(OptimizedCallTarget target) {
         target.accept(new CallTreeNodeVisitor() {
 
             public boolean visit(List<TruffleInlining> decisionStack, Node node) {
@@ -55,13 +54,14 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                     return true;
                 }
                 int level = CallTreeNodeVisitor.getNodeDepth(decisionStack, node);
+                StringBuilder indent = new StringBuilder();
                 for (int i = 0; i < level; i++) {
-                    p.print("  ");
+                    indent.append("  ");
                 }
                 Node parent = node.getParent();
 
                 if (parent == null) {
-                    p.println(node.getClass().getSimpleName());
+                    target.log(String.format("%s%s", indent, node.getClass().getSimpleName()));
                 } else {
                     String fieldName = "unknownField";
                     NodeFieldAccessor[] fields = NodeClass.get(parent).getFields();
@@ -81,15 +81,11 @@ public final class TraceCompilationASTListener extends AbstractDebugCompilationL
                             }
                         }
                     }
-                    p.print(fieldName);
-                    p.print(" = ");
-                    p.println(node.getClass().getSimpleName());
+                    target.log(String.format("%s%s = %s", indent, fieldName, node.getClass().getSimpleName()));
                 }
-                p.flush();
                 return true;
             }
 
         }, true);
     }
-
 }

@@ -28,6 +28,7 @@ import com.oracle.jvmci.code.stack.StackIntrospection;
 import com.oracle.jvmci.code.CompilationResult;
 import com.oracle.jvmci.meta.MetaAccessProvider;
 import com.oracle.jvmci.meta.ResolvedJavaMethod;
+
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
@@ -81,6 +82,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             throw new IllegalStateException("Unable to load a factory for " + clazz.getName());
         }
         return bestFactory;
+    }
+
+    public void log(String message) {
+        TTY.out().println(message);
     }
 
     protected void installDefaultListeners() {

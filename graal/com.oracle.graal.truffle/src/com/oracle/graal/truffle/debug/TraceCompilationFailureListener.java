@@ -44,7 +44,7 @@ public final class TraceCompilationFailureListener extends AbstractDebugCompilat
         if (isPermanentBailout(t) || PrintBailout.getValue()) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("Reason", t.toString());
-            log(0, "opt fail", target.toString(), properties);
+            log(target, 0, "opt fail", target.toString(), properties);
         }
     }
 

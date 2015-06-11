@@ -60,9 +60,9 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
         int totalInterpretedCallCount = 0;
         int totalInvalidationCount = 0;
 
-        OUT.println();
-        OUT.printf(" %-50s  | %-15s || %-15s | %-15s || %-15s | %-15s | %-15s || %3s \n", "Call Target", "Total Calls", "Interp. Calls", "Opt. Calls", "Direct Calls", "Inlined Calls",
-                        "Indirect Calls", "Invalidations");
+        runtime.log(""); // empty line
+        runtime.log(String.format(" %-50s  | %-15s || %-15s | %-15s || %-15s | %-15s | %-15s || %3s ", "Call Target", "Total Calls", "Interp. Calls", "Opt. Calls", "Direct Calls", "Inlined Calls",
+                        "Indirect Calls", "Invalidations"));
         for (OptimizedCallTarget uniqueCallTarget : uniqueSortedTargets) {
             List<OptimizedCallTarget> allCallTargets = groupedTargets.get(uniqueCallTarget);
             int directCallCount = sumCalls(allCallTargets, p -> p.getDirectCallCount());
@@ -80,14 +80,14 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
             totalTotalCallCount += totalCallCount;
 
             if (totalCallCount > 0) {
-                OUT.printf("  %-50s | %15d || %15d | %15d || %15d | %15d | %15d || %3d\n", uniqueCallTarget, totalCallCount, interpreterCallCount, totalCallCount - interpreterCallCount,
-                                directCallCount, inlinedCallCount, indirectCallCount, invalidationCount);
+                runtime.log(String.format("  %-50s | %15d || %15d | %15d || %15d | %15d | %15d || %3d", uniqueCallTarget, totalCallCount, interpreterCallCount, totalCallCount - interpreterCallCount,
+                                directCallCount, inlinedCallCount, indirectCallCount, invalidationCount));
             }
 
         }
 
-        OUT.printf(" %-50s  | %15d || %15d | %15d || %15d | %15d | %15d || %3d\n", "Total", totalTotalCallCount, totalInterpretedCallCount, totalTotalCallCount - totalInterpretedCallCount,
-                        totalDirectCallCount, totalInlinedCallCount, totalIndirectCallCount, totalInvalidationCount);
+        runtime.log(String.format(" %-50s  | %15d || %15d | %15d || %15d | %15d | %15d || %3d", "Total", totalTotalCallCount, totalInterpretedCallCount, totalTotalCallCount -
+                        totalInterpretedCallCount, totalDirectCallCount, totalInlinedCallCount, totalIndirectCallCount, totalInvalidationCount));
 
     }
 

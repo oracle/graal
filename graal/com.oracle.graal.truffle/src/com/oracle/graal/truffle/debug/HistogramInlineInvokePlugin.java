@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -81,13 +80,13 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         statistics.accept(current);
     }
 
-    public void print(OptimizedCallTarget target, PrintStream out) {
-        out.printf("Truffle expansion histogram for %s%n", target);
-        out.println("  Invocations = Number of expanded invocations");
-        out.println("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
-        out.println("  Calls = Number of not expanded calls created for this method during partial evaluation.");
-        out.printf(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name%n", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg");
-        histogram.values().stream().filter(statistics -> statistics.shallowCount.getSum() > 0).sorted().forEach(statistics -> statistics.print(out));
+    public void print(OptimizedCallTarget target) {
+        target.log(String.format("Truffle expansion histogram for %s", target));
+        target.log("  Invocations = Number of expanded invocations");
+        target.log("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
+        target.log("  Calls = Number of not expanded calls created for this method during partial evaluation.");
+        target.log(String.format(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg"));
+        histogram.values().stream().filter(statistics -> statistics.shallowCount.getSum() > 0).sorted().forEach(statistics -> statistics.print(target));
     }
 
     private static class MethodStatistics implements Comparable<MethodStatistics> {
@@ -102,11 +101,11 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
             this.method = method;
         }
 
-        public void print(PrintStream out) {
-            out.printf(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s%n", //
+        public void print(OptimizedCallTarget target) {
+            target.log(String.format(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s", //
                             count, shallowCount.getSum(), shallowCount.getMin(), shallowCount.getMax(), //
                             shallowCount.getAverage(), callCount.getSum(), callCount.getMin(), callCount.getMax(), //
-                            callCount.getAverage(), method.format("%h.%n(%p)"));
+                            callCount.getAverage(), method.format("%h.%n(%p)")));
         }
 
         public int compareTo(MethodStatistics o) {

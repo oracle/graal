@@ -289,7 +289,7 @@ public class PartialEvaluator {
         new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), newConfig, TruffleCompiler.Optimizations, null).apply(graph);
 
         if (PrintTruffleExpansionHistogram.getValue()) {
-            histogramPlugin.print(callTarget, System.out);
+            histogramPlugin.print(callTarget);
         }
     }
 
@@ -337,7 +337,7 @@ public class PartialEvaluator {
         decoder.decode(graph, graph.method(), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin);
 
         if (PrintTruffleExpansionHistogram.getValue()) {
-            histogramPlugin.print(callTarget, System.out);
+            histogramPlugin.print(callTarget);
         }
     }
 
@@ -386,29 +386,29 @@ public class PartialEvaluator {
         graph.maybeCompress();
 
         if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
-            reportPerformanceWarnings(graph);
+            reportPerformanceWarnings(callTarget, graph);
         }
     }
 
-    private static void reportPerformanceWarnings(StructuredGraph graph) {
+    private static void reportPerformanceWarnings(OptimizedCallTarget target, StructuredGraph graph) {
         ArrayList<ValueNode> warnings = new ArrayList<>();
         for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
-                TracePerformanceWarningsListener.logPerformanceWarning(String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
+                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                 warnings.add(call);
             }
         }
 
         for (CheckCastNode cast : graph.getNodes().filter(CheckCastNode.class)) {
             if (cast.type().findLeafConcreteSubtype() == null) {
-                TracePerformanceWarningsListener.logPerformanceWarning(String.format("non-leaf type checkcast: %s (%s)", cast.type().getName(), cast), null);
+                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type checkcast: %s (%s)", cast.type().getName(), cast), null);
                 warnings.add(cast);
             }
         }
 
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             if (instanceOf.type().findLeafConcreteSubtype() == null) {
-                TracePerformanceWarningsListener.logPerformanceWarning(String.format("non-leaf type instanceof: %s (%s)", instanceOf.type().getName(), instanceOf), null);
+                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("non-leaf type instanceof: %s (%s)", instanceOf.type().getName(), instanceOf), null);
                 warnings.add(instanceOf);
             }
         }
@@ -452,12 +452,13 @@ public class PartialEvaluator {
     }
 
     private static TruffleInliningDecision getDecision(TruffleInlining inlining, OptimizedDirectCallNode callNode) {
+        OptimizedCallTarget target = callNode.getCallTarget();
         TruffleInliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
-                TracePerformanceWarningsListener.logPerformanceWarning("A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+                TracePerformanceWarningsListener.logPerformanceWarning(target, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
         }
 
@@ -466,7 +467,7 @@ public class PartialEvaluator {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
-                TracePerformanceWarningsListener.logPerformanceWarning(String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
+                TracePerformanceWarningsListener.logPerformanceWarning(target, String.format("CallTarget changed during compilation. Call node could not be inlined."), properties);
             }
             return null;
         }

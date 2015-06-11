@@ -43,8 +43,8 @@ public final class TracePerformanceWarningsListener extends AbstractDebugCompila
         return TraceTrufflePerformanceWarnings.getValue();
     }
 
-    public static void logPerformanceWarning(String details, Map<String, Object> properties) {
-        log(0, "perf warn", details, properties);
+    public static void logPerformanceWarning(OptimizedCallTarget target, String details, Map<String, Object> properties) {
+        log(target, 0, "perf warn", details, properties);
     }
 
 }

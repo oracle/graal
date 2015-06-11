@@ -45,19 +45,19 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
             return;
         }
 
-        log(0, "inline start", target.toString(), target.getDebugProperties());
-        logInliningDecisionRecursive(inlining, 1);
-        log(0, "inline done", target.toString(), target.getDebugProperties());
+        log(target, 0, "inline start", target.toString(), target.getDebugProperties());
+        logInliningDecisionRecursive(target, inlining, 1);
+        log(target, 0, "inline done", target.toString(), target.getDebugProperties());
     }
 
-    private static void logInliningDecisionRecursive(TruffleInlining result, int depth) {
+    private void logInliningDecisionRecursive(OptimizedCallTarget target, TruffleInlining result, int depth) {
         for (TruffleInliningDecision decision : result) {
             TruffleInliningProfile profile = decision.getProfile();
             boolean inlined = decision.isInline();
             String msg = inlined ? "inline success" : "inline failed";
-            log(depth, msg, decision.getProfile().getCallNode().getCurrentCallTarget().toString(), profile.getDebugProperties());
+            log(target, depth, msg, decision.getProfile().getCallNode().getCurrentCallTarget().toString(), profile.getDebugProperties());
             if (inlined) {
-                logInliningDecisionRecursive(decision, depth + 1);
+                logInliningDecisionRecursive(target, decision, depth + 1);
             }
         }
     }

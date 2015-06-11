@@ -47,7 +47,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
     @Override
     public void notifyCompilationQueued(OptimizedCallTarget target) {
         if (TraceTruffleCompilationDetails.getValue()) {
-            log(0, "opt queued", target.toString(), target.getDebugProperties());
+            log(target, 0, "opt queued", target.toString(), target.getDebugProperties());
         }
     }
 
@@ -57,7 +57,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
             Map<String, Object> properties = new LinkedHashMap<>();
             addSourceInfo(properties, source);
             properties.put("Reason", reason);
-            log(0, "opt unqueued", target.toString(), properties);
+            log(target, 0, "opt unqueued", target.toString(), properties);
         }
     }
 
@@ -73,7 +73,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
     @Override
     public void notifyCompilationStarted(OptimizedCallTarget target) {
         if (TraceTruffleCompilationDetails.getValue()) {
-            log(0, "opt start", target.toString(), target.getDebugProperties());
+            log(target, 0, "opt start", target.toString(), target.getDebugProperties());
         }
         LocalCompilation compilation = new LocalCompilation();
         compilation.timeCompilationStarted = System.nanoTime();
@@ -117,7 +117,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         properties.put("CodeSize", result.getTargetCodeSize());
         properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
-        log(0, "opt done", target.toString(), properties);
+        log(target, 0, "opt done", target.toString(), properties);
         super.notifyCompilationSuccess(target, graph, result);
         currentCompilation.set(null);
     }
@@ -131,7 +131,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         Map<String, Object> properties = new LinkedHashMap<>();
         addSourceInfo(properties, source);
         properties.put("Reason", reason);
-        log(0, "opt invalidated", target.toString(), properties);
+        log(target, 0, "opt invalidated", target.toString(), properties);
     }
 
     private static void addSourceInfo(Map<String, Object> properties, Object source) {
