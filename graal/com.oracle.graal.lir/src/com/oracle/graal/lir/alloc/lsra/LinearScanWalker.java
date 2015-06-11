@@ -794,6 +794,7 @@ class LinearScanWalker extends IntervalWalker {
 
             // the register must be free at least until this position
             int firstUsage = interval.firstUsage(RegisterPriority.MustHaveRegister);
+            int firstShouldHaveUsage = interval.firstUsage(RegisterPriority.ShouldHaveRegister);
             int regNeededUntil = Math.min(firstUsage, interval.from() + 1);
             int intervalTo = interval.to();
             assert regNeededUntil > 0 && regNeededUntil < Integer.MAX_VALUE : "interval has no use";
@@ -812,7 +813,7 @@ class LinearScanWalker extends IntervalWalker {
             }
 
             int regUsePos = (reg == null ? 0 : usePos[reg.number]);
-            if (regUsePos <= firstUsage) {
+            if (regUsePos <= firstShouldHaveUsage) {
                 if (Debug.isLogEnabled()) {
                     Debug.log("able to spill current interval. firstUsage(register): %d, usePos: %d", firstUsage, regUsePos);
                 }
