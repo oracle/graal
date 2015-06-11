@@ -118,6 +118,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             for (Node successor : successors()) {
                 if (successor != survivingSuccessor) {
                     tool.deleteBranch(successor);
+                    // deleteBranch can change the successors so reload it
+                    survivingSuccessor = successorAtKey(constant);
                 }
             }
             tool.addToWorkList(survivingSuccessor);

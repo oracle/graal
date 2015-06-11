@@ -80,6 +80,13 @@ public interface Replacements {
     StructuredGraph getSubstitution(ResolvedJavaMethod method, boolean fromBytecodeOnly, int invokeBci);
 
     /**
+     * Gets a method that is a substitution for a given method.
+     *
+     * @return the method, if any, whose bytecode are a substitution for {@code method}
+     */
+    ResolvedJavaMethod getSubstitutionMethod(ResolvedJavaMethod method);
+
+    /**
      * Determines if there is a {@linkplain #getSubstitution(ResolvedJavaMethod, int) substitution
      * graph} for a given method.
      *

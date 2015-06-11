@@ -23,16 +23,21 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.jvmci.code.CallingConvention.Type.*;
 import static com.oracle.jvmci.code.CodeUtil.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.graphbuilderconf.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.tiers.*;
@@ -50,9 +55,12 @@ public class HotSpotGraalCompiler implements Compiler {
         HotSpotProviders providers = HotSpotGraalRuntime.runtime().getHostProviders();
         final boolean isOSR = entryBCI != INVOCATION_ENTRY_BCI;
 
-        StructuredGraph graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
-        if (!mustRecordMethodInlining) {
-            graph.disableInlinedMethodRecording();
+        StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
+        if (graph == null) {
+            graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
+            if (!mustRecordMethodInlining) {
+                graph.disableInlinedMethodRecording();
+            }
         }
 
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
@@ -83,6 +91,29 @@ public class HotSpotGraalCompiler implements Compiler {
         }
 
         return result;
+    }
+
+    /**
+     * Gets a graph produced from the intrinsic for a given method that can be compiled and
+     * installed for the method.
+     *
+     * @param method
+     * @return an intrinsic graph that can be compiled and installed for {@code method} or null
+     */
+    protected StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers) {
+        Replacements replacements = providers.getReplacements();
+        ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
+        if (substMethod != null) {
+            assert !substMethod.equals(method);
+            StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
+            Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
+            GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
+            assert !graph.isFrozen();
+            return graph;
+        }
+        return null;
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo) {

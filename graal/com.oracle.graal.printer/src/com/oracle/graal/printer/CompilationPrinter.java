@@ -183,7 +183,7 @@ public class CompilationPrinter implements Closeable {
     }
 
     public void printMachineCode(String code, String label) {
-        if (code.length() == 0) {
+        if (code == null || code.length() == 0) {
             return;
         }
         if (label != null) {

@@ -100,7 +100,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         if (!method.equals(curMethod) || !curDecorators.equals(decorators)) {
             cfgPrinter.printCompilation(method);
-            TTY.println("CFGPrinter: Dumping method %s to %s", method, cfgFile);
+            TTY.println("CFGPrinter: Dumping method %s to %s", method, cfgFile.getAbsolutePath());
         }
         curMethod = method;
         curDecorators = decorators;
@@ -131,7 +131,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             } catch (FileNotFoundException e) {
                 throw new JVMCIError("Could not open " + cfgFile.getAbsolutePath());
             }
-            TTY.println("CFGPrinter: Output to file %s", cfgFile);
+            TTY.println("CFGPrinter: Output to file %s", cfgFile.getAbsolutePath());
         }
 
         if (!checkMethodScope()) {
