@@ -28,12 +28,11 @@ import org.junit.*;
 
 import sun.misc.*;
 
-import com.oracle.graal.replacements.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.meta.*;
 
 /**
- * Tests the VM independent {@link UnsafeSubstitutions}.
+ * Tests the VM independent intrinsification of {@link Unsafe} methods.
  */
 public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -40,21 +42,34 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
         this.clazz = clazz;
     }
 
+    public ValueNode getInstanceType() {
+        return clazz;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        /*
+         * Do not call the super implementation: we must not eliminate unused allocations because
+         * throwing an InstantiationException is a possible side effect of an unused allocation.
+         */
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (clazz.isConstant()) {
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
-            if (type != null && type.isInitialized() && !type.isArray() && !type.isInterface() && !type.isPrimitive()) {
+            if (type != null && type.isInitialized() && !throwsInstantiationException(type, tool.getMetaAccess())) {
                 return new NewInstanceNode(type, fillContents());
             }
         }
         return this;
     }
 
-    public ValueNode getInstanceType() {
-        return clazz;
+    public static boolean throwsInstantiationException(Class<?> type) {
+        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type == Class.class;
     }
 
-    @NodeIntrinsic
-    public static native Object allocateInstance(Class<?> clazz, @ConstantNodeParameter boolean fillContents);
+    public static boolean throwsInstantiationException(ResolvedJavaType type, MetaAccessProvider metaAccess) {
+        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type.equals(metaAccess.lookupJavaType(Class.class));
+    }
 }

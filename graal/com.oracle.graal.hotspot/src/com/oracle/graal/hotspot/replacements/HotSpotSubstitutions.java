@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import sun.misc.*;
 import sun.reflect.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.hotspot.*;
 import com.oracle.jvmci.meta.*;
@@ -40,7 +38,6 @@ public class HotSpotSubstitutions implements ReplacementsProvider {
     public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, SnippetReflectionProvider snippetReflection, Replacements replacements, TargetDescription target) {
         replacements.registerSubstitutions(System.class, SystemSubstitutions.class);
         replacements.registerSubstitutions(Thread.class, ThreadSubstitutions.class);
-        replacements.registerSubstitutions(Unsafe.class, UnsafeSubstitutions.class);
         replacements.registerSubstitutions(Reflection.class, ReflectionSubstitutions.class);
         replacements.registerSubstitutions(CompilerToVMImpl.class, CompilerToVMImplSubstitutions.class);
     }

@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-
-import com.oracle.graal.api.directives.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.jvmci.meta.*;
@@ -35,18 +32,6 @@ import com.oracle.jvmci.meta.*;
  * Substitutions for {@link java.lang.reflect.Array} methods.
  */
 public class ArraySubstitutions {
-
-    public static Object newInstance(Class<?> componentType, int length) throws NegativeArraySizeException {
-        // The error cases must be handled here since DynamicNewArrayNode can only deoptimize the
-        // caller in response to exceptions.
-        if (probability(SLOW_PATH_PROBABILITY, length < 0)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
-        }
-        if (probability(SLOW_PATH_PROBABILITY, componentType == void.class)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
-        }
-        return DynamicNewArrayNode.newArray(GraalDirectives.guardingNonNull(componentType), length);
-    }
 
     public static int getLength(Object array) {
         if (!array.getClass().isArray()) {

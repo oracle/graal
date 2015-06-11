@@ -23,8 +23,6 @@
 //JaCoCo Exclude
 package com.oracle.graal.nodes.java;
 
-import java.util.*;
-
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -37,7 +35,7 @@ import com.oracle.jvmci.meta.*;
  * compile-time constant.
  */
 @NodeInfo
-public class DynamicNewArrayNode extends AbstractNewArrayNode {
+public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonicalizable {
     public static final NodeClass<DynamicNewArrayNode> TYPE = NodeClass.create(DynamicNewArrayNode.class);
 
     @Input ValueNode elementType;
@@ -48,10 +46,6 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
      */
     protected final Kind knownElementKind;
 
-    public DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
-        this(TYPE, elementType, length, true, null);
-    }
-
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
         this(TYPE, elementType, length, fillContents, knownElementKind);
     }
@@ -60,6 +54,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         super(c, StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
+        assert knownElementKind != Kind.Void && knownElementKind != Kind.Illegal;
     }
 
     public ValueNode getElementType() {
@@ -70,33 +65,33 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode {
         return knownElementKind;
     }
 
-    protected NewArrayNode forConstantType(ResolvedJavaType type) {
-        ValueNode len = length();
-        NewArrayNode ret = graph().add(new NewArrayNode(type, len.isAlive() ? len : graph().addOrUniqueWithInputs(len), fillContents()));
-        if (stateBefore() != null) {
-            ret.setStateBefore(stateBefore());
-        }
-        return ret;
+    @Override
+    public void simplify(SimplifierTool tool) {
+        /*
+         * Do not call the super implementation: we must not eliminate unused allocations because
+         * throwing a NullPointerException or IllegalArgumentException is a possible side effect of
+         * an unused allocation.
+         */
     }
 
     @Override
-    public void simplify(SimplifierTool tool) {
-        if (isAlive() && elementType.isConstant()) {
-            ResolvedJavaType javaType = tool.getConstantReflection().asJavaType(elementType.asConstant());
-            if (javaType != null && !javaType.equals(tool.getMetaAccess().lookupJavaType(void.class))) {
-                NewArrayNode newArray = forConstantType(javaType);
-                List<Node> snapshot = inputs().snapshot();
-                graph().replaceFixedWithFixed(this, newArray);
-                for (Node input : snapshot) {
-                    tool.removeIfUnused(input);
-                }
-                tool.addToWorkList(newArray);
+    public Node canonical(CanonicalizerTool tool) {
+        if (elementType.isConstant()) {
+            ResolvedJavaType type = tool.getConstantReflection().asJavaType(elementType.asConstant());
+            if (type != null && !throwsIllegalArgumentException(type)) {
+                return new NewArrayNode(type, length(), fillContents());
             }
         }
+        return this;
     }
 
-    @NodeIntrinsic
-    public static native Object newArray(Class<?> componentType, int length);
+    public static boolean throwsIllegalArgumentException(Class<?> elementType) {
+        return elementType == void.class;
+    }
+
+    public static boolean throwsIllegalArgumentException(ResolvedJavaType elementType) {
+        return elementType.getKind() == Kind.Void;
+    }
 
     @NodeIntrinsic
     private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter Kind knownElementKind);

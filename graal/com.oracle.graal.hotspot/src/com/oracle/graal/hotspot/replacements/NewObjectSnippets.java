@@ -22,15 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import com.oracle.jvmci.meta.Kind;
-import static com.oracle.jvmci.code.UnsignedMath.*;
+import static com.oracle.graal.replacements.ReplacementsUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -39,6 +31,7 @@ import static com.oracle.graal.nodes.PiArrayNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
+import static com.oracle.jvmci.code.UnsignedMath.*;
 import static com.oracle.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 
 import com.oracle.graal.api.replacements.*;
@@ -65,9 +58,11 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 import com.oracle.jvmci.options.*;
 
 /**
@@ -167,6 +162,10 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
+        if (probability(SLOW_PATH_PROBABILITY, type == null || DynamicNewInstanceNode.throwsInstantiationException(type))) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+
         KlassPointer hub = ClassGetHubNode.readClass(type);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
@@ -240,7 +239,17 @@ public class NewObjectSnippets implements Snippets {
     public static native Object dynamicNewInstanceStubCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
     @Snippet
-    public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
+    public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+                    @ConstantParameter Kind knownElementKind) {
+        /*
+         * We only need the dynamic check for void when we have no static information from
+         * knownElementKind.
+         */
+        staticAssert(knownElementKind != Kind.Void, "unsupported knownElementKind");
+        if (knownElementKind == Kind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType))) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+
         Word hub = loadWordFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION);
         if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH))) {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
@@ -478,6 +487,11 @@ public class NewObjectSnippets implements Snippets {
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
+            /*
+             * We use Kind.Illegal as a marker value instead of null because constant snippet
+             * parameters cannot be null.
+             */
+            args.addConst("knownElementKind", newArrayNode.getKnownElementKind() == null ? Kind.Illegal : newArrayNode.getKnownElementKind());
 
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
