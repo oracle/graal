@@ -22,13 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.code.stack.InspectedFrameVisitor;
-import com.oracle.jvmci.code.stack.InspectedFrame;
-import com.oracle.jvmci.code.stack.StackIntrospection;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
