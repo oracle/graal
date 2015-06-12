@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.loop;
 
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.JavaConstant;
 import static com.oracle.graal.loop.MathUtil.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -33,6 +29,8 @@ import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 public class CountedLoopInfo {
 
@@ -58,7 +56,18 @@ public class CountedLoopInfo {
         StructuredGraph graph = iv.valueNode().graph();
         Stamp stamp = iv.valueNode().stamp();
         ValueNode range = sub(graph, end, iv.initNode());
-        if (oneOff) {
+        if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1) {
+            ValueNode stride = iv.strideNode();
+            if (!oneOff) {
+                if (iv.direction() == Direction.Up) {
+                    stride = sub(graph, stride, ConstantNode.forIntegerStamp(stamp, 1, graph));
+                } else {
+                    assert iv.direction() == Direction.Down;
+                    stride = add(graph, stride, ConstantNode.forIntegerStamp(stamp, 1, graph));
+                }
+            }
+            range = add(graph, range, stride);
+        } else if (oneOff) {
             if (iv.direction() == Direction.Up) {
                 range = add(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
             } else {
