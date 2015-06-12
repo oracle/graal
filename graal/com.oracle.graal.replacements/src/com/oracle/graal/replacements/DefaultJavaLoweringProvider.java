@@ -718,15 +718,4 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode ret = graph.unique(new RightShiftNode(scaledIndex, ConstantNode.forInt(shift, graph)));
         return IntegerConvertNode.convert(ret, StampFactory.forKind(Kind.Int), graph);
     }
-
-    @Override
-    public int getSizeInBytes(Stamp stamp) {
-        if (stamp instanceof PrimitiveStamp) {
-            return ((PrimitiveStamp) stamp).getBits() / 8;
-        } else if (stamp instanceof AbstractPointerStamp) {
-            return target.wordSize;
-        } else {
-            throw JVMCIError.shouldNotReachHere("stamp " + stamp + " has no size");
-        }
-    }
 }
