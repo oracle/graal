@@ -48,14 +48,14 @@ public class SPARCAddressLowering extends AddressLowering {
     public AddressNode lower(ValueNode base, ValueNode offset) {
         JavaConstant immBase = asImmediate(base);
         if (immBase != null && SPARCAssembler.isSimm13(immBase)) {
-            return lower(signExtend(offset), immBase.asLong());
+            return lower(offset, immBase.asLong());
         }
 
         JavaConstant immOffset = asImmediate(offset);
         if (immOffset != null && SPARCAssembler.isSimm13(immOffset)) {
             return lower(base, immOffset.asLong());
         }
-        return base.graph().unique(new SPARCIndexedAddressNode(base, signExtend(offset)));
+        return base.graph().unique(new SPARCIndexedAddressNode(base, offset));
     }
 
     private AddressNode lower(ValueNode base, long displacement) {
@@ -79,10 +79,6 @@ public class SPARCAddressLowering extends AddressLowering {
 
         assert SPARCAssembler.isSimm13(displacement);
         return base.graph().unique(new SPARCImmediateAddressNode(base, (int) displacement));
-    }
-
-    private static SignExtendNode signExtend(ValueNode node) {
-        return node.graph().unique(new SignExtendNode(node, Kind.Long.getBitCount()));
     }
 
     private JavaConstant asImmediate(ValueNode value) {
