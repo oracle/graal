@@ -121,9 +121,11 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
         FixedWithNextNode basePtr = graph().add(new GetObjectAddressNode(base));
         graph().addBeforeFixed(this, basePtr);
         HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
+        Stamp wordStamp = StampFactory.forKind(runtime.getTarget().wordKind);
+        ValueNode wordPos = IntegerConvertNode.convert(pos, wordStamp, graph());
         int shift = CodeUtil.log2(jvmciRuntime.getArrayIndexScale(elementKind));
-        ValueNode scaledIndex = graph().unique(new LeftShiftNode(pos, ConstantNode.forInt(shift, graph())));
-        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(jvmciRuntime.getArrayBaseOffset(elementKind), graph())));
+        ValueNode scaledIndex = graph().unique(new LeftShiftNode(wordPos, ConstantNode.forInt(shift, graph())));
+        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forIntegerStamp(wordStamp, jvmciRuntime.getArrayBaseOffset(elementKind), graph())));
         return graph().unique(new OffsetAddressNode(basePtr, offset));
     }
 
