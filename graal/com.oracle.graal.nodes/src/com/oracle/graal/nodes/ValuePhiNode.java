@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Value {@link PhiNode}s merge data flow values at control flow merges.
  */
-@NodeInfo(nameTemplate = "\u03D5({i#values})")
+@NodeInfo(nameTemplate = "Phi({i#values})")
 public class ValuePhiNode extends PhiNode {
 
     public static final NodeClass<ValuePhiNode> TYPE = NodeClass.create(ValuePhiNode.class);

@@ -31,7 +31,7 @@ import com.oracle.jvmci.meta.*;
 /**
  * Memory {@code PhiNode}s merge memory dependencies at control flow merges.
  */
-@NodeInfo(nameTemplate = "\u03D5({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
+@NodeInfo(nameTemplate = "Phi({i#values}) {p#locationIdentity/s}", allowedUsageTypes = {InputType.Memory})
 public final class MemoryPhiNode extends PhiNode implements MemoryNode {
 
     public static final NodeClass<MemoryPhiNode> TYPE = NodeClass.create(MemoryPhiNode.class);
