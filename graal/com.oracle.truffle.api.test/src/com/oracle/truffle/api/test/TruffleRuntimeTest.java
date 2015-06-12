@@ -68,6 +68,15 @@ public class TruffleRuntimeTest {
     }
 
     @Test
+    public void verifyTheRealRuntimeIsUsedOnRealGraal() {
+        TruffleRuntime r = Truffle.getRuntime();
+        final String name = r.getClass().getName();
+        if (name.endsWith("DefaultTruffleRuntime")) {
+            fail("Wrong name " + name + " with following System.getProperties:\n" + System.getProperties().toString());
+        }
+    }
+
+    @Test
     public void test() {
         assertNotNull(runtime);
         assertNotNull(runtime.getName());

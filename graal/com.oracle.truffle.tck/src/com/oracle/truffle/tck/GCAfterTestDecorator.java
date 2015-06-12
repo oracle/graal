@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,18 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.nfi.api;
+package com.oracle.truffle.tck;
 
-/**
- * An opaque representation of a native library handle. A handle is obtained via
- * {@link NativeFunctionInterface#getLibraryHandle(String)}. A handle is used to resolve a string to
- * a {@linkplain NativeFunctionInterface#getFunctionHandle(String, Class, Class...) handle} or
- * {@linkplain NativeFunctionInterface#getFunctionPointer(NativeLibraryHandle[], String) pointer}.
- */
-public interface NativeLibraryHandle {
-    /**
-     * Gets a name for this library. This may be the path for the file from which the library was
-     * loaded.
-     */
-    String getName();
+import org.junit.runner.*;
+
+final class GCAfterTestDecorator extends TruffleJUnitRunListenerDecorator {
+
+    public GCAfterTestDecorator(TruffleJUnitRunListener l) {
+        super(l);
+    }
+
+    @Override
+    public void testFinished(Description description) {
+        System.gc();
+        super.testFinished(description);
+    }
 }

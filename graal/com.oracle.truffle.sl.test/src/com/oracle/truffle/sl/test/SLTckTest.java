@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.test.vm.TruffleTCK;
+import com.oracle.truffle.tck.TruffleTCK;
 import com.oracle.truffle.api.vm.TruffleVM;
 import static org.junit.Assert.*;
 import org.junit.Test;
