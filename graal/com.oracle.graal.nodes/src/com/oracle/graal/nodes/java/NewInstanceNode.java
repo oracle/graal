@@ -43,11 +43,15 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
     protected final ResolvedJavaType instanceClass;
 
     public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
-        this(TYPE, type, fillContents);
+        this(TYPE, type, fillContents, null);
     }
 
-    protected NewInstanceNode(NodeClass<? extends NewInstanceNode> c, ResolvedJavaType type, boolean fillContents) {
-        super(c, StampFactory.exactNonNull(type), fillContents);
+    public NewInstanceNode(ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
+        this(TYPE, type, fillContents, stateBefore);
+    }
+
+    protected NewInstanceNode(NodeClass<? extends NewInstanceNode> c, ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
+        super(c, StampFactory.exactNonNull(type), fillContents, stateBefore);
         assert !type.isArray() && !type.isInterface() && !type.isPrimitive();
         this.instanceClass = type;
     }

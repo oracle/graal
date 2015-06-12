@@ -38,11 +38,11 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
     @Input ValueNode clazz;
 
     public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
-        this(TYPE, clazz, fillContents);
+        this(TYPE, clazz, fillContents, null);
     }
 
-    protected DynamicNewInstanceNode(NodeClass<? extends DynamicNewInstanceNode> c, ValueNode clazz, boolean fillContents) {
-        super(c, StampFactory.objectNonNull(), fillContents);
+    protected DynamicNewInstanceNode(NodeClass<? extends DynamicNewInstanceNode> c, ValueNode clazz, boolean fillContents, FrameState stateBefore) {
+        super(c, StampFactory.objectNonNull(), fillContents, stateBefore);
         this.clazz = clazz;
     }
 
@@ -71,7 +71,7 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
 
     /** Hook for subclasses to instantiate a subclass of {@link NewInstanceNode}. */
     protected NewInstanceNode createNewInstanceNode(ResolvedJavaType type) {
-        return new NewInstanceNode(type, fillContents());
+        return new NewInstanceNode(type, fillContents(), stateBefore());
     }
 
     public static boolean throwsInstantiationException(Class<?> type) {

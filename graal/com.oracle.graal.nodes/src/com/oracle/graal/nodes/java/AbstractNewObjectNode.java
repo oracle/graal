@@ -43,8 +43,8 @@ public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNod
     public static final NodeClass<AbstractNewObjectNode> TYPE = NodeClass.create(AbstractNewObjectNode.class);
     protected final boolean fillContents;
 
-    public AbstractNewObjectNode(NodeClass<? extends AbstractNewObjectNode> c, Stamp stamp, boolean fillContents) {
-        super(c, stamp);
+    protected AbstractNewObjectNode(NodeClass<? extends AbstractNewObjectNode> c, Stamp stamp, boolean fillContents, FrameState stateBefore) {
+        super(c, stamp, stateBefore);
         this.fillContents = fillContents;
     }
 

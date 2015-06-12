@@ -44,11 +44,15 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     public static final NodeClass<NewArrayNode> TYPE = NodeClass.create(NewArrayNode.class);
 
     public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        super(TYPE, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
+        this(elementType, length, fillContents, null);
     }
 
-    protected NewArrayNode(NodeClass<? extends NewArrayNode> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        super(c, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
+    public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore) {
+        this(TYPE, elementType, length, fillContents, stateBefore);
+    }
+
+    protected NewArrayNode(NodeClass<? extends NewArrayNode> c, ResolvedJavaType elementType, ValueNode length, boolean fillContents, FrameState stateBefore) {
+        super(c, StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents, stateBefore);
     }
 
     @NodeIntrinsic

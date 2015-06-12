@@ -47,11 +47,11 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     protected final Kind knownElementKind;
 
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
-        this(TYPE, elementType, length, fillContents, knownElementKind);
+        this(TYPE, elementType, length, fillContents, knownElementKind, null);
     }
 
-    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
-        super(c, StampFactory.objectNonNull(), length, fillContents);
+    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind, FrameState stateBefore) {
+        super(c, StampFactory.objectNonNull(), length, fillContents, stateBefore);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
         assert knownElementKind != Kind.Void && knownElementKind != Kind.Illegal;
@@ -87,7 +87,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
 
     /** Hook for subclasses to instantiate a subclass of {@link NewArrayNode}. */
     protected NewArrayNode createNewArrayNode(ResolvedJavaType type) {
-        return new NewArrayNode(type, length(), fillContents());
+        return new NewArrayNode(type, length(), fillContents(), stateBefore());
     }
 
     public static boolean throwsIllegalArgumentException(Class<?> elementType) {
