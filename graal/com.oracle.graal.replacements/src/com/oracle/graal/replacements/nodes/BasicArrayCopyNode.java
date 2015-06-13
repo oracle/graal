@@ -163,7 +163,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
             return false;
         }
-        if (srcType.getComponentType().getKind().isPrimitive() || getSource() == getDestination()) {
+        if ((srcType.getComponentType().getKind().isPrimitive() && destType.getComponentType().equals(srcType.getComponentType())) || getSource() == getDestination()) {
             return true;
         }
 

@@ -157,9 +157,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         } else if (n instanceof ArrayCopyNode) {
             arraycopySnippets.lower((ArrayCopyNode) n, tool);
         } else if (n instanceof ArrayCopySlowPathNode) {
-            ArrayCopySlowPathNode slowpath = (ArrayCopySlowPathNode) n;
-            // FrameState stateAfter = slowpath.stateAfter();
-            arraycopySnippets.lower(slowpath, tool);
+            arraycopySnippets.lower((ArrayCopySlowPathNode) n, tool);
         } else if (n instanceof G1PreWriteBarrier) {
             writeBarrierSnippets.lower((G1PreWriteBarrier) n, registers, tool);
         } else if (n instanceof G1PostWriteBarrier) {

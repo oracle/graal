@@ -22,15 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.Kind;
-
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
@@ -44,24 +35,21 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.jvmci.hotspot.*;
+import com.oracle.jvmci.meta.*;
 
 public class ArrayCopySnippets implements Snippets {
 
@@ -419,30 +407,6 @@ public class ArrayCopySnippets implements Snippets {
 
         private static boolean shouldUnroll(ValueNode length) {
             return length.isConstant() && length.asJavaConstant().asInt() <= 8 && length.asJavaConstant().asInt() != 0;
-        }
-
-        private static void unrollFixedLengthLoop(StructuredGraph snippetGraph, int length, LoweringTool tool) {
-            ParameterNode lengthParam = snippetGraph.getParameter(4);
-            if (lengthParam != null) {
-                snippetGraph.replaceFloating(lengthParam, ConstantNode.forInt(length, snippetGraph));
-            }
-            // the canonicalization before loop unrolling is needed to propagate the length into
-            // additions, etc.
-            PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.getStampProvider());
-            new CanonicalizerPhase().apply(snippetGraph, context);
-            new LoopFullUnrollPhase(new CanonicalizerPhase()).apply(snippetGraph, context);
-            new CanonicalizerPhase().apply(snippetGraph, context);
-        }
-
-        void unrollSnippet(final LoweringTool tool, StructuredGraph snippetGraph, ArrayCopyNode arraycopy) {
-            if (shouldUnroll(arraycopy.getLength())) {
-                final StructuredGraph copy = snippetGraph;
-                try (Scope s = Debug.scope("ArrayCopySnippetSpecialization", snippetGraph.method())) {
-                    unrollFixedLengthLoop(copy, arraycopy.getLength().asJavaConstant().asInt(), tool);
-                } catch (Throwable e) {
-                    throw Debug.handle(e);
-                }
-            }
         }
 
         public void lower(ArrayCopyNode arraycopy, LoweringTool tool) {
