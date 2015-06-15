@@ -634,7 +634,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public Value emitRem(Value a, Value b, LIRFrameState state) {
         Variable result = newVariable(LIRKind.derive(a, b));
-        Variable q = null;
+        Variable q1; // Intermediate values
+        Variable q2;
+        Variable q3;
+        Variable q4;
         switch (a.getKind().getStackKind()) {
             case Int:
                 append(new RemOp(IREM, result, load(a), loadNonConst(b), state, this));
@@ -643,20 +646,26 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new RemOp(LREM, result, load(a), loadNonConst(b), state, this));
                 break;
             case Float:
-                q = newVariable(LIRKind.value(Kind.Float));
-                append(new BinaryRegReg(FDIV, q, a, b, state));
-                append(new Unary2Op(F2I, q, q));
-                append(new Unary2Op(I2F, q, q));
-                append(new BinaryRegReg(FMUL, q, q, b));
-                append(new BinaryRegReg(FSUB, result, a, q));
+                q1 = newVariable(LIRKind.value(Kind.Float));
+                append(new BinaryRegReg(FDIV, q1, a, b, state));
+                q2 = newVariable(LIRKind.value(Kind.Float));
+                append(new Unary2Op(F2I, q2, q1));
+                q3 = newVariable(LIRKind.value(Kind.Float));
+                append(new Unary2Op(I2F, q3, q2));
+                q4 = newVariable(LIRKind.value(Kind.Float));
+                append(new BinaryRegReg(FMUL, q4, q3, b));
+                append(new BinaryRegReg(FSUB, result, a, q4));
                 break;
             case Double:
-                q = newVariable(LIRKind.value(Kind.Double));
-                append(new BinaryRegReg(DDIV, q, a, b, state));
-                append(new Unary2Op(D2L, q, q));
-                append(new Unary2Op(L2D, q, q));
-                append(new BinaryRegReg(DMUL, q, q, b));
-                append(new BinaryRegReg(DSUB, result, a, q));
+                q1 = newVariable(LIRKind.value(Kind.Double));
+                append(new BinaryRegReg(DDIV, q1, a, b, state));
+                q2 = newVariable(LIRKind.value(Kind.Double));
+                append(new Unary2Op(D2L, q2, q1));
+                q3 = newVariable(LIRKind.value(Kind.Double));
+                append(new Unary2Op(L2D, q3, q2));
+                q4 = newVariable(LIRKind.value(Kind.Double));
+                append(new BinaryRegReg(DMUL, q4, q3, b));
+                append(new BinaryRegReg(DSUB, result, a, q4));
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
