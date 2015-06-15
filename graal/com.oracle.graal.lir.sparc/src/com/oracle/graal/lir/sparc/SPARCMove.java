@@ -443,7 +443,9 @@ public class SPARCMove {
             delayedControlTransfer.emitControlTransfer(crb, masm);
             SPARCAddress addr = input.toAddress();
             crb.recordImplicitException(masm.position(), state);
-            masm.ldx(addr, g0);
+            // Just need to check whether this is a valid address or not; alignment is not
+            // checked
+            masm.ldub(addr, g0);
         }
 
         public Value getCheckedValue() {
