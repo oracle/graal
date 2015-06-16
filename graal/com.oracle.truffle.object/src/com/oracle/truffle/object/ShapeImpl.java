@@ -752,26 +752,6 @@ public abstract class ShapeImpl extends Shape {
         return leftPtr;
     }
 
-    /**
-     * For copying over properties after exchanging the prototype of an object.
-     */
-    @TruffleBoundary
-    @Override
-    public final ShapeImpl copyOverPropertiesInternal(Shape destination) {
-        assert ((ShapeImpl) destination).getDepth() == 0;
-        List<Property> properties = this.getPropertyListInternal(true);
-        ShapeImpl newShape = ((ShapeImpl) destination).addPropertiesInternal(properties);
-        return newShape;
-    }
-
-    private ShapeImpl addPropertiesInternal(List<Property> properties) {
-        ShapeImpl newShape = this;
-        for (Property p : properties) {
-            newShape = newShape.addPropertyInternal(p);
-        }
-        return newShape;
-    }
-
     @Override
     public final int getPropertyCount() {
         return propertyCount;
