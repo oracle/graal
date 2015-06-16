@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.BailoutException;
-
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.io.*;
@@ -34,8 +31,8 @@ import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 
 import com.oracle.graal.truffle.debug.*;
+import com.oracle.jvmci.code.*;
 import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 import com.oracle.jvmci.meta.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -49,8 +46,6 @@ import com.oracle.truffle.api.utilities.*;
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
 public class OptimizedCallTarget extends InstalledCode implements RootCallTarget, LoopCountReceiver, ReplaceObserver {
-
-    protected static final PrintStream OUT = TTY.out().out();
 
     protected final GraalTruffleRuntime runtime;
     private SpeculationLog speculationLog;
@@ -361,10 +356,16 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 throw new OptimizationFailedException(t, this);
             }
             if (TruffleCompilationExceptionsAreFatal.getValue()) {
-                t.printStackTrace(OUT);
+                printException(t);
                 System.exit(-1);
             }
         }
+    }
+
+    private void printException(Throwable e) {
+        StringWriter string = new StringWriter();
+        e.printStackTrace(new PrintWriter(string));
+        log(string.toString());
     }
 
     public void notifyCompilationFinished(boolean successful) {
