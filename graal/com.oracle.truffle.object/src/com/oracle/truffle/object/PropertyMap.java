@@ -350,4 +350,9 @@ public final class PropertyMap implements Map<Object, Property> {
     public Property getLastProperty() {
         return cdr;
     }
+
+    @Override
+    public String toString() {
+        return values().toString();
+    }
 }
