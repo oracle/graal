@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.Value;
 import org.junit.*;
 
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
+import com.oracle.jvmci.code.*;
+import com.oracle.jvmci.meta.*;
 
 public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification stackCopy = new LIRTestSpecification() {
@@ -124,4 +124,65 @@ public class StackMoveTest extends LIRTest {
         runTest("testDouble", Double.MAX_VALUE);
     }
 
+    private static final class SubIntStackCopySpec extends LIRTestSpecification {
+        private final Kind kind;
+
+        public SubIntStackCopySpec(Kind kind) {
+            this.kind = kind;
+        }
+
+        @Override
+        public void generate(LIRGeneratorTool gen, Value a) {
+            FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
+            // create slots
+            LIRKind lirKind = LIRKind.value(kind);
+            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(lirKind);
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(lirKind);
+            // move stuff around
+            gen.emitMove(s1, a);
+            gen.append(gen.getSpillMoveFactory().createStackMove(s2, s1));
+            setResult(gen.emitMove(s2));
+        }
+    }
+
+    private static final LIRTestSpecification shortStackCopy = new SubIntStackCopySpec(Kind.Short);
+    private static final LIRTestSpecification byteStackCopy = new SubIntStackCopySpec(Kind.Byte);
+
+    @SuppressWarnings("unused")
+    @LIRIntrinsic
+    public static short copyShort(LIRTestSpecification spec, short a) {
+        return a;
+    }
+
+    public int testShort(short a) {
+        return copyInt(shortStackCopy, a);
+    }
+
+    @Test
+    public void runShort() throws Throwable {
+        runTest("testShort", Short.MIN_VALUE);
+        runTest("testShort", (short) -1);
+        runTest("testShort", (short) 0);
+        runTest("testShort", (short) 1);
+        runTest("testShort", Short.MAX_VALUE);
+    }
+
+    @SuppressWarnings("unused")
+    @LIRIntrinsic
+    public static byte copyByte(LIRTestSpecification spec, byte a) {
+        return a;
+    }
+
+    public int testByte(byte a) {
+        return copyInt(byteStackCopy, a);
+    }
+
+    @Test
+    public void runByte() throws Throwable {
+        runTest("testByte", Byte.MIN_VALUE);
+        runTest("testByte", (byte) -1);
+        runTest("testByte", (byte) 0);
+        runTest("testByte", (byte) 1);
+        runTest("testByte", Byte.MAX_VALUE);
+    }
 }
