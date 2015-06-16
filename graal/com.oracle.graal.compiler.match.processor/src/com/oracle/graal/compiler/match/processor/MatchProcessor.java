@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.service.*;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is
@@ -484,11 +485,13 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("import " + MatchStatementSet.class.getPackage().getName() + ".*;");
             out.println("import " + NodeLIRBuilder.class.getName() + ";");
             out.println("import " + Position.class.getName() + ";");
+            out.println("import " + ServiceProvider.class.getName() + ";");
             for (String p : info.requiredPackages) {
                 out.println("import " + p + ".*;");
             }
             out.println("");
 
+            out.println("@" + ServiceProvider.class.getSimpleName() + "(" + MatchStatementSet.class.getSimpleName() + ".class)");
             out.println("public class " + matchStatementClassName + " implements " + MatchStatementSet.class.getSimpleName() + " {");
 
             out.println();
