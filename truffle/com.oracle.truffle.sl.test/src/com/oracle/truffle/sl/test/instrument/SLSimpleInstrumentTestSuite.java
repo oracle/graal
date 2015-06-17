@@ -26,7 +26,7 @@ import org.junit.*;
 import org.junit.runner.*;
 
 @RunWith(SLInstrumentTestRunner.class)
-@SLInstrumentTestSuite({"graal/com.oracle.truffle.sl.test/tests_instrumentation", "tests_instrumentation"})
+@SLInstrumentTestSuite({"truffle/com.oracle.truffle.sl.test/tests_instrumentation", "tests_instrumentation"})
 public class SLSimpleInstrumentTestSuite {
 
     public static void main(String[] args) throws Exception {
