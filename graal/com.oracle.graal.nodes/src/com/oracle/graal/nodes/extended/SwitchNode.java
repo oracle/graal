@@ -167,16 +167,17 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     /**
-     * Delete all other successors except for the one reached by {@code survivingEdge}. Deleting a
-     * branch can change the successors and the same successor might appear multiple times in the
-     * {@link #successors} list, so use node identity for the comparision and don't cache the
-     * surviving AbstractBeginNode.
+     * Delete all other successors except for the one reached by {@code survivingEdge}.
      *
      * @param tool
      * @param survivingEdge index of the edge in the {@link SwitchNode#successors} list
      */
     protected void killOtherSuccessors(SimplifierTool tool, int survivingEdge) {
         for (Node successor : successors()) {
+            /*
+             * Deleting a branch change change the successors so reload the surviving successor each
+             * time.
+             */
             if (successor != blockSuccessor(survivingEdge)) {
                 tool.deleteBranch(successor);
             }
