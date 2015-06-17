@@ -38,8 +38,8 @@ import json, textwrap
 import fnmatch
 import mx_graal_makefile
 
-# This works because when mx loads this file, it makes sure __file__ gets an absolute path
-_graal_home = dirname(dirname(__file__))
+_suite = mx.suite('graal')
+_graal_home = _suite.dir
 
 """ Used to distinguish an exported GraalVM (see 'mx export'). """
 _vmSourcesAvailable = exists(join(_graal_home, 'make')) and exists(join(_graal_home, 'src'))
@@ -123,7 +123,7 @@ def _get_vm():
     if _vm:
         return _vm
     vm = mx.get_env('DEFAULT_VM')
-    envPath = join(_graal_home, 'mx', 'env')
+    envPath = join(_suite.mxDir, 'env')
     if vm and 'graal' in vm:
         if exists(envPath):
             with open(envPath) as fp:
@@ -762,7 +762,7 @@ def buildvars(args):
         mx.log(textwrap.fill(buildVars[n], initial_indent='    ', subsequent_indent='    ', width=200))
 
     mx.log('')
-    mx.log('Note that these variables can be given persistent values in the file ' + join(_graal_home, 'mx', 'env') + ' (see \'mx about\').')
+    mx.log('Note that these variables can be given persistent values in the file ' + join(_suite.mxDir, 'env') + ' (see \'mx about\').')
 
 cached_graal_version = None
 
@@ -1064,7 +1064,7 @@ def _parseVmArgs(args, vm=None, cwd=None, vmbuild=None):
     _updateInstalledJVMCIOptionsFile(jdk)
     mx.expand_project_in_args(args)
     if _make_eclipse_launch:
-        mx.make_eclipse_launch(args, 'graal-' + build, name=None, deps=mx.project('com.oracle.graal.hotspot').all_deps([], True))
+        mx.make_eclipse_launch(_suite, args, 'graal-' + build, name=None, deps=mx.project('com.oracle.graal.hotspot').all_deps([], True))
     if _jacoco == 'on' or _jacoco == 'append':
         jacocoagent = mx.library("JACOCOAGENT", True)
         # Exclude all compiler tests and snippets
@@ -2066,7 +2066,7 @@ def buildjmh(args):
     # Ensure the mx injected dependencies are up to date
     makejmhdeps(['-p'] + (['-s', args.settings] if args.settings else []))
 
-    timestamp = mx.TimeStampFile(join(_graal_home, 'mx', 'jmh', jmhPath.replace(os.sep, '_') + '.timestamp'))
+    timestamp = mx.TimeStampFile(join(_suite.mxDir, 'jmh', jmhPath.replace(os.sep, '_') + '.timestamp'))
     mustBuild = args.clean
     if not mustBuild:
         try:
@@ -2116,7 +2116,7 @@ def jmh(args):
 
     benchmarks = [b for b in benchmarksAndJsons if not b.startswith('{')]
     jmhArgJsons = [b for b in benchmarksAndJsons if b.startswith('{')]
-    jmhOutDir = join(_graal_home, 'mx', 'jmh')
+    jmhOutDir = join(_suite.mxDir, 'jmh')
     if not exists(jmhOutDir):
         os.makedirs(jmhOutDir)
     jmhOut = join(jmhOutDir, 'jmh.out')
