@@ -69,13 +69,11 @@ public class WriteBarrierSnippets implements Snippets {
     public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
     public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Index");
 
-    @Snippet
-    public static void serialWriteBarrier(Address address) {
-        Pointer oop = Word.fromAddress(address);
+    private static void serialWriteBarrier(Pointer ptr) {
         serialWriteBarrierCounter.inc();
         int cardTableShift = (isImmutableCode() && generatePIC()) ? CardTableShiftNode.cardTableShift() : cardTableShift();
         long cardTableAddress = (isImmutableCode() && generatePIC()) ? CardTableAddressNode.cardTableAddress() : cardTableStart();
-        Word base = Word.fromWordBase(oop.unsignedShiftRight(cardTableShift));
+        Word base = Word.fromWordBase(ptr.unsignedShiftRight(cardTableShift));
         long startAddress = cardTableAddress;
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -84,6 +82,16 @@ public class WriteBarrierSnippets implements Snippets {
             base = base.add(Word.unsigned(cardTableAddress));
         }
         base.writeByte(displacement, (byte) 0, GC_CARD_LOCATION);
+    }
+
+    @Snippet
+    public static void serialImpreciseWriteBarrier(Object object) {
+        serialWriteBarrier(Word.fromObject(object));
+    }
+
+    @Snippet
+    public static void serialPreciseWriteBarrier(Address address) {
+        serialWriteBarrier(Word.fromAddress(address));
     }
 
     @Snippet
@@ -161,13 +169,19 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void g1PostWriteBarrier(Address address, Object object, Object value, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
+    public static void g1PostWriteBarrier(Address address, Object object, Object value, @ConstantParameter boolean usePrecise, @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean trace) {
         Word thread = registerAsWord(threadRegister);
         Object fixedValue = FixedValueAnchorNode.getObject(value);
         verifyOop(object);
         verifyOop(fixedValue);
         validateObject(object, fixedValue);
-        Word oop = Word.fromWordBase(Word.fromAddress(address));
+        Word oop;
+        if (usePrecise) {
+            oop = Word.fromWordBase(Word.fromAddress(address));
+        } else {
+            oop = Word.fromWordBase(Word.fromObject(object));
+        }
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
@@ -322,7 +336,8 @@ public class WriteBarrierSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo serialWriteBarrier = snippet(WriteBarrierSnippets.class, "serialWriteBarrier", GC_CARD_LOCATION);
+        private final SnippetInfo serialImpreciseWriteBarrier = snippet(WriteBarrierSnippets.class, "serialImpreciseWriteBarrier", GC_CARD_LOCATION);
+        private final SnippetInfo serialPreciseWriteBarrier = snippet(WriteBarrierSnippets.class, "serialPreciseWriteBarrier", GC_CARD_LOCATION);
         private final SnippetInfo serialArrayRangeWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayRangeWriteBarrier");
         private final SnippetInfo g1PreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier", GC_INDEX_LOCATION, GC_LOG_LOCATION);
         private final SnippetInfo g1ReferentReadBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier", GC_INDEX_LOCATION, GC_LOG_LOCATION);
@@ -338,8 +353,15 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(SerialWriteBarrier writeBarrier, LoweringTool tool) {
-            Arguments args = new Arguments(serialWriteBarrier, writeBarrier.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("address", writeBarrier.getAddress());
+            Arguments args;
+            if (writeBarrier.usePrecise()) {
+                args = new Arguments(serialPreciseWriteBarrier, writeBarrier.graph().getGuardsStage(), tool.getLoweringStage());
+                args.add("address", writeBarrier.getAddress());
+            } else {
+                args = new Arguments(serialImpreciseWriteBarrier, writeBarrier.graph().getGuardsStage(), tool.getLoweringStage());
+                OffsetAddressNode address = (OffsetAddressNode) writeBarrier.getAddress();
+                args.add("object", address.getBase());
+            }
             template(args).instantiate(providers.getMetaAccess(), writeBarrier, DEFAULT_REPLACER, args);
         }
 
@@ -411,6 +433,7 @@ public class WriteBarrierSnippets implements Snippets {
             if (address instanceof OffsetAddressNode) {
                 args.add("object", ((OffsetAddressNode) address).getBase());
             } else {
+                assert writeBarrierPost.usePrecise() : "found imprecise barrier that's not an object access " + writeBarrierPost;
                 args.add("object", null);
             }
 
@@ -421,6 +444,7 @@ public class WriteBarrierSnippets implements Snippets {
             }
             args.add("value", value);
 
+            args.addConst("usePrecise", writeBarrierPost.usePrecise());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", traceBarrier());
             template(args).instantiate(providers.getMetaAccess(), writeBarrierPost, DEFAULT_REPLACER, args);
