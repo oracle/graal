@@ -60,7 +60,6 @@ public class Truffle {
                     servicesClass = Class.forName("com.oracle.jvmci.service.Services");
                 } catch (ClassNotFoundException e) {
                     // JVMCI is unavailable
-                    e.printStackTrace();
                 } catch (IllegalArgumentException ex) {
                     throw new IllegalStateException("jvmci service found but yields error", ex);
                 }
