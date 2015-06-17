@@ -146,6 +146,10 @@ public class HotSpotGraphBuilderPlugins {
         InvocationPlugin plugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode callSite = GraphUtil.originalValue(receiver.get());
+                if (receiver.get() != null && callSite == null) {
+                    // Original receiver could not be determined, we use the given receiver
+                    callSite = receiver.get();
+                }
                 ValueNode folded = CallSiteTargetNode.tryFold(callSite, b.getMetaAccess(), b.getAssumptions());
                 if (folded != null) {
                     b.addPush(Kind.Object, folded);
