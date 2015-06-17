@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.Kind;
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
@@ -34,12 +31,11 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.jtt.*;
-import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
+import com.oracle.jvmci.meta.*;
 
 /**
  * Base class for LIR tests.
@@ -48,66 +44,6 @@ import com.oracle.jvmci.common.*;
  * instructions}.
  */
 public abstract class LIRTest extends JTTTest {
-
-    public abstract static class LIRTestSpecification {
-        private Value result;
-
-        public void generate(LIRGeneratorTool gen) {
-            defaultHandler(gen);
-        }
-
-        public void generate(LIRGeneratorTool gen, Value arg0) {
-            defaultHandler(gen, arg0);
-        }
-
-        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1) {
-            defaultHandler(gen, arg0, arg1);
-        }
-
-        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2) {
-            defaultHandler(gen, arg0, arg1, arg2);
-        }
-
-        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3) {
-            defaultHandler(gen, arg0, arg1, arg2, arg3);
-        }
-
-        public void generate(LIRGeneratorTool gen, Value arg0, Value arg1, Value arg2, Value arg3, Value arg4) {
-            defaultHandler(gen, arg0, arg1, arg2, arg3, arg4);
-        }
-
-        private static void defaultHandler(@SuppressWarnings("unused") LIRGeneratorTool gen, Value... args) {
-            throw new JVMCIError("LIRTestSpecification cannot handle generate() with %d arguments", args.length);
-        }
-
-        void generate(LIRGeneratorTool gen, Value[] values) {
-            if (values.length == 0) {
-                generate(gen);
-            } else if (values.length == 1) {
-                generate(gen, values[0]);
-            } else if (values.length == 2) {
-                generate(gen, values[0], values[1]);
-            } else if (values.length == 3) {
-                generate(gen, values[0], values[1], values[2]);
-            } else if (values.length == 4) {
-                generate(gen, values[0], values[1], values[2], values[3]);
-            } else if (values.length == 5) {
-                generate(gen, values[0], values[1], values[2], values[3], values[4]);
-            } else {
-                JVMCIError.unimplemented();
-            }
-
-        }
-
-        public void setResult(Value value) {
-            result = value;
-        }
-
-        public Value getResult() {
-            assert result != null : "Result not set (using setResult())";
-            return result;
-        }
-    }
 
     @NodeInfo
     private static final class FixedLIRTestNode extends FixedWithNextNode implements LIRLowerable {
