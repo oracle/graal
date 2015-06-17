@@ -333,8 +333,6 @@ public abstract class ShapeImpl extends Shape {
     private ShapeImpl addPropertyInternal(Property prop) {
         CompilerAsserts.neverPartOfCompilation();
         assert prop.isShadow() || !(this.hasProperty(prop.getKey())) : "duplicate property " + prop.getKey();
-        // assertion caused performance issues on e.g. testv8 regress-619.js
-        // assert !getPropertyListInternal(false).contains(prop);
 
         AddPropertyTransition addTransition = new AddPropertyTransition(prop);
         ShapeImpl cachedShape = queryTransition(addTransition);

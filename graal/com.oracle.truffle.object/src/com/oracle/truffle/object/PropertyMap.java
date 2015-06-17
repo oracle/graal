@@ -291,7 +291,6 @@ public final class PropertyMap implements Map<Object, Property> {
     }
 
     public PropertyMap putCopy(Property value) {
-        assert !this.containsValue(value);
         return new PropertyMap(this, value);
     }
 
