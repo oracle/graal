@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ public class CRC32Substitutions {
     }
 
     static int updateBytes(int crc, byte[] buf, int off, int len) {
-        Word bufAddr = Word.unsigned(GetObjectAddressNode.get(buf) + arrayBaseOffset(Kind.Byte) + off);
+        Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(Kind.Byte) + off));
         return updateBytes(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 

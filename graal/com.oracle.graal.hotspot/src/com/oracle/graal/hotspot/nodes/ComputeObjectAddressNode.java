@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,39 +27,38 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
 import com.oracle.jvmci.meta.*;
 
 /**
- * Intrinsification for getting the address of an object. The code path(s) between a call to
- * {@link #get(Object)} and all uses of the returned value must not contain safepoints. This can
- * only be guaranteed if used in a snippet that is instantiated after frame state assignment.
- * {@link ComputeObjectAddressNode} should generally be used in preference to this node.
+ * A high-level intrinsic for getting an address inside of an object. During lowering it will be
+ * moved next to any uses to avoid creating a derived pointer that is live across a safepoint.
  */
 @NodeInfo
-public final class GetObjectAddressNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<GetObjectAddressNode> TYPE = NodeClass.create(GetObjectAddressNode.class);
+public final class ComputeObjectAddressNode extends FixedWithNextNode implements Lowerable {
+    public static final NodeClass<ComputeObjectAddressNode> TYPE = NodeClass.create(ComputeObjectAddressNode.class);
 
     @Input ValueNode object;
+    @Input ValueNode offset;
 
-    public GetObjectAddressNode(ValueNode obj) {
+    public ComputeObjectAddressNode(ValueNode obj, ValueNode offset) {
         super(TYPE, StampFactory.forKind(Kind.Long));
         this.object = obj;
+        this.offset = offset;
     }
 
     @NodeIntrinsic
-    public static native long get(Object array);
+    public static native long get(Object array, long offset);
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        AllocatableValue obj = gen.getLIRGeneratorTool().newVariable(LIRKind.derivedReference(gen.getLIRGeneratorTool().target().wordKind));
-        gen.getLIRGeneratorTool().emitMove(obj, gen.operand(object));
-        gen.setResult(this, obj);
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
-    @Override
-    public boolean verify() {
-        assert graph().getGuardsStage().areFrameStatesAtDeopts() || graph().method().getAnnotation(Snippet.class) != null : "GetObjectAddressNode can't be used directly until frame states are fixed";
-        return super.verify();
+    public ValueNode getObject() {
+        return object;
+    }
+
+    public ValueNode getOffset() {
+        return offset;
     }
 }

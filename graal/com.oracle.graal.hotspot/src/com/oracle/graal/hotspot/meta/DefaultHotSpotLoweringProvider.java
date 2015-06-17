@@ -191,8 +191,31 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             lowerHubGetClassNode((HubGetClassNode) n, tool);
         } else if (n instanceof KlassLayoutHelperNode) {
             lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
+        } else if (n instanceof ComputeObjectAddressNode) {
+            if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+                lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
+            }
         } else {
             super.lower(n, tool);
+        }
+    }
+
+    private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
+        /*
+         * Lower the node into a ComputeObjectAddress node and an Add but ensure that it's below any
+         * potential safepoints and above it's uses.
+         */
+        for (Node use : n.usages().snapshot()) {
+            if (use instanceof FixedNode) {
+                FixedNode fixed = (FixedNode) use;
+                StructuredGraph graph = n.graph();
+                GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
+                graph.addBeforeFixed(fixed, address);
+                AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
+                graph.replaceFixedWithFloating(n, add);
+            } else {
+                throw JVMCIError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode");
+            }
         }
     }
 
