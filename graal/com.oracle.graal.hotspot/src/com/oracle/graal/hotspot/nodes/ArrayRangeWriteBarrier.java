@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
-public abstract class ArrayRangeWriteBarrier extends FixedWithNextNode implements Lowerable {
+public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Lowerable {
 
     public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
     @Input ValueNode object;
@@ -37,7 +36,7 @@ public abstract class ArrayRangeWriteBarrier extends FixedWithNextNode implement
     @Input ValueNode length;
 
     protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, ValueNode object, ValueNode startIndex, ValueNode length) {
-        super(c, StampFactory.forVoid());
+        super(c);
         this.object = object;
         this.startIndex = startIndex;
         this.length = length;
@@ -53,11 +52,5 @@ public abstract class ArrayRangeWriteBarrier extends FixedWithNextNode implement
 
     public ValueNode getLength() {
         return length;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        assert graph().getGuardsStage().areFrameStatesAtDeopts();
-        tool.getLowerer().lower(this, tool);
     }
 }

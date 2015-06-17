@@ -28,21 +28,29 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.address.*;
 
 @NodeInfo
-public class G1PostWriteBarrier extends ObjectWriteBarrier {
+public abstract class ObjectWriteBarrier extends WriteBarrier {
 
-    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
-    protected final boolean alwaysNull;
+    public static final NodeClass<ObjectWriteBarrier> TYPE = NodeClass.create(ObjectWriteBarrier.class);
+    @Input(InputType.Association) protected AddressNode address;
+    @OptionalInput protected ValueNode value;
+    protected final boolean precise;
 
-    public G1PostWriteBarrier(AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        this(TYPE, address, value, precise, alwaysNull);
+    protected ObjectWriteBarrier(NodeClass<? extends ObjectWriteBarrier> c, AddressNode address, ValueNode value, boolean precise) {
+        super(c);
+        this.address = address;
+        this.value = value;
+        this.precise = precise;
     }
 
-    protected G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        super(c, address, value, precise);
-        this.alwaysNull = alwaysNull;
+    public ValueNode getValue() {
+        return value;
     }
 
-    public boolean alwaysNull() {
-        return alwaysNull;
+    public AddressNode getAddress() {
+        return address;
+    }
+
+    public boolean usePrecise() {
+        return precise;
     }
 }

@@ -27,7 +27,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.memory.address.*;
 
 @NodeInfo
-public class SerialWriteBarrier extends WriteBarrier {
+public class SerialWriteBarrier extends ObjectWriteBarrier {
 
     public static final NodeClass<SerialWriteBarrier> TYPE = NodeClass.create(SerialWriteBarrier.class);
 

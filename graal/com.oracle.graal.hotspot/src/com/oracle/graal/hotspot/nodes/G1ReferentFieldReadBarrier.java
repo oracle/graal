@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.memory.address.*;
  * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
  */
 @NodeInfo
-public final class G1ReferentFieldReadBarrier extends WriteBarrier {
+public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
     public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
 
     protected final boolean doLoad;

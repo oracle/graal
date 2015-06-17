@@ -26,34 +26,15 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo
 public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
 
     public static final NodeClass<WriteBarrier> TYPE = NodeClass.create(WriteBarrier.class);
-    @Input(InputType.Association) protected AddressNode address;
-    @OptionalInput protected ValueNode value;
-    protected final boolean precise;
 
-    protected WriteBarrier(NodeClass<? extends WriteBarrier> c, AddressNode address, ValueNode value, boolean precise) {
+    protected WriteBarrier(NodeClass<? extends WriteBarrier> c) {
         super(c, StampFactory.forVoid());
-        this.address = address;
-        this.value = value;
-        this.precise = precise;
-    }
-
-    public ValueNode getValue() {
-        return value;
-    }
-
-    public AddressNode getAddress() {
-        return address;
-    }
-
-    public boolean usePrecise() {
-        return precise;
     }
 
     @Override

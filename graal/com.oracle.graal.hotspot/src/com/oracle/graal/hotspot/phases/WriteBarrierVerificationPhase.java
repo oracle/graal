@@ -79,12 +79,12 @@ public class WriteBarrierVerificationPhase extends Phase {
                 throw new AssertionError("Write barrier must be present " + write);
             }
             if (useG1GC()) {
-                if (!(currentNode instanceof G1PostWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
+                if (!(currentNode instanceof G1PostWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (ObjectWriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }
             } else {
-                if (!(currentNode instanceof SerialWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode)) ||
-                                ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
+                if (!(currentNode instanceof SerialWriteBarrier) || (!validateBarrier((FixedAccessNode) write, (ObjectWriteBarrier) currentNode)) ||
+                                ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((FixedAccessNode) write, (ObjectWriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }
             }
@@ -105,7 +105,7 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean isObjectBarrier(FixedWithNextNode node, final Node next) {
-        return next instanceof WriteBarrier && validateBarrier((FixedAccessNode) node, (WriteBarrier) next);
+        return next instanceof ObjectWriteBarrier && validateBarrier((FixedAccessNode) node, (ObjectWriteBarrier) next);
     }
 
     private static boolean isArrayBarrier(FixedWithNextNode node, final Node next) {
@@ -150,7 +150,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         }
     }
 
-    private static boolean validateBarrier(FixedAccessNode write, WriteBarrier barrier) {
+    private static boolean validateBarrier(FixedAccessNode write, ObjectWriteBarrier barrier) {
         assert write instanceof WriteNode || write instanceof LoweredCompareAndSwapNode || write instanceof LoweredAtomicReadAndWriteNode : "Node must be of type requiring a write barrier " + write;
         if (!barrier.usePrecise()) {
             if (barrier.getAddress() instanceof OffsetAddressNode && write.getAddress() instanceof OffsetAddressNode) {

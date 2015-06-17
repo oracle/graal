@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.address.*;
 
 @NodeInfo
-public final class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode.DeoptBefore {
+public final class G1PreWriteBarrier extends ObjectWriteBarrier implements DeoptimizingNode.DeoptBefore {
 
     public static final NodeClass<G1PreWriteBarrier> TYPE = NodeClass.create(G1PreWriteBarrier.class);
 
