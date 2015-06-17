@@ -41,9 +41,6 @@ import mx_graal_makefile
 _suite = mx.suite('graal')
 _graal_home = _suite.dir
 
-""" Used to distinguish an exported GraalVM (see 'mx export'). """
-_vmSourcesAvailable = exists(join(_graal_home, 'make')) and exists(join(_graal_home, 'src'))
-
 """ The VMs that can be built and run along with an optional description. Only VMs with a
     description are listed in the dialogue for setting the default VM (see _get_vm()). """
 _vmChoices = {
@@ -414,7 +411,7 @@ def _jdk(build=None, vmToCheck=None, create=False, installJars=True):
     Get the JDK into which Graal is installed, creating it first if necessary.
     """
     if not build:
-        build = _vmbuild if _vmSourcesAvailable else 'product'
+        build = _vmbuild
     jdk = join(_jdksDir(), build)
     if create:
         srcJdk = mx.java().jdk
@@ -821,7 +818,7 @@ def build(args, vm=None):
     opts2 = mx.build(['--source', '1.7'] + args, parser=parser)
     assert len(opts2.remainder) == 0
 
-    if not _vmSourcesAvailable or not opts2.native:
+    if not opts2.native:
         return
 
     builds = [_vmbuild]
@@ -1059,7 +1056,7 @@ def _parseVmArgs(args, vm=None, cwd=None, vmbuild=None):
     elif _vm_cwd is not None and _vm_cwd != cwd:
         mx.abort("conflicting working directories: do not set --vmcwd for this command")
 
-    build = vmbuild if vmbuild else _vmbuild if _vmSourcesAvailable else 'product'
+    build = vmbuild if vmbuild else _vmbuild
     jdk = _jdk(build, vmToCheck=vm, installJars=False)
     _updateInstalledJVMCIOptionsFile(jdk)
     mx.expand_project_in_args(args)
@@ -2567,6 +2564,7 @@ def mx_init(suite):
         'checkheaders': [checkheaders, ''],
         'clean': [clean, ''],
         'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
+        'export': [export, '[-options] [zipfile]'],
         'findbugs': [findbugs, ''],
         'generateZshCompletion' : [generateZshCompletion, ''],
         'hsdis': [hsdis, '[att]'],
@@ -2605,17 +2603,12 @@ def mx_init(suite):
                     'The VM selected by --vm and --vmbuild options is under this directory (i.e., ' +
                     join('<path>', '<jdk-version>', '<vmbuild>', 'jre', 'lib', '<vm>', mx.add_lib_prefix(mx.add_lib_suffix('jvm'))) + ')', default=None, metavar='<path>')
 
-    if _vmSourcesAvailable:
-        mx.add_argument('--vm', action='store', dest='vm', choices=_vmChoices.keys(), help='the VM type to build/run')
-        mx.add_argument('--vmbuild', action='store', dest='vmbuild', choices=_vmbuildChoices, help='the VM build to build/run (default: ' + _vmbuildChoices[0] + ')')
-        mx.add_argument('--ecl', action='store_true', dest='make_eclipse_launch', help='create launch configuration for running VM execution(s) in Eclipse')
-        mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "/usr/bin/gdb --args")', metavar='<prefix>')
-        mx.add_argument('--gdb', action='store_const', const='/usr/bin/gdb --args', dest='vm_prefix', help='alias for --vmprefix "/usr/bin/gdb --args"')
-        mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix', help='alias for --vmprefix "lldb --"')
-
-        commands.update({
-            'export': [export, '[-options] [zipfile]'],
-        })
+    mx.add_argument('--vm', action='store', dest='vm', choices=_vmChoices.keys(), help='the VM type to build/run')
+    mx.add_argument('--vmbuild', action='store', dest='vmbuild', choices=_vmbuildChoices, help='the VM build to build/run (default: ' + _vmbuildChoices[0] + ')')
+    mx.add_argument('--ecl', action='store_true', dest='make_eclipse_launch', help='create launch configuration for running VM execution(s) in Eclipse')
+    mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "/usr/bin/gdb --args")', metavar='<prefix>')
+    mx.add_argument('--gdb', action='store_const', const='/usr/bin/gdb --args', dest='vm_prefix', help='alias for --vmprefix "/usr/bin/gdb --args"')
+    mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix', help='alias for --vmprefix "lldb --"')
 
     mx.update_commands(suite, commands)
 
@@ -2628,16 +2621,15 @@ def mx_post_parse_cmd_line(opts):  #
         versionDesc += " and <=" + str(_untilVersion)
     mx.java(_versionCheck, versionDescription=versionDesc, defaultJdk=True)
 
-    if _vmSourcesAvailable:
-        if hasattr(opts, 'vm') and opts.vm is not None:
-            global _vm
-            _vm = opts.vm
-            _vm = _vm.replace('graal', 'jvmci')
-        if hasattr(opts, 'vmbuild') and opts.vmbuild is not None:
-            global _vmbuild
-            _vmbuild = opts.vmbuild
-        global _make_eclipse_launch
-        _make_eclipse_launch = getattr(opts, 'make_eclipse_launch', False)
+    if hasattr(opts, 'vm') and opts.vm is not None:
+        global _vm
+        _vm = opts.vm
+        _vm = _vm.replace('graal', 'jvmci')
+    if hasattr(opts, 'vmbuild') and opts.vmbuild is not None:
+        global _vmbuild
+        _vmbuild = opts.vmbuild
+    global _make_eclipse_launch
+    _make_eclipse_launch = getattr(opts, 'make_eclipse_launch', False)
     global _jacoco
     _jacoco = opts.jacoco
     global _vm_cwd
