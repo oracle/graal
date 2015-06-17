@@ -275,7 +275,8 @@ public class InvocationPlugins {
                     assert sig[0] == GraphBuilderContext.class;
                     assert sig[1] == ResolvedJavaMethod.class;
                     assert sig[2] == InvocationPlugin.Receiver.class;
-                    assert Arrays.asList(Arrays.copyOfRange(sig, 3, sig.length)).stream().allMatch(c -> c == ValueNode.class);
+                    Class<?>[] sigTail = Arrays.copyOfRange(sig, 3, sig.length);
+                    assert Arrays.asList(sigTail).stream().allMatch(c -> c == ValueNode.class);
                     while (sigs.size() < sig.length - 2) {
                         sigs.add(null);
                     }
