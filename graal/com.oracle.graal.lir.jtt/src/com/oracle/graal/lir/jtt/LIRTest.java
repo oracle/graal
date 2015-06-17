@@ -33,7 +33,6 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.jtt.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.jvmci.meta.*;
 
@@ -46,52 +45,14 @@ import com.oracle.jvmci.meta.*;
 public abstract class LIRTest extends JTTTest {
 
     @NodeInfo
-    private static final class FixedLIRTestNode extends FixedWithNextNode implements LIRLowerable {
+    private static final class LIRTestNode extends FixedWithNextNode implements LIRLowerable {
 
-        public static final NodeClass<FixedLIRTestNode> TYPE = NodeClass.create(FixedLIRTestNode.class);
+        public static final NodeClass<LIRTestNode> TYPE = NodeClass.create(LIRTestNode.class);
         @Input protected ValueNode opsNode;
         @Input protected NodeInputList<ValueNode> values;
         public final SnippetReflectionProvider snippetReflection;
 
-        public FixedLIRTestNode(SnippetReflectionProvider snippetReflection, ValueNode opsNode, ValueNode[] values) {
-            super(TYPE, StampFactory.forVoid());
-            this.opsNode = opsNode;
-            this.values = new NodeInputList<>(this, values);
-            this.snippetReflection = snippetReflection;
-        }
-
-        public NodeInputList<ValueNode> values() {
-            return values;
-        }
-
-        public ValueNode getLIROpsNode() {
-            return opsNode;
-        }
-
-        @Override
-        public void generate(NodeLIRBuilderTool gen) {
-            LIRTestSpecification ops = getLIROperations();
-            Stream<Value> v = values().stream().map(node -> gen.operand(node));
-
-            ops.generate(gen.getLIRGeneratorTool(), v.toArray(size -> new Value[size]));
-        }
-
-        private LIRTestSpecification getLIROperations() {
-            assert getLIROpsNode().isConstant();
-            LIRTestSpecification spec = snippetReflection.asObject(LIRTestSpecification.class, getLIROpsNode().asJavaConstant());
-            return spec;
-        }
-    }
-
-    @NodeInfo
-    private static final class FloatingLIRTestNode extends FloatingNode implements LIRLowerable {
-
-        public static final NodeClass<FloatingLIRTestNode> TYPE = NodeClass.create(FloatingLIRTestNode.class);
-        @Input protected ValueNode opsNode;
-        @Input protected NodeInputList<ValueNode> values;
-        public final SnippetReflectionProvider snippetReflection;
-
-        public FloatingLIRTestNode(SnippetReflectionProvider snippetReflection, Kind kind, ValueNode opsNode, ValueNode[] values) {
+        public LIRTestNode(SnippetReflectionProvider snippetReflection, Kind kind, ValueNode opsNode, ValueNode[] values) {
             super(TYPE, StampFactory.forKind(kind));
             this.opsNode = opsNode;
             this.values = new NodeInputList<>(this, values);
@@ -115,68 +76,41 @@ public abstract class LIRTest extends JTTTest {
             gen.setResult(this, ops.getResult());
         }
 
-        private LIRTestSpecification getLIROperations() {
+        public LIRTestSpecification getLIROperations() {
             assert getLIROpsNode().isConstant();
             LIRTestSpecification spec = snippetReflection.asObject(LIRTestSpecification.class, getLIROpsNode().asJavaConstant());
             return spec;
         }
     }
 
-    private InvocationPlugin fixedLIRNodePlugin = new InvocationPlugin() {
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
-            b.add(new FixedLIRTestNode(getSnippetReflection(), spec, new ValueNode[]{}));
-            return true;
-        }
-
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0) {
-            b.add(new FixedLIRTestNode(getSnippetReflection(), spec, new ValueNode[]{arg0}));
-            return true;
-        }
-
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1) {
-            b.add(new FixedLIRTestNode(getSnippetReflection(), spec, new ValueNode[]{arg0, arg1}));
-            return true;
-        }
-
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2) {
-            b.add(new FixedLIRTestNode(getSnippetReflection(), spec, new ValueNode[]{arg0, arg1, arg2}));
-            return true;
-        }
-
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
-            b.add(new FixedLIRTestNode(getSnippetReflection(), spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
-            return true;
-        }
-    };
-
-    private InvocationPlugin floatingLIRNodePlugin = new InvocationPlugin() {
+    private final InvocationPlugin lirTestPlugin = new InvocationPlugin() {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
             Kind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{}));
+            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0) {
             Kind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0}));
+            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1) {
             Kind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1}));
+            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2) {
             Kind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2}));
+            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
             Kind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new FloatingLIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
+            b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
             return true;
         }
 
@@ -194,11 +128,7 @@ public abstract class LIRTest extends JTTTest {
                 assert p.length > 0;
                 assert LIRTestSpecification.class.isAssignableFrom(p[0]);
 
-                if (m.getReturnType().equals(void.class)) {
-                    invocationPlugins.register(fixedLIRNodePlugin, c, m.getName(), p);
-                } else {
-                    invocationPlugins.register(floatingLIRNodePlugin, c, m.getName(), p);
-                }
+                invocationPlugins.register(lirTestPlugin, c, m.getName(), p);
             }
         }
         return super.editGraphBuilderConfiguration(conf);
