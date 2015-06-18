@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
+
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
@@ -83,7 +85,45 @@ public abstract class LIRTest extends JTTTest {
         }
     }
 
-    private final InvocationPlugin lirTestPlugin = new InvocationPlugin() {
+    @NodeInfo
+    private static final class LIRValueNode extends FixedWithNextNode implements LIRLowerable {
+
+        public static final NodeClass<LIRValueNode> TYPE = NodeClass.create(LIRValueNode.class);
+        @Input protected ValueNode opsNode;
+        @Input protected ValueNode name;
+        public final SnippetReflectionProvider snippetReflection;
+
+        public LIRValueNode(SnippetReflectionProvider snippetReflection, Kind kind, ValueNode opsNode, ValueNode name) {
+            super(TYPE, StampFactory.forKind(kind));
+            this.opsNode = opsNode;
+            this.name = name;
+            this.snippetReflection = snippetReflection;
+        }
+
+        public ValueNode getLIROpsNode() {
+            return opsNode;
+        }
+
+        @Override
+        public void generate(NodeLIRBuilderTool gen) {
+            LIRTestSpecification spec = getLIROperations();
+            Value output = spec.getOutput(getName());
+            gen.setResult(this, isVariable(output) ? output : gen.getLIRGeneratorTool().emitMove(output));
+        }
+
+        private String getName() {
+            assert name.isConstant();
+            return snippetReflection.asObject(String.class, name.asJavaConstant());
+        }
+
+        private LIRTestSpecification getLIROperations() {
+            assert getLIROpsNode().isConstant();
+            return snippetReflection.asObject(LIRTestSpecification.class, getLIROpsNode().asJavaConstant());
+        }
+
+    }
+
+    private InvocationPlugin lirTestPlugin = new InvocationPlugin() {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
             Kind returnKind = targetMethod.getSignature().getReturnKind();
             b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{}));
@@ -131,7 +171,51 @@ public abstract class LIRTest extends JTTTest {
                 invocationPlugins.register(lirTestPlugin, c, m.getName(), p);
             }
         }
+        InvocationPlugin outputPlugin = new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode name, ValueNode expected) {
+                Kind returnKind = targetMethod.getSignature().getReturnKind();
+                b.addPush(returnKind, new LIRValueNode(getSnippetReflection(), returnKind, spec, name));
+                return true;
+            }
+        };
+        invocationPlugins.register(outputPlugin, LIRTest.class, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, Object.class});
+        invocationPlugins.register(outputPlugin, LIRTest.class, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, int.class});
         return super.editGraphBuilderConfiguration(conf);
+    }
+
+    @SuppressWarnings("unused")
+    public static byte getOutput(LIRTestSpecification spec, String name, byte expected) {
+        return expected;
+    }
+
+    @SuppressWarnings("unused")
+    public static short getOutput(LIRTestSpecification spec, String name, short expected) {
+        return expected;
+    }
+
+    @SuppressWarnings("unused")
+    public static int getOutput(LIRTestSpecification spec, String name, int expected) {
+        return expected;
+    }
+
+    @SuppressWarnings("unused")
+    public static long getOutput(LIRTestSpecification spec, String name, long expected) {
+        return expected;
+    }
+
+    @SuppressWarnings("unused")
+    public static float getOutput(LIRTestSpecification spec, String name, float expected) {
+        return expected;
+    }
+
+    @SuppressWarnings("unused")
+    public static double getOutput(LIRTestSpecification spec, String name, double expected) {
+        return expected;
+    }
+
+    @SuppressWarnings("unused")
+    public static Object getOutput(LIRTestSpecification spec, String name, Object expected) {
+        return expected;
     }
 
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)

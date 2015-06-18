@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import java.util.*;
+
 import com.oracle.graal.lir.gen.*;
 import com.oracle.jvmci.common.*;
 import com.oracle.jvmci.meta.*;
 
 public abstract class LIRTestSpecification {
     private Value result;
+    private final HashMap<String, Value> output = new HashMap<>();
 
     public void generate(LIRGeneratorTool gen) {
         defaultHandler(gen);
@@ -74,6 +77,14 @@ public abstract class LIRTestSpecification {
             JVMCIError.unimplemented();
         }
 
+    }
+
+    public void setOutput(String name, Value value) {
+        output.put(name, value);
+    }
+
+    public Value getOutput(String name) {
+        return output.get(name);
     }
 
     public void setResult(Value value) {
