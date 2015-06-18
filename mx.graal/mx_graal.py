@@ -1633,13 +1633,6 @@ def igv(args):
         if mx.run(['ant', '-f', mx._cygpathU2W(join(_graal_home, 'src', 'share', 'tools', 'IdealGraphVisualizer', 'build.xml')), '-l', mx._cygpathU2W(fp.name), 'run'], env=env, nonZeroIsFatal=False):
             mx.abort("IGV ant build & launch failed. Check '" + logFile + "'. You can also try to delete 'src/share/tools/IdealGraphVisualizer/nbplatform'.")
 
-def maven_install_truffle(args):
-    """install Truffle into your local Maven repository"""
-    for name in ['TRUFFLE', 'TRUFFLE-DSL-PROCESSOR']:
-        mx.archive(["@" + name])
-        path = mx._dists[name].path
-        mx.run(['mvn', 'install:install-file', '-DgroupId=com.oracle', '-DartifactId=' + name.lower(), '-Dversion=' + graal_version('SNAPSHOT'), '-Dpackaging=jar', '-Dfile=' + path])
-
 def c1visualizer(args):
     """run the Cl Compiler Visualizer"""
     libpath = join(_graal_home, 'lib')
@@ -2347,7 +2340,6 @@ def mx_init(suite):
         'hsdis': [hsdis, '[att]'],
         'hcfdis': [hcfdis, ''],
         'igv' : [igv, ''],
-        'maven-install-truffle' : [maven_install_truffle, ''],
         'jdkhome': [print_jdkhome, ''],
         'jmh': [jmh, '[VM options] [filters|JMH-args-as-json...]'],
         'dacapo': [dacapo, '[VM options] benchmarks...|"all" [DaCapo options]'],
