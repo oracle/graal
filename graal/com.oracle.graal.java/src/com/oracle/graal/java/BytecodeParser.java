@@ -28,7 +28,6 @@ import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
-import static com.oracle.jvmci.code.TypeCheckHints.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 import static com.oracle.jvmci.meta.DeoptimizationAction.*;
 import static com.oracle.jvmci.meta.DeoptimizationReason.*;
@@ -2926,7 +2925,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
+        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isLeaf()) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
