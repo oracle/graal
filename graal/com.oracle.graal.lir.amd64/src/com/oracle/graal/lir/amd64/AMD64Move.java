@@ -156,6 +156,38 @@ public class AMD64Move {
         }
     }
 
+    @Opcode("STACKMOVE")
+    public static final class AMD64PushPopStackMove extends AMD64LIRInstruction implements MoveOp {
+        public static final LIRInstructionClass<AMD64PushPopStackMove> TYPE = LIRInstructionClass.create(AMD64PushPopStackMove.class);
+
+        @Def({STACK}) protected AllocatableValue result;
+        @Use({STACK, HINT}) protected Value input;
+        private final OperandSize size;
+
+        public AMD64PushPopStackMove(OperandSize size, AllocatableValue result, Value input) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
+            this.size = size;
+        }
+
+        @Override
+        public Value getInput() {
+            return input;
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            AMD64MOp.PUSH.emit(masm, size, (AMD64Address) crb.asAddress(input));
+            AMD64MOp.POP.emit(masm, size, (AMD64Address) crb.asAddress(result));
+        }
+    }
+
     public static final class LeaOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<LeaOp> TYPE = LIRInstructionClass.create(LeaOp.class);
 

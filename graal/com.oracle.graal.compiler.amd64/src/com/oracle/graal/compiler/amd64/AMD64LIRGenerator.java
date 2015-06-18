@@ -59,6 +59,7 @@ import com.oracle.graal.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.ReturnOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.amd64.AMD64Move.AMD64PushPopStackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
@@ -164,10 +165,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     protected LIRInstruction createStackMove(AllocatableValue result, Value input) {
-        RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
-        Register scratchRegister = backup.register;
-        StackSlotValue backupSlot = backup.backupSlot;
-        return createStackMove(result, input, scratchRegister, backupSlot);
+        Kind kind = result.getKind();
+        OperandSize size;
+        switch (kind) {
+            case Long:
+            case Double:
+                size = QWORD;
+                break;
+            case Short:
+                size = WORD;
+                break;
+            default:
+                RegisterBackupPair backup = getScratchRegister(input.getPlatformKind());
+                Register scratchRegister = backup.register;
+                StackSlotValue backupSlot = backup.backupSlot;
+                return createStackMove(result, input, scratchRegister, backupSlot);
+        }
+        return new AMD64PushPopStackMove(size, result, input);
     }
 
     protected LIRInstruction createStackMove(AllocatableValue result, Value input, Register scratchRegister, StackSlotValue backupSlot) {
