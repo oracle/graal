@@ -49,6 +49,9 @@ public class SLTckTest extends TruffleTCK {
             "function plus(a, b) {\n" +
             "  return a + b;\n" +
             "}\n" +
+            "function apply(f) {\n" +
+            "  return f(18, 32) + 10;\n" +
+            "}\n" +
             "function null() {\n" +
             "}\n"
         );
@@ -74,6 +77,11 @@ public class SLTckTest extends TruffleTCK {
     @Override
     protected String returnsNull() {
         return "null";
+    }
+
+    @Override
+    protected String applyNumbers() {
+        return "apply";
     }
 
     @Override

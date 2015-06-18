@@ -23,8 +23,13 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.nodes.*;
@@ -32,34 +37,26 @@ import com.oracle.truffle.sl.runtime.*;
 
 /**
  * The node for function invocation in SL. Since SL has first class functions, the
- * {@link SLFunction target function} can be computed by an {@link #functionNode arbitrary
- * expression}. This node is responsible for evaluating this expression, as well as evaluating the
- * {@link #argumentNodes arguments}. The actual dispatch is then delegated to a chain of
- * {@link SLDispatchNode} that form a polymorphic inline cache.
+ * {@link SLFunction target function} can be computed by an arbitrary expression. This node is
+ * responsible for evaluating this expression, as well as evaluating the {@link #argumentNodes
+ * arguments}. The actual dispatch is then delegated to a chain of {@link SLDispatchNode} that form
+ * a polymorphic inline cache.
  */
 @NodeInfo(shortName = "invoke")
-public final class SLInvokeNode extends SLExpressionNode {
-
-    public static SLInvokeNode create(SourceSection src, SLExpressionNode function, SLExpressionNode[] arguments) {
-        return new SLInvokeNode(src, function, arguments);
-    }
-
-    @Child private SLExpressionNode functionNode;
+@NodeChildren({@NodeChild(value = "functionNode", type = SLExpressionNode.class)})
+public abstract class SLInvokeNode extends SLExpressionNode {
     @Children private final SLExpressionNode[] argumentNodes;
     @Child private SLDispatchNode dispatchNode;
 
-    private SLInvokeNode(SourceSection src, SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
+    SLInvokeNode(SourceSection src, SLExpressionNode[] argumentNodes) {
         super(src);
-        this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
         this.dispatchNode = SLDispatchNodeGen.create();
     }
 
-    @Override
+    @Specialization
     @ExplodeLoop
-    public Object executeGeneric(VirtualFrame frame) {
-        SLFunction function = evaluateFunction(frame);
-
+    public Object executeGeneric(VirtualFrame frame, SLFunction function) {
         /*
          * The number of arguments is constant for one invoke node. During compilation, the loop is
          * unrolled and the execute methods of all arguments are inlined. This is triggered by the
@@ -72,24 +69,29 @@ public final class SLInvokeNode extends SLExpressionNode {
         for (int i = 0; i < argumentNodes.length; i++) {
             argumentValues[i] = argumentNodes[i].executeGeneric(frame);
         }
-
         return dispatchNode.executeDispatch(frame, function, argumentValues);
     }
 
-    private SLFunction evaluateFunction(VirtualFrame frame) {
-        try {
-            /*
-             * The function node must evaluate to a SLFunction value, so we call
-             * function-specialized method.
-             */
-            return functionNode.executeFunction(frame);
-        } catch (UnexpectedResultException ex) {
-            /*
-             * The function node evaluated to a non-function result. This is a type error in the SL
-             * program. We report it with the same exception that Truffle DSL generated nodes use to
-             * report type errors.
-             */
-            throw new UnsupportedSpecializationException(this, new Node[]{functionNode}, ex.getResult());
+    @Child private Node crossLanguageCall;
+
+    @Specialization
+    @ExplodeLoop
+    protected Object executeGeneric(VirtualFrame frame, TruffleObject function) {
+        /*
+         * The number of arguments is constant for one invoke node. During compilation, the loop is
+         * unrolled and the execute methods of all arguments are inlined. This is triggered by the
+         * ExplodeLoop annotation on the method. The compiler assertion below illustrates that the
+         * array length is really constant.
+         */
+        CompilerAsserts.compilationConstant(argumentNodes.length);
+
+        Object[] argumentValues = new Object[argumentNodes.length];
+        for (int i = 0; i < argumentNodes.length; i++) {
+            argumentValues[i] = argumentNodes[i].executeGeneric(frame);
         }
+        if (crossLanguageCall == null) {
+            crossLanguageCall = insert(Message.createExecute(argumentValues.length).createNode());
+        }
+        return ForeignAccess.execute(crossLanguageCall, frame, function, argumentValues);
     }
 }

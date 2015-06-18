@@ -92,6 +92,16 @@ public abstract class TruffleTCK {
     protected abstract String plusInt();
 
     /**
+     * Name of a function in your language to perform a callback to foreign function. Your function
+     * should prepare two numbers (18 and 32) and apply them to the function passed in as an
+     * argument of your function. It should then add 10 to the returned value and return the result
+     * back to its caller.
+     *
+     * @return name of globally exported symbol
+     */
+    protected abstract String applyNumbers();
+
+    /**
      * Return a code snippet that is invalid in your language. Its
      * {@link TruffleVM#eval(java.lang.String, java.lang.String) evaluation} should fail and yield
      * an exception.
@@ -159,6 +169,32 @@ public abstract class TruffleTCK {
         String code = invalidCode();
         Object ret = vm().eval(mime, code);
         fail("Should yield IOException, but returned " + ret);
+    }
+
+    @Test
+    public void testMaxOrMinValue() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        Object res = apply.invoke(null, new MaxMinObject(true));
+
+        assert res instanceof Number : "result should be a number: " + res;
+
+        Number n = (Number) res;
+
+        assert 42 == n.intValue() : "32 > 18 and plus 10";
+    }
+
+    @Test
+    public void testMaxOrMinValue2() throws Exception {
+        TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
+
+        Object res = apply.invoke(null, new MaxMinObject(false));
+
+        assert res instanceof Number : "result should be a number: " + res;
+
+        Number n = (Number) res;
+
+        assert 28 == n.intValue() : "18 < 32 and plus 10";
     }
 
     private TruffleVM.Symbol findGlobalSymbol(String name) throws Exception {

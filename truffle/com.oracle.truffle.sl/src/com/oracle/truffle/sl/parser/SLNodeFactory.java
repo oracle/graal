@@ -275,7 +275,7 @@ public class SLNodeFactory {
         final int startPos = functionNode.getSourceSection().getCharIndex();
         final int endPos = finalToken.charPos + finalToken.val.length();
         final SourceSection src = source.createSection(functionNode.getSourceSection().getIdentifier(), startPos, endPos - startPos);
-        return SLInvokeNode.create(src, functionNode, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]));
+        return SLInvokeNodeGen.create(src, parameterNodes.toArray(new SLExpressionNode[parameterNodes.size()]), functionNode);
     }
 
     /**
