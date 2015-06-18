@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.jvmci.hotspot.HotSpotResolvedObjectTypeImpl.*;
-
 import java.lang.reflect.*;
 
 import org.junit.*;
@@ -49,7 +47,7 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
             HotSpotResolvedObjectType type = HotSpotResolvedObjectTypeImpl.fromObjectClass(c);
             for (ResolvedJavaField field : type.getInstanceFields(false)) {
                 if (field.isInternal()) {
-                    Assert.assertEquals(0, ~getReflectionFieldModifiers() & field.getModifiers());
+                    Assert.assertEquals(0, ~ModifiersProvider.jvmFieldModifiers() & field.getModifiers());
                 }
             }
         }
