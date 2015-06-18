@@ -686,6 +686,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.code",
         "com.oracle.graal.test",
+        "com.oracle.jvmci.debug",
         "com.oracle.jvmci.runtime",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -1062,7 +1063,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.jvmci.debug",
         "JUNIT",
       ],
       "checkstyle" : "com.oracle.graal.graph",
