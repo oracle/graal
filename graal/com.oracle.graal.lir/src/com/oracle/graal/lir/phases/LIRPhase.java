@@ -121,7 +121,7 @@ public abstract class LIRPhase<C> {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {
                 run(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
                 if (dumpLIR && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                    Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "After phase %s", getName());
+                    Debug.dump(PHASE_DUMP_LEVEL, lirGenRes.getLIR(), "%s", getName());
                 }
             }
         } catch (Throwable e) {

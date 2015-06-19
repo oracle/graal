@@ -491,7 +491,6 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         // Remove redundant begin nodes.
-        Debug.dump(graph, "Before removing redundant begins");
         for (BeginNode beginNode : graph.getNodes(BeginNode.TYPE)) {
             Node predecessor = beginNode.predecessor();
             if (predecessor instanceof ControlSplitNode) {

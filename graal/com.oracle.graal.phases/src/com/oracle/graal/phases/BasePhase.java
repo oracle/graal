@@ -135,7 +135,7 @@ public abstract class BasePhase<C> {
         apply(graph, context, true);
     }
 
-    public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+    protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
             if (dumpGraph && Debug.isDumpEnabled(BEFORE_PHASE_DUMP_LEVEL)) {
                 Debug.dump(BEFORE_PHASE_DUMP_LEVEL, graph, "Before phase %s", getName());
@@ -144,14 +144,14 @@ public abstract class BasePhase<C> {
             executionCount.increment();
             inputNodesCount.add(graph.getNodeCount());
             if (dumpGraph && Debug.isDumpEnabled(PHASE_DUMP_LEVEL)) {
-                Debug.dump(PHASE_DUMP_LEVEL, graph, "After phase %s", getName());
+                Debug.dump(PHASE_DUMP_LEVEL, graph, "%s", getName());
             }
             if (Fingerprint.ENABLED) {
                 String graphDesc = graph.method() == null ? graph.name : graph.method().format("%H.%n(%p)");
                 Fingerprint.submit("After phase %s nodes in %s are %s", getName(), graphDesc, graph.getNodes().snapshot());
             }
             if (Debug.isVerifyEnabled()) {
-                Debug.verify(graph, "After phase %s", getName());
+                Debug.verify(graph, "%s", getName());
             }
             assert graph.verify();
         } catch (Throwable t) {
