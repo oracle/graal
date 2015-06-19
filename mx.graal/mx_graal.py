@@ -30,12 +30,14 @@ import os, stat, errno, sys, shutil, zipfile, tarfile, tempfile, re, time, datet
 from os.path import join, exists, dirname, basename
 from argparse import ArgumentParser, REMAINDER
 from outputparser import OutputParser, ValuesMatcher
-import mx
-import mx_unittest
 import xml.dom.minidom
 import sanitycheck
 import itertools
 import json, textwrap
+
+import mx
+import mx_unittest
+import mx_findbugs
 import mx_graal_makefile
 
 _suite = mx.suite('graal')
@@ -1523,7 +1525,7 @@ def gate(args, gate_body=_basic_gate_body):
                 t.abort('Checkheaders warnings were found')
 
         with Task('FindBugs', tasks) as t:
-            if t and findbugs([]) != 0:
+            if t and mx_findbugs.findbugs([]) != 0:
                 t.abort('FindBugs warnings were found')
 
         if exists('jacoco.exec'):
@@ -2254,43 +2256,6 @@ def _parseVMOptions(optionType):
     valueMap = parser.parse(output.getvalue())
     return valueMap
 
-def findbugs(args):
-    '''run FindBugs against non-test Java projects'''
-    findBugsHome = mx.get_env('FINDBUGS_HOME', None)
-    if findBugsHome:
-        findbugsJar = join(findBugsHome, 'lib', 'findbugs.jar')
-    else:
-        findbugsLib = join(_graal_home, 'lib', 'findbugs-3.0.0')
-        if not exists(findbugsLib):
-            tmp = tempfile.mkdtemp(prefix='findbugs-download-tmp', dir=_graal_home)
-            try:
-                findbugsDist = mx.library('FINDBUGS_DIST').get_path(resolve=True)
-                with zipfile.ZipFile(findbugsDist) as zf:
-                    candidates = [e for e in zf.namelist() if e.endswith('/lib/findbugs.jar')]
-                    assert len(candidates) == 1, candidates
-                    libDirInZip = os.path.dirname(candidates[0])
-                    zf.extractall(tmp)
-                shutil.copytree(join(tmp, libDirInZip), findbugsLib)
-            finally:
-                shutil.rmtree(tmp)
-        findbugsJar = join(findbugsLib, 'findbugs.jar')
-    assert exists(findbugsJar)
-    nonTestProjects = [p for p in mx.projects() if not p.name.endswith('.test') and not p.name.endswith('.jtt')]
-    outputDirs = map(mx._cygpathU2W, [p.output_dir() for p in nonTestProjects])
-    javaCompliance = max([p.javaCompliance for p in nonTestProjects])
-    findbugsResults = join(_graal_home, 'findbugs.results')
-
-    cmd = ['-jar', mx._cygpathU2W(findbugsJar), '-textui', '-low', '-maxRank', '15']
-    if mx.is_interactive():
-        cmd.append('-progress')
-    cmd = cmd + ['-auxclasspath', mx._separatedCygpathU2W(mx.classpath([d.name for d in _jdkDeployedDists] + [p.name for p in nonTestProjects])), '-output', mx._cygpathU2W(findbugsResults), '-exitcode'] + args + outputDirs
-    exitcode = mx.run_java(cmd, nonZeroIsFatal=False, javaConfig=mx.java(javaCompliance))
-    if exitcode != 0:
-        with open(findbugsResults) as fp:
-            mx.log(fp.read())
-    os.unlink(findbugsResults)
-    return exitcode
-
 def checkheaders(args):
     """check Java source headers against any required pattern"""
     failures = {}
@@ -2333,7 +2298,6 @@ def mx_init(suite):
         'clean': [clean, ''],
         'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
         'export': [export, '[-options] [zipfile]'],
-        'findbugs': [findbugs, ''],
         'generateZshCompletion' : [generateZshCompletion, ''],
         'hsdis': [hsdis, '[att]'],
         'hcfdis': [hcfdis, ''],

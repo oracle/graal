@@ -61,15 +61,6 @@ suite = {
       "sha1" : "bc8b2253436485e9dbaf81771c259ccfa1a24c80",
     },
 
-    "FINDBUGS_DIST" : {
-      "path" : "lib/findbugs-dist-3.0.0.zip",
-      "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/findbugs-3.0.0.zip",
-        "http://sourceforge.net/projects/findbugs/files/findbugs/3.0.0/findbugs-3.0.0.zip/download",
-      ],
-      "sha1" : "6e56d67f238dbcd60acb88a81655749aa6419c5b",
-    },
-
     "C1VISUALIZER_DIST" : {
       "path" : "lib/c1visualizer_2014-04-22.zip",
       "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2014-04-22.zip"],
