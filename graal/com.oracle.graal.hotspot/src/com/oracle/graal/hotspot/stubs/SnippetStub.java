@@ -105,15 +105,18 @@ public abstract class SnippetStub extends Stub implements Snippets {
         graph.disableInlinedMethodRecording();
 
         if (SnippetGraphUnderConstruction != null) {
-            assert SnippetGraphUnderConstruction.get() == null;
+            assert SnippetGraphUnderConstruction.get() == null : SnippetGraphUnderConstruction.get().toString() + " " + graph;
             SnippetGraphUnderConstruction.set(graph);
         }
 
-        IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
+        try {
+            IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
+            new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
 
-        if (SnippetGraphUnderConstruction != null) {
-            SnippetGraphUnderConstruction.set(null);
+        } finally {
+            if (SnippetGraphUnderConstruction != null) {
+                SnippetGraphUnderConstruction.set(null);
+            }
         }
 
         graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);

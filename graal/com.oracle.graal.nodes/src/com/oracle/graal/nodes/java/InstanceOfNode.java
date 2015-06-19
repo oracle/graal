@@ -140,7 +140,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
             }
         }
 
-        if (type.isFinal() && nonNull) {
+        if (type.isLeaf() && nonNull) {
             return TypeCheckNode.create(type, object);
         }
         return null;

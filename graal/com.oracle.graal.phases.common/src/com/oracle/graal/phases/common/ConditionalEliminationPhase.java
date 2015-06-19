@@ -727,7 +727,7 @@ public class ConditionalEliminationPhase extends Phase {
                     if (!Objects.equals(type, StampTool.typeOrNull(receiver))) {
                         ResolvedJavaMethod method = type.resolveConcreteMethod(callTarget.targetMethod(), invoke.getContextType());
                         if (method != null) {
-                            if (method.canBeStaticallyBound() || type.isFinal()) {
+                            if (method.canBeStaticallyBound() || type.isLeaf() || type.isArray()) {
                                 callTarget.setInvokeKind(InvokeKind.Special);
                                 callTarget.setTargetMethod(method);
                             }
