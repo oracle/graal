@@ -76,6 +76,12 @@ public class SPARCHotSpotMove {
                         SPARCAddress addr = new SPARCAddress(SPARC.sp, sr2);
                         Kind resultKind = (Kind) result.getPlatformKind();
                         switch (resultKind) {
+                            case Byte:
+                                masm.stb(sr1, addr);
+                                break;
+                            case Short:
+                                masm.sth(sr1, addr);
+                                break;
                             case Int:
                                 masm.stw(sr1, addr);
                                 break;
