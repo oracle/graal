@@ -1138,9 +1138,7 @@ def unittest(args):
                 for jdkDist in _jdkDeployedDists:
                     dist = mx.distribution(jdkDist.name)
                     excluded.update([d.output_dir() for d in dist.sorted_deps()])
-                print 'before:', len(cp)
                 cp = os.pathsep.join([e for e in cp.split(os.pathsep) if e not in excluded])
-                print 'after:', len(cp)
                 vmArgs[cpIndex] = cp
 
             # Run the VM in a mode where application/test classes can
