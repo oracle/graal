@@ -947,6 +947,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.compiler",
         "com.oracle.graal.lir.amd64",
+        "com.oracle.graal.java",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : ["com.oracle.graal.compiler.match.processor"],
