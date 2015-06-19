@@ -122,6 +122,8 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
      */
     private Map<ResolvedJavaMethod, Integer> inlinedMethods = new HashMap<>();
 
+    private boolean hasUnsafeAccess = false;
+
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
      * start} node.
@@ -608,5 +610,13 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
 
     public JavaMethod asJavaMethod() {
         return method();
+    }
+
+    public boolean hasUnsafeAccess() {
+        return hasUnsafeAccess;
+    }
+
+    public void markUnsafeAccess() {
+        hasUnsafeAccess = true;
     }
 }
