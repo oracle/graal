@@ -59,7 +59,7 @@ public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNo
                     ValueNode[] originalArguments, JavaType originalReturnType) {
         if (jdkMajorVersion() >= 1 && jdkMinorVersion() >= 8 && jdkMicroVersion() >= 0 && jdkUpdateVersion() >= 60) {
             // https://bugs.openjdk.java.net/browse/JDK-8072008 is targeted for 8u60
-            return new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType);
+            return new MethodCallTargetNode(invokeKind, targetMethod, arguments, returnType, null);
         }
         return new ResolvedMethodHandleCallTargetNode(invokeKind, targetMethod, arguments, returnType, originalTargetMethod, originalArguments, originalReturnType);
     }
@@ -70,7 +70,7 @@ public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNo
 
     protected ResolvedMethodHandleCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, ResolvedJavaMethod originalTargetMethod,
                     ValueNode[] originalArguments, JavaType originalReturnType) {
-        super(TYPE, invokeKind, targetMethod, arguments, returnType);
+        super(TYPE, invokeKind, targetMethod, arguments, returnType, null);
         this.originalTargetMethod = originalTargetMethod;
         this.originalReturnType = originalReturnType;
         this.originalArguments = new NodeInputList<>(this, originalArguments);
@@ -80,7 +80,7 @@ public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNo
     public void lower(LoweringTool tool) {
         InvokeKind replacementInvokeKind = originalTargetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         MethodCallTargetNode replacement = graph().add(
-                        new MethodCallTargetNode(replacementInvokeKind, originalTargetMethod, originalArguments.toArray(new ValueNode[originalArguments.size()]), originalReturnType));
+                        new MethodCallTargetNode(replacementInvokeKind, originalTargetMethod, originalArguments.toArray(new ValueNode[originalArguments.size()]), originalReturnType, null));
 
         // Replace myself...
         this.replaceAndDelete(replacement);

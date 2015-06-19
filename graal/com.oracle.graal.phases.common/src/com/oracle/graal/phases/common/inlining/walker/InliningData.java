@@ -215,12 +215,8 @@ public class InliningData {
     }
 
     private InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
-        JavaTypeProfile typeProfile;
-        ValueNode receiver = invoke.callTarget().arguments().get(0);
-        if (receiver instanceof TypeProfileProxyNode) {
-            TypeProfileProxyNode typeProfileProxyNode = (TypeProfileProxyNode) receiver;
-            typeProfile = typeProfileProxyNode.getProfile();
-        } else {
+        JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getProfile();
+        if (typeProfile == null) {
             InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "no type profile exists");
             return null;
         }

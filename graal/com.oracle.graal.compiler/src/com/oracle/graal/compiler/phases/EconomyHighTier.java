@@ -41,7 +41,6 @@ public class EconomyHighTier extends PhaseSuite<HighTierContext> {
             appendPhase(canonicalizer);
         }
 
-        appendPhase(new CleanTypeProfileProxyPhase(canonicalizer));
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
     }
 }

@@ -1273,10 +1273,6 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         if (invokeKind.hasReceiver()) {
             args[0] = emitExplicitExceptions(args[0], null);
-            if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
-                JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
-                args[0] = TypeProfileProxyNode.proxify(args[0], profile);
-            }
 
             if (args[0].isNullConstant()) {
                 append(new DeoptimizeNode(InvalidateRecompile, NullCheckException));
@@ -1311,7 +1307,11 @@ public class BytecodeParser implements GraphBuilderContext {
             currentInvokeKind = null;
         }
 
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
+        JavaTypeProfile profile = null;
+        if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
+            profile = profilingInfo.getTypeProfile(bci());
+        }
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType, profile));
 
         // be conservative if information was not recorded (could result in endless
         // recompiles otherwise)
@@ -1553,8 +1553,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType) {
-        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
+    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
+        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType, profile);
     }
 
     protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
