@@ -119,6 +119,7 @@ public class AMD64GraphBuilderPlugins {
                     // Emits a null-check for the otherwise unused receiver
                     unsafe.get();
                     b.addPush(kind, new AtomicReadAndWriteNode(object, offset, value, kind, LocationIdentity.any()));
+                    b.getGraph().markUnsafeAccess();
                     return true;
                 }
             });
@@ -129,6 +130,7 @@ public class AMD64GraphBuilderPlugins {
                         unsafe.get();
                         AddressNode address = b.add(new OffsetAddressNode(object, offset));
                         b.addPush(kind, new AtomicReadAndAddNode(address, delta, LocationIdentity.any()));
+                        b.getGraph().markUnsafeAccess();
                         return true;
                     }
                 });

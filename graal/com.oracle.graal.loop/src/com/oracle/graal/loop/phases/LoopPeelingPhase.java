@@ -37,7 +37,7 @@ public class LoopPeelingPhase extends Phase {
                 if (LoopPolicies.shouldPeel(loop, data.getCFG())) {
                     Debug.log("Peeling %s", loop);
                     LoopTransformations.peel(loop);
-                    Debug.dump(graph, "After peeling %s", loop);
+                    Debug.dump(graph, "Peeling %s", loop);
                 }
             }
             data.deleteUnusedNodes();

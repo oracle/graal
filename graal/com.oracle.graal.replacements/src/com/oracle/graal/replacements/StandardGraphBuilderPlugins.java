@@ -88,6 +88,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static final Field STRING_VALUE_FIELD;
+
     static {
         try {
             STRING_VALUE_FIELD = String.class.getDeclaredField("value");
@@ -170,6 +171,7 @@ public class StandardGraphBuilderPlugins {
                     // Emits a null-check for the otherwise unused receiver
                     unsafe.get();
                     b.addPush(Kind.Int, new CompareAndSwapNode(object, offset, expected, x, kind, LocationIdentity.any()));
+                    b.getGraph().markUnsafeAccess();
                     return true;
                 }
             });
@@ -534,6 +536,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             b.addPush(returnKind, new DirectReadNode(address, returnKind));
+            b.getGraph().markUnsafeAccess();
             return true;
         }
 
@@ -547,6 +550,7 @@ public class StandardGraphBuilderPlugins {
             if (isVolatile) {
                 b.add(new MembarNode(JMM_POST_VOLATILE_READ));
             }
+            b.getGraph().markUnsafeAccess();
             return true;
         }
     }
@@ -565,6 +569,7 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             b.add(new DirectStoreNode(address, value, kind));
+            b.getGraph().markUnsafeAccess();
             return true;
         }
 
@@ -578,6 +583,7 @@ public class StandardGraphBuilderPlugins {
             if (isVolatile) {
                 b.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
             }
+            b.getGraph().markUnsafeAccess();
             return true;
         }
     }
