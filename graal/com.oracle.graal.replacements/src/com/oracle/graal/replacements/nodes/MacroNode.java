@@ -68,7 +68,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     protected final InvokeKind invokeKind;
 
     protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
-        super(c, StampFactory.forKind(returnType.getKind()));
+        super(c, returnStamp(returnType));
         assert targetMethod.getSignature().getParameterCount(!targetMethod.isStatic()) == arguments.length;
         this.arguments = new NodeInputList<>(this, arguments);
         this.bci = bci;
@@ -76,6 +76,15 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         this.returnType = returnType;
         this.invokeKind = invokeKind;
         assert !isPlaceholderBci(bci);
+    }
+
+    private static Stamp returnStamp(JavaType returnType) {
+        Kind kind = returnType.getKind();
+        if (kind == Kind.Object) {
+            return StampFactory.declared((ResolvedJavaType) returnType);
+        } else {
+            return StampFactory.forKind(kind);
+        }
     }
 
     public int getBci() {
