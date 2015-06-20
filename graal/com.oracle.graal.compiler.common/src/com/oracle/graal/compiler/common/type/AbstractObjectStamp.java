@@ -40,7 +40,11 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     protected AbstractObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         super(nonNull, alwaysNull);
         this.type = type;
-        this.exactType = exactType;
+        if (!exactType && type != null && type.isLeaf()) {
+            this.exactType = true;
+        } else {
+            this.exactType = exactType;
+        }
     }
 
     protected abstract AbstractObjectStamp copyWith(ResolvedJavaType newType, boolean newExactType, boolean newNonNull, boolean newAlwaysNull);

@@ -65,8 +65,6 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             }
         }
 
-        appendPhase(new CleanTypeProfileProxyPhase(canonicalizer));
-
         if (OptConvertDeoptsToGuards.getValue()) {
             appendPhase(new ConvertDeoptimizeToGuardPhase());
         }

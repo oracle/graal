@@ -28,7 +28,6 @@ import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.graal.nodes.type.StampTool.*;
-import static com.oracle.jvmci.code.TypeCheckHints.*;
 import static com.oracle.jvmci.common.JVMCIError.*;
 import static com.oracle.jvmci.meta.DeoptimizationAction.*;
 import static com.oracle.jvmci.meta.DeoptimizationReason.*;
@@ -1273,10 +1272,6 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         if (invokeKind.hasReceiver()) {
             args[0] = emitExplicitExceptions(args[0], null);
-            if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
-                JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
-                args[0] = TypeProfileProxyNode.proxify(args[0], profile);
-            }
 
             if (args[0].isNullConstant()) {
                 append(new DeoptimizeNode(InvalidateRecompile, NullCheckException));
@@ -1311,7 +1306,11 @@ public class BytecodeParser implements GraphBuilderContext {
             currentInvokeKind = null;
         }
 
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
+        JavaTypeProfile profile = null;
+        if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
+            profile = profilingInfo.getTypeProfile(bci());
+        }
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType, profile));
 
         // be conservative if information was not recorded (could result in endless
         // recompiles otherwise)
@@ -1553,8 +1552,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType) {
-        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
+    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
+        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType, profile);
     }
 
     protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
@@ -2925,7 +2924,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private JavaTypeProfile getProfileForTypeCheck(ResolvedJavaType type) {
-        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
+        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isLeaf()) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());

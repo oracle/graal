@@ -168,7 +168,7 @@ public class GraphKit {
     }
 
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, @SuppressWarnings("unused") int bci) {
-        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
+        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType, null);
     }
 
     /**

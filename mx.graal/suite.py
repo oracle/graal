@@ -143,9 +143,9 @@ suite = {
     "TRUFFLE" : {
       "path" : "lib/truffle-0.8-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle/0.8-dd4050aadaf8d91301b159cb30a609d8bb99feeb-SNAPSHOT/truffle-0.8-dd4050aadaf8d91301b159cb30a609d8bb99feeb-20150616.114821-1.jar",
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle/0.8-d5d416ced577720b9354bfbf4092b4480af55dbb-SNAPSHOT/truffle-0.8-d5d416ced577720b9354bfbf4092b4480af55dbb-20150619.210629-1.jar",
       ],
-      "sha1" : "34be0993d8fcaa21129749a329e4bb7841cf27e1",
+      "sha1" : "0970218476e21c17b90d9f45eb5910b781b12a31",
     },
     "TRUFFLE_TCK" : {
       "path" : "lib/truffle-tck-0.8-SNAPSHOT.jar",

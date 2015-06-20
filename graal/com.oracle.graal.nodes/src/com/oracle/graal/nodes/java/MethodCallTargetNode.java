@@ -37,14 +37,17 @@ import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
     protected final JavaType returnType;
+    protected JavaTypeProfile profile;
 
-    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
-        this(TYPE, invokeKind, targetMethod, arguments, returnType);
+    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType, JavaTypeProfile profile) {
+        this(TYPE, invokeKind, targetMethod, arguments, returnType, profile);
     }
 
-    protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType) {
+    protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, JavaType returnType,
+                    JavaTypeProfile profile) {
         super(c, arguments, targetMethod, invokeKind);
         this.returnType = returnType;
+        this.profile = profile;
     }
 
     /**
@@ -226,15 +229,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
     }
 
-    private JavaTypeProfile getProfile() {
-        assert !isStatic();
-        if (receiver() instanceof TypeProfileProxyNode) {
-            // get profile from TypeProfileProxy
-            return ((TypeProfileProxyNode) receiver()).getProfile();
-        }
-        // get profile from invoke()
-        ProfilingInfo profilingInfo = invoke().getContextMethod().getProfilingInfo();
-        return profilingInfo.getTypeProfile(invoke().bci());
+    public JavaTypeProfile getProfile() {
+        return profile;
     }
 
     @Override
