@@ -574,8 +574,8 @@ public abstract class Node implements Cloneable, Formattable {
             if (filter == null || filter.test(usage)) {
                 boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
+                maybeNotifyInputChanged(usage);
                 if (other != null) {
-                    maybeNotifyInputChanged(usage);
                     other.addUsage(usage);
                 }
                 this.movUsageFromEndTo(i);
