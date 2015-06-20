@@ -458,7 +458,7 @@ public abstract class Source {
 
     private TextMap textMap = null;
 
-    protected abstract void reset();
+    abstract void reset();
 
     public final boolean isTaggedAs(SourceTag tag) {
         assert tag != null;
@@ -680,7 +680,7 @@ public abstract class Source {
         return new DefaultSourceSection(this, identifier, startLine, startColumn, charIndex, length);
     }
 
-    protected void checkRange(int charIndex, int length) {
+    void checkRange(int charIndex, int length) {
         if (!(charIndex >= 0 && length >= 0 && charIndex + length <= getCode().length())) {
             throw new IllegalArgumentException("text positions out of range");
         }
@@ -717,22 +717,22 @@ public abstract class Source {
      * An object suitable for using as a key into a hashtable that defines equivalence between
      * different source types.
      */
-    protected Object getHashKey() {
+    Object getHashKey() {
         return getName();
     }
 
-    protected final TextMap getTextMap() {
+    final TextMap getTextMap() {
         if (textMap == null) {
             textMap = createTextMap();
         }
         return textMap;
     }
 
-    protected final void clearTextMap() {
+    final void clearTextMap() {
         textMap = null;
     }
 
-    protected TextMap createTextMap() {
+    TextMap createTextMap() {
         final String code = getCode();
         if (code == null) {
             throw new RuntimeException("can't read file " + getName());
@@ -781,7 +781,7 @@ public abstract class Source {
         }
 
         @Override
-        protected void reset() {
+        void reset() {
         }
 
         @Override
@@ -844,7 +844,7 @@ public abstract class Source {
         }
 
         @Override
-        protected void reset() {
+        void reset() {
         }
 
         private String getCodeFromIndex(int index) {
@@ -897,7 +897,7 @@ public abstract class Source {
         }
 
         @Override
-        protected Object getHashKey() {
+        Object getHashKey() {
             return path;
         }
 
@@ -961,7 +961,7 @@ public abstract class Source {
         }
 
         @Override
-        protected void reset() {
+        void reset() {
             this.code = null;
         }
     }
@@ -1021,7 +1021,7 @@ public abstract class Source {
         }
 
         @Override
-        protected void reset() {
+        void reset() {
         }
     }
 
@@ -1044,7 +1044,7 @@ public abstract class Source {
         }
 
         @Override
-        protected void reset() {
+        void reset() {
             assert false;
         }
 
@@ -1097,7 +1097,7 @@ public abstract class Source {
         }
 
         @Override
-        protected void reset() {
+        void reset() {
         }
 
         @Override
@@ -1136,14 +1136,14 @@ public abstract class Source {
         }
 
         @Override
-        protected void checkRange(int charIndex, int rangeLength) {
+        void checkRange(int charIndex, int rangeLength) {
             if (!(charIndex >= 0 && rangeLength >= 0 && charIndex + rangeLength <= length)) {
                 throw new IllegalArgumentException("text positions out of range");
             }
         }
 
         @Override
-        protected TextMap createTextMap() {
+        TextMap createTextMap() {
             return TextMap.fromBytes(bytes, byteIndex, length, decoder);
         }
     }
