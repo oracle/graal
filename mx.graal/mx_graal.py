@@ -2343,6 +2343,47 @@ def mx_init(suite):
 
     mx.update_commands(suite, commands)
 
+class JVMCIArchiveParticipant:
+    def __init__(self, dist):
+        self.dist = dist
+        self.jvmciServices = {}
+
+    def __opened__(self, arc, srcArc, services):
+        self.services = services
+        self.arc = arc
+        self.expectedOptionsProviders = set()
+
+    def __add__(self, arcname, contents):
+        if arcname.startswith('META-INF/jvmci.services/'):
+            service = arcname[len('META-INF/jvmci.services/'):]
+            self.jvmciServices.setdefault(service, []).extend([provider for provider in contents.split('\n')])
+            return True
+        if arcname.startswith('META-INF/jvmci.providers/'):
+            provider = arcname[len('META-INF/jvmci.providers/'):]
+            for service in contents.split('\n'):
+                self.jvmciServices.setdefault(service, []).append(provider)
+            return True
+        elif arcname.startswith('META-INF/jvmci.options/'):
+            # Need to create service files for the providers of the
+            # com.oracle.jvmci.options.Options service created by
+            # com.oracle.jvmci.options.processor.OptionProcessor.
+            optionsOwner = arcname[len('META-INF/jvmci.options/'):]
+            provider = optionsOwner + '_Options'
+            self.expectedOptionsProviders.add(provider.replace('.', '/') + '.class')
+            #assert exists(providerClassfile), 'missing generated Options provider ' + providerClassfile
+            self.services.setdefault('com.oracle.jvmci.options.Options', []).append(provider)
+        return False
+
+    def __addsrc__(self, arcname, contents):
+        return False
+
+    def __closing__(self):
+        self.expectedOptionsProviders -= set(self.arc.zf.namelist())
+        assert len(self.expectedOptionsProviders) == 0, 'missing generated Options providers:\n  ' + '\n  '.join(self.expectedOptionsProviders)
+        for service, providers in self.jvmciServices.iteritems():
+            arcname = 'META-INF/jvmci.services/' + service
+            self.arc.zf.writestr(arcname, '\n'.join(providers))
+
 def mx_post_parse_cmd_line(opts):  #
     # TODO _minVersion check could probably be part of a Suite in mx?
     def _versionCheck(version):
@@ -2377,4 +2418,8 @@ def mx_post_parse_cmd_line(opts):  #
                 if not jdkDist.partOfHotSpot:
                     _installDistInJdks(jdkDeployable)
             return _install
-        mx.distribution(jdkDist.name).add_update_listener(_close(jdkDist))
+        dist = mx.distribution(jdkDist.name)
+        dist.add_update_listener(_close(jdkDist))
+        if jdkDist.usesJVMCIClassLoader:
+            dist.set_archiveparticipant(JVMCIArchiveParticipant(dist))
+
