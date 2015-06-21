@@ -1340,7 +1340,7 @@ def _basic_gate_body(args, tasks):
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
         with Task('CTW:hosted-product', tasks) as t:
-            if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-CompileTheWorldVerbose'])
+            if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose'])
 
     # Build the other VM flavors
     with Task('BuildHotSpotGraalOthers: fastdebug,product', tasks) as t:
