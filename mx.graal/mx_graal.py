@@ -2370,7 +2370,6 @@ class JVMCIArchiveParticipant:
             optionsOwner = arcname[len('META-INF/jvmci.options/'):]
             provider = optionsOwner + '_Options'
             self.expectedOptionsProviders.add(provider.replace('.', '/') + '.class')
-            #assert exists(providerClassfile), 'missing generated Options provider ' + providerClassfile
             self.services.setdefault('com.oracle.jvmci.options.Options', []).append(provider)
         return False
 
@@ -2382,7 +2381,8 @@ class JVMCIArchiveParticipant:
         assert len(self.expectedOptionsProviders) == 0, 'missing generated Options providers:\n  ' + '\n  '.join(self.expectedOptionsProviders)
         for service, providers in self.jvmciServices.iteritems():
             arcname = 'META-INF/jvmci.services/' + service
-            self.arc.zf.writestr(arcname, '\n'.join(providers))
+            # Convert providers to a set before printing to remove duplicates
+            self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)))
 
 def mx_post_parse_cmd_line(opts):  #
     # TODO _minVersion check could probably be part of a Suite in mx?
