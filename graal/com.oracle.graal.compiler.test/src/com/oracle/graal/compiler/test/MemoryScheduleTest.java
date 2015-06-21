@@ -23,6 +23,9 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
+import static org.hamcrest.core.IsInstanceOf.*;
+import static org.junit.Assert.*;
 
 import java.util.*;
 
@@ -32,7 +35,7 @@ import com.oracle.graal.api.directives.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
@@ -41,12 +44,12 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import com.oracle.graal.phases.schedule.SchedulePhase.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
+import com.oracle.jvmci.debug.Debug.*;
 import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.OptionValue.OverrideScope;
+import com.oracle.jvmci.options.OptionValue.*;
 
 /**
  * In these test the FrameStates are explicitly cleared out, so that the scheduling of
@@ -339,6 +342,29 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertDeepEquals(10, schedule.getCFG().getBlocks().size());
         assertReadWithinStartBlock(schedule, true);
         assertReadWithinAllReturnBlocks(schedule, false);
+    }
+
+    /**
+     * Here the read should float after the loop.
+     */
+    public static int testLoop9Snippet(int a, int b) {
+        container.a = b;
+        for (int i = 0; i < a; i++) {
+            container.a = i;
+        }
+        GraalDirectives.controlFlowAnchor();
+        return container.a;
+    }
+
+    @Test
+    public void testLoop9() {
+        SchedulePhase schedule = getFinalSchedule("testLoop9Snippet", TestMode.WITHOUT_FRAMESTATES);
+        StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
+        assertThat(graph.getNodes(ReturnNode.TYPE), hasCount(1));
+        ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
+        assertThat(ret.result(), instanceOf(FloatingReadNode.class));
+        Block readBlock = schedule.getNodeToBlockMap().get(ret.result());
+        Assert.assertEquals(0, readBlock.getLoopDepth());
     }
 
     /**

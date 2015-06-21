@@ -1069,6 +1069,7 @@ suite = {
         "com.oracle.graal.java",
         "com.oracle.graal.test",
         "com.oracle.graal.runtime",
+        "com.oracle.graal.graph.test",
         "JAVA_ALLOCATION_INSTRUMENTER",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -1124,7 +1125,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.truffle",
-        "com.oracle.graal.graph.test",
         "com.oracle.graal.compiler.test",
         "TRUFFLE_SL",
       ],

@@ -243,12 +243,9 @@ public final class SchedulePhase extends Phase {
         Block lastBlock = earliestBlock;
         for (int i = dominatorChain.size() - 1; i >= 0; --i) {
             Block currentBlock = dominatorChain.get(i);
-            if (lastBlock.getLoop() != currentBlock.getLoop()) {
-                // We are crossing a loop boundary. Both loops must not kill the location for the
+            if (currentBlock.getLoopDepth() > lastBlock.getLoopDepth()) {
+                // We are entering a loop boundary. The new loops must not kill the location for the
                 // crossing to be safe.
-                if (lastBlock.getLoop() != null && ((HIRLoop) lastBlock.getLoop()).canKill(location)) {
-                    break;
-                }
                 if (currentBlock.getLoop() != null && ((HIRLoop) currentBlock.getLoop()).canKill(location)) {
                     break;
                 }
