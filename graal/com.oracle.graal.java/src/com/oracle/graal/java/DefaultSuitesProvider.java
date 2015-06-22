@@ -74,7 +74,7 @@ public class DefaultSuitesProvider implements SuitesProvider {
         return defaultGraphBuilderSuite;
     }
 
-    public PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
+    protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
         suite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
         return suite;
