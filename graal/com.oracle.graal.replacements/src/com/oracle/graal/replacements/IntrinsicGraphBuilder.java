@@ -133,7 +133,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         returnValue = value;
     }
 
-    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
         throw JVMCIError.shouldNotReachHere();
     }
 

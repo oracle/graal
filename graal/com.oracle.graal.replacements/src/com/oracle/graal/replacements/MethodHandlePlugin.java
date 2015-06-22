@@ -61,7 +61,12 @@ public class MethodHandlePlugin implements NodePlugin {
                 for (int i = 0; i < argumentsList.size(); ++i) {
                     argumentsList.initialize(i, b.recursiveAppend(argumentsList.get(i)));
                 }
-                b.handleReplacedInvoke(invoke.getInvokeKind(), callTarget.targetMethod(), argumentsList.toArray(new ValueNode[argumentsList.size()]));
+
+                // If a MemberName suffix argument is dropped, the replaced call cannot
+                // deoptimized since the necessary frame state cannot be reconstructed.
+                // As such, it needs to recursively inline everything.
+                boolean inlineEverything = args.length != argumentsList.size();
+                b.handleReplacedInvoke(invoke.getInvokeKind(), callTarget.targetMethod(), argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
             }
             return true;
         }

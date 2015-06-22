@@ -1244,8 +1244,16 @@ public class BytecodeParser implements GraphBuilderContext {
         return currentInvokeReturnType;
     }
 
-    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
-        appendInvoke(invokeKind, targetMethod, args);
+    private boolean forceInliningEverything;
+
+    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+        boolean previous = forceInliningEverything;
+        forceInliningEverything = previous || inlineEverything;
+        try {
+            appendInvoke(invokeKind, targetMethod, args);
+        } finally {
+            forceInliningEverything = previous;
+        }
     }
 
     private void appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
@@ -1418,10 +1426,15 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
-        boolean canBeInlined = parsingIntrinsic() || targetMethod.canBeInlined();
+        boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
             return false;
         }
+
+        if (forceInliningEverything) {
+            return inline(targetMethod, targetMethod, false, args);
+        }
+
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args, returnType);
             if (inlineInfo != null) {

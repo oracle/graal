@@ -120,8 +120,10 @@ public interface GraphBuilderContext {
      * @param invokeKind the kind of the replacement invocation
      * @param targetMethod the target of the replacement invocation
      * @param args the arguments to the replacement invocation
+     * @param forceInlineEverything specifies if all invocations encountered in the scope of
+     *            handling the replaced invoke are to be force inlined
      */
-    void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args);
+    void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
 
     /**
      * Intrinsifies an invocation of a given method by inlining the bytecodes of a given
