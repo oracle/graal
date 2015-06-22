@@ -27,12 +27,15 @@ package com.oracle.truffle.api.dsl.internal;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 /** Contains utility classes shared across generated DSLNode implementations. */
 public class DSLShare {
 
     public static boolean isExcluded(Node currentNode, DSLMetadata otherMetadata) {
+        CompilerAsserts.neverPartOfCompilation();
+
         assert otherMetadata.getExcludedBy().length > 0 : "At least one exclude must be defined for isIncluded.";
         Node cur = findRoot(currentNode);
         while (cur != null) {
@@ -52,6 +55,8 @@ public class DSLShare {
     }
 
     public static <T extends Node & DSLNode> T rewrite(final Node thisNode, final T newNode, final String message) {
+        CompilerAsserts.neverPartOfCompilation();
+
         return thisNode.atomic(new Callable<T>() {
             public T call() {
                 assert newNode != null;
@@ -72,6 +77,8 @@ public class DSLShare {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> T findRoot(T node) {
+        CompilerAsserts.neverPartOfCompilation();
+
         Node prev = node;
         Node cur;
         do {
@@ -92,6 +99,8 @@ public class DSLShare {
     }
 
     public static <T extends Node & DSLNode> T rewriteUninitialized(final Node uninitialized, final T newNode) {
+        CompilerAsserts.neverPartOfCompilation();
+
         return uninitialized.atomic(new Callable<T>() {
             public T call() {
                 Node prev = getPrevious(uninitialized);
@@ -108,6 +117,8 @@ public class DSLShare {
 
     public static <T extends Node & DSLNode> T rewriteToPolymorphic(final Node oldNode, final DSLNode uninitializedDSL, final T polymorphic, final DSLNode currentCopy, final DSLNode newNodeDSL,
                     final String message) {
+        CompilerAsserts.neverPartOfCompilation();
+
         return oldNode.atomic(new Callable<T>() {
             public T call() {
                 assert getNext(oldNode) == null;

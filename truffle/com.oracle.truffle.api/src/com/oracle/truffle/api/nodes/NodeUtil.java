@@ -131,6 +131,7 @@ public final class NodeUtil {
     }
 
     static Node deepCopyImpl(Node orig) {
+        CompilerAsserts.neverPartOfCompilation();
         final Node clone = orig.copy();
         NodeClass nodeClass = clone.getNodeClass();
 
@@ -168,6 +169,7 @@ public final class NodeUtil {
     }
 
     public static List<Node> findNodeChildren(Node node) {
+        CompilerAsserts.neverPartOfCompilation();
         List<Node> nodes = new ArrayList<>();
         NodeClass nodeClass = node.getNodeClass();
 
@@ -197,6 +199,7 @@ public final class NodeUtil {
     }
 
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
+        CompilerAsserts.neverPartOfCompilation();
         NodeClass nodeClass = parent.getNodeClass();
 
         for (NodeFieldAccessor nodeField : nodeClass.getChildFields()) {
@@ -301,6 +304,7 @@ public final class NodeUtil {
      * @return {@code true} if all children were visited, {@code false} otherwise
      */
     public static boolean forEachChild(Node parent, NodeVisitor visitor) {
+        CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(visitor);
         NodeClass parentNodeClass = parent.getNodeClass();
 

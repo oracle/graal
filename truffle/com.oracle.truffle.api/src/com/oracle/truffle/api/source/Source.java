@@ -29,6 +29,7 @@ import java.lang.ref.*;
 import java.net.*;
 import java.util.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.instrument.*;
 
 /**
@@ -216,6 +217,7 @@ public abstract class Source {
      * @throws IOException if the file cannot be found
      */
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
+        CompilerAsserts.neverPartOfCompilation();
 
         final WeakReference<Source> nameRef = nameToSource.get(fileName);
         Source source = nameRef == null ? null : nameRef.get();
@@ -242,6 +244,8 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      */
     public static Source fromText(CharSequence chars, String description) {
+        CompilerAsserts.neverPartOfCompilation();
+
         assert chars != null;
         final LiteralSource source = new LiteralSource(description, chars.toString());
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
@@ -256,6 +260,8 @@ public abstract class Source {
      * @return a newly created, non-indexed, initially empty, appendable source representation
      */
     public static Source fromAppendableText(String description) {
+        CompilerAsserts.neverPartOfCompilation();
+
         final Source source = new AppendableLiteralSource(description);
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
         return source;
@@ -271,6 +277,8 @@ public abstract class Source {
      * @return a newly created, source representation
      */
     public static Source fromNamedText(CharSequence chars, String name) {
+        CompilerAsserts.neverPartOfCompilation();
+
         final Source source = new LiteralSource(name, chars.toString());
         nameToSource.put(name, new WeakReference<>(source));
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
@@ -287,6 +295,8 @@ public abstract class Source {
      * @return a newly created, indexed, initially empty, appendable source representation
      */
     public static Source fromNamedAppendableText(String name) {
+        CompilerAsserts.neverPartOfCompilation();
+
         final Source source = new AppendableLiteralSource(name);
         nameToSource.put(name, new WeakReference<>(source));
         notifyNewSource(source).tagAs(Tags.FROM_LITERAL);
@@ -304,6 +314,8 @@ public abstract class Source {
      * @throws IllegalArgumentException if the specified sub-range is not contained in the base
      */
     public static Source subSource(Source base, int baseCharIndex, int length) {
+        CompilerAsserts.neverPartOfCompilation();
+
         final SubSource subSource = SubSource.create(base, baseCharIndex, length);
         return subSource;
     }
@@ -318,6 +330,8 @@ public abstract class Source {
      * @throws IllegalArgumentException if the index is out of range
      */
     public static Source subSource(Source base, int baseCharIndex) {
+        CompilerAsserts.neverPartOfCompilation();
+
         return subSource(base, baseCharIndex, base.getLength() - baseCharIndex);
     }
 
@@ -330,6 +344,8 @@ public abstract class Source {
      * @throws IOException if reading fails
      */
     public static Source fromURL(URL url, String description) throws IOException {
+        CompilerAsserts.neverPartOfCompilation();
+
         final URLSource source = URLSource.get(url, description);
         notifyNewSource(source).tagAs(Tags.FROM_URL);
         return source;
@@ -344,6 +360,8 @@ public abstract class Source {
      * @throws IOException if reading fails
      */
     public static Source fromReader(Reader reader, String description) throws IOException {
+        CompilerAsserts.neverPartOfCompilation();
+
         final LiteralSource source = new LiteralSource(description, read(reader));
         notifyNewSource(source).tagAs(Tags.FROM_READER);
         return source;
@@ -377,6 +395,8 @@ public abstract class Source {
      * @return a newly created, non-indexed source representation
      */
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, BytesDecoder decoder) {
+        CompilerAsserts.neverPartOfCompilation();
+
         final BytesSource source = new BytesSource(description, bytes, byteIndex, length, decoder);
         notifyNewSource(source).tagAs(Tags.FROM_BYTES);
         return source;

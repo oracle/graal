@@ -363,6 +363,8 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @return the new copy
      */
     public Node copy() {
+        CompilerAsserts.neverPartOfCompilation();
+
         try {
             return (Node) super.clone();
         } catch (CloneNotSupportedException e) {

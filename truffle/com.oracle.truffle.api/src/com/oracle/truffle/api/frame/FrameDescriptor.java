@@ -45,6 +45,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public FrameDescriptor(Object defaultValue) {
+        CompilerAsserts.neverPartOfCompilation();
         this.defaultValue = defaultValue;
         slots = new ArrayList<>();
         identifierToSlotMap = new HashMap<>();

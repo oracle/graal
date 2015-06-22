@@ -39,7 +39,6 @@ public class CompilerAsserts {
      * directive.
      */
     public static void neverPartOfCompilation() {
-        neverPartOfCompilation("");
     }
 
     /**
