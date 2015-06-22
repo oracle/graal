@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.internal.*;
 import com.oracle.truffle.sl.*;
@@ -69,6 +70,7 @@ public abstract class SLTypes {
      * {@link BigInteger} arithmetic for values that fit into a 64-bit primitive value.
      */
     @ImplicitCast
+    @TruffleBoundary
     public static BigInteger castBigInteger(long value) {
         return BigInteger.valueOf(value);
     }

@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import java.math.*;
 
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -54,6 +55,7 @@ public abstract class SLDivNode extends SLBinaryNode {
     }
 
     @Specialization
+    @TruffleBoundary
     protected BigInteger div(BigInteger left, BigInteger right) {
         return left.divide(right);
     }

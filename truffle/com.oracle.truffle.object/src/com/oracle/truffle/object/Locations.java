@@ -268,6 +268,7 @@ public abstract class Locations {
             } else if (type == Object.class) {
                 return true;
             } else {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException();
             }
         }

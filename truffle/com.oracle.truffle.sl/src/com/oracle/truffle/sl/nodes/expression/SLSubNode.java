@@ -25,6 +25,7 @@ package com.oracle.truffle.sl.nodes.expression;
 import java.math.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -46,6 +47,7 @@ public abstract class SLSubNode extends SLBinaryNode {
     }
 
     @Specialization
+    @TruffleBoundary
     protected BigInteger sub(BigInteger left, BigInteger right) {
         return left.subtract(right);
     }

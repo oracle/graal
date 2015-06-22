@@ -24,6 +24,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import java.math.*;
 
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -49,6 +50,7 @@ public abstract class SLLessOrEqualNode extends SLBinaryNode {
     }
 
     @Specialization
+    @TruffleBoundary
     protected boolean lessOrEqual(BigInteger left, BigInteger right) {
         return left.compareTo(right) <= 0;
     }

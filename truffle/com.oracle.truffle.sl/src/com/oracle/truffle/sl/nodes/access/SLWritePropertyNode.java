@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -64,6 +65,7 @@ public final class SLWritePropertyNode extends SLExpressionNode {
         if (receiverTypeCondition.profile(SLContext.isSLObject(object))) {
             cacheNode.executeObject(SLContext.castSLObject(object), value);
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new SLException("unexpected receiver type");
         }
         return value;
