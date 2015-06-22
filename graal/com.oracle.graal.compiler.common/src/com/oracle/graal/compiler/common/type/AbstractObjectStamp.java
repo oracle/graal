@@ -225,12 +225,12 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
             joinExactType = false;
         }
         if (joinExactType && joinType == null) {
-            return StampFactory.empty(Kind.Object);
+            return empty();
         }
         if (joinAlwaysNull && joinNonNull) {
-            return StampFactory.empty(Kind.Object);
+            return empty();
         } else if (joinExactType && !isConcreteType(joinType)) {
-            return StampFactory.empty(Kind.Object);
+            return empty();
         }
         if (Objects.equals(joinType, type) && joinExactType == exactType && joinNonNull == nonNull() && joinAlwaysNull == alwaysNull()) {
             return this;
