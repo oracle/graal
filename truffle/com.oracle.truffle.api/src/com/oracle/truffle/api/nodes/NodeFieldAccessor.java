@@ -91,7 +91,10 @@ public abstract class NodeFieldAccessor {
         return name;
     }
 
-    /* TODO: This method should be removed from here. It should be an abstract method in AbstractUnsafeNodeFieldAccessor, and implemented in UnsafeNodeField. */
+    /*
+     * TODO: This method should be removed from here. It should be an abstract method in
+     * AbstractUnsafeNodeFieldAccessor, and implemented in UnsafeNodeField.
+     */
     public long getOffset() {
         return offset;
     }
