@@ -44,8 +44,7 @@ public abstract class SPARCAssembler extends Assembler {
     /**
      * Constructs an assembler for the SPARC architecture.
      *
-     * @param registerConfig
-     *            the register configuration used to bind {@link Register#Frame} and
+     * @param registerConfig the register configuration used to bind {@link Register#Frame} and
      *            {@link Register#CallerFrame} to physical registers. This value can be null if this
      *            assembler instance will not be used to assemble instructions using these logical
      *            registers.
