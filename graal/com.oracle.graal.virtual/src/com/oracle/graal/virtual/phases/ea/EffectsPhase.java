@@ -28,7 +28,6 @@ import static jdk.internal.jvmci.debug.Debug.*;
 import java.util.*;
 
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.*;

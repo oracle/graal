@@ -32,7 +32,7 @@ import static jdk.internal.jvmci.sparc.SPARC.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.sparc.*;
-import jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.*;
 
@@ -44,7 +44,8 @@ public abstract class SPARCAssembler extends Assembler {
     /**
      * Constructs an assembler for the SPARC architecture.
      *
-     * @param registerConfig the register configuration used to bind {@link Register#Frame} and
+     * @param registerConfig
+     *            the register configuration used to bind {@link Register#Frame} and
      *            {@link Register#CallerFrame} to physical registers. This value can be null if this
      *            assembler instance will not be used to assemble instructions using these logical
      *            registers.

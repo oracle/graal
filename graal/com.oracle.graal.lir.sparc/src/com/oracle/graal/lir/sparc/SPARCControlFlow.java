@@ -36,7 +36,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.Assembler.LabelHint;

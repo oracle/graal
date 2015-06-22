@@ -28,7 +28,7 @@ import static jdk.internal.jvmci.hotspot.CompileTheWorld.Options.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.debug.internal.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.CompileTheWorld.*;
+import jdk.internal.jvmci.hotspot.CompileTheWorld.Config;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
