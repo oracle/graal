@@ -735,7 +735,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
         public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
         public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
-        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6, OpAssertion.No32BitAssertion);
+        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6);
         public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.No32BitAssertion);
         // @formatter:on
 
