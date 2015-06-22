@@ -179,6 +179,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             } else if (t instanceof Error) {
                 throw (Error) t;
             } else {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException(t);
             }
         }

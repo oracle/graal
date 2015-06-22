@@ -242,14 +242,18 @@ public class TruffleGraphBuilderPlugins {
                 }
             }
         });
+        r.register0("neverPartOfCompilation", new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new NeverPartOfCompilationNode("CompilerAsserts.neverPartOfCompilation()"));
+                return true;
+            }
+        });
         r.register1("neverPartOfCompilation", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 if (message.isConstant()) {
                     String messageString = message.asConstant().toValueString();
                     b.add(new NeverPartOfCompilationNode(messageString));
                     return true;
-                } else if (canDelayIntrinsification) {
-                    return false;
                 } else {
                     throw b.bailout("message for never part of compilation is non-constant");
                 }
