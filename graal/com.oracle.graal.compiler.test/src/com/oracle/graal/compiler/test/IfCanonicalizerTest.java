@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import jdk.internal.jvmci.debug.*;
 
 import org.junit.*;
 
@@ -33,7 +34,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant

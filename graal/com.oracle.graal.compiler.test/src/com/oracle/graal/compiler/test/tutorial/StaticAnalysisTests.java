@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.lang.reflect.*;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

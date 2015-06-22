@@ -27,11 +27,12 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.compiler.common.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph

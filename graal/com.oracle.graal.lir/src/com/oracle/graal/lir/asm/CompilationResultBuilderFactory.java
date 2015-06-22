@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.lir.asm;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.ForeignCallsProvider;
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.framemap.*;
 

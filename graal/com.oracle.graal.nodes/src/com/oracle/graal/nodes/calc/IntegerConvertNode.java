@@ -25,6 +25,8 @@ package com.oracle.graal.nodes.calc;
 import java.io.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
 import com.oracle.graal.graph.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.

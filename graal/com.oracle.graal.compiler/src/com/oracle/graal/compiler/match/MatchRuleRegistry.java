@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
+import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
 
 import java.util.*;
 import java.util.Map.Entry;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.service.*;
 
 public class MatchRuleRegistry {
 

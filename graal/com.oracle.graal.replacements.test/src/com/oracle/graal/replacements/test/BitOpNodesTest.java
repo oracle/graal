@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.test;
 
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.jvmci.meta.*;
 
 public class BitOpNodesTest extends GraalCompilerTest {
 

@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.replacements;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A {@link ParameterPlugin} that binds constant values to some parameters.

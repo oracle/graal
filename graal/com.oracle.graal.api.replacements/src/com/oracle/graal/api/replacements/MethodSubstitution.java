@@ -24,7 +24,7 @@ package com.oracle.graal.api.replacements;
 
 import java.lang.annotation.*;
 
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Denotes a substitute method. A substitute method can call the original/substituted method by

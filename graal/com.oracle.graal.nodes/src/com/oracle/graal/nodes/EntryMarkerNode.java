@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * This node will be inserted at point specified by {@link StructuredGraph#getEntryBCI()}, usually

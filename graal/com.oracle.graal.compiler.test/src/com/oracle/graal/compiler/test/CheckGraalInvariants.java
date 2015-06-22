@@ -22,13 +22,20 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.jvmci.debug.DelegatingDebugConfig.Feature.*;
+import static jdk.internal.jvmci.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.zip.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.Register.*;
+import jdk.internal.jvmci.compiler.*;
+import jdk.internal.jvmci.compiler.CompilerThreadFactory.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -48,12 +55,6 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.Register.RegisterCategory;
-import com.oracle.jvmci.compiler.*;
-import com.oracle.jvmci.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Checks that all classes in *graal*.jar and *jvmci*.jar entries on the boot class path comply with
@@ -65,7 +66,7 @@ public class CheckGraalInvariants extends GraalTest {
     private static boolean shouldVerifyEquals(ResolvedJavaMethod m) {
         if (m.getName().equals("identityEquals")) {
             ResolvedJavaType c = m.getDeclaringClass();
-            if (c.getName().equals("Lcom/oracle/jvmci/meta/AbstractValue;") || c.getName().equals("com/oracle/jvmci/meta/Value")) {
+            if (c.getName().equals("Ljdk/internal/jvmci/meta/AbstractValue;") || c.getName().equals("jdk/internal/jvmci/meta/Value")) {
                 return false;
             }
         }

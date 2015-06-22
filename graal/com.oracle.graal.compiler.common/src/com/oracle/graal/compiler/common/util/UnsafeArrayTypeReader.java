@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.compiler.common.util;
 
+import jdk.internal.jvmci.common.*;
 import sun.misc.*;
-
-import com.oracle.jvmci.common.*;
 
 /**
  * Provides low-level read access from a byte[] array for signed and unsigned values of size 1, 2,

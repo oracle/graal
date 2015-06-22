@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common;
 
-import com.oracle.jvmci.options.*;
+import jdk.internal.jvmci.options.*;
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.

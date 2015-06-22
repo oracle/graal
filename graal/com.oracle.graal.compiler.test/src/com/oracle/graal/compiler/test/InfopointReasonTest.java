@@ -22,20 +22,17 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.code.InfopointReason;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.code.CompilationResult.Call;
-import com.oracle.jvmci.code.CompilationResult.Infopoint;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;

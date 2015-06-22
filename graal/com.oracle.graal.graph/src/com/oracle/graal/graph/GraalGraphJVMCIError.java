@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.graph;
 
-import com.oracle.jvmci.common.*;
+import jdk.internal.jvmci.common.*;
 
 /**
  * This error is the graph/node aware extension of JVMCIError.

@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.jvmci.code.TargetDescription;
 import java.util.*;
 import java.util.regex.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.options.*;
 
 /**
  * Base class for all {@link LIR low-level} phases. Subclasses should be stateless. There will be

@@ -22,21 +22,18 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaConstant;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.CompareBranchOp;
-import com.oracle.jvmci.common.*;
 
 public enum SPARCCompare {
     ICMP,

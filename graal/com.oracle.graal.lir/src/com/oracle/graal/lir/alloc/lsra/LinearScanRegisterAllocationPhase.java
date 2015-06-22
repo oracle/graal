@@ -24,13 +24,14 @@ package com.oracle.graal.lir.alloc.lsra;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
 
 final class LinearScanRegisterAllocationPhase extends AllocationPhase {
 

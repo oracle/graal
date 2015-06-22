@@ -24,12 +24,13 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * {@code PhiNode}s represent the merging of edges at a control flow merges (

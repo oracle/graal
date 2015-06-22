@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.lir.constopt;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LIRKind;
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
@@ -41,9 +43,6 @@ import com.oracle.graal.lir.constopt.ConstantTree.Flags;
 import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.options.*;
 
 /**
  * This optimization tries to improve the handling of constants by replacing a single definition of

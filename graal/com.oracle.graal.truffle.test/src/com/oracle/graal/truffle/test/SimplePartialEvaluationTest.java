@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.test;
 
-import com.oracle.jvmci.code.*;
+import jdk.internal.jvmci.code.*;
 
 import org.junit.*;
 

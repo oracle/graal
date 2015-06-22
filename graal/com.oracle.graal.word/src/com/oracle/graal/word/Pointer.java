@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.word;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Lowest-level memory access of native C memory. These methods access the raw memory without any

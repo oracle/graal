@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.test;
 
-import com.oracle.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;

@@ -24,6 +24,8 @@ package com.oracle.graal.replacements.nodes.arithmetic;
 
 import java.util.function.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 @NodeInfo(shortName = "|*H|")
 public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticLIRLowerable {

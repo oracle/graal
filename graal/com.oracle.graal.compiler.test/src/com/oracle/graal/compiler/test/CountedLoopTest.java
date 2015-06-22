@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.directives.*;
@@ -34,7 +36,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 public class CountedLoopTest extends GraalCompilerTest {
 

@@ -27,6 +27,9 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import java.lang.reflect.*;
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -43,8 +46,6 @@ import com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A utility for manually creating a graph. This will be expanded as necessary to support all

@@ -24,6 +24,8 @@ package com.oracle.graal.phases.common;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
-import com.oracle.jvmci.common.*;
 
 /**
  * This phase transfers {@link FrameState} nodes from {@link StateSplit} nodes to

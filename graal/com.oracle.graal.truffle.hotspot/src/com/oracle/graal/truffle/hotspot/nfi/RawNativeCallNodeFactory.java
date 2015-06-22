@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.*;
 
 /**

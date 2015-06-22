@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.jvmci.meta.*;
 
 public abstract class SPARCAddressValue extends CompositeValue {
 

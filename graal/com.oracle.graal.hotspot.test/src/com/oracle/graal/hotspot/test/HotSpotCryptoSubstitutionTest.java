@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.io.*;
@@ -32,6 +29,10 @@ import java.lang.reflect.*;
 import java.security.*;
 
 import javax.crypto.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -42,7 +43,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Tests the intrinsification of certain crypto methods.

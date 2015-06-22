@@ -24,9 +24,10 @@ package com.oracle.graal.truffle.debug;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.jvmci.code.*;
 
 public abstract class AbstractDebugCompilationListener implements GraalTruffleCompilationListener {
 

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
 
 public class AMD64HotSpotBytecodeLIRBuilder extends BytecodeLIRBuilder {
 

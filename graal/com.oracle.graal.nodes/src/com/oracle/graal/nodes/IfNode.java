@@ -24,6 +24,11 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaTypeProfile.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -35,10 +40,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.meta.JavaTypeProfile.ProfiledType;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome

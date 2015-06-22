@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import com.oracle.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import sun.misc.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.jvmci.common.*;
 
 public class UnsafeEATest extends EATestBase {
 

@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.compiler.common.calc;
 
-import com.oracle.jvmci.code.UnsignedMath;
-import com.oracle.jvmci.meta.PrimitiveConstant;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.Constant;
-import com.oracle.jvmci.common.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Condition codes used in conditionals.

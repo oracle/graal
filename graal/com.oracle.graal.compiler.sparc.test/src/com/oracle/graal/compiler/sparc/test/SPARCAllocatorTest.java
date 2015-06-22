@@ -24,11 +24,11 @@ package com.oracle.graal.compiler.sparc.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assume.*;
+import jdk.internal.jvmci.sparc.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.backend.*;
-import com.oracle.jvmci.sparc.*;
 
 public class SPARCAllocatorTest extends AllocatorTest {
 

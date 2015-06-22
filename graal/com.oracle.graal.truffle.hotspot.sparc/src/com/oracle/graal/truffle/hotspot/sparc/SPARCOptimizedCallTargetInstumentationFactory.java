@@ -26,9 +26,13 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
-import static com.oracle.jvmci.meta.Kind.*;
-import static com.oracle.jvmci.sparc.SPARC.CPUFeature.*;
+import static jdk.internal.jvmci.code.CallingConvention.Type.*;
+import static jdk.internal.jvmci.meta.Kind.*;
+import static jdk.internal.jvmci.sparc.SPARC.CPUFeature.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
@@ -38,10 +42,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedCallTargetInstrumentationFactory {

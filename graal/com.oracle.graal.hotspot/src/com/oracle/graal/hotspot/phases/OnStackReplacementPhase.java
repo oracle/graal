@@ -23,6 +23,10 @@
 package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.compiler.Compiler;
+import jdk.internal.jvmci.debug.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -33,10 +37,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.compiler.Compiler;
-import com.oracle.jvmci.debug.*;
 
 public class OnStackReplacementPhase extends Phase {
 

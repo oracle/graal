@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.truffle.nodes.frame;
 
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Kind;
 import java.util.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
@@ -40,7 +40,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
-import com.oracle.jvmci.common.*;
 import com.oracle.truffle.api.frame.*;
 
 /**

@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
-import static com.oracle.jvmci.hotspot.HotSpotMetaAccessProvider.*;
+import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -43,7 +44,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Stub implementing the fast path for TLAB refill during instance class allocation. This stub is

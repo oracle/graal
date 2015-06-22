@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
@@ -35,7 +36,6 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Snippets used for conversion operations on AMD64 where the AMD64 instruction used does not match

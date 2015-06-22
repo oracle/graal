@@ -27,12 +27,16 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.jvmci.common.UnsafeAccess.*;
-import static com.oracle.jvmci.sparc.SPARC.*;
+import static jdk.internal.jvmci.code.CallingConvention.Type.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
@@ -50,9 +54,6 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * HotSpot SPARC specific backend.

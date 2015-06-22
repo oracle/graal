@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
+import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
 import com.oracle.graal.compiler.match.MatchPattern.Result;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace

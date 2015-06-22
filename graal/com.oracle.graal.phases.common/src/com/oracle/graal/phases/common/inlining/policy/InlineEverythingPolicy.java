@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.policy;
 
-import com.oracle.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import com.oracle.graal.nodes.*;

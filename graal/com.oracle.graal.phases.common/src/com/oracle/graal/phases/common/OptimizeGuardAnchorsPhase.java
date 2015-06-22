@@ -24,13 +24,14 @@ package com.oracle.graal.phases.common;
 
 import java.util.*;
 
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.debug.*;
 
 public class OptimizeGuardAnchorsPhase extends Phase {
     private static final DebugMetric metricGuardsAnchorOptimized = Debug.metric("GuardsAnchorOptimized");

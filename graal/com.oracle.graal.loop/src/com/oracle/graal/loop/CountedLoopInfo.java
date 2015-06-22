@@ -23,14 +23,14 @@
 package com.oracle.graal.loop;
 
 import static com.oracle.graal.loop.MathUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 public class CountedLoopInfo {
 

@@ -22,36 +22,22 @@
  */
 package com.oracle.graal.lir.asm;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.DebugInfo;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.AbstractAddress;
-import com.oracle.jvmci.code.InfopointReason;
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.VMConstant;
-import com.oracle.jvmci.meta.Constant;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.InvokeTarget;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.jvmci.code.CompilationResult.ConstantReference;
-import com.oracle.jvmci.code.CompilationResult.DataSectionReference;
-import com.oracle.jvmci.code.DataSection.Data;
-import com.oracle.jvmci.code.DataSection.DataBuilder;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.code.DataSection.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.options.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.

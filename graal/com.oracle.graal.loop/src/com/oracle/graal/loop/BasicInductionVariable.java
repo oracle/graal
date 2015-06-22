@@ -23,11 +23,11 @@
 package com.oracle.graal.loop;
 
 import static com.oracle.graal.loop.MathUtil.*;
+import jdk.internal.jvmci.common.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.jvmci.common.*;
 
 public class BasicInductionVariable extends InductionVariable {
 

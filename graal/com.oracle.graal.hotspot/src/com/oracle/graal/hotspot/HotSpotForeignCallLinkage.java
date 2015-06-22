@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.ForeignCallLinkage;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.InvokeTarget;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.stubs.*;
 

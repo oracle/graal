@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.truffle.api.nodes.*;
 

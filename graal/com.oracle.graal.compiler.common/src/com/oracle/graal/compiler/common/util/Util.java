@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.compiler.common.util;
 
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.BailoutException;
 import java.util.*;
 
-import com.oracle.jvmci.debug.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
 
 /**
  * The {@code Util} class contains a motley collection of utility methods used throughout the

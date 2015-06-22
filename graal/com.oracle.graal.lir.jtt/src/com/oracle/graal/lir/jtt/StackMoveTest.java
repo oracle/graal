@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 public class StackMoveTest extends LIRTest {
     private static class StackCopySpec extends LIRTestSpecification {

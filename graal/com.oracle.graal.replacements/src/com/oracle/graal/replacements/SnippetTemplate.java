@@ -24,9 +24,9 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
-import static com.oracle.jvmci.debug.Debug.*;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static java.util.FormattableFlags.*;
+import static jdk.internal.jvmci.debug.Debug.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -35,6 +35,12 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.*;
 import java.util.stream.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -60,11 +66,6 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding

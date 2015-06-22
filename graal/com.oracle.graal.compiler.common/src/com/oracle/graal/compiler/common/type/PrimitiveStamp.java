@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.jvmci.meta.MemoryAccessProvider;
-import com.oracle.jvmci.meta.Constant;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Type describing primitive values.

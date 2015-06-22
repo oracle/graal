@@ -201,12 +201,12 @@ define process_providers
     @# Since all projects are built together with one javac call we cannot determine
     @# which project contains HotSpotVMConfig.inline.hpp so we hardcode it.
     $(eval vmconfig := $(1)/hotspot/HotSpotVMConfig.inline.hpp)
-    $(eval vmconfigDest := $(HS_COMMON_SRC)/../jvmci/com.oracle.jvmci.hotspot/src_gen/hotspot)
+    $(eval vmconfigDest := $(HS_COMMON_SRC)/../jvmci/jdk.internal.jvmci.hotspot/src_gen/hotspot)
     $(QUIETLY) test ! -f $(vmconfig) || (mkdir -p $(vmconfigDest) && cp $(vmconfig) $(vmconfigDest))
 endef
 
 # Reads the files in jvmci.options/ created by OptionProcessor (the processor for the @Option annotation)
-# and appends to services/com.oracle.jvmci.options.Options entries for the providers
+# and appends to services/jdk.internal.jvmci.options.Options entries for the providers
 # also created by the same processor.
 # Arguments:
 #  1: directory with contents of the JAR file
@@ -214,7 +214,7 @@ define process_options
     $(eval options := $(1)/$(OPTIONS_INF))
     $(eval services := $(1)/META-INF/services)
     $(QUIETLY) test -d $(services) || mkdir -p $(services)
-    $(QUIETLY) test ! -d $(options) || (cd $(options) && for i in $$(ls); do echo $${i}_Options >> $(abspath $(services))/com.oracle.jvmci.options.Options; done)
+    $(QUIETLY) test ! -d $(options) || (cd $(options) && for i in $$(ls); do echo $${i}_Options >> $(abspath $(services))/jdk.internal.jvmci.options.Options; done)
 endef
 
 # Extracts META-INF/jvmci.services and META-INF/jvmci.options of a JAR file into a given directory

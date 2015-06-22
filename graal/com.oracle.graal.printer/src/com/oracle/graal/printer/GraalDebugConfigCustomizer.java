@@ -23,12 +23,12 @@
 package com.oracle.graal.printer;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {

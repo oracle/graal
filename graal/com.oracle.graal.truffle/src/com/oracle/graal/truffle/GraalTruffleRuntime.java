@@ -27,16 +27,17 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.stack.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.Scope;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.unsafe.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.stack.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;

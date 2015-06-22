@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.*;
 import static com.oracle.graal.graph.Graph.NodeEvent.*;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;

@@ -24,12 +24,13 @@ package com.oracle.graal.asm.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.jvmci.sparc.SPARC.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import java.util.function.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.asm.*;
-import com.oracle.jvmci.code.*;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 

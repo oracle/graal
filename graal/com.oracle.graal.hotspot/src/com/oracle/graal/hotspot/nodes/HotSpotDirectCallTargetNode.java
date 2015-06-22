@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;

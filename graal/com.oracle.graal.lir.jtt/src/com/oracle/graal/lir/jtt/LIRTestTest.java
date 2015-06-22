@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.lir.jtt;
 
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.meta.*;
 
 public class LIRTestTest extends LIRTest {
     private static final LIRTestSpecification stackCopy = new LIRTestSpecification() {

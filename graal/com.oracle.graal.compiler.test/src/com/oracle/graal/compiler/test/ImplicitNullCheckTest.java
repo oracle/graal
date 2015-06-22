@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.test;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.directives.*;
@@ -32,8 +35,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Tests that the hub access and the null check are folded.

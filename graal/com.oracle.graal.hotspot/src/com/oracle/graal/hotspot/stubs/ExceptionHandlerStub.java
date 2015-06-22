@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode.*;
 import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -38,7 +39,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Stub called by the {@linkplain HotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler

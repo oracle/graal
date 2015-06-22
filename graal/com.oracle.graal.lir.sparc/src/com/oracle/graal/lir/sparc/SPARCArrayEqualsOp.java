@@ -22,28 +22,27 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.sparc.SPARC.*;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.jvmci.common.UnsafeAccess.*;
-import static com.oracle.jvmci.sparc.SPARC.*;
-import static com.oracle.jvmci.sparc.SPARC.CPUFeature.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
+import static jdk.internal.jvmci.sparc.SPARC.CPUFeature.*;
 
 import java.lang.reflect.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
+
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;

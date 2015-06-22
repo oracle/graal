@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.word;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Low-level memory access for Objects. Similarly to the readXxx and writeXxx methods defined for

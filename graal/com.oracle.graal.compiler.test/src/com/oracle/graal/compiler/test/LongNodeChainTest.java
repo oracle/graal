@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;

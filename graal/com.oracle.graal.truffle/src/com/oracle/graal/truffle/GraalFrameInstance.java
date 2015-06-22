@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.code.stack.InspectedFrame;
 import java.lang.reflect.*;
 
-import com.oracle.jvmci.common.*;
+import jdk.internal.jvmci.code.stack.*;
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;

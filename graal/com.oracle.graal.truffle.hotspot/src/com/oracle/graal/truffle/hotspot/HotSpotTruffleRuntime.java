@@ -26,11 +26,21 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.graph.util.CollectionsAccess.*;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.compiler.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
@@ -50,15 +60,6 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.hotspot.nfi.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.compiler.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 import com.oracle.nfi.api.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;

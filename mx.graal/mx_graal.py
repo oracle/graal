@@ -523,7 +523,7 @@ def _makeHotspotGeneratedSourcesDir():
     Gets the directory containing all the HotSpot sources generated from
     JVMCI Java sources. This directory will be created if it doesn't yet exist.
     """
-    hsSrcGenDir = join(mx.project('com.oracle.jvmci.hotspot').source_gen_dir(), 'hotspot')
+    hsSrcGenDir = join(mx.project('jdk.internal.jvmci.hotspot').source_gen_dir(), 'hotspot')
     if not exists(hsSrcGenDir):
         os.makedirs(hsSrcGenDir)
     return hsSrcGenDir
@@ -883,7 +883,7 @@ def build(args, vm=None):
             mustBuild = False
             timestamp = os.path.getmtime(timestampFile)
             sources = []
-            for d in ['src', 'make', join('jvmci', 'com.oracle.jvmci.hotspot', 'src_gen', 'hotspot')]:
+            for d in ['src', 'make', join('jvmci', 'jdk.internal.jvmci.hotspot', 'src_gen', 'hotspot')]:
                 for root, dirnames, files in os.walk(join(_graal_home, d)):
                     # ignore <graal>/src/share/tools
                     if root == join(_graal_home, 'src', 'share'):
@@ -1068,7 +1068,7 @@ def _parseVmArgs(args, vm=None, cwd=None, vmbuild=None):
         jacocoagent = mx.library("JACOCOAGENT", True)
         # Exclude all compiler tests and snippets
 
-        includes = ['com.oracle.graal.*', 'com.oracle.jvmci.*']
+        includes = ['com.oracle.graal.*', 'jdk.internal.jvmci.*']
         baseExcludes = []
         for p in mx.projects():
             projsetting = getattr(p, 'jacoco', '')
@@ -2080,7 +2080,7 @@ def jacocoreport(args):
     elif len(args) > 1:
         mx.abort('jacocoreport takes only one argument : an output directory')
 
-    includes = ['com.oracle.graal', 'com.oracle.jvmci']
+    includes = ['com.oracle.graal', 'jdk.internal.jvmci']
     for p in mx.projects():
         projsetting = getattr(p, 'jacoco', '')
         if projsetting == 'include':
@@ -2365,12 +2365,12 @@ class JVMCIArchiveParticipant:
             return True
         elif arcname.startswith('META-INF/jvmci.options/'):
             # Need to create service files for the providers of the
-            # com.oracle.jvmci.options.Options service created by
-            # com.oracle.jvmci.options.processor.OptionProcessor.
+            # jdk.internal.jvmci.options.Options service created by
+            # jdk.internal.jvmci.options.processor.OptionProcessor.
             optionsOwner = arcname[len('META-INF/jvmci.options/'):]
             provider = optionsOwner + '_Options'
             self.expectedOptionsProviders.add(provider.replace('.', '/') + '.class')
-            self.services.setdefault('com.oracle.jvmci.options.Options', []).append(provider)
+            self.services.setdefault('jdk.internal.jvmci.options.Options', []).append(provider)
         return False
 
     def __addsrc__(self, arcname, contents):

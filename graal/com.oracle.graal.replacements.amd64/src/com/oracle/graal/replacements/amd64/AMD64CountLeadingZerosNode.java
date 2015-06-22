@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaConstant;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;

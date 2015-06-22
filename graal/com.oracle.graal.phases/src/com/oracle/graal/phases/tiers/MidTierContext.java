@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 

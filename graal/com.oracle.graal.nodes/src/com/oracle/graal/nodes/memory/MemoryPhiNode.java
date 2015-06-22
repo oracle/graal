@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes.memory;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Memory {@code PhiNode}s merge memory dependencies at control flow merges.

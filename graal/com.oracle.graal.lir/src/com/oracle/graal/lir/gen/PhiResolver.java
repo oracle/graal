@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.gen;
 
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.jvmci.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.meta.Value.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;

@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.jvmci.meta.Value;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.common.*;
 
 // @formatter:off
 public final class AMD64MathIntrinsicOp extends AMD64LIRInstruction {

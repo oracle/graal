@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Filters certain method substitutions based on whether there is underlying hardware support for

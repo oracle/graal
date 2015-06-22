@@ -22,18 +22,11 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.JavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Signature;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import com.oracle.jvmci.meta.Kind;
-
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static jdk.internal.jvmci.code.CallingConvention.Type.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
@@ -46,8 +39,6 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from

@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.lir.gen;
 
-import com.oracle.jvmci.meta.Value;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.*;
 
 public interface BenchmarkCounterFactory {

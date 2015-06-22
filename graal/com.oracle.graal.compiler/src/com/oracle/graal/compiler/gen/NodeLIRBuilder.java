@@ -22,23 +22,19 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.PlatformKind;
-import com.oracle.jvmci.meta.JavaConstant;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
 
 import java.util.*;
 import java.util.Map.Entry;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -59,9 +55,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

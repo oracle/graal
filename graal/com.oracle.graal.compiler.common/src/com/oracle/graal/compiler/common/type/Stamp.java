@@ -22,12 +22,8 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.MemoryAccessProvider;
-import com.oracle.jvmci.meta.Constant;
-import com.oracle.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.spi.*;
 
 /**

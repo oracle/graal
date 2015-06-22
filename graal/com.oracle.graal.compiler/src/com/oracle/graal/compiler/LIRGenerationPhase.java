@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.jvmci.code.TargetDescription;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;

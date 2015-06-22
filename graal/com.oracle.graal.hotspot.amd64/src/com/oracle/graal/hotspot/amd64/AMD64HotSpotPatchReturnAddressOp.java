@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.meta.AllocatableValue;
-
-import static com.oracle.jvmci.amd64.AMD64.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;

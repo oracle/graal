@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerInCallerNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;

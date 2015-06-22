@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
@@ -33,8 +36,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Tests {@link AbstractNewObjectNode#simplify(com.oracle.graal.graph.spi.SimplifierTool)}.

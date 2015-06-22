@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.code.InvalidInstalledCodeException;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static java.lang.reflect.Modifier.*;
 
 import org.junit.*;
@@ -33,7 +32,6 @@ import org.junit.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.jvmci.hotspot.*;
 
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 

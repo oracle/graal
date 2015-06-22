@@ -23,6 +23,9 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.DerivedOptionValue.*;
 
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
@@ -36,9 +39,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.DerivedOptionValue.OptionSupplier;
 
 /**
  * HotSpot implementation of {@link SuitesProvider}.

@@ -29,6 +29,11 @@ import static org.junit.Assert.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.OptionValue.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.directives.*;
@@ -46,10 +51,6 @@ import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.OptionValue.*;
 
 /**
  * In these test the FrameStates are explicitly cleared out, so that the scheduling of

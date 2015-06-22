@@ -24,9 +24,10 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Similar to {@link InstructionValueProcedure} but without an {@link LIRInstruction} parameter.

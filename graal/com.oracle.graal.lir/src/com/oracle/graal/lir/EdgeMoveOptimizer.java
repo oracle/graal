@@ -24,11 +24,12 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.jvmci.code.*;
 
 /**
  * This class optimizes moves, particularly those that result from eliminating SSA form.

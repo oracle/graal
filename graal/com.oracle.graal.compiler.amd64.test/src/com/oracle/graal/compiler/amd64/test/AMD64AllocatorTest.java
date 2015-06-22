@@ -24,11 +24,11 @@ package com.oracle.graal.compiler.amd64.test;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assume.*;
+import jdk.internal.jvmci.amd64.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.backend.*;
-import com.oracle.jvmci.amd64.*;
 
 public class AMD64AllocatorTest extends AllocatorTest {
 

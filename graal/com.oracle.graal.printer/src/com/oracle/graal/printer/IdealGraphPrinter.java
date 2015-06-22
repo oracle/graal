@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;

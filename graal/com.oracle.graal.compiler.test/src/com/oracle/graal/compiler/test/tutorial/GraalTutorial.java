@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import com.oracle.jvmci.code.InvalidInstalledCodeException;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.java.*;

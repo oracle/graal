@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import com.oracle.jvmci.code.Architecture;
-import com.oracle.jvmci.code.CallingConvention;
-import static com.oracle.jvmci.code.CodeUtil.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 public abstract class BackendTest extends GraalCompilerTest {
 

@@ -22,18 +22,15 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.meta.*;
-
 import java.lang.reflect.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.Scope;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
@@ -45,8 +42,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Sample code that shows how to invoke Graal from an application.

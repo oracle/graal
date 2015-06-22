@@ -24,8 +24,13 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.code.CallingConvention.Type.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.compiler.Compiler;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -41,11 +46,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.compiler.Compiler;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(Compiler.class)
 public class HotSpotGraalCompiler implements Compiler {

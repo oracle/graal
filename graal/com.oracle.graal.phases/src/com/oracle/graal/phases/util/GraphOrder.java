@@ -24,6 +24,8 @@ package com.oracle.graal.phases.util;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -34,7 +36,6 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
-import com.oracle.jvmci.common.*;
 
 public final class GraphOrder {
 

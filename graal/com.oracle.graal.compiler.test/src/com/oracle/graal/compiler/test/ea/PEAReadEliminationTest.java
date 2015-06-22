@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import jdk.internal.jvmci.common.*;
+
 import org.junit.*;
 
 import sun.misc.*;
@@ -33,7 +35,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
-import com.oracle.jvmci.common.*;
 
 public class PEAReadEliminationTest extends EarlyReadEliminationTest {
 

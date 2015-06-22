@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.phases.schedule;
 
-import com.oracle.jvmci.meta.LocationIdentity;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
@@ -34,7 +36,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.debug.*;
 
 import edu.umd.cs.findbugs.annotations.*;
 

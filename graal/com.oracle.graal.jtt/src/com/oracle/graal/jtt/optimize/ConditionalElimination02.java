@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.jtt.optimize;
 
-import com.oracle.jvmci.meta.DeoptimizationReason;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

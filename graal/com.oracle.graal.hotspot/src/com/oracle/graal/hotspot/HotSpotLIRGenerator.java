@@ -22,16 +22,15 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition

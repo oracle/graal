@@ -24,16 +24,24 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
-import static com.oracle.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.compiler.Compiler.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.Scope;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+
 import org.junit.*;
-import org.junit.internal.AssumptionViolatedException;
+import org.junit.internal.*;
 
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.replacements.*;
@@ -61,13 +69,6 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
 
 /**
  * Base class for Graal compiler unit tests.

@@ -23,6 +23,10 @@
 
 package com.oracle.graal.hotspot.amd64;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.*;
@@ -34,9 +38,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.jvmci.meta.*;
 
 public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
 

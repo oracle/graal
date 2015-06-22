@@ -22,17 +22,14 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.TargetDescription;
-
-import static com.oracle.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.amd64.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.amd64.*;
 
 final class AMD64UncommonTrapStub extends UncommonTrapStub {
 

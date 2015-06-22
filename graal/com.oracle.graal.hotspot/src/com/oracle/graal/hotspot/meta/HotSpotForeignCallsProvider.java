@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.Value;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * HotSpot extension of {@link ForeignCallsProvider}.

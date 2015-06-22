@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.asm.*;
 
 /**

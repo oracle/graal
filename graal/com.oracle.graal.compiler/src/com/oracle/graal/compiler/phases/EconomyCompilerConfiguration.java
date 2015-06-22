@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(CompilerConfiguration.class)
 public class EconomyCompilerConfiguration implements CompilerConfiguration {

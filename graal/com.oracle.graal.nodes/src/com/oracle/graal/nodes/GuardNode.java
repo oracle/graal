@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A guard is a node that deoptimizes based on a conditional expression. Guards are not attached to

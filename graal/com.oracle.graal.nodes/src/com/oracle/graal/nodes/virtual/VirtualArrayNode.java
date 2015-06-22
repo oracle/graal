@@ -24,13 +24,13 @@ package com.oracle.graal.nodes.virtual;
 
 import java.nio.*;
 
+import jdk.internal.jvmci.meta.*;
 import sun.misc.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 @NodeInfo(nameTemplate = "VirtualArray {p#componentType/s}[{p#length}]")
 public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthProvider {

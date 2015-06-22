@@ -25,9 +25,10 @@ package com.oracle.graal.nodes.spi;
 import java.lang.reflect.*;
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Interface for managing replacements.

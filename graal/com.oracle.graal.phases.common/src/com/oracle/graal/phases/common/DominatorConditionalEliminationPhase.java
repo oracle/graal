@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.TriState;
-import static com.oracle.jvmci.meta.DeoptimizationAction.*;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
 
 import java.util.*;
 import java.util.function.*;
+
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -42,7 +43,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.LoweringPhase.Frame;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.jvmci.debug.*;
 
 public class DominatorConditionalEliminationPhase extends Phase {
 

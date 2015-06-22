@@ -26,7 +26,10 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.jvmci.code.MemoryBarriers.*;
+import static jdk.internal.jvmci.code.MemoryBarriers.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -47,9 +50,6 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.jvmci.meta.*;
 
 public class WriteBarrierSnippets implements Snippets {
 

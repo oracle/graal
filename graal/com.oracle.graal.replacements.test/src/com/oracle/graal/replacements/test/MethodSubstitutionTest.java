@@ -24,6 +24,11 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
@@ -32,10 +37,6 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Tests if {@link MethodSubstitution}s are inlined correctly. Most test cases only assert that

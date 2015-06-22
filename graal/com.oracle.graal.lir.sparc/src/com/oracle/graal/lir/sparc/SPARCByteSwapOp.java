@@ -22,22 +22,17 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Value;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.common.*;
 
 @Opcode("BSWAP")
 public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {

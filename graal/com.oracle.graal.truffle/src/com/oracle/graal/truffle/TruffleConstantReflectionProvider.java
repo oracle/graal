@@ -22,17 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.MemoryAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.JavaField;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Constant;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.MethodHandleAccessProvider;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;

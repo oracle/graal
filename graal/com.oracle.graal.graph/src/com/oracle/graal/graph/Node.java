@@ -29,6 +29,8 @@ import java.lang.annotation.*;
 import java.util.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -38,8 +40,6 @@ import com.oracle.graal.graph.Graph.Options;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a

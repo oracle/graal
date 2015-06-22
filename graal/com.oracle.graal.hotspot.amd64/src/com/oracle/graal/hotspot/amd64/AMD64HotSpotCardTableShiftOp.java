@@ -22,16 +22,15 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.hotspot.*;
 
 public final class AMD64HotSpotCardTableShiftOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HotSpotCardTableShiftOp> TYPE = LIRInstructionClass.create(AMD64HotSpotCardTableShiftOp.class);

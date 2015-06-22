@@ -26,16 +26,17 @@ import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64MultiStackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
 
 public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase {
     public static class Options {

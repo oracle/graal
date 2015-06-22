@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.jvmci.code.MemoryBarriers.*;
+import static jdk.internal.jvmci.code.MemoryBarriers.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.directives.*;
@@ -44,10 +48,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.replacements.nodes.arithmetic.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
 
 /**
  * Provides non-runtime specific {@link InvocationPlugin}s.

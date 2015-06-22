@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.Assumptions;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
+
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -38,8 +37,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 @NodeInfo
 public final class ObjectCloneNode extends BasicObjectCloneNode implements VirtualizableAllocation, ArrayLengthProvider {

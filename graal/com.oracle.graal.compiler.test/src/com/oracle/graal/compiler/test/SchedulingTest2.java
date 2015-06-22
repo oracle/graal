@@ -24,6 +24,8 @@ package com.oracle.graal.compiler.test;
 
 import java.util.*;
 
+import jdk.internal.jvmci.debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
@@ -39,7 +41,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 public class SchedulingTest2 extends GraphScheduleTest {
 

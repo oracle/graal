@@ -25,9 +25,10 @@ package com.oracle.graal.phases.graph;
 import java.util.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Compute probabilities for fixed nodes on the fly and cache them at {@link AbstractBeginNode}s.

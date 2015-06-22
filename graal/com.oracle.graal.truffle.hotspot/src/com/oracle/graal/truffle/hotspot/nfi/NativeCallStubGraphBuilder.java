@@ -26,6 +26,10 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
@@ -35,9 +39,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.word.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Utility creating a graph for a stub used to call a native function.

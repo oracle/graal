@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * The foreign call descriptors used by nodes in this package.

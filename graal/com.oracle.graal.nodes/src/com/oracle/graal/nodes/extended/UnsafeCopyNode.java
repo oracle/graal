@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Copy a value at a location specified as an offset relative to a source object to another location

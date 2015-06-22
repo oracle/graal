@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Assumptions;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.jvmci.meta.Assumptions.Assumption;
-import com.oracle.jvmci.meta.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -41,7 +41,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 public class FinalizableSubclassTest extends GraalCompilerTest {
 

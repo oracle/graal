@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.api.directives.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.annotation.*;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

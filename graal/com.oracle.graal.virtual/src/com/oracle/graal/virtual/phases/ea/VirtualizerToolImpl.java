@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.Kind;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;

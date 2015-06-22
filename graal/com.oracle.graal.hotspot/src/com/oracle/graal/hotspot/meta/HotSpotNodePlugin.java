@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -33,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * This plugin handles the HotSpot-specific customizations of bytecode parsing:

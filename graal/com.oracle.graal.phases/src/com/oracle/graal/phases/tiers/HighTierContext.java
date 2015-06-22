@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.phases.tiers;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.meta.*;
 
 public class HighTierContext extends PhaseContext {
 

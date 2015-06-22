@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;

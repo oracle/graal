@@ -23,12 +23,16 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
-import static com.oracle.jvmci.code.MemoryBarriers.*;
-import static com.oracle.jvmci.meta.DeoptimizationAction.*;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
+import static jdk.internal.jvmci.code.MemoryBarriers.*;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -46,9 +50,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * VM-independent lowerings for standard Java nodes. VM-specific methods are abstract and must be
