@@ -398,6 +398,9 @@ public class InliningUtil {
 
         // Copy inlined methods from inlinee to caller
         graph.updateInlinedMethods(inlineGraph);
+        if (inlineGraph.hasUnsafeAccess()) {
+            graph.markUnsafeAccess();
+        }
 
         return returnValue;
     }
