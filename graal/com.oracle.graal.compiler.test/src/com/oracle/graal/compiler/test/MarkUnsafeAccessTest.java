@@ -22,8 +22,24 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static java.nio.file.StandardOpenOption.*;
+
+import java.io.*;
+import java.nio.*;
+import java.nio.channels.*;
+import java.nio.channels.FileChannel.*;
+import java.nio.file.*;
+
 import org.junit.*;
 
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.inlining.*;
+import com.oracle.graal.phases.common.inlining.policy.*;
+import com.oracle.graal.phases.tiers.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import sun.misc.*;
 
 public class MarkUnsafeAccessTest extends GraalCompilerTest {
@@ -79,5 +95,77 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
     @Test
     public void testNoAcces() {
         assertHasUnsafe("noAccess", false);
+    }
+
+    @FunctionalInterface
+    private interface MappedByteBufferGetter {
+        byte get(MappedByteBuffer mbb);
+    }
+
+    @Test
+    public void testStandard() throws IOException {
+        testMappedByteBuffer(MappedByteBuffer::get);
+    }
+
+    @Test
+    public void testCompiled() throws IOException {
+        ResolvedJavaMethod getMethod = asResolvedJavaMethod(getMethod(ByteBuffer.class, "get", new Class<?>[]{}));
+        ResolvedJavaType mbbClass = getMetaAccess().lookupJavaType(MappedByteBuffer.class);
+        ResolvedJavaMethod getMethodImpl = mbbClass.findUniqueConcreteMethod(getMethod).getResult();
+        Assert.assertNotNull(getMethodImpl);
+        StructuredGraph graph = parseForCompile(getMethodImpl);
+        HighTierContext highContext = getDefaultHighTierContext();
+        new CanonicalizerPhase().apply(graph, highContext);
+        new InliningPhase(new InlineEverythingPolicy(), new CanonicalizerPhase()).apply(graph, highContext);
+        InstalledCode compiledCode = getCode(getMethodImpl, graph);
+        testMappedByteBuffer(mbb -> {
+            try {
+                return (byte) compiledCode.executeVarargs(mbb);
+            } catch (InvalidInstalledCodeException e) {
+                Assert.fail();
+                return 0;
+            }
+        });
+    }
+
+    private static final int BLOCK_SIZE = 512;
+    private static final int BLOCK_COUNT = 16;
+
+    public void testMappedByteBuffer(MappedByteBufferGetter getter) throws IOException {
+        Path tmp = Files.createTempFile(null, null);
+        tmp.toFile().deleteOnExit();
+        FileChannel tmpFileChannel = FileChannel.open(tmp, READ, WRITE);
+        ByteBuffer bb = ByteBuffer.allocate(BLOCK_SIZE);
+        while (bb.remaining() >= 4) {
+            bb.putInt(0xA8A8A8A8);
+        }
+        for (int i = 0; i < BLOCK_COUNT; ++i) {
+            bb.flip();
+            while (bb.hasRemaining()) {
+                tmpFileChannel.write(bb);
+            }
+        }
+        tmpFileChannel.force(true);
+        MappedByteBuffer mbb = tmpFileChannel.map(MapMode.READ_WRITE, 0, BLOCK_SIZE * BLOCK_COUNT);
+        Assert.assertEquals((byte) 0xA8, mbb.get());
+        mbb.position(mbb.position() + BLOCK_SIZE);
+        Assert.assertEquals((byte) 0xA8, mbb.get());
+        boolean truncated = false;
+        try {
+            tmpFileChannel.truncate(0);
+            tmpFileChannel.force(true);
+            truncated = true;
+        } catch (IOException e) {
+            // not all platforms support truncating memory-mapped files
+        }
+        Assume.assumeTrue(truncated);
+        try {
+            mbb.position(BLOCK_SIZE);
+            getter.get(mbb);
+            System.currentTimeMillis(); // materialize async exception
+        } catch (InternalError e) {
+            return;
+        }
+        Assert.fail("Expected exception");
     }
 }
