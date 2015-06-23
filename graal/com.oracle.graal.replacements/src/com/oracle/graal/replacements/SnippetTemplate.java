@@ -586,6 +586,9 @@ public class SnippetTemplate {
         if (!snippetGraph.isInlinedMethodRecordingEnabled()) {
             snippetCopy.disableInlinedMethodRecording();
         }
+        if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
+            snippetCopy.disableUnsafeAccessTracking();
+        }
 
         Map<Node, Node> nodeReplacements = Node.newIdentityMap();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
@@ -678,7 +681,7 @@ public class SnippetTemplate {
             exploded = false;
             ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
             if (explodeLoop != null) { // Earlier canonicalization may have removed the loop
-                                       // altogether
+                // altogether
                 LoopBeginNode loopBegin = explodeLoop.findLoopBegin();
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);

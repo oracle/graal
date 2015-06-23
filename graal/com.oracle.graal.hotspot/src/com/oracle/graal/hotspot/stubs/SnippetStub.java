@@ -101,6 +101,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
         // evolved or have breakpoints.
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
         graph.disableInlinedMethodRecording();
+        graph.disableUnsafeAccessTracking();
 
         if (SnippetGraphUnderConstruction != null) {
             assert SnippetGraphUnderConstruction.get() == null : SnippetGraphUnderConstruction.get().toString() + " " + graph;

@@ -125,7 +125,13 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
      */
     private Map<ResolvedJavaMethod, Integer> inlinedMethods = new HashMap<>();
 
-    private boolean hasUnsafeAccess = false;
+    private static enum UnsafeAccessState {
+        NO_ACCESS,
+        HAS_ACCESS,
+        DISABLED
+    }
+
+    private UnsafeAccessState hasUnsafeAccess = UnsafeAccessState.NO_ACCESS;
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
@@ -251,6 +257,7 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
         if (!enableInlinedMethodRecording) {
             copy.disableInlinedMethodRecording();
         }
+        copy.hasUnsafeAccess = hasUnsafeAccess;
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
@@ -625,11 +632,22 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
     }
 
     public boolean hasUnsafeAccess() {
-        return hasUnsafeAccess;
+        return hasUnsafeAccess == UnsafeAccessState.HAS_ACCESS;
     }
 
     public void markUnsafeAccess() {
-        hasUnsafeAccess = true;
+        if (hasUnsafeAccess == UnsafeAccessState.DISABLED) {
+            return;
+        }
+        hasUnsafeAccess = UnsafeAccessState.HAS_ACCESS;
+    }
+
+    public void disableUnsafeAccessTracking() {
+        hasUnsafeAccess = UnsafeAccessState.DISABLED;
+    }
+
+    public boolean isUnsafeAccessTrackingEnabled() {
+        return hasUnsafeAccess != UnsafeAccessState.DISABLED;
     }
 
     public SpeculationLog getSpeculationLog() {

@@ -558,6 +558,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
             // They will also never evolve or have breakpoints set in them
             graph.disableInlinedMethodRecording();
+            // They are not user code so they do not participate in unsafe access tracking
+            graph.disableUnsafeAccessTracking();
 
             try (Scope s = Debug.scope("buildInitialGraph", graph)) {
                 MetaAccessProvider metaAccess = replacements.providers.getMetaAccess();
