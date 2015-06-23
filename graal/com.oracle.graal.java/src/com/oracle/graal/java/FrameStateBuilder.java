@@ -534,9 +534,13 @@ public final class FrameStateBuilder implements SideEffectsState {
     /**
      * @return the current lock depth
      */
-    public int lockDepth() {
-        assert lockedObjects.length == monitorIds.length;
-        return lockedObjects.length;
+    public int lockDepth(boolean includeParents) {
+        int depth = lockedObjects.length;
+        assert depth == monitorIds.length;
+        if (includeParents && parser.getParent() != null) {
+            depth += parser.getParent().frameState.lockDepth(true);
+        }
+        return depth;
     }
 
     public boolean contains(ValueNode value) {

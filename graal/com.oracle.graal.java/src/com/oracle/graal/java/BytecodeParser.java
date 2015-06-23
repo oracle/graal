@@ -1649,13 +1649,13 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
-        if (frameState.lockDepth() != 0) {
+        if (frameState.lockDepth(false) != 0) {
             throw bailout("unbalanced monitors");
         }
     }
 
     protected void genMonitorEnter(ValueNode x, int bci) {
-        MonitorIdNode monitorId = graph.add(new MonitorIdNode(frameState.lockDepth()));
+        MonitorIdNode monitorId = graph.add(new MonitorIdNode(frameState.lockDepth(true)));
         MonitorEnterNode monitorEnter = append(new MonitorEnterNode(x, monitorId));
         frameState.pushLock(x, monitorId);
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
