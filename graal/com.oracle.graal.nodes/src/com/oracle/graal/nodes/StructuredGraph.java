@@ -117,6 +117,8 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
      */
     private final Assumptions assumptions;
 
+    private final SpeculationLog speculationLog;
+
     /**
      * Records the methods that were inlined while constructing this graph along with how many times
      * each method was inlined.
@@ -138,24 +140,33 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
      * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions);
+        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
+    }
+
+    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
+        this(name, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions);
+        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, null);
     }
 
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions) {
-        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI, allowAssumptions);
+    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), Compiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog);
     }
 
-    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI, AllowAssumptions allowAssumptions) {
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
+        this(null, method, uniqueGraphIds.incrementAndGet(), entryBCI, allowAssumptions, speculationLog);
+    }
+
+    private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
         super(name);
         this.setStart(add(new StartNode()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
         this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
+        this.speculationLog = speculationLog;
     }
 
     public Stamp getReturnStamp() {
@@ -233,7 +244,7 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
     protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
         AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
         boolean enableInlinedMethodRecording = isInlinedMethodRecordingEnabled();
-        StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI, allowAssumptions);
+        StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI, allowAssumptions, speculationLog);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -619,5 +630,9 @@ public class StructuredGraph extends Graph implements JavaMethodContex {
 
     public void markUnsafeAccess() {
         hasUnsafeAccess = true;
+    }
+
+    public SpeculationLog getSpeculationLog() {
+        return speculationLog;
     }
 }

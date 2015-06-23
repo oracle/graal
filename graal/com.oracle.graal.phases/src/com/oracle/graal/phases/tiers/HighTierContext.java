@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import jdk.internal.jvmci.meta.*;
-
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 
@@ -33,13 +31,10 @@ public class HighTierContext extends PhaseContext {
 
     private final OptimisticOptimizations optimisticOpts;
 
-    private SpeculationLog speculationLog;
-
-    public HighTierContext(Providers providers, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog) {
+    public HighTierContext(Providers providers, PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts) {
         super(providers);
         this.graphBuilderSuite = graphBuilderSuite;
         this.optimisticOpts = optimisticOpts;
-        this.speculationLog = speculationLog;
     }
 
     public PhaseSuite<HighTierContext> getGraphBuilderSuite() {
@@ -48,9 +43,5 @@ public class HighTierContext extends PhaseContext {
 
     public OptimisticOptimizations getOptimisticOptimizations() {
         return optimisticOpts;
-    }
-
-    public SpeculationLog getSpeculationLog() {
-        return speculationLog;
     }
 }

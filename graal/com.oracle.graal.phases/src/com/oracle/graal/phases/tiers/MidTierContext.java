@@ -33,14 +33,12 @@ public class MidTierContext extends PhaseContext {
     private final TargetDescription target;
     private final OptimisticOptimizations optimisticOpts;
     private final ProfilingInfo profilingInfo;
-    private final SpeculationLog log;
 
-    public MidTierContext(Providers copyFrom, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog log) {
+    public MidTierContext(Providers copyFrom, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo) {
         super(copyFrom);
         this.target = target;
         this.optimisticOpts = optimisticOpts;
         this.profilingInfo = profilingInfo;
-        this.log = log;
     }
 
     public TargetDescription getTarget() {
@@ -53,9 +51,5 @@ public class MidTierContext extends PhaseContext {
 
     public ProfilingInfo getProfilingInfo() {
         return profilingInfo;
-    }
-
-    public SpeculationLog getSpeculationLog() {
-        return log;
     }
 }

@@ -76,7 +76,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(metaAccess)));
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
-        HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE, null);
+        HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 

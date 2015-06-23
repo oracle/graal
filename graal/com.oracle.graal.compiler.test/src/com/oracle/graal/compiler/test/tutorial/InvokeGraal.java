@@ -58,7 +58,9 @@ public class InvokeGraal {
         /* Ask the hosting Java VM for the entry point object to the Graal API. */
         RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
 
-        /* The default backend (architecture, VM configuration) that the hosting VM is running on. */
+        /*
+         * The default backend (architecture, VM configuration) that the hosting VM is running on.
+         */
         backend = runtimeProvider.getHostBackend();
         /* Access to all of the Graal API providers, as implemented by the hosting VM. */
         providers = backend.getProviders();
@@ -121,12 +123,8 @@ public class InvokeGraal {
             CompilationResult compilationResult = new CompilationResult();
             CompilationResultBuilderFactory factory = CompilationResultBuilderFactory.Default;
 
-            /* Advanced configuration objects that are not mandatory. */
-            SpeculationLog speculationLog = null;
-
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, graphBuilderSuite, optimisticOpts, profilingInfo, speculationLog, suites, lirSuites,
-                            compilationResult, factory);
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory);
 
             /*
              * Install the compilation result into the VM, i.e., copy the byte[] array that contains

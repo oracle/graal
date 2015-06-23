@@ -49,7 +49,7 @@ public abstract class BackendTest extends GraalCompilerTest {
         SchedulePhase schedule = null;
         try (Scope s = Debug.scope("FrontEnd")) {
             schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend().getTarget(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE, graph.method().getProfilingInfo(),
-                            null, getSuites());
+                            getSuites());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

@@ -55,14 +55,14 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, getSpeculationLog(), compilable);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable);
         return compilable;
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, getSpeculationLog(), compilable);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable);
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));

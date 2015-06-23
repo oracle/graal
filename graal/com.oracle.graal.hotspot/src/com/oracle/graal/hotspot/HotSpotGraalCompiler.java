@@ -57,7 +57,11 @@ public class HotSpotGraalCompiler implements Compiler {
 
         StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
         if (graph == null) {
-            graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()));
+            SpeculationLog speculationLog = method.getSpeculationLog();
+            if (speculationLog != null) {
+                speculationLog.collectFailedSpeculations();
+            }
+            graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue()), speculationLog);
             if (!mustRecordMethodInlining) {
                 graph.disableInlinedMethodRecording();
             }
@@ -81,7 +85,7 @@ public class HotSpotGraalCompiler implements Compiler {
             optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
         }
         CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo,
-                        method.getSpeculationLog(), suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         result.setEntryBCI(entryBCI);
 
