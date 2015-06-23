@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.meta.JavaConstant;
 import static org.junit.Assert.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

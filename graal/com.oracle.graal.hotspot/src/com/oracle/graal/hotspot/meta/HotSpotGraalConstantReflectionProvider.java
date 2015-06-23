@@ -22,11 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.JavaField;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantReflectionProvider.ImmutableCodeLazy.*;
@@ -34,11 +29,13 @@ import static com.oracle.graal.hotspot.stubs.SnippetStub.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Extends {@link HotSpotConstantReflectionProvider} to override the implementation of

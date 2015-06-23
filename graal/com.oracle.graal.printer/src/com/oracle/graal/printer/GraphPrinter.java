@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.io.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.schedule.*;

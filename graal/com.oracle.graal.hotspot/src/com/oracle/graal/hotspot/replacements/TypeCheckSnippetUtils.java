@@ -22,20 +22,21 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.TypeCheckHints;
-import com.oracle.jvmci.meta.MetaAccessProvider;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 

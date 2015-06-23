@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.lir.gen;
 
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.lir.*;

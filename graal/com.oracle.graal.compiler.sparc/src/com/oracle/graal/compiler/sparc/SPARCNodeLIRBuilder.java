@@ -23,11 +23,10 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.LIRKind;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.lir.*;
@@ -37,7 +36,6 @@ import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.

@@ -22,15 +22,9 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Signature;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.gen.*;
 
 public abstract class BytecodeLIRBuilder {

@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.DeoptimizationReason;
+import jdk.internal.jvmci.meta.DeoptimizationAction;
+import jdk.internal.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.JavaTypeProfile.ProfiledType;
 
 import java.util.*;
 
-import com.oracle.jvmci.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -42,7 +43,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.common.inlining.info.elem.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Polymorphic inlining of m methods with n type checks (n &ge; m) in case that the profiling

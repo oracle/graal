@@ -22,21 +22,18 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.Value;
-
-import static com.oracle.jvmci.amd64.AMD64.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.jvmci.common.JVMCIError.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.common.JVMCIError.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.hotspot.*;
 
 @Opcode("BenchMarkCounter")
 public class AMD64HotSpotCounterOp extends HotSpotCounterOp {

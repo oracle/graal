@@ -24,10 +24,17 @@ package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -39,12 +46,6 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
 
 /**
  * An implementation of the linear scan register allocator algorithm described in <a

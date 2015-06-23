@@ -23,14 +23,14 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Returns from a function.

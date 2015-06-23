@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.Register;
-
-import static com.oracle.jvmci.amd64.AMD64.*;
+import jdk.internal.jvmci.code.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;

@@ -24,14 +24,15 @@ package com.oracle.graal.replacements.test;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Tests the VM independent {@link MethodSubstitution}s.

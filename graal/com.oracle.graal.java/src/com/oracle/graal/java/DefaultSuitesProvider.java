@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.java;
 
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.DerivedOptionValue.*;
+
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.DerivedOptionValue.OptionSupplier;
 
 public class DefaultSuitesProvider implements SuitesProvider {
 

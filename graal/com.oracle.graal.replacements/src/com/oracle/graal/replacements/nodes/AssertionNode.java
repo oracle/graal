@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * Assertion nodes will go away as soon as the value evaluates to true. Compile-time assertions will

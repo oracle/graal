@@ -26,6 +26,7 @@ import static com.oracle.graal.graph.test.matchers.NodeIterableCount.*;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.*;
 import static org.hamcrest.core.IsInstanceOf.*;
 import static org.junit.Assert.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -43,7 +44,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.substitutions.*;
-import com.oracle.jvmci.meta.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.unsafe.*;
 
@@ -53,7 +53,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final Object location = new Object();
 
     static {
-        Unsafe unsafe = com.oracle.jvmci.common.UnsafeAccess.unsafe;
+        Unsafe unsafe = jdk.internal.jvmci.common.UnsafeAccess.unsafe;
         access = Truffle.getRuntime().getCapability(UnsafeAccessFactory.class).createUnsafeAccess(unsafe);
         long fieldOffset = 0;
         try {

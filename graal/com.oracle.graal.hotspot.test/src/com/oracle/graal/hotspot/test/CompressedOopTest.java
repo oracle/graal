@@ -23,14 +23,15 @@
 
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
 import java.util.concurrent.atomic.*;
+
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * The following tests perform object/array equality and assignments in various ways. The selected

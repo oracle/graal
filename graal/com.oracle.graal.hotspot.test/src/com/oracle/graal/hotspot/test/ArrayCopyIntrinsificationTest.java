@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.JavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.lang.reflect.*;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

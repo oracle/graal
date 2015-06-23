@@ -23,9 +23,10 @@
 
 package com.oracle.graal.nodes.spi;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.meta.*;
 
 public interface NodeMappableLIRBuilder {
 

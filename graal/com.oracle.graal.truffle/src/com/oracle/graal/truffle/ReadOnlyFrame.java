@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.common.*;
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.truffle.api.frame.*;
 
 class ReadOnlyFrame implements Frame {

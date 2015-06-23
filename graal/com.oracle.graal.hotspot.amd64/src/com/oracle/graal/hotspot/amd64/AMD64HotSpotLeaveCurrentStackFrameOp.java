@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Pops the current frame off the stack including the return address and restores the return

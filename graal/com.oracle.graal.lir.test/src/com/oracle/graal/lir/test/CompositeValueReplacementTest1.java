@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.lir.test;
 
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AbstractValue;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

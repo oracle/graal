@@ -22,13 +22,12 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ResolvedJavaField;
-import com.oracle.jvmci.meta.MetaAccessProvider;
 import java.util.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -42,9 +41,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * A simple context-insensitive static analysis based on the Graal API. It is intended for

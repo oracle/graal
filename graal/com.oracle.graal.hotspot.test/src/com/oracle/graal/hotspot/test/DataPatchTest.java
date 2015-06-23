@@ -23,6 +23,8 @@
 
 package com.oracle.graal.hotspot.test;
 
+import jdk.internal.jvmci.hotspot.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
@@ -34,7 +36,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.hotspot.*;
 
 public class DataPatchTest extends GraalCompilerTest {
 

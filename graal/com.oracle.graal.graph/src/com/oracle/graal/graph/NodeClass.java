@@ -26,12 +26,15 @@ import static com.oracle.graal.compiler.common.Fields.*;
 import static com.oracle.graal.graph.Edges.*;
 import static com.oracle.graal.graph.InputEdges.*;
 import static com.oracle.graal.graph.Node.*;
-import static com.oracle.jvmci.common.JVMCIError.*;
+import static jdk.internal.jvmci.common.JVMCIError.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Edges.Type;
@@ -42,8 +45,6 @@ import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:

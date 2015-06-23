@@ -22,18 +22,18 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.debug.internal.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -47,11 +47,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.debug.internal.*;
-import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 
@@ -186,8 +181,7 @@ public abstract class Stub {
                 try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
                     Suites defaultSuites = providers.getSuites().getDefaultSuites();
                     Suites suites = new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
-                    SchedulePhase schedule = emitFrontEnd(providers, target, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), null,
-                                    suites);
+                    SchedulePhase schedule = emitFrontEnd(providers, target, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, getProfilingInfo(graph), suites);
                     LIRSuites lirSuites = createLIRSuites();
                     emitBackEnd(graph, Stub.this, incomingCc, getInstalledCodeOwner(), backend, target, compResult, CompilationResultBuilderFactory.Default, schedule, getRegisterConfig(), lirSuites);
                 } catch (Throwable e) {

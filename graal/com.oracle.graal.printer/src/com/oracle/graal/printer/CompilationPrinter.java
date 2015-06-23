@@ -25,9 +25,9 @@ package com.oracle.graal.printer;
 import java.io.*;
 import java.util.*;
 
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The

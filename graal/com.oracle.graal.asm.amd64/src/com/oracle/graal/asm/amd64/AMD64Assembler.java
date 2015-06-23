@@ -22,22 +22,20 @@
  */
 package com.oracle.graal.asm.amd64;
 
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.amd64.AMD64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.Register.*;
+
 import com.oracle.graal.asm.*;
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.amd64.AMD64.*;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.RegisterConfig;
 
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
-import static com.oracle.jvmci.amd64.AMD64.*;
-import static com.oracle.jvmci.code.MemoryBarriers.*;
-
-import com.oracle.jvmci.code.Register.RegisterCategory;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.code.MemoryBarriers.*;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.
@@ -735,7 +733,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
         public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
         public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
-        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6, OpAssertion.No32BitAssertion);
+        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6);
         public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.No32BitAssertion);
         // @formatter:on
 

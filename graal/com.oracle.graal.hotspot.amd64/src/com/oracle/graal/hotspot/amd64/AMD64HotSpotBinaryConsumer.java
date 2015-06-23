@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.meta.AllocatableValue;
-
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 
 import com.oracle.graal.asm.amd64.*;
@@ -31,7 +31,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.hotspot.*;
 
 public class AMD64HotSpotBinaryConsumer {
 

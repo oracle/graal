@@ -26,11 +26,12 @@ import static com.oracle.graal.phases.tiers.Suites.Options.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.service.*;
 
 public final class Suites {
 

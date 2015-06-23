@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.replacements.test;
 
-import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
 import sun.misc.*;
-
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Tests the VM independent intrinsification of {@link Unsafe} methods.

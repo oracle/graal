@@ -24,20 +24,22 @@ package com.oracle.graal.hotspot.sparc;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.runtime.*;
+import jdk.internal.jvmci.service.*;
+import jdk.internal.jvmci.sparc.*;
+
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.sparc.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.runtime.*;
-import com.oracle.jvmci.service.*;
-import com.oracle.jvmci.sparc.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
@@ -76,7 +78,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins, CodeCacheProvider codeCache) {
-        return new HotSpotSuitesProvider(runtime, plugins, new SPARCAddressLowering(codeCache));
+        return new HotSpotSuitesProvider(new DefaultSuitesProvider(plugins), runtime, new SPARCAddressLowering(codeCache));
     }
 
     protected SPARCHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {

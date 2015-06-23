@@ -23,9 +23,16 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions.Assumption;
 
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -38,12 +45,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.nodes.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.Assumptions.Assumption;
-import com.oracle.jvmci.meta.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -133,7 +134,7 @@ public abstract class TruffleCompiler {
             }
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, graph);
-            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable.getSpeculationLog(), compilable);
+            CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable);
             compilationNotify.notifyCompilationSuccess(compilable, graph, compilationResult);
         } catch (Throwable t) {
             System.out.println("compilation failed!?");
@@ -142,7 +143,7 @@ public abstract class TruffleCompiler {
         }
     }
 
-    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, SpeculationLog speculationLog, InstalledCode predefinedInstalledCode) {
+    public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(1, graph, "After TruffleTier");
         } catch (Throwable e) {
@@ -154,7 +155,7 @@ public abstract class TruffleCompiler {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(name);
-            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), graphBuilderSuite, Optimizations, getProfilingInfo(graph), speculationLog, suites, lirSuites,
+            result = compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), graphBuilderSuite, Optimizations, getProfilingInfo(graph), suites, lirSuites,
                             compilationResult, CompilationResultBuilderFactory.Default);
         } catch (Throwable e) {
             throw Debug.handle(e);
@@ -185,7 +186,7 @@ public abstract class TruffleCompiler {
 
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); DebugCloseable a = CodeInstallationTime.start(); DebugCloseable c = CodeInstallationMemUse.start()) {
-            installedCode = providers.getCodeCache().addMethod(graph.method(), result, speculationLog, predefinedInstalledCode);
+            installedCode = providers.getCodeCache().addMethod(graph.method(), result, graph.getSpeculationLog(), predefinedInstalledCode);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

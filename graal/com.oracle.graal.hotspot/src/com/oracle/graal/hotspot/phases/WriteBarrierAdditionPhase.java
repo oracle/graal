@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot.phases;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
@@ -32,8 +35,6 @@ import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
 
 public class WriteBarrierAdditionPhase extends Phase {
 

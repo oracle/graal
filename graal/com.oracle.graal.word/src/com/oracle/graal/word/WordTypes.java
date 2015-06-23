@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.word;
 
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;

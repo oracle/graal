@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.jvmci.common.JVMCIError.*;
+import static jdk.internal.jvmci.common.JVMCIError.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.graph.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Decoder for {@link EncodedGraph encoded graphs} produced by {@link GraphEncoder}. Support for

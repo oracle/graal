@@ -24,9 +24,10 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Functional interface for iterating over a list of values, possibly returning a value to replace

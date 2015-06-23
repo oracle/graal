@@ -24,13 +24,14 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * This class describes the state of a virtual object while iterating over the graph. It describes

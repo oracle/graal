@@ -27,14 +27,14 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
-import static com.oracle.jvmci.sparc.SPARC.*;
 import static java.lang.String.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.sparc.*;
+import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.sparc.*;
-import com.oracle.jvmci.sparc.SPARC.CPUFeature;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.

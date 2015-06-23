@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -32,7 +33,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * The {@code LoadFieldNode} represents a read of a static or instance field.

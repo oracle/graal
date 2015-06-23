@@ -30,9 +30,14 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.lir.amd64.AMD64Arithmetic.*;
 import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
@@ -71,10 +76,6 @@ import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.

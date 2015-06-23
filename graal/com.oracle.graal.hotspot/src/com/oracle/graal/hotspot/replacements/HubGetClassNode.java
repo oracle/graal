@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Constant;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -35,7 +33,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Read {@code Klass::_java_mirror} and incorporate non-null type information into stamp. This is

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Extension of {@link InvocationPlugins} that disables plugins based on runtime configuration.

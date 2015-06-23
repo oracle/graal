@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.phases.common;
 
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.debug.*;
 
 public class PushThroughPiPhase extends Phase {
 

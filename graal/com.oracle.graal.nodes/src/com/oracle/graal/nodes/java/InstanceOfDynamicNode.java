@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not

@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import jdk.internal.jvmci.meta.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -30,7 +31,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Represents an atomic read-and-write operation like {@link Unsafe#getAndSetInt(Object, long, int)}

@@ -24,6 +24,8 @@ package com.oracle.graal.loop;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.iterators.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.jvmci.common.*;
 
 public abstract class LoopFragment {
 

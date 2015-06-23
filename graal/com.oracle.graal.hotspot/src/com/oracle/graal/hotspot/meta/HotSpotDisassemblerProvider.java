@@ -23,11 +23,11 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.code.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.service.*;
 
 /**
  * HotSpot implementation of {@link DisassemblerProvider}.

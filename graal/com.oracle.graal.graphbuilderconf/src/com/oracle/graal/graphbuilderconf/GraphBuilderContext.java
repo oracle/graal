@@ -22,17 +22,11 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.jvmci.code.BailoutException;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Assumptions;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaType;
-import static com.oracle.jvmci.meta.DeoptimizationAction.*;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.common.type.StampFactory.*;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
@@ -126,8 +120,10 @@ public interface GraphBuilderContext {
      * @param invokeKind the kind of the replacement invocation
      * @param targetMethod the target of the replacement invocation
      * @param args the arguments to the replacement invocation
+     * @param forceInlineEverything specifies if all invocations encountered in the scope of
+     *            handling the replaced invoke are to be force inlined
      */
-    void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args);
+    void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
 
     /**
      * Intrinsifies an invocation of a given method by inlining the bytecodes of a given

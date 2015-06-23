@@ -26,6 +26,12 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.code.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
@@ -36,11 +42,6 @@ import com.oracle.graal.lir.stackslotalloc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the

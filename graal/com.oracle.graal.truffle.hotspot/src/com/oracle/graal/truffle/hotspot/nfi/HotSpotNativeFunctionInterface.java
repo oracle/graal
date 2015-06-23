@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.TriState;
-import com.oracle.jvmci.meta.DefaultProfilingInfo;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.*;
-import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -40,9 +40,6 @@ import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.hotspot.*;
 import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
@@ -168,7 +165,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         PhaseSuite<HighTierContext> phaseSuite = backend.getSuites().getDefaultGraphBuilderSuite().copy();
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, g.method(), false);
         CompilationResult compResult = GraalCompiler.compileGraph(g, cc, g.method(), providers, backend, backend.getTarget(), phaseSuite, OptimisticOptimizations.ALL,
-                        DefaultProfilingInfo.get(TriState.UNKNOWN), null, suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        DefaultProfilingInfo.get(TriState.UNKNOWN), suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
         InstalledCode installedCode;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache(), g.method())) {
             installedCode = providers.getCodeCache().addMethod(g.method(), compResult, null, null);

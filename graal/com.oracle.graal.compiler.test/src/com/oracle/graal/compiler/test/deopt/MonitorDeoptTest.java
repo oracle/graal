@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.compiler.test.deopt;
 
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;

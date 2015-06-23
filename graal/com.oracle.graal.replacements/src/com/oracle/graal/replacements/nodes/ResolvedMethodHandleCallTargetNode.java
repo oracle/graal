@@ -26,13 +26,14 @@ import static sun.misc.Version.*;
 
 import java.lang.invoke.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A call target that replaces itself in the graph when being lowered by restoring the original

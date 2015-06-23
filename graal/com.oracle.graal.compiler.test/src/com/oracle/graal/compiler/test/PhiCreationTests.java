@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.compiler.test;
 
+import jdk.internal.jvmci.debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.jvmci.debug.*;
 
 /**
  * In the following tests, the correct removal of redundant phis during graph building is tested.

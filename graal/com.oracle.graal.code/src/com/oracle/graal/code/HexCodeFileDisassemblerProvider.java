@@ -25,14 +25,10 @@ package com.oracle.graal.code;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CodeUtil.DefaultRefMapFormatter;
-import com.oracle.jvmci.code.CodeUtil.RefMapFormatter;
-import com.oracle.jvmci.code.CompilationResult.Call;
-import com.oracle.jvmci.code.CompilationResult.DataPatch;
-import com.oracle.jvmci.code.CompilationResult.Infopoint;
-import com.oracle.jvmci.code.CompilationResult.Mark;
-import com.oracle.jvmci.service.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CodeUtil.*;
+import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.service.*;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.

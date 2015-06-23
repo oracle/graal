@@ -22,19 +22,20 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Value;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  */

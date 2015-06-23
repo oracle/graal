@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.api.runtime.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(GraalRuntimeAccess.class)
 public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {

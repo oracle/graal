@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import com.oracle.jvmci.meta.MemoryAccessProvider;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Constant;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.jvmci.hotspot.*;
 
 public final class MethodPointerStamp extends MetaspacePointerStamp {
 

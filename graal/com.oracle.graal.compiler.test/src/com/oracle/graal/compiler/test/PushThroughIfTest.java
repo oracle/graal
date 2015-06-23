@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import jdk.internal.jvmci.debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
@@ -29,7 +31,6 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 public class PushThroughIfTest extends GraalCompilerTest {
 

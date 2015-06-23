@@ -23,16 +23,11 @@
 
 package com.oracle.graal.compiler.amd64;
 
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.PlatformKind;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.LIRKind;
-
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
@@ -50,8 +45,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 

@@ -23,14 +23,15 @@
 
 package com.oracle.graal.hotspot.test;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 public class ClassSubstitutionsTests extends GraalCompilerTest {
 

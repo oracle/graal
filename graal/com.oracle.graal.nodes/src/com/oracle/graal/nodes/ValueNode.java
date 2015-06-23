@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and all other

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements.sparc;
 
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.target.Backend.*;
 
 import com.oracle.graal.graphbuilderconf.*;

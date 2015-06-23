@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.Constant;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -36,9 +37,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 /**
  * Compress or uncompress an oop or metaspace pointer.

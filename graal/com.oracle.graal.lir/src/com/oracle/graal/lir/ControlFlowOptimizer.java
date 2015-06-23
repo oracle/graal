@@ -26,11 +26,12 @@ import static com.oracle.graal.lir.LIR.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * This class performs basic optimizations on the control flow graph after LIR generation.

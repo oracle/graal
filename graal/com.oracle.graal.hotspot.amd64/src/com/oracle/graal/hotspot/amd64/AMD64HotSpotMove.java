@@ -23,7 +23,12 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -35,11 +40,6 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
-import com.oracle.jvmci.meta.*;
 
 public class AMD64HotSpotMove {
 

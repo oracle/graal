@@ -24,6 +24,8 @@ package com.oracle.graal.nodes;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.

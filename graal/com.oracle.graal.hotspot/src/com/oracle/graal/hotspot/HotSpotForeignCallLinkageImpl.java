@@ -22,29 +22,20 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * The details required to link a HotSpot runtime or stub call.

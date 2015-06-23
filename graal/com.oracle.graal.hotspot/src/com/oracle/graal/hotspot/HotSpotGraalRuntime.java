@@ -24,12 +24,23 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
-import static com.oracle.jvmci.common.UnsafeAccess.*;
-import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
-import static com.oracle.jvmci.hotspot.InitTimer.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
+import static jdk.internal.jvmci.hotspot.InitTimer.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.stack.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.logging.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.runtime.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.collections.*;
 import com.oracle.graal.api.replacements.*;
@@ -40,16 +51,6 @@ import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.stack.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.logging.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.runtime.*;
-import com.oracle.jvmci.service.*;
 
 //JaCoCo Exclude
 

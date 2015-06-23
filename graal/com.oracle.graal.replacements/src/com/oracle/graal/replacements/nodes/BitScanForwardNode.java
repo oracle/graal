@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -29,8 +32,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Determines the index of the least significant "1" bit. Note that the result is undefined if the

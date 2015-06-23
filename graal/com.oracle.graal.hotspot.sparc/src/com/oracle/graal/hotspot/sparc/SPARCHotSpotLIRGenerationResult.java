@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.code.StackSlot;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
 
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;

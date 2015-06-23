@@ -24,10 +24,11 @@ package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Tests the implementation of Array.createInstance.

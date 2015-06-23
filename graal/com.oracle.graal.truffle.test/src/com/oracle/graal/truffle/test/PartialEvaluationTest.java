@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.truffle.test;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
@@ -31,8 +34,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -54,14 +55,14 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, getSpeculationLog(), compilable);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable);
         return compilable;
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, getSpeculationLog(), compilable);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable);
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));

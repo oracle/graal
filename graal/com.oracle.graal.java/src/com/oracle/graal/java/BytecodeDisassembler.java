@@ -23,9 +23,9 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.bytecode.Bytecodes.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.bytecode.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.

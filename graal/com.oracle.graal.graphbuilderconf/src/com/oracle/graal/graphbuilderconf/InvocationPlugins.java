@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.jvmci.meta.MethodIdHolder;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.MethodIdMap;
-import com.oracle.jvmci.meta.MetaAccessProvider;
 import static java.lang.String.*;
 
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.jvmci.meta.MethodIdMap.MethodKey;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.MethodIdMap.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;

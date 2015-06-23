@@ -27,6 +27,8 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -38,7 +40,6 @@ import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * Verification phase that checks if, for every write, at least one write barrier is present at all

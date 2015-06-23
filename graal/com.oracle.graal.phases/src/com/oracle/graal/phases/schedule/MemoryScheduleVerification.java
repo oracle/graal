@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.phases.schedule;
 
-import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;

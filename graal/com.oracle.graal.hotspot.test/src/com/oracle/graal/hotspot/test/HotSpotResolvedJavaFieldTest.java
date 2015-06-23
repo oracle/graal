@@ -24,10 +24,10 @@ package com.oracle.graal.hotspot.test;
 
 import java.lang.reflect.*;
 
-import org.junit.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
+import org.junit.*;
 
 /**
  * Tests {@link HotSpotResolvedJavaField} functionality.

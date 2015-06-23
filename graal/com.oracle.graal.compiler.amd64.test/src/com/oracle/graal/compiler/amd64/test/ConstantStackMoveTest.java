@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.compiler.amd64.test;
 
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.PrimitiveConstant;
-
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static org.junit.Assume.*;
 
 import org.junit.*;

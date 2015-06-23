@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;

@@ -23,8 +23,10 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.jvmci.meta.DeoptimizationAction.*;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -35,8 +37,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
 
 /**
  * Implements a type check against a compile-time known type.

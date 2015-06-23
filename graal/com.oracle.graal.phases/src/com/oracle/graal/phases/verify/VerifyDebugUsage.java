@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.phases.verify;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Verifies that no argument to one of the {@link Debug#log(String)} methods is the result of

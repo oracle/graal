@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.common.type;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Type describing pointers to raw memory. This stamp is used for example for direct pointers to

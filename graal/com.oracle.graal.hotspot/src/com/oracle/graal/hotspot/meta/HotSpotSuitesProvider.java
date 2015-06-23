@@ -23,10 +23,12 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.DerivedOptionValue.*;
 
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.DebugInfoMode;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
@@ -37,9 +39,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.DerivedOptionValue.OptionSupplier;
 
 /**
  * HotSpot implementation of {@link SuitesProvider}.
@@ -52,6 +51,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     protected final HotSpotGraalRuntimeProvider runtime;
 
     private final AddressLowering addressLowering;
+    private final SuitesProvider defaultSuitesProvider;
 
     private class SuitesSupplier implements OptionSupplier<Suites> {
 
@@ -73,10 +73,11 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
     }
 
-    public HotSpotSuitesProvider(HotSpotGraalRuntimeProvider runtime, Plugins plugins, AddressLowering addressLowering) {
+    public HotSpotSuitesProvider(SuitesProvider defaultSuitesProvider, HotSpotGraalRuntimeProvider runtime, AddressLowering addressLowering) {
         this.runtime = runtime;
         this.addressLowering = addressLowering;
-        this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);
+        this.defaultSuitesProvider = defaultSuitesProvider;
+        this.defaultGraphBuilderSuite = createGraphBuilderSuite();
         this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
         this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
     }
@@ -90,7 +91,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     }
 
     public Suites createSuites() {
-        Suites ret = Suites.createDefaultSuites();
+        Suites ret = defaultSuitesProvider.createSuites();
 
         if (ImmutableCode.getValue()) {
             // lowering introduces class constants, therefore it must be after lowering
@@ -110,10 +111,8 @@ public class HotSpotSuitesProvider implements SuitesProvider {
         return ret;
     }
 
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
-        PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins);
-        suite.appendPhase(new GraphBuilderPhase(config));
+    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+        PhaseSuite<HighTierContext> suite = defaultSuitesProvider.getDefaultGraphBuilderSuite().copy();
         assert appendGraphEncoderTest(suite);
         return suite;
     }
@@ -166,7 +165,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     }
 
     public LIRSuites createLIRSuites() {
-        LIRSuites suites = Suites.createDefaultLIRSuites();
+        LIRSuites suites = defaultSuitesProvider.createLIRSuites();
         String profileInstructions = HotSpotBackend.Options.ASMInstructionProfiling.getValue();
         if (profileInstructions != null) {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotInstructionProfiling(profileInstructions));

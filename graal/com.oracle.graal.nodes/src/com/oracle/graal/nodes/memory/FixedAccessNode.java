@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes.memory;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.address.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Accesses a value at an memory address specified by an {@linkplain #address address}. The access

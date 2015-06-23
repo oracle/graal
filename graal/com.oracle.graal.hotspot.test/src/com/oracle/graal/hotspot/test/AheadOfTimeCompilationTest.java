@@ -25,7 +25,13 @@ package com.oracle.graal.hotspot.test;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.OptionValue.*;
 
 import org.junit.*;
 
@@ -42,12 +48,6 @@ import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 /**
  * use
@@ -214,7 +214,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
             final Suites suitesLocal = suitesProvider.createSuites();
             final LIRSuites lirSuitesLocal = suitesProvider.createLIRSuites();
             final CompilationResult compResult = compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                            getProfilingInfo(graph), getSpeculationLog(), suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                            getProfilingInfo(graph), suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
             addMethod(method, compResult);
             return graph;
         }

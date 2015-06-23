@@ -22,8 +22,13 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
+
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.debug.internal.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -42,10 +47,6 @@ import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.debug.internal.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * The following tests validate the write barrier verification phase. For every tested snippet, an
@@ -631,7 +632,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             HighTierContext highTierContext = getDefaultHighTierContext();
             new InliningPhase(new CanonicalizerPhase()).apply(graph, highTierContext);
 
-            MidTierContext midTierContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
+            MidTierContext midTierContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
 
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highTierContext);
             new GuardLoweringPhase().apply(graph, midTierContext);

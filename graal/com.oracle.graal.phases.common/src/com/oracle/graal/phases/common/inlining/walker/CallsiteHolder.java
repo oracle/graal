@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.phases.common.inlining.walker;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.*;
 
 /**

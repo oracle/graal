@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.lir.ssa;
 
-import com.oracle.jvmci.meta.Value;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.memory.address;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -30,7 +32,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Represents an address that is composed of a base and an offset. The base can be either a

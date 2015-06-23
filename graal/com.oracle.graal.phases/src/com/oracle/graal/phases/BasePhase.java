@@ -24,10 +24,11 @@ package com.oracle.graal.phases;
 
 import java.util.regex.*;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Base class for all compiler phases. Subclasses should be stateless. There will be one global

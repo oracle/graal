@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.Kind;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;

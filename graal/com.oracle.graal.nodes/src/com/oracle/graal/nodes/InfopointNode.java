@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.code.*;
 
 @NodeInfo
 public abstract class InfopointNode extends FixedWithNextNode {

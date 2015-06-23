@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * HotSpot implementation of {@link LoweringProvider}.

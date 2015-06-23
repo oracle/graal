@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import com.oracle.jvmci.meta.Assumptions;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.truffle.*;
 
 public final class AssumptionValidAssumption extends Assumptions.Assumption {

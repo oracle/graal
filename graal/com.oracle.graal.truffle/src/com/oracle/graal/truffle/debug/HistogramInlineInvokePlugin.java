@@ -24,13 +24,14 @@ package com.oracle.graal.truffle.debug;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.jvmci.meta.*;
 
 public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
 

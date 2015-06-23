@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.compiler.gen;
 
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.code.VirtualObject;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
 import java.util.*;
 import java.util.Map.Entry;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -36,8 +36,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Builds {@link LIRFrameState}s from {@link FrameState}s.

@@ -24,6 +24,9 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -38,8 +41,6 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 

@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.lir.phases;
 
-import com.oracle.jvmci.code.TargetDescription;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;

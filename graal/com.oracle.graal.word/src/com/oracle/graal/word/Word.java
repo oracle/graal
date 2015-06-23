@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.word;
 
-import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
 
 import java.lang.annotation.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.AddressNode.Address;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 public abstract class Word implements Signed, Unsigned, Pointer {
 

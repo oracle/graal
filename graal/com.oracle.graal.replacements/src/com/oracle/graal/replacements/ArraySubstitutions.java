@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.jvmci.meta.*;
 
 // JaCoCo Exclude
 

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import com.oracle.jvmci.meta.LocationIdentity;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
 
 import com.oracle.graal.word.*;

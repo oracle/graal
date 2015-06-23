@@ -22,20 +22,18 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * A register indirect call that complies with the extra conventions for such calls in HotSpot. In

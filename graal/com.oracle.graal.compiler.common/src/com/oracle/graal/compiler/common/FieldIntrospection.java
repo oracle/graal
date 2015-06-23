@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.common;
 
-import com.oracle.jvmci.common.*;
+import jdk.internal.jvmci.common.*;
 
 public abstract class FieldIntrospection<T> extends UnsafeAccess {
 

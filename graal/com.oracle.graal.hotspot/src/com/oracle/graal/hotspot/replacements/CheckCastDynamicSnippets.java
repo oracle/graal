@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.TargetDescription;
-import static com.oracle.jvmci.meta.DeoptimizationAction.*;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
+import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -43,7 +44,6 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.jvmci.debug.*;
 
 /**
  * Snippet used for lowering {@link CheckCastDynamicNode}.

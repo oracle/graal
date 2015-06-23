@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.service.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.service.*;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {

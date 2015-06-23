@@ -24,6 +24,9 @@ package com.oracle.graal.replacements.nodes;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
@@ -33,8 +36,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
 
 @NodeInfo
 public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements VirtualizableAllocation, ArrayLengthProvider {

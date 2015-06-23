@@ -22,15 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.MetaAccessProvider;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.phases.common.LoweringPhase.ProcessBlockState.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Graph.Mark;
@@ -45,7 +43,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.

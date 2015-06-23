@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.jtt.loop;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.jtt.*;

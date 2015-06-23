@@ -22,27 +22,16 @@
  */
 package com.oracle.graal.lir.gen;
 
-import com.oracle.jvmci.code.ForeignCallLinkage;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.RegisterAttributes;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.CodeCacheProvider;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.PlatformKind;
-import com.oracle.jvmci.meta.Constant;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -52,9 +41,6 @@ import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.options.*;
 
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.

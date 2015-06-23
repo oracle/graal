@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases;
 
-import com.oracle.jvmci.debug.*;
+import jdk.internal.jvmci.debug.*;
 
 /**
  * A name whose {@link String} value is computed only when it is needed. This is useful in

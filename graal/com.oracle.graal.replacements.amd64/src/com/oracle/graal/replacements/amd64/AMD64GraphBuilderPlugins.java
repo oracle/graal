@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.LocationIdentity;
-
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.target.Backend.*;
 import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.*;
 import sun.misc.*;

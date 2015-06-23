@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.code.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 

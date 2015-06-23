@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.compiler.match;
 
-import com.oracle.jvmci.meta.Value;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.gen.*;
 
 /**

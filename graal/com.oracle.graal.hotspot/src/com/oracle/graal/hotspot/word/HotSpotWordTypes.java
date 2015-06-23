@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.word.*;

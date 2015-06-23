@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.lir;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.code.*;
 
 /**
  * Emits an infopoint (only mark the position).

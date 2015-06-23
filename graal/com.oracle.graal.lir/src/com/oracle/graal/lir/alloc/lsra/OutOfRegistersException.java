@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.*;
 
 public class OutOfRegistersException extends BailoutException {
 

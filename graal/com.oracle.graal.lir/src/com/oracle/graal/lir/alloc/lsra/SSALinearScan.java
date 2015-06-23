@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.ssa.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 final class SSALinearScan extends LinearScan {
 

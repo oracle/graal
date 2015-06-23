@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.graphbuilderconf;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.nodes.*;

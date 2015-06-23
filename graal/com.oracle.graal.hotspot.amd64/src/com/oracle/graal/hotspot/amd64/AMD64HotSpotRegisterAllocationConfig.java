@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.compiler.common.alloc.*;
-import com.oracle.jvmci.code.*;
 
 class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     /**

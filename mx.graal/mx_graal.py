@@ -30,12 +30,14 @@ import os, stat, errno, sys, shutil, zipfile, tarfile, tempfile, re, time, datet
 from os.path import join, exists, dirname, basename
 from argparse import ArgumentParser, REMAINDER
 from outputparser import OutputParser, ValuesMatcher
-import mx
-import mx_unittest
 import xml.dom.minidom
 import sanitycheck
 import itertools
 import json, textwrap
+
+import mx
+import mx_unittest
+import mx_findbugs
 import mx_graal_makefile
 
 _suite = mx.suite('graal')
@@ -521,7 +523,7 @@ def _makeHotspotGeneratedSourcesDir():
     Gets the directory containing all the HotSpot sources generated from
     JVMCI Java sources. This directory will be created if it doesn't yet exist.
     """
-    hsSrcGenDir = join(mx.project('com.oracle.jvmci.hotspot').source_gen_dir(), 'hotspot')
+    hsSrcGenDir = join(mx.project('jdk.internal.jvmci.hotspot').source_gen_dir(), 'hotspot')
     if not exists(hsSrcGenDir):
         os.makedirs(hsSrcGenDir)
     return hsSrcGenDir
@@ -881,7 +883,7 @@ def build(args, vm=None):
             mustBuild = False
             timestamp = os.path.getmtime(timestampFile)
             sources = []
-            for d in ['src', 'make', join('jvmci', 'com.oracle.jvmci.hotspot', 'src_gen', 'hotspot')]:
+            for d in ['src', 'make', join('jvmci', 'jdk.internal.jvmci.hotspot', 'src_gen', 'hotspot')]:
                 for root, dirnames, files in os.walk(join(_graal_home, d)):
                     # ignore <graal>/src/share/tools
                     if root == join(_graal_home, 'src', 'share'):
@@ -1066,7 +1068,7 @@ def _parseVmArgs(args, vm=None, cwd=None, vmbuild=None):
         jacocoagent = mx.library("JACOCOAGENT", True)
         # Exclude all compiler tests and snippets
 
-        includes = ['com.oracle.graal.*', 'com.oracle.jvmci.*']
+        includes = ['com.oracle.graal.*', 'jdk.internal.jvmci.*']
         baseExcludes = []
         for p in mx.projects():
             projsetting = getattr(p, 'jacoco', '')
@@ -1523,7 +1525,7 @@ def gate(args, gate_body=_basic_gate_body):
                 t.abort('Checkheaders warnings were found')
 
         with Task('FindBugs', tasks) as t:
-            if t and findbugs([]) != 0:
+            if t and mx_findbugs.findbugs([]) != 0:
                 t.abort('FindBugs warnings were found')
 
         if exists('jacoco.exec'):
@@ -2078,7 +2080,7 @@ def jacocoreport(args):
     elif len(args) > 1:
         mx.abort('jacocoreport takes only one argument : an output directory')
 
-    includes = ['com.oracle.graal', 'com.oracle.jvmci']
+    includes = ['com.oracle.graal', 'jdk.internal.jvmci']
     for p in mx.projects():
         projsetting = getattr(p, 'jacoco', '')
         if projsetting == 'include':
@@ -2254,43 +2256,6 @@ def _parseVMOptions(optionType):
     valueMap = parser.parse(output.getvalue())
     return valueMap
 
-def findbugs(args):
-    '''run FindBugs against non-test Java projects'''
-    findBugsHome = mx.get_env('FINDBUGS_HOME', None)
-    if findBugsHome:
-        findbugsJar = join(findBugsHome, 'lib', 'findbugs.jar')
-    else:
-        findbugsLib = join(_graal_home, 'lib', 'findbugs-3.0.0')
-        if not exists(findbugsLib):
-            tmp = tempfile.mkdtemp(prefix='findbugs-download-tmp', dir=_graal_home)
-            try:
-                findbugsDist = mx.library('FINDBUGS_DIST').get_path(resolve=True)
-                with zipfile.ZipFile(findbugsDist) as zf:
-                    candidates = [e for e in zf.namelist() if e.endswith('/lib/findbugs.jar')]
-                    assert len(candidates) == 1, candidates
-                    libDirInZip = os.path.dirname(candidates[0])
-                    zf.extractall(tmp)
-                shutil.copytree(join(tmp, libDirInZip), findbugsLib)
-            finally:
-                shutil.rmtree(tmp)
-        findbugsJar = join(findbugsLib, 'findbugs.jar')
-    assert exists(findbugsJar)
-    nonTestProjects = [p for p in mx.projects() if not p.name.endswith('.test') and not p.name.endswith('.jtt')]
-    outputDirs = map(mx._cygpathU2W, [p.output_dir() for p in nonTestProjects])
-    javaCompliance = max([p.javaCompliance for p in nonTestProjects])
-    findbugsResults = join(_graal_home, 'findbugs.results')
-
-    cmd = ['-jar', mx._cygpathU2W(findbugsJar), '-textui', '-low', '-maxRank', '15']
-    if mx.is_interactive():
-        cmd.append('-progress')
-    cmd = cmd + ['-auxclasspath', mx._separatedCygpathU2W(mx.classpath([d.name for d in _jdkDeployedDists] + [p.name for p in nonTestProjects])), '-output', mx._cygpathU2W(findbugsResults), '-exitcode'] + args + outputDirs
-    exitcode = mx.run_java(cmd, nonZeroIsFatal=False, javaConfig=mx.java(javaCompliance))
-    if exitcode != 0:
-        with open(findbugsResults) as fp:
-            mx.log(fp.read())
-    os.unlink(findbugsResults)
-    return exitcode
-
 def checkheaders(args):
     """check Java source headers against any required pattern"""
     failures = {}
@@ -2333,7 +2298,6 @@ def mx_init(suite):
         'clean': [clean, ''],
         'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
         'export': [export, '[-options] [zipfile]'],
-        'findbugs': [findbugs, ''],
         'generateZshCompletion' : [generateZshCompletion, ''],
         'hsdis': [hsdis, '[att]'],
         'hcfdis': [hcfdis, ''],
@@ -2379,6 +2343,47 @@ def mx_init(suite):
 
     mx.update_commands(suite, commands)
 
+class JVMCIArchiveParticipant:
+    def __init__(self, dist):
+        self.dist = dist
+        self.jvmciServices = {}
+
+    def __opened__(self, arc, srcArc, services):
+        self.services = services
+        self.arc = arc
+        self.expectedOptionsProviders = set()
+
+    def __add__(self, arcname, contents):
+        if arcname.startswith('META-INF/jvmci.services/'):
+            service = arcname[len('META-INF/jvmci.services/'):]
+            self.jvmciServices.setdefault(service, []).extend([provider for provider in contents.split('\n')])
+            return True
+        if arcname.startswith('META-INF/jvmci.providers/'):
+            provider = arcname[len('META-INF/jvmci.providers/'):]
+            for service in contents.split('\n'):
+                self.jvmciServices.setdefault(service, []).append(provider)
+            return True
+        elif arcname.startswith('META-INF/jvmci.options/'):
+            # Need to create service files for the providers of the
+            # jdk.internal.jvmci.options.Options service created by
+            # jdk.internal.jvmci.options.processor.OptionProcessor.
+            optionsOwner = arcname[len('META-INF/jvmci.options/'):]
+            provider = optionsOwner + '_Options'
+            self.expectedOptionsProviders.add(provider.replace('.', '/') + '.class')
+            self.services.setdefault('jdk.internal.jvmci.options.Options', []).append(provider)
+        return False
+
+    def __addsrc__(self, arcname, contents):
+        return False
+
+    def __closing__(self):
+        self.expectedOptionsProviders -= set(self.arc.zf.namelist())
+        assert len(self.expectedOptionsProviders) == 0, 'missing generated Options providers:\n  ' + '\n  '.join(self.expectedOptionsProviders)
+        for service, providers in self.jvmciServices.iteritems():
+            arcname = 'META-INF/jvmci.services/' + service
+            # Convert providers to a set before printing to remove duplicates
+            self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)))
+
 def mx_post_parse_cmd_line(opts):  #
     # TODO _minVersion check could probably be part of a Suite in mx?
     def _versionCheck(version):
@@ -2413,4 +2418,8 @@ def mx_post_parse_cmd_line(opts):  #
                 if not jdkDist.partOfHotSpot:
                     _installDistInJdks(jdkDeployable)
             return _install
-        mx.distribution(jdkDist.name).add_update_listener(_close(jdkDist))
+        dist = mx.distribution(jdkDist.name)
+        dist.add_update_listener(_close(jdkDist))
+        if jdkDist.usesJVMCIClassLoader:
+            dist.set_archiveparticipant(JVMCIArchiveParticipant(dist))
+

@@ -22,16 +22,12 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterValue;
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.code.StackSlot;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;

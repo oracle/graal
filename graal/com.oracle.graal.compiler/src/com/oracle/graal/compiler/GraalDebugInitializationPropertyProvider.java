@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.service.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.service.*;
 
 /**
  * Sets system properties used in the initialization of {@link Debug} based on the values specified

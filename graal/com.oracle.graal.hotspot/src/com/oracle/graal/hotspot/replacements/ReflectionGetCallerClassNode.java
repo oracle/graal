@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
@@ -32,8 +33,6 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
 
 @NodeInfo
 public final class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {

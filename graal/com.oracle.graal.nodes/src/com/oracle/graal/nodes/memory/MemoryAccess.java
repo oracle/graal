@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.memory;
 
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * This interface marks nodes that access some memory location, and that have an edge to the last

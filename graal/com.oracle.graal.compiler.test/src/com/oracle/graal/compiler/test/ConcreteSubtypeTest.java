@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import jdk.internal.jvmci.meta.Assumptions.*;
+
 import org.junit.*;
 
-import com.oracle.jvmci.meta.Assumptions.Assumption;
-import com.oracle.jvmci.meta.Assumptions.ConcreteSubtype;
 import com.oracle.graal.nodes.*;
 
 /**

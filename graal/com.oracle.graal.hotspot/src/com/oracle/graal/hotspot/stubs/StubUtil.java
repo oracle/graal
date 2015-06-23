@@ -22,16 +22,16 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import static com.oracle.jvmci.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.word.Word.*;
+import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;

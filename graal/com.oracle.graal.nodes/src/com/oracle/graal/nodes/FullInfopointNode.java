@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.code.*;
 
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.

@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.jvmci.debug.DelegatingDebugConfig.Feature.*;
+import static jdk.internal.jvmci.debug.DelegatingDebugConfig.Feature.*;
 
 import java.lang.reflect.*;
+
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -39,8 +42,6 @@ import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Test that interfaces are correctly initialized by a static field resolution during eager graph
@@ -75,7 +76,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault(new Plugins(new InvocationPlugins(metaAccess)));
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
-        HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE, null);
+        HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 

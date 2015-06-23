@@ -23,9 +23,13 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.replacements.NodeIntrinsificationPhase.*;
-import static com.oracle.jvmci.meta.MetaUtil.*;
+import static jdk.internal.jvmci.meta.MetaUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -36,9 +40,6 @@ import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * An {@link NodePlugin} that handles methods annotated by {@link Fold} and {@link NodeIntrinsic}.

@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.jtt;
 
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
