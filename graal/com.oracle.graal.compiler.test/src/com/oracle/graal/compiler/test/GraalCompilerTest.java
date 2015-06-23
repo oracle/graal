@@ -32,43 +32,42 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.*;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.Scope;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-
 import org.junit.*;
-import org.junit.internal.*;
+import org.junit.internal.AssumptionViolatedException;
 
 import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import com.oracle.graal.phases.schedule.SchedulePhase.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
 
 /**
  * Base class for Graal compiler unit tests.
