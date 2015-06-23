@@ -39,9 +39,11 @@ import java.util.List;
  */
 public final class ForeignAccess {
     private final Factory factory;
+    private final Thread initThread;
 
     private ForeignAccess(Factory faf) {
         this.factory = faf;
+        this.initThread = Thread.currentThread();
     }
 
     /**
@@ -150,11 +152,19 @@ public final class ForeignAccess {
         return (TruffleObject) frame.getArguments()[ForeignAccessArguments.RECEIVER_INDEX];
     }
 
+    private void checkThread() {
+        if (initThread != Thread.currentThread()) {
+            throw new IllegalStateException("ForeignAccess created on " + initThread.getName() + " but used on " + Thread.currentThread().getName());
+        }
+    }
+
     CallTarget access(Message message) {
+        checkThread();
         return factory.accessMessage(message);
     }
 
     boolean canHandle(TruffleObject receiver) {
+        checkThread();
         return factory.canHandle(receiver);
     }
 
