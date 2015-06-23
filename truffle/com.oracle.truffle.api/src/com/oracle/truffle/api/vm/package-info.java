@@ -24,7 +24,7 @@
  */
 
 /**
- * Central place to create and control {@link TruffleVM Truffle Virtual Machine}
+ * Central place to create and control {@link com.oracle.truffle.api.vm.TruffleVM Truffle Virtual Machine}
  * and all languages hosted in it.
  */
 package com.oracle.truffle.api.vm;

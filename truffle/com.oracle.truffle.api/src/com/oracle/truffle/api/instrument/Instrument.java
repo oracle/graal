@@ -77,10 +77,11 @@ import com.oracle.truffle.api.source.*;
  * <li>When a probed AST is cloned, the instrumentation chain associated with each Probe is cloned
  * along with the rest of the AST.</li>
  *
- * <li>When a new Instrument (for example an instance of {@link SimpleInstrument} is attached to a
- * Probe, the Instrument inserts a new instance of its private Node type,
- * {@link SimpleInstrument.SimpleInstrumentNode}, into <em>each of the instrument chains</em>
- * managed by the Probe, i.e. one node instance per existing clone of the AST.</li>
+ * <li>When a new Instrument (for example an instance created by
+ * {@link Instrument#create(com.oracle.truffle.api.instrument.SimpleInstrumentListener, java.lang.String)}
+ * is attached to a Probe, the Instrument inserts a new instance of its private Node type into
+ * <em>each of the instrument chains</em> managed by the Probe, i.e. one node instance per existing
+ * clone of the AST.</li>
  *
  * <li>If an Instrument is attached to a Probe in an AST that subsequently gets cloned, then the
  * Instrument's private Node type will be cloned along with the rest of the the AST.</li>

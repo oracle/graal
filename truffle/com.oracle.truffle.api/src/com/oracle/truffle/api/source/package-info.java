@@ -24,8 +24,7 @@
  */
 
 /**
- * Do you want to implement your own {@link com.oracle.truffle.api.TruffleLanguage Truffle based language}?
- * In such case start {@link com.oracle.truffle.api.TruffleLanguage here}.
+ * Represents a {@link com.oracle.truffle.api.source.Source source file}.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.source;
 

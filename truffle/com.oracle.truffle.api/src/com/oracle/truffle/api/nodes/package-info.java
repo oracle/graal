@@ -24,8 +24,8 @@
  */
 
 /**
- * Do you want to implement your own {@link com.oracle.truffle.api.TruffleLanguage Truffle based language}?
- * In such case start {@link com.oracle.truffle.api.TruffleLanguage here}.
+ * Abstract syntax tree {@link com.oracle.truffle.api.nodes.Node nodes} are the basic building block
+ * for your {@link com.oracle.truffle.api.TruffleLanguage}.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.nodes;
 

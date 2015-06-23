@@ -650,7 +650,7 @@ public abstract class Source {
 
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
-     * {@code charIndex} value by building a {@linkplain TextMap map} of lines in the source.
+     * {@code charIndex} value by building a {@code TextMap map} of lines in the source.
      * <p>
      * Checks the position arguments for consistency with the source.
      * <p>
@@ -676,8 +676,8 @@ public abstract class Source {
 
     /**
      * Creates a representation of a contiguous region of text in the source. Computes the
-     * {@code (startLine, startColumn)} values by building a {@linkplain TextMap map} of lines in
-     * the source.
+     * {@code (startLine, startColumn)} values by building a {@code TextMap map} of lines in the
+     * source.
      * <p>
      * Checks the position arguments for consistency with the source.
      * <p>
