@@ -549,9 +549,9 @@ def _copyToJdk(src, dst, permissions=JDK_UNIX_PERMISSIONS_FILE):
 
 def _extractJVMCIFiles(jdkJars, jvmciJars, servicesDir, optionsDir):
     if exists(servicesDir):
-        shutil.rmtree(servicesDir)
+        shutil.rmtree(servicesDir, ignore_errors=True)
     if exists(optionsDir):
-        shutil.rmtree(optionsDir)
+        shutil.rmtree(optionsDir, ignore_errors=True)
     if not exists(servicesDir):
         os.makedirs(servicesDir)
     if not exists(optionsDir):
