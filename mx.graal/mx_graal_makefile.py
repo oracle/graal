@@ -88,14 +88,14 @@ def make_dist_rule(dist, mf):
         return os.path.relpath(p, dist.suite.dir)
     shortName = short_dist_name(dist.name)
     jdkDeployedDists = get_jdk_deployed_dists()
-    jarPath = path_dist_relative(dist.path)
+    jarName = os.path.basename(dist.path)
     sourcesVariableName = shortName + "_SRC"
     depJarVariableName = shortName + "_DEP_JARS"
     sources = []
     resources = []
     sortedDeps = dist.sorted_deps(True, transitive=False, includeAnnotationProcessors=True)
     projects = filter_projects(sortedDeps, mx.Project)
-    targetPathPrefix = "$(TARGET)" + os.path.sep
+    targetPathPrefix = "$(TARGET)/"
     libraryDeps = [path_dist_relative(l.get_path(False)) for l in filter_projects(sortedDeps, mx.Library)]
 
     annotationProcessorDeps = []
@@ -104,7 +104,7 @@ def make_dist_rule(dist, mf):
     for d in distDeps:
         update_list(distDepProjects, d.sorted_deps(includeLibs=False, transitive=True))
 
-    classPath = [targetPathPrefix + path_dist_relative(d.path) for d in distDeps] + libraryDeps \
+    classPath = [targetPathPrefix + os.path.basename(d.path) for d in distDeps] + libraryDeps \
         + [path_dist_relative(mx.dependency(name).path) for name in dist.excludedDependencies]
     for p in projects:
         if p.definedAnnotationProcessors != None and p.definedAnnotationProcessorsDist != dist:
@@ -112,9 +112,9 @@ def make_dist_rule(dist, mf):
     for p in projects:
         projectDir = path_dist_relative(p.dir)
         if p not in distDepProjects and p not in annotationProcessorDeps:
-            for src in [projectDir + os.path.sep + d for d in p.srcDirs]:
+            for src in [projectDir + '/' + d for d in p.srcDirs]:
                 sources.append("$(shell find {} -type f 2> /dev/null)".format(src))
-                metaInf = src + os.path.sep + "META-INF"
+                metaInf = src + "/META-INF"
                 if os.path.exists(metaInf):
                     resources.append(metaInf)
 
@@ -131,7 +131,7 @@ def make_dist_rule(dist, mf):
     shouldExport = dist.name in jdkDeployedDists
     props = {
            "name": shortName,
-           "jarPath": targetPathPrefix + jarPath,
+           "jarName": targetPathPrefix + jarName,
            "depJarsVariableAccess": "$(" + depJarVariableName + ")" if len(classPath) > 0 else "",
            "depJarsVariable": depJarVariableName,
            "sourceLines": sourceLines,
@@ -143,7 +143,7 @@ def make_dist_rule(dist, mf):
            }
 
     mf.add_definition(sourceLines)
-    mf.add_definition("{name}_JAR = {jarPath}".format(**props))
+    mf.add_definition("{name}_JAR = {jarName}".format(**props))
     if len(classPath) > 0: mf.add_definition("{depJarsVariable} = {jarDeps}".format(**props))
     if shouldExport: mf.add_definition("EXPORTED_FILES += $({name}_JAR)".format(**props))
     mf.add_rule("""$({name}_JAR): $({sourcesVariableName}) {annotationProcessors} {depJarsVariableAccess}
