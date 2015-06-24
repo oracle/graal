@@ -96,7 +96,6 @@ class JDKDeployedDist:
         self.partOfHotSpot = partOfHotSpot # true when this distribution is delivered with HotSpot
 
 _jdkDeployedDists = [
-    JDKDeployedDist('TRUFFLE'),
     JDKDeployedDist('JVMCI_SERVICE', partOfHotSpot=True),
     JDKDeployedDist('JVMCI_API', usesJVMCIClassLoader=True, partOfHotSpot=True),
     JDKDeployedDist('JVMCI_HOTSPOT', usesJVMCIClassLoader=True, partOfHotSpot=True),
