@@ -548,43 +548,35 @@ def _copyToJdk(src, dst, permissions=JDK_UNIX_PERMISSIONS_FILE):
         os.chmod(dstLib, permissions)
 
 def _extractJVMCIFiles(jdkJars, jvmciJars, servicesDir, optionsDir):
-    if exists(servicesDir):
-        shutil.rmtree(servicesDir, ignore_errors=True)
-    if exists(optionsDir):
-        shutil.rmtree(optionsDir, ignore_errors=True)
-    if not exists(servicesDir):
-        os.makedirs(servicesDir)
-    if not exists(optionsDir):
-        os.makedirs(optionsDir)
+
+    oldServices = os.listdir(servicesDir) if exists(servicesDir) else os.makedirs(servicesDir)
+    oldOptions = os.listdir(optionsDir) if exists(optionsDir) else os.makedirs(optionsDir)
+
     jvmciServices = {}
     optionsFiles = []
     for jar in jvmciJars:
         if os.path.isfile(jar):
             with zipfile.ZipFile(jar) as zf:
                 for member in zf.namelist():
-                    if member.startswith('META-INF/jvmci.services') and member:
+                    if member.startswith('META-INF/jvmci.services/') and member != 'META-INF/jvmci.services/':
                         service = basename(member)
-                        if service == "":
-                            continue # Zip files may contain empty entries for directories (jar -cf ... creates such)
-                        # we don't handle directories
-                        assert service and member == 'META-INF/jvmci.services/' + service
+                        assert service != "", member
                         with zf.open(member) as serviceFile:
                             providers = jvmciServices.setdefault(service, [])
                             for line in serviceFile.readlines():
                                 line = line.strip()
                                 if line:
                                     providers.append(line)
-                    elif member.startswith('META-INF/jvmci.options'):
+                    elif member.startswith('META-INF/jvmci.options/') and member != 'META-INF/jvmci.options/':
                         filename = basename(member)
-                        if filename == "":
-                            continue # Zip files may contain empty entries for directories (jar -cf ... creates such)
-                        # we don't handle directories
-                        assert filename and member == 'META-INF/jvmci.options/' + filename
+                        assert filename != "", member
                         targetpath = join(optionsDir, filename)
                         optionsFiles.append(filename)
                         with zf.open(member) as optionsFile, \
                              file(targetpath, "wb") as target:
                             shutil.copyfileobj(optionsFile, target)
+                            if oldOptions and filename in oldOptions:
+                                oldOptions.remove(filename)
     for service, providers in jvmciServices.iteritems():
         fd, tmp = tempfile.mkstemp(prefix=service)
         f = os.fdopen(fd, 'w+')
@@ -593,8 +585,18 @@ def _extractJVMCIFiles(jdkJars, jvmciJars, servicesDir, optionsDir):
         target = join(servicesDir, service)
         f.close()
         shutil.move(tmp, target)
+        if oldServices and service in oldServices:
+            oldServices.remove(service)
         if mx.get_os() != 'windows':
             os.chmod(target, JDK_UNIX_PERMISSIONS_FILE)
+
+    if mx.is_interactive():
+        for d, files in [(servicesDir, oldServices), (optionsDir, oldOptions)]:
+            if files and mx.ask_yes_no('These files in ' + d + ' look obsolete:\n  ' + '\n  '.join(files) + '\nDelete them', 'n'):
+                for f in files:
+                    path = join(d, f)
+                    os.remove(path)
+                    mx.log('Deleted ' + path)
 
 def _updateJVMCIFiles(jdkDir):
     jreJVMCIDir = join(jdkDir, 'jre', 'lib', 'jvmci')
