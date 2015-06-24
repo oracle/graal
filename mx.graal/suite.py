@@ -1182,7 +1182,7 @@ suite = {
 
     "JVMCI_SERVICE" : {
       "path" : "build/jvmci-service.jar",
-      "subDir" : "graal",
+      "subDir" : "jvmci",
       "sourcesPath" : "build/jvmci-service.src.zip",
       "dependencies" : ["jdk.internal.jvmci.service"],
       "exclude" : ["FINDBUGS"],
@@ -1190,7 +1190,7 @@ suite = {
 
     "JVMCI_API" : {
       "path" : "build/jvmci-api.jar",
-      "subDir" : "graal",
+      "subDir" : "jvmci",
       "sourcesPath" : "build/jvmci-api.src.zip",
       "dependencies" : [
         "jdk.internal.jvmci.runtime",
@@ -1206,7 +1206,7 @@ suite = {
 
     "JVMCI_HOTSPOT" : {
       "path" : "build/jvmci-hotspot.jar",
-      "subDir" : "graal",
+      "subDir" : "jvmci",
       "sourcesPath" : "build/jvmci-hotspot.src.zip",
       "dependencies" : [
         "jdk.internal.jvmci.hotspot.amd64",
@@ -1230,6 +1230,7 @@ suite = {
       ],
       "exclude" : ["FINDBUGS"],
       "distDependencies" : [
+        "JVMCI_API",
         "JVMCI_SERVICE",
         "JVMCI_HOTSPOT",
       ],
