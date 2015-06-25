@@ -287,7 +287,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.tools"],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "1.7",
       "workingSets" : "Truffle,Tools",
     },
 
@@ -397,7 +397,7 @@ suite = {
       "path" : "build/truffle-debug.jar",
       "subDir" : "truffle",
       "sourcesPath" : "build/truffle-debug.src.zip",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.tools.debug.shell",
       ],
