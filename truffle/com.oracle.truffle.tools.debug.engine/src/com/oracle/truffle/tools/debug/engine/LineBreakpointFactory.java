@@ -113,7 +113,7 @@ final class LineBreakpointFactory {
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
 
-    LineBreakpointFactory(DebugExecutionSupport executionSupport, BreakpointCallback breakpointCallback, WarningLog warningLog) {
+    LineBreakpointFactory(DebugExecutionSupport executionSupport, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.executionSupport = executionSupport;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
