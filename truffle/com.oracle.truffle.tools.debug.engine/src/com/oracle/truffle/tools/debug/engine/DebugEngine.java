@@ -548,7 +548,7 @@ public final class DebugEngine {
         }
 
         @Override
-        protected void setStrategy(int stackDepth) {
+        protected void setStrategy(final int stackDepth) {
             Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
 
                 @Override
@@ -623,7 +623,7 @@ public final class DebugEngine {
         }
 
         @Override
-        protected void setStrategy(int stackDepth) {
+        protected void setStrategy(final int stackDepth) {
             Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
 
                 @Override
