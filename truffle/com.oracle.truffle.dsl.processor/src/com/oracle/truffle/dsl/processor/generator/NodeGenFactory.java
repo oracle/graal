@@ -278,10 +278,7 @@ public class NodeGenFactory {
     }
 
     private void avoidFindbugsProblems(CodeTypeElement clazz) {
-        TypeElement type = context.getEnvironment().getElementUtils().getTypeElement("edu.umd.cs.findbugs.annotations.SuppressFBWarnings");
-        if (type == null) {
-            return;
-        }
+        TypeElement type = context.getEnvironment().getElementUtils().getTypeElement(SuppressFBWarnings.class.getName());
         boolean foundComparison = false;
         outer: for (SpecializationData specialization : node.getSpecializations()) {
             for (GuardExpression guard : specialization.getGuards()) {
