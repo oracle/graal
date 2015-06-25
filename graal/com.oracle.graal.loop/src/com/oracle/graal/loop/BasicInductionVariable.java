@@ -133,17 +133,14 @@ public class BasicInductionVariable extends InductionVariable {
             stride = IntegerConvertNode.convert(stride, stamp, graph());
             initNode = IntegerConvertNode.convert(initNode, stamp, graph());
         }
-        ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
-        if (!maxTripCount.stamp().isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
-        }
+        ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount, stride, initNode);
         return add(graph, mul(graph, stride, sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override
     public ValueNode exitValueNode() {
         Stamp stamp = phi.stamp();
-        ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
+        ValueNode maxTripCount = loop.counted().maxTripCountNode();
         if (!maxTripCount.stamp().isCompatible(stamp)) {
             maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph());
         }
