@@ -36,7 +36,8 @@ import com.oracle.graal.nodes.spi.*;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
- * {@link StateSplit} and does not include a write barrier.
+ * {@link StateSplit} and does not include a write barrier. Note that contrary to the sound of the
+ * name this node can be used for storing any kind.
  */
 @NodeInfo
 public final class DirectObjectStoreNode extends FixedWithNextNode implements Lowerable {
@@ -64,7 +65,35 @@ public final class DirectObjectStoreNode extends FixedWithNextNode implements Lo
                     @ConstantNodeParameter Kind storeKind);
 
     @NodeIntrinsic
+    public static native void storeBoolean(Object obj, @ConstantNodeParameter int displacement, long offset, boolean value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
+    public static native void storeByte(Object obj, @ConstantNodeParameter int displacement, long offset, byte value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
+    public static native void storeChar(Object obj, @ConstantNodeParameter int displacement, long offset, char value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
+    public static native void storeShort(Object obj, @ConstantNodeParameter int displacement, long offset, short value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
+    public static native void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
     public static native void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
+    public static native void storeFloat(Object obj, @ConstantNodeParameter int displacement, long offset, float value, @ConstantNodeParameter LocationIdentity locationIdenity,
+                    @ConstantNodeParameter Kind storeKind);
+
+    @NodeIntrinsic
+    public static native void storeDouble(Object obj, @ConstantNodeParameter int displacement, long offset, double value, @ConstantNodeParameter LocationIdentity locationIdenity,
                     @ConstantNodeParameter Kind storeKind);
 
     @Override
