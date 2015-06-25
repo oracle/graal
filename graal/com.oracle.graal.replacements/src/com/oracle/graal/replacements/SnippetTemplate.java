@@ -28,7 +28,6 @@ import static java.util.FormattableFlags.*;
 import static jdk.internal.jvmci.debug.Debug.*;
 import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
-import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -163,8 +162,7 @@ public class SnippetTemplate {
         void notifyNewTemplate() {
             templateCount++;
             if (UseSnippetTemplateCache && templateCount == MaxTemplatesPerSnippet) {
-                PrintStream err = System.err;
-                err.printf("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, method.format("%h.%n(%p)"),
+                TTY.print("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, method.format("%h.%n(%p)"),
                                 MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME);
             }
         }
@@ -256,6 +254,7 @@ public class SnippetTemplate {
         protected final CacheKey cacheKey;
         protected final Object[] values;
         protected final Stamp[] constStamps;
+        protected boolean cacheable;
 
         protected int nextParamIdx;
 
@@ -264,6 +263,7 @@ public class SnippetTemplate {
             this.cacheKey = new CacheKey(info, guardsStage, loweringStage);
             this.values = new Object[info.getParameterCount()];
             this.constStamps = new Stamp[info.getParameterCount()];
+            this.cacheable = true;
         }
 
         public Arguments add(String name, Object value) {
@@ -295,6 +295,10 @@ public class SnippetTemplate {
             cacheKey.setParam(nextParamIdx, varargs.length);
             nextParamIdx++;
             return this;
+        }
+
+        public void setCacheable(boolean cacheable) {
+            this.cacheable = cacheable;
         }
 
         private boolean check(String name, boolean constParam, boolean varargsParam) {
@@ -530,12 +534,12 @@ public class SnippetTemplate {
          * Gets a template for a given key, creating it first if necessary.
          */
         protected SnippetTemplate template(final Arguments args) {
-            SnippetTemplate template = UseSnippetTemplateCache ? templates.get(args.cacheKey) : null;
+            SnippetTemplate template = UseSnippetTemplateCache && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
                 try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
                     template = new SnippetTemplate(providers, snippetReflection, args);
-                    if (UseSnippetTemplateCache) {
+                    if (UseSnippetTemplateCache && args.cacheable) {
                         templates.put(args.cacheKey, template);
                     }
                 } catch (Throwable e) {
