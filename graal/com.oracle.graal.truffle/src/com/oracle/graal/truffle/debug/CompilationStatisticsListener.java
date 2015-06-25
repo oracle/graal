@@ -29,10 +29,11 @@ import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
-import com.oracle.jvmci.code.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node;
 

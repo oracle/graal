@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.truffle.test;
 
-import com.oracle.jvmci.code.*;
+import jdk.internal.jvmci.code.*;
 
 import org.junit.*;
 
@@ -63,9 +63,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (SourceStackTrace t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            Assert.assertTrue(trace[0].toString().startsWith("com.oracle.truffle.api.CompilerAsserts.neverPartOfCompilation(CompilerAsserts.java:"));
-            Assert.assertTrue(trace[1].toString().startsWith("com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode.execute(NeverPartOfCompilationTestNode.java:"));
-            Assert.assertTrue(trace[2].toString().startsWith("com.oracle.graal.truffle.test.nodes.RootTestNode.execute(RootTestNode.java:"));
+            Assert.assertTrue(trace[0].toString().startsWith("com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode.execute(NeverPartOfCompilationTestNode.java:"));
+            Assert.assertTrue(trace[1].toString().startsWith("com.oracle.graal.truffle.test.nodes.RootTestNode.execute(RootTestNode.java:"));
         }
     }
 

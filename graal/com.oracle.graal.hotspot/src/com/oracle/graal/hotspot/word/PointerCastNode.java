@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.hotspot.word;
 
-import com.oracle.jvmci.meta.Value;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;

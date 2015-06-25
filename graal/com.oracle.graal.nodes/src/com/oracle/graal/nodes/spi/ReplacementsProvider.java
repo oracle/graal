@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.api.replacements.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Interface for service providers that register replacements with the compiler.

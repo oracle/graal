@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.profiling;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
@@ -37,7 +37,6 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.jvmci.common.*;
 
 public class MoveProfiling extends PostAllocationOptimizationPhase {
 

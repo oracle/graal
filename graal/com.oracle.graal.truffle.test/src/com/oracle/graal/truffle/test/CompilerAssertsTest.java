@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
-import com.oracle.jvmci.code.BailoutException;
+import jdk.internal.jvmci.code.*;
+
 import org.junit.*;
 
 import com.oracle.graal.truffle.test.nodes.*;

@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.AMD64Call.DirectCallOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * A direct call that complies with the conventions for such calls in HotSpot. It doesn't use an

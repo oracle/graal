@@ -26,6 +26,8 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
@@ -38,7 +40,6 @@ import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
-import com.oracle.jvmci.code.*;
 
 /**
  * Helper class for lowering {@link InstanceOfNode}s with snippets. The majority of the complexity

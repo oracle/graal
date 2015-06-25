@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.replacements.test;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -37,8 +40,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 public class PEGraphDecoderTest extends GraalCompilerTest {
 

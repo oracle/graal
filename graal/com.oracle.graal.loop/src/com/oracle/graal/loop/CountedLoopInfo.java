@@ -23,14 +23,14 @@
 package com.oracle.graal.loop;
 
 import static com.oracle.graal.loop.MathUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 public class CountedLoopInfo {
 
@@ -56,26 +56,21 @@ public class CountedLoopInfo {
         StructuredGraph graph = iv.valueNode().graph();
         Stamp stamp = iv.valueNode().stamp();
         ValueNode range = sub(graph, end, iv.initNode());
-        if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1) {
-            ValueNode stride = iv.strideNode();
-            if (!oneOff) {
-                if (iv.direction() == Direction.Up) {
-                    stride = sub(graph, stride, ConstantNode.forIntegerStamp(stamp, 1, graph));
-                } else {
-                    assert iv.direction() == Direction.Down;
-                    stride = add(graph, stride, ConstantNode.forIntegerStamp(stamp, 1, graph));
-                }
-            }
-            range = add(graph, range, stride);
-        } else if (oneOff) {
-            if (iv.direction() == Direction.Up) {
-                range = add(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
-            } else {
-                assert iv.direction() == Direction.Down;
-                range = sub(graph, range, ConstantNode.forIntegerStamp(stamp, 1, graph));
-            }
+
+        ValueNode oneDirection;
+        if (iv.direction() == Direction.Up) {
+            oneDirection = ConstantNode.forIntegerStamp(stamp, 1, graph);
+        } else {
+            assert iv.direction() == Direction.Down;
+            oneDirection = ConstantNode.forIntegerStamp(stamp, -1, graph);
         }
-        ValueNode div = divBefore(graph, loop.entryPoint(), range, iv.strideNode());
+        if (oneOff) {
+            range = add(graph, range, oneDirection);
+        }
+        // round-away-from-zero divison: (range + stride -/+ 1) / stride
+        ValueNode denominator = add(graph, sub(graph, range, oneDirection), iv.strideNode());
+        ValueNode div = divBefore(graph, loop.entryPoint(), denominator, iv.strideNode());
+
         if (assumePositive) {
             return div;
         }

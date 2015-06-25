@@ -24,12 +24,13 @@ package com.oracle.graal.nodes.spi;
 
 import java.util.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * This tool can be used to query the current state (normal/virtualized/re-materialized) of values

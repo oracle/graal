@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import com.oracle.jvmci.code.InvalidInstalledCodeException;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.Kind;
 import java.util.*;
 
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.nfi.api.*;
 
 public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {

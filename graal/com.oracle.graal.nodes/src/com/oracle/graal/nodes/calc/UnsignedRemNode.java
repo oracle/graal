@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.code.*;
 
 @NodeInfo(shortName = "|%|")
 public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLowerable {
@@ -45,14 +46,15 @@ public class UnsignedRemNode extends FixedBinaryNode implements Lowerable, LIRLo
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        int bits = ((IntegerStamp) stamp()).getBits();
         if (forX.isConstant() && forY.isConstant()) {
-            long yConst = forY.asJavaConstant().asLong();
+            long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(forX.asJavaConstant().asLong(), yConst));
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.remainder(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {
-            long c = forY.asJavaConstant().asLong();
+            long c = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (c == 1) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             } else if (CodeUtil.isPowerOf2(c)) {

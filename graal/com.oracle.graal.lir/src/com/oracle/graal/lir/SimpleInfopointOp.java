@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.lir;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.code.*;
 
 @Opcode("SIMPLE_INFOPOINT")
 public final class SimpleInfopointOp extends LIRInstruction {

@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.jvmci.code.ForeignCallLinkage;
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.meta.MetaUtil;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 

@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.LocalVariableTable;
-import com.oracle.jvmci.meta.Local;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 
 import java.lang.reflect.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -44,9 +45,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 /**
  * Base class for a stub defined by a snippet.
@@ -103,6 +101,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
         // evolved or have breakpoints.
         final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
         graph.disableInlinedMethodRecording();
+        graph.disableUnsafeAccessTracking();
 
         if (SnippetGraphUnderConstruction != null) {
             assert SnippetGraphUnderConstruction.get() == null : SnippetGraphUnderConstruction.get().toString() + " " + graph;

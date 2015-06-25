@@ -30,12 +30,11 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.zip.*;
 
+import jdk.internal.jvmci.options.*;
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.Type;
 
 import org.junit.*;
-
-import com.oracle.jvmci.options.*;
 
 /**
  * Verifies a class declaring one or more {@linkplain OptionValue options} has a class initializer

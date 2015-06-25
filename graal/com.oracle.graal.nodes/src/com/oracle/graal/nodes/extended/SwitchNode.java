@@ -24,13 +24,14 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * The {@code SwitchNode} class is the base of both lookup and table switches.

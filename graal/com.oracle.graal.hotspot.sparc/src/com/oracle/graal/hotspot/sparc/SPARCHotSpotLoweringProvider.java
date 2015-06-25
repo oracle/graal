@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;

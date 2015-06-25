@@ -22,23 +22,18 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.code.CalleeSaveLayout;
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-
-import static com.oracle.jvmci.amd64.AMD64.*;
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.code.CallingConvention.Type.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -56,7 +51,6 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * HotSpot AMD64 specific backend.

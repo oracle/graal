@@ -22,20 +22,17 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.code.InfopointReason;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import static com.oracle.jvmci.code.CodeUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
 import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.code.CompilationResult.Call;
-import com.oracle.jvmci.code.CompilationResult.Infopoint;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -65,7 +62,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         final StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                        getProfilingInfo(graph), null, getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        getProfilingInfo(graph), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
             if (sp instanceof Call) {
@@ -88,7 +85,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         PhaseSuite<HighTierContext> graphBuilderSuite = getCustomGraphBuilderSuite(GraphBuilderConfiguration.getFullDebugDefault(getDefaultGraphBuilderPlugins()));
         final CompilationResult cr = compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), graphBuilderSuite, OptimisticOptimizations.ALL,
-                        getProfilingInfo(graph), getSpeculationLog(), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+                        getProfilingInfo(graph), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);

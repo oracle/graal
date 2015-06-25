@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.jvmci.debug.internal.MemUseTrackerImpl.*;
-import static com.oracle.jvmci.hotspot.CompileTheWorld.*;
-import static com.oracle.jvmci.hotspot.CompileTheWorld.Options.*;
+import static jdk.internal.jvmci.debug.internal.MemUseTrackerImpl.*;
+import static jdk.internal.jvmci.hotspot.CompileTheWorld.*;
+import static jdk.internal.jvmci.hotspot.CompileTheWorld.Options.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.internal.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.CompileTheWorld.Config;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.internal.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.CompileTheWorld.Config;
 
 /**
  * Used to benchmark memory usage during Graal compilation.
@@ -130,11 +130,11 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         // invalidate any existing compiled code
         method.reprofile();
 
-        int id = method.allocateCompileId(com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
+        int id = method.allocateCompileId(jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
         long graalEnv = 0L;
 
         try (MemoryUsageCloseable c = label == null ? null : new MemoryUsageCloseable(label)) {
-            CompilationTask task = new CompilationTask(method, com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
+            CompilationTask task = new CompilationTask(method, jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
             task.runCompilation();
         }
     }
@@ -146,10 +146,10 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             // invalidate any existing compiled code
             method.reprofile();
 
-            int id = method.allocateCompileId(com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
+            int id = method.allocateCompileId(jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI);
             long graalEnv = 0L;
             try (AllocSpy as = AllocSpy.open(methodName)) {
-                CompilationTask task = new CompilationTask(method, com.oracle.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
+                CompilationTask task = new CompilationTask(method, jdk.internal.jvmci.compiler.Compiler.INVOCATION_ENTRY_BCI, graalEnv, id, false);
                 task.runCompilation();
             }
         }

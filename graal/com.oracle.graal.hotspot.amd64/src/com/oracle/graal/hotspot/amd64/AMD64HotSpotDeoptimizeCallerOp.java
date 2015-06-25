@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Removes the current frame and tail calls the uncommon trap routine.

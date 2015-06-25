@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.lir.stackslotalloc;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * A {@link StackSlotAllocator} is responsible for translating {@link VirtualStackSlot virtual}

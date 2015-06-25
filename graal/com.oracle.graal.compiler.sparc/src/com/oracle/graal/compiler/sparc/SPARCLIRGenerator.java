@@ -27,7 +27,12 @@ import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.sparc.SPARCCompare.*;
 import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.sparc.*;
+import jdk.internal.jvmci.sparc.SPARC.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.*;
@@ -60,11 +65,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.SPARCStackMove;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.sparc.*;
-import com.oracle.jvmci.sparc.SPARC.CPUFeature;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.

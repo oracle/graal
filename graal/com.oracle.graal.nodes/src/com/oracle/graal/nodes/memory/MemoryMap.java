@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.memory;
 
 import java.util.*;
 
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the

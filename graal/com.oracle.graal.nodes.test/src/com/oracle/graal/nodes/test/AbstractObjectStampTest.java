@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.nodes.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.type.*;

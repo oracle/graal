@@ -24,6 +24,7 @@ package com.oracle.graal.replacements.test;
 
 import static com.oracle.graal.nodeinfo.InputType.*;
 import static org.hamcrest.CoreMatchers.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
-import com.oracle.jvmci.meta.*;
 
 public class SubstitutionsTest extends GraalCompilerTest {
 

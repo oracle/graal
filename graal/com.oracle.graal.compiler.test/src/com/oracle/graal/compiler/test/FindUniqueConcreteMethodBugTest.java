@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
-import org.junit.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.Assumptions.*;
 
-import com.oracle.jvmci.meta.Assumptions.AssumptionResult;
-import com.oracle.jvmci.meta.*;
+import org.junit.*;
 
 public class FindUniqueConcreteMethodBugTest extends GraalCompilerTest {
 

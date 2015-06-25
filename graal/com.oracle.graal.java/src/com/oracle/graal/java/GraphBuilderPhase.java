@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.java;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Parses the bytecodes of a method and builds the IR graph.

@@ -23,6 +23,9 @@
 
 package com.oracle.graal.compiler.amd64;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.common.type.*;
@@ -30,8 +33,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
 
 public class AMD64AddressLowering extends AddressLowering {
 

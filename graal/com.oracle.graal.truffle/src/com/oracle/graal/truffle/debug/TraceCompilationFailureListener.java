@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.truffle.debug;
 
-import static com.oracle.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.compiler.Compiler.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.jvmci.code.*;
 
 public final class TraceCompilationFailureListener extends AbstractDebugCompilationListener {
 

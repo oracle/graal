@@ -22,9 +22,9 @@
  */
 package com.oracle.nfi.test;
 
-import static com.oracle.jvmci.common.UnsafeAccess.*;
 import static java.io.File.*;
 import static java.lang.System.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
 import static org.junit.Assert.*;
 import static org.junit.Assume.*;
 

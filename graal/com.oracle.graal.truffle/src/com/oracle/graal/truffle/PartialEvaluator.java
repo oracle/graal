@@ -27,6 +27,13 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 import java.lang.invoke.*;
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
@@ -51,12 +58,6 @@ import com.oracle.graal.truffle.nodes.frame.NewFrameNode.VirtualOnlyInstanceNode
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.truffle.substitutions.*;
 import com.oracle.graal.virtual.phases.ea.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.*;
@@ -103,13 +104,13 @@ public class PartialEvaluator {
             throw Debug.handle(e);
         }
 
-        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions);
+        final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions, callTarget.getSpeculationLog());
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
 
             PhaseContext baseContext = new PhaseContext(providers);
-            HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE, null);
+            HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
             fastPartialEvaluation(callTarget, graph, baseContext, tierContext);
 

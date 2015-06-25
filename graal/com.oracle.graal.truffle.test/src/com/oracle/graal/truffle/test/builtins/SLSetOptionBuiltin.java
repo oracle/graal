@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.truffle.test.builtins;
 
+import jdk.internal.jvmci.options.*;
+
 import com.oracle.graal.truffle.*;
-import com.oracle.jvmci.options.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;

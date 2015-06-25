@@ -24,9 +24,10 @@ package com.oracle.graal.lir.jtt;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 public abstract class LIRTestSpecification {
     private Value result;

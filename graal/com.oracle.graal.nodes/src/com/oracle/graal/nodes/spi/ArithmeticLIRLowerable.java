@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.lir.gen.*;
-import com.oracle.jvmci.code.*;
 
 public interface ArithmeticLIRLowerable extends ArithmeticOperation {
 

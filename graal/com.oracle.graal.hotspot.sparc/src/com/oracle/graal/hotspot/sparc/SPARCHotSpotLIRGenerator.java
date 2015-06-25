@@ -22,29 +22,19 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.code.ForeignCallLinkage;
-import com.oracle.jvmci.code.CallingConvention;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.code.VirtualStackSlot;
-import com.oracle.jvmci.code.StackSlot;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.RegisterValue;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.PlatformKind;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.sparc.*;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
-import static com.oracle.jvmci.sparc.SPARC.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.sparc.*;
 
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.spi.*;
@@ -62,9 +52,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 

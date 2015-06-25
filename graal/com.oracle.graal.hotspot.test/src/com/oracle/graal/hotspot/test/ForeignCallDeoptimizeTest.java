@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;

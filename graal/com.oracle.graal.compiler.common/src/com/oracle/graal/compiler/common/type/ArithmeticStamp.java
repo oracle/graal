@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.jvmci.meta.SerializableConstant;
 import java.nio.*;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Type describing values that support arithmetic operations.

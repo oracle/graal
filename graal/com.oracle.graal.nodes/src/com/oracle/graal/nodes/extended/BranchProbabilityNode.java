@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -29,7 +31,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * Instances of this node class will look for a preceding if node and put the given probability into

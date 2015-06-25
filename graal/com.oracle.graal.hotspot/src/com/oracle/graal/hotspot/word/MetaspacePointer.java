@@ -23,12 +23,12 @@
 package com.oracle.graal.hotspot.word;
 
 import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Marker type for a metaspace pointer.

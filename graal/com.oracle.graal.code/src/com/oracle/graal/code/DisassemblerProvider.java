@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.code;
 
-import com.oracle.jvmci.code.*;
+import jdk.internal.jvmci.code.*;
 
 /**
  * Interface providing capability for disassembling machine code.

@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.jvmci.service.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.truffle.api.nodes.*;
 
 @ServiceProvider(LoopNodeFactory.class)

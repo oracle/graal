@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.replacements.test;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.meta.JavaTypeProfile.*;
+
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.meta.JavaTypeProfile.ProfiledType;
 
 /**
  * Base class for checkcast and instanceof test classes.

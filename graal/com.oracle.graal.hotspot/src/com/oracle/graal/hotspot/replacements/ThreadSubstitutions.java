@@ -23,7 +23,8 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -31,7 +32,6 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Substitutions for {@link java.lang.Thread} methods.

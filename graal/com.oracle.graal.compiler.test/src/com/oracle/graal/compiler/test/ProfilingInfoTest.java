@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.compiler.test;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.TriState;
-import com.oracle.jvmci.meta.ProfilingInfo;
-import com.oracle.jvmci.meta.JavaTypeProfile;
 import java.io.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 

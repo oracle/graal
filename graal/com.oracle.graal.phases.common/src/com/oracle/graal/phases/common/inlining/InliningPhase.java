@@ -24,12 +24,13 @@ package com.oracle.graal.phases.common.inlining;
 
 import java.util.*;
 
+import jdk.internal.jvmci.options.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.policy.*;
 import com.oracle.graal.phases.common.inlining.walker.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.options.*;
 
 public class InliningPhase extends AbstractInliningPhase {
 

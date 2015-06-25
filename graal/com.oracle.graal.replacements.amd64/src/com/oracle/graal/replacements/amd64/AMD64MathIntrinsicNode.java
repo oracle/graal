@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Value;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -33,7 +34,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
 
 @NodeInfo
 public final class AMD64MathIntrinsicNode extends UnaryNode implements ArithmeticLIRLowerable {

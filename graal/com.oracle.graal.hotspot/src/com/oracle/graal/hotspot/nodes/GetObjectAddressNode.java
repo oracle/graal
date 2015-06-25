@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Intrinsification for getting the address of an object. The code path(s) between a call to

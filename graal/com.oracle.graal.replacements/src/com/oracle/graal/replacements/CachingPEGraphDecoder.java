@@ -24,6 +24,10 @@ package com.oracle.graal.replacements;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -32,9 +36,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and

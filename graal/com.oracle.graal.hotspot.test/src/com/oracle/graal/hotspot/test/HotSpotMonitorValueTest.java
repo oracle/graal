@@ -22,22 +22,19 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.code.StackLockValue;
-import com.oracle.jvmci.code.CompilationResult;
-import com.oracle.jvmci.code.BytecodeFrame;
-import com.oracle.jvmci.code.InstalledCode;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
-import com.oracle.jvmci.code.CompilationResult.Call;
-import com.oracle.jvmci.code.CompilationResult.Infopoint;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.jvmci.common.*;
 
 public class HotSpotMonitorValueTest extends GraalCompilerTest {
 

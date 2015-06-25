@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.jvmci.meta.*;
 
 public interface LoweringTool {
 

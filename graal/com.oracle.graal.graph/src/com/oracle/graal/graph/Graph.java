@@ -27,12 +27,13 @@ import static com.oracle.graal.graph.Edges.Type.*;
 import java.util.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.options.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.options.*;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.

@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.LIRKind;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.framemap.*;
 

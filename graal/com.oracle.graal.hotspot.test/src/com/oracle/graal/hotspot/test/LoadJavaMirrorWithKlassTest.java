@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import com.oracle.jvmci.meta.Kind;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.OptionValue.*;
 
 import org.junit.*;
 
@@ -31,8 +34,6 @@ import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.OptionValue.OverrideScope;
 
 public class LoadJavaMirrorWithKlassTest extends GraalCompilerTest {
 

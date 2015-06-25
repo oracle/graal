@@ -22,18 +22,14 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.JavaConstant;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -42,7 +38,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.common.*;
 
 public class AMD64Move {
 
@@ -143,6 +138,14 @@ public class AMD64Move {
             return result;
         }
 
+        public Register getScratchRegister() {
+            return scratch;
+        }
+
+        public StackSlotValue getBackupSlot() {
+            return backupSlot;
+        }
+
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             // backup scratch register
@@ -150,6 +153,41 @@ public class AMD64Move {
             // move stack slot
             move(getInput().getKind(), crb, masm, scratch.asValue(getInput().getLIRKind()), getInput());
             move(getResult().getKind(), crb, masm, getResult(), scratch.asValue(getResult().getLIRKind()));
+            // restore scratch register
+            move(backupSlot.getKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
+
+        }
+    }
+
+    @Opcode("MULTISTACKMOVE")
+    public static final class AMD64MultiStackMove extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<AMD64MultiStackMove> TYPE = LIRInstructionClass.create(AMD64MultiStackMove.class);
+
+        @Def({STACK}) protected AllocatableValue[] results;
+        @Use({STACK}) protected Value[] inputs;
+        @Alive({OperandFlag.STACK, OperandFlag.UNINITIALIZED}) private StackSlotValue backupSlot;
+
+        private Register scratch;
+
+        public AMD64MultiStackMove(AllocatableValue[] results, Value[] inputs, Register scratch, StackSlotValue backupSlot) {
+            super(TYPE);
+            this.results = results;
+            this.inputs = inputs;
+            this.backupSlot = backupSlot;
+            this.scratch = scratch;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            // backup scratch register
+            move(backupSlot.getKind(), crb, masm, backupSlot, scratch.asValue(backupSlot.getLIRKind()));
+            for (int i = 0; i < results.length; i++) {
+                Value input = inputs[i];
+                AllocatableValue result = results[i];
+                // move stack slot
+                move(input.getKind(), crb, masm, scratch.asValue(input.getLIRKind()), input);
+                move(result.getKind(), crb, masm, result, scratch.asValue(result.getLIRKind()));
+            }
             // restore scratch register
             move(backupSlot.getKind(), crb, masm, scratch.asValue(backupSlot.getLIRKind()), backupSlot);
 

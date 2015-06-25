@@ -25,6 +25,9 @@ package com.oracle.graal.nodes.calc;
 import java.io.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.graph.*;
@@ -33,8 +36,6 @@ import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 @NodeInfo
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {

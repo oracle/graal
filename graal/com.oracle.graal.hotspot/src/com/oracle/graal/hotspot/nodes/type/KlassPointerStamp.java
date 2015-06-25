@@ -22,18 +22,14 @@
  */
 package com.oracle.graal.hotspot.nodes.type;
 
-import com.oracle.jvmci.meta.MemoryAccessProvider;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Constant;
 import java.util.*;
+
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 
 public final class KlassPointerStamp extends MetaspacePointerStamp {
 

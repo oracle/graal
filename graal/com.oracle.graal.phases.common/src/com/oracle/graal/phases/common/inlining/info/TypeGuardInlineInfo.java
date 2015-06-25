@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.DeoptimizationReason;
-import com.oracle.jvmci.meta.DeoptimizationAction;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;

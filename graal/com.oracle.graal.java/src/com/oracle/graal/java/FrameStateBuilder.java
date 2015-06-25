@@ -26,10 +26,14 @@ import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
 import static com.oracle.graal.nodes.FrameState.*;
-import static com.oracle.jvmci.common.JVMCIError.*;
+import static jdk.internal.jvmci.common.JVMCIError.*;
 
 import java.util.*;
 import java.util.function.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.IntrinsicContext.SideEffectsState;
@@ -40,9 +44,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.meta.*;
 
 public final class FrameStateBuilder implements SideEffectsState {
 
@@ -533,9 +534,13 @@ public final class FrameStateBuilder implements SideEffectsState {
     /**
      * @return the current lock depth
      */
-    public int lockDepth() {
-        assert lockedObjects.length == monitorIds.length;
-        return lockedObjects.length;
+    public int lockDepth(boolean includeParents) {
+        int depth = lockedObjects.length;
+        assert depth == monitorIds.length;
+        if (includeParents && parser.getParent() != null) {
+            depth += parser.getParent().frameState.lockDepth(true);
+        }
+        return depth;
     }
 
     public boolean contains(ValueNode value) {

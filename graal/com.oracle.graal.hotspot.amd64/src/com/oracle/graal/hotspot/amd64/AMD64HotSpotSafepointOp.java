@@ -22,25 +22,18 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.jvmci.code.RegisterValue;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.InfopointReason;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.Kind;
-
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.jvmci.amd64.AMD64.*;
+import static jdk.internal.jvmci.amd64.AMD64.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.hotspot.*;
 
 /**
  * Emits a safepoint poll.

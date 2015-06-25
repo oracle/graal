@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.JavaMethod;
-
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.jvmci.debug.JVMCIDebugConfig.*;
+import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
 
 import java.io.*;
 import java.net.*;
@@ -35,10 +32,12 @@ import java.nio.file.*;
 import java.text.*;
 import java.util.*;
 
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 //JaCoCo Exclude
 

@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
@@ -30,9 +34,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
@@ -132,7 +133,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         returnValue = value;
     }
 
-    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+    public void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
         throw JVMCIError.shouldNotReachHere();
     }
 

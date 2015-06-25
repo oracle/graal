@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.nodes;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * This node represents an unconditional explicit request for immediate deoptimization.

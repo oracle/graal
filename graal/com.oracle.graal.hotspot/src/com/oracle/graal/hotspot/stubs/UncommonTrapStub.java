@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -42,7 +39,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.common.*;
 
 /**
  * Uncommon trap stub.

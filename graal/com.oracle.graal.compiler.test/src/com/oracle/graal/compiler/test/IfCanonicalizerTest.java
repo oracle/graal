@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
+import jdk.internal.jvmci.debug.*;
 
 import org.junit.*;
 
@@ -33,7 +34,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * In the following tests, the usages of local variable "a" are replaced with the integer constant
@@ -195,7 +195,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         PhaseContext context = new PhaseContext(getProviders());
         new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         new FloatingReadPhase().apply(graph);
-        MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo(), null);
+        MidTierContext midContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
         new GuardLoweringPhase().apply(graph, midContext);
         new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
         new ValueAnchorCleanupPhase().apply(graph);

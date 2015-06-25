@@ -43,18 +43,19 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
 import static com.oracle.graal.replacements.Log.*;
-import static com.oracle.jvmci.code.CallingConvention.Type.*;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
+import static jdk.internal.jvmci.code.CallingConvention.Type.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.

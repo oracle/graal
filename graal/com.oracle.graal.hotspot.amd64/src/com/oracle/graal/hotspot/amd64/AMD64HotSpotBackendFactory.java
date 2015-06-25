@@ -22,23 +22,25 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.jvmci.hotspot.InitTimer.*;
+import static jdk.internal.jvmci.hotspot.InitTimer.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.runtime.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.amd64.*;
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.hotspot.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.runtime.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
@@ -126,7 +128,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins, CodeCacheProvider codeCache, HotSpotRegistersProvider registers) {
-        return new HotSpotSuitesProvider(runtime, plugins, new AMD64HotSpotAddressLowering(codeCache, runtime.getConfig().getOopEncoding().base, registers.getHeapBaseRegister()));
+        return new HotSpotSuitesProvider(new AMD64SuitesProvider(plugins), runtime, new AMD64HotSpotAddressLowering(codeCache, runtime.getConfig().getOopEncoding().base,
+                        registers.getHeapBaseRegister()));
     }
 
     protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime) {

@@ -25,10 +25,11 @@ package com.oracle.graal.graphbuilderconf;
 import java.lang.invoke.*;
 import java.lang.reflect.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Plugin for handling a specific method invocation.

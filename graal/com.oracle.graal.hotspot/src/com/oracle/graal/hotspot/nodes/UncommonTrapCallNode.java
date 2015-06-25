@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.jvmci.code.ForeignCallsProvider;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import com.oracle.graal.compiler.common.type.*;

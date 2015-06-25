@@ -22,10 +22,8 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.meta.Value;
-
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.amd64.*;

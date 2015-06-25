@@ -23,13 +23,9 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
-
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CompilationResult.Call;
-import com.oracle.jvmci.code.CompilationResult.ConstantReference;
-import com.oracle.jvmci.code.CompilationResult.DataPatch;
-import com.oracle.jvmci.code.CompilationResult.Infopoint;
-import com.oracle.jvmci.hotspot.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.hotspot.*;
 
 /**
  * {@link HotSpotCompiledCode} destined for installation as a RuntimeStub.

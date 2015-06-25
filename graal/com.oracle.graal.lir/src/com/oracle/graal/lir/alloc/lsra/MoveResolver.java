@@ -22,19 +22,17 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.code.StackSlotValue;
-import com.oracle.jvmci.meta.Value;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.AllocatableValue;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
 import static java.lang.String.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.lir.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  */

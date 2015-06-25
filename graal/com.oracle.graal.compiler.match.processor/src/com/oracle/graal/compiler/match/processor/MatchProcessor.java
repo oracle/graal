@@ -34,12 +34,13 @@ import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.service.*;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is

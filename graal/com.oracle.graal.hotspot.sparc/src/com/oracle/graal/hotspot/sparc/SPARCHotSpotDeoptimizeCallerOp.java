@@ -22,8 +22,7 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.code.Register;
-
+import jdk.internal.jvmci.code.*;
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
 
 import com.oracle.graal.asm.sparc.*;

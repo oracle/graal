@@ -22,10 +22,13 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import com.oracle.jvmci.code.TargetDescription;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.DerivedOptionValue.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -33,8 +36,6 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.ssa.*;
-import com.oracle.jvmci.options.*;
-import com.oracle.jvmci.options.DerivedOptionValue.OptionSupplier;
 
 public final class LinearScanPhase extends AllocationPhase {
 

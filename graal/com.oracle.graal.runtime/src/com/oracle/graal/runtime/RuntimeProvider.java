@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.runtime;
 
-import com.oracle.jvmci.code.Architecture;
+import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.compiler.target.*;
 
 /**

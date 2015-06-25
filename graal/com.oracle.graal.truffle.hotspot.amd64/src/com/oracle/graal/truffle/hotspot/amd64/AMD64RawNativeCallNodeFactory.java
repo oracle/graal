@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.hotspot.amd64.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.hotspot.nfi.*;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.service.*;
 
 @ServiceProvider(RawNativeCallNodeFactory.class)
 public class AMD64RawNativeCallNodeFactory implements RawNativeCallNodeFactory {

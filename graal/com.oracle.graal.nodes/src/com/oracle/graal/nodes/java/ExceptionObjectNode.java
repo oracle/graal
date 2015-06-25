@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes.java;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * The entry to an exception handler with the exception coming from a call (as opposed to a local

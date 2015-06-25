@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.phases.common;
 
-import com.oracle.jvmci.meta.LocationIdentity;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.Graph.NodeEvent.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;

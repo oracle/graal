@@ -23,11 +23,11 @@
 
 package com.oracle.graal.hotspot.amd64.test;
 
-import com.oracle.jvmci.meta.AllocatableValue;
-import com.oracle.jvmci.meta.Constant;
-
-import static com.oracle.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import org.junit.*;
 
@@ -45,8 +45,6 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.hotspot.*;
 
 public class DataPatchInConstantsTest extends HotSpotGraalCompilerTest {
 

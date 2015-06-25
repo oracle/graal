@@ -22,13 +22,11 @@
  */
 package com.oracle.graal.asm.amd64;
 
+import jdk.internal.jvmci.amd64.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.*;
-import com.oracle.jvmci.amd64.*;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.CalleeSaveLayout;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.RegisterConfig;
-import com.oracle.jvmci.meta.Kind;
 
 import static com.oracle.graal.asm.amd64.AMD64AsmOptions.*;
 

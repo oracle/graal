@@ -24,16 +24,17 @@ package com.oracle.graal.asm.test;
 
 import java.lang.reflect.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.runtime.*;
+import jdk.internal.jvmci.service.*;
+
 import org.junit.*;
 
 import com.oracle.graal.code.*;
 import com.oracle.graal.test.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.runtime.*;
-import com.oracle.jvmci.service.*;
 
 public abstract class AssemblerTest extends GraalTest {
 

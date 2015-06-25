@@ -22,7 +22,11 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static com.oracle.jvmci.code.BytecodeFrame.*;
+import static jdk.internal.jvmci.code.BytecodeFrame.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -37,10 +41,6 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.inlining.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Macro nodes can be used to temporarily replace an invoke. They can, for example, be used to
@@ -68,7 +68,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     protected final InvokeKind invokeKind;
 
     protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, JavaType returnType, ValueNode... arguments) {
-        super(c, StampFactory.forKind(returnType.getKind()));
+        super(c, returnStamp(returnType));
         assert targetMethod.getSignature().getParameterCount(!targetMethod.isStatic()) == arguments.length;
         this.arguments = new NodeInputList<>(this, arguments);
         this.bci = bci;
@@ -76,6 +76,15 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         this.returnType = returnType;
         this.invokeKind = invokeKind;
         assert !isPlaceholderBci(bci);
+    }
+
+    private static Stamp returnStamp(JavaType returnType) {
+        Kind kind = returnType.getKind();
+        if (kind == Kind.Object) {
+            return StampFactory.declared((ResolvedJavaType) returnType);
+        } else {
+            return StampFactory.forKind(kind);
+        }
     }
 
     public int getBci() {

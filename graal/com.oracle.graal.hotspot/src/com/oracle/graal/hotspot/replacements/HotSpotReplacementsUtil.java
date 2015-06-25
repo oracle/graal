@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.code.CodeUtil;
-import com.oracle.jvmci.meta.NamedLocationIdentity;
-import com.oracle.jvmci.meta.LocationIdentity;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
-import com.oracle.jvmci.meta.Kind;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.jvmci.common.UnsafeAccess.*;
+import static jdk.internal.jvmci.common.UnsafeAccess.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
@@ -43,8 +41,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.hotspot.*;
 
 //JaCoCo Exclude
 

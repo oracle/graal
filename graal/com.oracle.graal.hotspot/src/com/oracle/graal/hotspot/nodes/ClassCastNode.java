@@ -22,11 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.jvmci.meta.JavaType;
-import com.oracle.jvmci.meta.Assumptions;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.ConstantReflectionProvider;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;

@@ -23,9 +23,12 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.jvmci.meta.LocationIdentity.*;
+import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.lang.reflect.*;
+
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.calc.*;
@@ -42,8 +45,6 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
 import com.oracle.graal.word.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A plugin for calls to {@linkplain Operation word operations}, as well as all other nodes that

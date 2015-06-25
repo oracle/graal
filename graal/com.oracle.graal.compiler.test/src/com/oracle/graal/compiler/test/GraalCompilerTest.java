@@ -24,8 +24,8 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.jvmci.code.CodeUtil.*;
-import static com.oracle.jvmci.compiler.Compiler.*;
+import static jdk.internal.jvmci.code.CodeUtil.*;
+import static jdk.internal.jvmci.compiler.Compiler.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -39,35 +39,35 @@ import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import com.oracle.graal.phases.schedule.SchedulePhase.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.code.CallingConvention.Type;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
-import com.oracle.jvmci.meta.*;
-import com.oracle.jvmci.options.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.options.*;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -369,7 +369,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected HighTierContext getDefaultHighTierContext() {
-        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, null);
+        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
     }
 
     protected SnippetReflectionProvider getSnippetReflection() {
@@ -715,8 +715,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         lastCompiledGraph = graphToCompile;
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
         Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), getDefaultGraphBuilderSuite(),
-                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSpeculationLog(), getSuites(), getLIRSuites(), new CompilationResult(),
-                        CompilationResultBuilderFactory.Default);
+                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         return GraalCompiler.compile(request);
     }
 
@@ -817,7 +816,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         try (Scope ds = Debug.scope("Parsing", javaMethod)) {
-            StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions);
+            StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
         } catch (Throwable e) {

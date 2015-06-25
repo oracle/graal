@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 

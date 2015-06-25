@@ -25,13 +25,14 @@ package com.oracle.graal.lir;
 import java.lang.reflect.*;
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.CompositeValue.Component;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRIntrospection.LIRFieldsScanner;
 import com.oracle.graal.lir.LIRIntrospection.OperandModeAnnotation;
 import com.oracle.graal.lir.LIRIntrospection.Values;
-import com.oracle.jvmci.common.*;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:

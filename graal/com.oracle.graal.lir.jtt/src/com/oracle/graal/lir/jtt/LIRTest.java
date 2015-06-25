@@ -28,6 +28,8 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -36,7 +38,6 @@ import com.oracle.graal.jtt.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Base class for LIR tests.

@@ -22,24 +22,18 @@
  */
 package com.oracle.graal.compiler.common.type;
 
-import com.oracle.jvmci.meta.PrimitiveConstant;
-import com.oracle.jvmci.meta.ResolvedJavaType;
-import com.oracle.jvmci.meta.LIRKind;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.SerializableConstant;
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.MetaAccessProvider;
-import com.oracle.jvmci.meta.Constant;
 import static com.oracle.graal.compiler.common.calc.FloatConvert.*;
 
 import java.nio.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
 import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
-import com.oracle.jvmci.common.*;
 
 public class FloatStamp extends PrimitiveStamp {
 

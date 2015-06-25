@@ -96,7 +96,6 @@ class JDKDeployedDist:
         self.partOfHotSpot = partOfHotSpot # true when this distribution is delivered with HotSpot
 
 _jdkDeployedDists = [
-    JDKDeployedDist('TRUFFLE'),
     JDKDeployedDist('JVMCI_SERVICE', partOfHotSpot=True),
     JDKDeployedDist('JVMCI_API', usesJVMCIClassLoader=True, partOfHotSpot=True),
     JDKDeployedDist('JVMCI_HOTSPOT', usesJVMCIClassLoader=True, partOfHotSpot=True),
@@ -523,7 +522,7 @@ def _makeHotspotGeneratedSourcesDir():
     Gets the directory containing all the HotSpot sources generated from
     JVMCI Java sources. This directory will be created if it doesn't yet exist.
     """
-    hsSrcGenDir = join(mx.project('com.oracle.jvmci.hotspot').source_gen_dir(), 'hotspot')
+    hsSrcGenDir = join(mx.project('jdk.internal.jvmci.hotspot').source_gen_dir(), 'hotspot')
     if not exists(hsSrcGenDir):
         os.makedirs(hsSrcGenDir)
     return hsSrcGenDir
@@ -548,43 +547,35 @@ def _copyToJdk(src, dst, permissions=JDK_UNIX_PERMISSIONS_FILE):
         os.chmod(dstLib, permissions)
 
 def _extractJVMCIFiles(jdkJars, jvmciJars, servicesDir, optionsDir):
-    if exists(servicesDir):
-        shutil.rmtree(servicesDir)
-    if exists(optionsDir):
-        shutil.rmtree(optionsDir)
-    if not exists(servicesDir):
-        os.makedirs(servicesDir)
-    if not exists(optionsDir):
-        os.makedirs(optionsDir)
+
+    oldServices = os.listdir(servicesDir) if exists(servicesDir) else os.makedirs(servicesDir)
+    oldOptions = os.listdir(optionsDir) if exists(optionsDir) else os.makedirs(optionsDir)
+
     jvmciServices = {}
     optionsFiles = []
     for jar in jvmciJars:
         if os.path.isfile(jar):
             with zipfile.ZipFile(jar) as zf:
                 for member in zf.namelist():
-                    if member.startswith('META-INF/jvmci.services') and member:
+                    if member.startswith('META-INF/jvmci.services/') and member != 'META-INF/jvmci.services/':
                         service = basename(member)
-                        if service == "":
-                            continue # Zip files may contain empty entries for directories (jar -cf ... creates such)
-                        # we don't handle directories
-                        assert service and member == 'META-INF/jvmci.services/' + service
+                        assert service != "", member
                         with zf.open(member) as serviceFile:
                             providers = jvmciServices.setdefault(service, [])
                             for line in serviceFile.readlines():
                                 line = line.strip()
                                 if line:
                                     providers.append(line)
-                    elif member.startswith('META-INF/jvmci.options'):
+                    elif member.startswith('META-INF/jvmci.options/') and member != 'META-INF/jvmci.options/':
                         filename = basename(member)
-                        if filename == "":
-                            continue # Zip files may contain empty entries for directories (jar -cf ... creates such)
-                        # we don't handle directories
-                        assert filename and member == 'META-INF/jvmci.options/' + filename
+                        assert filename != "", member
                         targetpath = join(optionsDir, filename)
                         optionsFiles.append(filename)
                         with zf.open(member) as optionsFile, \
                              file(targetpath, "wb") as target:
                             shutil.copyfileobj(optionsFile, target)
+                            if oldOptions and filename in oldOptions:
+                                oldOptions.remove(filename)
     for service, providers in jvmciServices.iteritems():
         fd, tmp = tempfile.mkstemp(prefix=service)
         f = os.fdopen(fd, 'w+')
@@ -593,8 +584,18 @@ def _extractJVMCIFiles(jdkJars, jvmciJars, servicesDir, optionsDir):
         target = join(servicesDir, service)
         f.close()
         shutil.move(tmp, target)
+        if oldServices and service in oldServices:
+            oldServices.remove(service)
         if mx.get_os() != 'windows':
             os.chmod(target, JDK_UNIX_PERMISSIONS_FILE)
+
+    if mx.is_interactive():
+        for d, files in [(servicesDir, oldServices), (optionsDir, oldOptions)]:
+            if files and mx.ask_yes_no('These files in ' + d + ' look obsolete:\n  ' + '\n  '.join(files) + '\nDelete them', 'n'):
+                for f in files:
+                    path = join(d, f)
+                    os.remove(path)
+                    mx.log('Deleted ' + path)
 
 def _updateJVMCIFiles(jdkDir):
     jreJVMCIDir = join(jdkDir, 'jre', 'lib', 'jvmci')
@@ -883,7 +884,7 @@ def build(args, vm=None):
             mustBuild = False
             timestamp = os.path.getmtime(timestampFile)
             sources = []
-            for d in ['src', 'make', join('jvmci', 'com.oracle.jvmci.hotspot', 'src_gen', 'hotspot')]:
+            for d in ['src', 'make', join('jvmci', 'jdk.internal.jvmci.hotspot', 'src_gen', 'hotspot')]:
                 for root, dirnames, files in os.walk(join(_graal_home, d)):
                     # ignore <graal>/src/share/tools
                     if root == join(_graal_home, 'src', 'share'):
@@ -1068,7 +1069,7 @@ def _parseVmArgs(args, vm=None, cwd=None, vmbuild=None):
         jacocoagent = mx.library("JACOCOAGENT", True)
         # Exclude all compiler tests and snippets
 
-        includes = ['com.oracle.graal.*', 'com.oracle.jvmci.*']
+        includes = ['com.oracle.graal.*', 'jdk.internal.jvmci.*']
         baseExcludes = []
         for p in mx.projects():
             projsetting = getattr(p, 'jacoco', '')
@@ -2080,7 +2081,7 @@ def jacocoreport(args):
     elif len(args) > 1:
         mx.abort('jacocoreport takes only one argument : an output directory')
 
-    includes = ['com.oracle.graal', 'com.oracle.jvmci']
+    includes = ['com.oracle.graal', 'jdk.internal.jvmci']
     for p in mx.projects():
         projsetting = getattr(p, 'jacoco', '')
         if projsetting == 'include':
@@ -2365,13 +2366,12 @@ class JVMCIArchiveParticipant:
             return True
         elif arcname.startswith('META-INF/jvmci.options/'):
             # Need to create service files for the providers of the
-            # com.oracle.jvmci.options.Options service created by
-            # com.oracle.jvmci.options.processor.OptionProcessor.
+            # jdk.internal.jvmci.options.Options service created by
+            # jdk.internal.jvmci.options.processor.OptionProcessor.
             optionsOwner = arcname[len('META-INF/jvmci.options/'):]
             provider = optionsOwner + '_Options'
             self.expectedOptionsProviders.add(provider.replace('.', '/') + '.class')
-            #assert exists(providerClassfile), 'missing generated Options provider ' + providerClassfile
-            self.services.setdefault('com.oracle.jvmci.options.Options', []).append(provider)
+            self.services.setdefault('jdk.internal.jvmci.options.Options', []).append(provider)
         return False
 
     def __addsrc__(self, arcname, contents):
@@ -2382,7 +2382,8 @@ class JVMCIArchiveParticipant:
         assert len(self.expectedOptionsProviders) == 0, 'missing generated Options providers:\n  ' + '\n  '.join(self.expectedOptionsProviders)
         for service, providers in self.jvmciServices.iteritems():
             arcname = 'META-INF/jvmci.services/' + service
-            self.arc.zf.writestr(arcname, '\n'.join(providers))
+            # Convert providers to a set before printing to remove duplicates
+            self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)))
 
 def mx_post_parse_cmd_line(opts):  #
     # TODO _minVersion check could probably be part of a Suite in mx?

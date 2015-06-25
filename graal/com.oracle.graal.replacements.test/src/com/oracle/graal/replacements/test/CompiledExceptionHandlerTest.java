@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.test;
 
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
@@ -29,7 +31,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Tests compilation of a hot exception handler.

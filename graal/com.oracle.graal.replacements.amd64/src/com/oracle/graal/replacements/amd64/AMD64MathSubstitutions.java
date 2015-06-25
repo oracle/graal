@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.jvmci.meta.ForeignCallDescriptor;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.target.Backend.*;
 
 import com.oracle.graal.graph.Node.ConstantNodeParameter;

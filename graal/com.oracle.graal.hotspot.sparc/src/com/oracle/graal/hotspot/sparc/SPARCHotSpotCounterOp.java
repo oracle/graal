@@ -22,12 +22,11 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Value;
-
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
@@ -36,7 +35,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.jvmci.hotspot.*;
 
 @Opcode("BenchMarkCounter")
 public class SPARCHotSpotCounterOp extends HotSpotCounterOp {

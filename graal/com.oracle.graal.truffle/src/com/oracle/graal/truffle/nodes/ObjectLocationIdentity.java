@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import com.oracle.jvmci.meta.JavaConstant;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.LocationIdentity;
 import java.util.*;
+
+import jdk.internal.jvmci.meta.*;
 
 /**
  * A {@link LocationIdentity} wrapping an object.

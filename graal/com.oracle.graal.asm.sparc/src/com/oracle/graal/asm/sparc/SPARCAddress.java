@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import static com.oracle.jvmci.sparc.SPARC.*;
-
-import com.oracle.jvmci.code.*;
-import com.oracle.jvmci.sparc.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.sparc.*;
 
 public class SPARCAddress extends AbstractAddress {
 

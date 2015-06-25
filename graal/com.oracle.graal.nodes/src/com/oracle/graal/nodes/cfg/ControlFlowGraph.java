@@ -24,11 +24,12 @@ package com.oracle.graal.nodes.cfg;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 public class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**

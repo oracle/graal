@@ -29,6 +29,8 @@ import java.lang.annotation.*;
 import java.util.*;
 import java.util.function.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;
@@ -38,8 +40,6 @@ import com.oracle.graal.graph.Graph.Options;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a
@@ -574,8 +574,8 @@ public abstract class Node implements Cloneable, Formattable {
             if (filter == null || filter.test(usage)) {
                 boolean result = usage.getNodeClass().getInputEdges().replaceFirst(usage, this, other);
                 assert assertTrue(result, "not found in inputs, usage: %s", usage);
+                maybeNotifyInputChanged(usage);
                 if (other != null) {
-                    maybeNotifyInputChanged(usage);
                     other.addUsage(usage);
                 }
                 this.movUsageFromEndTo(i);

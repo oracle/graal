@@ -24,10 +24,10 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.java.BytecodeParser.Options.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.meta.*;
 
 public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 

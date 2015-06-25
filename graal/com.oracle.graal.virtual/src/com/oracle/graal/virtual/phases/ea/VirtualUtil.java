@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.jvmci.common.*;
-import com.oracle.jvmci.debug.*;
 
 public final class VirtualUtil {
 

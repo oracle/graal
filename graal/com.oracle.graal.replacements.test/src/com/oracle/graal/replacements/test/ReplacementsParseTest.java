@@ -24,6 +24,8 @@ package com.oracle.graal.replacements.test;
 
 import java.util.function.*;
 
+import jdk.internal.jvmci.meta.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.replacements.*;
@@ -34,7 +36,6 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.runtime.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Tests for expected behavior when parsing snippets and intrinsics.

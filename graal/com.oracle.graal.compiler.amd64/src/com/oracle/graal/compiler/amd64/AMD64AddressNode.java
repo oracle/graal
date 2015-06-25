@@ -23,6 +23,8 @@
 
 package com.oracle.graal.compiler.amd64;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.amd64.*;
@@ -30,7 +32,6 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * Represents an address of the form [base + index*scale + displacement]. Both base and index are

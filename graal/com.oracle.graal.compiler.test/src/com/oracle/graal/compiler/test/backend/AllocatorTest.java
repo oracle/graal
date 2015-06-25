@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.compiler.test.backend;
 
-import com.oracle.jvmci.code.ValueUtil;
-import com.oracle.jvmci.code.Register;
-import com.oracle.jvmci.meta.Value;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
@@ -34,8 +36,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.jvmci.debug.*;
-import com.oracle.jvmci.debug.Debug.Scope;
 
 public class AllocatorTest extends BackendTest {
 

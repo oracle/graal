@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 
@@ -32,14 +33,12 @@ public class MidTierContext extends PhaseContext {
     private final TargetDescription target;
     private final OptimisticOptimizations optimisticOpts;
     private final ProfilingInfo profilingInfo;
-    private final SpeculationLog log;
 
-    public MidTierContext(Providers copyFrom, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog log) {
+    public MidTierContext(Providers copyFrom, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo) {
         super(copyFrom);
         this.target = target;
         this.optimisticOpts = optimisticOpts;
         this.profilingInfo = profilingInfo;
-        this.log = log;
     }
 
     public TargetDescription getTarget() {
@@ -52,9 +51,5 @@ public class MidTierContext extends PhaseContext {
 
     public ProfilingInfo getProfilingInfo() {
         return profilingInfo;
-    }
-
-    public SpeculationLog getSpeculationLog() {
-        return log;
     }
 }

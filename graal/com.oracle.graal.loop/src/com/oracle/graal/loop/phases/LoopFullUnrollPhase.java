@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.loop.phases;
 
+import jdk.internal.jvmci.debug.*;
+
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.jvmci.debug.*;
 
 public class LoopFullUnrollPhase extends BasePhase<PhaseContext> {
 

@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.printer;
 
-import com.oracle.jvmci.code.DebugInfo;
-import com.oracle.jvmci.code.TargetDescription;
-import com.oracle.jvmci.meta.ResolvedJavaMethod;
-import com.oracle.jvmci.meta.MetaUtil;
-import com.oracle.jvmci.meta.Kind;
-import com.oracle.jvmci.meta.Value;
-import static com.oracle.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.io.*;
 import java.util.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;

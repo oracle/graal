@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.jvmci.meta.*;
 
 /**
  * A high-level intrinsic for getting an address inside of an object. During lowering it will be

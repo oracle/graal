@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
+import jdk.internal.jvmci.service.*;
+
 import com.oracle.graal.truffle.hotspot.*;
-import com.oracle.jvmci.service.*;
 import com.oracle.nfi.api.*;
 
 @ServiceProvider(NativeFunctionInterfaceAccess.class)

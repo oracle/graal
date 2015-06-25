@@ -54,7 +54,7 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
     }
 
     private TypeMirror resolvedJavaTypeType() {
-        return env.getElementUtils().getTypeElement("com.oracle.jvmci.meta.ResolvedJavaType").asType();
+        return env.getElementUtils().getTypeElement("jdk.internal.jvmci.meta.ResolvedJavaType").asType();
     }
 
     private TypeMirror structuralInputType() {
