@@ -36,8 +36,6 @@ import jdk.internal.jvmci.options.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.debug.*;
 
-import edu.umd.cs.findbugs.annotations.*;
-
 //JaCoCo Exclude
 
 /**

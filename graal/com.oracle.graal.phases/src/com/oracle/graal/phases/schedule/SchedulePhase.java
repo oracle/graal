@@ -30,14 +30,13 @@ import java.util.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.phases.*;
-
-import edu.umd.cs.findbugs.annotations.*;
 
 public final class SchedulePhase extends Phase {
 

@@ -22,19 +22,17 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static jdk.internal.jvmci.sparc.SPARC.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-
-import edu.umd.cs.findbugs.annotations.*;
 
 /**
  * Emits a safepoint poll.

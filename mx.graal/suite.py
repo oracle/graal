@@ -32,11 +32,6 @@ suite = {
       "sha1" : "508bcd26a4d7c4c44048990c6ea789a3b11a62dc",
     },
 
-    "FINDBUGS" : {
-      "path" : "jvmci/findbugs-SuppressFBWarnings.jar",
-      "sha1" : "fb78822d27c68fabf2cb2e5e573b3cdb5f9cae2d",
-    },
-
     "DACAPO" : {
       "path" : "lib/dacapo-9.12-bach.jar",
       "urls" : [
@@ -304,7 +299,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "jdk.internal.jvmci.hotspotvmconfig",
-        "FINDBUGS",
         "jdk.internal.jvmci.runtime",
         "jdk.internal.jvmci.common",
         "jdk.internal.jvmci.compiler",
@@ -570,7 +564,6 @@ suite = {
         "com.oracle.graal.compiler.common",
         "com.oracle.graal.api.collections",
         "com.oracle.graal.api.runtime",
-        "FINDBUGS",
       ],
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["com.oracle.graal.nodeinfo.processor"],
@@ -1144,7 +1137,6 @@ suite = {
       "subDir" : "jvmci",
       "sourcesPath" : "build/jvmci-service.src.zip",
       "dependencies" : ["jdk.internal.jvmci.service"],
-      "exclude" : ["FINDBUGS"],
     },
 
     "JVMCI_API" : {
@@ -1157,7 +1149,6 @@ suite = {
         "jdk.internal.jvmci.common",
         "jdk.internal.jvmci.debug",
       ],
-      "exclude" : ["FINDBUGS"],
       "distDependencies" : [
         "JVMCI_SERVICE",
       ],
@@ -1187,7 +1178,6 @@ suite = {
         "com.oracle.graal.hotspot",
         "com.oracle.graal.printer",
       ],
-      "exclude" : ["FINDBUGS"],
       "distDependencies" : [
         "JVMCI_API",
         "JVMCI_SERVICE",
@@ -1215,7 +1205,6 @@ suite = {
         "com.oracle.graal.truffle.hotspot.amd64",
         "com.oracle.graal.truffle.hotspot.sparc"
       ],
-      "exclude" : ["FINDBUGS"],
       "distDependencies" : [
         "GRAAL",
         "TRUFFLE",
