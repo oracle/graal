@@ -46,14 +46,15 @@ public class UnsignedDivNode extends FixedBinaryNode implements Lowerable, LIRLo
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        int bits = ((IntegerStamp) stamp()).getBits();
         if (forX.isConstant() && forY.isConstant()) {
-            long yConst = forY.asJavaConstant().asLong();
+            long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (yConst == 0) {
                 return this; // this will trap, cannot canonicalize
             }
-            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(forX.asJavaConstant().asLong(), yConst));
+            return ConstantNode.forIntegerStamp(stamp(), UnsignedMath.divide(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {
-            long c = forY.asJavaConstant().asLong();
+            long c = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (c == 1) {
                 return forX;
             }
