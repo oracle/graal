@@ -26,10 +26,9 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, stat, errno, sys, shutil, zipfile, tarfile, tempfile, re, time, datetime, platform, subprocess, StringIO, socket
+import os, stat, errno, sys, shutil, zipfile, tarfile, tempfile, re, time, datetime, platform, subprocess, socket
 from os.path import join, exists, dirname, basename
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
-from outputparser import OutputParser, ValuesMatcher
 import mx
 import xml.dom.minidom
 import itertools
@@ -1360,120 +1359,6 @@ def site(args):
                     '--title', 'Graal OpenJDK Project Documentation',
                     '--dot-output-base', 'projects'] + args)
 
-def generateZshCompletion(args):
-    """generate zsh completion for mx"""
-    try:
-        from genzshcomp import CompletionGenerator
-    except ImportError:
-        mx.abort("install genzshcomp (pip install genzshcomp)")
-
-    # need to fake module for the custom mx arg parser, otherwise a check in genzshcomp fails
-    originalModule = mx._argParser.__module__
-    mx._argParser.__module__ = "argparse"
-    generator = CompletionGenerator("mx", mx._argParser)
-    mx._argParser.__module__ = originalModule
-
-    # strip last line and define local variable "ret"
-    complt = "\n".join(generator.get().split('\n')[0:-1]).replace('context state line', 'context state line ret=1')
-
-    # add array of possible subcommands (as they are not part of the argument parser)
-    complt += '\n  ": :->command" \\\n'
-    complt += '  "*::args:->args" && ret=0\n'
-    complt += '\n'
-    complt += 'case $state in\n'
-    complt += '\t(command)\n'
-    complt += '\t\tlocal -a main_commands\n'
-    complt += '\t\tmain_commands=(\n'
-    for cmd in sorted(mx._commands.iterkeys()):
-        c, _ = mx._commands[cmd][:2]
-        doc = c.__doc__
-        complt += '\t\t\t"{0}'.format(cmd)
-        if doc:
-            complt += ':{0}'.format(_fixQuotes(doc.split('\n', 1)[0]))
-        complt += '"\n'
-    complt += '\t\t)\n'
-    complt += '\t\t_describe -t main_commands command main_commands && ret=0\n'
-    complt += '\t\t;;\n'
-
-    complt += '\t(args)\n'
-    # TODO: improve matcher: if mx args are given, this doesn't work
-    complt += '\t\tcase $line[1] in\n'
-    complt += '\t\t\t\tnoglob \\\n'
-    complt += '\t\t\t\t\t_arguments -s -S \\\n'
-    complt += _appendOptions("jvmci", r"G\:")
-    # TODO: fix -XX:{-,+}Use* flags
-    complt += _appendOptions("hotspot", r"XX\:")
-    complt += '\t\t\t\t\t"-version" && ret=0 \n'
-    complt += '\t\t\t\t;;\n'
-    complt += '\t\tesac\n'
-    complt += '\t\t;;\n'
-    complt += 'esac\n'
-    complt += '\n'
-    complt += 'return $ret'
-    print complt
-
-def _fixQuotes(arg):
-    return arg.replace('\"', '').replace('\'', '').replace('`', '').replace('{', '\\{').replace('}', '\\}').replace('[', '\\[').replace(']', '\\]')
-
-def _appendOptions(optionType, optionPrefix):
-    def isBoolean(vmap, field):
-        return vmap[field] == "Boolean" or vmap[field] == "bool"
-
-    def hasDescription(vmap):
-        return vmap['optDefault'] or vmap['optDoc']
-
-    complt = ""
-    for vmap in _parseVMOptions(optionType):
-        complt += '\t\t\t\t\t-"'
-        complt += optionPrefix
-        if isBoolean(vmap, 'optType'):
-            complt += '"{-,+}"'
-        complt += vmap['optName']
-        if not isBoolean(vmap, 'optType'):
-            complt += '='
-        if hasDescription(vmap):
-            complt += "["
-        if vmap['optDefault']:
-            complt += r"(default\: " + vmap['optDefault'] + ")"
-        if vmap['optDoc']:
-            complt += _fixQuotes(vmap['optDoc'])
-        if hasDescription(vmap):
-            complt += "]"
-        complt += '" \\\n'
-    return complt
-
-def _parseVMOptions(optionType):
-    parser = OutputParser()
-    # TODO: the optDoc part can wrapped accross multiple lines, currently only the first line will be captured
-    # TODO: fix matching for float literals
-    jvmOptions = re.compile(
-        r"^[ \t]*"
-        r"(?P<optType>(Boolean|Integer|Float|Double|String|bool|intx|uintx|ccstr|double)) "
-        r"(?P<optName>[a-zA-Z0-9]+)"
-        r"[ \t]+=[ \t]*"
-        r"(?P<optDefault>([\-0-9]+(\.[0-9]+(\.[0-9]+\.[0-9]+))?|false|true|null|Name|sun\.boot\.class\.path))?"
-        r"[ \t]*"
-        r"(?P<optDoc>.+)?",
-        re.MULTILINE)
-    parser.addMatcher(ValuesMatcher(jvmOptions, {
-        'optType' : '<optType>',
-        'optName' : '<optName>',
-        'optDefault' : '<optDefault>',
-        'optDoc' : '<optDoc>',
-        }))
-
-    # gather JVMCI options
-    output = StringIO.StringIO()
-    vm(['-XX:-BootstrapJVMCI', '-XX:+UnlockDiagnosticVMOptions', '-G:+PrintFlags' if optionType == "jvmci" else '-XX:+PrintFlagsWithComments'],
-       vm="jvmci",
-       vmbuild="optimized",
-       nonZeroIsFatal=False,
-       out=output.write,
-       err=subprocess.STDOUT)
-
-    valueMap = parser.parse(output.getvalue())
-    return valueMap
-
 def findbugs(args):
     '''run FindBugs against non-test Java projects'''
     findBugsHome = mx.get_env('FINDBUGS_HOME', None)
@@ -1544,7 +1429,6 @@ def mx_init(suite):
         'checkheaders': [checkheaders, ''],
         'clean': [clean, ''],
         'findbugs': [findbugs, ''],
-        'generateZshCompletion' : [generateZshCompletion, ''],
         'maven-install-truffle' : [maven_install_truffle, ''],
         'jdkhome': [print_jdkhome, ''],
         'gate' : [gate, '[-options]'],

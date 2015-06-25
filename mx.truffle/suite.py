@@ -82,20 +82,6 @@ suite = {
       "sha1" : "508bcd26a4d7c4c44048990c6ea789a3b11a62dc",
     },
 
-    "FINDBUGS" : {
-      "path" : "jvmci/findbugs-SuppressFBWarnings.jar",
-      "sha1" : "fb78822d27c68fabf2cb2e5e573b3cdb5f9cae2d",
-    },
-
-    "DACAPO" : {
-      "path" : "lib/dacapo-9.12-bach.jar",
-      "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/dacapo-9.12-bach.jar",
-        "http://softlayer.dl.sourceforge.net/project/dacapobench/9.12-bach/dacapo-9.12-bach.jar",
-      ],
-      "sha1" : "2626a9546df09009f6da0df854e6dc1113ef7dd4",
-    },
-
     "JACOCOAGENT" : {
       "path" : "lib/jacocoagent.jar",
       "urls" : ["http://lafo.ssw.uni-linz.ac.at/jacoco/jacocoagent-0.7.1-1.jar"],
@@ -308,7 +294,6 @@ suite = {
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.object",
         "com.oracle.truffle.tools",
-        "FINDBUGS"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
