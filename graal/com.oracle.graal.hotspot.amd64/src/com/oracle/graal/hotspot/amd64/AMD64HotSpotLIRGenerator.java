@@ -96,7 +96,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         /**
          * The variable reserved for saving RBP.
          *
-         * This should be either allocated to RBP, or to reserved stack slot.
+         * This should be either allocated to RBP, or to {@link #reservedSlot}.
          */
         private final AllocatableValue rescueSlot;
 
@@ -317,6 +317,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64RestoreRegistersOp(save.getSlots().clone(), save));
     }
 
+    /**
+     * Gets the {@link Stub} this generator is generating code for or {@code null} if a stub is not
+     * being generated.
+     */
     public Stub getStub() {
         return ((AMD64HotSpotLIRGenerationResult) getResult()).getStub();
     }
@@ -327,36 +331,33 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         boolean destroysRegisters = hotspotLinkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
+        Stub stub = getStub();
         if (destroysRegisters) {
-            if (getStub() != null) {
-                if (getStub().preservesRegisters()) {
-                    Register[] savedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters();
-                    save = emitSaveAllRegisters(savedRegisters, true);
-                }
+            if (stub != null && stub.preservesRegisters()) {
+                Register[] savedRegisters = getResult().getFrameMapBuilder().getRegisterConfig().getAllocatableRegisters();
+                save = emitSaveAllRegisters(savedRegisters, true);
             }
         }
 
         Variable result;
-        LIRFrameState deoptInfo = null;
+        LIRFrameState debugInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
-            deoptInfo = state;
-            assert deoptInfo != null || getStub() != null;
-            assert hotspotLinkage.needsJavaFrameAnchor();
+            debugInfo = state;
+            assert debugInfo != null || stub != null;
         }
 
         if (hotspotLinkage.needsJavaFrameAnchor()) {
             Register thread = getProviders().getRegisters().getThreadRegister();
             append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread));
-            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
+            result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
             append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
         } else {
-            assert deoptInfo == null;
-            result = super.emitForeignCall(hotspotLinkage, null, args);
+            result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
         }
 
         if (destroysRegisters) {
-            if (getStub() != null) {
-                if (getStub().preservesRegisters()) {
+            if (stub != null) {
+                if (stub.preservesRegisters()) {
                     AMD64HotSpotLIRGenerationResult generationResult = (AMD64HotSpotLIRGenerationResult) getResult();
                     assert !generationResult.getCalleeSaveInfo().containsKey(currentRuntimeCallInfo);
                     generationResult.getCalleeSaveInfo().put(currentRuntimeCallInfo, save);

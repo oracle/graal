@@ -125,10 +125,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, Value... args) {
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
-        LIRFrameState deoptInfo = null;
+        LIRFrameState debugInfo = null;
         if (hotspotLinkage.canDeoptimize()) {
-            deoptInfo = state;
-            assert deoptInfo != null || getStub() != null;
+            debugInfo = state;
+            assert debugInfo != null || getStub() != null;
         }
 
         if (linkage.destroysRegisters() || hotspotLinkage.needsJavaFrameAnchor()) {
@@ -137,10 +137,10 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Value threadTemp = newVariable(LIRKind.value(Kind.Long));
             Register stackPointer = registers.getStackPointerRegister();
             append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer, threadTemp));
-            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
+            result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
             append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), thread, threadTemp));
         } else {
-            result = super.emitForeignCall(hotspotLinkage, deoptInfo, args);
+            result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
         }
 
         return result;

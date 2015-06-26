@@ -232,7 +232,16 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     public boolean needsJavaFrameAnchor() {
-        return canDeoptimize() || transition == Transition.LEAF_SP;
+        if (transition == Transition.NOT_LEAF || transition == Transition.STACK_INSPECTABLE_LEAF) {
+            if (stub != null) {
+                // The stub will do the JavaFrameAnchor management
+                // around the runtime call(s) it makes
+                return false;
+            } else {
+                return true;
+            }
+        }
+        return false;
     }
 
     public String getSymbol() {
