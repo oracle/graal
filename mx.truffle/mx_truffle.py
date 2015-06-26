@@ -1206,10 +1206,18 @@ def igv(args):
 
 def maven_install_truffle(args):
     """install Truffle into your local Maven repository"""
-    for name in ['TRUFFLE', 'TRUFFLE_TCK', 'TRUFFLE_DSL_PROCESSOR', 'TRUFFLE_SL']:
+    for name in mx._dists:
+        dist = mx._dists[name]
+        if dist.isProcessorDistribution:
+            continue
         mx.archive(["@" + name])
-        path = mx._dists[name].path
-        mx.run(['mvn', 'install:install-file', '-DgroupId=com.oracle', '-DartifactId=' + name.lower(), '-Dversion=' + graal_version('SNAPSHOT'), '-Dpackaging=jar', '-Dfile=' + path])
+        path = dist.path
+        slash = path.rfind('/')
+        dot = path.rfind('.')
+        if dot <= slash:
+            raise Exception('Dot should be after / in ' + path)
+        artifactId = path[slash + 1: dot]
+        mx.run(['mvn', 'install:install-file', '-DgroupId=com.oracle.' + dist.suite.name, '-DartifactId=' + artifactId, '-Dversion=' + graal_version('SNAPSHOT'), '-Dpackaging=jar', '-Dfile=' + path])
 
 def c1visualizer(args):
     """run the Cl Compiler Visualizer"""

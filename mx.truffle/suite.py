@@ -329,7 +329,7 @@ suite = {
     # ------------- Distributions -------------
 
     "TRUFFLE" : {
-      "path" : "build/truffle.jar",
+      "path" : "build/truffle-api.jar",
       "subDir" : "truffle",
       "sourcesPath" : "build/truffle.src.zip",
       "javaCompliance" : "1.7",
