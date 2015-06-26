@@ -31,7 +31,10 @@ package com.oracle.truffle.api;
  * identifies the code position of the assertion in the context of the current compilation.
  *
  */
-public class CompilerAsserts {
+public final class CompilerAsserts {
+    private CompilerAsserts() {
+    }
+
     /**
      * Assertion that this code position should never be reached during compilation. It can be used
      * for exceptional code paths or rare code paths that should never be included in a compilation
