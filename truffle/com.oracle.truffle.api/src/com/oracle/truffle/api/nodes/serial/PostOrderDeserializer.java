@@ -159,7 +159,7 @@ public final class PostOrderDeserializer {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.DATA) {
                 Class<?> fieldClass = field.getType();
-                long offset = field.getOffset();
+                long offset = getFieldOffset(field);
 
                 // source sections are not serialized
                 // TODO add support for source sections
@@ -241,7 +241,7 @@ public final class PostOrderDeserializer {
         for (int i = nodeFields.length - 1; i >= 0; i--) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILD) {
-                unsafe.putObject(parent, field.getOffset(), popNode(parent, field.getType()));
+                unsafe.putObject(parent, getFieldOffset(field), popNode(parent, field.getType()));
             }
         }
     }
@@ -250,7 +250,7 @@ public final class PostOrderDeserializer {
         for (int i = nodeFields.length - 1; i >= 0; i--) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILDREN) {
-                unsafe.putObject(parent, field.getOffset(), popArray(parent, field.getType()));
+                unsafe.putObject(parent, getFieldOffset(field), popArray(parent, field.getType()));
             }
         }
     }
@@ -262,6 +262,19 @@ public final class PostOrderDeserializer {
             nodeClass.getParentField().putObject(child, parent);
         }
         return child;
+    }
+
+    static long getFieldOffset(NodeFieldAccessor field) {
+        if (field instanceof NodeFieldAccessor.AbstractUnsafeNodeFieldAccessor) {
+            return ((NodeFieldAccessor.AbstractUnsafeNodeFieldAccessor) field).getOffset();
+        } else {
+            try {
+                Field reflectionField = field.getDeclaringClass().getDeclaredField(field.getName());
+                return unsafe.objectFieldOffset(reflectionField);
+            } catch (NoSuchFieldException | SecurityException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private static Unsafe loadUnsafe() {

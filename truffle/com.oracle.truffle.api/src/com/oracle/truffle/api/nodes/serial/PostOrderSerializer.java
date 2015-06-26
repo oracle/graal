@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.nodes.serial;
 
+import static com.oracle.truffle.api.nodes.serial.PostOrderDeserializer.*;
+
 import java.lang.reflect.*;
 import java.nio.*;
 
@@ -89,7 +91,7 @@ public final class PostOrderSerializer {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.DATA) {
                 Class<?> fieldClass = field.getType();
-                long offset = field.getOffset();
+                long offset = getFieldOffset(field);
                 int cpi;
 
                 if (field.getType().isAssignableFrom(SourceSection.class)) {
@@ -150,7 +152,7 @@ public final class PostOrderSerializer {
         for (int i = 0; i < nodeFields.length; i++) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILDREN) {
-                Object childArrayObject = unsafe.getObject(nodeInstance, field.getOffset());
+                Object childArrayObject = unsafe.getObject(nodeInstance, getFieldOffset(field));
                 if (childArrayObject != null && !(childArrayObject instanceof Node[])) {
                     throw new AssertionError("Node children must be instanceof Node[]");
                 }
@@ -175,7 +177,7 @@ public final class PostOrderSerializer {
         for (int i = 0; i < nodeFields.length; i++) {
             NodeFieldAccessor field = nodeFields[i];
             if (field.getKind() == NodeFieldKind.CHILD) {
-                Object childObject = unsafe.getObject(nodeInstance, field.getOffset());
+                Object childObject = unsafe.getObject(nodeInstance, getFieldOffset(field));
                 if (childObject != null && !(childObject instanceof Node)) {
                     throw new AssertionError("Node children must be instanceof Node");
                 }
