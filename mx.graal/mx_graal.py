@@ -1559,7 +1559,7 @@ def gate(args, gate_body=_basic_gate_body):
         Task.filters = None
 
 def deoptalot(args):
-    """bootstrap a fastdebug JVMCI VM with DeoptimizeALot and VerifyOops on
+    """bootstrap a VM with DeoptimizeALot and VerifyOops on
 
     If the first argument is a number, the process will be repeated
     this number of times. All other arguments are passed to the VM."""
@@ -1569,7 +1569,7 @@ def deoptalot(args):
         del args[0]
 
     for _ in range(count):
-        if not vm(['-XX:+DeoptimizeALot', '-XX:+VerifyOops'] + args + ['-version'], vmbuild='fastdebug') == 0:
+        if not vm(['-XX:-TieredCompilation', '-XX:+DeoptimizeALot', '-XX:+VerifyOops'] + args + ['-version']) == 0:
             mx.abort("Failed")
 
 def longtests(args):
