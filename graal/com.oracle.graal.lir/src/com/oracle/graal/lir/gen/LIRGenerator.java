@@ -289,7 +289,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState frameState, Value... args) {
         LIRFrameState state = null;
-        if (linkage.canDeoptimize()) {
+        if (linkage.needsDebugInfo()) {
             if (frameState != null) {
                 state = frameState;
             } else {

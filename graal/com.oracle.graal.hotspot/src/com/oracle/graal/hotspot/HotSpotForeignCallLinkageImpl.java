@@ -83,7 +83,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
      *            temporaries which are always destroyed)
      * @param outgoingCcType outgoing (caller) calling convention type
      * @param incomingCcType incoming (callee) calling convention type (can be null)
-     * @param transition specifies if this is a {@linkplain #canDeoptimize() leaf} call
+     * @param transition specifies if this is a {@linkplain #needsDebugInfo() leaf} call
      * @param reexecutable specifies if the call can be re-executed without (meaningful) side
      *            effects. Deoptimization will not return to a point before a call that cannot be
      *            re-executed.
@@ -223,7 +223,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
-    public boolean canDeoptimize() {
+    public boolean needsDebugInfo() {
         return transition == Transition.NOT_LEAF;
     }
 

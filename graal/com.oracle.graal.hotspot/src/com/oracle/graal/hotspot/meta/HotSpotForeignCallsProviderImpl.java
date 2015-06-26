@@ -152,7 +152,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
         assert foreignCalls.containsKey(descriptor) : "unknown foreign call: " + descriptor;
-        return foreignCalls.get(descriptor).canDeoptimize();
+        return foreignCalls.get(descriptor).needsDebugInfo();
     }
 
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {

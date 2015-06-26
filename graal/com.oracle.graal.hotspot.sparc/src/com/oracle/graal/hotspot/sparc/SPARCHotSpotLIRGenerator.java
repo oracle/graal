@@ -126,7 +126,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         HotSpotForeignCallLinkage hotspotLinkage = (HotSpotForeignCallLinkage) linkage;
         Variable result;
         LIRFrameState debugInfo = null;
-        if (hotspotLinkage.canDeoptimize()) {
+        if (hotspotLinkage.needsDebugInfo()) {
             debugInfo = state;
             assert debugInfo != null || getStub() != null;
         }
