@@ -101,13 +101,6 @@ suite = {
       ],
       "sha1" : "0970218476e21c17b90d9f45eb5910b781b12a31",
     },
-    "TRUFFLE_TCK" : {
-      "path" : "lib/truffle-tck-0.8-SNAPSHOT.jar",
-      "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-tck/0.8-dd4050aadaf8d91301b159cb30a609d8bb99feeb-SNAPSHOT/truffle-tck-0.8-dd4050aadaf8d91301b159cb30a609d8bb99feeb-20150616.114824-1.jar",
-      ],
-      "sha1" : "e56929575aebba40c5a38f8368826831f79fbff0",
-    },
     "TRUFFLE_DSL_PROCESSOR" : {
       "path" : "lib/truffle-dsl-processor-0.8-SNAPSHOT.jar",
       "urls" : [
@@ -1045,25 +1038,11 @@ suite = {
 
     # ------------- GraalTruffle -------------
 
-    "com.oracle.truffle.all" : {
-      "subDir" : "graal",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "TRUFFLE",
-        "TRUFFLE_DSL_PROCESSOR",
-      ],
-      "checkstyle" : "com.oracle.graal.graph",
-      "javaCompliance" : "1.7",
-      "workingSets" : "Graal,Truffle",
-      "jacoco" : "exclude",
-    },
-
     "com.oracle.graal.truffle" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE",
-        "TRUFFLE_DSL_PROCESSOR",
         "com.oracle.graal.runtime",
         "com.oracle.graal.replacements",
       ],
@@ -1079,6 +1058,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.truffle",
         "com.oracle.graal.compiler.test",
+        "TRUFFLE_DSL_PROCESSOR",
         "TRUFFLE_SL",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -1185,17 +1165,6 @@ suite = {
       ],
     },
 
-    "TRUFFLE" : {
-      "path" : "build/truffle.jar",
-      "subDir" : "graal",
-      "sourcesPath" : "build/truffle.src.zip",
-      "javaCompliance" : "1.7",
-      "dependencies" : [
-        "com.oracle.truffle.all",
-        "com.oracle.nfi",
-      ],
-    },
-
     "GRAAL_TRUFFLE" : {
       "path" : "build/graal-truffle.jar",
       "subDir" : "graal",
@@ -1207,8 +1176,10 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL",
-        "TRUFFLE",
       ],
+      "exclude" : [
+        "TRUFFLE"
+      ]
     },
   },
 }

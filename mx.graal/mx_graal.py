@@ -46,9 +46,9 @@ _graal_home = _suite.dir
 """ The VMs that can be built and run along with an optional description. Only VMs with a
     description are listed in the dialogue for setting the default VM (see _get_vm()). """
 _vmChoices = {
-    'jvmci' : 'Normal compilation is performed with a tiered system (C1 + Graal), Truffle compilation is performed with Graal.',
-    'server' : 'Normal compilation is performed with a tiered system (C1 + C2), Truffle compilation is performed with Graal. Use this for optimal Truffle performance.',
-    'client' : None,  # normal compilation with client compiler, explicit compilation (e.g., by Truffle) with Graal
+    'jvmci' : 'VM triggered compilation is performed with a tiered system (C1 + Graal) and Graal is available for hosted compilation.',
+    'server' : 'Normal compilation is performed with a tiered system (C1 + C2) and Graal is available for hosted compilation.',
+    'client' : None,  # VM compilation with client compiler, hosted compilation with Graal
     'server-nojvmci' : None,  # all compilation with tiered system (i.e., client + server), JVMCI omitted
     'client-nojvmci' : None,  # all compilation with client compiler, JVMCI omitted
     'original' : None,  # default VM copied from bootstrap JDK
@@ -1103,10 +1103,10 @@ def _parseVmArgs(args, vm=None, cwd=None, vmbuild=None):
         if  len(ignoredArgs) > 0:
             mx.log("Warning: The following options will be ignored by the vm because they come after the '-version' argument: " + ' '.join(ignoredArgs))
 
-    # Unconditionally prepend Truffle to the boot class path.
+    # Unconditionally prepend truffle.jar to the boot class path.
     # This used to be done by the VM itself but was removed to
     # separate the VM from Truffle.
-    truffle_jar = mx.archive(['@TRUFFLE'])[0]
+    truffle_jar = mx.library('TRUFFLE').path
     args = ['-Xbootclasspath/p:' + truffle_jar] + args
 
     args = mx.java().processArgs(args)
@@ -2103,16 +2103,6 @@ def jacocoreport(args):
 
     mx.run_java(['-jar', jacocoreport.get_path(True), '--in', 'jacoco.exec', '--out', out] + sorted(includedirs))
 
-def sl(args):
-    """run an SL program"""
-    vmArgs, slArgs = mx.extract_VM_args(args)
-    vm(vmArgs + ['-cp', mx.classpath(["TRUFFLE", "com.oracle.truffle.sl"]), "com.oracle.truffle.sl.SLLanguage"] + slArgs)
-
-def sldebug(args):
-    """run a simple command line debugger for the Simple Language"""
-    vmArgs, slArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    vm(vmArgs + ['-cp', mx.classpath("com.oracle.truffle.sl.tools"), "com.oracle.truffle.sl.tools.debug.SLREPLServer"] + slArgs)
-
 def isJVMCIEnabled(vm):
     return vm != 'original' and not vm.endswith('nojvmci')
 
@@ -2323,8 +2313,6 @@ def mx_init(suite):
         'vmfg': [vmfg, '[-options] class [args...]'],
         'deoptalot' : [deoptalot, '[n]'],
         'longtests' : [longtests, ''],
-        'sl' : [sl, '[SL args|@VM options]'],
-        'sldebug' : [sldebug, '[SL args|@VM options]'],
         'jol' : [jol, ''],
         'makefile' : [mx_graal_makefile.build_makefile, 'build makefiles for JDK build'],
     }
