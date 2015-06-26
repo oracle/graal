@@ -334,7 +334,7 @@ public class InliningUtil {
 
         if (invoke instanceof InvokeWithExceptionNode) {
             InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
-            if (unwindNode != null) {
+            if (unwindNode != null && unwindNode.isAlive()) {
                 assert unwindNode.predecessor() != null;
                 assert invokeWithException.exceptionEdge().successors().count() == 1;
                 ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
@@ -358,7 +358,7 @@ public class InliningUtil {
                 graph.removeFixed(begin);
             }
         } else {
-            if (unwindNode != null && !unwindNode.isDeleted()) {
+            if (unwindNode != null && unwindNode.isAlive()) {
                 DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
                 unwindNode.replaceAndDelete(deoptimizeNode);
             }
