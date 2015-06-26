@@ -124,4 +124,12 @@ public abstract class Accessor {
         throw new IOException("No symbol invoker found!");
     }
 
+    /**
+     * Don't call me. I am here only to let NetBeans debug any Truffle project.
+     * 
+     * @param args
+     */
+    public static void main(String... args) {
+        throw new IllegalStateException();
+    }
 }
