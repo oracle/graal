@@ -1215,7 +1215,7 @@ def maven_install_truffle(args):
         slash = path.rfind('/')
         dot = path.rfind('.')
         if dot <= slash:
-            raise Exception('Dot should be after / in ' + path)
+            mx.abort('Dot should be after / in ' + path)
         artifactId = path[slash + 1: dot]
         mx.run(['mvn', 'install:install-file', '-DgroupId=com.oracle.' + dist.suite.name, '-DartifactId=' + artifactId, '-Dversion=' + graal_version('SNAPSHOT'), '-Dpackaging=jar', '-Dfile=' + path])
 
