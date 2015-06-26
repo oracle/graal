@@ -161,7 +161,7 @@ public class SnippetTemplate {
 
         void notifyNewTemplate() {
             templateCount++;
-            if (UseSnippetTemplateCache && templateCount == MaxTemplatesPerSnippet) {
+            if (templateCount == MaxTemplatesPerSnippet) {
                 TTY.print("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, method.format("%h.%n(%p)"),
                                 MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME);
             }
@@ -791,7 +791,9 @@ public class SnippetTemplate {
         }
 
         Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
-        args.info.notifyNewTemplate();
+        if (UseSnippetTemplateCache && args.cacheable) {
+            args.info.notifyNewTemplate();
+        }
         Debug.dump(snippet, "SnippetTemplate final state");
     }
 
