@@ -159,6 +159,26 @@ public class InvocationPlugins {
         }
 
         /**
+         * Registers a plugin for an optional method with 3 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional3(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, InvocationPlugin plugin) {
+            plugins.registerOptional(plugin, declaringClass, name, arg1, arg2, arg3);
+        }
+
+        /**
+         * Registers a plugin for an optional method with 4 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptional4(String name, Class<?> arg1, Class<?> arg2, Class<?> arg3, Class<?> arg4, InvocationPlugin plugin) {
+            plugins.registerOptional(plugin, declaringClass, name, arg1, arg2, arg3, arg4);
+        }
+
+        /**
          * Registers a plugin that implements a method based on the bytecode of a substitute method.
          *
          * @param substituteDeclaringClass the class declaring the substitute method
@@ -203,6 +223,15 @@ public class InvocationPlugins {
         this(null, metaAccess);
     }
 
+    private void register(InvocationPlugin plugin, boolean isOptional, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
+        if (!isStatic) {
+            argumentTypes[0] = declaringClass;
+        }
+        MethodKey<InvocationPlugin> methodInfo = plugins.put(plugin, isStatic, isOptional, declaringClass, name, argumentTypes);
+        assert Checker.check(this, methodInfo, plugin);
+    }
+
     /**
      * Registers an invocation plugin for a given method. There must be no plugin currently
      * registered for {@code method}.
@@ -213,12 +242,20 @@ public class InvocationPlugins {
      *            {@code declaringClass}
      */
     public void register(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
-        boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
-        if (!isStatic) {
-            argumentTypes[0] = declaringClass;
-        }
-        MethodKey<InvocationPlugin> methodInfo = plugins.put(plugin, isStatic, declaringClass, name, argumentTypes);
-        assert Checker.check(this, methodInfo, plugin);
+        register(plugin, false, declaringClass, name, argumentTypes);
+    }
+
+    /**
+     * Registers an invocation plugin for a given, optional method. There must be no plugin
+     * currently registered for {@code method}.
+     *
+     * @param argumentTypes the argument types of the method. Element 0 of this array must be the
+     *            {@link Class} value for {@link InvocationPlugin.Receiver} iff the method is
+     *            non-static. Upon returning, element 0 will have been rewritten to
+     *            {@code declaringClass}
+     */
+    public void registerOptional(InvocationPlugin plugin, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        register(plugin, true, declaringClass, name, argumentTypes);
     }
 
     /**
@@ -265,6 +302,7 @@ public class InvocationPlugins {
          * The set of all {@link InvocationPlugin#apply} method signatures.
          */
         static final Class<?>[][] SIGS;
+
         static {
             ArrayList<Class<?>[]> sigs = new ArrayList<>(MAX_ARITY);
             for (Method method : InvocationPlugin.class.getDeclaredMethods()) {

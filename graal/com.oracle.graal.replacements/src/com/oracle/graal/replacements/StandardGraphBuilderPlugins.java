@@ -555,7 +555,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    static class UnsafePutPlugin implements InvocationPlugin {
+    public static class UnsafePutPlugin implements InvocationPlugin {
 
         private final Kind kind;
         private final boolean isVolatile;

@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.address.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.StandardGraphBuilderPlugins.*;
 
 public class AMD64GraphBuilderPlugins {
 
@@ -132,6 +133,12 @@ public class AMD64GraphBuilderPlugins {
                     }
                 });
             }
+        }
+
+        for (Kind kind : new Kind[]{Kind.Char, Kind.Short, Kind.Int, Kind.Long}) {
+            Class<?> javaClass = kind.toJavaClass();
+            r.registerOptional3("get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, false));
+            r.registerOptional4("put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, false));
         }
     }
 }
