@@ -35,6 +35,7 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("BREAKPOINT")
 public final class SPARCBreakpointOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCBreakpointOp> TYPE = LIRInstructionClass.create(SPARCBreakpointOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
     // historical - from hotspot src/cpu/sparc/vm
     // <sys/trap.h> promises that the system will not use traps 16-31
@@ -47,7 +48,7 @@ public final class SPARCBreakpointOp extends SPARCLIRInstruction {
     @Use({REG, STACK}) protected Value[] parameters;
 
     public SPARCBreakpointOp(Value[] parameters) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.parameters = parameters;
     }
 

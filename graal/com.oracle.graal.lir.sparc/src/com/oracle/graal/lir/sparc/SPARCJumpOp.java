@@ -29,9 +29,12 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.SPARCLIRInstruction.*;
 
 public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
     public static final LIRInstructionClass<SPARCJumpOp> TYPE = LIRInstructionClass.create(SPARCJumpOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(2);
+
     private boolean emitDone = false;
     private int delaySlotPosition = -1;
 
@@ -56,9 +59,14 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
                 masm.bicc(ConditionFlag.Always, NOT_ANNUL, destination().label());
                 masm.nop();
             } else {
-                assert crb.asm.position() - delaySlotPosition == 4;
+                int disp = crb.asm.position() - delaySlotPosition;
+                assert disp == 4 : disp;
             }
         }
+    }
+
+    public static SizeEstimate getSize() {
+        return SIZE;
     }
 
     public void resetState() {

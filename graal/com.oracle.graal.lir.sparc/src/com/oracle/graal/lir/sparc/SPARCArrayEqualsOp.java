@@ -53,6 +53,7 @@ import com.oracle.graal.lir.gen.*;
 @Opcode("ARRAY_EQUALS")
 public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCArrayEqualsOp> TYPE = LIRInstructionClass.create(SPARCArrayEqualsOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(32);
 
     private final Kind kind;
     private final int arrayBaseOffset;
@@ -69,7 +70,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     @Temp({REG}) protected Value temp5;
 
     public SPARCArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.kind = kind;
 
         Class<?> arrayClass = Array.newInstance(kind.toJavaClass(), 0).getClass();

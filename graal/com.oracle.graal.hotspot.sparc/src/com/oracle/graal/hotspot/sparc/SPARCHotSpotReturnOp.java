@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.sparc.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
@@ -38,13 +38,14 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 @Opcode("RETURN")
 final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
     public static final LIRInstructionClass<SPARCHotSpotReturnOp> TYPE = LIRInstructionClass.create(SPARCHotSpotReturnOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
     @Use({REG, ILLEGAL}) protected Value value;
     private final boolean isStub;
     private final HotSpotVMConfig config;
 
     SPARCHotSpotReturnOp(Value value, boolean isStub, HotSpotVMConfig config) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.value = value;
         this.isStub = isStub;
         this.config = config;

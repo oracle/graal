@@ -25,6 +25,7 @@ package com.oracle.graal.lir.asm;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
+import java.util.function.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CompilationResult.*;
@@ -87,6 +88,9 @@ public class CompilationResultBuilder {
     private List<ExceptionInfo> exceptionInfoList;
 
     private final IdentityHashMap<Constant, Data> dataCache;
+
+    private Consumer<LIRInstruction> beforeOp;
+    private Consumer<LIRInstruction> afterOp;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
@@ -368,7 +372,13 @@ public class CompilationResultBuilder {
             }
 
             try {
+                if (beforeOp != null) {
+                    beforeOp.accept(op);
+                }
                 emitOp(this, op);
+                if (afterOp != null) {
+                    afterOp.accept(op);
+                }
             } catch (JVMCIError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + lir.codeEmittingOrder());
             }
@@ -394,5 +404,10 @@ public class CompilationResultBuilder {
         if (dataCache != null) {
             dataCache.clear();
         }
+    }
+
+    public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
+        this.beforeOp = beforeOp;
+        this.afterOp = afterOp;
     }
 }

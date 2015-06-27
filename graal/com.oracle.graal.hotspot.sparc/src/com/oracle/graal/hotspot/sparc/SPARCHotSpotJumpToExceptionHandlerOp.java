@@ -43,11 +43,12 @@ import com.oracle.graal.lir.sparc.*;
 @Opcode("JUMP_TO_EXCEPTION_HANDLER")
 final class SPARCHotSpotJumpToExceptionHandlerOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCHotSpotJumpToExceptionHandlerOp> TYPE = LIRInstructionClass.create(SPARCHotSpotJumpToExceptionHandlerOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
     @Use(REG) AllocatableValue address;
 
     SPARCHotSpotJumpToExceptionHandlerOp(AllocatableValue address) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.address = address;
     }
 

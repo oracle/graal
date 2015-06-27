@@ -35,6 +35,7 @@ import com.oracle.graal.lir.sparc.*;
 @Opcode("CRUNTIME_CALL_EPILOGUE")
 final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCHotSpotCRuntimeCallEpilogueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotCRuntimeCallEpilogueOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(11);
 
     private final int threadLastJavaSpOffset;
     private final int threadLastJavaPcOffset;
@@ -43,7 +44,7 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     @Use({REG, STACK}) protected Value threadTemp;
 
     public SPARCHotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, Register thread, Value threadTemp) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
         this.threadLastJavaPcOffset = threadLastJavaPcOffset;
         this.threadJavaFrameAnchorFlagsOffset = threadJavaFrameAnchorFlagsOffset;

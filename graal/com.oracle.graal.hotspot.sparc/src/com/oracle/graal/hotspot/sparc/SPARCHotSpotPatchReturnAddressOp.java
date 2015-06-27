@@ -39,11 +39,12 @@ import com.oracle.graal.lir.sparc.*;
 @Opcode("PATCH_RETURN")
 final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCHotSpotPatchReturnAddressOp> TYPE = LIRInstructionClass.create(SPARCHotSpotPatchReturnAddressOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
     @Use(REG) AllocatableValue address;
 
     SPARCHotSpotPatchReturnAddressOp(AllocatableValue address) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.address = address;
     }
 

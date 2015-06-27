@@ -33,14 +33,18 @@ import static jdk.internal.jvmci.common.UnsafeAccess.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.DataSection.Data;
+import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.hotspot.*;
@@ -52,6 +56,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
+import com.oracle.graal.lir.sparc.SPARCLIRInstruction.SizeEstimate;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -60,8 +65,27 @@ import com.oracle.graal.nodes.spi.*;
  */
 public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
+    private static final SizeEstimateStatistics CONSTANT_ESTIMATED_STATS = new SizeEstimateStatistics("ESTIMATE");
+    private static final SizeEstimateStatistics CONSTANT_ACTUAL_STATS = new SizeEstimateStatistics("ACTUAL");
+
     public SPARCHotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(runtime, providers);
+    }
+
+    private static class SizeEstimateStatistics {
+        private static final ConcurrentHashMap<String, DebugMetric> metrics = new ConcurrentHashMap<>();
+        private final String suffix;
+
+        public SizeEstimateStatistics(String suffix) {
+            super();
+            this.suffix = suffix;
+        }
+
+        public void add(Class<?> c, int count) {
+            String name = SizeEstimateStatistics.class.getSimpleName() + "_" + c.getSimpleName() + "." + suffix;
+            DebugMetric m = metrics.computeIfAbsent(name, (n) -> Debug.metric(n));
+            m.add(count);
+        }
     }
 
     @Override
@@ -200,14 +224,67 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = gen.getCalleeSaveInfo();
             updateStub(stub, definedRegisters, calleeSaveInfo, frameMap);
         }
-
+        assert registerSizePredictionValidator(crb);
         return crb;
+    }
+
+    /**
+     * Registers a verifier which checks if the LIRInstructions estimate of constants size is
+     * greater or equal to the actual one.
+     */
+    private static boolean registerSizePredictionValidator(final CompilationResultBuilder crb) {
+        /**
+         * Used to hold state between beforeOp and afterOp
+         */
+        class ValidationState {
+            LIRInstruction op;
+            int constantSizeBefore;
+
+            public void before(LIRInstruction before) {
+                assert op == null : "LIRInstruction " + op + " no after call received";
+                op = before;
+                constantSizeBefore = calculateDataSectionSize(crb.compilationResult.getDataSection());
+            }
+
+            public void after(LIRInstruction after) {
+                assert after.equals(op) : "Instructions before/after don't match " + op + "/" + after;
+                int constantSizeAfter = calculateDataSectionSize(crb.compilationResult.getDataSection());
+                int actual = constantSizeAfter - constantSizeBefore;
+                if (op instanceof SPARCLIRInstruction) {
+                    SizeEstimate size = ((SPARCLIRInstruction) op).estimateSize();
+                    assert size != null : "No size prediction available for op: " + op;
+                    Class<?> c = op.getClass();
+                    CONSTANT_ESTIMATED_STATS.add(c, size.constantSize);
+                    CONSTANT_ACTUAL_STATS.add(c, actual);
+                    assert size.constantSize >= actual : "Op " + op + " exceeded estimated constant size; predicted: " + size.constantSize + " actual: " + actual;
+                } else {
+                    assert actual == 0 : "Op " + op + " emitted to DataSection without any estimate.";
+                }
+                op = null;
+                constantSizeBefore = 0;
+            }
+        }
+        final ValidationState state = new ValidationState();
+        crb.setOpCallback(op -> state.before(op), op -> state.after(op));
+        return true;
+    }
+
+    private static int calculateDataSectionSize(DataSection ds) {
+        int sum = 0;
+        for (Data d : ds) {
+            sum += d.getSize();
+        }
+        return sum;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
-        stuffDelayedControlTransfers(lir);
         SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
+        // TODO: (sa) Fold the two traversals into one
+        stuffDelayedControlTransfers(lir);
+        int constantSize = calculateConstantSize(lir);
+        boolean canUseImmediateConstantLoad = constantSize < (1 << 13) - 1;
+        masm.setImmediateConstantLoad(canUseImmediateConstantLoad);
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
         HotSpotVMConfig config = getRuntime().getConfig();
@@ -272,6 +349,21 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
     }
 
+    private static int calculateConstantSize(LIR lir) {
+        int size = 0;
+        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            for (LIRInstruction inst : lir.getLIRforBlock(block)) {
+                if (inst instanceof SPARCLIRInstruction) {
+                    SizeEstimate pred = ((SPARCLIRInstruction) inst).estimateSize();
+                    if (pred != null) {
+                        size += pred.constantSize;
+                    }
+                }
+            }
+        }
+        return size;
+    }
+
     private static void resetDelayedControlTransfers(LIR lir) {
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
@@ -321,12 +413,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                         // We have found a non overlapping LIR instruction which can be delayed
                         ((SPARCTailDelayedLIRInstruction) inst).setDelayedControlTransfer(delayedTransfer);
                         delayedTransfer = null;
-                        // Removed the moving as it causes problems (Nullpointer exceptions)
-                        // if (!adjacent) {
-                        // // If not adjacent, we make it adjacent
-                        // instructions.remove(i);
-                        // instructions.add(delayTransferPosition - 1, inst);
-                        // }
                     }
                 }
             }

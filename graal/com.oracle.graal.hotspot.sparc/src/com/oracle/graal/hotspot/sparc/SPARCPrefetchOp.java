@@ -32,12 +32,13 @@ import com.oracle.graal.lir.sparc.*;
 
 public final class SPARCPrefetchOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCPrefetchOp> TYPE = LIRInstructionClass.create(SPARCPrefetchOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
     private final int instr;  // AllocatePrefetchInstr
     @Alive({COMPOSITE}) protected SPARCAddressValue address;
 
     public SPARCPrefetchOp(SPARCAddressValue address, int instr) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.address = address;
         this.instr = instr;
     }

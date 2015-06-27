@@ -865,7 +865,21 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public static boolean isSimm13(JavaConstant constant) {
-        return constant.isNull() || isSimm13(constant.asLong());
+        long bits;
+        switch (constant.getKind()) {
+            case Double:
+                bits = Double.doubleToRawLongBits(constant.asDouble());
+                break;
+            case Float:
+                bits = Float.floatToRawIntBits(constant.asFloat());
+                break;
+            case Object:
+                return JavaConstant.NULL_POINTER.equals(constant);
+            default:
+                bits = constant.asLong();
+                break;
+        }
+        return constant.isNull() || isSimm13(bits);
     }
 
     public static boolean isSimm13(long imm) {
@@ -1638,6 +1652,44 @@ public abstract class SPARCAssembler extends Assembler {
     public void ldsh(SPARCAddress src, Register dst) {
         assert isCPURegister(dst) : dst;
         ld(Ldsh, src, dst);
+    }
+
+    public void ld(SPARCAddress src, Register dst, int bytes, boolean signed) {
+        if (signed) {
+            switch (bytes) {
+                case 1:
+                    ldub(src, dst);
+                    break;
+                case 2:
+                    lduh(src, dst);
+                    break;
+                case 4:
+                    lduw(src, dst);
+                    break;
+                case 8:
+                    ldx(src, dst);
+                    break;
+                default:
+                    throw new InternalError();
+            }
+        } else {
+            switch (bytes) {
+                case 1:
+                    ldsb(src, dst);
+                    break;
+                case 2:
+                    ldsh(src, dst);
+                    break;
+                case 4:
+                    ldsw(src, dst);
+                    break;
+                case 8:
+                    ldx(src, dst);
+                    break;
+                default:
+                    throw new InternalError();
+            }
+        }
     }
 
     public void ldub(SPARCAddress src, Register dst) {

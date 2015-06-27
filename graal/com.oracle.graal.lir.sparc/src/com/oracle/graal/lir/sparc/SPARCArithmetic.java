@@ -64,6 +64,8 @@ public enum SPARCArithmetic {
      */
     public static final class Unary2Op extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<Unary2Op> TYPE = LIRInstructionClass.create(Unary2Op.class);
+        public static final SizeEstimate SIZE_1 = SizeEstimate.create(1);
+        public static final SizeEstimate SIZE_5 = SizeEstimate.create(5);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG, HINT}) protected AllocatableValue result;
@@ -80,6 +82,19 @@ public enum SPARCArithmetic {
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             emitUnary(crb, masm, opcode, result, x, null, delayedControlTransfer);
         }
+
+        @Override
+        public SizeEstimate estimateSize() {
+            switch (opcode) {
+                case F2L:
+                case F2I:
+                case D2L:
+                case D2I:
+                    return SIZE_5;
+                default:
+                    return SIZE_1;
+            }
+        }
     }
 
     /**
@@ -88,6 +103,9 @@ public enum SPARCArithmetic {
      */
     public static final class BinaryRegReg extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<BinaryRegReg> TYPE = LIRInstructionClass.create(BinaryRegReg.class);
+        public static final SizeEstimate SIZE_1 = SizeEstimate.create(1);
+        public static final SizeEstimate SIZE_3 = SizeEstimate.create(3);
+        public static final SizeEstimate SIZE_7 = SizeEstimate.create(7);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected Value result;
@@ -118,6 +136,19 @@ public enum SPARCArithmetic {
             super.verify();
             verifyKind(opcode, result, x, y);
         }
+
+        @Override
+        public SizeEstimate estimateSize() {
+            switch (opcode) {
+                case IMULCC:
+                    return SIZE_7;
+                case IUDIV:
+                case IDIV:
+                    return SIZE_3;
+                default:
+                    return SIZE_1;
+            }
+        }
     }
 
     /**
@@ -125,6 +156,7 @@ public enum SPARCArithmetic {
      */
     public static final class BinaryRegConst extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<BinaryRegConst> TYPE = LIRInstructionClass.create(BinaryRegConst.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected AllocatableValue result;
@@ -137,7 +169,7 @@ public enum SPARCArithmetic {
         }
 
         public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, Value x, JavaConstant y, LIRFrameState state) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -162,6 +194,7 @@ public enum SPARCArithmetic {
      */
     public static final class RemOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<RemOp> TYPE = LIRInstructionClass.create(RemOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(4);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) protected Value result;
@@ -172,7 +205,7 @@ public enum SPARCArithmetic {
         @State protected LIRFrameState state;
 
         public RemOp(SPARCArithmetic opcode, Value result, Value x, Value y, LIRFrameState state, LIRGeneratorTool gen) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -199,6 +232,8 @@ public enum SPARCArithmetic {
      */
     public static final class SPARCLMulccOp extends SPARCLIRInstruction {
         public static final LIRInstructionClass<SPARCLMulccOp> TYPE = LIRInstructionClass.create(SPARCLMulccOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(13);
+
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value x;
         @Alive({REG}) protected Value y;
@@ -206,7 +241,7 @@ public enum SPARCArithmetic {
         @Temp({REG}) protected Value scratch2;
 
         public SPARCLMulccOp(Value result, Value x, Value y, LIRGeneratorTool gen) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.result = result;
             this.x = x;
             this.y = y;
@@ -856,6 +891,7 @@ public enum SPARCArithmetic {
 
     public static final class MulHighOp extends SPARCLIRInstruction {
         public static final LIRInstructionClass<MulHighOp> TYPE = LIRInstructionClass.create(MulHighOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(4);
 
         @Opcode private final SPARCArithmetic opcode;
         @Def({REG}) public AllocatableValue result;
@@ -864,7 +900,7 @@ public enum SPARCArithmetic {
         @Temp({REG}) public AllocatableValue scratch;
 
         public MulHighOp(SPARCArithmetic opcode, AllocatableValue x, AllocatableValue y, AllocatableValue result, AllocatableValue scratch) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;

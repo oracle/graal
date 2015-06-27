@@ -33,8 +33,8 @@ import com.oracle.graal.lir.sparc.*;
 abstract class SPARCHotSpotEpilogueOp extends SPARCLIRInstruction implements BlockEndOp {
     public static final LIRInstructionClass<SPARCHotSpotEpilogueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotEpilogueOp.class);
 
-    protected SPARCHotSpotEpilogueOp(LIRInstructionClass<? extends LIRInstruction> c) {
-        super(c);
+    protected SPARCHotSpotEpilogueOp(LIRInstructionClass<? extends LIRInstruction> c, SizeEstimate size) {
+        super(c, size);
     }
 
     protected void leaveFrame(CompilationResultBuilder crb) {

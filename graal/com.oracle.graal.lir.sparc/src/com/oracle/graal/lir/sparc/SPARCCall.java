@@ -37,15 +37,13 @@ import com.oracle.graal.lir.asm.*;
 public class SPARCCall {
 
     public abstract static class CallOp extends SPARCLIRInstruction {
-        public static final LIRInstructionClass<CallOp> TYPE = LIRInstructionClass.create(CallOp.class);
-
         @Def({REG, ILLEGAL}) protected Value result;
         @Use({REG, STACK}) protected Value[] parameters;
         @Temp protected Value[] temps;
         @State protected LIRFrameState state;
 
-        protected CallOp(LIRInstructionClass<? extends CallOp> c, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(c);
+        protected CallOp(LIRInstructionClass<? extends CallOp> c, SizeEstimate size, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, size);
             this.result = result;
             this.parameters = parameters;
             this.state = state;
@@ -60,28 +58,23 @@ public class SPARCCall {
     }
 
     public abstract static class MethodCallOp extends CallOp {
-        public static final LIRInstructionClass<MethodCallOp> TYPE = LIRInstructionClass.create(MethodCallOp.class);
 
         protected final ResolvedJavaMethod callTarget;
 
-        protected MethodCallOp(LIRInstructionClass<? extends MethodCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(c, result, parameters, temps, state);
+        protected MethodCallOp(LIRInstructionClass<? extends MethodCallOp> c, SizeEstimate size, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, size, result, parameters, temps, state);
             this.callTarget = callTarget;
         }
 
     }
 
     @Opcode("CALL_DIRECT")
-    public abstract static class DirectCallOp extends MethodCallOp /*
-                                                                    * implements
-                                                                    * SPARCDelayedControlTransfer
-                                                                    */{
-        public static final LIRInstructionClass<DirectCallOp> TYPE = LIRInstructionClass.create(DirectCallOp.class);
+    public abstract static class DirectCallOp extends MethodCallOp {
         private boolean emitted = false;
         private int before = -1;
 
-        public DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(c, callTarget, result, parameters, temps, state);
+        public DirectCallOp(LIRInstructionClass<? extends DirectCallOp> c, SizeEstimate size, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, size, callTarget, result, parameters, temps, state);
         }
 
         @Override
@@ -126,13 +119,11 @@ public class SPARCCall {
 
     @Opcode("CALL_INDIRECT")
     public abstract static class IndirectCallOp extends MethodCallOp {
-        public static final LIRInstructionClass<IndirectCallOp> TYPE = LIRInstructionClass.create(IndirectCallOp.class);
-
         @Use({REG}) protected Value targetAddress;
 
-        protected IndirectCallOp(LIRInstructionClass<? extends IndirectCallOp> c, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state) {
-            super(c, callTarget, result, parameters, temps, state);
+        protected IndirectCallOp(LIRInstructionClass<? extends IndirectCallOp> c, SizeEstimate size, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps,
+                        Value targetAddress, LIRFrameState state) {
+            super(c, size, callTarget, result, parameters, temps, state);
             this.targetAddress = targetAddress;
         }
 
@@ -153,8 +144,8 @@ public class SPARCCall {
 
         protected final ForeignCallLinkage callTarget;
 
-        public ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(c, result, parameters, temps, state);
+        public ForeignCallOp(LIRInstructionClass<? extends ForeignCallOp> c, SizeEstimate size, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(c, size, result, parameters, temps, state);
             this.callTarget = callTarget;
         }
 
@@ -167,9 +158,10 @@ public class SPARCCall {
     @Opcode("NEAR_FOREIGN_CALL")
     public static final class DirectNearForeignCallOp extends ForeignCallOp {
         public static final LIRInstructionClass<DirectNearForeignCallOp> TYPE = LIRInstructionClass.create(DirectNearForeignCallOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
         public DirectNearForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(TYPE, linkage, result, parameters, temps, state);
+            super(TYPE, SIZE, linkage, result, parameters, temps, state);
         }
 
         @Override
@@ -181,9 +173,10 @@ public class SPARCCall {
     @Opcode("FAR_FOREIGN_CALL")
     public static final class DirectFarForeignCallOp extends ForeignCallOp {
         public static final LIRInstructionClass<DirectFarForeignCallOp> TYPE = LIRInstructionClass.create(DirectFarForeignCallOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
         public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(TYPE, callTarget, result, parameters, temps, state);
+            super(TYPE, SIZE, callTarget, result, parameters, temps, state);
         }
 
         @Override

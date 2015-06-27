@@ -44,6 +44,7 @@ import com.oracle.graal.lir.sparc.SPARCCall.IndirectCallOp;
 @Opcode("CALL_INDIRECT")
 final class SPARCIndirectCallOp extends IndirectCallOp {
     public static final LIRInstructionClass<SPARCIndirectCallOp> TYPE = LIRInstructionClass.create(SPARCIndirectCallOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
     /**
      * Vtable stubs expect the metaspace Method in g5.
@@ -55,7 +56,7 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
     private final HotSpotVMConfig config;
 
     SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state, HotSpotVMConfig config) {
-        super(TYPE, targetMethod, result, parameters, temps, targetAddress, state);
+        super(TYPE, SIZE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
         this.config = config;
     }

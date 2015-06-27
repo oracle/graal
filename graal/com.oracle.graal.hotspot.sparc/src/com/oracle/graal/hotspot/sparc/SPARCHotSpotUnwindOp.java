@@ -40,11 +40,12 @@ import com.oracle.graal.lir.sparc.*;
 @Opcode("UNWIND")
 final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
     public static final LIRInstructionClass<SPARCHotSpotUnwindOp> TYPE = LIRInstructionClass.create(SPARCHotSpotUnwindOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(32);
 
     @Use({REG}) protected RegisterValue exception;
 
     SPARCHotSpotUnwindOp(RegisterValue exception) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.exception = exception;
     }
 

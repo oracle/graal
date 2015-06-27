@@ -42,9 +42,21 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(g1), new ScratchRegister(g3)};
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
+    /**
+     * Use ld [reg+simm13], reg for loading constants (User has to make sure, that the size of the
+     * constant table does not exceed simm13).
+     */
+    private boolean immediateConstantLoad;
 
     public SPARCMacroAssembler(TargetDescription target, RegisterConfig registerConfig) {
         super(target, registerConfig);
+    }
+
+    /**
+     * @see #immediateConstantLoad
+     */
+    public void setImmediateConstantLoad(boolean immediateConstantLoad) {
+        this.immediateConstantLoad = immediateConstantLoad;
     }
 
     @Override
@@ -391,6 +403,10 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
     public void signx(Register rd) {
         sra(rd, g0, rd);
+    }
+
+    public boolean isImmediateConstantLoad() {
+        return immediateConstantLoad;
     }
 
     public ScratchRegister getScratchRegister() {

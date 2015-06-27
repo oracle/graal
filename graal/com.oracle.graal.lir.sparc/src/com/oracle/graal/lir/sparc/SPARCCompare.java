@@ -44,13 +44,14 @@ public enum SPARCCompare {
 
     public static final class CompareOp extends SPARCLIRInstruction {
         public static final LIRInstructionClass<CompareOp> TYPE = LIRInstructionClass.create(CompareOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
         @Opcode private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
         @Use({REG, CONST}) protected Value y;
 
         public CompareOp(SPARCCompare opcode, Value x, Value y) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;
@@ -74,7 +75,6 @@ public enum SPARCCompare {
                     (name().startsWith("F") && x.getKind() == Kind.Float && y.getKind() == Kind.Float) ||
                     (name().startsWith("D") && x.getKind() == Kind.Double && y.getKind() == Kind.Double)
                     : "Name; " + name() + " x: " + x + " y: " + y;
-
             // @formatter:on
         }
     }

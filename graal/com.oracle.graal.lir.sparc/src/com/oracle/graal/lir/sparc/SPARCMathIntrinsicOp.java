@@ -32,6 +32,7 @@ import com.oracle.graal.lir.asm.*;
 
 public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
     public static final LIRInstructionClass<SPARCMathIntrinsicOp> TYPE = LIRInstructionClass.create(SPARCMathIntrinsicOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
     public enum IntrinsicOpcode {
         SQRT,
@@ -43,7 +44,7 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
     @Use protected Value input;
 
     public SPARCMathIntrinsicOp(IntrinsicOpcode opcode, Value result, Value input) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.opcode = opcode;
         this.result = result;
         this.input = input;

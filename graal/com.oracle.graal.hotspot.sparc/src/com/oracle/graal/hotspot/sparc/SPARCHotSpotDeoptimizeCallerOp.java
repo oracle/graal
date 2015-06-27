@@ -37,9 +37,10 @@ import com.oracle.graal.lir.sparc.*;
 @Opcode("DEOPT_CALLER")
 final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
     public static final LIRInstructionClass<SPARCHotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(SPARCHotSpotDeoptimizeCallerOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(32);
 
     protected SPARCHotSpotDeoptimizeCallerOp() {
-        super(TYPE);
+        super(TYPE, SIZE);
     }
 
     @Override

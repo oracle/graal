@@ -121,4 +121,10 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
     public SPARCLIRGenerator getLIRGeneratorTool() {
         return (SPARCLIRGenerator) super.getLIRGeneratorTool();
     }
+
+    @Override
+    protected void emitPrologue(StructuredGraph graph) {
+        getLIRGeneratorTool().emitLoadConstantTableBase();
+        super.emitPrologue(graph);
+    }
 }

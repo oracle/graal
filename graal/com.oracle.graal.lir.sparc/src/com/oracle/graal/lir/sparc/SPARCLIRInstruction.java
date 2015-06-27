@@ -31,9 +31,15 @@ import com.oracle.graal.lir.asm.*;
  */
 public abstract class SPARCLIRInstruction extends LIRInstruction {
     public static final LIRInstructionClass<SPARCLIRInstruction> TYPE = LIRInstructionClass.create(SPARCLIRInstruction.class);
+    private final SizeEstimate size;
 
     protected SPARCLIRInstruction(LIRInstructionClass<? extends LIRInstruction> c) {
+        this(c, null);
+    }
+
+    protected SPARCLIRInstruction(LIRInstructionClass<? extends LIRInstruction> c, SizeEstimate size) {
         super(c);
+        this.size = size;
     }
 
     protected SPARCDelayedControlTransfer delayedControlTransfer = SPARCDelayedControlTransfer.DUMMY;
@@ -51,5 +57,49 @@ public abstract class SPARCLIRInstruction extends LIRInstruction {
 
     public void setDelayedControlTransfer(SPARCDelayedControlTransfer holder) {
         this.delayedControlTransfer = holder;
+    }
+
+    public SizeEstimate estimateSize() {
+        return size;
+    }
+
+    /**
+     * This class represents a size estimation of a particular LIR instruction. It contains a
+     * pessimistic estimate of emitted SPARC instructions and emitted bytes into the constant
+     * section.
+     */
+    public static class SizeEstimate {
+        /**
+         * Cache the first size definition (with just 0 as constant size).
+         */
+        private static final SizeEstimate[] cache = new SizeEstimate[5];
+        static {
+            for (int i = 0; i < cache.length; i++) {
+                cache[i] = new SizeEstimate(i, 0);
+            }
+        }
+        public final int instructionSize;
+        public final int constantSize;
+
+        public SizeEstimate(int instructionSize, int constantSize) {
+            this.instructionSize = instructionSize;
+            this.constantSize = constantSize;
+        }
+
+        public static SizeEstimate create(int instructionSize, int constantSize) {
+            if (constantSize == 0 && instructionSize < cache.length) {
+                return cache[instructionSize];
+            } else {
+                return new SizeEstimate(instructionSize, constantSize);
+            }
+        }
+
+        public static SizeEstimate create(int instructionSize) {
+            if (instructionSize < cache.length) {
+                return cache[instructionSize];
+            } else {
+                return new SizeEstimate(instructionSize, 0);
+            }
+        }
     }
 }

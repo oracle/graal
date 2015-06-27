@@ -28,6 +28,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.sparc.SPARCMove.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
@@ -56,11 +57,12 @@ public class SPARCControlFlow {
 
     public static final class ReturnOp extends SPARCLIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
         @Use({REG, ILLEGAL}) protected Value x;
 
         public ReturnOp(Value x) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.x = x;
         }
 
@@ -78,6 +80,7 @@ public class SPARCControlFlow {
 
     public static final class CompareBranchOp extends SPARCLIRInstruction implements BlockEndOp, SPARCDelayedControlTransfer {
         public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(3);
         static final EnumSet<Kind> SUPPORTED_KINDS = EnumSet.of(Kind.Long, Kind.Int, Kind.Object, Kind.Float, Kind.Double);
 
         private final SPARCCompare opcode;
@@ -99,7 +102,7 @@ public class SPARCControlFlow {
 
         public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
                         double trueDestinationProbability) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.opcode = opcode;
             this.x = x;
             this.y = y;
@@ -328,6 +331,7 @@ public class SPARCControlFlow {
 
     public static final class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
         public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(2);
         protected final ConditionFlag conditionFlag;
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
@@ -335,7 +339,7 @@ public class SPARCControlFlow {
         protected final double trueDestinationProbability;
 
         public BranchOp(ConditionFlag conditionFlag, LabelRef trueDestination, LabelRef falseDestination, Kind kind, double trueDestinationProbability) {
-            super(TYPE);
+            super(TYPE, SIZE);
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
             this.kind = kind;
@@ -396,15 +400,17 @@ public class SPARCControlFlow {
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
+        @Alive({REG, ILLEGAL}) protected Value constantTableBase;
         @Temp({REG}) protected Value scratch;
         private final SwitchStrategy strategy;
 
-        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+        public StrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
             super(TYPE);
             this.strategy = strategy;
             this.keyConstants = strategy.keyConstants;
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
+            this.constantTableBase = constantTableBase;
             this.key = key;
             this.scratch = scratch;
             assert keyConstants.length == keyTargets.length;
@@ -414,11 +420,11 @@ public class SPARCControlFlow {
         @Override
         public void emitCode(final CompilationResultBuilder crb, final SPARCMacroAssembler masm) {
             final Register keyRegister = asRegister(key);
-
+            final Register constantBaseRegister = AllocatableValue.ILLEGAL.equals(constantTableBase) ? g0 : asRegister(constantTableBase);
             BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
                 @Override
                 protected void conditionalJump(int index, Condition condition, Label target) {
-                    SPARCMove.move(crb, masm, scratch, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
+                    const2reg(crb, masm, scratch, constantBaseRegister, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
                     CC conditionCode;
                     Register scratchRegister;
                     switch (key.getKind()) {
@@ -449,6 +455,17 @@ public class SPARCControlFlow {
                 }
             };
             strategy.run(closure);
+        }
+
+        @Override
+        public SizeEstimate estimateSize() {
+            int constantBytes = 0;
+            for (JavaConstant v : keyConstants) {
+                if (!SPARCAssembler.isSimm13(v)) {
+                    constantBytes += v.getKind().getByteCount();
+                }
+            }
+            return new SizeEstimate(4 * keyTargets.length, constantBytes);
         }
     }
 
@@ -522,6 +539,11 @@ public class SPARCControlFlow {
                 masm.nop(); // delay slot
             }
         }
+
+        @Override
+        public SizeEstimate estimateSize() {
+            return SizeEstimate.create(17 + targets.length * 2);
+        }
     }
 
     @Opcode("CMOVE")
@@ -562,6 +584,18 @@ public class SPARCControlFlow {
                 SPARCMove.move(crb, masm, result, actualFalseValue, SPARCDelayedControlTransfer.DUMMY);
                 cmove(masm, cc, result, actualCondition, actualTrueValue);
             }
+        }
+
+        @Override
+        public SizeEstimate estimateSize() {
+            int constantSize = 0;
+            if (isConstant(trueValue) && !SPARCAssembler.isSimm13(asConstant(trueValue))) {
+                constantSize += trueValue.getKind().getByteCount();
+            }
+            if (isConstant(falseValue) && !SPARCAssembler.isSimm13(asConstant(falseValue))) {
+                constantSize += trueValue.getKind().getByteCount();
+            }
+            return SizeEstimate.create(3, constantSize);
         }
     }
 

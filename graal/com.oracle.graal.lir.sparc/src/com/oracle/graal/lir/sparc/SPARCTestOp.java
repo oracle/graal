@@ -34,12 +34,13 @@ import com.oracle.graal.lir.asm.*;
 
 public class SPARCTestOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCTestOp> TYPE = LIRInstructionClass.create(SPARCTestOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(1);
 
     @Use({REG}) protected Value x;
     @Use({REG, CONST}) protected Value y;
 
     public SPARCTestOp(Value x, Value y) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.x = x;
         this.y = y;
     }

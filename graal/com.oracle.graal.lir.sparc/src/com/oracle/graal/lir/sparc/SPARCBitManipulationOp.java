@@ -39,11 +39,17 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCBitManipulationOp> TYPE = LIRInstructionClass.create(SPARCBitManipulationOp.class);
 
     public enum IntrinsicOpcode {
-        IPOPCNT,
-        LPOPCNT,
-        IBSR,
-        LBSR,
-        BSF;
+        IPOPCNT(SizeEstimate.create(2)),
+        LPOPCNT(SizeEstimate.create(1)),
+        IBSR(SizeEstimate.create(13)),
+        LBSR(SizeEstimate.create(14)),
+        BSF(SizeEstimate.create(4));
+
+        final SizeEstimate size;
+
+        private IntrinsicOpcode(SizeEstimate size) {
+            this.size = size;
+        }
     }
 
     @Opcode private final IntrinsicOpcode opcode;
@@ -52,7 +58,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
     @Temp({REG}) protected Value scratch;
 
     public SPARCBitManipulationOp(IntrinsicOpcode opcode, AllocatableValue result, AllocatableValue input, LIRGeneratorTool gen) {
-        super(TYPE);
+        super(TYPE, opcode.size);
         this.opcode = opcode;
         this.result = result;
         this.input = input;
@@ -148,5 +154,4 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
             throw JVMCIError.shouldNotReachHere();
         }
     }
-
 }

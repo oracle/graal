@@ -40,6 +40,7 @@ import com.oracle.graal.lir.sparc.*;
 @Opcode("SAFEPOINT")
 public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCHotSpotSafepointOp> TYPE = LIRInstructionClass.create(SPARCHotSpotSafepointOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(9);
 
     @State protected LIRFrameState state;
     @SuppressFBWarnings(value = "BC_IMPOSSIBLE_CAST", justification = "changed by the register allocator") @Temp({OperandFlag.REG}) private AllocatableValue temp;
@@ -47,7 +48,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     private final HotSpotVMConfig config;
 
     public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
-        super(TYPE);
+        super(TYPE, SIZE);
         this.state = state;
         this.config = config;
         this.temp = tool.newVariable(LIRKind.value(tool.target().wordKind));

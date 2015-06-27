@@ -265,6 +265,12 @@ public class StandardOp {
             instructions.set(index, replacement);
         }
 
+        public void remove(LIR lir) {
+            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            assert instructions.get(index).equals(this) : String.format("Removing the wrong instruction: %s instead of %s", instructions.get(index), this);
+            instructions.remove(index);
+        }
+
         @Override
         public void emitCode(CompilationResultBuilder crb) {
             if (block != null) {

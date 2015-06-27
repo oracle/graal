@@ -38,12 +38,13 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 @Opcode("CALL_DIRECT")
 final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
     public static final LIRInstructionClass<SPARCHotspotDirectStaticCallOp> TYPE = LIRInstructionClass.create(SPARCHotspotDirectStaticCallOp.class);
+    public static final SizeEstimate SIZE = SizeEstimate.create(8);
 
     private final InvokeKind invokeKind;
     private final HotSpotVMConfig config;
 
     SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
-        super(TYPE, target, result, parameters, temps, state);
+        super(TYPE, SIZE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;
         this.config = config;

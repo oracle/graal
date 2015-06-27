@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -43,6 +44,7 @@ import com.oracle.graal.lir.framemap.*;
 public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveRegistersOp {
     public static final LIRInstructionClass<SPARCSaveRegistersOp> TYPE = LIRInstructionClass.create(SPARCSaveRegistersOp.class);
     public static final Register RETURN_REGISTER_STORAGE = SPARC.d62;
+    public static final SizeEstimate SIZE = SizeEstimate.create(32);
     /**
      * The registers (potentially) saved by this operation.
      */
@@ -66,16 +68,11 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
      * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
      */
     public SPARCSaveRegistersOp(Register[] savedRegisters, StackSlotValue[] savedRegisterLocations, boolean supportsRemove) {
-        super(TYPE);
+        super(TYPE, SIZE);
         assert Arrays.asList(savedRegisterLocations).stream().allMatch(ValueUtil::isVirtualStackSlot);
         this.savedRegisters = savedRegisters;
         this.slots = savedRegisterLocations;
         this.supportsRemove = supportsRemove;
-    }
-
-    private static void saveRegister(CompilationResultBuilder crb, SPARCMacroAssembler masm, StackSlot result, Register register) {
-        RegisterValue input = register.asValue(result.getLIRKind());
-        SPARCMove.move(crb, masm, result, input, SPARCDelayedControlTransfer.DUMMY);
     }
 
     @Override
@@ -92,7 +89,11 @@ public class SPARCSaveRegistersOp extends SPARCLIRInstruction implements SaveReg
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
                 assert isStackSlot(slots[i]) : "not a StackSlot: " + slots[i];
-                saveRegister(crb, masm, asStackSlot(slots[i]), savedRegisters[i]);
+                Register savedRegister = savedRegisters[i];
+                StackSlot slot = asStackSlot(slots[i]);
+                SPARCAddress slotAddress = (SPARCAddress) crb.asAddress(slot);
+                RegisterValue input = savedRegister.asValue(slot.getLIRKind());
+                SPARCMove.emitStore(input, slotAddress, slot.getPlatformKind(), DUMMY, null, crb, masm);
             }
         }
     }
