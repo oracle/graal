@@ -44,7 +44,7 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
 
     public UnwindNode(ValueNode exception) {
         super(TYPE, StampFactory.forVoid());
-        assert exception == null || exception.getKind() == Kind.Object;
+        assert exception.getKind() == Kind.Object;
         this.exception = exception;
     }
 

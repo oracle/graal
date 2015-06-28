@@ -1065,8 +1065,10 @@ public class BytecodeParser implements GraphBuilderContext {
         genInfoPointNode(InfopointReason.LINE_NUMBER, null);
 
         ValueNode exception = frameState.pop(Kind.Object);
-        append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-        lastInstr.setNext(handleException(exception, bci()));
+        FixedGuardNode nullCheck = append(new FixedGuardNode(graph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
+        PiNode nonNullException = graph.unique(new PiNode(exception, exception.stamp().join(objectNonNull())));
+        nonNullException.setGuard(nullCheck);
+        lastInstr.setNext(handleException(nonNullException, bci()));
     }
 
     protected ValueNode createCheckCast(ResolvedJavaType type, ValueNode object, JavaTypeProfile profileForTypeCheck, boolean forStoreCheck) {
