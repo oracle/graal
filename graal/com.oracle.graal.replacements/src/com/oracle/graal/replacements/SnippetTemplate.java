@@ -350,7 +350,12 @@ public class SnippetTemplate {
                     }
                 }
                 sb.append(")");
-                formatter.format(applyFormattingFlagsAndWidth(sb.toString(), flags & ~ALTERNATE, width));
+                String string = sb.toString();
+                if (string.indexOf('%') != -1) {
+                    // Quote any % signs
+                    string = string.replace("%", "%%");
+                }
+                formatter.format(applyFormattingFlagsAndWidth(string, flags & ~ALTERNATE, width));
             }
         }
     }
