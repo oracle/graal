@@ -152,8 +152,18 @@ public class GraphUtil {
     public static void killWithUnusedFloatingInputs(Node node) {
         node.safeDelete();
         node.acceptInputs((n, in) -> {
-            if (in.isAlive() && in.hasNoUsages() && !(in instanceof FixedNode)) {
-                killWithUnusedFloatingInputs(in);
+            if (in.isAlive() && !(in instanceof FixedNode)) {
+                if (in.hasNoUsages()) {
+                    killWithUnusedFloatingInputs(in);
+                } else if (in instanceof PhiNode) {
+                    for (Node use : in.usages()) {
+                        if (use != in) {
+                            return;
+                        }
+                    }
+                    in.replaceAtUsages(null);
+                    killWithUnusedFloatingInputs(in);
+                }
             }
         });
     }
