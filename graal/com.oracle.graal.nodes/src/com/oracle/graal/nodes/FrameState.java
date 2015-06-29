@@ -523,6 +523,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
     @Override
     public boolean verify() {
+        if (virtualObjectMappingCount() > 0) {
+            for (EscapeObjectState state : virtualObjectMappings()) {
+                assertTrue(state != null, "must be non-null");
+            }
+        }
         assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
