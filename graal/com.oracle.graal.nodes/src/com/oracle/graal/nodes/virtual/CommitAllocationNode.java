@@ -102,6 +102,11 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         int valuePos = 0;
         for (int objIndex = 0; objIndex < virtualObjects.size(); objIndex++) {
             VirtualObjectNode virtual = virtualObjects.get(objIndex);
+            if (virtual == null) {
+                // Could occur in invalid graphs
+                properties.put("object(" + objIndex + ")", "null");
+                continue;
+            }
             StringBuilder s = new StringBuilder();
             s.append(virtual.type().toJavaName(false)).append("[");
             for (int i = 0; i < virtual.entryCount(); i++) {
