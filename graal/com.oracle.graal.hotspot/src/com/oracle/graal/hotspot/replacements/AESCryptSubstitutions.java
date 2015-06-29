@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.word.Word.*;
+
+import java.lang.reflect.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 import sun.misc.*;
 
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -45,6 +49,7 @@ public class AESCryptSubstitutions {
 
     static final long kOffset;
     static final Class<?> AESCryptClass;
+    static final int AES_BLOCK_SIZE;
 
     static {
         try {
@@ -53,6 +58,9 @@ public class AESCryptSubstitutions {
             ClassLoader cl = Launcher.getLauncher().getClassLoader();
             AESCryptClass = Class.forName("com.sun.crypto.provider.AESCrypt", true, cl);
             kOffset = UnsafeAccess.unsafe.objectFieldOffset(AESCryptClass.getDeclaredField("K"));
+            Field aesBlockSizeField = Class.forName("com.sun.crypto.provider.AESConstants", true, cl).getDeclaredField("AES_BLOCK_SIZE");
+            aesBlockSizeField.setAccessible(true);
+            AES_BLOCK_SIZE = aesBlockSizeField.getInt(null);
         } catch (Exception ex) {
             throw new JVMCIError(ex);
         }
@@ -67,6 +75,7 @@ public class AESCryptSubstitutions {
     }
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt) {
+        checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, AESCryptClass);
         Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, Kind.Object, LocationIdentity.any());
         Word kAddr = fromWordBase(Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte)));
@@ -76,6 +85,15 @@ public class AESCryptSubstitutions {
             encryptBlockStub(ENCRYPT_BLOCK, inAddr, outAddr, kAddr);
         } else {
             decryptBlockStub(DECRYPT_BLOCK, inAddr, outAddr, kAddr);
+        }
+    }
+
+    /**
+     * Perform null and array bounds checks for arguments to a cipher operation.
+     */
+    static void checkArgs(byte[] in, int inOffset, byte[] out, int outOffset) {
+        if (UnsignedMath.aboveThan(inOffset + AES_BLOCK_SIZE, in.length) || UnsignedMath.aboveThan(outOffset + AES_BLOCK_SIZE, out.length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
     }
 

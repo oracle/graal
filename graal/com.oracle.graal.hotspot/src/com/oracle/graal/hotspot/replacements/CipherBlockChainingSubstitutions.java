@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.replacements.*;
@@ -93,6 +94,7 @@ public class CipherBlockChainingSubstitutions {
     }
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
+        AESCryptSubstitutions.checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, LocationIdentity.any());
         Object rObject = UnsafeLoadNode.load(realReceiver, rOffset, Kind.Object, LocationIdentity.any());
@@ -104,6 +106,12 @@ public class CipherBlockChainingSubstitutions {
             encryptAESCryptStub(ENCRYPT, inAddr, outAddr, kAddr, rAddr, inLength);
         } else {
             decryptAESCryptStub(DECRYPT, inAddr, outAddr, kAddr, rAddr, inLength);
+        }
+    }
+
+    protected static void xxx(byte[] in, int inOffset, byte[] out, int outOffset) {
+        if (UnsignedMath.aboveThan(inOffset + AESCryptSubstitutions.AES_BLOCK_SIZE, in.length) || UnsignedMath.aboveThan(outOffset + AESCryptSubstitutions.AES_BLOCK_SIZE, out.length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
     }
 
