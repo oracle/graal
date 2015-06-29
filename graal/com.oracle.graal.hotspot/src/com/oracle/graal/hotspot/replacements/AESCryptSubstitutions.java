@@ -26,7 +26,6 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.word.Word.*;
-import static jdk.internal.jvmci.code.UnsignedMath.*;
 
 import java.lang.reflect.*;
 
@@ -93,7 +92,7 @@ public class AESCryptSubstitutions {
      * Perform null and array bounds checks for arguments to a cipher operation.
      */
     static void checkArgs(byte[] in, int inOffset, byte[] out, int outOffset) {
-        if (probability(VERY_SLOW_PATH_PROBABILITY, aboveThan(inOffset + AES_BLOCK_SIZE, in.length) || aboveThan(outOffset + AES_BLOCK_SIZE, out.length))) {
+        if (probability(VERY_SLOW_PATH_PROBABILITY, inOffset < 0 || in.length - AES_BLOCK_SIZE < inOffset || outOffset < 0 || out.length - AES_BLOCK_SIZE < outOffset)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
     }
