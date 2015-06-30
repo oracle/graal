@@ -475,6 +475,8 @@ public class SLLanguage extends TruffleLanguage {
             // TODO (mlvdv) fix to run properly in the current VM
             try {
                 SLLanguage.run(source);
+            } catch (QuitException ex) {
+                throw ex;
             } catch (Exception e) {
                 throw new DebugSupportException(e);
             }

@@ -86,6 +86,8 @@ public final class SLExpressionWrapperNode extends SLExpressionNode implements W
         try {
             result = child.executeGeneric(vFrame);
             probeNode.returnValue(child, vFrame, result);
+        } catch (KillException e) {
+            throw (e);
         } catch (Exception e) {
             probeNode.returnExceptional(child, vFrame, e);
             throw (e);
