@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
+
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
@@ -59,11 +61,12 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.graphCache = new HashMap<>();
     }
 
-    private EncodedGraph createGraph(ResolvedJavaMethod method) {
+    private EncodedGraph createGraph(ResolvedJavaMethod method, boolean isIntrinsic) {
         StructuredGraph graph = new StructuredGraph(method, allowAssumptions);
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {
 
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, null).apply(graph);
+            IntrinsicContext initialIntrinsicContext = isIntrinsic ? new IntrinsicContext(method, method, INLINE_AFTER_PARSING) : null;
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext).apply(graph);
 
             PhaseContext context = new PhaseContext(providers);
             new CanonicalizerPhase().apply(graph, context);
@@ -78,10 +81,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, boolean isIntrinsic) {
         EncodedGraph result = graphCache.get(method);
         if (result == null && method.hasBytecodes()) {
-            result = createGraph(method);
+            result = createGraph(method, isIntrinsic);
         }
         return result;
     }

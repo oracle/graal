@@ -307,7 +307,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     public void decode(StructuredGraph targetGraph, ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin) {
-        PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
+        PEMethodScope methodScope = new PEMethodScope(targetGraph, null, null, lookupEncodedGraph(method, false), method, null, 0, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
                         parameterPlugin, null);
         decode(methodScope, null);
         cleanupGraph(methodScope, null);
@@ -432,19 +432,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 if (inlineInfo.getMethodToInline() == null) {
                     return false;
                 } else {
-                    if (inlineInfo.isIntrinsic()) {
-                        // TODO(da): add support for inlining intrinsics
-                        return false;
-                    }
-                    return doInline(methodScope, loopScope, invokeData, inlineInfo.getMethodToInline(), arguments);
+                    return doInline(methodScope, loopScope, invokeData, inlineInfo, arguments);
                 }
             }
         }
         return false;
     }
 
-    protected boolean doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, ResolvedJavaMethod inlineMethod, ValueNode[] arguments) {
-        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod);
+    protected boolean doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
+        ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
+        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.isIntrinsic());
         if (graphToInline == null) {
             return false;
         }
@@ -579,7 +576,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method);
+    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, boolean isIntrinsic);
 
     @Override
     protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {
