@@ -36,7 +36,6 @@ import com.oracle.graal.lir.framemap.*;
  *
  * <pre>
  *   Base       Contents
- *
  *            :                                :  -----
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
@@ -78,8 +77,8 @@ public final class SPARCFrameMap extends FrameMap {
 
     public SPARCFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         super(codeCache, registerConfig);
-        // offset relative to sp + total frame size
-        initialSpillSize = 0;
+        // Initial spill size is set to register save area size (SPARC register window)
+        initialSpillSize = 128;
         spillSize = initialSpillSize;
     }
 
