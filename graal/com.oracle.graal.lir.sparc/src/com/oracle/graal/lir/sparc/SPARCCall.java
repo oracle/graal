@@ -106,8 +106,7 @@ public class SPARCCall {
         public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             assert !emitted;
             emitCallPrefixCode(crb, masm);
-            before = masm.position();
-            masm.call(0);
+            before = masm.call(0);
             emitted = true;
         }
 
@@ -189,14 +188,16 @@ public class SPARCCall {
         if (align) {
             // We don't need alignment on SPARC.
         }
-        int before = masm.position();
+
+        int before;
         if (scratch != null) {
             // offset might not fit a 30-bit displacement, generate an
             // indirect call with a 64-bit immediate
+            before = masm.position();
             new Sethix(0L, scratch, true).emit(masm);
             masm.jmpl(scratch, 0, o7);
         } else {
-            masm.call(0);
+            before = masm.call(0);
         }
         masm.nop();  // delay slot
         int after = masm.position();
@@ -216,8 +217,7 @@ public class SPARCCall {
     }
 
     public static void indirectCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.position();
-        masm.jmpl(dst, 0, o7);
+        int before = masm.jmpl(dst, 0, o7);
         masm.nop();  // delay slot
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
