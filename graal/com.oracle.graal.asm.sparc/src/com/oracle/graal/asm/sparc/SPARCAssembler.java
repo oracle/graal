@@ -166,12 +166,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         public static Op2s byValue(int value) {
-            for (Op2s op : values()) {
-                if (op.getValue() == value) {
-                    return op;
-                }
-            }
-            return null;
+            return OP2S[value];
         }
     }
 
@@ -992,7 +987,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     public void insertNopAfterCBCond() {
-        int pos = position();
+        int pos = position() - INSTRUCTION_SIZE;
         if (pos == 0) {
             return;
         }
