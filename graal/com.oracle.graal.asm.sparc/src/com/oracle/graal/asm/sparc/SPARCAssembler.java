@@ -55,20 +55,9 @@ public abstract class SPARCAssembler extends Assembler {
 
     public static final int CCR_ICC_SHIFT = 0;
     public static final int CCR_XCC_SHIFT = 4;
-    public static final int CCR_C_SHIFT = 0;
     public static final int CCR_V_SHIFT = 1;
-    public static final int CCR_Z_SHIFT = 2;
-    public static final int CCR_N_SHIFT = 3;
 
-    protected static final int OP_SHIFT = 30;
-    protected static final int CBCOND_SHIFT = 28;
     protected static final int OP2_SHIFT = 22;
-    protected static final int A_SHIFT = 29;
-
-    protected static final int A_MASK = 0b0010_0000_0000_0000_0000_0000_0000_0000;
-    protected static final int OP_MASK = 0b1100_0000_0000_0000_0000_0000_0000_0000;
-    protected static final int CBCOND_MASK = 0b0001_0000_0000_0000_0000_0000_0000_0000; // Used for
-    // distinguish CBcond and BPr instructions
     protected static final int OP2_MASK = 0b0000_0001_1100_0000_0000_0000_0000_0000;
 
     protected static final int DISP22_SHIFT = 0;
@@ -997,7 +986,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    private static boolean isCBCond(int inst) {
+    protected static boolean isCBCond(int inst) {
         return getOp(inst).equals(Ops.BranchOp) && getOp2(inst).equals(Op2s.Bpr) && getBits(inst, 28, 28) == 1;
     }
 
@@ -1844,9 +1833,5 @@ public abstract class SPARCAssembler extends Assembler {
 
     public void fpadd32(Register rs1, Register rs2, Register rd) {
         op3(Impdep1, Fpadd32, rs1, rs2, rd);
-    }
-
-    public boolean isCbcond(int i) {
-        return (i & 0xC1C00000) == 0xC00000;
     }
 }

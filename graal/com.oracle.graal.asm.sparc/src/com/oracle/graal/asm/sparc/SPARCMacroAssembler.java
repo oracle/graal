@@ -97,8 +97,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
                 maskBits = DISP19_MASK;
                 break;
             case Bpr:
-                boolean isCBcond = (inst & CBCOND_MASK) != 0;
-                if (isCBcond) {
+                if (isCBCond(inst)) {
                     assert isSimm10(disp) : String.format("%d: instruction: 0x%x", disp, inst);
                     int d10Split = 0;
                     d10Split |= (disp & 0b11_0000_0000) << D10HI_SHIFT - 8;
