@@ -326,7 +326,7 @@ public abstract class FrameMap {
     }
 
     public ReferenceMap initReferenceMap(boolean hasRegisters) {
-        ReferenceMap refMap = getTarget().createReferenceMap(hasRegisters, frameSize() / getTarget().wordSize);
+        ReferenceMap refMap = getTarget().createReferenceMap(hasRegisters, frameSize() / getTarget().wordSize, totalFrameSize());
         return refMap;
     }
 }
