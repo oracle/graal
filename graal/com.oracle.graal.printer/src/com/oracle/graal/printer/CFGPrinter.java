@@ -314,7 +314,7 @@ class CFGPrinter extends CompilationPrinter {
         out.print("tid ").print(nodeToString(node)).println(COLUMN_END);
 
         if (nodeLirGenerator != null) {
-            Value operand = nodeLirGenerator.getNodeOperands().get(node);
+            Value operand = nodeLirGenerator.hasOperand(node) ? nodeLirGenerator.operand(node) : null;
             if (operand != null) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
@@ -418,11 +418,10 @@ class CFGPrinter extends CompilationPrinter {
 
     private String stateValueToString(ValueNode value) {
         String result = nodeToString(value);
-        if (nodeLirGenerator != null && nodeLirGenerator.getNodeOperands() != null && value != null) {
-            Value operand = nodeLirGenerator.getNodeOperands().get(value);
-            if (operand != null) {
-                result += ": " + operand;
-            }
+        if (nodeLirGenerator != null && value != null && nodeLirGenerator.hasOperand(value)) {
+            Value operand = nodeLirGenerator.operand(value);
+            assert operand != null;
+            result += ": " + operand;
         }
         return result;
     }
