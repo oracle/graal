@@ -88,10 +88,10 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value a = builder.operand(getX());
-        Value b = builder.operand(getY());
-        builder.setResult(this, gen.emitUMulHigh(a, b));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        Value a = nodeValueMap.operand(getX());
+        Value b = nodeValueMap.operand(getY());
+        nodeValueMap.setResult(this, gen.emitUMulHigh(a, b));
     }
 
     public static int multiplyHighUnsigned(int x, int y) {

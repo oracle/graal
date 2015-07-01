@@ -28,7 +28,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-public interface NodeMappableLIRBuilder {
+public interface NodeValueMap {
 
     Value operand(Node object);
 

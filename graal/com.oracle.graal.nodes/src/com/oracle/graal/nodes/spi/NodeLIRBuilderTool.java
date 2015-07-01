@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 
-public interface NodeLIRBuilderTool extends NodeMappableLIRBuilder {
+public interface NodeLIRBuilderTool extends NodeValueMap {
 
     // TODO (je) remove and move into the Node
     LIRFrameState state(DeoptimizingNode deopt);

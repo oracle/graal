@@ -245,9 +245,9 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         }
     }
 
-    protected static boolean livesLonger(ValueNode after, ValueNode value, NodeMappableLIRBuilder builder) {
+    protected static boolean livesLonger(ValueNode after, ValueNode value, NodeValueMap nodeValueMap) {
         for (Node usage : value.usages()) {
-            if (usage != after && usage instanceof ValueNode && builder.hasOperand(usage)) {
+            if (usage != after && usage instanceof ValueNode && nodeValueMap.hasOperand(usage)) {
                 return true;
             }
         }

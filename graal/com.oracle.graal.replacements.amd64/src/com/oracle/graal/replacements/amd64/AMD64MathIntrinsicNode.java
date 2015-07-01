@@ -76,9 +76,9 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator lirGen) {
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator lirGen) {
         AMD64ArithmeticLIRGenerator gen = (AMD64ArithmeticLIRGenerator) lirGen;
-        Value input = builder.operand(getValue());
+        Value input = nodeValueMap.operand(getValue());
         Value result;
         switch (operation()) {
             case LOG:
@@ -99,7 +99,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        builder.setResult(this, result);
+        nodeValueMap.setResult(this, result);
     }
 
     @Override

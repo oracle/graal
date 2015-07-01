@@ -56,7 +56,7 @@ public final class NotNode extends UnaryArithmeticNode<Not> implements Arithmeti
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitNot(builder.operand(getValue())));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitNot(nodeValueMap.operand(getValue())));
     }
 }

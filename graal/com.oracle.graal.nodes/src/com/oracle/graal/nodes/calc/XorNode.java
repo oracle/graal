@@ -90,7 +90,7 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitXor(builder.operand(getX()), builder.operand(getY())));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitXor(nodeValueMap.operand(getX()), nodeValueMap.operand(getY())));
     }
 }

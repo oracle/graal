@@ -83,9 +83,9 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
         LIRKind kind = gen.getLIRKind(stamp());
-        builder.setResult(this, gen.emitReinterpret(kind, builder.operand(getValue())));
+        nodeValueMap.setResult(this, gen.emitReinterpret(kind, nodeValueMap.operand(getValue())));
     }
 
     public static ValueNode reinterpret(Kind toKind, ValueNode value) {
