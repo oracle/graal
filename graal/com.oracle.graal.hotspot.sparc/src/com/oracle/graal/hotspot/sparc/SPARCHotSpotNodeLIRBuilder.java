@@ -24,21 +24,22 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.lir.sparc.SPARCMove.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.*;
+import com.oracle.graal.nodes.spi.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
@@ -53,9 +54,9 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
     }
 
     @Override
-    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
+    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
         HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(Kind.Long));
-        return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
+        return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
     }
 
     private SPARCHotSpotLIRGenerator getGen() {

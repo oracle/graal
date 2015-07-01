@@ -25,22 +25,23 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static jdk.internal.jvmci.amd64.AMD64.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
+
+import com.oracle.graal.compiler.amd64.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.amd64.AMD64Move.*;
+import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.*;
+import com.oracle.graal.nodes.spi.*;
+
 import jdk.internal.jvmci.amd64.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.compiler.amd64.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
-import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -62,9 +63,9 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     }
 
     @Override
-    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
+    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
         HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(Kind.Long));
-        return new HotSpotDebugInfoBuilder(nodeOperands, lockStack);
+        return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
     }
 
     @Override
