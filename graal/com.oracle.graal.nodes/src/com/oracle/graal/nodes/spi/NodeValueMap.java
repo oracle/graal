@@ -35,4 +35,10 @@ public interface NodeValueMap {
     boolean hasOperand(Node object);
 
     Value setResult(ValueNode x, Value operand);
+
+    /**
+     * Gets the the {@link ValueNode} that produced a {@code value}. If the {@code value} is not
+     * associated with a {@link ValueNode} {@code null} is returned.
+     */
+    ValueNode valueForOperand(Value value);
 }
