@@ -37,7 +37,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLAssertTrueBuiltin extends SLBuiltinNode {
 
     public SLAssertTrueBuiltin() {
-        super(new NullSourceSection("SL builtin", "assertTrue"));
+        super(SourceSection.createUnavailable("SL builtin", "assertTrue"));
     }
 
     @Specialization

@@ -43,7 +43,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
 
     public SLPrintlnBuiltin() {
-        super(new NullSourceSection("SL builtin", "println"));
+        super(SourceSection.createUnavailable("SL builtin", "println"));
     }
 
     @Specialization

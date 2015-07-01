@@ -728,7 +728,7 @@ public final class NodeUtil {
 
     private static String displaySourceAttribution(Node node) {
         final SourceSection section = node.getSourceSection();
-        if (section instanceof NullSourceSection) {
+        if (section != null && section.getSource() == null) {
             return "source: " + section.getShortDescription();
         }
         if (section != null) {

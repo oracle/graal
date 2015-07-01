@@ -109,7 +109,7 @@ public final class LineToProbesMap extends InstrumentationTool {
         @Override
         public void newProbeInserted(Probe probe) {
             final SourceSection sourceSection = probe.getProbedSourceSection();
-            if (sourceSection != null && !(sourceSection instanceof NullSourceSection)) {
+            if (sourceSection != null && sourceSection.getSource() != null) {
                 final LineLocation lineLocation = sourceSection.getLineLocation();
                 if (TRACE) {
                     trace("ADD " + lineLocation.getShortDescription() + " ==> " + probe.getShortDescription());

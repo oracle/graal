@@ -37,7 +37,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
     public SLDefineFunctionBuiltin() {
-        super(new NullSourceSection("SL builtin", "defineFunction"));
+        super(SourceSection.createUnavailable("SL builtin", "defineFunction"));
     }
 
     @Specialization

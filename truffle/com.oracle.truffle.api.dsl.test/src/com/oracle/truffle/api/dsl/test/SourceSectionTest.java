@@ -48,7 +48,7 @@ public class SourceSectionTest {
     @Theory
     public void testSourceSections(int value0, int value1, int value2) {
         TestRootNode<SourceSection0> root = createRoot(SourceSection0Factory.getInstance());
-        SourceSection section = new NullSourceSection("a", "b");
+        SourceSection section = SourceSection.createUnavailable("a", "b");
         root.getNode().assignSourceSection(section);
         expectSourceSection(root.getNode(), section);
         assertThat((int) executeWith(root, value0), is(value0));
@@ -97,7 +97,8 @@ public class SourceSectionTest {
 
     @Test
     public void testCreateCast() {
-        SourceSection section = new NullSourceSection("a", "b");
+        SourceSection section = SourceSection.createUnavailable("a", "b");
+        assertNull(section.getSource());
         TestRootNode<SourceSection1> root = createRootPrefix(SourceSection1Factory.getInstance(), true, section);
         expectSourceSection(root.getNode(), section);
         assertThat((int) executeWith(root, 1), is(1));

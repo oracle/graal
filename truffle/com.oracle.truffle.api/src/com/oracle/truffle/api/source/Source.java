@@ -31,6 +31,11 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.instrument.*;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
 
 /**
  * Representation of a guest language source code unit and its contents. Sources originate in
@@ -374,11 +379,11 @@ public abstract class Source {
      *
      * @param bytes the raw bytes of the source
      * @param description a note about the origin, possibly useful for debugging
-     * @param decoder how to decode the bytes into Java strings
+     * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      */
-    public static Source fromBytes(byte[] bytes, String description, BytesDecoder decoder) {
-        return fromBytes(bytes, 0, bytes.length, description, decoder);
+    public static Source fromBytes(byte[] bytes, String description, Charset charset) {
+        return fromBytes(bytes, 0, bytes.length, description, charset);
     }
 
     /**
@@ -391,13 +396,13 @@ public abstract class Source {
      * @param byteIndex where the string starts in the byte array
      * @param length the length of the string in the byte array
      * @param description a note about the origin, possibly useful for debugging
-     * @param decoder how to decode the bytes into Java strings
+     * @param charset how to decode the bytes into Java strings
      * @return a newly created, non-indexed source representation
      */
-    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, BytesDecoder decoder) {
+    public static Source fromBytes(byte[] bytes, int byteIndex, int length, String description, Charset charset) {
         CompilerAsserts.neverPartOfCompilation();
 
-        final BytesSource source = new BytesSource(description, bytes, byteIndex, length, decoder);
+        final BytesSource source = new BytesSource(description, bytes, byteIndex, length, charset);
         notifyNewSource(source).tagAs(Tags.FROM_BYTES);
         return source;
     }
@@ -645,7 +650,7 @@ public abstract class Source {
      * @return newly created object representing the specified region
      */
     public final SourceSection createSection(String identifier, int startLine, int startColumn, int charIndex, int length) {
-        return new DefaultSourceSection(this, identifier, startLine, startColumn, charIndex, length);
+        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
     }
 
     /**
@@ -671,7 +676,7 @@ public abstract class Source {
             throw new IllegalArgumentException("column out of range");
         }
         final int startOffset = lineStartOffset + startColumn - 1;
-        return new DefaultSourceSection(this, identifier, startLine, startColumn, startOffset, length);
+        return new SourceSection(null, this, identifier, startLine, startColumn, startOffset, length);
     }
 
     /**
@@ -697,7 +702,7 @@ public abstract class Source {
         checkRange(charIndex, length);
         final int startLine = getLineNumber(charIndex);
         final int startColumn = charIndex - getLineStartOffset(startLine) + 1;
-        return new DefaultSourceSection(this, identifier, startLine, startColumn, charIndex, length);
+        return new SourceSection(null, this, identifier, startLine, startColumn, charIndex, length);
     }
 
     void checkRange(int charIndex, int length) {
@@ -730,7 +735,7 @@ public abstract class Source {
      * @return a representation of a line in this source
      */
     public final LineLocation createLineLocation(int lineNumber) {
-        return new LineLocationImpl(this, lineNumber);
+        return new LineLocation(this, lineNumber);
     }
 
     /**
@@ -1106,14 +1111,14 @@ public abstract class Source {
         private final byte[] bytes;
         private final int byteIndex;
         private final int length;
-        private final BytesDecoder decoder;
+        private final CharsetDecoder decoder;
 
-        public BytesSource(String name, byte[] bytes, int byteIndex, int length, BytesDecoder decoder) {
+        public BytesSource(String name, byte[] bytes, int byteIndex, int length, Charset decoder) {
             this.name = name;
             this.bytes = bytes;
             this.byteIndex = byteIndex;
             this.length = length;
-            this.decoder = decoder;
+            this.decoder = decoder.newDecoder();
         }
 
         @Override
@@ -1147,12 +1152,26 @@ public abstract class Source {
 
         @Override
         public String getCode() {
-            return decoder.decode(bytes, byteIndex, length);
+            ByteBuffer bb = ByteBuffer.wrap(bytes, byteIndex, length);
+            CharBuffer chb;
+            try {
+                chb = decoder.decode(bb);
+            } catch (CharacterCodingException ex) {
+                return "";
+            }
+            return chb.toString();
         }
 
         @Override
         public String getCode(int byteOffset, int codeLength) {
-            return decoder.decode(bytes, byteIndex + byteOffset, codeLength);
+            ByteBuffer bb = ByteBuffer.wrap(bytes, byteIndex + byteOffset, codeLength);
+            CharBuffer chb;
+            try {
+                chb = decoder.decode(bb);
+            } catch (CharacterCodingException ex) {
+                return "";
+            }
+            return chb.toString();
         }
 
         @Override
@@ -1164,226 +1183,8 @@ public abstract class Source {
 
         @Override
         TextMap createTextMap() {
-            return TextMap.fromBytes(bytes, byteIndex, length, decoder);
+            return TextMap.fromString(getCode());
         }
-    }
-
-    private static final class DefaultSourceSection implements SourceSection {
-
-        private final Source source;
-        private final String identifier;
-        private final int startLine;
-        private final int startColumn;
-        private final int charIndex;
-        private final int charLength;
-
-        /**
-         * Creates a new object representing a contiguous text section within the source code of a
-         * guest language program's text.
-         * <p>
-         * The starting location of the section is specified using two different coordinate:
-         * <ul>
-         * <li><b>(row, column)</b>: rows and columns are 1-based, so the first character in a
-         * source file is at position {@code (1,1)}.</li>
-         * <li><b>character index</b>: 0-based offset of the character from the beginning of the
-         * source, so the first character in a file is at index {@code 0}.</li>
-         * </ul>
-         * The <b>newline</b> that terminates each line counts as a single character for the purpose
-         * of a character index. The (row,column) coordinates of a newline character should never
-         * appear in a text section.
-         * <p>
-         *
-         * @param source object representing the complete source program that contains this section
-         * @param identifier an identifier used when printing the section
-         * @param startLine the 1-based number of the start line of the section
-         * @param startColumn the 1-based number of the start column of the section
-         * @param charIndex the 0-based index of the first character of the section
-         * @param charLength the length of the section in number of characters
-         */
-        public DefaultSourceSection(Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength) {
-            this.source = source;
-            this.identifier = identifier;
-            this.startLine = startLine;
-            this.startColumn = startColumn;
-            this.charIndex = charIndex;
-            this.charLength = charLength;
-        }
-
-        @Override
-        public Source getSource() {
-            return source;
-        }
-
-        @Override
-        public int getStartLine() {
-            return startLine;
-        }
-
-        @Override
-        public LineLocation getLineLocation() {
-            return source.createLineLocation(startLine);
-        }
-
-        @Override
-        public int getStartColumn() {
-            return startColumn;
-        }
-
-        public int getEndLine() {
-            return source.getLineNumber(charIndex + charLength - 1);
-        }
-
-        public int getEndColumn() {
-            return source.getColumnNumber(charIndex + charLength - 1);
-        }
-
-        @Override
-        public int getCharIndex() {
-            return charIndex;
-        }
-
-        @Override
-        public int getCharLength() {
-            return charLength;
-        }
-
-        @Override
-        public int getCharEndIndex() {
-            return charIndex + charLength;
-        }
-
-        @Override
-        public String getIdentifier() {
-            return identifier;
-        }
-
-        @Override
-        public String getCode() {
-            return getSource().getCode(charIndex, charLength);
-        }
-
-        @Override
-        public String getShortDescription() {
-            return String.format("%s:%d", source.getShortName(), startLine);
-        }
-
-        @Override
-        public String toString() {
-            return getCode();
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + charIndex;
-            result = prime * result + charLength;
-            result = prime * result + ((identifier == null) ? 0 : identifier.hashCode());
-            result = prime * result + ((source == null) ? 0 : source.hashCode());
-            result = prime * result + startColumn;
-            result = prime * result + startLine;
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (!(obj instanceof DefaultSourceSection)) {
-                return false;
-            }
-            DefaultSourceSection other = (DefaultSourceSection) obj;
-            if (charIndex != other.charIndex) {
-                return false;
-            }
-            if (charLength != other.charLength) {
-                return false;
-            }
-            if (identifier == null) {
-                if (other.identifier != null) {
-                    return false;
-                }
-            } else if (!identifier.equals(other.identifier)) {
-                return false;
-            }
-            if (source == null) {
-                if (other.source != null) {
-                    return false;
-                }
-            } else if (!source.equals(other.source)) {
-                return false;
-            }
-            if (startColumn != other.startColumn) {
-                return false;
-            }
-            if (startLine != other.startLine) {
-                return false;
-            }
-            return true;
-        }
-    }
-
-    private static final class LineLocationImpl implements LineLocation {
-        private final Source source;
-        private final int line;
-
-        public LineLocationImpl(Source source, int line) {
-            assert source != null;
-            this.source = source;
-            this.line = line;
-        }
-
-        @Override
-        public Source getSource() {
-            return source;
-        }
-
-        @Override
-        public int getLineNumber() {
-            return line;
-        }
-
-        @Override
-        public String getShortDescription() {
-            return source.getShortName() + ":" + line;
-        }
-
-        @Override
-        public String toString() {
-            return "Line[" + getShortDescription() + "]";
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + line;
-            result = prime * result + source.getHashKey().hashCode();
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (!(obj instanceof LineLocationImpl)) {
-                return false;
-            }
-            LineLocationImpl other = (LineLocationImpl) obj;
-            if (line != other.line) {
-                return false;
-            }
-            return source.getHashKey().equals(other.source.getHashKey());
-        }
-
     }
 
     /**
@@ -1460,29 +1261,6 @@ public abstract class Source {
             final boolean finalNL = textLength > 0 && (textLength == nlOffsets[nlOffsets.length - 2]);
 
             return new TextMap(nlOffsets, textLength, finalNL);
-        }
-
-        public static TextMap fromBytes(byte[] bytes, int byteIndex, int length, BytesDecoder bytesDecoder) {
-            final ArrayList<Integer> lines = new ArrayList<>();
-            lines.add(0);
-
-            bytesDecoder.decodeLines(bytes, byteIndex, length, new BytesDecoder.LineMarker() {
-
-                public void markLine(int index) {
-                    lines.add(index);
-                }
-            });
-
-            lines.add(Integer.MAX_VALUE);
-
-            final int[] nlOffsets = new int[lines.size()];
-            for (int line = 0; line < lines.size(); line++) {
-                nlOffsets[line] = lines.get(line);
-            }
-
-            final boolean finalNL = length > 0 && (length == nlOffsets[nlOffsets.length - 2]);
-
-            return new TextMap(nlOffsets, length, finalNL);
         }
 
         /**

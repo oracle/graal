@@ -187,9 +187,8 @@ public class DefaultASTPrinter implements ASTPrinter {
     protected static String sourceInfo(Node node) {
         final SourceSection src = node.getSourceSection();
         if (src != null) {
-            if (src instanceof NullSourceSection) {
-                final NullSourceSection nullSection = (NullSourceSection) src;
-                return nullSection.getShortDescription();
+            if (src.getSource() == null) {
+                return src.getShortDescription();
             } else {
                 return src.getSource().getName() + ":" + src.getStartLine();
             }

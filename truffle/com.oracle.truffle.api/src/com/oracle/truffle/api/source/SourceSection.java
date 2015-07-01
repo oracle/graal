@@ -26,72 +26,129 @@ package com.oracle.truffle.api.source;
 
 /**
  * Description of contiguous section of text within a {@link Source} of program code; supports
- * multiple modes of access to the text and its location. A special {@linkplain NullSourceSection
- * null subtype} should be used for code that is not available from source, e.g language builtins.
+ * multiple modes of access to the text and its location. A special
+ * {@link #createUnavailable(java.lang.String, java.lang.String) null value} should be used for code
+ * that is not available from source, e.g language builtins.
  *
  * @see Source#createSection(String, int, int, int, int)
  * @see Source#createSection(String, int, int, int)
  * @see Source#createSection(String, int, int)
  * @see Source#createSection(String, int)
- * @see NullSourceSection
+ * @see #createUnavailable
  */
-public interface SourceSection {
+public final class SourceSection {
+    private final Source source;
+    private final String identifier;
+    private final int startLine;
+    private final int startColumn;
+    private final int charIndex;
+    private final int charLength;
+    private final String kind;
 
-    // TODO support alternate text representations/encodings
+    /**
+     * Creates a new object representing a contiguous text section within the source code of a guest
+     * language program's text.
+     * <p>
+     * The starting location of the section is specified using two different coordinate:
+     * <ul>
+     * <li><b>(row, column)</b>: rows and columns are 1-based, so the first character in a source
+     * file is at position {@code (1,1)}.</li>
+     * <li><b>character index</b>: 0-based offset of the character from the beginning of the source,
+     * so the first character in a file is at index {@code 0}.</li>
+     * </ul>
+     * The <b>newline</b> that terminates each line counts as a single character for the purpose of
+     * a character index. The (row,column) coordinates of a newline character should never appear in
+     * a text section.
+     * <p>
+     *
+     * @param source object representing the complete source program that contains this section
+     * @param identifier an identifier used when printing the section
+     * @param startLine the 1-based number of the start line of the section
+     * @param startColumn the 1-based number of the start column of the section
+     * @param charIndex the 0-based index of the first character of the section
+     * @param charLength the length of the section in number of characters
+     */
+    SourceSection(String kind, Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength) {
+        this.kind = kind;
+        this.source = source;
+        this.identifier = identifier;
+        this.startLine = startLine;
+        this.startColumn = startColumn;
+        this.charIndex = charIndex;
+        this.charLength = charLength;
+    }
 
     /**
      * Representation of the source program that contains this section.
      *
      * @return the source object
      */
-    Source getSource();
+    public Source getSource() {
+        return source;
+    }
 
     /**
      * Returns 1-based line number of the first character in this section (inclusive).
      *
      * @return the starting line number
      */
-    int getStartLine();
+    public int getStartLine() {
+        return startLine;
+    }
 
     /**
      * Gets a representation of the first line of the section, suitable for a hash key.
+     * 
+     * @return first line of the section
      */
-    LineLocation getLineLocation();
+    public LineLocation getLineLocation() {
+        return source.createLineLocation(startLine);
+    }
 
     /**
      * Returns the 1-based column number of the first character in this section (inclusive).
      *
      * @return the starting column number
      */
-    int getStartColumn();
+    public int getStartColumn() {
+        return startColumn;
+    }
 
     /**
      * Returns 1-based line number of the last character in this section (inclusive).
      *
      * @return the starting line number
      */
-    int getEndLine();
+    public int getEndLine() {
+        return source.getLineNumber(charIndex + charLength - 1);
+    }
 
     /**
      * Returns the 1-based column number of the last character in this section (inclusive).
      *
      * @return the starting column number
      */
-    int getEndColumn();
+    public int getEndColumn() {
+        return source.getColumnNumber(charIndex + charLength - 1);
+    }
 
     /**
      * Returns the 0-based index of the first character in this section.
      *
      * @return the starting character index
      */
-    int getCharIndex();
+    public int getCharIndex() {
+        return charIndex;
+    }
 
     /**
      * Returns the length of this section in characters.
      *
      * @return the number of characters in the section
      */
-    int getCharLength();
+    public int getCharLength() {
+        return charLength;
+    }
 
     /**
      * Returns the index of the text position immediately following the last character in the
@@ -99,21 +156,27 @@ public interface SourceSection {
      *
      * @return the end position of the section
      */
-    int getCharEndIndex();
+    public int getCharEndIndex() {
+        return charIndex + charLength;
+    }
 
     /**
      * Returns terse text describing this source section, typically used for printing the section.
      *
      * @return the identifier of the section
      */
-    String getIdentifier();
+    public String getIdentifier() {
+        return identifier;
+    }
 
     /**
      * Returns text described by this section.
      *
      * @return the code as a String object
      */
-    String getCode();
+    public String getCode() {
+        return getSource().getCode(charIndex, charLength);
+    }
 
     /**
      * Returns a short description of the source section, using just the file name, rather than its
@@ -121,6 +184,84 @@ public interface SourceSection {
      *
      * @return a short description of the source section
      */
-    String getShortDescription();
+    public String getShortDescription() {
+        if (source == null) {
+            return kind + ": " + identifier;
+        }
+        return String.format("%s:%d", source.getShortName(), startLine);
+    }
 
+    @Override
+    public String toString() {
+        return getCode();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + charIndex;
+        result = prime * result + charLength;
+        result = prime * result + ((identifier == null) ? 0 : identifier.hashCode());
+        result = prime * result + ((source == null) ? 0 : source.hashCode());
+        result = prime * result + startColumn;
+        result = prime * result + startLine;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof SourceSection)) {
+            return false;
+        }
+        SourceSection other = (SourceSection) obj;
+        if (charIndex != other.charIndex) {
+            return false;
+        }
+        if (charLength != other.charLength) {
+            return false;
+        }
+        if (identifier == null) {
+            if (other.identifier != null) {
+                return false;
+            }
+        } else if (!identifier.equals(other.identifier)) {
+            return false;
+        }
+        if (source == null) {
+            if (other.source != null) {
+                return false;
+            }
+        } else if (!source.equals(other.source)) {
+            return false;
+        }
+        if (startColumn != other.startColumn) {
+            return false;
+        }
+        if (startLine != other.startLine) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Placeholder for source that is unavailable, e.g. for language <em>builtins</em>. The
+     * <code>SourceSection</code> created by this method returns <code>null</code> when queried for
+     * a {@link #getSource()} - regular source sections created via one of
+     * {@link Source#createSection(java.lang.String, int) Source.createSection} methods have a non-
+     * <code>null</code> source.
+     *
+     * @param kind the general category, e.g. "JS builtin"
+     * @param name specific name for this section
+     * @return source section which is mostly <em>empty</em>
+     */
+    public static SourceSection createUnavailable(String kind, String name) {
+        return new SourceSection(kind, null, name, -1, -1, -1, -1);
+    }
 }

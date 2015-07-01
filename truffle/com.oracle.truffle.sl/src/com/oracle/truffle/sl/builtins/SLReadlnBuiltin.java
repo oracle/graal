@@ -38,7 +38,7 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLReadlnBuiltin extends SLBuiltinNode {
 
     public SLReadlnBuiltin() {
-        super(new NullSourceSection("SL builtin", "readln"));
+        super(SourceSection.createUnavailable("SL builtin", "readln"));
     }
 
     @Specialization

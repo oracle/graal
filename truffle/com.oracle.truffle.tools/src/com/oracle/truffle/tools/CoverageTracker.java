@@ -275,7 +275,7 @@ public final class CoverageTracker extends InstrumentationTool {
     private static final class LineLocationEntryComparator implements Comparator<Entry<LineLocation, CoverageRecord>> {
 
         public int compare(Entry<LineLocation, CoverageRecord> e1, Entry<LineLocation, CoverageRecord> e2) {
-            return LineLocation.COMPARATOR.compare(e1.getKey(), e2.getKey());
+            return e1.getKey().compareTo(e2.getKey());
         }
     }
 

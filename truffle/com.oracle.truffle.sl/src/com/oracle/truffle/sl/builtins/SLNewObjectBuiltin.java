@@ -33,7 +33,7 @@ import com.oracle.truffle.api.source.*;
 public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
 
     public SLNewObjectBuiltin() {
-        super(new NullSourceSection("SL builtin", "new"));
+        super(SourceSection.createUnavailable("SL builtin", "new"));
     }
 
     @Specialization

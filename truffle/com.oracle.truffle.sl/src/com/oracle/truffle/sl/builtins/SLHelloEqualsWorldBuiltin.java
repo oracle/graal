@@ -37,7 +37,7 @@ import com.oracle.truffle.api.source.*;
 public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
 
     public SLHelloEqualsWorldBuiltin() {
-        super(new NullSourceSection("SL builtin", "helloEqualsWorld"));
+        super(SourceSection.createUnavailable("SL builtin", "helloEqualsWorld"));
     }
 
     @Specialization

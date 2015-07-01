@@ -33,7 +33,7 @@ import com.oracle.truffle.api.source.*;
 public abstract class SLNanoTimeBuiltin extends SLBuiltinNode {
 
     public SLNanoTimeBuiltin() {
-        super(new NullSourceSection("SL builtin", "nanoTime"));
+        super(SourceSection.createUnavailable("SL builtin", "nanoTime"));
     }
 
     @Specialization

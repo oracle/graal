@@ -39,7 +39,7 @@ import com.oracle.truffle.api.source.*;
 public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
 
     public SLStackTraceBuiltin() {
-        super(new NullSourceSection("SL builtin", "stacktrace"));
+        super(SourceSection.createUnavailable("SL builtin", "stacktrace"));
     }
 
     @Specialization
