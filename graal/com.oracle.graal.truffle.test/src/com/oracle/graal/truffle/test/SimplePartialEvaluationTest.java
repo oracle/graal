@@ -27,8 +27,10 @@ import jdk.internal.jvmci.code.*;
 import org.junit.*;
 
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.test.nodes.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
@@ -166,5 +168,34 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue());
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "tooDeepRecursion", result));
+    }
+
+    @Test
+    public void intrinsicStatic() {
+        /*
+         * The intrinsic for String.equals() is inlined early during bytecode parsing, because we
+         * call equals() on a value that has the static type String.
+         */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new StringEqualsNode("abc", "abf");
+        RootNode rootNode = new RootTestNode(fd, "intrinsicStatic", result);
+        OptimizedCallTarget compilable = compileHelper("intrinsicStatic", rootNode, new Object[0]);
+
+        Assert.assertEquals(42, compilable.call(new Object[0]));
+    }
+
+    @Test
+    public void intrinsicVirtual() {
+        /*
+         * The intrinsic for String.equals() is inlined late during Truffle partial evaluation,
+         * because we call equals() on a value that has the static type Object, but during partial
+         * evaluation the more precise type String is known.
+         */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new ObjectEqualsNode("abc", "abf");
+        RootNode rootNode = new RootTestNode(fd, "intrinsicVirtual", result);
+        OptimizedCallTarget compilable = compileHelper("intrinsicVirtual", rootNode, new Object[0]);
+
+        Assert.assertEquals(42, compilable.call(new Object[0]));
     }
 }
