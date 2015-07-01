@@ -149,6 +149,7 @@ suite = {
       "sourceDirs" : ["src"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
+      "netbeans.project.properties" : "main.class=com.oracle.truffle.api.impl.Accessor",
     },
 
     "com.oracle.truffle.api.test" : {
