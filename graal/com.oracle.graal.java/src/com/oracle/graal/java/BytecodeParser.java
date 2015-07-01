@@ -559,7 +559,6 @@ public class BytecodeParser implements GraphBuilderContext {
                     }
                     locals[i] = node;
                 }
-                locals = frameState.locals;
             } else {
                 locals = new ValueNode[original.getMaxLocals()];
                 int parameterCount = original.getSignature().getParameterCount(!original.isStatic());
