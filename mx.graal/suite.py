@@ -1181,5 +1181,17 @@ suite = {
         "TRUFFLE"
       ]
     },
+
+    "GRAAL_TRUFFLE_TEST" : {
+      "path" : "build/graal-truffle-test.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-truffle-test.src.zip",
+      "dependencies" : [
+        "com.oracle.graal.truffle.test"
+      ],
+      "distDependencies" : [
+        "GRAAL_TRUFFLE"
+      ],
+    },
   },
 }
