@@ -292,7 +292,7 @@ clean:
     for p in projects:
         deps = p.all_deps([], False, includeSelf=True, includeJreLibs=False, includeAnnotationProcessors=True)
         for d in deps:
-            if d.definedAnnotationProcessorsDist != None:
+            if d.definedAnnotationProcessorsDist is not None:
                 apd = d.definedAnnotationProcessorsDist
                 update_list(ap, [apd])
 
