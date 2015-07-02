@@ -465,14 +465,17 @@ public abstract class Source {
         final StringBuilder builder = new StringBuilder();
         final char[] buffer = new char[1024];
 
-        while (true) {
-            final int n = bufferedReader.read(buffer);
-            if (n == -1) {
-                break;
+        try {
+            while (true) {
+                final int n = bufferedReader.read(buffer);
+                if (n == -1) {
+                    break;
+                }
+                builder.append(buffer, 0, n);
             }
-            builder.append(buffer, 0, n);
+        } finally {
+            bufferedReader.close();
         }
-
         return builder.toString();
     }
 
