@@ -42,7 +42,7 @@ import com.oracle.graal.lir.asm.*;
 
 public class AMD64ControlFlow {
 
-    public static final class ReturnOp extends AMD64LIRInstruction implements BlockEndOp {
+    public static final class ReturnOp extends AMD64BlockEndOp implements BlockEndOp {
         public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
 
@@ -58,7 +58,7 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static class BranchOp extends AMD64LIRInstruction implements StandardOp.BranchOp {
+    public static class BranchOp extends AMD64BlockEndOp implements StandardOp.BranchOp {
         public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);
         protected final ConditionFlag condition;
         protected final LabelRef trueDestination;
@@ -125,7 +125,7 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static final class StrategySwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+    public static final class StrategySwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
         @Use({CONST}) protected JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
@@ -181,7 +181,7 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static final class TableSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+    public static final class TableSwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
         private final int lowKey;
         private final LabelRef defaultTarget;

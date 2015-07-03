@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
-
-import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
+package com.oracle.graal.lir.amd64;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 
-import jdk.internal.jvmci.meta.*;
+public abstract class AMD64BlockEndOp extends AbstractBlockEndOp {
 
-/**
- * Removes the current frame and tail calls the uncommon trap routine.
- */
-@Opcode("DEOPT_CALLER")
-final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueBlockEndOp {
+    public static final LIRInstructionClass<AMD64BlockEndOp> TYPE = LIRInstructionClass.create(AMD64BlockEndOp.class);
 
-    public static final LIRInstructionClass<AMD64HotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotDeoptimizeCallerOp.class);
-
-    protected AMD64HotSpotDeoptimizeCallerOp(AllocatableValue savedRbp) {
-        super(TYPE, savedRbp);
+    protected AMD64BlockEndOp(LIRInstructionClass<? extends AMD64BlockEndOp> c) {
+        super(c);
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        leaveFrameAndRestoreRbp(crb, masm);
-        AMD64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP_HANDLER));
+    public final void emitCode(CompilationResultBuilder crb) {
+        emitCode(crb, (AMD64MacroAssembler) crb.asm);
     }
+
+    public abstract void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm);
 }

@@ -23,20 +23,20 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Returns from a function.
  */
 @Opcode("RETURN")
-final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp {
 
     public static final LIRInstructionClass<AMD64HotSpotReturnOp> TYPE = LIRInstructionClass.create(AMD64HotSpotReturnOp.class);
     @Use({REG, ILLEGAL}) protected Value value;
