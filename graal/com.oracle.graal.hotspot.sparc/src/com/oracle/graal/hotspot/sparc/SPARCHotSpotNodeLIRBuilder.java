@@ -132,6 +132,13 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
     }
 
     @Override
+    protected void emitPrologue(StructuredGraph graph) {
+        super.emitPrologue(graph);
+        AllocatableValue var = getGen().getSafepointAddressValue();
+        append(new SPARCHotSpotSafepointOp.SPARCLoadSafepointPollAddress(var, getGen().config));
+    }
+
+    @Override
     public void visitFullInfopointNode(FullInfopointNode i) {
         if (i.getState() != null && i.getState().bci == BytecodeFrame.AFTER_BCI) {
             Debug.log("Ignoring InfopointNode for AFTER_BCI");
