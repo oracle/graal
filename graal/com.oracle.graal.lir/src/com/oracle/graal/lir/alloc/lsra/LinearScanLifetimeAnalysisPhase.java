@@ -203,7 +203,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 for (int j = 0; j < numInst; j++) {
                     final LIRInstruction op = instructions.get(j);
 
-                    try (Indent indent2 = Debug.logAndIndent("handle op %d", op.id())) {
+                    try (Indent indent2 = Debug.logAndIndent("handle op %d: %s", op.id(), op)) {
                         op.visitEachInput(useConsumer);
                         op.visitEachAlive(useConsumer);
                         /*
