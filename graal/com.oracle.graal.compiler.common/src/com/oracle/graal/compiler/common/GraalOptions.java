@@ -287,7 +287,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> MatchExpressions = new OptionValue<>(true);
 
     @Option(help = "Generate SSA LIR.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(false);
+    public static final OptionValue<Boolean> SSA_LIR = new OptionValue<>(true);
 
     /**
      * Counts the various paths taken through snippets.
