@@ -135,7 +135,7 @@ public class SPARCMove {
         public static final LIRInstructionClass<Move> TYPE = LIRInstructionClass.create(Move.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(8);
 
-        @Def({REG, STACK}) protected AllocatableValue result;
+        @Def({REG, STACK, HINT}) protected AllocatableValue result;
         @Use({REG, STACK}) protected Value input;
 
         public Move(AllocatableValue result, Value input) {
