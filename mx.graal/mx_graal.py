@@ -1334,10 +1334,10 @@ def _basic_gate_body(args, tasks):
         with Task('UnitTests:hosted-product', tasks) as t:
             if t: unittest(['--enable-timing', '--verbose', '--fail-fast'])
 
-    # Run unit tests on server-hosted-jvmci with -G:+SSA_LIR
+    # Run unit tests on server-hosted-jvmci with -G:-SSA_LIR
     with VM('server', 'product'):
-        with Task('UnitTestsSSA:hosted-product', tasks) as t:
-            if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:+SSA_LIR'])
+        with Task('UnitTestsNonSSA:hosted-product', tasks) as t:
+            if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:-SSA_LIR'])
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
         with Task('CTW:hosted-product', tasks) as t:
@@ -1382,10 +1382,10 @@ def _basic_gate_body(args, tasks):
                 vm(['-XX:-TieredCompilation', '-G:RegisterPressure=' + registers, '-esa', '-version'])
 
     with VM('jvmci', 'product'):
-        with Task('BootstrapSSAWithRegisterPressure:product', tasks) as t:
+        with Task('BootstrapNonSSAWithRegisterPressure:product', tasks) as t:
             if t:
                 registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if platform.processor() == 'sparc' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
-                vm(['-XX:-TieredCompilation', '-G:+SSA_LIR', '-G:RegisterPressure=' + registers, '-esa', '-version'])
+                vm(['-XX:-TieredCompilation', '-G:-SSA_LIR', '-G:RegisterPressure=' + registers, '-esa', '-version'])
 
     with VM('jvmci', 'product'):
         with Task('BootstrapWithImmutableCode:product', tasks) as t:
