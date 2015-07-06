@@ -8,7 +8,7 @@ suite = {
                "name" : "jvmci",
                "version" : "ed35cb99842854869c6a18a3626064932db32968",
                "urls" : [
-                    {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
+                    {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                 ]
             },
             {
