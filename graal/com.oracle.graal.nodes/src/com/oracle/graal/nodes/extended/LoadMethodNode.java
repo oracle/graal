@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.meta.Assumptions.*;
 
@@ -55,7 +56,9 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
         this.method = method;
         assert method.isConcrete() : "Cannot load abstract method from a hub";
         assert method.hasReceiver() : "Cannot load a static method from a hub";
-        assert method.isInVirtualMethodTable(receiverType);
+        if (!method.isInVirtualMethodTable(receiverType)) {
+            throw new JVMCIError("%s does not have a vtable entry in type %s", method, receiverType);
+        }
     }
 
     @Override
