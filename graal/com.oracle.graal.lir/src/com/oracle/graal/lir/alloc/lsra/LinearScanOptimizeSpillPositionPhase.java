@@ -59,102 +59,109 @@ final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
     }
 
     private void optimizeSpillPosition() {
-        LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.ir.linearScanOrder().size()];
-        for (Interval interval : allocator.intervals()) {
-            if (interval != null && interval.isSplitParent() && interval.spillState() == SpillState.SpillInDominator) {
-                AbstractBlockBase<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
-                AbstractBlockBase<?> spillBlock = null;
-                Interval firstSpillChild = null;
-                try (Indent indent = Debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
-                    for (Interval splitChild : interval.getSplitChildren()) {
-                        if (isStackSlotValue(splitChild.location())) {
-                            if (firstSpillChild == null || splitChild.from() < firstSpillChild.from()) {
-                                firstSpillChild = splitChild;
-                            } else {
-                                assert firstSpillChild.from() < splitChild.from();
-                            }
-                            // iterate all blocks where the interval has use positions
-                            for (AbstractBlockBase<?> splitBlock : blocksForInterval(splitChild)) {
-                                if (dominates(defBlock, splitBlock)) {
-                                    if (Debug.isLogEnabled()) {
-                                        Debug.log("Split interval %s, block %s", splitChild, splitBlock);
-                                    }
-                                    if (spillBlock == null) {
-                                        spillBlock = splitBlock;
-                                    } else {
-                                        spillBlock = commonDominator(spillBlock, splitBlock);
-                                        assert spillBlock != null;
+        try (Indent indent0 = Debug.logAndIndent("OptimizeSpillPositions")) {
+            LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.ir.linearScanOrder().size()];
+            for (Interval interval : allocator.intervals()) {
+                if (interval != null && interval.isSplitParent() && interval.spillState() == SpillState.SpillInDominator) {
+                    AbstractBlockBase<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
+                    AbstractBlockBase<?> spillBlock = null;
+                    Interval firstSpillChild = null;
+                    try (Indent indent = Debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
+                        for (Interval splitChild : interval.getSplitChildren()) {
+                            if (isStackSlotValue(splitChild.location())) {
+                                if (firstSpillChild == null || splitChild.from() < firstSpillChild.from()) {
+                                    firstSpillChild = splitChild;
+                                } else {
+                                    assert firstSpillChild.from() < splitChild.from();
+                                }
+                                // iterate all blocks where the interval has use positions
+                                for (AbstractBlockBase<?> splitBlock : blocksForInterval(splitChild)) {
+                                    if (dominates(defBlock, splitBlock)) {
+                                        if (Debug.isLogEnabled()) {
+                                            Debug.log("Split interval %s, block %s", splitChild, splitBlock);
+                                        }
+                                        if (spillBlock == null) {
+                                            spillBlock = splitBlock;
+                                        } else {
+                                            spillBlock = commonDominator(spillBlock, splitBlock);
+                                            assert spillBlock != null;
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    if (spillBlock == null) {
-                        // no spill interval
-                        interval.setSpillState(SpillState.StoreAtDefinition);
-                    } else {
-                        // move out of loops
-                        if (defBlock.getLoopDepth() < spillBlock.getLoopDepth()) {
-                            spillBlock = moveSpillOutOfLoop(defBlock, spillBlock);
-                        }
-
-                        /*
-                         * If the spill block is the begin of the first split child (aka the value
-                         * is on the stack) spill in the dominator.
-                         */
-                        assert firstSpillChild != null;
-                        if (!defBlock.equals(spillBlock) && spillBlock.equals(allocator.blockForId(firstSpillChild.from()))) {
-                            AbstractBlockBase<?> dom = spillBlock.getDominator();
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("Spill block (%s) is the beginning of a spill child -> use dominator (%s)", spillBlock, dom);
-                            }
-                            spillBlock = dom;
-                        }
-
-                        if (!defBlock.equals(spillBlock)) {
-                            assert dominates(defBlock, spillBlock);
-                            betterSpillPos.increment();
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("Better spill position found (Block %s)", spillBlock);
-                            }
-
-                            if (defBlock.probability() <= spillBlock.probability()) {
-                                // better spill block has the same probability -> do nothing
-                                interval.setSpillState(SpillState.StoreAtDefinition);
-                            } else {
-                                LIRInsertionBuffer insertionBuffer = insertionBuffers[spillBlock.getId()];
-                                if (insertionBuffer == null) {
-                                    insertionBuffer = new LIRInsertionBuffer();
-                                    insertionBuffers[spillBlock.getId()] = insertionBuffer;
-                                    insertionBuffer.init(allocator.ir.getLIRforBlock(spillBlock));
-                                }
-                                int spillOpId = allocator.getFirstLirInstructionId(spillBlock);
-                                // insert spill move
-                                AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, allocator).location();
-                                AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
-                                LIRInstruction move = allocator.getSpillMoveFactory().createMove(toLocation, fromLocation);
-                                move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
-                                /*
-                                 * We can use the insertion buffer directly because we always insert
-                                 * at position 1.
-                                 */
-                                insertionBuffer.append(1, move);
-
-                                betterSpillPosWithLowerProbability.increment();
-                                interval.setSpillDefinitionPos(spillOpId);
-                            }
-                        } else {
-                            // definition is the best choice
+                        if (spillBlock == null) {
+                            Debug.log("not spill interval found");
+                            // no spill interval
                             interval.setSpillState(SpillState.StoreAtDefinition);
+                        } else {
+                            Debug.log(3, "Spill block candidate (initial): %s", spillBlock);
+                            // move out of loops
+                            if (defBlock.getLoopDepth() < spillBlock.getLoopDepth()) {
+                                spillBlock = moveSpillOutOfLoop(defBlock, spillBlock);
+                            }
+                            Debug.log(3, "Spill block candidate (after loop optimizaton): %s", spillBlock);
+
+                            /*
+                             * If the spill block is the begin of the first split child (aka the
+                             * value is on the stack) spill in the dominator.
+                             */
+                            assert firstSpillChild != null;
+                            if (!defBlock.equals(spillBlock) && spillBlock.equals(allocator.blockForId(firstSpillChild.from()))) {
+                                AbstractBlockBase<?> dom = spillBlock.getDominator();
+                                if (Debug.isLogEnabled()) {
+                                    Debug.log("Spill block (%s) is the beginning of a spill child -> use dominator (%s)", spillBlock, dom);
+                                }
+                                spillBlock = dom;
+                            }
+                            if (!defBlock.equals(spillBlock)) {
+                                assert dominates(defBlock, spillBlock);
+                                betterSpillPos.increment();
+                                if (Debug.isLogEnabled()) {
+                                    Debug.log("Better spill position found (Block %s)", spillBlock);
+                                }
+
+                                if (defBlock.probability() <= spillBlock.probability()) {
+                                    Debug.log(3, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock, spillBlock.probability());
+                                    // better spill block has the same probability -> do nothing
+                                    interval.setSpillState(SpillState.StoreAtDefinition);
+                                } else {
+                                    LIRInsertionBuffer insertionBuffer = insertionBuffers[spillBlock.getId()];
+                                    if (insertionBuffer == null) {
+                                        insertionBuffer = new LIRInsertionBuffer();
+                                        insertionBuffers[spillBlock.getId()] = insertionBuffer;
+                                        insertionBuffer.init(allocator.ir.getLIRforBlock(spillBlock));
+                                    }
+                                    int spillOpId = allocator.getFirstLirInstructionId(spillBlock);
+                                    // insert spill move
+                                    AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, allocator).location();
+                                    AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
+                                    LIRInstruction move = allocator.getSpillMoveFactory().createMove(toLocation, fromLocation);
+                                    Debug.log(3, "Insert spill move %s", move);
+                                    move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
+                                    /*
+                                     * We can use the insertion buffer directly because we always
+                                     * insert at position 1.
+                                     */
+                                    insertionBuffer.append(1, move);
+
+                                    betterSpillPosWithLowerProbability.increment();
+                                    interval.setSpillDefinitionPos(spillOpId);
+                                }
+                            } else {
+                                Debug.log(3, "Definition is the best choice: %s", defBlock);
+                                // definition is the best choice
+                                interval.setSpillState(SpillState.StoreAtDefinition);
+                            }
                         }
                     }
                 }
             }
-        }
-        for (LIRInsertionBuffer insertionBuffer : insertionBuffers) {
-            if (insertionBuffer != null) {
-                assert insertionBuffer.initialized() : "Insertion buffer is nonnull but not initialized!";
-                insertionBuffer.finish();
+            for (LIRInsertionBuffer insertionBuffer : insertionBuffers) {
+                if (insertionBuffer != null) {
+                    assert insertionBuffer.initialized() : "Insertion buffer is nonnull but not initialized!";
+                    insertionBuffer.finish();
+                }
             }
         }
     }
