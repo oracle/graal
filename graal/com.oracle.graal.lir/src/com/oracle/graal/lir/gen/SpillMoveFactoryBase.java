@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -92,7 +93,7 @@ public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
         }
 
         void inputProc(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-            assert value.equals(input) : String.format("SpillMoveFactory: Instruction %s can only have %s as input, got %s", op, input, value);
+            assert value.equals(input) || isConstant(value) : String.format("SpillMoveFactory: Instruction %s can only have %s as input, got %s", op, input, value);
             inputCount++;
         }
 
