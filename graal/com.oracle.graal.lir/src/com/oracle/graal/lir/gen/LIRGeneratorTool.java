@@ -33,6 +33,12 @@ import com.oracle.graal.lir.*;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCounterFactory {
 
+    /**
+     * Factory for creating spill moves.
+     *
+     * The instructions returned by the methods must only depend on the input values. References to
+     * values that require interaction with register allocation are strictly forbidden.
+     */
     public interface SpillMoveFactory {
 
         LIRInstruction createMove(AllocatableValue result, Value input);
