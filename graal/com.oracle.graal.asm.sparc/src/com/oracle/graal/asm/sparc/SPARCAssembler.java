@@ -1263,6 +1263,14 @@ public abstract class SPARCAssembler extends Assembler {
         op3(Fpop1, Fmovd, null, rs2, rd);
     }
 
+    public void fsrc2s(Register rs2, Register rd) {
+        op3(Impdep1, Fsrc2s, null, rs2, rd);
+    }
+
+    public void fsrc2d(Register rs2, Register rd) {
+        op3(Impdep1, Fsrc2d, null, rs2, rd);
+    }
+
     public void fmuls(Register rs1, Register rs2, Register rd) {
         op3(Fpop1, Fmuls, rs1, rs2, rd);
     }
