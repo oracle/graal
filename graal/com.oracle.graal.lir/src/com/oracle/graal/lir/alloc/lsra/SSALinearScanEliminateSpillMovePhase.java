@@ -45,14 +45,16 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
 
     @Override
     protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
-        // SSA Linear Scan might introduce moves to stack slots
         assert isVariable(move.getResult()) || LinearScanPhase.SSA_LSRA.getValue() : "Move should not be produced in a non-SSA compilation: " + move;
 
-        Interval curInterval = allocator.intervalFor(move.getResult());
-
-        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory() && !isPhiResolutionMove(block, move, curInterval)) {
-            assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
-            return true;
+        if (super.canEliminateSpillMove(block, move)) {
+            // SSA Linear Scan might introduce moves to stack slots
+            Interval curInterval = allocator.intervalFor(move.getResult());
+            assert !isRegister(curInterval.location()) && curInterval.alwaysInMemory();
+            if (!isPhiResolutionMove(block, move, curInterval)) {
+                assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
+                return true;
+            }
         }
         return false;
     }
