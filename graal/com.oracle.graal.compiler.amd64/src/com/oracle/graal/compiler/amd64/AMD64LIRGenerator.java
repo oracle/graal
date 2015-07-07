@@ -96,15 +96,15 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         }
     }
 
-    private class AMD64SpillMoveFactory implements LIRGeneratorTool.SpillMoveFactory {
+    private class AMD64SpillMoveFactory extends SpillMoveFactoryBase {
 
         @Override
-        public LIRInstruction createMove(AllocatableValue result, Value input) {
+        protected LIRInstruction createMoveIntern(AllocatableValue result, Value input) {
             return AMD64LIRGenerator.this.createMove(result, input);
         }
 
         @Override
-        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
+        protected LIRInstruction createStackMoveIntern(AllocatableValue result, Value input) {
             return AMD64LIRGenerator.this.createStackMove(result, input);
         }
 

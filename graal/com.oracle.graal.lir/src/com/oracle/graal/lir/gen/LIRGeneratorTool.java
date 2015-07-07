@@ -30,7 +30,6 @@ import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.StackMove;
 
 public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCounterFactory {
 
@@ -38,9 +37,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
         LIRInstruction createMove(AllocatableValue result, Value input);
 
-        default LIRInstruction createStackMove(AllocatableValue result, Value input) {
-            return new StackMove(result, input);
-        }
+        LIRInstruction createStackMove(AllocatableValue result, Value input);
     }
 
     public abstract class BlockScope implements AutoCloseable {
