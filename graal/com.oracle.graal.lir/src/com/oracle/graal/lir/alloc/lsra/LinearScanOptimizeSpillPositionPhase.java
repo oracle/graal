@@ -131,45 +131,45 @@ final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
                 }
                 spillBlock = dom;
             }
-            if (!defBlock.equals(spillBlock)) {
-                assert dominates(defBlock, spillBlock);
-                betterSpillPos.increment();
-                if (Debug.isLogEnabled()) {
-                    Debug.log("Better spill position found (Block %s)", spillBlock);
-                }
-
-                if (defBlock.probability() <= spillBlock.probability()) {
-                    Debug.log(3, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock, spillBlock.probability());
-                    // better spill block has the same probability -> do nothing
-                    interval.setSpillState(SpillState.StoreAtDefinition);
-                } else {
-                    LIRInsertionBuffer insertionBuffer = insertionBuffers[spillBlock.getId()];
-                    if (insertionBuffer == null) {
-                        insertionBuffer = new LIRInsertionBuffer();
-                        insertionBuffers[spillBlock.getId()] = insertionBuffer;
-                        insertionBuffer.init(allocator.ir.getLIRforBlock(spillBlock));
-                    }
-                    int spillOpId = allocator.getFirstLirInstructionId(spillBlock);
-                    // insert spill move
-                    AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, allocator).location();
-                    AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
-                    LIRInstruction move = allocator.getSpillMoveFactory().createMove(toLocation, fromLocation);
-                    Debug.log(3, "Insert spill move %s", move);
-                    move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
-                    /*
-                     * We can use the insertion buffer directly because we always insert at position
-                     * 1.
-                     */
-                    insertionBuffer.append(1, move);
-
-                    betterSpillPosWithLowerProbability.increment();
-                    interval.setSpillDefinitionPos(spillOpId);
-                }
-            } else {
+            if (defBlock.equals(spillBlock)) {
                 Debug.log(3, "Definition is the best choice: %s", defBlock);
                 // definition is the best choice
                 interval.setSpillState(SpillState.StoreAtDefinition);
+                return;
             }
+            assert dominates(defBlock, spillBlock);
+            betterSpillPos.increment();
+            if (Debug.isLogEnabled()) {
+                Debug.log("Better spill position found (Block %s)", spillBlock);
+            }
+
+            if (defBlock.probability() <= spillBlock.probability()) {
+                Debug.log(3, "Definition has lower probability %s (%f) is lower than spill block %s (%f)", defBlock, defBlock.probability(), spillBlock, spillBlock.probability());
+                // better spill block has the same probability -> do nothing
+                interval.setSpillState(SpillState.StoreAtDefinition);
+                return;
+            }
+
+            LIRInsertionBuffer insertionBuffer = insertionBuffers[spillBlock.getId()];
+            if (insertionBuffer == null) {
+                insertionBuffer = new LIRInsertionBuffer();
+                insertionBuffers[spillBlock.getId()] = insertionBuffer;
+                insertionBuffer.init(allocator.ir.getLIRforBlock(spillBlock));
+            }
+            int spillOpId = allocator.getFirstLirInstructionId(spillBlock);
+            // insert spill move
+            AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, allocator).location();
+            AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
+            LIRInstruction move = allocator.getSpillMoveFactory().createMove(toLocation, fromLocation);
+            Debug.log(3, "Insert spill move %s", move);
+            move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
+            /*
+             * We can use the insertion buffer directly because we always insert at position 1.
+             */
+            insertionBuffer.append(1, move);
+
+            betterSpillPosWithLowerProbability.increment();
+            interval.setSpillDefinitionPos(spillOpId);
         }
     }
 
