@@ -66,6 +66,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
     }
 
+    public abstract TruffleCompiler getTruffleCompiler();
+
     private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
         Iterable<T> providers = Services.load(clazz);
         T bestFactory = null;

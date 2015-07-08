@@ -97,6 +97,22 @@ public class PartialEvaluator {
         }
     }
 
+    public Providers getProviders() {
+        return providers;
+    }
+
+    public SnippetReflectionProvider getSnippetReflection() {
+        return snippetReflection;
+    }
+
+    public ResolvedJavaMethod[] getCompilationRootMethods() {
+        return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
+    }
+
+    public ResolvedJavaMethod[] getNeverInlineMethods() {
+        return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
+    }
+
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(callTarget, "truffle tree");

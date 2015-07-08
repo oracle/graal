@@ -99,6 +99,10 @@ public abstract class TruffleCompiler {
         }
     }
 
+    public GraphBuilderConfiguration getGraphBuilderConfiguration() {
+        return config;
+    }
+
     protected abstract PartialEvaluator createPartialEvaluator();
 
     public static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccess) {
