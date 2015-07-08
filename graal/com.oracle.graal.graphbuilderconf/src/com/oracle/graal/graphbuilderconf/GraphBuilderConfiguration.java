@@ -204,6 +204,10 @@ public class GraphBuilderConfiguration {
         this.useProfiling = b;
     }
 
+    public GraphBuilderConfiguration withEagerResolving(boolean newEagerResolving) {
+        return new GraphBuilderConfiguration(newEagerResolving, omitAllExceptionEdges, omitAssertions, debugInfoMode, skippedExceptionTypes, clearNonLiveLocals, plugins);
+    }
+
     public GraphBuilderConfiguration withSkippedExceptionTypes(ResolvedJavaType[] newSkippedExceptionTypes) {
         return new GraphBuilderConfiguration(eagerResolving, omitAllExceptionEdges, omitAssertions, debugInfoMode, newSkippedExceptionTypes, clearNonLiveLocals, plugins);
     }
