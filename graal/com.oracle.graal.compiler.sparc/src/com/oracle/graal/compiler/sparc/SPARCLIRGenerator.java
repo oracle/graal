@@ -75,15 +75,15 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     private Variable constantTableBase;
     private SPARCLoadConstantTableBaseOp loadConstantTableBaseOp;
 
-    private class SPARCSpillMoveFactory implements LIRGeneratorTool.SpillMoveFactory {
+    private class SPARCSpillMoveFactory extends SpillMoveFactoryBase {
 
         @Override
-        public LIRInstruction createMove(AllocatableValue result, Value input) {
+        protected LIRInstruction createMoveIntern(AllocatableValue result, Value input) {
             return SPARCLIRGenerator.this.createMove(result, input);
         }
 
         @Override
-        public LIRInstruction createStackMove(AllocatableValue result, Value input) {
+        protected LIRInstruction createStackMoveIntern(AllocatableValue result, Value input) {
             return SPARCLIRGenerator.this.createStackMove(result, input);
         }
     }

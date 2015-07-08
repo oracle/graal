@@ -23,7 +23,6 @@
 package com.oracle.graal.phases.common.inlining;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.type.StampFactory.*;
 import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
 import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
 
@@ -33,7 +32,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import jdk.internal.jvmci.debug.Debug.Scope;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
@@ -646,21 +645,30 @@ public class InliningUtil {
     }
 
     /**
-     * Gets the receiver for an invoke, adding a guard if necessary to ensure it is non-null.
+     * Gets the receiver for an invoke, adding a guard if necessary to ensure it is non-null, and
+     * ensuring that the resulting type is compatible with the method being invoked.
      */
     public static ValueNode nonNullReceiver(Invoke invoke) {
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         assert !callTarget.isStatic() : callTarget.targetMethod();
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
-        if (firstParam.getKind() == Kind.Object && !StampTool.isPointerNonNull(firstParam)) {
-            IsNullNode condition = graph.unique(new IsNullNode(firstParam));
-            Stamp stamp = firstParam.stamp().join(objectNonNull());
-            FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-            PiNode nonNullReceiver = graph.unique(new PiNode(firstParam, stamp, fixedGuard));
-            graph.addBeforeFixed(invoke.asNode(), fixedGuard);
-            callTarget.replaceFirstInput(firstParam, nonNullReceiver);
-            return nonNullReceiver;
+        if (firstParam.getKind() == Kind.Object) {
+            Stamp paramStamp = firstParam.stamp();
+            Stamp stamp = paramStamp.join(StampFactory.declaredNonNull(callTarget.targetMethod().getDeclaringClass()));
+            if (!StampTool.isPointerNonNull(firstParam)) {
+                IsNullNode condition = graph.unique(new IsNullNode(firstParam));
+                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
+                PiNode nonNullReceiver = graph.unique(new PiNode(firstParam, stamp, fixedGuard));
+                graph.addBeforeFixed(invoke.asNode(), fixedGuard);
+                callTarget.replaceFirstInput(firstParam, nonNullReceiver);
+                return nonNullReceiver;
+            }
+            if (!stamp.equals(paramStamp)) {
+                PiNode cast = graph.unique(new PiNode(firstParam, stamp));
+                callTarget.replaceFirstInput(firstParam, cast);
+                return cast;
+            }
         }
         return firstParam;
     }

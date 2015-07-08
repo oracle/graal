@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
@@ -43,30 +44,47 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     public static final SizeEstimate SIZE = SizeEstimate.create(9);
 
     @State protected LIRFrameState state;
-    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_CAST", justification = "changed by the register allocator") @Temp({OperandFlag.REG}) private AllocatableValue temp;
-
+    @Use({OperandFlag.REG}) AllocatableValue safepointPollAddress;
     private final HotSpotVMConfig config;
 
     public SPARCHotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
         super(TYPE, SIZE);
         this.state = state;
         this.config = config;
-        this.temp = tool.newVariable(LIRKind.value(tool.target().wordKind));
+        SPARCHotSpotLIRGenerator lirGen = (SPARCHotSpotLIRGenerator) tool;
+        safepointPollAddress = lirGen.getSafepointAddressValue();
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register scratch = ((RegisterValue) temp).getRegister();
-        emitCode(crb, masm, config, false, state, scratch);
+        emitCode(crb, masm, config, false, state, asRegister(safepointPollAddress));
     }
 
-    public static void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
-        new Setx(config.safepointPollingAddress, scratch).emit(masm);
+    public static void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register safepointPollAddress) {
         crb.recordMark(atReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
-        final int pos = masm.position();
-        masm.ldx(new SPARCAddress(scratch, 0), g0);
         if (state != null) {
+            final int pos = masm.position();
             crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+        }
+        masm.ldx(new SPARCAddress(safepointPollAddress, 0), g0);
+    }
+
+    public static class SPARCLoadSafepointPollAddress extends SPARCLIRInstruction {
+        public static final LIRInstructionClass<SPARCLoadSafepointPollAddress> TYPE = LIRInstructionClass.create(SPARCLoadSafepointPollAddress.class);
+        public static final SizeEstimate SIZE = SizeEstimate.create(2);
+
+        @Def({OperandFlag.REG}) protected AllocatableValue result;
+        private final HotSpotVMConfig config;
+
+        public SPARCLoadSafepointPollAddress(AllocatableValue result, HotSpotVMConfig config) {
+            super(TYPE, SIZE);
+            this.result = result;
+            this.config = config;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            new Setx(config.safepointPollingAddress, ValueUtil.asRegister(result)).emit(masm);
         }
     }
 }

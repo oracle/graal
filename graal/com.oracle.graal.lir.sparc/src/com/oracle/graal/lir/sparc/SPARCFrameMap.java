@@ -78,7 +78,7 @@ public final class SPARCFrameMap extends FrameMap {
     public SPARCFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         super(codeCache, registerConfig);
         // Initial spill size is set to register save area size (SPARC register window)
-        initialSpillSize = 128;
+        initialSpillSize = 0;
         spillSize = initialSpillSize;
     }
 
@@ -89,7 +89,12 @@ public final class SPARCFrameMap extends FrameMap {
 
     @Override
     public int currentFrameSize() {
-        return alignFrameSize(calleeSaveAreaSize() + returnAddressSize() + outgoingSize + spillSize);
+        return alignFrameSize(calleeSaveAreaSize() + outgoingSize + spillSize);
+    }
+
+    @Override
+    protected int calleeSaveAreaSize() {
+        return SPARC.REGISTER_SAFE_AREA_SIZE;
     }
 
     @Override
@@ -115,16 +120,15 @@ public final class SPARCFrameMap extends FrameMap {
         return SPARC.spillSlotSize(getTarget(), kind.getPlatformKind());
     }
 
-    /**
-     * We must add the calleSaveAreaSize() when it is a in or out parameter.
-     */
     @Override
     public int offsetForStackSlot(StackSlot slot) {
-        int offset = super.offsetForStackSlot(slot);
-        if (slot.getRawOffset() >= 0) { // If In or Out parameter
-            offset += calleeSaveAreaSize();
-        }
-        return offset;
+        // @formatter:off
+        assert (!slot.getRawAddFrameSize() && slot.getRawOffset() <  outgoingSize + SPARC.REGISTER_SAFE_AREA_SIZE) ||
+               (slot.getRawAddFrameSize() && slot.getRawOffset()  <  0 && -slot.getRawOffset() <= spillSize) ||
+               (slot.getRawAddFrameSize() && slot.getRawOffset()  >= 0) :
+                   String.format("RawAddFrameSize: %b RawOffset: 0x%x spillSize: 0x%x outgoingSize: 0x%x", slot.getRawAddFrameSize(), slot.getRawOffset(), spillSize, outgoingSize);
+        // @formatter:on
+        return super.offsetForStackSlot(slot);
     }
 
     @Override

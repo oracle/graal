@@ -236,8 +236,7 @@ final class FixPointIntervalBuilder {
             if (flags.contains(OperandFlag.HINT)) {
 
                 op.forEachRegisterHint(targetValue, mode, (registerHint, valueMode, valueFlags) -> {
-                    if (isStackSlotValue(registerHint)) {
-                        assert isVirtualStackSlot(registerHint) : "Hint is not a VirtualStackSlot: " + registerHint;
+                    if (isVirtualStackSlot(registerHint)) {
                         StackInterval from = getOrCreateInterval((VirtualStackSlot) registerHint);
                         StackInterval to = getOrCreateInterval(targetValue);
 

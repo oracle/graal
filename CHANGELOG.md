@@ -5,8 +5,9 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## `tip`
 ### Graal
-* Add experimental support constructing low-level IR in SSA form.
-* Add experimental support for SSA linear scan register allocation.
+* Add support for constructing low-level IR in SSA form (default behavior).
+* Add support for SSA linear scan register allocation (default behavior).
+* Remove dummy parameter `includeAbstract` from `ResolvedJavaType#resolveMethod()`; The behavior is now the `includeAbstract==true` case. The `includeAbstract==false` variant is available via `resolveConcreteMethod()`.
 ...
 
 ### Truffle

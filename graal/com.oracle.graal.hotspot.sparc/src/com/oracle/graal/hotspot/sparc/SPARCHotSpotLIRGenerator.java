@@ -82,6 +82,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
      */
     private StackSlot deoptimizationRescueSlot;
 
+    /**
+     * Value where the address for safepoint poll is kept.
+     */
+    private AllocatableValue safepointAddressValue;
+
     @Override
     public StackSlotValue getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);
@@ -154,12 +159,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             operand = resultOperandFor(input.getLIRKind());
             emitMove(operand, input);
         }
-        append(new SPARCHotSpotReturnOp(operand, getStub() != null, runtime().getConfig()));
+        append(new SPARCHotSpotReturnOp(operand, getStub() != null, runtime().getConfig(), getSafepointAddressValue()));
     }
 
     @Override
     public void emitTailcall(Value[] args, Value address) {
-        // append(new AMD64TailcallOp(args, address));
         throw JVMCIError.unimplemented();
     }
 
@@ -476,5 +480,12 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         } else {
             return null;
         }
+    }
+
+    public AllocatableValue getSafepointAddressValue() {
+        if (this.safepointAddressValue == null) {
+            this.safepointAddressValue = newVariable(LIRKind.value(target().wordKind));
+        }
+        return this.safepointAddressValue;
     }
 }

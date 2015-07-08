@@ -135,7 +135,7 @@ public class SPARCMove {
         public static final LIRInstructionClass<Move> TYPE = LIRInstructionClass.create(Move.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(8);
 
-        @Def({REG, STACK}) protected AllocatableValue result;
+        @Def({REG, STACK, HINT}) protected AllocatableValue result;
         @Use({REG, STACK}) protected Value input;
 
         public Move(AllocatableValue result, Value input) {
@@ -680,14 +680,14 @@ public class SPARCMove {
                 break;
             case Float:
                 if (result.getPlatformKind() == Kind.Float) {
-                    masm.fmovs(src, dst);
+                    masm.fsrc2s(src, dst);
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
                 break;
             case Double:
                 if (result.getPlatformKind() == Kind.Double) {
-                    masm.fmovd(src, dst);
+                    masm.fsrc2d(src, dst);
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
