@@ -206,7 +206,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
         ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
         if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
-            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType(), true);
+            ResolvedJavaMethod singleImplementorMethod = singleImplementor.resolveMethod(targetMethod(), invoke().getContextType());
             if (singleImplementorMethod != null) {
                 /**
                  * We have an invoke on an interface with a single implementor. We can replace this
