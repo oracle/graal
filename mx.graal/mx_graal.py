@@ -411,17 +411,14 @@ def specjbb2005(args):
 
     _run_benchmark(args, None, launcher)
 
-def mx_init(suite):
-    commands = {
-        'dacapo': [dacapo, '[VM options] benchmarks...|"all" [DaCapo options]'],
-        'scaladacapo': [scaladacapo, '[VM options] benchmarks...|"all" [Scala DaCapo options]'],
-        'specjvm2008': [specjvm2008, '[VM options] benchmarks...|"all" [SPECjvm2008 options]'],
-        'specjbb2013': [specjbb2013, '[VM options] [-- [SPECjbb2013 options]]'],
-        'specjbb2005': [specjbb2005, '[VM options] [-- [SPECjbb2005 options]]'],
-        'bench' : [bench, '[-resultfile file] [all(default)|dacapo|specjvm2008|bootstrap]'],
-        'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
-        'deoptalot' : [deoptalot, '[n]'],
-        'longtests' : [longtests, ''],
-    }
-
-    mx.update_commands(suite, commands)
+mx.update_commands(_suite, {
+    'dacapo': [dacapo, '[VM options] benchmarks...|"all" [DaCapo options]'],
+    'scaladacapo': [scaladacapo, '[VM options] benchmarks...|"all" [Scala DaCapo options]'],
+    'specjvm2008': [specjvm2008, '[VM options] benchmarks...|"all" [SPECjvm2008 options]'],
+    'specjbb2013': [specjbb2013, '[VM options] [-- [SPECjbb2013 options]]'],
+    'specjbb2005': [specjbb2005, '[VM options] [-- [SPECjbb2005 options]]'],
+    'bench' : [bench, '[-resultfile file] [all(default)|dacapo|specjvm2008|bootstrap]'],
+    'microbench' : [microbench, '[VM options] [-- [JMH options]]'],
+    'deoptalot' : [deoptalot, '[n]'],
+    'longtests' : [longtests, ''],
+})
