@@ -15,7 +15,7 @@ suite = {
                "name" : "truffle",
                "version" : "4858c5e074e9005075e89cf5b1c2347ee73a5d31",
                "urls" : [
-                    {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
+                    {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
                     # Disable reference to snapshots until they are built from truffle-mx2 or truffle-mx2 is renamed to truffle
                     #{"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary", "version-adjust" : "0.8-{version}-SNAPSHOT"},
                 ]
