@@ -36,12 +36,39 @@ from mx_jvmci import JDKDeployedDist, buildvms, vm, VM, Task, parseVmArgs, get_v
 
 _suite = mx.suite('graal')
 
-_graalDeployedDist = JDKDeployedDist('GRAAL', usesJVMCIClassLoader=True)
-_graalTruffleDeployedDist = JDKDeployedDist('GRAAL_TRUFFLE', usesJVMCIClassLoader=True)
+class GraalJDKDeployedDist(JDKDeployedDist):
+    def __init__(self):
+        JDKDeployedDist.__init__(self, 'GRAAL', usesJVMCIClassLoader=True)
 
-_graalDeployedDist.postJdkInstall = lambda jdkDir, targetDir: _updateGraalPropertiesFile(join(jdkDir, 'jre', 'lib'))
+    def onPostJdkInstall(self, jdkDir, targetDir):
+        self._updateGraalPropertiesFile(join(jdkDir, 'jre', 'lib'))
 
-mx_jvmci.jdkDeployedDists += [_graalDeployedDist, _graalTruffleDeployedDist]
+    def _updateGraalPropertiesFile(self, jreLibDir):
+        """
+        Updates (or creates) 'jreLibDir'/jvmci/graal.properties to set/modify the
+        graal.version property.
+        """
+        version = _suite.release_version()
+        graalProperties = join(jreLibDir, 'jvmci', 'graal.properties')
+        if not exists(graalProperties):
+            with open(graalProperties, 'w') as fp:
+                print >> fp, 'graal.version=' + version
+        else:
+            content = []
+            with open(graalProperties) as fp:
+                for line in fp:
+                    if line.startswith('graal.version='):
+                        content.append('graal.version=' + version)
+                    else:
+                        content.append(line.rstrip(os.linesep))
+            with open(graalProperties, 'w') as fp:
+                fp.write(os.linesep.join(content))
+
+mx_jvmci.jdkDeployedDists += [
+    GraalJDKDeployedDist(),
+    JDKDeployedDist('GRAAL_TRUFFLE', usesJVMCIClassLoader=True)
+]
+
 mx_jvmci.jacocoIncludes += ['com.oracle.graal.*']
 mx_jvmci.jacocoExcludedAnnotations += ['@Snippet', '@ClassSubstitution']
 
@@ -88,27 +115,6 @@ def scaladacapo(args):
         return sanitycheck.getScalaDacapo(bm, harnessArgs).test(get_vm(), extraVmOpts=extraVmOpts)
 
     _run_benchmark(args, sanitycheck.dacapoScalaSanityWarmup.keys(), launcher)
-
-def _updateGraalPropertiesFile(jreLibDir):
-    """
-    Updates (or creates) 'jreLibDir'/jvmci/graal.properties to set/modify the
-    graal.version property.
-    """
-    version = _suite.release_version()
-    graalProperties = join(jreLibDir, 'jvmci', 'graal.properties')
-    if not exists(graalProperties):
-        with open(graalProperties, 'w') as fp:
-            print >> fp, 'graal.version=' + version
-    else:
-        content = []
-        with open(graalProperties) as fp:
-            for line in fp:
-                if line.startswith('graal.version='):
-                    content.append('graal.version=' + version)
-                else:
-                    content.append(line.rstrip(os.linesep))
-        with open(graalProperties, 'w') as fp:
-            fp.write(os.linesep.join(content))
 
 def microbench(args):
     """run JMH microbenchmark projects"""
