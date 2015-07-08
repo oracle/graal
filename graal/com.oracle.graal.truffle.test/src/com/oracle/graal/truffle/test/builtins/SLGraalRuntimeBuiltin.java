@@ -37,7 +37,7 @@ public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
 
     public SLGraalRuntimeBuiltin() {
         super(null);
-        assignSourceSection(new NullSourceSection("SL Builtin", SLContext.lookupNodeInfo(getClass()).shortName()));
+        assignSourceSection(SourceSection.createUnavailable("SL Builtin", SLContext.lookupNodeInfo(getClass()).shortName()));
         if (!(Truffle.getRuntime() instanceof GraalTruffleRuntime)) {
             throw new AssertionError("Graal runtime builtins can only be used inside of a Graal runtime.");
         }

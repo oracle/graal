@@ -13,10 +13,10 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "4858c5e074e9005075e89cf5b1c2347ee73a5d31",
+               "version" : "f878f9778548f684c6f8b88e1bb7d3b49d40ce4c",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
-                    {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary", "version-adjust" : "0.8-{version}-SNAPSHOT"},
+                    {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
     ]
@@ -817,6 +817,7 @@ suite = {
         "com.oracle.graal.compiler.test",
         "truffle:TRUFFLE_SL",
       ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Truffle,Test",
