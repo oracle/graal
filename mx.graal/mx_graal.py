@@ -247,6 +247,8 @@ def _graal_gate_runner(args, tasks):
                     with Task('UnitTests:' + theVm + ':' + vmbuild, tasks) as t:
                         if t: unittest(['-XX:CompileCommand=exclude,*::run*', 'graal.api', 'java.test'])
 
+mx_jvmci.gateRunners.append(_graal_gate_runner)
+
 def deoptalot(args):
     """bootstrap a VM with DeoptimizeALot and VerifyOops on
 
@@ -267,6 +269,11 @@ def longtests(args):
 
     dacapo(['100', 'eclipse', '-esa'])
 
+"""
+Extra benchmarks to run from 'bench()'.
+"""
+extraBenchmarks = []
+
 def bench(args):
     """run benchmarks and parse their output for results
 
@@ -280,6 +287,15 @@ def bench(args):
             del args[index]
         else:
             mx.abort('-resultfile must be followed by a file name')
+    resultFileCSV = None
+    if '-resultfilecsv' in args:
+        index = args.index('-resultfilecsv')
+        if index + 1 < len(args):
+            resultFileCSV = args[index + 1]
+            del args[index]
+            del args[index]
+        else:
+            mx.abort('-resultfilecsv must be followed by a file name')
     vm = get_vm()
     if len(args) is 0:
         args = ['all']
@@ -337,6 +353,9 @@ def bench(args):
     if 'ctw-noinline' in args:
         benchmarks.append(sanitycheck.getCTW(vm, sanitycheck.CTWMode.NoInline))
 
+    for f in extraBenchmarks:
+        f(args, vm, benchmarks)
+
     for test in benchmarks:
         for (groupName, res) in test.bench(vm, extraVmOpts=vmArgs).items():
             group = results.setdefault(groupName, {})
@@ -345,6 +364,12 @@ def bench(args):
     if resultFile:
         with open(resultFile, 'w') as f:
             f.write(json.dumps(results))
+    if resultFileCSV:
+        with open(resultFileCSV, 'w') as f:
+            for key1, value1 in results.iteritems():
+                f.write('%s;\n' % (str(key1)))
+                for key2, value2 in sorted(value1.iteritems()):
+                    f.write('%s; %s;\n' % (str(key2), str(value2)))
 
 def specjvm2008(args):
     """run one or more SPECjvm2008 benchmarks"""
