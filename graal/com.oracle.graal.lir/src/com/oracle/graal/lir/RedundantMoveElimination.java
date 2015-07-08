@@ -98,6 +98,10 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          */
         int[] eligibleRegs;
 
+        /**
+         * A map from the {@link StackSlot} to an index into the state. StackSlots of different
+         * kinds that map to the same location will map to the same index.
+         */
         Map<StackSlot, Integer> stackIndices = CollectionsFactory.newMap();
 
         int numRegs;
@@ -116,7 +120,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
                 callerSaveRegs = frameMap.getRegisterConfig().getCallerSaveRegisters();
 
-                initBlockData(lir);
+                initBlockData(lir, frameMap);
 
                 // Compute a table of the registers which are eligible for move optimization.
                 // Unallocatable registers should never be optimized.
@@ -142,7 +146,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          */
         private static final int COMPLEXITY_LIMIT = 30000;
 
-        private void initBlockData(LIR lir) {
+        private void initBlockData(LIR lir, FrameMap frameMap) {
 
             List<? extends AbstractBlockBase<?>> blocks = lir.linearScanOrder();
             numRegs = 0;
@@ -153,6 +157,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              * Search for relevant locations which can be optimized. These are register or stack
              * slots which occur as destinations of move instructions.
              */
+            Map<Integer, Integer> offsetToIndex = CollectionsFactory.newMap();
             for (AbstractBlockBase<?> block : blocks) {
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 for (LIRInstruction op : instructions) {
@@ -165,8 +170,12 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                             }
                         } else if (isStackSlot(dest)) {
                             StackSlot stackSlot = (StackSlot) dest;
-                            if (!stackIndices.containsKey(stackSlot) && stackIndices.size() < maxStackLocations) {
-                                stackIndices.put(stackSlot, stackIndices.size());
+                            if (!stackIndices.containsKey(stackSlot) && offsetToIndex.size() < maxStackLocations) {
+                                Integer offset = stackSlot.getOffset(frameMap.totalFrameSize());
+                                if (!offsetToIndex.containsKey(offset)) {
+                                    offsetToIndex.put(offset, offsetToIndex.size());
+                                }
+                                stackIndices.put(stackSlot, offsetToIndex.get(offset));
                             }
                         }
                     }
