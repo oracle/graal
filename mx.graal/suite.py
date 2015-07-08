@@ -6,14 +6,14 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "8704244e4f6ae3739bfbc04fa20d24a2d5012e3b",
+               "version" : "2ea24a36675cf5264577361bddbc2ee2517dd08d",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                 ]
             },
             {
                "name" : "truffle",
-               "version" : "4858c5e074e9005075e89cf5b1c2347ee73a5d31",
+               "version" : "6efd3e3389adfcc1f43e07be8f0aae2cb8cd5499",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
                     # Disable reference to snapshots until they are built from truffle-mx2 or truffle-mx2 is renamed to truffle
