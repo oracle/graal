@@ -15,8 +15,9 @@ suite = {
                "name" : "truffle",
                "version" : "4858c5e074e9005075e89cf5b1c2347ee73a5d31",
                "urls" : [
-                    {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
-                    {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary", "version-adjust" : "0.8-{version}-SNAPSHOT"},
+                    {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
+                    # Disable reference to snapshots until they are built from truffle-mx2 or truffle-mx2 is renamed to truffle
+                    #{"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary", "version-adjust" : "0.8-{version}-SNAPSHOT"},
                 ]
             },
     ]
@@ -25,33 +26,6 @@ suite = {
   "libraries" : {
 
     # ------------- Libraries -------------
-
-      "JLINE" : {
-      "path" : "lib/jline-2.11.jar",
-      "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/jline-2.11.jar",
-        "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
-      ],
-      "sha1" : "9504d5e2da5d78237239c5226e8200ec21182040",
-    },
-
-    "HCFDIS" : {
-      "path" : "lib/hcfdis-2.jar",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/hcfdis-2.jar"],
-      "sha1" : "bc8b2253436485e9dbaf81771c259ccfa1a24c80",
-    },
-
-    "C1VISUALIZER_DIST" : {
-      "path" : "lib/c1visualizer_2014-04-22.zip",
-      "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2014-04-22.zip"],
-      "sha1" : "220488d87affb569b893c7201f8ce5d2b0e03141",
-    },
-
-    "JOL_INTERNALS" : {
-      "path" : "lib/jol-internals.jar",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/truffle/jol/jol-internals.jar"],
-      "sha1" : "508bcd26a4d7c4c44048990c6ea789a3b11a62dc",
-    },
 
     "DACAPO" : {
       "path" : "lib/dacapo-9.12-bach.jar",
@@ -89,15 +63,6 @@ suite = {
       "urls" : ["http://lafo.ssw.uni-linz.ac.at/java-allocation-instrumenter/java-allocation-instrumenter-8f0db117e64e.jar"],
       "sha1" : "476d9a44cd19d6b55f81571077dfa972a4f8a083",
       "bootClassPathAgent" : "true",
-    },
-
-    "VECMATH" : {
-      "path" : "lib/vecmath-1.3.1.jar",
-      "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/vecmath-1.3.1.jar",
-        "https://search.maven.org/remotecontent?filepath=java3d/vecmath/1.3.1/vecmath-1.3.1.jar",
-      ],
-      "sha1" : "a0ae4f51da409fa0c20fa0ca59e6bbc9413ae71d",
     },
 
     "JMH" : {
