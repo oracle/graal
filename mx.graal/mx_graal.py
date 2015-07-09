@@ -1697,7 +1697,7 @@ def bench(args):
                 mx.abort('Unknown DaCapo : ' + dacapo)
             iterations = sanitycheck.dacapoSanityWarmup[dacapo][sanitycheck.SanityCheckLevel.Benchmark]
             if iterations > 0:
-                benchmarks += [sanitycheck.getDacapo(dacapo, iterations)]
+                benchmarks += [sanitycheck.getDacapo(dacapo, ['-n', str(iterations)])]
 
     if 'scaladacapo' in args or 'all' in args:
         benchmarks += sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Benchmark)
