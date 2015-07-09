@@ -1193,6 +1193,10 @@ suite = {
       "distDependencies" : [
         "GRAAL_TRUFFLE"
       ],
+      "exclude" : [
+        "TRUFFLE",
+        "TRUFFLE_DSL_PROCESSOR",
+      ],
     },
   },
 }
