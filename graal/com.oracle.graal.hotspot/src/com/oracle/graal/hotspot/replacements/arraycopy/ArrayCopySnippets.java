@@ -166,7 +166,8 @@ public class ArrayCopySnippets implements Snippets {
      * underlying type is really an array type.
      */
     @Snippet
-    public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetInfo slowPath) {
+    public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetInfo slowPath,
+                    @ConstantParameter Object slowPathArgument) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
@@ -180,7 +181,7 @@ public class ArrayCopySnippets implements Snippets {
             nonZeroLengthDynamicCounter.inc();
             nonZeroLengthDynamicCopiedCounter.add(length);
         }
-        ArrayCopySlowPathNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, slowPath);
+        ArrayCopySlowPathNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, slowPath, slowPathArgument);
     }
 
     @Snippet
@@ -414,6 +415,7 @@ public class ArrayCopySnippets implements Snippets {
             Kind componentKind = selectComponentKind(arraycopy);
             SnippetInfo snippetInfo = null;
             SnippetInfo slowPathSnippetInfo = null;
+            Object slowPathArgument = null;
 
             if (arraycopy.getLength().isConstant() && arraycopy.getLength().asJavaConstant().asLong() == 0) {
                 snippetInfo = arraycopyZeroLengthIntrinsicSnippet;
@@ -422,6 +424,7 @@ public class ArrayCopySnippets implements Snippets {
                 if (shouldUnroll(arraycopy.getLength())) {
                     snippetInfo = arraycopySlowPathIntrinsicSnippet;
                     slowPathSnippetInfo = arraycopyUnrolledWorkSnippet;
+                    slowPathArgument = arraycopy.getLength().asJavaConstant().asInt();
                 }
             } else {
                 if (componentKind == Kind.Object) {
@@ -432,6 +435,7 @@ public class ArrayCopySnippets implements Snippets {
                     if (srcComponentType != null && destComponentType != null && !srcComponentType.isPrimitive() && !destComponentType.isPrimitive()) {
                         snippetInfo = arraycopySlowPathIntrinsicSnippet;
                         slowPathSnippetInfo = checkcastArraycopyWorkSnippet;
+                        slowPathArgument = LocationIdentity.any();
                         /*
                          * Because this snippet has to use Sysytem.arraycopy as a slow path, we must
                          * pretend to kill any() so clear the componentKind.
@@ -451,6 +455,7 @@ public class ArrayCopySnippets implements Snippets {
                         if (predictedKind == Kind.Object) {
                             snippetInfo = arraycopySlowPathIntrinsicSnippet;
                             slowPathSnippetInfo = arraycopyPredictedObjectWorkSnippet;
+                            slowPathArgument = predictedKind;
                             componentKind = null;
                         } else {
                             snippetInfo = arraycopyPredictedExactIntrinsicSnippet;
@@ -470,6 +475,8 @@ public class ArrayCopySnippets implements Snippets {
             if (snippetInfo == arraycopySlowPathIntrinsicSnippet) {
                 args.addConst("elementKind", componentKind != null ? componentKind : Kind.Illegal);
                 args.addConst("slowPath", slowPathSnippetInfo);
+                assert slowPathArgument != null;
+                args.addConst("slowPathArgument", slowPathArgument);
             } else if (snippetInfo == arraycopyExactIntrinsicSnippet || snippetInfo == arraycopyPredictedExactIntrinsicSnippet) {
                 assert componentKind != null;
                 args.addConst("elementKind", componentKind);
@@ -492,7 +499,7 @@ public class ArrayCopySnippets implements Snippets {
             args.add("nonNullDest", arraycopy.getDestination());
             args.add("destPos", arraycopy.getDestinationPosition());
             if (snippetInfo == arraycopyUnrolledWorkSnippet) {
-                args.addConst("length", arraycopy.getLength().asJavaConstant().asInt());
+                args.addConst("length", ((Integer) arraycopy.getArgument()).intValue());
                 args.addConst("elementKind", arraycopy.getElementKind());
             } else {
                 args.add("length", arraycopy.getLength());
