@@ -919,6 +919,7 @@ suite = {
         "com.oracle.graal.compiler",
         "com.oracle.graal.lir.sparc"
       ],
+      "annotationProcessors" : ["com.oracle.graal.compiler.match.processor"],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,SPARC",
