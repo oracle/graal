@@ -397,7 +397,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         } else if (base.getLIRKind().isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
             return LIRKind.reference(target().wordKind);
         } else {
-            return LIRKind.derivedReference(target().wordKind);
+            return LIRKind.unknownReference(target().wordKind);
         }
     }
 

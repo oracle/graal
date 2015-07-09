@@ -625,7 +625,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     @Override
     public Variable emitNegate(Value inputVal) {
         AllocatableValue input = asAllocatable(inputVal);
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         switch (input.getKind()) {
             case Int:
                 append(new AMD64Unary.MOp(NEG, DWORD, result, input));
@@ -648,7 +648,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     @Override
     public Variable emitNot(Value inputVal) {
         AllocatableValue input = asAllocatable(inputVal);
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         switch (input.getKind()) {
             case Int:
                 append(new AMD64Unary.MOp(NOT, DWORD, result, input));
@@ -684,7 +684,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     private Variable emitBinaryConst(AMD64BinaryArithmetic op, OperandSize size, boolean commutative, AllocatableValue a, JavaConstant b, boolean setFlags) {
         if (NumUtil.isInt(b.asLong())) {
-            Variable result = newVariable(LIRKind.derive(a, b));
+            Variable result = newVariable(LIRKind.combine(a, b));
             int constant = (int) b.asLong();
 
             if (!setFlags) {
@@ -722,13 +722,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     private Variable emitBinaryConst(AMD64RMOp op, OperandSize size, AllocatableValue a, JavaConstant b) {
-        Variable result = newVariable(LIRKind.derive(a, b));
+        Variable result = newVariable(LIRKind.combine(a, b));
         append(new AMD64Binary.DataOp(op, size, result, a, b));
         return result;
     }
 
     private Variable emitBinaryVar(AMD64RMOp op, OperandSize size, boolean commutative, AllocatableValue a, AllocatableValue b) {
-        Variable result = newVariable(LIRKind.derive(a, b));
+        Variable result = newVariable(LIRKind.combine(a, b));
         if (commutative) {
             append(new AMD64Binary.CommutativeOp(op, size, result, a, b));
         } else {
@@ -779,7 +779,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 op = AMD64RMIOp.IMUL;
             }
 
-            Variable ret = newVariable(LIRKind.derive(a, b));
+            Variable ret = newVariable(LIRKind.combine(a, b));
             append(new AMD64Binary.RMIOp(op, size, ret, a, imm));
             return ret;
         } else {
@@ -820,7 +820,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     private Value emitMulHigh(AMD64MOp opcode, OperandSize size, Value a, Value b) {
-        AMD64MulDivOp mulHigh = append(new AMD64MulDivOp(opcode, size, LIRKind.derive(a, b), moveToReg(AMD64.rax, a), asAllocatable(b)));
+        AMD64MulDivOp mulHigh = append(new AMD64MulDivOp(opcode, size, LIRKind.combine(a, b), moveToReg(AMD64.rax, a), asAllocatable(b)));
         return emitMove(mulHigh.getHighResult());
     }
 
@@ -849,7 +849,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     public Value emitBinaryMemory(AMD64RMOp op, OperandSize size, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
-        Variable result = newVariable(LIRKind.derive(a));
+        Variable result = newVariable(LIRKind.combine(a));
         append(new AMD64Binary.MemoryOp(op, size, result, a, location, state));
         return result;
     }
@@ -886,14 +886,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     private AMD64MulDivOp emitIDIV(OperandSize size, Value a, Value b, LIRFrameState state) {
-        LIRKind kind = LIRKind.derive(a, b);
+        LIRKind kind = LIRKind.combine(a, b);
 
         AMD64SignExtendOp sx = append(new AMD64SignExtendOp(size, kind, moveToReg(AMD64.rax, a)));
         return append(new AMD64MulDivOp(AMD64MOp.IDIV, size, kind, sx.getHighResult(), sx.getLowResult(), asAllocatable(b), state));
     }
 
     private AMD64MulDivOp emitDIV(OperandSize size, Value a, Value b, LIRFrameState state) {
-        LIRKind kind = LIRKind.derive(a, b);
+        LIRKind kind = LIRKind.combine(a, b);
 
         RegisterValue rax = moveToReg(AMD64.rax, a);
         RegisterValue rdx = AMD64.rdx.asValue(kind);
@@ -944,12 +944,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
                 AMD64MulDivOp lop = emitIDIV(QWORD, a, b, state);
                 return emitMove(lop.getRemainder());
             case Float: {
-                Variable result = newVariable(LIRKind.derive(a, b));
+                Variable result = newVariable(LIRKind.combine(a, b));
                 append(new FPDivRemOp(FREM, result, load(a), load(b)));
                 return result;
             }
             case Double: {
-                Variable result = newVariable(LIRKind.derive(a, b));
+                Variable result = newVariable(LIRKind.combine(a, b));
                 append(new FPDivRemOp(DREM, result, load(a), load(b)));
                 return result;
             }
@@ -1039,7 +1039,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     private Variable emitShift(AMD64Shift op, OperandSize size, Value a, Value b) {
-        Variable result = newVariable(LIRKind.derive(a, b).changeType(a.getPlatformKind()));
+        Variable result = newVariable(LIRKind.combine(a, b).changeType(a.getPlatformKind()));
         AllocatableValue input = asAllocatable(a);
         if (isConstant(b)) {
             JavaConstant c = asConstant(b);
@@ -1174,25 +1174,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     public Value emitFloatConvert(FloatConvert op, Value input) {
         switch (op) {
             case D2F:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSD2SS, SD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Float), SSEOp.CVTSD2SS, SD, input);
             case D2I:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Int), SSEOp.CVTTSD2SI, DWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Int), SSEOp.CVTTSD2SI, DWORD, input);
             case D2L:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Long), SSEOp.CVTTSD2SI, QWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Long), SSEOp.CVTTSD2SI, QWORD, input);
             case F2D:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Double), SSEOp.CVTSS2SD, SS, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Double), SSEOp.CVTSS2SD, SS, input);
             case F2I:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Int), SSEOp.CVTTSS2SI, DWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Int), SSEOp.CVTTSS2SI, DWORD, input);
             case F2L:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Long), SSEOp.CVTTSS2SI, QWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Long), SSEOp.CVTTSS2SI, QWORD, input);
             case I2D:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Double), SSEOp.CVTSI2SD, DWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Double), SSEOp.CVTSI2SD, DWORD, input);
             case I2F:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSI2SS, DWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Float), SSEOp.CVTSI2SS, DWORD, input);
             case L2D:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Double), SSEOp.CVTSI2SD, QWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Double), SSEOp.CVTSI2SD, QWORD, input);
             case L2F:
-                return emitConvertOp(LIRKind.derive(input).changeType(Kind.Float), SSEOp.CVTSI2SS, QWORD, input);
+                return emitConvertOp(LIRKind.combine(input).changeType(Kind.Float), SSEOp.CVTSI2SS, QWORD, input);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
@@ -1202,7 +1202,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     public Value emitNarrow(Value inputVal, int bits) {
         if (inputVal.getKind() == Kind.Long && bits <= 32) {
             // TODO make it possible to reinterpret Long as Int in LIR without move
-            return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Int), AMD64RMOp.MOV, DWORD, inputVal);
+            return emitConvertOp(LIRKind.combine(inputVal).changeType(Kind.Int), AMD64RMOp.MOV, DWORD, inputVal);
         } else {
             return inputVal;
         }
@@ -1217,11 +1217,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             // sign extend to 64 bits
             switch (fromBits) {
                 case 8:
-                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSXB, QWORD, inputVal);
+                    return emitConvertOp(LIRKind.combine(inputVal).changeType(Kind.Long), MOVSXB, QWORD, inputVal);
                 case 16:
-                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSX, QWORD, inputVal);
+                    return emitConvertOp(LIRKind.combine(inputVal).changeType(Kind.Long), MOVSX, QWORD, inputVal);
                 case 32:
-                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Long), MOVSXD, QWORD, inputVal);
+                    return emitConvertOp(LIRKind.combine(inputVal).changeType(Kind.Long), MOVSXD, QWORD, inputVal);
                 default:
                     throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
@@ -1229,9 +1229,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
             switch (fromBits) {
                 case 8:
-                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Int), MOVSXB, DWORD, inputVal);
+                    return emitConvertOp(LIRKind.combine(inputVal).changeType(Kind.Int), MOVSXB, DWORD, inputVal);
                 case 16:
-                    return emitConvertOp(LIRKind.derive(inputVal).changeType(Kind.Int), MOVSX, DWORD, inputVal);
+                    return emitConvertOp(LIRKind.combine(inputVal).changeType(Kind.Int), MOVSX, DWORD, inputVal);
                 case 32:
                     return inputVal;
                 default:
@@ -1247,14 +1247,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
             return inputVal;
         } else if (fromBits > 32) {
             assert inputVal.getKind() == Kind.Long;
-            Variable result = newVariable(LIRKind.derive(inputVal).changeType(Kind.Long));
+            Variable result = newVariable(LIRKind.combine(inputVal).changeType(Kind.Long));
             long mask = CodeUtil.mask(fromBits);
             append(new AMD64Binary.DataOp(AND.getRMOpcode(QWORD), QWORD, result, asAllocatable(inputVal), JavaConstant.forLong(mask)));
             return result;
         } else {
             assert inputVal.getKind().getStackKind() == Kind.Int;
 
-            LIRKind resultKind = LIRKind.derive(inputVal);
+            LIRKind resultKind = LIRKind.combine(inputVal);
             if (toBits > 32) {
                 resultKind = resultKind.changeType(Kind.Long);
             } else {
@@ -1311,7 +1311,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     public Variable emitBitCount(Value value) {
-        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        Variable result = newVariable(LIRKind.combine(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64Unary.RMOp(POPCNT, DWORD, result, asAllocatable(value)));
         } else {
@@ -1322,14 +1322,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     public Variable emitBitScanForward(Value value) {
-        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        Variable result = newVariable(LIRKind.combine(value).changeType(Kind.Int));
         append(new AMD64Unary.RMOp(BSF, QWORD, result, asAllocatable(value)));
         return result;
     }
 
     @Override
     public Variable emitBitScanReverse(Value value) {
-        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        Variable result = newVariable(LIRKind.combine(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64Unary.RMOp(BSR, DWORD, result, asAllocatable(value)));
         } else {
@@ -1339,7 +1339,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     public Value emitCountLeadingZeros(Value value) {
-        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        Variable result = newVariable(LIRKind.combine(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64Unary.RMOp(LZCNT, DWORD, result, asAllocatable(value)));
         } else {
@@ -1349,7 +1349,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     }
 
     public Value emitCountTrailingZeros(Value value) {
-        Variable result = newVariable(LIRKind.derive(value).changeType(Kind.Int));
+        Variable result = newVariable(LIRKind.combine(value).changeType(Kind.Int));
         if (value.getKind().getStackKind() == Kind.Int) {
             append(new AMD64Unary.RMOp(TZCNT, DWORD, result, asAllocatable(value)));
         } else {
@@ -1360,7 +1360,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     public Value emitMathAbs(Value input) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         switch (input.getKind()) {
             case Float:
                 append(new AMD64Binary.DataOp(SSEOp.AND, PS, result, asAllocatable(input), JavaConstant.forFloat(Float.intBitsToFloat(0x7FFFFFFF)), 16));
@@ -1376,7 +1376,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     public Value emitMathSqrt(Value input) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         switch (input.getKind()) {
             case Float:
                 append(new AMD64Unary.RMOp(SSEOp.SQRT, SS, result, asAllocatable(input)));
@@ -1392,35 +1392,35 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
 
     @Override
     public Value emitMathLog(Value input, boolean base10) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64MathIntrinsicOp(base10 ? LOG10 : LOG, result, asAllocatable(input)));
         return result;
     }
 
     @Override
     public Value emitMathCos(Value input) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64MathIntrinsicOp(COS, result, asAllocatable(input)));
         return result;
     }
 
     @Override
     public Value emitMathSin(Value input) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64MathIntrinsicOp(SIN, result, asAllocatable(input)));
         return result;
     }
 
     @Override
     public Value emitMathTan(Value input) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64MathIntrinsicOp(TAN, result, asAllocatable(input)));
         return result;
     }
 
     @Override
     public Variable emitByteSwap(Value input) {
-        Variable result = newVariable(LIRKind.derive(input));
+        Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64ByteSwapOp(result, input));
         return result;
     }
