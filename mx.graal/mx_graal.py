@@ -1132,6 +1132,7 @@ def _find_classpath_arg(vmArgs):
             return index + 1, vmArgs[index + 1]
 
 def unittest(args):
+    """run the JUnit tests (all testcases){0}"""
     def vmLauncher(vmArgs, mainClass, mainClassArgs):
         if isJVMCIEnabled(_get_vm()):
             # Remove entries from class path that are in JVMCI loaded jars
