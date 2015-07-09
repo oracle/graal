@@ -211,7 +211,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Kind elementKind = loadIndexed.elementKind();
         Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
-        PiNode pi = getBoundsCheckedIndex(loadIndexed, tool);
+        PiNode pi = getBoundsCheckedIndex(loadIndexed, tool, null);
         ValueNode checkedIndex = pi;
         if (checkedIndex == null) {
             checkedIndex = loadIndexed.index();
@@ -232,7 +232,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
         StructuredGraph graph = storeIndexed.graph();
 
-        PiNode pi = getBoundsCheckedIndex(storeIndexed, tool);
+        GuardingNode[] nullCheckReturn = new GuardingNode[1];
+        PiNode pi = getBoundsCheckedIndex(storeIndexed, tool, nullCheckReturn);
         ValueNode checkedIndex;
         GuardingNode boundsCheck;
         if (pi == null) {
@@ -263,7 +264,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     value = storeCheck;
                 }
             } else {
-                ValueNode arrayClass = createReadHub(graph, array, boundsCheck);
+                /*
+                 * The guard on the read hub should be the null check of the array that was
+                 * introduced earlier.
+                 */
+                GuardingNode nullCheck = nullCheckReturn[0];
+                assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
+                ValueNode arrayClass = createReadHub(graph, array, nullCheck);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
                 checkCastNode = graph.add(new CheckCastDynamicNode(componentHub, value, true));
                 graph.addBeforeFixed(storeIndexed, checkCastNode);
@@ -669,7 +676,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
-    protected PiNode getBoundsCheckedIndex(AccessIndexedNode n, LoweringTool tool) {
+    protected PiNode getBoundsCheckedIndex(AccessIndexedNode n, LoweringTool tool, GuardingNode[] nullCheckReturn) {
         StructuredGraph graph = n.graph();
         ValueNode array = n.array();
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
@@ -678,7 +685,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             AddressNode address = createOffsetAddress(graph, array, arrayLengthOffset());
             ReadNode readArrayLength = graph.add(new ReadNode(address, ARRAY_LENGTH_LOCATION, stamp, BarrierType.NONE));
             graph.addBeforeFixed(n, readArrayLength);
-            readArrayLength.setGuard(createNullCheck(array, readArrayLength, tool));
+            GuardingNode nullCheck = createNullCheck(array, readArrayLength, tool);
+            if (nullCheckReturn != null) {
+                nullCheckReturn[0] = nullCheck;
+            }
+            readArrayLength.setGuard(nullCheck);
             arrayLength = readArrayLength;
         } else {
             arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
