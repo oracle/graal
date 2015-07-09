@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.sparc;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.gen.*;

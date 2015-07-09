@@ -283,7 +283,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         // TODO: (sa) Fold the two traversals into one
         stuffDelayedControlTransfers(lir);
         int constantSize = calculateConstantSize(lir);
-        boolean canUseImmediateConstantLoad = constantSize < (1 << 13) - 1;
+        boolean canUseImmediateConstantLoad = constantSize < (1 << 12) - 1;
         masm.setImmediateConstantLoad(canUseImmediateConstantLoad);
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
