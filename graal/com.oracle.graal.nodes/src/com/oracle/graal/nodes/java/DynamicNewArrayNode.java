@@ -102,6 +102,10 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     @NodeIntrinsic
     private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter Kind knownElementKind);
 
+    public static Object newArray(Class<?> componentType, int length, Kind knownElementKind) {
+        return newArray(componentType, length, true, knownElementKind);
+    }
+
     public static Object newUninitializedArray(Class<?> componentType, int length, Kind knownElementKind) {
         return newArray(componentType, length, false, knownElementKind);
     }
