@@ -310,10 +310,14 @@ public class NewObjectSnippets implements Snippets {
      * @param manualUnroll maximally unroll zeroing
      */
     private static void zeroMemory(int size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, boolean useSnippetCounters) {
+        fillMemory(0, size, memory, constantSize, startOffset, manualUnroll, useSnippetCounters);
+    }
+
+    private static void fillMemory(long value, int size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, boolean useSnippetCounters) {
         ReplacementsUtil.runtimeAssert((size & 0x7) == 0, "unaligned object size");
         int offset = startOffset;
         if ((offset & 0x7) != 0) {
-            memory.writeInt(offset, 0, INIT_LOCATION);
+            memory.writeInt(offset, (int) value, INIT_LOCATION);
             offset += 4;
         }
         ReplacementsUtil.runtimeAssert((offset & 0x7) == 0, "unaligned offset");
@@ -330,7 +334,7 @@ public class NewObjectSnippets implements Snippets {
                 if (offset == size) {
                     break;
                 }
-                memory.initializeLong(offset, 0, INIT_LOCATION);
+                memory.initializeLong(offset, value, INIT_LOCATION);
             }
         } else {
             // Use Word instead of int to avoid extension to long in generated code
@@ -346,9 +350,24 @@ public class NewObjectSnippets implements Snippets {
                 }
             }
             for (; off.rawValue() < size; off = off.add(8)) {
-                memory.initializeLong(off, 0, INIT_LOCATION);
+                memory.initializeLong(off, value, INIT_LOCATION);
             }
         }
+    }
+
+    /**
+     * Full uninitialized memory with garbage value in a newly allocated object, unrolling as
+     * necessary and ensuring that stores are aligned.
+     *
+     * @param size number of bytes to zero
+     * @param memory beginning of object which is being zeroed
+     * @param constantSize is @ size} known to be constant in the snippet
+     * @param startOffset offset to begin zeroing. May not be word aligned.
+     * @param manualUnroll maximally unroll zeroing
+     */
+    private static boolean fillWithGarbage(int size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, boolean useSnippetCounters) {
+        fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, useSnippetCounters);
+        return true;
     }
 
     /**
@@ -367,6 +386,8 @@ public class NewObjectSnippets implements Snippets {
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
+        } else {
+            ReplacementsUtil.runtimeAssert(fillWithGarbage(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters), "");
         }
         return memory.toObject();
     }
@@ -396,6 +417,8 @@ public class NewObjectSnippets implements Snippets {
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters);
+        } else {
+            ReplacementsUtil.runtimeAssert(fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters), "");
         }
         return memory.toObject();
     }
