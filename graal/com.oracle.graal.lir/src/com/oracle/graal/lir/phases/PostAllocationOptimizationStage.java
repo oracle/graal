@@ -35,7 +35,7 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         @Option(help = "", type = OptionType.Debug)
         public static final NestedBooleanOptionValue LIROptEdgeMoveOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptControlFlowOptmizer = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionValue LIROptControlFlowOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
         public static final NestedBooleanOptionValue LIROptRedundantMoveElimination = new NestedBooleanOptionValue(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
@@ -51,7 +51,7 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         if (Options.LIROptEdgeMoveOptimizer.getValue()) {
             appendPhase(new EdgeMoveOptimizer());
         }
-        if (Options.LIROptControlFlowOptmizer.getValue()) {
+        if (Options.LIROptControlFlowOptimizer.getValue()) {
             appendPhase(new ControlFlowOptimizer());
         }
         if (Options.LIROptRedundantMoveElimination.getValue()) {
