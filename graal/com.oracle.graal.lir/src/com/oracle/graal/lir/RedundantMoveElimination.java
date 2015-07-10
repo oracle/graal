@@ -47,8 +47,8 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     BenchmarkCounterFactory counterFactory) {
-        Optimization redundantMoveElimination = new Optimization();
-        redundantMoveElimination.doOptimize(lirGenRes.getLIR(), lirGenRes.getFrameMap());
+        Optimization redundantMoveElimination = new Optimization(lirGenRes.getFrameMap());
+        redundantMoveElimination.doOptimize(lirGenRes.getLIR());
     }
 
     /**
@@ -99,28 +99,34 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         int[] eligibleRegs;
 
         /**
-         * A map from the {@link StackSlot} to an index into the state. StackSlots of different
-         * kinds that map to the same location will map to the same index.
+         * A map from the {@link StackSlot} {@link #getOffset offset} to an index into the state.
+         * StackSlots of different kinds that map to the same location will map to the same index.
          */
-        Map<StackSlot, Integer> stackIndices = CollectionsFactory.newMap();
+        Map<Integer, Integer> stackIndices = CollectionsFactory.newMap();
 
         int numRegs;
+
+        private final FrameMap frameMap;
 
         /*
          * Pseudo value for a not yet assigned location.
          */
         static final int INIT_VALUE = 0;
 
+        public Optimization(FrameMap frameMap) {
+            this.frameMap = frameMap;
+        }
+
         /**
          * The main method doing the elimination of redundant moves.
          */
-        private void doOptimize(LIR lir, FrameMap frameMap) {
+        private void doOptimize(LIR lir) {
 
             try (Indent indent = Debug.logAndIndent("eliminate redundant moves")) {
 
                 callerSaveRegs = frameMap.getRegisterConfig().getCallerSaveRegisters();
 
-                initBlockData(lir, frameMap);
+                initBlockData(lir);
 
                 // Compute a table of the registers which are eligible for move optimization.
                 // Unallocatable registers should never be optimized.
@@ -146,7 +152,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          */
         private static final int COMPLEXITY_LIMIT = 30000;
 
-        private void initBlockData(LIR lir, FrameMap frameMap) {
+        private void initBlockData(LIR lir) {
 
             List<? extends AbstractBlockBase<?>> blocks = lir.linearScanOrder();
             numRegs = 0;
@@ -157,7 +163,6 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              * Search for relevant locations which can be optimized. These are register or stack
              * slots which occur as destinations of move instructions.
              */
-            Map<Integer, Integer> offsetToIndex = CollectionsFactory.newMap();
             for (AbstractBlockBase<?> block : blocks) {
                 List<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 for (LIRInstruction op : instructions) {
@@ -170,12 +175,9 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                             }
                         } else if (isStackSlot(dest)) {
                             StackSlot stackSlot = (StackSlot) dest;
-                            if (!stackIndices.containsKey(stackSlot) && offsetToIndex.size() < maxStackLocations) {
-                                Integer offset = stackSlot.getOffset(frameMap.totalFrameSize());
-                                if (!offsetToIndex.containsKey(offset)) {
-                                    offsetToIndex.put(offset, offsetToIndex.size());
-                                }
-                                stackIndices.put(stackSlot, offsetToIndex.get(offset));
+                            Integer offset = getOffset(stackSlot);
+                            if (!stackIndices.containsKey(offset) && stackIndices.size() < maxStackLocations) {
+                                stackIndices.put(offset, stackIndices.size());
                             }
                         }
                     }
@@ -191,6 +193,10 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                 BlockData data = new BlockData(numLocations);
                 blockData.put(block, data);
             }
+        }
+
+        private int getOffset(StackSlot stackSlot) {
+            return stackSlot.getOffset(frameMap.totalFrameSize());
         }
 
         /**
@@ -489,7 +495,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
             }
             if (isStackSlot(location)) {
                 StackSlot slot = (StackSlot) location;
-                Integer index = stackIndices.get(slot);
+                Integer index = stackIndices.get(getOffset(slot));
                 if (index != null) {
                     return index.intValue() + numRegs;
                 }
