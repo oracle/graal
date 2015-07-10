@@ -35,7 +35,7 @@ import javax.tools.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 
-@SupportedAnnotationTypes("com.oracle.truffle.api.*")
+@SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
     private final List<TypeElement> registrations = new ArrayList<>();
 
