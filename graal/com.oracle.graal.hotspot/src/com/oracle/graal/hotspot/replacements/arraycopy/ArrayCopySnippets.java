@@ -184,6 +184,23 @@ public class ArrayCopySnippets implements Snippets {
         ArrayCopySlowPathNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, slowPath, slowPathArgument);
     }
 
+    /**
+     * Snippet for unrolled arraycopy.
+     */
+    @Snippet
+    public static void arraycopyUnrolledIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter int unrolledLength, @ConstantParameter Kind elementKind) {
+        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
+        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
+        if (length == 0) {
+            zeroLengthDynamicCounter.inc();
+        } else {
+            nonZeroLengthDynamicCounter.inc();
+            nonZeroLengthDynamicCopiedCounter.add(length);
+        }
+        ArrayCopyUnrollNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, unrolledLength, elementKind);
+    }
+
     @Snippet
     public static void checkcastArraycopyWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length) {
         if (length > 0) {
@@ -358,6 +375,7 @@ public class ArrayCopySnippets implements Snippets {
         private final SnippetInfo arraycopyGenericSnippet = snippet("arraycopyGeneric");
 
         private final SnippetInfo arraycopySlowPathIntrinsicSnippet = snippet("arraycopySlowPathIntrinsic");
+        private final SnippetInfo arraycopyUnrolledIntrinsicSnippet = snippet("arraycopyUnrolledIntrinsic");
         private final SnippetInfo arraycopyExactIntrinsicSnippet = snippet("arraycopyExactIntrinsic");
         private final SnippetInfo arraycopyZeroLengthIntrinsicSnippet = snippet("arraycopyZeroLengthIntrinsic");
         private final SnippetInfo arraycopyPredictedExactIntrinsicSnippet = snippet("arraycopyPredictedExactIntrinsic");
@@ -422,9 +440,7 @@ public class ArrayCopySnippets implements Snippets {
             } else if (arraycopy.isExact()) {
                 snippetInfo = arraycopyExactIntrinsicSnippet;
                 if (shouldUnroll(arraycopy.getLength())) {
-                    snippetInfo = arraycopySlowPathIntrinsicSnippet;
-                    slowPathSnippetInfo = arraycopyUnrolledWorkSnippet;
-                    slowPathArgument = arraycopy.getLength().asJavaConstant().asInt();
+                    snippetInfo = arraycopyUnrolledIntrinsicSnippet;
                 }
             } else {
                 if (componentKind == Kind.Object) {
@@ -472,7 +488,10 @@ public class ArrayCopySnippets implements Snippets {
             args.add("dest", arraycopy.getDestination());
             args.add("destPos", arraycopy.getDestinationPosition());
             args.add("length", arraycopy.getLength());
-            if (snippetInfo == arraycopySlowPathIntrinsicSnippet) {
+            if (snippetInfo == arraycopyUnrolledIntrinsicSnippet) {
+                args.addConst("unrolledLength", arraycopy.getLength().asJavaConstant().asInt());
+                args.addConst("elementKind", componentKind != null ? componentKind : Kind.Illegal);
+            } else if (snippetInfo == arraycopySlowPathIntrinsicSnippet) {
                 args.addConst("elementKind", componentKind != null ? componentKind : Kind.Illegal);
                 args.addConst("slowPath", slowPathSnippetInfo);
                 assert slowPathArgument != null;
@@ -512,6 +531,23 @@ public class ArrayCopySnippets implements Snippets {
                 args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(Kind.Object));
             }
             instantiate(args, arraycopy);
+        }
+
+        public void lower(ArrayCopyUnrollNode arraycopy, LoweringTool tool) {
+            StructuredGraph graph = arraycopy.graph();
+            if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
+                // Can't be lowered yet
+                return;
+            }
+            SnippetInfo snippetInfo = arraycopyUnrolledWorkSnippet;
+            Arguments args = new Arguments(snippetInfo, graph.getGuardsStage(), tool.getLoweringStage());
+            args.add("nonNullSrc", arraycopy.getSource());
+            args.add("srcPos", arraycopy.getSourcePosition());
+            args.add("nonNullDest", arraycopy.getDestination());
+            args.add("destPos", arraycopy.getDestinationPosition());
+            args.addConst("length", arraycopy.getUnrollLength());
+            args.addConst("elementKind", arraycopy.getElementKind());
+            template(args).instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         /**
