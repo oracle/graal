@@ -358,7 +358,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.asm.test",
-        "jvmci:JVMCI_API",
         "com.oracle.graal.asm.amd64",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -627,7 +626,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "jvmci:JVMCI_HOTSPOT",
         "com.oracle.graal.lir.jtt",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -651,7 +649,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "jvmci:JVMCI_HOTSPOT",
         "com.oracle.graal.compiler.test",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -874,7 +871,8 @@ suite = {
         "com.oracle.graal.truffle.test"
       ],
       "distDependencies" : [
-        "GRAAL_TRUFFLE"
+        "GRAAL_TRUFFLE",
+        "truffle:TRUFFLE_SL",
       ],
     },
   },
