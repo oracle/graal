@@ -38,6 +38,13 @@ import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
+/**
+ * Replaces sequential {@link AMD64StackMove}s of the same type with a single
+ * {@link AMD64MultiStackMove} to avoid storing/restoring the scratch register multiple times.
+ *
+ * Note: this phase must be inserted <b>after</b> {@link RedundantMoveElimination} phase because
+ * {@link AMD64MultiStackMove} are not probably detected.
+ */
 public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase {
     public static class Options {
         // @formatter:off

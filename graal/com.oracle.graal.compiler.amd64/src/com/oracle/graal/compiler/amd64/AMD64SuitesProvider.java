@@ -38,7 +38,8 @@ public class AMD64SuitesProvider extends DefaultSuitesProvider {
     public LIRSuites createLIRSuites() {
         LIRSuites lirSuites = super.createLIRSuites();
         if (StackMoveOptimizationPhase.Options.LIROptStackMoveOptimizer.getValue() && GraalOptions.SSA_LIR.getValue()) {
-            lirSuites.getPostAllocationOptimizationStage().prependPhase(new StackMoveOptimizationPhase());
+            /* Note: this phase must be inserted <b>after</b> RedundantMoveElimination */
+            lirSuites.getPostAllocationOptimizationStage().appendPhase(new StackMoveOptimizationPhase());
         }
         return lirSuites;
     }
