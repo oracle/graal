@@ -27,6 +27,8 @@ package com.oracle.truffle.api;
 import java.lang.annotation.*;
 import java.util.concurrent.*;
 
+import com.oracle.truffle.api.nodes.*;
+
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
@@ -176,6 +178,10 @@ public final class CompilerDirectives {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
     public @interface TruffleBoundary {
+        /**
+         * Determines whether this method throws a {@link ControlFlowException}.
+         */
+        boolean throwsControlFlowException() default false;
     }
 
     /**
