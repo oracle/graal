@@ -99,6 +99,9 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         Set<Register> callerSavedRegisters = new HashSet<>();
         Collections.addAll(callerSavedRegisters, regConfig.getCalleeSaveLayout().registers);
         Collections.addAll(callerSavedRegisters, SPARC.fpuRegisters);
+        callerSavedRegisters.add(SPARC.g1);
+        callerSavedRegisters.add(SPARC.g4);
+        callerSavedRegisters.add(SPARC.g5);
         Value[] nativeABICallerSaveRegisters = new Value[callerSavedRegisters.size()];
         int i = 0;
         for (Register reg : callerSavedRegisters) {

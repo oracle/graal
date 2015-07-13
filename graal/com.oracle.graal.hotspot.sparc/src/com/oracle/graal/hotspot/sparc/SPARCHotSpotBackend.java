@@ -332,9 +332,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
         if (!frameContext.isStub) {
             crb.recordMark(config.MARKID_EXCEPTION_HANDLER_ENTRY);
-            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, null);
             crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
-            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, false, null);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries

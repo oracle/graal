@@ -33,7 +33,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.sparc.*;
 
@@ -142,7 +142,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Register thread = registers.getThreadRegister();
             Value threadTemp = newVariable(LIRKind.value(Kind.Long));
             Register stackPointer = registers.getStackPointerRegister();
-            append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer, threadTemp));
+            Variable spScratch = newVariable(LIRKind.value(target().wordKind));
+            append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer, threadTemp, spScratch));
             result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
             append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), thread, threadTemp));
         } else {
@@ -192,7 +193,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public void emitDeoptimize(Value actionAndReason, Value speculation, LIRFrameState state) {
         moveDeoptValuesToThread(actionAndReason, speculation);
-        append(new SPARCDeoptimizeOp(state));
+        append(new SPARCDeoptimizeOp(state, target().wordKind));
     }
 
     @Override
@@ -399,7 +400,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable framePcVariable = load(framePc);
         Variable senderSpVariable = load(senderSp);
         Variable scratchVariable = newVariable(LIRKind.value(getHostWordKind()));
-        append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable));
+        append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable,
+                        target().wordKind));
     }
 
     public void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
@@ -419,10 +421,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(UNCOMMON_TRAP);
 
         Register threadRegister = getProviders().getRegisters().getThreadRegister();
-        Value threadTemp = newVariable(LIRKind.value(Kind.Long));
+        Value threadTemp = newVariable(LIRKind.value(target().wordKind));
         Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
-        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister, threadTemp));
-        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(Kind.Long)), trapRequest);
+        Variable spScratch = newVariable(LIRKind.value(target().wordKind));
+        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister, threadTemp, spScratch));
+        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().wordKind)), trapRequest);
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
 
         Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((SPARCHotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();
@@ -438,10 +441,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(FETCH_UNROLL_INFO);
 
         Register threadRegister = getProviders().getRegisters().getThreadRegister();
-        Value threadTemp = newVariable(LIRKind.value(Kind.Long));
+        Value threadTemp = newVariable(LIRKind.value(target().wordKind));
         Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
-        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister, threadTemp));
-        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(Kind.Long)));
+        Variable spScratch = newVariable(LIRKind.value(target().wordKind));
+        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister, threadTemp, spScratch));
+        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().wordKind)));
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
 
         Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = ((SPARCHotSpotLIRGenerationResult) getResult()).getCalleeSaveInfo();

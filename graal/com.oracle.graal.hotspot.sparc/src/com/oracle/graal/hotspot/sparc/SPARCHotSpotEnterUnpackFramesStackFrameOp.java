@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.meta.LIRKind.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.hotspot.*;
@@ -48,8 +49,10 @@ final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstructio
     @Alive(REG) AllocatableValue framePc;
     @Alive(REG) AllocatableValue senderSp;
     @Temp(REG) AllocatableValue scratch;
+    @Temp(REG) AllocatableValue callerReturnPc;
 
-    SPARCHotSpotEnterUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, AllocatableValue framePc, AllocatableValue senderSp, AllocatableValue scratch) {
+    SPARCHotSpotEnterUnpackFramesStackFrameOp(Register thread, int threadLastJavaSpOffset, int threadLastJavaPcOffset, AllocatableValue framePc, AllocatableValue senderSp, AllocatableValue scratch,
+                    PlatformKind wordKind) {
         super(TYPE);
         this.thread = thread;
         this.threadLastJavaSpOffset = threadLastJavaSpOffset;
@@ -57,6 +60,7 @@ final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstructio
         this.framePc = framePc;
         this.senderSp = senderSp;
         this.scratch = scratch;
+        callerReturnPc = o7.asValue(value(wordKind));
     }
 
     @Override
@@ -70,7 +74,7 @@ final class SPARCHotSpotEnterUnpackFramesStackFrameOp extends SPARCLIRInstructio
         masm.mov(senderSpRegister, o5);
 
         // Load final frame PC.
-        masm.mov(framePcRegister, o7);
+        masm.mov(framePcRegister, asRegister(callerReturnPc));
 
         // Allocate a full sized frame.
         masm.save(sp, -totalFrameSize, sp);
