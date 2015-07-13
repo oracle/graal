@@ -1325,7 +1325,7 @@ public class BytecodeParser implements GraphBuilderContext {
         // be conservative if information was not recorded (could result in endless
         // recompiles otherwise)
         Invoke invoke;
-        if (graphBuilderConfig.omitAllExceptionEdges() ||
+        if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION || graphBuilderConfig.omitAllExceptionEdges() ||
                         (!StressInvokeWithExceptionNode.getValue() && optimisticOpts.useExceptionProbability() && profilingInfo != null && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
             invoke = createInvoke(callTarget, resultType);
         } else {
@@ -1426,6 +1426,8 @@ public class BytecodeParser implements GraphBuilderContext {
         return false;
     }
 
+    InlineInfo lastInlineInfo;
+
     private boolean tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod, JavaType returnType) {
         boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
@@ -1437,13 +1439,13 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
-            InlineInfo inlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args, returnType);
-            if (inlineInfo != null) {
-                if (inlineInfo.getMethodToInline() == null) {
+            lastInlineInfo = plugin.shouldInlineInvoke(this, targetMethod, args, returnType);
+            if (lastInlineInfo != null) {
+                if (lastInlineInfo.getMethodToInline() == null) {
                     /* Do not inline, and do not ask the remaining plugins. */
                     return false;
                 } else {
-                    return inline(targetMethod, inlineInfo.getMethodToInline(), inlineInfo.isIntrinsic(), args);
+                    return inline(targetMethod, lastInlineInfo.getMethodToInline(), lastInlineInfo.isIntrinsic(), args);
                 }
             }
         }
