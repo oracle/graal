@@ -332,7 +332,7 @@ suite = {
     "TRUFFLE" : {
       "path" : "build/truffle-api.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle.src.zip",
+      "sourcesPath" : "build/truffle-api.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.api.dsl",
