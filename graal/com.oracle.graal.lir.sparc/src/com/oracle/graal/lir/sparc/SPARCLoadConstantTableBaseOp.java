@@ -72,6 +72,8 @@ public class SPARCLoadConstantTableBaseOp extends SPARCLIRInstruction {
         Register baseRegister = asRegister(base);
         int beforePosition = masm.position();
         masm.rdpc(baseRegister);
+        // Must match with CodeInstaller::pd_patch_DataSectionReference
+        masm.add(baseRegister, (int) SPARCAssembler.minSimm(13), baseRegister);
         masm.sub(baseRegister, beforePosition, baseRegister);
     }
 
