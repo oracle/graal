@@ -97,25 +97,25 @@ suite = {
     "TRUFFLE" : {
       "path" : "lib/truffle-0.8-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle/0.8-cf1503da2456b46677cbf0ed286614d660126a1b-SNAPSHOT/truffle-0.8-cf1503da2456b46677cbf0ed286614d660126a1b-20150626.073755-1.jar",
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-api/0.8-397164a68abffa1e934a581ead91cd882eaae954-SNAPSHOT/truffle-api-0.8-397164a68abffa1e934a581ead91cd882eaae954-20150713.145252-1.jar",
       ],
-      "sha1" : "cf1bff27e6a59c994d3e9249ef451a9eeac5371a",
+      "sha1" : "969c49cb04fb7acfbd20892579847ca8d80f4235",
     },
     "TRUFFLE_DSL_PROCESSOR" : {
       "path" : "lib/truffle-dsl-processor-0.8-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-dsl-processor/0.8-cf1503da2456b46677cbf0ed286614d660126a1b-SNAPSHOT/truffle-dsl-processor-0.8-cf1503da2456b46677cbf0ed286614d660126a1b-20150626.073758-1.jar"
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-dsl-processor/0.8-397164a68abffa1e934a581ead91cd882eaae954-SNAPSHOT/truffle-dsl-processor-0.8-397164a68abffa1e934a581ead91cd882eaae954-20150713.145255-1.jar"
       ],
-      "sha1" : "892ca5cbdddc9ac162e70731b415c7f0ca167905",
+      "sha1" : "39ddec960e0e463284b1cc6783cda11dcc80f939",
       "annotationProcessor" : "true",
       "dependencies" : ["TRUFFLE"]
     },
     "TRUFFLE_SL" : {
       "path" : "lib/truffle-sl-0.8-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-sl/0.8-dd4050aadaf8d91301b159cb30a609d8bb99feeb-SNAPSHOT/truffle-sl-0.8-dd4050aadaf8d91301b159cb30a609d8bb99feeb-20150616.114825-1.jar",
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-sl/0.8-397164a68abffa1e934a581ead91cd882eaae954-SNAPSHOT/truffle-sl-0.8-397164a68abffa1e934a581ead91cd882eaae954-20150713.145259-1.jar",
       ],
-      "sha1" : "bf3f09792dc8fab2bd55bf94ddc69859692cbd27",
+      "sha1" : "9ffddd8f3659955bb34a018a540603c2391d2115",
     }
   },
 
