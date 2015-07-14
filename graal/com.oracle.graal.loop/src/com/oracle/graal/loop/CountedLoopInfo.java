@@ -49,12 +49,13 @@ public class CountedLoopInfo {
     }
 
     public ValueNode maxTripCountNode() {
-        return maxTripCountNode(false, iv.strideNode(), iv.initNode());
+        return maxTripCountNode(false);
     }
 
-    public ValueNode maxTripCountNode(boolean assumePositive, ValueNode strideNode, ValueNode initNode) {
+    public ValueNode maxTripCountNode(boolean assumePositive) {
         StructuredGraph graph = iv.valueNode().graph();
-        Stamp stamp = strideNode.stamp();
+        Stamp stamp = iv.valueNode().stamp();
+        ValueNode range = sub(graph, end, iv.initNode());
 
         ValueNode oneDirection;
         if (iv.direction() == Direction.Up) {
@@ -63,19 +64,12 @@ public class CountedLoopInfo {
             assert iv.direction() == Direction.Down;
             oneDirection = ConstantNode.forIntegerStamp(stamp, -1, graph);
         }
-        ValueNode endNode;
-        if (!end.stamp().isCompatible(stamp)) {
-            endNode = IntegerConvertNode.convert(end, stamp, graph);
-        } else {
-            endNode = end;
-        }
-        ValueNode range = sub(graph, endNode, initNode);
         if (oneOff) {
             range = add(graph, range, oneDirection);
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
-        ValueNode denominator = add(graph, sub(graph, range, oneDirection), strideNode);
-        ValueNode div = divBefore(graph, loop.entryPoint(), denominator, strideNode);
+        ValueNode denominator = add(graph, sub(graph, range, oneDirection), iv.strideNode());
+        ValueNode div = divBefore(graph, loop.entryPoint(), denominator, iv.strideNode());
 
         if (assumePositive) {
             return div;

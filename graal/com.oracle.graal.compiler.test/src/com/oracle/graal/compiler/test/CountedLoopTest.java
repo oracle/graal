@@ -189,6 +189,22 @@ public class CountedLoopTest extends GraalCompilerTest {
         test("decrementEqSnippet", 256, 0, 3);
     }
 
+    public static Result twoVariablesSnippet() {
+        Result ret = new Result();
+        int j = 0;
+        for (int i = 0; i < 1024; i++) {
+            j += 5;
+            ret.extremum = get(InductionVariable::extremumNode, j);
+        }
+        ret.exitValue = get(InductionVariable::exitValueNode, j);
+        return ret;
+    }
+
+    @Test
+    public void testTwoVariables() {
+        test("twoVariablesSnippet");
+    }
+
     @NodeInfo
     private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
 
