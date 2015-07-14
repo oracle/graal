@@ -140,6 +140,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     } else {
                         try (ScratchRegister sc = masm.getScratchRegister()) {
                             Register scratch = sc.getRegister();
+                            assert afterFrameInit || isGlobalRegister(scratch) : "Only global (g1-g7) registers are allowed if the frame was not initialized here. Got register " + scratch;
                             new Setx(address.getDisplacement(), scratch).emit(masm);
                             masm.stx(g0, new SPARCAddress(sp, scratch));
                         }
@@ -175,6 +176,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             } else {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
+                    assert isGlobalRegister(scratch) : "Only global registers are allowed before save. Got register " + scratch;
                     new Setx(stackpoinerChange, scratch).emit(masm);
                     masm.save(sp, scratch, sp);
                 }
