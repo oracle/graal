@@ -83,11 +83,11 @@ public class StackMoveTest extends LIRTest {
 
     @Test
     public void runInt() throws Throwable {
-        runTest("testInt", Integer.MIN_VALUE, supply(() -> new int[3]));
+        runTest("testInt", Integer.MIN_VALUE, supply(() -> new int[4]));
         runTest("testInt", -1, supply(() -> new int[4]));
-        runTest("testInt", 0, supply(() -> new int[3]));
-        runTest("testInt", 1, supply(() -> new int[3]));
-        runTest("testInt", Integer.MAX_VALUE, supply(() -> new int[3]));
+        runTest("testInt", 0, supply(() -> new int[4]));
+        runTest("testInt", 1, supply(() -> new int[4]));
+        runTest("testInt", Integer.MAX_VALUE, supply(() -> new int[4]));
     }
 
     /*
