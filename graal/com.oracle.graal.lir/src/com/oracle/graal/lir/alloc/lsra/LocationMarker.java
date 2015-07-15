@@ -30,7 +30,6 @@ import java.util.function.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -47,13 +46,6 @@ import com.oracle.graal.lir.phases.*;
  * maps.
  */
 public final class LocationMarker extends AllocationPhase {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Use decoupled pass for location marking (instead of using LSRA marking)", type = OptionType.Debug)
-        public static final OptionValue<Boolean> UseLocationMarker = new OptionValue<>(true);
-        // @formatter:on
-    }
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
