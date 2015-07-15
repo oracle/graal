@@ -104,7 +104,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
                 return LogicConstantNode.tautology();
             }
         } else {
-            if (exactType) {
+            if (exactType || !inputType.isAssignableFrom(type)) {
                 // since this type check failed for an exact type we know that it can never
                 // succeed at run time. we also don't care about null values, since they will
                 // also make the check fail.

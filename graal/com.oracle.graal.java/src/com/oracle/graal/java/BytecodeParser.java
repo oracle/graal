@@ -3026,7 +3026,9 @@ public class BytecodeParser implements GraphBuilderContext {
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
                     LogicNode typeCheck = append(TypeCheckNode.create(singleType, object));
-                    append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+                    if (!typeCheck.isTautology()) {
+                        append(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
+                    }
                     instanceOfNode = LogicConstantNode.forBoolean(resolvedType.isAssignableFrom(singleType));
                 }
             }
