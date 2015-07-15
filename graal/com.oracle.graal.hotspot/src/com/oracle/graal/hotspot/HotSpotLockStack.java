@@ -22,33 +22,41 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 
 /**
  * Manages allocation and re-use of lock slots in a scoped manner. The slots are used in HotSpot's
  * lightweight locking mechanism to store the mark word of an object being locked.
  */
-public class HotSpotLockStack {
+public class HotSpotLockStack extends LIRInstruction {
+    public static final LIRInstructionClass<HotSpotLockStack> TYPE = LIRInstructionClass.create(HotSpotLockStack.class);
+    private static final StackSlotValue[] EMPTY = new StackSlotValue[0];
 
-    private StackSlotValue[] locks;
+    @Def({STACK}) private StackSlotValue[] locks;
     private final FrameMapBuilder frameMapBuilder;
     private final LIRKind slotKind;
 
     public HotSpotLockStack(FrameMapBuilder frameMapBuilder, LIRKind slotKind) {
+        super(TYPE);
         this.frameMapBuilder = frameMapBuilder;
         this.slotKind = slotKind;
+        this.locks = EMPTY;
     }
 
     /**
      * Gets a stack slot for a lock at a given lock nesting depth, allocating it first if necessary.
      */
     public StackSlotValue makeLockSlot(int lockDepth) {
-        if (locks == null) {
+        if (locks == EMPTY) {
             locks = new StackSlotValue[lockDepth + 1];
         } else if (locks.length < lockDepth + 1) {
             locks = Arrays.copyOf(locks, lockDepth + 1);
@@ -57,5 +65,10 @@ public class HotSpotLockStack {
             locks[lockDepth] = frameMapBuilder.allocateSpillSlot(slotKind);
         }
         return locks[lockDepth];
+    }
+
+    @Override
+    public void emitCode(CompilationResultBuilder crb) {
+        // do nothing
     }
 }

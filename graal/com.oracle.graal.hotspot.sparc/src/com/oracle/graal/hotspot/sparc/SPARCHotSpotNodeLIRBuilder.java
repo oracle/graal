@@ -137,6 +137,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         super.emitPrologue(graph);
         AllocatableValue var = getGen().getSafepointAddressValue();
         append(new SPARCHotSpotSafepointOp.SPARCLoadSafepointPollAddress(var, getGen().config));
+        getGen().append(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
     }
 
     @Override
