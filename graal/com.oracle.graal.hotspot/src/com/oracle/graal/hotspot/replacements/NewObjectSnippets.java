@@ -305,7 +305,7 @@ public class NewObjectSnippets implements Snippets {
      *
      * @param size number of bytes to zero
      * @param memory beginning of object which is being zeroed
-     * @param constantSize is @ size} known to be constant in the snippet
+     * @param constantSize is {@code size} known to be constant in the snippet
      * @param startOffset offset to begin zeroing. May not be word aligned.
      * @param manualUnroll maximally unroll zeroing
      */
@@ -356,12 +356,12 @@ public class NewObjectSnippets implements Snippets {
     }
 
     /**
-     * Full uninitialized memory with garbage value in a newly allocated object, unrolling as
+     * Fill uninitialized memory with garbage value in a newly allocated object, unrolling as
      * necessary and ensuring that stores are aligned.
      *
      * @param size number of bytes to zero
      * @param memory beginning of object which is being zeroed
-     * @param constantSize is @ size} known to be constant in the snippet
+     * @param constantSize is {@code  size} known to be constant in the snippet
      * @param startOffset offset to begin zeroing. May not be word aligned.
      * @param manualUnroll maximally unroll zeroing
      */
