@@ -543,7 +543,7 @@ class CFGPrinter extends CompilationPrinter {
         }
 
         // print use positions
-        int prev = 0;
+        int prev = -1;
         UsePosList usePosList = interval.usePosList();
         for (int i = usePosList.size() - 1; i >= 0; --i) {
             assert prev < usePosList.usePos(i) : "use positions not sorted";
