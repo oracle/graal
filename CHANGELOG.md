@@ -1,28 +1,22 @@
-# GraalVM Changelog
+# Truffle Changelog
 
-This changelog summarizes major changes between Graal versions relevant to languages implementors building upon the Truffle framework and developers building technology on top of Graal. The main focus is on APIs exported by Graal and Truffle.
+This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 
 ## `tip`
-### Graal
-* Add experimental support constructing low-level IR in SSA form.
-* Add experimental support for SSA linear scan register allocation.
+### Truffle
 ...
 
+## Version 0.8
+17-Jul-2015, [Repository Revision](http://lafo.ssw.uni-linz.ac.at/hg/truffle/shortlog/graal-0.8)
 ### Truffle
+* The Truffle repository no longer contains Graal
+* Truffle TCK...
+* Truffle Debug...
 ...
 
 ## Version 0.7
 29-Apr-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.7)
-### Graal
-* By default the Graal code is now only compiled by C1 which should improve application start-up.
-* Merged with jdk8u40-b25.
-* The Graal class loader now loads all lib/graal/graal*.jar jars.
-* Fast Graal services (see com.oracle.graal.api.runtime.Service) are now looked up using service files in lib/graal/services.
-* Add utilities ModifiersProvider#isConcrete, ResolvedJavaMethod#hasBytecodes, ResolvedJavaMethod#hasReceiver to Graal API.
-* Add `GraalDirectives` API, containing methods to influence compiler behavior for unittests and microbenchmarks.
-* Introduce `LIRSuites`, an extensible configuration for the low-level compiler pipeline.
-
 ### Truffle
 * New, faster partial evaluation (no more TruffleCache).
 * If a method is annotated with @ExplodeLoop and contains a loop that can not be exploded, partial evaluation will fail.
@@ -60,13 +54,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## Version 0.6
 19-Dec-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.6)
-### Graal
-* Merged with jdk8u25-b17.
-* Added `com.oracle.graal.api.meta.Remote` interface for future support of remote and replay compilation.
-* Changed name suite specification from `mx/projects.py` to `mx/suite.py`.
-* Changed semantics (and signature) of `ResolvedJavaType#resolveMethod()` (old behavior available via `resolveConcreteMethod()`).
-* Moved `ResolvedJavaField#read[Constant]Value` and `getMethodHandleAccess()` to `ConstantReflectionProvider`.
-
 ### Truffle
 * Instrumentation: add Instrumentable API for language implementors, with most details automated (see package `com.oracle.truffle.api.instrument`).
 * The BranchProfile constructor is now private. Use BranchProfile#create() instead.
@@ -88,13 +75,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## Version 0.5
 23-Sep-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.5)
-### Graal
-* New register allocator optimization: `-G:+ConstantLoadOptimization`.
-* SPARC backend is able to run benchmark and passing most of the JTTs.
-* Fix: Stamp: interface types can not be trusted except after explicit runtime checks.
-* Changed format of suite specification from a properties file (`mx/projects`) to a Python file (`mx/projects.py`).
-
-
 ### Truffle
 * Added `TruffleRuntime#getCallTargets()` to get all call targets that were created and are still referenced.
 * Added `NeverValidAssumption` to complement `AlwaysValidAssumption`.
@@ -103,14 +83,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## Version 0.4
 19-Aug-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.4)
-### Graal
-* Made initialization of Graal runtime lazy in hosted mode.
-* Added supported for new `jrelibrary` dependency type in `mx/projects`.
-* Java projects with compliance level higher than the JDKs specified by `JAVA_HOME` and `EXTRA_JAVA_HOMES` are ignored once `mx/projects` has been processed.
-* `ResolvedJavaType.resolveMethod` now takes a context type used to perform access checks. It now works correctly regarding default methods.
-* Removed Java based compilation queue (`CompilationQueue.java`).
-* Enabled use of separate class loader (via `-XX:+UseGraalClassLoader`) for classes loaded from `graal.jar` to hide them from application classes.
-
 ### Truffle
 * Change API for stack walking to a visitor: `TruffleRuntime#iterateFrames` replaces `TruffleRuntime#getStackTrace`
 * New flag `-G:+TraceTruffleCompilationCallTree` to print the tree of inlined calls before compilation.
@@ -128,16 +100,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## Version 0.3
 9-May-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.3)
-
-### Graal
-* Explicit support for oop compression/uncompression in high level graph.
-* LIRGenerator refactoring.
-* Explicit types for inputs (InputType enum).
-* Added graal.version system property to Graal enabled VM builds.
-* Transitioned to JDK 8 as minimum JDK level for Graal.
-* Added support for stack introspection.
-* New MatchRule facility to convert multiple HIR nodes into specialized LIR
-
 ### Truffle
 * The method `CallTarget#call` takes now a variable number of Object arguments.
 * Support for collecting stack traces and for accessing the current frame in slow paths (see `TruffleRuntime#getStackTrace`).
@@ -150,18 +112,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## Version 0.2
 25-Mar-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.2)
-
-### Graal
-* Use HotSpot stubs for certain array copy operations.
-* New methods for querying memory usage of individual objects and object graphs in Graal API (`MetaAccessProvider#getMemorySize`, `MetaUtil#getMemorySizeRecursive`).
-* Added tiered configuration (C1 + Graal).
-* Initial security model for Graal [GRAAL-22](https://bugs.openjdk.java.net/browse/GRAAL-22).
-* New (tested) invariant that equality comparisons for `JavaType`/`JavaMethod`/`JavaField` values use `.equals()` instead of `==`.
-* Made graph caching compilation-local.
-* Added AllocSpy tool for analyzing allocation in Graal using the [Java Allocation Instrumenter](https://code.google.com/p/java-allocation-instrumenter/).
-* Initial support for memory arithmetic operations on x86.
-* Expanded Debug logging/dumping API to avoid allocation when this Debug facilities are not enabled.
-
 ### Truffle
 * New API `TruffleRuntime#createCallNode` to create call nodes and to give the runtime system control over its implementation.
 * New API `RootNode#getCachedCallNodes` to get a weak set of `CallNode`s that have registered to call the `RootNode`.
@@ -181,15 +131,6 @@ This changelog summarizes major changes between Graal versions relevant to langu
 
 ## Version 0.1
 5-Feb-2014, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.1)
-
-### Graal
-
-* Initial version of a dynamic Java compiler written in Java.
-* Support for multiple co-existing GPU backends ([GRAAL-1](https://bugs.openjdk.java.net/browse/GRAAL-1)).
-* Fixed a compiler bug when running RuneScape ([GRAAL-7](https://bugs.openjdk.java.net/browse/GRAAL-7)).
-* Bug fixes ([GRAAL-4](https://bugs.openjdk.java.net/browse/GRAAL-4), [GRAAL-5](https://bugs.openjdk.java.net/browse/GRAAL-5)).
-
 ### Truffle
-
 * Initial version of a multi-language framework on top of Graal.
 * Update of the [Truffle Inlining API](http://mail.openjdk.java.net/pipermail/graal-dev/2014-January/001516.html).
