@@ -40,12 +40,12 @@ adding the following dependencies to a `pom.xml`:
 <dependency>
   <groupId>com.oracle</groupId>
   <artifactId>truffle</artifactId>
-  <version>0.7</version>
+  <version>0.8</version>
 </dependency>
 <dependency>
   <groupId>com.oracle</groupId>
   <artifactId>truffle-dsl-processor</artifactId>
-  <version>0.7</version>
+  <version>0.8</version>
   <scope>provided</scope>
 </dependency>
 ```
