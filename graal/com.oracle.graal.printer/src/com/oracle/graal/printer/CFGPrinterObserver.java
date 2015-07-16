@@ -36,6 +36,7 @@ import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.code.*;
+import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
@@ -204,6 +205,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
         } else if (object instanceof StackInterval[]) {
             cfgPrinter.printStackIntervals(message, (StackInterval[]) object);
+        } else if (isBlockList(object)) {
+            cfgPrinter.printCFG(message, getBlockList(object), false);
         }
 
         cfgPrinter.target = null;
@@ -212,6 +215,15 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
 
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<? extends AbstractBlockBase<?>> getBlockList(Object object) {
+        return (List<? extends AbstractBlockBase<?>>) object;
+    }
+
+    private static boolean isBlockList(Object object) {
+        return object instanceof List<?> && ((List<?>) object).size() > 0 && ((List<?>) object).get(0) instanceof AbstractBlockBase<?>;
     }
 
     private static DisassemblerProvider disassembler;
