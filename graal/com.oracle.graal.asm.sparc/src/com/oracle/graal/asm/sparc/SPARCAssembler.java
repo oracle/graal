@@ -24,9 +24,9 @@ package com.oracle.graal.asm.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Op.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Op3s.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Ops.*;
 import static java.lang.String.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 import jdk.internal.jvmci.code.*;
@@ -117,18 +117,6 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
-    public enum Op {
-        Op00(0b00),
-        Op01(0b01),
-        Op10(0b10),
-        Op11(0b11);
-        int op;
-
-        Op(int op) {
-            this.op = op;
-        }
-    }
-
     public enum Op2s {
         // @formatter:off
 
@@ -162,113 +150,113 @@ public abstract class SPARCAssembler extends Assembler {
     public enum Op3s {
         // @formatter:off
 
-        Add(0x00, "add", Op10),
-        And(0x01, "and", Op10),
-        Or(0x02, "or", Op10),
-        Xor(0x03, "xor", Op10),
-        Sub(0x04, "sub", Op10),
-        Andn(0x05, "andn", Op10),
-        Orn(0x06, "orn", Op10),
-        Xnor(0x07, "xnor", Op10),
-        Addc(0x08, "addc", Op10),
-        Mulx(0x09, "mulx", Op10),
-        Umul(0x0A, "umul", Op10),
-        Smul(0x0B, "smul", Op10),
-        Subc(0x0C, "subc", Op10),
-        Udivx(0x0D, "udivx", Op10),
-        Udiv(0x0E, "udiv", Op10),
-        Sdiv(0x0F, "sdiv", Op10),
+        Add(0x00, "add", ArithOp),
+        And(0x01, "and", ArithOp),
+        Or(0x02, "or", ArithOp),
+        Xor(0x03, "xor", ArithOp),
+        Sub(0x04, "sub", ArithOp),
+        Andn(0x05, "andn", ArithOp),
+        Orn(0x06, "orn", ArithOp),
+        Xnor(0x07, "xnor", ArithOp),
+        Addc(0x08, "addc", ArithOp),
+        Mulx(0x09, "mulx", ArithOp),
+        Umul(0x0A, "umul", ArithOp),
+        Smul(0x0B, "smul", ArithOp),
+        Subc(0x0C, "subc", ArithOp),
+        Udivx(0x0D, "udivx", ArithOp),
+        Udiv(0x0E, "udiv", ArithOp),
+        Sdiv(0x0F, "sdiv", ArithOp),
 
-        Addcc(0x10, "addcc", Op10),
-        Andcc(0x11, "andcc", Op10),
-        Orcc(0x12, "orcc", Op10),
-        Xorcc(0x13, "xorcc", Op10),
-        Subcc(0x14, "subcc", Op10),
-        Andncc(0x15, "andncc", Op10),
-        Orncc(0x16, "orncc", Op10),
-        Xnorcc(0x17, "xnorcc", Op10),
-        Addccc(0x18, "addccc", Op10),
+        Addcc(0x10, "addcc", ArithOp),
+        Andcc(0x11, "andcc", ArithOp),
+        Orcc(0x12, "orcc", ArithOp),
+        Xorcc(0x13, "xorcc", ArithOp),
+        Subcc(0x14, "subcc", ArithOp),
+        Andncc(0x15, "andncc", ArithOp),
+        Orncc(0x16, "orncc", ArithOp),
+        Xnorcc(0x17, "xnorcc", ArithOp),
+        Addccc(0x18, "addccc", ArithOp),
 
-        Umulcc(0x1A, "umulcc", Op10),
-        Smulcc(0x1B, "smulcc", Op10),
-        Subccc(0x1C, "subccc", Op10),
-        Udivcc(0x1E, "udivcc", Op10),
-        Sdivcc(0x1F, "sdivcc", Op10),
+        Umulcc(0x1A, "umulcc", ArithOp),
+        Smulcc(0x1B, "smulcc", ArithOp),
+        Subccc(0x1C, "subccc", ArithOp),
+        Udivcc(0x1E, "udivcc", ArithOp),
+        Sdivcc(0x1F, "sdivcc", ArithOp),
 
-        Taddcc(0x20, "taddcc", Op10),
-        Tsubcc(0x21, "tsubcc", Op10),
-        Taddcctv(0x22, "taddcctv", Op10),
-        Tsubcctv(0x23, "tsubcctv", Op10),
-        Mulscc(0x24, "mulscc", Op10),
-        Sll(0x25, "sll", Op10),
-        Sllx(0x25, "sllx", Op10),
-        Srl(0x26, "srl", Op10),
-        Srlx(0x26, "srlx", Op10),
-        Sra(0x27, "srax", Op10),
-        Srax(0x27, "srax", Op10),
-        Membar(0x28, "membar", Op10),
+        Taddcc(0x20, "taddcc", ArithOp),
+        Tsubcc(0x21, "tsubcc", ArithOp),
+        Taddcctv(0x22, "taddcctv", ArithOp),
+        Tsubcctv(0x23, "tsubcctv", ArithOp),
+        Mulscc(0x24, "mulscc", ArithOp),
+        Sll(0x25, "sll", ArithOp),
+        Sllx(0x25, "sllx", ArithOp),
+        Srl(0x26, "srl", ArithOp),
+        Srlx(0x26, "srlx", ArithOp),
+        Sra(0x27, "srax", ArithOp),
+        Srax(0x27, "srax", ArithOp),
+        Membar(0x28, "membar", ArithOp),
 
-        Flushw(0x2B, "flushw", Op10),
-        Movcc(0x2C, "movcc", Op10),
-        Sdivx(0x2D, "sdivx", Op10),
-        Popc(0x2E, "popc", Op10),
-        Movr(0x2F, "movr", Op10),
+        Flushw(0x2B, "flushw", ArithOp),
+        Movcc(0x2C, "movcc", ArithOp),
+        Sdivx(0x2D, "sdivx", ArithOp),
+        Popc(0x2E, "popc", ArithOp),
+        Movr(0x2F, "movr", ArithOp),
 
-        Fpop1(0b11_0100, "fpop1", Op10),
-        Fpop2(0b11_0101, "fpop2", Op10),
-        Impdep1(0b11_0110, "impdep1", Op10),
-        Impdep2(0b11_0111, "impdep2", Op10),
-        Jmpl(0x38, "jmpl", Op10),
-        Rett(0x39, "rett", Op10),
-        Trap(0x3a, "trap", Op10),
-        Flush(0x3b, "flush", Op10),
-        Save(0x3c, "save", Op10),
-        Restore(0x3d, "restore", Op10),
-        Retry(0x3e, "retry", Op10),
+        Fpop1(0b11_0100, "fpop1", ArithOp),
+        Fpop2(0b11_0101, "fpop2", ArithOp),
+        Impdep1(0b11_0110, "impdep1", ArithOp),
+        Impdep2(0b11_0111, "impdep2", ArithOp),
+        Jmpl(0x38, "jmpl", ArithOp),
+        Rett(0x39, "rett", ArithOp),
+        Trap(0x3a, "trap", ArithOp),
+        Flush(0x3b, "flush", ArithOp),
+        Save(0x3c, "save", ArithOp),
+        Restore(0x3d, "restore", ArithOp),
+        Retry(0x3e, "retry", ArithOp),
 
 
-        Casa(0b111100, "casa", Op11),
-        Casxa(0b111110, "casxa", Op11),
-        Prefetch(0b101101, "prefetch", Op11),
-        Prefetcha(0b111101, "prefetcha", Op11),
+        Casa(0b111100, "casa", LdstOp),
+        Casxa(0b111110, "casxa", LdstOp),
+        Prefetch(0b101101, "prefetch", LdstOp),
+        Prefetcha(0b111101, "prefetcha", LdstOp),
 
-        Lduw  (0b00_0000, "lduw", Op11),
-        Ldub  (0b00_0001, "ldub", Op11),
-        Lduh  (0b00_0010, "lduh", Op11),
-        Stw   (0b00_0100, "stw", Op11),
-        Stb   (0b00_0101, "stb", Op11),
-        Sth   (0b00_0110, "sth", Op11),
-        Ldsw  (0b00_1000, "ldsw", Op11),
-        Ldsb  (0b00_1001, "ldsb", Op11),
-        Ldsh  (0b00_1010, "ldsh", Op11),
-        Ldx   (0b00_1011, "ldx", Op11),
-        Stx   (0b00_1110, "stx", Op11),
+        Lduw  (0b00_0000, "lduw", LdstOp),
+        Ldub  (0b00_0001, "ldub", LdstOp),
+        Lduh  (0b00_0010, "lduh", LdstOp),
+        Stw   (0b00_0100, "stw", LdstOp),
+        Stb   (0b00_0101, "stb", LdstOp),
+        Sth   (0b00_0110, "sth", LdstOp),
+        Ldsw  (0b00_1000, "ldsw", LdstOp),
+        Ldsb  (0b00_1001, "ldsb", LdstOp),
+        Ldsh  (0b00_1010, "ldsh", LdstOp),
+        Ldx   (0b00_1011, "ldx", LdstOp),
+        Stx   (0b00_1110, "stx", LdstOp),
 
-        Ldf   (0b10_0000, "ldf", Op11),
-        Ldfsr (0b10_0001, "ldfsr", Op11),
-        Ldaf  (0b10_0010, "ldaf", Op11),
-        Lddf  (0b10_0011, "lddf", Op11),
-        Stf   (0b10_0100, "stf", Op11),
-        Stfsr (0b10_0101, "stfsr", Op11),
-        Staf  (0x10_0110, "staf", Op11),
-        Stdf  (0b10_0111, "stdf", Op11),
+        Ldf   (0b10_0000, "ldf", LdstOp),
+        Ldfsr (0b10_0001, "ldfsr", LdstOp),
+        Ldaf  (0b10_0010, "ldaf", LdstOp),
+        Lddf  (0b10_0011, "lddf", LdstOp),
+        Stf   (0b10_0100, "stf", LdstOp),
+        Stfsr (0b10_0101, "stfsr", LdstOp),
+        Staf  (0x10_0110, "staf", LdstOp),
+        Stdf  (0b10_0111, "stdf", LdstOp),
 
-        Rd    (0b10_1000, "rd", Op10),
-        Wr    (0b11_0000, "wr", Op10),
-        Fcmp  (0b11_0101, "fcmp", Op10),
+        Rd    (0b10_1000, "rd", ArithOp),
+        Wr    (0b11_0000, "wr", ArithOp),
+        Fcmp  (0b11_0101, "fcmp", ArithOp),
 
-        Ldxa  (0b01_1011, "ldxa", Op11),
-        Lduwa (0b01_0000, "lduwa", Op11),
+        Ldxa  (0b01_1011, "ldxa", LdstOp),
+        Lduwa (0b01_0000, "lduwa", LdstOp),
 
-        Tcc(0b11_1010, "tcc", Op10);
+        Tcc(0b11_1010, "tcc", ArithOp);
 
         // @formatter:on
 
         private final int value;
         private final String operator;
-        private final Op op;
+        private final Ops op;
 
-        private Op3s(int value, String name, Op op) {
+        private Op3s(int value, String name, Ops op) {
             this.value = value;
             this.operator = name;
             this.op = op;
@@ -914,20 +902,20 @@ public abstract class SPARCAssembler extends Assembler {
 
     private void op3(Op3s op3, Opfs opf, Register rs1, Register rs2, Register rd) {
         int b = opf.value << 5 | (rs2 == null ? 0 : rs2.encoding);
-        fmt(op3.op.op, rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b);
+        fmt(op3.op.value, rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b);
     }
 
     protected void op3(Op3s op3, Register rs1, Register rs2, Register rd) {
         int b = rs2 == null ? 0 : rs2.encoding;
         int xBit = getXBit(op3);
-        fmt(op3.op.op, rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b | xBit);
+        fmt(op3.op.value, rd.encoding, op3.value, rs1 == null ? 0 : rs1.encoding, b | xBit);
     }
 
     protected void op3(Op3s op3, Register rs1, int simm13, Register rd) {
         assert isSimm13(simm13);
         int i = 1 << 13;
         int simm13WithX = simm13 | getXBit(op3);
-        fmt(op3.op.op, rd.encoding, op3.value, rs1.encoding, i | simm13WithX & ((1 << 13) - 1));
+        fmt(op3.op.value, rd.encoding, op3.value, rs1.encoding, i | simm13WithX & ((1 << 13) - 1));
     }
 
     // @formatter:off
@@ -1501,10 +1489,10 @@ public abstract class SPARCAssembler extends Assembler {
         if (addr.getIndex().equals(Register.None)) {
             int dis = addr.getDisplacement();
             assert isSimm13(dis);
-            fmt(Prefetch.op.op, fcn.value, Prefetch.value, rs1.encoding, 1 << 13 | dis & ((1 << 13) - 1));
+            fmt(Prefetch.op.value, fcn.value, Prefetch.value, rs1.encoding, 1 << 13 | dis & ((1 << 13) - 1));
         } else {
             Register rs2 = addr.getIndex();
-            fmt(Prefetch.op.op, fcn.value, Prefetch.value, rs1.encoding, rs2.encoding);
+            fmt(Prefetch.op.value, fcn.value, Prefetch.value, rs1.encoding, rs2.encoding);
         }
     }
 
@@ -1670,7 +1658,7 @@ public abstract class SPARCAssembler extends Assembler {
             if (asi != null) {
                 int b = rs2.encoding;
                 b |= asi.value << 5;
-                fmt(op3.op.op, rd.encoding, op3.value, rs1.encoding, b);
+                fmt(op3.op.value, rd.encoding, op3.value, rs1.encoding, b);
             } else {
                 op3(op3, rs1, rs2, rd);
             }
