@@ -138,7 +138,7 @@ public final class LocationMarkerPhase extends AllocationPhase {
                 throw new UnsupportedOperationException();
             }
 
-            public void addLiveValues(ReferenceMap refMap) {
+            public void addLiveValues(ReferenceMapBuilder refMap) {
                 registers.addLiveValues(refMap);
                 stack.addLiveValues(refMap);
                 if (extraStack != null) {
@@ -175,11 +175,11 @@ public final class LocationMarkerPhase extends AllocationPhase {
                 info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !frameMap.getRegisterConfig().areAllAllocatableRegistersCallerSaved());
             }
 
-            ReferenceMap refMap = info.debugInfo().getReferenceMap();
-            refMap.reset();
+            ReferenceMapBuilder refMap = frameMap.newReferenceMapBuilder();
             frameMap.addLiveValues(refMap);
             values.addLiveValues(refMap);
-            refMap.finish();
+
+            info.debugInfo().setReferenceMap(refMap.finish(info));
         }
 
         /**

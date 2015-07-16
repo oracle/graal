@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,8 +75,8 @@ import com.oracle.graal.lir.framemap.*;
  */
 public final class SPARCFrameMap extends FrameMap {
 
-    public SPARCFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
-        super(codeCache, registerConfig);
+    public SPARCFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
+        super(codeCache, registerConfig, referenceMapFactory);
         // Initial spill size is set to register save area size (SPARC register window)
         initialSpillSize = 0;
         spillSize = initialSpillSize;

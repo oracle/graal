@@ -24,8 +24,9 @@ package com.oracle.graal.lir.dfa;
 
 import java.util.*;
 
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
+
+import com.oracle.graal.lir.framemap.*;
 
 final class ValueSet {
     private Value[] values;
@@ -114,7 +115,7 @@ final class ValueSet {
         return false;
     }
 
-    public void addLiveValues(ReferenceMap refMap) {
+    public void addLiveValues(ReferenceMapBuilder refMap) {
         for (Value v : values) {
             if (v != null) {
                 refMap.addLiveValue(v);

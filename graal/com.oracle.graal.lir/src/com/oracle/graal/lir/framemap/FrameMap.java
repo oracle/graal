@@ -42,6 +42,13 @@ public abstract class FrameMap {
     private final TargetDescription target;
     private final RegisterConfig registerConfig;
 
+    public interface ReferenceMapBuilderFactory {
+
+        ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize);
+    }
+
+    private final ReferenceMapBuilderFactory referenceMapFactory;
+
     /**
      * The final frame size, not including the size of the
      * {@link Architecture#getReturnAddressSize() return address slot}. The value is only set after
@@ -86,12 +93,13 @@ public abstract class FrameMap {
      * Creates a new frame map for the specified method. The given registerConfig is optional, in
      * case null is passed the default RegisterConfig from the CodeCacheProvider will be used.
      */
-    public FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+    public FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
         this.target = codeCache.getTarget();
         this.registerConfig = registerConfig == null ? codeCache.getRegisterConfig() : registerConfig;
         this.frameSize = -1;
         this.outgoingSize = codeCache.getMinimumOutgoingSize();
         this.objectStackSlots = new ArrayList<>();
+        this.referenceMapFactory = referenceMapFactory;
     }
 
     public RegisterConfig getRegisterConfig() {
@@ -102,7 +110,7 @@ public abstract class FrameMap {
         return target;
     }
 
-    public void addLiveValues(ReferenceMap refMap) {
+    public void addLiveValues(ReferenceMapBuilder refMap) {
         for (Value value : objectStackSlots) {
             refMap.addLiveValue(value);
         }
@@ -319,8 +327,7 @@ public abstract class FrameMap {
         objectStackSlots.add(objectSlot);
     }
 
-    public ReferenceMap initReferenceMap(boolean hasRegisters) {
-        ReferenceMap refMap = getTarget().createReferenceMap(hasRegisters, frameSize() / getTarget().wordSize, totalFrameSize());
-        return refMap;
+    public ReferenceMapBuilder newReferenceMapBuilder() {
+        return referenceMapFactory.newReferenceMapBuilder(totalFrameSize());
     }
 }
