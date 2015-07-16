@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.dfa.*;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.stackslotalloc.*;
 
@@ -34,6 +35,6 @@ public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {
         appendPhase(new SimpleStackSlotAllocator());
 
         // currently we mark locations only if we do register allocation
-        appendPhase(new LocationMarker());
+        appendPhase(new LocationMarkerPhase());
     }
 }

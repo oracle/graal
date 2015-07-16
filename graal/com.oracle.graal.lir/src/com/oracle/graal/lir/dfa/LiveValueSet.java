@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package com.oracle.graal.lir.dfa;
 
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.dfa.*;
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.stackslotalloc.*;
+import jdk.internal.jvmci.meta.*;
 
-public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
-    public AllocationStage() {
-        appendPhase(new LinearScanPhase());
+abstract class LiveValueSet<S extends LiveValueSet<S>> {
 
-        // build frame map
-        if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue()) {
-            appendPhase(new LSStackSlotAllocator());
-        } else {
-            appendPhase(new SimpleStackSlotAllocator());
-        }
-        // currently we mark locations only if we do register allocation
-        appendPhase(new LocationMarkerPhase());
-    }
+    public abstract void put(Value v);
+
+    public abstract void remove(Value v);
+
+    public abstract void putAll(S s);
+
+    public abstract S copy();
 }
