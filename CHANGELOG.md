@@ -11,9 +11,11 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 17-Jul-2015, [Repository Revision](http://lafo.ssw.uni-linz.ac.at/hg/truffle/shortlog/graal-0.8)
 ### Truffle
 * The Truffle repository no longer contains Graal
-* Truffle TCK...
-* Truffle Debug...
-...
+* TruffleVM is an entrypoint for creating, building and running multi language Truffle systems
+* Implement TruffleLanguage and use @Registration to register your language into the TruffleVM system
+* Include Truffle TCK (test compatibility kit) into your test cases to verify your language implementation is compliant enough
+* Interoperability API polished
+* Cleanup of Source related API
 
 ## Version 0.7
 29-Apr-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.7)
