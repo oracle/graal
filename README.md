@@ -1,80 +1,73 @@
-## Building Graal
+# The Truffle Language Implementation Framework
 
-There is a Python script in mxtool/mx.py that simplifies working with the code
-base. It requires Python 2.7. While you can run this script by using an absolute path,
-it's more convenient to add graal/mxtool to your PATH environment variable so that the
-'mx' helper script can be used. The following instructions in this file assume this
-setup.
 
-Building both the Java and C++ source code comprising the Graal VM
-can be done with the following simple command.
+## Introduction
 
-```
-% mx build
-```
+Truffle is a framework for implementing languages as simple interpreters.
+Together with the [Graal compiler](http://github.com/OracleLabs/GraalVM),
+Truffle interpreters are automatically just-in-time compiled and programs
+running on top of them can reach performance of normal Java.
 
-There are a number of VM configurations supported by mx which can
-be explicitly specified using the --vm option. However, you'll typically
-want one of these VM configurations:
+The Truffle framework provides the basic foundation for building
+abstract-syntax-tree (AST) interpreters that perform
+[self-optimizations](http://dx.doi.org/10.1145/2384577.2384587) at runtime. The
+included TruffleDSL provides a convenient way to express such optimizations.
 
-1. The 'server' configuration is a standard HotSpot VM that includes the
-   runtime support for Graal but uses the existing compilers for normal
-   compilation (e.g., when the interpreter threshold is hit for a method).
-   Compilation with Graal is only done by explicit requests to the
-   Graal API. This is how Truffle uses Graal.
-   
-2. The 'graal' configuration is a VM where normal compilations are performed
-   by Graal. By default tiered compilation is enabled and Graal will be used at
-   the last tier while C1 will be used for the first compiled tiers.
+Truffle is developed and maintained by Oracle Labs and the Institute for System
+Software of the Johannes Kepler University Linz.
 
-Unless you use the --vm option with the build command, you will be presented
-with a dialogue to choose one of the above VM configurations for the build
-as well as have the option to make it your default for subsequent commands
-that need a VM specified.
 
-To build the debug or fastdebug builds:
+## Building and Using Truffle
 
-```
-% mx --vmbuild debug build
-% mx --vmbuild fastdebug build
+Truffle and Graal use the [MX build tool](https://bitbucket.org/allr/mxtool2),
+which is part of this repository. To build Truffle execute:
+
+```bash
+./mx.sh build
 ```
 
-## Running Graal
+The created `./build` directory contains all necessary jars and source bundles.
 
-To run the VM, use 'mx vm' in place of the standard 'java' command:
+  - `truffle-api.jar` contains the framework
+  - `truffle-dsl-processor.jar` contains the TruffleDSL annotation processor
 
-```
-% mx vm ...
-```
+### Maven
 
-To select the fastdebug or debug builds of the VM:
+For Maven based projects, prebuilt binaries can be included into a project by
+adding the following dependencies to a `pom.xml`:
 
-```
-% mx --vmbuild fastdebug vm ...
-% mx --vmbuild debug vm ...
-```
-
-## Other VM Configurations
-
-In addition to the VM configurations described above, there are
-VM configurations that omit all VM support for Graal:
-
-```
-% mx --vm server-nograal build
-% mx --vm server-nograal vm -version
-java version "1.8.0_40"
-Java(TM) SE Runtime Environment (build 1.8.0_40-b25)
-OpenJDK 64-Bit Server VM (build 25.40-b25-internal, mixed mode)
-
+```xml
+<dependency>
+  <groupId>com.oracle</groupId>
+  <artifactId>truffle</artifactId>
+  <version>0.7</version>
+</dependency>
+<dependency>
+  <groupId>com.oracle</groupId>
+  <artifactId>truffle-dsl-processor</artifactId>
+  <version>0.7</version>
+  <scope>provided</scope>
+</dependency>
 ```
 
-```
-% mx --vm client-nograal build
-% mx --vm client-nograal vm -version
-java version "1.8.0_40"
-Java(TM) SE Runtime Environment (build 1.8.0_40-b25)
-OpenJDK 64-Bit Client VM (build 25.40-b25-internal, mixed mode)
-```
+## Resources and Documentation
 
-These configurations aim to match as closely as possible the
-VM(s) included in the OpenJDK binaries one can download.
+This repository contains the SimpleLanguage, which comes with JavaDoc
+documentation to demonstrate how Truffle is used. A good entry point for
+exploring SimpleLanguage is the [SLLanguage class](https://github.com/OracleLabs/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java).
+
+  - [Truffle Tutorials and Presentations](https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations)
+  - [Truffle FAQ and Guidelines](https://wiki.openjdk.java.net/display/Graal/Truffle+FAQ+and+Guidelines)
+  - [Graal VM and Truffle/JS](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
+  - [Papers on Truffle](http://ssw.jku.at/Research/Projects/JVM/Truffle.html)
+  - [Papers on Graal](http://ssw.jku.at/Research/Projects/JVM/Graal.html)
+
+## Contributing
+
+TODO
+
+
+## License
+
+The Truffle framework is licensed under the [GPL 2 with Classpath exception](https://github.com/OracleLabs/Truffle/blob/master/LICENSE).
+The SimpleLanguage is licensed under the [Universal Permissive License (UPL)](TODO).
