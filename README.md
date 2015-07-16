@@ -69,5 +69,5 @@ TODO
 
 ## License
 
-The Truffle framework is licensed under the [GPL 2 with Classpath exception](https://github.com/OracleLabs/Truffle/blob/master/LICENSE).
-The SimpleLanguage is licensed under the [Universal Permissive License (UPL)](TODO).
+The Truffle framework is licensed under the [GPL 2 with Classpath exception](http://openjdk.java.net/legal/gplv2+ce.html).
+The SimpleLanguage is licensed under the [Universal Permissive License (UPL)](http://opensource.org/licenses/UPL).
