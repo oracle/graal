@@ -420,4 +420,90 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
         throw JVMCIError.unimplemented();
     }
+
+    // automatic derived reference handling
+
+    protected abstract Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);
+
+    public final Variable emitAdd(Value aVal, Value bVal, boolean setFlags) {
+        LIRKind resultKind;
+        Value a = aVal;
+        Value b = bVal;
+
+        if (a.getKind().isNumericInteger()) {
+            LIRKind aKind = a.getLIRKind();
+            LIRKind bKind = b.getLIRKind();
+            assert a.getPlatformKind() == b.getPlatformKind();
+
+            if (aKind.isUnknownReference()) {
+                resultKind = aKind;
+            } else if (bKind.isUnknownReference()) {
+                resultKind = bKind;
+            } else if (aKind.isValue() && bKind.isValue()) {
+                resultKind = aKind;
+            } else if (aKind.isValue()) {
+                if (bKind.isDerivedReference()) {
+                    resultKind = bKind;
+                } else {
+                    AllocatableValue allocatable = asAllocatable(b);
+                    resultKind = bKind.makeDerivedReference(allocatable);
+                    b = allocatable;
+                }
+            } else if (bKind.isValue()) {
+                if (aKind.isDerivedReference()) {
+                    resultKind = aKind;
+                } else {
+                    AllocatableValue allocatable = asAllocatable(a);
+                    resultKind = aKind.makeDerivedReference(allocatable);
+                    a = allocatable;
+                }
+            } else {
+                resultKind = aKind.makeUnknownReference();
+            }
+        } else {
+            resultKind = LIRKind.combine(a, b);
+        }
+
+        return emitAdd(resultKind, a, b, setFlags);
+    }
+
+    protected abstract Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags);
+
+    public final Variable emitSub(Value aVal, Value bVal, boolean setFlags) {
+        LIRKind resultKind;
+        Value a = aVal;
+        Value b = bVal;
+
+        if (a.getKind().isNumericInteger()) {
+            LIRKind aKind = a.getLIRKind();
+            LIRKind bKind = b.getLIRKind();
+            assert a.getPlatformKind() == b.getPlatformKind();
+
+            if (aKind.isUnknownReference()) {
+                resultKind = aKind;
+            } else if (bKind.isUnknownReference()) {
+                resultKind = bKind;
+            }
+
+            if (aKind.isValue() && bKind.isValue()) {
+                resultKind = aKind;
+            } else if (bKind.isValue()) {
+                if (aKind.isDerivedReference()) {
+                    resultKind = aKind;
+                } else {
+                    AllocatableValue allocatable = asAllocatable(a);
+                    resultKind = aKind.makeDerivedReference(allocatable);
+                    a = allocatable;
+                }
+            } else if (aKind.isDerivedReference() && bKind.isDerivedReference() && aKind.getDerivedReferenceBase().equals(bKind.getDerivedReferenceBase())) {
+                resultKind = LIRKind.value(a.getPlatformKind());
+            } else {
+                resultKind = aKind.makeUnknownReference();
+            }
+        } else {
+            resultKind = LIRKind.combine(a, b);
+        }
+
+        return emitSub(resultKind, a, b, setFlags);
+    }
 }

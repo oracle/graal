@@ -120,7 +120,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends L
 
             op.visitEachTemp(defConsumer);
             op.visitEachOutput(defConsumer);
-            if (op.destroysCallerSavedRegisters()) {
+            if (frameMap != null && op.destroysCallerSavedRegisters()) {
                 for (Register reg : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
                     defConsumer.visitValue(reg.asValue(REFERENCE_KIND), OperandMode.TEMP, REGISTER_FLAG_SET);
                 }

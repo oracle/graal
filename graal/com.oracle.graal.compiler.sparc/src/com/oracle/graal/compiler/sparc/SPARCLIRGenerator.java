@@ -508,21 +508,21 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         return result;
     }
 
-    private Variable emitBinary(SPARCArithmetic op, boolean commutative, Value a, Value b) {
-        return emitBinary(op, commutative, a, b, null);
+    private Variable emitBinary(LIRKind resultKind, SPARCArithmetic op, boolean commutative, Value a, Value b) {
+        return emitBinary(resultKind, op, commutative, a, b, null);
     }
 
-    private Variable emitBinary(SPARCArithmetic op, boolean commutative, Value a, Value b, LIRFrameState state) {
+    private Variable emitBinary(LIRKind resultKind, SPARCArithmetic op, boolean commutative, Value a, Value b, LIRFrameState state) {
         if (isConstant(b) && canInlineConstant(asConstant(b))) {
-            return emitBinaryConst(op, load(a), asConstant(b), state);
+            return emitBinaryConst(resultKind, op, load(a), asConstant(b), state);
         } else if (commutative && isConstant(a) && canInlineConstant(asConstant(a))) {
-            return emitBinaryConst(op, load(b), asConstant(a), state);
+            return emitBinaryConst(resultKind, op, load(b), asConstant(a), state);
         } else {
-            return emitBinaryVar(op, load(a), load(b), state);
+            return emitBinaryVar(resultKind, op, load(a), load(b), state);
         }
     }
 
-    private Variable emitBinaryConst(SPARCArithmetic op, AllocatableValue a, JavaConstant b, LIRFrameState state) {
+    private Variable emitBinaryConst(LIRKind resultKind, SPARCArithmetic op, AllocatableValue a, JavaConstant b, LIRFrameState state) {
         switch (op) {
             case IADD:
             case LADD:
@@ -537,48 +537,48 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case IMUL:
             case LMUL:
                 if (canInlineConstant(b)) {
-                    Variable result = newVariable(LIRKind.combine(a, b));
+                    Variable result = newVariable(resultKind);
                     append(new BinaryRegConst(op, result, a, b, state));
                     return result;
                 }
                 break;
         }
-        return emitBinaryVar(op, a, asAllocatable(b), state);
+        return emitBinaryVar(resultKind, op, a, asAllocatable(b), state);
     }
 
-    private Variable emitBinaryVar(SPARCArithmetic op, AllocatableValue a, AllocatableValue b, LIRFrameState state) {
-        Variable result = newVariable(LIRKind.combine(a, b));
+    private Variable emitBinaryVar(LIRKind resultKind, SPARCArithmetic op, AllocatableValue a, AllocatableValue b, LIRFrameState state) {
+        Variable result = newVariable(resultKind);
         append(new BinaryRegReg(op, result, a, b, state));
         return result;
     }
 
     @Override
-    public Variable emitAdd(Value a, Value b, boolean setFlags) {
+    public Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(setFlags ? IADDCC : IADD, true, a, b);
+                return emitBinary(resultKind, setFlags ? IADDCC : IADD, true, a, b);
             case Long:
-                return emitBinary(setFlags ? LADDCC : LADD, true, a, b);
+                return emitBinary(resultKind, setFlags ? LADDCC : LADD, true, a, b);
             case Float:
-                return emitBinary(FADD, true, a, b);
+                return emitBinary(resultKind, FADD, true, a, b);
             case Double:
-                return emitBinary(DADD, true, a, b);
+                return emitBinary(resultKind, DADD, true, a, b);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
     }
 
     @Override
-    public Variable emitSub(Value a, Value b, boolean setFlags) {
+    public Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(setFlags ? ISUBCC : ISUB, false, a, b);
+                return emitBinary(resultKind, setFlags ? ISUBCC : ISUB, false, a, b);
             case Long:
-                return emitBinary(setFlags ? LSUBCC : LSUB, false, a, b);
+                return emitBinary(resultKind, setFlags ? LSUBCC : LSUB, false, a, b);
             case Float:
-                return emitBinary(FSUB, false, a, b);
+                return emitBinary(resultKind, FSUB, false, a, b);
             case Double:
-                return emitBinary(DSUB, false, a, b);
+                return emitBinary(resultKind, DSUB, false, a, b);
             default:
                 throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
@@ -586,21 +586,22 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMul(Value a, Value b, boolean setFlags) {
+        LIRKind resultKind = LIRKind.combine(a, b);
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(setFlags ? IMULCC : IMUL, true, a, b);
+                return emitBinary(resultKind, setFlags ? IMULCC : IMUL, true, a, b);
             case Long:
                 if (setFlags) {
                     Variable result = newVariable(LIRKind.combine(a, b));
                     append(new SPARCLMulccOp(result, load(a), load(b), this));
                     return result;
                 } else {
-                    return emitBinary(LMUL, true, a, b);
+                    return emitBinary(resultKind, LMUL, true, a, b);
                 }
             case Float:
-                return emitBinary(FMUL, true, a, b);
+                return emitBinary(resultKind, FMUL, true, a, b);
             case Double:
-                return emitBinary(DMUL, true, a, b);
+                return emitBinary(resultKind, DMUL, true, a, b);
             default:
                 throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
@@ -639,15 +640,16 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
+        LIRKind resultKind = LIRKind.combine(a, b);
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IDIV, false, a, b, state);
+                return emitBinary(resultKind, IDIV, false, a, b, state);
             case Long:
-                return emitBinary(LDIV, false, a, b, state);
+                return emitBinary(resultKind, LDIV, false, a, b, state);
             case Float:
-                return emitBinary(FDIV, false, a, b, state);
+                return emitBinary(resultKind, FDIV, false, a, b, state);
             case Double:
-                return emitBinary(DDIV, false, a, b, state);
+                return emitBinary(resultKind, DDIV, false, a, b, state);
             default:
                 throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
@@ -729,16 +731,17 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             default:
                 throw JVMCIError.shouldNotReachHere();
         }
-        return emitBinary(op, false, actualA, actualB, state);
+        return emitBinary(LIRKind.combine(actualA, actualB), op, false, actualA, actualB, state);
     }
 
     @Override
     public Variable emitAnd(Value a, Value b) {
+        LIRKind resultKind = LIRKind.combine(a, b);
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IAND, true, a, b);
+                return emitBinary(resultKind, IAND, true, a, b);
             case Long:
-                return emitBinary(LAND, true, a, b);
+                return emitBinary(resultKind, LAND, true, a, b);
 
             default:
                 throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
@@ -747,11 +750,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitOr(Value a, Value b) {
+        LIRKind resultKind = LIRKind.combine(a, b);
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IOR, true, a, b);
+                return emitBinary(resultKind, IOR, true, a, b);
             case Long:
-                return emitBinary(LOR, true, a, b);
+                return emitBinary(resultKind, LOR, true, a, b);
             default:
                 throw JVMCIError.shouldNotReachHere("missing: " + a.getKind());
         }
@@ -759,11 +763,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitXor(Value a, Value b) {
+        LIRKind resultKind = LIRKind.combine(a, b);
         switch (a.getKind().getStackKind()) {
             case Int:
-                return emitBinary(IXOR, true, a, b);
+                return emitBinary(resultKind, IXOR, true, a, b);
             case Long:
-                return emitBinary(LXOR, true, a, b);
+                return emitBinary(resultKind, LXOR, true, a, b);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }

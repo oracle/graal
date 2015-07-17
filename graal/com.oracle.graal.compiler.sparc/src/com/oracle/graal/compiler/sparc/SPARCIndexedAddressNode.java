@@ -55,7 +55,10 @@ public class SPARCIndexedAddressNode extends AddressNode implements LIRLowerable
         AllocatableValue baseValue = tool.asAllocatable(gen.operand(base));
         AllocatableValue indexValue = tool.asAllocatable(gen.operand(index));
 
-        LIRKind kind = tool.getLIRKind(stamp());
+        AllocatableValue baseReference = LIRKind.derivedBaseFromValue(baseValue);
+        AllocatableValue indexReference = LIRKind.derivedBaseFromValue(indexValue);
+
+        LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp()), baseReference, indexReference);
         gen.setResult(this, new SPARCIndexedAddressValue(kind, baseValue, indexValue));
     }
 

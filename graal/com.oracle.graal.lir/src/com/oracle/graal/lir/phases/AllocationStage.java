@@ -29,6 +29,7 @@ import com.oracle.graal.lir.stackslotalloc.*;
 
 public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
     public AllocationStage() {
+        appendPhase(new MarkBasePointersPhase());
         appendPhase(new LinearScanPhase());
 
         // build frame map

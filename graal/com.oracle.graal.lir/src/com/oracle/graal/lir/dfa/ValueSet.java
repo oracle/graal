@@ -26,9 +26,12 @@ import java.util.*;
 
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 
-final class ValueSet {
+public final class ValueSet {
     private Value[] values;
 
     ValueSet() {
@@ -46,6 +49,10 @@ final class ValueSet {
         }
         values = new Value[limit];
         System.arraycopy(other.values, 0, values, 0, values.length);
+    }
+
+    public Value get(int index) {
+        return values[index];
     }
 
     void put(int index, Value value) {
@@ -119,6 +126,22 @@ final class ValueSet {
         for (Value v : values) {
             if (v != null) {
                 refMap.addLiveValue(v);
+            }
+        }
+    }
+
+    public void forEach(LIRInstruction inst, OperandMode mode, EnumSet<OperandFlag> flags, InstructionValueProcedure proc) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] != null) {
+                values[i] = proc.doValue(inst, values[i], mode, flags);
+            }
+        }
+    }
+
+    public void forEach(LIRInstruction inst, OperandMode mode, EnumSet<OperandFlag> flags, InstructionValueConsumer consumer) {
+        for (Value v : values) {
+            if (v != null) {
+                consumer.visitValue(inst, v, mode, flags);
             }
         }
     }

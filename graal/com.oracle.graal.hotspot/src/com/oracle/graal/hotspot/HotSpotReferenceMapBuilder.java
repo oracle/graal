@@ -87,10 +87,18 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             if (kind.isUnknownReference()) {
                 throw JVMCIError.unimplemented("derived references not yet implemented");
             } else {
+                Location base = null;
+                if (kind.isDerivedReference()) {
+                    Variable baseVariable = (Variable) kind.getDerivedReferenceBase();
+                    Value baseValue = state.getLiveBasePointers().get(baseVariable.index);
+                    assert baseValue.getPlatformKind().getVectorLength() == 1 && baseValue.getLIRKind().isReference(0) && !baseValue.getLIRKind().isDerivedReference();
+                    base = toLocation(baseValue, 0);
+                }
+
                 for (int i = 0; i < kind.getPlatformKind().getVectorLength(); i++) {
                     if (kind.isReference(i)) {
                         objects[idx] = toLocation(obj, i * bytes);
-                        derivedBase[idx] = null;
+                        derivedBase[idx] = base;
                         sizeInBytes[idx] = bytes;
                         idx++;
                     }
