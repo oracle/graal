@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import java.math.BigInteger;
@@ -80,6 +81,10 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
     private static class SLForeignCallerRootNode extends RootNode {
         @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
 
+        public SLForeignCallerRootNode() {
+            super(SLLanguage.class, null, null);
+        }
+
         @Override
         public Object execute(VirtualFrame frame) {
             SLFunction function = (SLFunction) ForeignAccess.getReceiver(frame);
@@ -106,6 +111,10 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
     }
 
     private static class SLForeignNullCheckNode extends RootNode {
+        public SLForeignNullCheckNode() {
+            super(SLLanguage.class, null, null);
+        }
+
         @Override
         public Object execute(VirtualFrame frame) {
             Object receiver = ForeignAccess.getReceiver(frame);

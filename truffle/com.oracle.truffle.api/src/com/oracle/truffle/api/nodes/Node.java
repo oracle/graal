@@ -30,6 +30,7 @@ import java.util.concurrent.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.source.*;
@@ -39,7 +40,6 @@ import com.oracle.truffle.api.utilities.*;
  * Abstract base class for all Truffle nodes.
  */
 public abstract class Node implements NodeInterface, Cloneable {
-
     private final NodeClass nodeClass;
     @CompilationFinal private Node parent;
     @CompilationFinal private SourceSection sourceSection;
@@ -587,4 +587,14 @@ public abstract class Node implements NodeInterface, Cloneable {
         IN_ATOMIC_BLOCK.set(IN_ATOMIC_BLOCK.get() - 1);
         return true;
     }
+
+    private static final class AccessorNodes extends Accessor {
+        @Override
+        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+            return n.language;
+        }
+    }
+
+    // registers into Accessor.NODES
+    @SuppressWarnings("unused") private static final AccessorNodes ACCESSOR = new AccessorNodes();
 }

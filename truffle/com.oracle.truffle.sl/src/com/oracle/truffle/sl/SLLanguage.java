@@ -164,7 +164,7 @@ public class SLLanguage extends TruffleLanguage {
 
     public SLLanguage(Env env) {
         super(env);
-        context = SLContextFactory.create(new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
+        context = SLContextFactory.create(this, new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
         LAST = this;
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
             context.installBuiltin(builtin);
@@ -486,17 +486,6 @@ public class SLLanguage extends TruffleLanguage {
             if (prober != null) {
                 // This should be registered on the TruffleVM
                 Probe.registerASTProber(prober);
-            }
-        }
-
-        public void run(Source source) throws DebugSupportException {
-            // TODO (mlvdv) fix to run properly in the current VM
-            try {
-                SLLanguage.run(source);
-            } catch (QuitException ex) {
-                throw ex;
-            } catch (Exception e) {
-                throw new DebugSupportException(e);
             }
         }
 

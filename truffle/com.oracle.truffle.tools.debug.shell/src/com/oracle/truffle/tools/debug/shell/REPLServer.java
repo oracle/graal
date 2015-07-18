@@ -24,22 +24,46 @@
  */
 package com.oracle.truffle.tools.debug.shell;
 
+import com.oracle.truffle.api.debug.Breakpoint;
+import java.util.*;
+
 /**
  * The server side of a simple message-based protocol for a possibly remote language
  * Read-Eval-Print-Loop.
  */
-public interface REPLServer {
+public abstract class REPLServer {
 
     /**
      * Starts up a server; status returned in a message.
      */
-    REPLMessage start();
+    public abstract REPLMessage start();
 
     /**
      * Ask the server to handle a request. Return a non-empty array of messages to simulate remote
      * operation where the protocol has possibly multiple messages being returned asynchronously in
      * response to each request.
      */
-    REPLMessage[] receive(REPLMessage request);
+    public abstract REPLMessage[] receive(REPLMessage request);
+
+    private int breakpointCounter;
+    private Map<Breakpoint, Integer> breakpoints = new WeakHashMap<>();
+
+    protected final synchronized void registerBreakpoint(Breakpoint breakpoint) {
+        breakpoints.put(breakpoint, breakpointCounter++);
+    }
+
+    protected final synchronized Breakpoint findBreakpoint(int id) {
+        for (Map.Entry<Breakpoint, Integer> entrySet : breakpoints.entrySet()) {
+            if (id == entrySet.getValue()) {
+                return entrySet.getKey();
+            }
+        }
+        return null;
+    }
+
+    protected final synchronized int getBreakpointID(Breakpoint breakpoint) {
+        final Integer id = breakpoints.get(breakpoint);
+        return id == null ? -1 : id;
+    }
 
 }

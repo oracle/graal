@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.sl.tools.debug;
 
+import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.tools.debug.shell.*;
 import com.oracle.truffle.tools.debug.shell.client.*;
 import com.oracle.truffle.tools.debug.shell.server.*;
@@ -113,20 +114,27 @@ public abstract class SLREPLHandler extends REPLHandler {
         }
     };
 
+    // TODO (mlvdv) re-implement stepInto when vm support replaced
     /**
      * Runs a source, optionally stepping into a specified tag.
      */
-    private static REPLMessage[] loadHandler(REPLMessage request, REPLServerContext serverContext, boolean stepInto) {
+    private static REPLMessage[] loadHandler(REPLMessage request, REPLServerContext serverContext, @SuppressWarnings("unused") boolean stepInto) {
         final REPLMessage reply = new REPLMessage(REPLMessage.OP, REPLMessage.LOAD_RUN);
         final String fileName = request.get(REPLMessage.SOURCE_NAME);
         try {
-            final Source source = Source.fromFileName(fileName, true);
-            if (source == null) {
+            final File file = new File(fileName);
+            if (!file.canRead()) {
                 return finishReplyFailed(reply, "can't find file \"" + fileName + "\"");
             }
-            serverContext.getDebugEngine().run(source, stepInto);
-            reply.put(REPLMessage.FILE_PATH, source.getPath());
-            return finishReplySucceeded(reply, source.getName() + "  exited");
+            final TruffleVM vm = serverContext.vm();
+            vm.eval(file.toURI());
+            TruffleVM.Symbol main = vm.findGlobalSymbol("main");
+            if (main != null) {
+                main.invoke(null);
+            }
+            final String path = file.getCanonicalPath();
+            reply.put(REPLMessage.FILE_PATH, path);
+            return finishReplySucceeded(reply, fileName + "  exited");
         } catch (QuitException ex) {
             throw ex;
         } catch (KillException ex) {

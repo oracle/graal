@@ -162,7 +162,7 @@ class TestNodes {
          * tests run in the same environment.
          */
         public TestRootNode(TestLanguageNode body) {
-            super(null);
+            super(TruffleLanguage.class, null, null);
             this.body = body;
         }
 

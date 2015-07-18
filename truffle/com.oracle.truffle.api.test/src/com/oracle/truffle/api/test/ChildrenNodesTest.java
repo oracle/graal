@@ -71,7 +71,7 @@ public class ChildrenNodesTest {
         @Children private final TestChildNode[] children;
 
         public TestRootNode(TestChildNode[] children) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.children = children;
         }
 

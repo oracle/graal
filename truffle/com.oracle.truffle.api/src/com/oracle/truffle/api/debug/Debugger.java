@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.api.debug;
 
 import java.io.*;
 import java.util.*;
@@ -30,16 +30,16 @@ import java.util.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.api.vm.TruffleVM.Language;
-import com.oracle.truffle.tools.debug.engine.DebugExecutionSupport.DebugExecutionListener;
+import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
  * Language-agnostic engine for running Truffle languages under debugging control.
  */
-public final class DebugEngine {
+public final class Debugger {
 
     private static final boolean TRACE = false;
     private static final String TRACE_PREFIX = "DEBUG ENGINE: ";
@@ -54,6 +54,9 @@ public final class DebugEngine {
             OUT.println(TRACE_PREFIX + String.format(format, args));
         }
     }
+
+    private final TruffleVM vm;
+    private Source lastSource;
 
     interface BreakpointCallback {
 
@@ -71,15 +74,6 @@ public final class DebugEngine {
         void addWarning(String warning);
     }
 
-    private final Language language;
-
-    /**
-     * The client of this engine.
-     */
-    private final DebugClient debugClient;
-
-    private final DebugExecutionSupport executionSupport;
-
     /**
      * Implementation of line-oriented breakpoints.
      */
@@ -95,14 +89,8 @@ public final class DebugEngine {
      */
     private DebugExecutionContext debugContext;
 
-    /**
-     * @param debugClient
-     * @param language
-     */
-    private DebugEngine(DebugClient debugClient, Language language) {
-        this.debugClient = debugClient;
-        this.language = language;
-        this.executionSupport = new DebugExecutionSupport(language.getShortName(), language.getDebugSupport());
+    Debugger(TruffleVM vm) {
+        this.vm = vm;
 
         Source.setFileCaching(true);
 
@@ -110,29 +98,6 @@ public final class DebugEngine {
         debugContext = new DebugExecutionContext(null, null);
         prepareContinue();
         debugContext.contextTrace("START EXEC DEFAULT");
-
-        executionSupport.addExecutionListener(new DebugExecutionListener() {
-
-            public void executionStarted(Source source, boolean stepInto) {
-                // Push a new execution context onto stack
-                DebugEngine.this.debugContext = new DebugExecutionContext(source, DebugEngine.this.debugContext);
-                if (stepInto) {
-                    DebugEngine.this.prepareStepInto(1);
-                } else {
-                    DebugEngine.this.prepareContinue();
-                }
-                DebugEngine.this.debugContext.contextTrace("START EXEC ");
-            }
-
-            public void executionEnded() {
-                DebugEngine.this.lineBreaks.disposeOneShots();
-                DebugEngine.this.tagBreaks.disposeOneShots();
-                DebugEngine.this.debugContext.clearStrategy();
-                DebugEngine.this.debugContext.contextTrace("END EXEC ");
-                // Pop the stack of execution contexts.
-                DebugEngine.this.debugContext = DebugEngine.this.debugContext.predecessor;
-            }
-        });
 
         final BreakpointCallback breakpointCallback = new BreakpointCallback() {
 
@@ -150,61 +115,39 @@ public final class DebugEngine {
             }
         };
 
-        this.lineBreaks = new LineBreakpointFactory(executionSupport, breakpointCallback, warningLog);
-
-        this.tagBreaks = new TagBreakpointFactory(executionSupport, breakpointCallback, warningLog);
+        this.lineBreaks = new LineBreakpointFactory(this, breakpointCallback, warningLog);
+        this.tagBreaks = new TagBreakpointFactory(this, breakpointCallback, warningLog);
     }
 
-    public static DebugEngine create(DebugClient debugClient, Language language) {
-        return new DebugEngine(debugClient, language);
-    }
-
-    /**
-     * Runs a script. If "StepInto" is requested, halts at the first location tagged as a
-     * {@linkplain StandardSyntaxTag#STATEMENT STATEMENT}.
-     *
-     * @throws DebugException if an unexpected failure occurs
-     */
-    public void run(Source source, boolean stepInto) throws DebugException {
-        executionSupport.run(source, stepInto);
+    TruffleVM vm() {
+        return vm;
     }
 
     /**
      * Sets a breakpoint to halt at a source line.
      *
-     * @param groupId
      * @param ignoreCount number of hits to ignore before halting
      * @param lineLocation where to set the breakpoint (source, line number)
      * @param oneShot breakpoint disposes itself after fist hit, if {@code true}
      * @return a new breakpoint, initially enabled
-     * @throws DebugException if the breakpoint can not be set.
+     * @throws IOException if the breakpoint can not be set.
      */
     @TruffleBoundary
-    public LineBreakpoint setLineBreakpoint(int groupId, int ignoreCount, LineLocation lineLocation, boolean oneShot) throws DebugException {
-        return lineBreaks.create(groupId, ignoreCount, lineLocation, oneShot);
+    public Breakpoint setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
+        return lineBreaks.create(ignoreCount, lineLocation, oneShot);
     }
 
     /**
      * Sets a breakpoint to halt at any node holding a specified {@link SyntaxTag}.
      *
-     * @param groupId
      * @param ignoreCount number of hits to ignore before halting
      * @param oneShot if {@code true} breakpoint removes it self after a hit
      * @return a new breakpoint, initially enabled
-     * @throws DebugException if the breakpoint already set
+     * @throws IOException if the breakpoint already set
      */
     @TruffleBoundary
-    public Breakpoint setTagBreakpoint(int groupId, int ignoreCount, SyntaxTag tag, boolean oneShot) throws DebugException {
-        return tagBreaks.create(groupId, ignoreCount, tag, oneShot);
-    }
-
-    /**
-     * Finds a breakpoint created by this engine, but not yet disposed, by id.
-     */
-    @TruffleBoundary
-    public Breakpoint findBreakpoint(long id) {
-        final Breakpoint breakpoint = lineBreaks.find(id);
-        return breakpoint == null ? tagBreaks.find(id) : breakpoint;
+    public Breakpoint setTagBreakpoint(int ignoreCount, SyntaxTag tag, boolean oneShot) throws IOException {
+        return tagBreaks.create(ignoreCount, tag, oneShot);
     }
 
     /**
@@ -232,7 +175,7 @@ public final class DebugEngine {
      * </ul>
      */
     @TruffleBoundary
-    public void prepareContinue() {
+    void prepareContinue() {
         debugContext.setStrategy(new Continue());
     }
 
@@ -247,16 +190,15 @@ public final class DebugEngine {
      * STATMENT}, <strong>or:</strong></li>
      * <li>execution completes.</li>
      * </ol>
-     * <li>
-     * StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps), and
-     * reverts by default to Continue mode.</li>
+     * <li>StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps),
+     * and reverts by default to Continue mode.</li>
      * </ul>
      *
      * @param stepCount the number of times to perform StepInto before halting
      * @throws IllegalArgumentException if the specified number is {@code <= 0}
      */
     @TruffleBoundary
-    public void prepareStepInto(int stepCount) {
+    void prepareStepInto(int stepCount) {
         if (stepCount <= 0) {
             throw new IllegalArgumentException();
         }
@@ -278,7 +220,7 @@ public final class DebugEngine {
      * </ul>
      */
     @TruffleBoundary
-    public void prepareStepOut() {
+    void prepareStepOut() {
         debugContext.setStrategy(new StepOut());
     }
 
@@ -302,7 +244,7 @@ public final class DebugEngine {
      * @throws IllegalArgumentException if the specified number is {@code <= 0}
      */
     @TruffleBoundary
-    public void prepareStepOver(int stepCount) {
+    void prepareStepOver(int stepCount) {
         if (stepCount <= 0) {
             throw new IllegalArgumentException();
         }
@@ -310,21 +252,27 @@ public final class DebugEngine {
     }
 
     /**
-     * Gets the stack frames from the (topmost) halted Truffle execution; {@code null} null if no
-     * execution.
-     */
-    @TruffleBoundary
-    public List<FrameDebugDescription> getStack() {
-        return debugContext == null ? null : debugContext.getFrames();
-    }
-
-    /**
-     * Evaluates code in a halted execution context, at top-level if <code>mFrame==null</code>.
+     * Creates a language-specific factory to produce instances of {@link AdvancedInstrumentRoot}
+     * that, when executed, computes the result of a textual expression in the language; used to
+     * create an
+     * {@linkplain Instrument#create(AdvancedInstrumentResultListener, AdvancedInstrumentRootFactory, Class, String)
+     * Advanced Instrument}.
      *
-     * @throws DebugException
+     * @param expr a guest language expression
+     * @param resultListener optional listener for the result of each evaluation.
+     * @return a new factory
+     * @throws IOException if the factory cannot be created, for example if the expression is badly
+     *             formed.
      */
-    public Object eval(Source source, Node node, MaterializedFrame mFrame) throws DebugException {
-        return executionSupport.evalInContext(source, node, mFrame);
+    AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(Probe probe, String expr, AdvancedInstrumentResultListener resultListener) throws IOException {
+        try {
+            Class<? extends TruffleLanguage> langugageClass = ACCESSOR.findLanguage(probe);
+            TruffleLanguage l = ACCESSOR.findLanguage(vm, langugageClass);
+            DebugSupportProvider dsp = ACCESSOR.getDebugSupport(l);
+            return dsp.createAdvancedInstrumentRootFactory(expr, resultListener);
+        } catch (DebugSupportException ex) {
+            throw new IOException(ex);
+        }
     }
 
     /**
@@ -436,7 +384,7 @@ public final class DebugEngine {
      * </ol>
      * </ul>
      *
-     * @see DebugEngine#prepareStepInto(int)
+     * @see Debugger#prepareStepInto(int)
      */
     private final class StepInto extends StepStrategy {
         private int unfinishedStepCount;
@@ -499,7 +447,7 @@ public final class DebugEngine {
      * </ol>
      * </ul>
      *
-     * @see DebugEngine#prepareStepOut()
+     * @see Debugger#prepareStepOut()
      */
     private final class StepOut extends StepStrategy {
 
@@ -685,11 +633,6 @@ public final class DebugEngine {
          */
         private MaterializedFrame haltedFrame;
 
-        /**
-         * Cached list of stack frames when halted; null if running.
-         */
-        private List<FrameDebugDescription> frames = new ArrayList<>();
-
         private DebugExecutionContext(Source executionSource, DebugExecutionContext previousContext) {
             this.source = executionSource;
             this.predecessor = previousContext;
@@ -740,7 +683,6 @@ public final class DebugEngine {
         @TruffleBoundary
         void halt(Node astNode, MaterializedFrame mFrame, boolean before, String haltReason) {
             assert running;
-            assert frames.isEmpty();
             assert haltedNode == null;
             assert haltedFrame == null;
 
@@ -753,29 +695,13 @@ public final class DebugEngine {
             // Clean up, just in cased the one-shot breakpoints got confused
             lineBreaks.disposeOneShots();
 
-            // Map the Truffle stack for this execution, ignore nested executions
-            // The top (current) frame is not produced by the iterator.
-            frames.add(new FrameDebugDescription(0, haltedNode, Truffle.getRuntime().getCurrentFrame()));
             final int contextStackDepth = currentStackDepth() - contextStackBase;
-            final int[] frameCount = {1};
-            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-                @Override
-                public FrameInstance visitFrame(FrameInstance frameInstance) {
-                    if (frameCount[0] < contextStackDepth) {
-                        frames.add(new FrameDebugDescription(frameCount[0], frameInstance.getCallNode(), frameInstance));
-                        frameCount[0] = frameCount[0] + 1;
-                        return null;
-                    }
-                    return frameInstance;
-                }
-            });
-
             if (TRACE) {
                 final String reason = haltReason == null ? "" : haltReason + "";
                 final String where = before ? "BEFORE" : "AFTER";
                 contextTrace("HALT %s : (%s) stack base=%d", where, reason, contextStackBase);
                 contextTrace("CURRENT STACK:");
-                printStack(OUT);
+                // printStack(OUT);
             }
 
             final List<String> recentWarnings = new ArrayList<>(warnings);
@@ -783,7 +709,7 @@ public final class DebugEngine {
 
             try {
                 // Pass control to the debug client with current execution suspended
-                debugClient.haltedAt(astNode, mFrame, recentWarnings);
+                ACCESSOR.dispatchEvent(vm, new SuspendedEvent(Debugger.this, astNode, mFrame, recentWarnings, contextStackDepth));
                 // Debug client finished normally, execution resumes
                 // Presume that the client has set a new strategy (or default to Continue)
                 running = true;
@@ -793,39 +719,28 @@ public final class DebugEngine {
             } finally {
                 haltedNode = null;
                 haltedFrame = null;
-                frames.clear();
             }
 
-        }
-
-        List<FrameDebugDescription> getFrames() {
-            return Collections.unmodifiableList(frames);
         }
 
         void logWarning(String warning) {
             warnings.add(warning);
         }
 
-        // For tracing
-        private void printStack(PrintStream stream) {
-            getFrames();
-            if (frames == null) {
-                stream.println("<empty stack>");
-            } else {
-                final Visualizer visualizer = language.getDebugSupport().getVisualizer();
-                for (FrameDebugDescription frameDesc : frames) {
-                    final StringBuilder sb = new StringBuilder("    frame " + Integer.toString(frameDesc.index()));
-                    sb.append(":at " + visualizer.displaySourceLocation(frameDesc.node()));
-                    sb.append(":in '" + visualizer.displayMethodName(frameDesc.node()) + "'");
-                    stream.println(sb.toString());
-                }
-            }
-        }
+        /*
+         * private void printStack(PrintStream stream) { getFrames(); if (frames == null) {
+         * stream.println("<empty stack>"); } else { final Visualizer visualizer =
+         * provider.getVisualizer(); for (FrameDebugDescription frameDesc : frames) { final
+         * StringBuilder sb = new StringBuilder("    frame " + Integer.toString(frameDesc.index()));
+         * sb.append(":at " + visualizer.displaySourceLocation(frameDesc.node())); sb.append(":in '"
+         * + visualizer.displayMethodName(frameDesc.node()) + "'"); stream.println(sb.toString()); }
+         * } }
+         */
 
         void contextTrace(String format, Object... args) {
             if (TRACE) {
                 final String srcName = (source != null) ? source.getName() : "no source";
-                DebugEngine.trace("<%d> %s (%s)", level, String.format(format, args), srcName);
+                Debugger.trace("<%d> %s (%s)", level, String.format(format, args), srcName);
             }
         }
     }
@@ -848,4 +763,69 @@ public final class DebugEngine {
         return count[0] == 0 ? 0 : count[0] + 1;
 
     }
+
+    void executionStarted(Source source) {
+        Source execSource = source;
+        if (execSource == null) {
+            execSource = lastSource;
+        } else {
+            lastSource = execSource;
+        }
+        // Push a new execution context onto stack
+        debugContext = new DebugExecutionContext(execSource, debugContext);
+        prepareContinue();
+        debugContext.contextTrace("START EXEC ");
+        ACCESSOR.dispatchEvent(vm, new ExecutionEvent(this));
+    }
+
+    void executionEnded() {
+        lineBreaks.disposeOneShots();
+        tagBreaks.disposeOneShots();
+        debugContext.clearStrategy();
+        debugContext.contextTrace("END EXEC ");
+        // Pop the stack of execution contexts.
+        debugContext = debugContext.predecessor;
+    }
+
+    private static final class AccessorDebug extends Accessor {
+        @Override
+        protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
+            final Debugger d;
+            if (fillIn[0] == null) {
+                d = fillIn[0] = new Debugger(vm);
+            } else {
+                d = fillIn[0];
+            }
+            d.executionStarted(s);
+            return new Closeable() {
+                @Override
+                public void close() throws IOException {
+                    d.executionEnded();
+                }
+            };
+        }
+
+        @Override
+        protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
+            return super.findLanguage(probe);
+        }
+
+        @Override
+        protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+            return super.findLanguage(vm, languageClass);
+        }
+
+        @Override
+        protected DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+            return super.getDebugSupport(l);
+        }
+
+        @Override
+        protected void dispatchEvent(TruffleVM vm, Object event) {
+            super.dispatchEvent(vm, event);
+        }
+    }
+
+    // registers into Accessor.DEBUG
+    private static final AccessorDebug ACCESSOR = new AccessorDebug();
 }

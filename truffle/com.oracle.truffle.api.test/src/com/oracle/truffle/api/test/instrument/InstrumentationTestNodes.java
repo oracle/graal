@@ -27,6 +27,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.ProbeNode.WrapperNode;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.test.TestingLanguage;
 
 /**
  * Tests instrumentation where a client can attach a node that gets attached into the AST.
@@ -147,7 +148,7 @@ class InstrumentationTestNodes {
          * tests run in the same environment.
          */
         public TestRootNode(TestLanguageNode body) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.body = body;
         }
 

@@ -65,7 +65,7 @@ public class FinalFieldTest {
         @Children private final TestChildNode[] children;
 
         public TestRootNode(TestChildNode[] children) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.children = children;
         }
 

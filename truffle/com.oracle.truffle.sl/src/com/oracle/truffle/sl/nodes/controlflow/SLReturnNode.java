@@ -69,7 +69,9 @@ public final class SLReturnNode extends SLStatementNode {
         if (valueNode != null) {
             result = valueNode.executeGeneric(frame);
         } else {
-            /* Return statement that was not followed by an expression, so return the SL null value. */
+            /*
+             * Return statement that was not followed by an expression, so return the SL null value.
+             */
             result = SLNull.SINGLETON;
         }
         throw new SLReturnException(result);

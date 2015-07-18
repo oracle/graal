@@ -42,8 +42,8 @@ import com.oracle.truffle.api.source.*;
  * </ol>
  * <p>
  * Client-oriented documentation for the use of Instruments is available online at <a
- * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events"
- * >https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
+ * HREF="https://wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events" >https://
+ * wiki.openjdk.java.net/display/Graal/Listening+for+Execution+Events</a>
  * <p>
  * The implementation of Instruments is complicated by the requirement that Truffle be able to clone
  * ASTs at any time. In particular, any instrumentation-supporting Nodes that have been attached to

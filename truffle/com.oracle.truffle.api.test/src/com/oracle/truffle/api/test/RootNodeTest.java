@@ -60,7 +60,7 @@ public class RootNodeTest {
     class TestRootNode extends RootNode {
 
         public TestRootNode() {
-            super(null);
+            super(TestingLanguage.class, null, null);
         }
 
         @Override

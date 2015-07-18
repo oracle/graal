@@ -187,8 +187,8 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     sep = ", ";
                 }
                 // name mismatch
-                throw new InvalidExpressionException(String.format("The method %s in the type %s is not applicable for the arguments %s.", //
-                                ElementUtils.getReadableSignature(foundWithName), //
+                throw new InvalidExpressionException(String.format("The method %s in the type %s is not applicable for the arguments %s.",   //
+                                ElementUtils.getReadableSignature(foundWithName),   //
                                 ElementUtils.getSimpleName((TypeElement) foundWithName.getEnclosingElement()), arguments.toString()));
             }
         }

@@ -239,8 +239,8 @@ public class SLNodeFactory {
     }
 
     /**
-     * Returns the corresponding subclass of {@link SLExpressionNode} for binary expressions.
-     * </br>These nodes are currently not instrumented.
+     * Returns the corresponding subclass of {@link SLExpressionNode} for binary expressions. </br>
+     * These nodes are currently not instrumented.
      *
      * @param opToken The operator of the binary expression
      * @param leftNode The left node of the expression

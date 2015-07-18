@@ -245,7 +245,7 @@ public class GraphPrintVisitor {
     protected void setNodeProperty(Object node, String propertyName, Object value) {
         Element nodeElem = getElementByObject(node);
         Element propElem = getPropertyElement(node, propertyName); // if property exists, replace
-                                                                   // its value
+        // its value
         if (null == propElem) { // if property doesn't exist, create one
             propElem = dom.createElement("p");
             propElem.setAttribute("name", propertyName);

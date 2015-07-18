@@ -74,7 +74,7 @@ public class SLDefaultVisualizer extends DefaultVisualizer {
         RootNode root = node.getRootNode();
         if (root instanceof SLRootNode) {
             SLRootNode slRootNode = (SLRootNode) root;
-            return slRootNode.toString();
+            return slRootNode.getName();
 
         }
         return "unknown";
@@ -92,7 +92,7 @@ public class SLDefaultVisualizer extends DefaultVisualizer {
 
     @Override
     public String displayValue(Object value, int trim) {
-        if (value == SLNull.SINGLETON) {
+        if (value == null || value == SLNull.SINGLETON) {
             return "null";
         }
         return trim(value.toString(), trim);

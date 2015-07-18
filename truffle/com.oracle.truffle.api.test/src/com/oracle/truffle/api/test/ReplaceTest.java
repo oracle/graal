@@ -84,7 +84,7 @@ public class ReplaceTest {
         @Children private final ValueNode[] children;
 
         public TestRootNode(ValueNode[] children) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.children = children;
         }
 

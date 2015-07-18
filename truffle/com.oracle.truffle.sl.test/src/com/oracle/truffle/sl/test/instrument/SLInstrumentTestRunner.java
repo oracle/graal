@@ -56,12 +56,9 @@ import org.junit.runners.model.*;
 
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.factory.*;
+import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
-import com.oracle.truffle.sl.parser.*;
-import com.oracle.truffle.sl.runtime.*;
 import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
 
 /**
@@ -80,7 +77,6 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
     private static final String ASSIGNMENT_VALUE_SUFFIX = "_assnCount";
 
     private static final String LF = System.getProperty("line.separator");
-    private static SLContext slContext;
 
     static class InstrumentTestCase {
         protected final Description name;
@@ -227,10 +223,10 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
             // We use the name of the file to determine what visitor to attach to it.
             if (testCase.baseName.endsWith(ASSIGNMENT_VALUE_SUFFIX)) {
                 // Set up the execution context for Simple and register our two listeners
-                slContext = SLContextFactory.create(new BufferedReader(new StringReader(testCase.testInput)), printer);
+                TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
 
-                final Source source = Source.fromText(readAllLines(testCase.path), testCase.sourceName);
-                Parser.parseSL(slContext, source);
+                final String src = readAllLines(testCase.path);
+                vm.eval("application/x-sl", src);
 
                 // Attach an instrument to every probe tagged as an assignment
                 for (Probe probe : Probe.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {
@@ -238,8 +234,8 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                     probe.attach(Instrument.create(slPrintAssigmentValueListener, "SL print assignment value"));
                 }
 
-                SLFunction main = slContext.getFunctionRegistry().lookup("main");
-                main.getCallTarget().call();
+                TruffleVM.Symbol main = vm.findGlobalSymbol("main");
+                main.invoke(null);
             } else {
                 notifier.fireTestFailure(new Failure(testCase.name, new UnsupportedOperationException("No instrumentation found.")));
             }

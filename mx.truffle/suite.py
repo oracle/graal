@@ -269,19 +269,10 @@ suite = {
       "workingSets" : "Truffle,Tools",
     },
 
-    "com.oracle.truffle.tools.debug.engine" : {
-      "subDir" : "truffle",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.tools"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.7",
-      "workingSets" : "Truffle,Tools",
-    },
-
     "com.oracle.truffle.tools.debug.shell" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.tools.debug.engine",
+      "dependencies" : ["com.oracle.truffle.tools",
                         "JLINE"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -306,7 +297,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.tck",
-        "com.oracle.truffle.sl"
+        "com.oracle.truffle.sl",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",

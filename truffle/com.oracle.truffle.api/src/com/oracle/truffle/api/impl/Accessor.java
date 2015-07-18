@@ -31,6 +31,8 @@ import java.util.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 
@@ -40,6 +42,10 @@ import com.oracle.truffle.api.vm.*;
 public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
+    private static Accessor NODES;
+    private static Accessor INSTRUMENT;
+    private static Accessor DEBUG;
+
     static {
         TruffleLanguage lng = new TruffleLanguage(null) {
             @Override
@@ -73,6 +79,14 @@ public abstract class Accessor {
             }
         };
         lng.hashCode();
+        new Node(null) {
+        }.getRootNode();
+
+        try {
+            Class.forName(Debugger.class.getName(), true, Debugger.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     protected Accessor() {
@@ -81,6 +95,21 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             API = this;
+        } else if (this.getClass().getSimpleName().endsWith("Nodes")) {
+            if (NODES != null) {
+                throw new IllegalStateException();
+            }
+            NODES = this;
+        } else if (this.getClass().getSimpleName().endsWith("Instrument")) {
+            if (INSTRUMENT != null) {
+                throw new IllegalStateException();
+            }
+            INSTRUMENT = this;
+        } else if (this.getClass().getSimpleName().endsWith("Debug")) {
+            if (DEBUG != null) {
+                throw new IllegalStateException();
+            }
+            DEBUG = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -117,16 +146,36 @@ public abstract class Accessor {
         return API.getDebugSupport(l);
     }
 
-    protected Object invoke(Object obj, Object[] args) throws IOException {
+    protected Object invoke(TruffleLanguage lang, Object obj, Object[] args) throws IOException {
         for (SymbolInvoker si : ServiceLoader.load(SymbolInvoker.class)) {
-            return si.invoke(obj, args);
+            return si.invoke(lang, obj, args);
         }
         throw new IOException("No symbol invoker found!");
     }
 
+    protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+        return NODES.findLanguage(n);
+    }
+
+    protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
+        return INSTRUMENT.findLanguage(probe);
+    }
+
+    protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+        return API.findLanguage(vm, languageClass);
+    }
+
+    protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
+        return DEBUG.executionStart(vm, fillIn, s);
+    }
+
+    protected void dispatchEvent(TruffleVM vm, Object event) {
+        SPI.dispatchEvent(vm, event);
+    }
+
     /**
      * Don't call me. I am here only to let NetBeans debug any Truffle project.
-     * 
+     *
      * @param args
      */
     public static void main(String... args) {

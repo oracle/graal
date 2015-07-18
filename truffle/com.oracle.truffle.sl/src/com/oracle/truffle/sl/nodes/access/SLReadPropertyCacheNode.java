@@ -69,8 +69,8 @@ public abstract class SLReadPropertyCacheNode extends Node {
      */
     @Specialization(limit = "CACHE_LIMIT", guards = {"longLocation != null", "shape.check(receiver)"}, assumptions = "shape.getValidAssumption()")
     @SuppressWarnings("unused")
-    protected long doCachedLong(DynamicObject receiver, //
-                    @Cached("receiver.getShape()") Shape shape, //
+    protected long doCachedLong(DynamicObject receiver,   //
+                    @Cached("receiver.getShape()") Shape shape,   //
                     @Cached("getLongLocation(shape)") LongLocation longLocation) {
         return longLocation.getLong(receiver, true);
     }
@@ -88,8 +88,8 @@ public abstract class SLReadPropertyCacheNode extends Node {
      * contain all long cache entries.
      */
     @Specialization(limit = "CACHE_LIMIT", contains = "doCachedLong", guards = "shape.check(receiver)", assumptions = "shape.getValidAssumption()")
-    protected static Object doCachedObject(DynamicObject receiver, //
-                    @Cached("receiver.getShape()") Shape shape, //
+    protected static Object doCachedObject(DynamicObject receiver,   //
+                    @Cached("receiver.getShape()") Shape shape,   //
                     @Cached("shape.getProperty(propertyName)") Property property) {
         if (property == null) {
             return SLNull.SINGLETON;

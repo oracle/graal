@@ -896,7 +896,6 @@ public class SimpleREPLClient implements REPLClient {
                     sb.append("@" + message.get(REPLMessage.INFO_VALUE));
                     sb.append(" (state=" + message.get(REPLMessage.BREAKPOINT_STATE));
                     if (verboseBreakpointInfoOption.getBool()) {
-                        sb.append(", group=" + Integer.parseInt(message.get(REPLMessage.BREAKPOINT_GROUP_ID)));
                         sb.append(", hits=" + Integer.parseInt(message.get(REPLMessage.BREAKPOINT_HIT_COUNT)));
                         sb.append(", ignore=" + Integer.parseInt(message.get(REPLMessage.BREAKPOINT_IGNORE_COUNT)));
                     }

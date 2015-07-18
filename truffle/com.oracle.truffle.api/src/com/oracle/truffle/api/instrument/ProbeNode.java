@@ -26,6 +26,7 @@ package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.Instrument.AbstractInstrumentNode;
 import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
@@ -120,7 +121,8 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
     public static Probe insertProbe(WrapperNode wrapper) {
         final SourceSection sourceSection = wrapper.getChild().getSourceSection();
         final ProbeNode probeNode = new ProbeNode(); // private constructor
-        probeNode.probe = new Probe(probeNode, sourceSection);  // package private access
+        Class<? extends TruffleLanguage> l = Probe.ACCESSOR.findLanguage(wrapper.getChild().getRootNode());
+        probeNode.probe = new Probe(l, probeNode, sourceSection);  // package private access
         wrapper.insertProbe(probeNode);
         return probeNode.probe;
     }

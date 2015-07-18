@@ -65,7 +65,7 @@ public class ArgumentsTest {
         @Children private final TestArgumentNode[] children;
 
         TestRootNode(TestArgumentNode[] children) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.children = children;
         }
 

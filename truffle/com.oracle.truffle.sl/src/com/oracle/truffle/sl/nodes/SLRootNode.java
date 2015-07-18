@@ -45,6 +45,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
 import com.oracle.truffle.sl.runtime.*;
@@ -70,7 +71,7 @@ public final class SLRootNode extends RootNode {
     @CompilationFinal private boolean isCloningAllowed;
 
     public SLRootNode(SLContext context, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, String name) {
-        super(null, frameDescriptor);
+        super(SLLanguage.class, null, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
         this.context = context;

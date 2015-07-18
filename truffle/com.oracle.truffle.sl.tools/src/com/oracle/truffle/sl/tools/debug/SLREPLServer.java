@@ -40,16 +40,19 @@
  */
 package com.oracle.truffle.sl.tools.debug;
 
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.SuspendedEvent;
+
 import java.util.*;
 
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
 import com.oracle.truffle.sl.*;
-import com.oracle.truffle.tools.debug.engine.*;
+import com.oracle.truffle.sl.nodes.instrument.SLDefaultVisualizer;
 import com.oracle.truffle.tools.debug.shell.*;
 import com.oracle.truffle.tools.debug.shell.client.*;
 import com.oracle.truffle.tools.debug.shell.server.*;
@@ -58,12 +61,11 @@ import com.oracle.truffle.tools.debug.shell.server.*;
  * Instantiation of the "server" side of the "REPL*" debugger for the Simple language.
  * <p>
  * The SL parser is not equipped to parse program fragments, so any debugging functions that depend
- * on this are not supported, for example {@link DebugEngine#eval(Source, Node, MaterializedFrame)}
- * and {@link Breakpoint#setCondition(String)}.
+ * on this are not supported, for example "eval" and breakpoint conditions.
  *
  * @see SimpleREPLClient
  */
-public final class SLREPLServer implements REPLServer {
+public final class SLREPLServer extends REPLServer {
 
     // TODO (mlvdv) remove when there's a better way to express this dependency
     @SuppressWarnings("unused") private static final Class<SLLanguage> DYNAMIC_DEPENDENCY = com.oracle.truffle.sl.SLLanguage.class;
@@ -83,7 +85,8 @@ public final class SLREPLServer implements REPLServer {
     }
 
     private final Language language;
-    private final DebugEngine slDebugEngine;
+    private final TruffleVM vm;
+    private Debugger db;
     private final String statusPrefix;
     private final Map<String, REPLHandler> handlerMap = new HashMap<>();
     private SLServerContext currentServerContext;
@@ -118,13 +121,25 @@ public final class SLREPLServer implements REPLServer {
         add(REPLHandler.TRUFFLE_HANDLER);
         add(REPLHandler.TRUFFLE_NODE_HANDLER);
 
-        TruffleVM vm = TruffleVM.newVM().build();
-        this.language = vm.getLanguages().get("application/x-sl");
+        EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
+            @Override
+            protected void on(SuspendedEvent ev) {
+                SLREPLServer.this.haltedAt(ev);
+            }
+        };
+        EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+            @Override
+            protected void on(ExecutionEvent event) {
+                event.prepareStepInto();
+                db = event.getDebugger();
+            }
+        };
+
+        TruffleVM newVM = TruffleVM.newVM().onEvent(onHalted).onEvent(onExec).build();
+        this.language = newVM.getLanguages().get("application/x-sl");
         assert language != null;
 
-        final SLREPLDebugClient slDebugClient = new SLREPLDebugClient(language);
-        this.slDebugEngine = DebugEngine.create(slDebugClient, language);
-
+        this.vm = newVM;
         this.statusPrefix = language.getShortName() + " REPL:";
     }
 
@@ -132,9 +147,10 @@ public final class SLREPLServer implements REPLServer {
         this.replClient = replClient;
     }
 
+    @Override
     public REPLMessage start() {
 
-        this.currentServerContext = new SLServerContext(null, null, null);
+        this.currentServerContext = new SLServerContext(null, null);
 
         // SL doesn't load modules (like other languages), so we just return a success
         final REPLMessage reply = new REPLMessage();
@@ -143,6 +159,7 @@ public final class SLREPLServer implements REPLServer {
         return reply;
     }
 
+    @Override
     public REPLMessage[] receive(REPLMessage request) {
         if (currentServerContext == null) {
             final REPLMessage message = new REPLMessage();
@@ -161,8 +178,8 @@ public final class SLREPLServer implements REPLServer {
 
         private final SLServerContext predecessor;
 
-        public SLServerContext(SLServerContext predecessor, Node astNode, MaterializedFrame mFrame) {
-            super(predecessor == null ? 0 : predecessor.getLevel() + 1, astNode, mFrame);
+        public SLServerContext(SLServerContext predecessor, SuspendedEvent event) {
+            super(predecessor == null ? 0 : predecessor.getLevel() + 1, event);
             this.predecessor = predecessor;
         }
 
@@ -188,66 +205,68 @@ public final class SLREPLServer implements REPLServer {
         }
 
         @Override
-        public DebugEngine getDebugEngine() {
-            return slDebugEngine;
+        public Visualizer getVisualizer() {
+            return new SLDefaultVisualizer();
+        }
+
+        @Override
+        public TruffleVM vm() {
+            return vm;
+        }
+
+        @Override
+        protected Debugger db() {
+            return db;
+        }
+
+        @Override
+        public void registerBreakpoint(Breakpoint breakpoint) {
+            SLREPLServer.this.registerBreakpoint(breakpoint);
+        }
+
+        @Override
+        public Breakpoint findBreakpoint(int id) {
+            return SLREPLServer.this.findBreakpoint(id);
+        }
+
+        @Override
+        public int getBreakpointID(Breakpoint breakpoint) {
+            return SLREPLServer.this.getBreakpointID(breakpoint);
         }
 
     }
 
-    /**
-     * Specialize the standard SL debug context by notifying the REPL client when execution is
-     * halted, e.g. at a breakpoint.
-     * <p>
-     * Before notification, the server creates a new context at the halted location, in which
-     * subsequent evaluations take place until such time as the client says to "continue".
-     * <p>
-     * This implementation "cheats" the intended asynchronous architecture by calling back directly
-     * to the client with the notification.
-     */
-    private final class SLREPLDebugClient implements DebugClient {
+    void haltedAt(SuspendedEvent event) {
+        // Create and push a new debug context where execution is halted
+        currentServerContext = new SLServerContext(currentServerContext, event);
 
-        private final Language language;
-
-        SLREPLDebugClient(Language language) {
-            this.language = language;
-        }
-
-        public void haltedAt(Node node, MaterializedFrame mFrame, List<String> warnings) {
-            // Create and push a new debug context where execution is halted
-            currentServerContext = new SLServerContext(currentServerContext, node, mFrame);
-
-            // Message the client that execution is halted and is in a new debugging context
-            final REPLMessage message = new REPLMessage();
-            message.put(REPLMessage.OP, REPLMessage.STOPPED);
-            final SourceSection src = node.getSourceSection();
-            final Source source = src.getSource();
-            message.put(REPLMessage.SOURCE_NAME, source.getName());
-            message.put(REPLMessage.FILE_PATH, source.getPath());
-            message.put(REPLMessage.LINE_NUMBER, Integer.toString(src.getStartLine()));
-            message.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
-            message.put(REPLMessage.DEBUG_LEVEL, Integer.toString(currentServerContext.getLevel()));
-            if (!warnings.isEmpty()) {
-                final StringBuilder sb = new StringBuilder();
-                for (String warning : warnings) {
-                    sb.append(warning + "\n");
-                }
-                message.put(REPLMessage.WARNINGS, sb.toString());
+        // Message the client that execution is halted and is in a new debugging context
+        final REPLMessage message = new REPLMessage();
+        message.put(REPLMessage.OP, REPLMessage.STOPPED);
+        final SourceSection src = event.getNode().getSourceSection();
+        final Source source = src.getSource();
+        message.put(REPLMessage.SOURCE_NAME, source.getName());
+        message.put(REPLMessage.FILE_PATH, source.getPath());
+        message.put(REPLMessage.LINE_NUMBER, Integer.toString(src.getStartLine()));
+        message.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
+        message.put(REPLMessage.DEBUG_LEVEL, Integer.toString(currentServerContext.getLevel()));
+        List<String> warnings = event.getRecentWarnings();
+        if (!warnings.isEmpty()) {
+            final StringBuilder sb = new StringBuilder();
+            for (String warning : warnings) {
+                sb.append(warning + "\n");
             }
-            try {
-                // Cheat with synchrony: call client directly about entering a nested debugging
-                // context.
-                replClient.halted(message);
-            } finally {
-                // Returns when "continue" is called in the new debugging context
-
-                // Pop the debug context, and return so that the old context will continue
-                currentServerContext = currentServerContext.predecessor;
-            }
+            message.put(REPLMessage.WARNINGS, sb.toString());
         }
+        try {
+            // Cheat with synchrony: call client directly about entering a nested debugging
+            // context.
+            replClient.halted(message);
+        } finally {
+            // Returns when "continue" is called in the new debugging context
 
-        public Language getLanguage() {
-            return language;
+            // Pop the debug context, and return so that the old context will continue
+            currentServerContext = currentServerContext.predecessor;
         }
     }
-
 }

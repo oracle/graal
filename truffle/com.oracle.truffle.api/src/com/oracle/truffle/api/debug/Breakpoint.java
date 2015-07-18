@@ -22,17 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
+import java.io.IOException;
 
 public abstract class Breakpoint {
 
     /**
      * A general model of the states occupied by a breakpoint during its lifetime.
      */
-    public enum BreakpointState {
+    public enum State {
 
         /**
          * Not attached, enabled.
@@ -75,7 +76,7 @@ public abstract class Breakpoint {
 
         private final String name;
 
-        BreakpointState(String name) {
+        State(String name) {
             this.name = name;
         }
 
@@ -90,38 +91,18 @@ public abstract class Breakpoint {
 
     }
 
-    private static int nextBreakpointId = 0;
-
-    private final int id;
-    private final int groupId;
     private final boolean isOneShot;
 
     private int ignoreCount;
 
-    private int hitCount = 0;
+    private int hitCount;
 
-    private BreakpointState state;
+    private State state;
 
-    Breakpoint(BreakpointState state, int groupId, int ignoreCount, boolean isOneShot) {
+    Breakpoint(State state, int ignoreCount, boolean isOneShot) {
         this.state = state;
-        this.id = nextBreakpointId++;
-        this.groupId = groupId;
         this.isOneShot = isOneShot;
         this.ignoreCount = ignoreCount;
-    }
-
-    /**
-     * Unique ID.
-     */
-    public final int getId() {
-        return id;
-    }
-
-    /**
-     * Group ID, set when created.
-     */
-    public final int getGroupId() {
-        return groupId;
     }
 
     /**
@@ -143,10 +124,10 @@ public abstract class Breakpoint {
      *
      * @param expr if non{@code -null}, a boolean expression, expressed in the guest language, to be
      *            evaluated in the lexical context at the breakpoint location.
-     * @throws DebugException if condition is invalid
+     * @throws IOException if condition is invalid
      * @throws UnsupportedOperationException if the breakpoint does not support conditions
      */
-    public abstract void setCondition(String expr) throws DebugException;
+    public abstract void setCondition(String expr) throws IOException;
 
     /**
      * Gets the string, expressed in the Guest Language, that defines the current condition on this
@@ -199,15 +180,15 @@ public abstract class Breakpoint {
      */
     public abstract String getLocationDescription();
 
-    public final BreakpointState getState() {
+    public final State getState() {
         return state;
     }
 
-    final void assertState(BreakpointState s) {
+    final void assertState(State s) {
         assert state == s;
     }
 
-    final void setState(BreakpointState state) {
+    final void setState(State state) {
         this.state = state;
     }
 

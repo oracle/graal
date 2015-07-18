@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.api.vm;
 
-import java.util.*;
-
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.vm.TruffleVM.Language;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.ExecutionEvent;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 
 /**
- * A client of the debugger where certain events should be posted.
+ * {@link TruffleVM} generates various events and delivers them to
+ * {@link TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) registered} handlers.
+ * Each handler is registered for a particular type of event. Examples of events include
+ * {@link ExecutionEvent} or {@link SuspendedEvent} useful when debugging {@link TruffleLanguage
+ * Truffle language}s.
  *
- * @see DebugEngine
+ * @param <Event> type of event to observe and handle
  */
-public interface DebugClient {
+public abstract class EventConsumer<Event> {
+    final Class<Event> type;
 
     /**
-     * Notifies client that program execution has been halted at some location; execution will
-     * resume when this method returns.
+     * Creates new handler for specified event type.
      *
-     * @param astNode AST node that is just about to be executed
-     * @param mFrame frame that will be passed to the node when executed
-     * @param warnings any warnings generated since the most recent halt.
+     * @param eventType type of events to handle
      */
-    void haltedAt(Node astNode, MaterializedFrame mFrame, List<String> warnings);
+    public EventConsumer(Class<Event> eventType) {
+        this.type = eventType;
+    }
 
     /**
-     * Gets information and services for the language being debugged.
+     * Called by the {@link TruffleVM} when event of requested type appears.
+     *
+     * @param event the instance of an event of the request type
      */
-    Language getLanguage();
+    protected abstract void on(Event event);
 }

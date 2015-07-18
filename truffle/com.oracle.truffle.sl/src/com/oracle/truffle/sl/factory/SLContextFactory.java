@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.factory;
 
+import com.oracle.truffle.sl.SLLanguage;
 import java.io.*;
 
 import com.oracle.truffle.sl.runtime.*;
@@ -49,7 +50,7 @@ public final class SLContextFactory {
     private SLContextFactory() {
     }
 
-    public static SLContext create(BufferedReader input, PrintWriter output) {
-        return new SLContext(input, output);
+    public static SLContext create(SLLanguage sl, BufferedReader input, PrintWriter output) {
+        return new SLContext(sl, input, output);
     }
 }

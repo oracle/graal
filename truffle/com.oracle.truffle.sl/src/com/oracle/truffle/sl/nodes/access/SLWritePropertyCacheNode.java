@@ -57,7 +57,7 @@ public abstract class SLWritePropertyCacheNode extends Node {
     public abstract void executeObject(DynamicObject receiver, Object value);
 
     @Specialization(guards = "location.isValid(receiver, value)", assumptions = "location.getAssumptions()")
-    public void writeCached(DynamicObject receiver, Object value, //
+    public void writeCached(DynamicObject receiver, Object value,   //
                     @Cached("createCachedWrite(receiver, value)") CachedWriteLocation location) {
         if (location.writeUnchecked(receiver, value)) {
             // write successful
@@ -68,7 +68,7 @@ public abstract class SLWritePropertyCacheNode extends Node {
 
     @Specialization(contains = "writeCached")
     @TruffleBoundary
-    public void writeGeneric(DynamicObject receiver, Object value, //
+    public void writeGeneric(DynamicObject receiver, Object value,   //
                     @Cached("new(createCachedWrite(receiver, value))") LRUCachedWriteLocation lru) {
         CachedWriteLocation location = lru.location;
         if (!location.isValid(receiver, value) || !location.areAssumptionsValid()) {

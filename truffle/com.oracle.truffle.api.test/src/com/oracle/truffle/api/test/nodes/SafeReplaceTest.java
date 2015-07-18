@@ -28,6 +28,7 @@ import org.junit.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.test.TestingLanguage;
 
 /**
  * Tests optional method for ensuring that a node replacement is type safe. Ordinary node
@@ -80,6 +81,10 @@ public class SafeReplaceTest {
         @Child TestNode child;
 
         private int executed;
+
+        public TestRootNode() {
+            super(TestingLanguage.class, null, null);
+        }
 
         @Override
         public Object execute(VirtualFrame frame) {

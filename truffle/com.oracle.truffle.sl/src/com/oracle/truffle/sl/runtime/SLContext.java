@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.local.*;
@@ -66,12 +67,14 @@ import com.oracle.truffle.sl.parser.*;
 public final class SLContext extends ExecutionContext {
     private static final Layout LAYOUT = Layout.createLayout();
 
+    private final SLLanguage language;
     private final BufferedReader input;
     private final PrintWriter output;
     private final SLFunctionRegistry functionRegistry;
     private final Shape emptyShape;
 
-    public SLContext(BufferedReader input, PrintWriter output) {
+    public SLContext(SLLanguage language, BufferedReader input, PrintWriter output) {
+        this.language = language;
         this.input = input;
         this.output = output;
         this.functionRegistry = new SLFunctionRegistry();
@@ -101,6 +104,10 @@ public final class SLContext extends ExecutionContext {
      */
     public SLFunctionRegistry getFunctionRegistry() {
         return functionRegistry;
+    }
+
+    public SLLanguage getLanguage() {
+        return language;
     }
 
     /**

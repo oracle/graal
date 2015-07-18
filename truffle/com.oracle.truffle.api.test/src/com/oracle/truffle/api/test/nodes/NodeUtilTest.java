@@ -31,6 +31,7 @@ import org.junit.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.test.TestingLanguage;
 
 public class NodeUtilTest {
 
@@ -83,6 +84,10 @@ public class NodeUtilTest {
         @Child TestNode child0;
 
         private int visited;
+
+        public TestRootNode() {
+            super(TestingLanguage.class, null, null);
+        }
 
         @Override
         public Object execute(VirtualFrame frame) {
