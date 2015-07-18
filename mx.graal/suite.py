@@ -760,6 +760,12 @@ suite = {
         "com.oracle.graal.replacements",
       ],
       "checkstyle" : "com.oracle.graal.graph",
+      "annotationProcessors" : [
+        "com.oracle.graal.nodeinfo.processor",
+        "com.oracle.graal.replacements.verifier",
+        "jdk.internal.jvmci.options.processor",
+        "jdk.internal.jvmci.service.processor",
+      ],
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Truffle",
       "jacoco" : "exclude",
