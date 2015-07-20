@@ -439,7 +439,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         protected final FrameSlot returnSlot;
 
         public InstArrayProgram(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
-            super(null, fd);
+            super(MockLanguage.class, null, fd);
             this.name = name;
             this.inst = inst;
             this.returnSlot = returnSlot;
