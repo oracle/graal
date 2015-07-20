@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.nodes;
+package com.oracle.graal.truffle.test;
 
-import com.oracle.graal.truffle.test.MockLanguage;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.TruffleLanguage;
 
-@NodeInfo
-public class RootTestNode extends RootNode {
-
-    private final String name;
-    @Child AbstractTestNode node;
-
-    public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node) {
-        super(MockLanguage.class, null, descriptor);
-        this.name = name;
-        this.node = node;
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return node.execute(frame);
-    }
-
-    @Override
-    public void applyInstrumentation() {
-        Probe.applyASTProbers(node);
-    }
-
-    @Override
-    public String toString() {
-        return name;
+public abstract class MockLanguage extends TruffleLanguage {
+    public MockLanguage(Env env) {
+        super(env);
     }
 }
