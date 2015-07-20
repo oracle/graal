@@ -22,17 +22,43 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.nodes.spi.*;
 
 public class HotSpotStampProvider implements StampProvider {
 
+    private final KlassPointerStamp klassStamp;
+
+    private final KlassPointerStamp klassNonNullStamp;
+
+    @SuppressWarnings("unused") private final Kind wordKind;
+
+    public HotSpotStampProvider(Kind wordKind) {
+        this.wordKind = wordKind;
+        klassStamp = new KlassPointerStamp(false, false, wordKind);
+        klassNonNullStamp = new KlassPointerStamp(true, false, wordKind);
+    }
+
+    public KlassPointerStamp klass() {
+        return klassStamp;
+    }
+
+    public KlassPointerStamp klassNonNull() {
+        return klassNonNullStamp;
+    }
+
     public Stamp createHubStamp(ObjectStamp object) {
-        return KlassPointerStamp.klassNonNull();
+        return klassNonNull();
     }
 
     public Stamp createMethodStamp() {
         return MethodPointerStamp.methodNonNull();
+    }
+
+    public Stamp createHubStamp(boolean nonNull) {
+        return nonNull ? klassNonNullStamp : klassStamp;
     }
 }

@@ -38,7 +38,6 @@ import com.oracle.graal.api.directives.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -525,7 +524,7 @@ public class ArrayCopySnippets implements Snippets {
             }
             if (snippetInfo == arraycopyPredictedObjectWorkSnippet) {
                 HotSpotResolvedObjectType arrayKlass = (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(Object[].class);
-                ValueNode objectArrayKlass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayKlass.klass(), tool.getMetaAccess(), arraycopy.graph());
+                ValueNode objectArrayKlass = ConstantNode.forConstant(tool.getStampProvider().createHubStamp(true), arrayKlass.klass(), tool.getMetaAccess(), arraycopy.graph());
                 args.add("objectArrayKlass", objectArrayKlass);
                 args.addConst("counter", arraycopyCallCounters.get(Kind.Object));
                 args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(Kind.Object));

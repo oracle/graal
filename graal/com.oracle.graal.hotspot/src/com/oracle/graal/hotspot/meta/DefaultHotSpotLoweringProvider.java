@@ -274,7 +274,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 ResolvedJavaType receiverType = invoke.getReceiverType();
                 if (hsMethod.isInVirtualMethodTable(receiverType)) {
                     Kind wordKind = runtime.getTarget().wordKind;
-                    ValueNode hub = createReadHub(graph, receiver, receiverNullCheck);
+                    ValueNode hub = createReadHub(graph, receiver, receiverNullCheck, tool);
 
                     ReadNode metaspaceMethod = createReadVirtualMethod(graph, hub, hsMethod, receiverType);
                     // We use LocationNode.ANY_LOCATION for the reads that access the
@@ -332,13 +332,13 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor) {
+    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor, LoweringTool tool) {
         /*
          * Anchor the read of the element klass to the cfg, because it is only valid when arrayClass
          * is an object class, which might not be the case in other parts of the compiled method.
          */
         AddressNode address = createOffsetAddress(graph, arrayHub, runtime.getConfig().arrayClassElementOffset);
-        return graph.unique(new FloatingReadNode(address, OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, null, KlassPointerStamp.klassNonNull(), AbstractBeginNode.prevBegin(anchor)));
+        return graph.unique(new FloatingReadNode(address, OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, null, tool.getStampProvider().createHubStamp(true), AbstractBeginNode.prevBegin(anchor)));
     }
 
     @Override
@@ -485,11 +485,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard) {
+    protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard, LoweringTool tool) {
         HotSpotVMConfig config = runtime.getConfig();
         assert !object.isConstant() || object.isNullConstant();
 
-        KlassPointerStamp hubStamp = KlassPointerStamp.klassNonNull();
+        KlassPointerStamp hubStamp = (KlassPointerStamp) tool.getStampProvider().createHubStamp(true);
         if (config.useCompressedClassPointers) {
             hubStamp = hubStamp.compressed(config.getKlassEncoding());
         }

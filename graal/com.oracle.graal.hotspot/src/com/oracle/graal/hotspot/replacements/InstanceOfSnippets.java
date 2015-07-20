@@ -37,7 +37,6 @@ import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.Hints;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
@@ -229,38 +228,39 @@ public class InstanceOfSnippets implements Snippets {
 
         @Override
         protected Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool) {
+            Stamp hubStamp = tool.getStampProvider().createHubStamp(true);
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
                 ValueNode object = instanceOf.getValue();
                 Assumptions assumptions = instanceOf.graph().getAssumptions();
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), assumptions, TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
-                ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), instanceOf.graph());
+                ConstantNode hub = ConstantNode.forConstant(hubStamp, type.klass(), providers.getMetaAccess(), instanceOf.graph());
 
                 Arguments args;
 
                 StructuredGraph graph = instanceOf.graph();
                 if (hintInfo.hintHitProbability >= 1.0 && hintInfo.exact == null) {
-                    Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
+                    Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph, tool);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
-                    args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
+                    args.addVarargs("hints", KlassPointer.class, hubStamp, hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
                     args = new Arguments(instanceofExact, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
-                    args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hintInfo.exact).klass(), providers.getMetaAccess(), graph));
+                    args.add("exactHub", ConstantNode.forConstant(hubStamp, ((HotSpotResolvedObjectType) hintInfo.exact).klass(), providers.getMetaAccess(), graph));
                 } else if (type.isPrimaryType()) {
                     args = new Arguments(instanceofPrimary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
-                    Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
+                    Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph, tool);
                     args = new Arguments(instanceofSecondary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
-                    args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
+                    args.addVarargs("hints", KlassPointer.class, hubStamp, hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
                 }
                 args.add("trueValue", replacer.trueValue);
@@ -275,7 +275,7 @@ public class InstanceOfSnippets implements Snippets {
                 ValueNode object = typeCheck.getValue();
                 Arguments args = new Arguments(instanceofExact, typeCheck.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("object", object);
-                args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) typeCheck.type()).klass(), providers.getMetaAccess(), typeCheck.graph()));
+                args.add("exactHub", ConstantNode.forConstant(hubStamp, ((HotSpotResolvedObjectType) typeCheck.type()).klass(), providers.getMetaAccess(), typeCheck.graph()));
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 return args;

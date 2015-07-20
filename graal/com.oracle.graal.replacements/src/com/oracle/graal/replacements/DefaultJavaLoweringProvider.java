@@ -87,7 +87,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else if (n instanceof ArrayLengthNode) {
             lowerArrayLengthNode((ArrayLengthNode) n, tool);
         } else if (n instanceof LoadHubNode) {
-            lowerLoadHubNode((LoadHubNode) n);
+            lowerLoadHubNode((LoadHubNode) n, tool);
         } else if (n instanceof MonitorEnterNode) {
             lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
         } else if (n instanceof CompareAndSwapNode) {
@@ -118,7 +118,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     private void lowerTypeCheckNode(TypeCheckNode n, LoweringTool tool, StructuredGraph graph) {
-        ValueNode hub = createReadHub(graph, n.getValue(), null);
+        ValueNode hub = createReadHub(graph, n.getValue(), null, tool);
         ValueNode clazz = graph.unique(ConstantNode.forConstant(tool.getStampProvider().createHubStamp((ObjectStamp) n.getValue().stamp()), n.type().getObjectHub(), tool.getMetaAccess()));
         LogicNode objectEquals = graph.unique(PointerEqualsNode.create(hub, clazz));
         n.replaceAndDelete(objectEquals);
@@ -270,8 +270,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  */
                 GuardingNode nullCheck = nullCheckReturn[0];
                 assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
-                ValueNode arrayClass = createReadHub(graph, array, nullCheck);
-                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
+                ValueNode arrayClass = createReadHub(graph, array, nullCheck, tool);
+                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed, tool);
                 checkCastNode = graph.add(new CheckCastDynamicNode(componentHub, value, true));
                 graph.addBeforeFixed(storeIndexed, checkCastNode);
                 value = checkCastNode;
@@ -301,12 +301,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.replaceFixedWithFixed(arrayLengthNode, arrayLengthRead);
     }
 
-    protected void lowerLoadHubNode(LoadHubNode loadHub) {
+    protected void lowerLoadHubNode(LoadHubNode loadHub, LoweringTool tool) {
         StructuredGraph graph = loadHub.graph();
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
-        ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard());
+        ValueNode hub = createReadHub(graph, loadHub.getValue(), loadHub.getGuard(), tool);
         graph.replaceFloating(loadHub, hub);
     }
 
@@ -672,9 +672,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return value;
     }
 
-    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard);
+    protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard, LoweringTool tool);
 
-    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
+    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor, LoweringTool tool);
 
     protected PiNode getBoundsCheckedIndex(AccessIndexedNode n, LoweringTool tool, GuardingNode[] nullCheckReturn) {
         StructuredGraph graph = n.graph();

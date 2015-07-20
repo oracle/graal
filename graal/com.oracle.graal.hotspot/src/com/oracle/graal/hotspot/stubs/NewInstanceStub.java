@@ -36,7 +36,6 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
@@ -64,7 +63,7 @@ public class NewInstanceStub extends SnippetStub {
         Object[] args = new Object[count];
         assert checkConstArg(1, "intArrayHub");
         assert checkConstArg(2, "threadRegister");
-        args[1] = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), intArrayType.klass(), null);
+        args[1] = ConstantNode.forConstant(providers.getStampProvider().createHubStamp(true), intArrayType.klass(), null);
         args[2] = providers.getRegisters().getThreadRegister();
         return args;
     }

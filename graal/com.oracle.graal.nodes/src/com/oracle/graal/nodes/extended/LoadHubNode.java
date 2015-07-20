@@ -67,7 +67,7 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
         this(hubStamp(stampProvider, value), value, guard);
     }
 
-    public LoadHubNode(Stamp stamp, ValueNode value, ValueNode guard) {
+    private LoadHubNode(Stamp stamp, ValueNode value, ValueNode guard) {
         super(TYPE, stamp, (GuardingNode) guard);
         assert value != guard;
         this.value = value;

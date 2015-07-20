@@ -70,7 +70,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                 Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
 
                 if (type instanceof HotSpotResolvedObjectType) {
-                    ConstantNode klass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) type).klass(), metaAccess, graph);
+                    ConstantNode klass = ConstantNode.forConstant(context.getStampProvider().createHubStamp(true), ((HotSpotResolvedObjectType) type).klass(), metaAccess, graph);
                     AddressNode address = graph.unique(new OffsetAddressNode(klass, ConstantNode.forLong(classMirrorOffset, graph)));
                     ValueNode read = graph.unique(new FloatingReadNode(address, CLASS_MIRROR_LOCATION, null, stamp));
 

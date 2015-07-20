@@ -578,6 +578,11 @@ public class HotSpotReplacementsUtil {
         return loadWordFromObjectIntrinsic(object, offset, getWordKind(), identity);
     }
 
+    public static KlassPointer loadKlassFromObject(Object object, int offset, LocationIdentity identity) {
+        ReplacementsUtil.staticAssert(offset != hubOffset(), "Use loadHubIntrinsic instead of loadWordFromObject");
+        return loadKlassFromObjectIntrinsic(object, offset, getWordKind(), identity);
+    }
+
     /**
      * Reads the value of a given register.
      *
@@ -596,6 +601,9 @@ public class HotSpotReplacementsUtil {
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
     private static native Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
+    private static native KlassPointer loadKlassFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic(value = LoadHubNode.class)
     public static native KlassPointer loadHubIntrinsic(Object object, GuardingNode anchor);
