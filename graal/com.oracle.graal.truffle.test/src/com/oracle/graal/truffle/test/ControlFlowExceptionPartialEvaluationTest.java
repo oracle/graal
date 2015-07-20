@@ -24,7 +24,9 @@ package com.oracle.graal.truffle.test;
 
 import org.junit.*;
 
+import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.test.nodes.*;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -45,6 +47,21 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new CatchSlowPathAndControlFlowExceptionTestNode(new ThrowControlFlowExceptionTestNode());
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "catchSlowPathAndControlFlowException", result));
+    }
+
+    @Test
+    public void catchControlFlowExceptionWithLoopExplosion() {
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new CatchControlFlowExceptionTestNode(new BlockTestNode(new ThrowControlFlowExceptionTestNode()));
+        assertPartialEvalEquals("constant42", new RootTestNode(fd, "catchControlFlowExceptionWithLoopExplosion", result));
+    }
+
+    @Test
+    public void catchControlFlowExceptionFromCall() {
+        Assume.assumeTrue(TruffleCompilerOptions.TruffleFunctionInlining.getValue());
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
+        AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
+        assertPartialEvalEquals("constant42", new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));
     }
 
     public static class ThrowControlFlowExceptionTestNode extends AbstractTestNode {
@@ -92,6 +109,44 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
         @SuppressWarnings("unused")
         private int executeChild(VirtualFrame frame) throws SlowPathException {
             return child.execute(frame);
+        }
+    }
+
+    public static class BlockTestNode extends AbstractTestNode {
+        @Children private final AbstractTestNode[] statements;
+
+        public BlockTestNode(AbstractTestNode... statements) {
+            this.statements = statements;
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            return executeSpecial(frame);
+        }
+
+        /*
+         * A statically resolvable method, so that ExplodeLoop annotation is visible during parsing.
+         */
+        @ExplodeLoop
+        private int executeSpecial(VirtualFrame frame) {
+            int result = 0;
+            for (AbstractTestNode statement : statements) {
+                result = statement.execute(frame);
+            }
+            return result;
+        }
+    }
+
+    public static class CallTestNode extends AbstractTestNode {
+        @Child private DirectCallNode callNode;
+
+        public CallTestNode(CallTarget callTarget) {
+            this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            return (int) callNode.call(frame, new Object[0]);
         }
     }
 }
