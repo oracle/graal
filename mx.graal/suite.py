@@ -95,27 +95,27 @@ suite = {
     # ------------- Truffle -------------
 
     "TRUFFLE" : {
-      "path" : "lib/truffle-0.8-SNAPSHOT.jar",
+      "path" : "lib/truffle-0.9-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-api/0.8-397164a68abffa1e934a581ead91cd882eaae954-SNAPSHOT/truffle-api-0.8-397164a68abffa1e934a581ead91cd882eaae954-20150713.145252-1.jar",
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-api/0.9-5bc7f7b867abc0cc464205d8884d6a20e21c803b-SNAPSHOT/truffle-api-0.9-5bc7f7b867abc0cc464205d8884d6a20e21c803b-20150718.160556-1.jar",
       ],
-      "sha1" : "969c49cb04fb7acfbd20892579847ca8d80f4235",
+      "sha1" : "5b13fb55d78d9bd00efbd9b8ea5583fe32259c4a",
     },
     "TRUFFLE_DSL_PROCESSOR" : {
-      "path" : "lib/truffle-dsl-processor-0.8-SNAPSHOT.jar",
+      "path" : "lib/truffle-dsl-processor-0.9-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-dsl-processor/0.8-397164a68abffa1e934a581ead91cd882eaae954-SNAPSHOT/truffle-dsl-processor-0.8-397164a68abffa1e934a581ead91cd882eaae954-20150713.145255-1.jar"
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-dsl-processor/0.9-5bc7f7b867abc0cc464205d8884d6a20e21c803b-SNAPSHOT/truffle-dsl-processor-0.9-5bc7f7b867abc0cc464205d8884d6a20e21c803b-20150718.160558-1.jar"
       ],
-      "sha1" : "39ddec960e0e463284b1cc6783cda11dcc80f939",
+      "sha1" : "92e7d01277bad6165d3f263e05215dd3477a20f4",
       "annotationProcessor" : "true",
       "dependencies" : ["TRUFFLE"]
     },
     "TRUFFLE_SL" : {
-      "path" : "lib/truffle-sl-0.8-SNAPSHOT.jar",
+      "path" : "lib/truffle-sl-0.9-SNAPSHOT.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-sl/0.8-397164a68abffa1e934a581ead91cd882eaae954-SNAPSHOT/truffle-sl-0.8-397164a68abffa1e934a581ead91cd882eaae954-20150713.145259-1.jar",
+        "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots/com/oracle/truffle-sl/0.9-5bc7f7b867abc0cc464205d8884d6a20e21c803b-SNAPSHOT/truffle-sl-0.9-5bc7f7b867abc0cc464205d8884d6a20e21c803b-20150718.160603-1.jar",
       ],
-      "sha1" : "9ffddd8f3659955bb34a018a540603c2391d2115",
+      "sha1" : "3ca368465d187b67cfd84f828fa91b7496b3949f",
     }
   },
 
