@@ -88,6 +88,7 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
         }
 
         assert c instanceof HotSpotMetaspaceConstant;
+        assert ((HotSpotMetaspaceConstant) c).isCompressed() == isCompressed();
         if (nonNull()) {
             return this;
         }
