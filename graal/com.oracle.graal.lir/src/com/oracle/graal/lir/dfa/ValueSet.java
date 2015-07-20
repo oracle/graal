@@ -150,4 +150,26 @@ public final class ValueSet {
     public int hashCode() {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("[");
+        boolean comma = false;
+
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] != null) {
+                if (comma) {
+                    sb.append(", ");
+                } else {
+                    comma = true;
+                }
+
+                sb.append(i);
+                sb.append(": ");
+                sb.append(values[i]);
+            }
+        }
+        sb.append(']');
+        return sb.toString();
+    }
 }

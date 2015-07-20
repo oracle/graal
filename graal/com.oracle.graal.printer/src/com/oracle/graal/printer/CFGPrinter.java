@@ -455,9 +455,9 @@ class CFGPrinter extends CompilationPrinter {
                 inst.forEachState(state -> {
                     if (state.hasDebugInfo()) {
                         DebugInfo di = state.debugInfo();
-                        stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), di.getCalleeSaveInfo()));
+                        stateString.append(debugInfoToString(di.getBytecodePosition(), di.getReferenceMap(), state.getLiveBasePointers(), di.getCalleeSaveInfo()));
                     } else {
-                        stateString.append(debugInfoToString(state.topFrame, null, null));
+                        stateString.append(debugInfoToString(state.topFrame, null, state.getLiveBasePointers(), null));
                     }
                 });
                 if (stateString.length() > 0) {

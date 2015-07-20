@@ -29,6 +29,8 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.lir.dfa.*;
+
 /**
  * Utility for printing compilation related data structures at various compilation phases. The
  * output format is such that it can then be fed to the <a
@@ -112,10 +114,16 @@ public class CompilationPrinter implements Closeable {
     /**
      * Formats given debug info as a multi line string.
      */
-    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, RegisterSaveLayout calleeSaveInfo) {
+    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, ValueSet liveBasePointers, RegisterSaveLayout calleeSaveInfo) {
         StringBuilder sb = new StringBuilder();
         if (refMap != null) {
+            sb.append("reference-map: ");
             sb.append(refMap.toString());
+            sb.append("\n");
+        }
+        if (liveBasePointers != null) {
+            sb.append("live-base-pointers: ");
+            sb.append(liveBasePointers);
             sb.append("\n");
         }
 
