@@ -22,22 +22,29 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static jdk.internal.jvmci.common.UnsafeAccess.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.memory.*;
+import com.oracle.graal.nodes.memory.address.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -48,6 +55,60 @@ import com.oracle.graal.word.*;
  * A collection of methods used in HotSpot snippets, substitutions and stubs.
  */
 public class HotSpotReplacementsUtil {
+
+    abstract static class HotSpotOptimizingLocationIdentity extends NamedLocationIdentity implements CanonicalizableLocation {
+
+        HotSpotOptimizingLocationIdentity(String name) {
+            super(name, true);
+        }
+
+        @Override
+        public abstract ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool);
+
+        protected ValueNode findReadHub(ValueNode object) {
+            ValueNode base = object;
+            if (base instanceof CompressionNode) {
+                base = ((CompressionNode) base).getValue();
+            }
+            if (base instanceof Access) {
+                Access access = (Access) base;
+                if (access.getLocationIdentity().equals(HUB_LOCATION)) {
+                    AddressNode address = access.getAddress();
+                    if (address instanceof OffsetAddressNode) {
+                        OffsetAddressNode offset = (OffsetAddressNode) address;
+                        return offset.getBase();
+                    }
+                }
+            } else if (base instanceof LoadHubNode) {
+                LoadHubNode loadhub = (LoadHubNode) base;
+                return loadhub.getValue();
+            }
+            return null;
+        }
+
+        /**
+         * Fold reads that convert from Class -> Hub -> Class or vice versa.
+         *
+         * @param read
+         * @param object
+         * @param otherLocation
+         * @return an earlier read or the original {@code read}
+         */
+        protected static ValueNode foldIndirection(ValueNode read, ValueNode object, LocationIdentity otherLocation) {
+            if (object instanceof Access) {
+                Access access = (Access) object;
+                if (access.getLocationIdentity().equals(otherLocation)) {
+                    AddressNode address = access.getAddress();
+                    if (address instanceof OffsetAddressNode) {
+                        OffsetAddressNode offset = (OffsetAddressNode) address;
+                        assert offset.getBase().stamp().isCompatible(read.stamp());
+                        return offset.getBase();
+                    }
+                }
+            }
+            return read;
+        }
+    }
 
     @Fold
     public static HotSpotVMConfig config() {
@@ -296,7 +357,23 @@ public class HotSpotReplacementsUtil {
         return config().jvmAccWrittenFlags;
     }
 
-    public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = NamedLocationIdentity.immutable("Klass::_layout_helper");
+    public static final LocationIdentity KLASS_LAYOUT_HELPER_LOCATION = new HotSpotOptimizingLocationIdentity("Klass::_layout_helper") {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {
+            ValueNode javaObject = findReadHub(object);
+            if (javaObject != null) {
+                if (javaObject.stamp() instanceof ObjectStamp) {
+                    ObjectStamp stamp = (ObjectStamp) javaObject.stamp();
+                    HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) stamp.javaType(tool.getMetaAccess());
+                    if (type.isArray() && !type.getComponentType().isPrimitive()) {
+                        int layout = ((HotSpotResolvedObjectTypeImpl) type).layoutHelper();
+                        return ConstantNode.forInt(layout);
+                    }
+                }
+            }
+            return read;
+        }
+    };
 
     @Fold
     public static int klassLayoutHelperOffset() {
@@ -356,7 +433,20 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity HUB_WRITE_LOCATION = NamedLocationIdentity.mutable("Hub:write");
 
-    public static final LocationIdentity HUB_LOCATION = NamedLocationIdentity.immutable("Hub");
+    public static final LocationIdentity HUB_LOCATION = new HotSpotOptimizingLocationIdentity("Hub") {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {
+            ResolvedJavaType constantType = LoadHubNode.findSynonymType(read.graph(), tool.getMetaAccess(), object);
+            if (constantType != null) {
+                if (config().useCompressedClassPointers) {
+                    return ConstantNode.forConstant(read.stamp(), ((HotSpotMetaspaceConstant) constantType.getObjectHub()).compress(config().getKlassEncoding()), tool.getMetaAccess());
+                } else {
+                    return ConstantNode.forConstant(read.stamp(), constantType.getObjectHub(), tool.getMetaAccess());
+                }
+            }
+            return read;
+        }
+    };
 
     @Fold
     private static int hubOffset() {
@@ -655,14 +745,24 @@ public class HotSpotReplacementsUtil {
         return config().klassModifierFlagsOffset;
     }
 
-    public static final LocationIdentity CLASS_KLASS_LOCATION = NamedLocationIdentity.immutable("Class._klass");
+    public static final LocationIdentity CLASS_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._klass") {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {
+            return foldIndirection(read, object, CLASS_MIRROR_LOCATION);
+        }
+    };
 
     @Fold
     public static int klassOffset() {
         return config().klassOffset;
     }
 
-    public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = NamedLocationIdentity.mutable("Class._array_klass");
+    public static final LocationIdentity CLASS_ARRAY_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._array_klass") {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {
+            return foldIndirection(read, object, ARRAY_KLASS_COMPONENT_MIRROR);
+        }
+    };
 
     @Fold
     public static int arrayKlassOffset() {
@@ -854,7 +954,26 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = NamedLocationIdentity.immutable("ObjArrayKlass::_element_klass");
+    public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("ObjArrayKlass::_element_klass") {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {
+            ValueNode javaObject = findReadHub(object);
+            if (javaObject != null) {
+                ResolvedJavaType type = StampTool.typeOrNull(javaObject);
+                if (type != null && type.isArray()) {
+                    ResolvedJavaType element = type.getComponentType();
+                    if (element != null && !element.isPrimitive() && !element.getElementalType().isInterface()) {
+                        AssumptionResult<ResolvedJavaType> leafType = element.findLeafConcreteSubtype();
+                        if (leafType != null) {
+                            object.graph().getAssumptions().record(leafType);
+                            return ConstantNode.forConstant(read.stamp(), leafType.getResult().getObjectHub(), tool.getMetaAccess());
+                        }
+                    }
+                }
+            }
+            return read;
+        }
+    };
 
     @Fold
     public static int arrayClassElementOffset() {

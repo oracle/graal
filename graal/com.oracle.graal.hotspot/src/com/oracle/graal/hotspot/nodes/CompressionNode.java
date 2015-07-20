@@ -69,6 +69,10 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
         return input.graph().unique(new CompressionNode(CompressionOp.Compress, input, encoding));
     }
 
+    public static CompressionNode compressNoUnique(ValueNode input, CompressEncoding encoding) {
+        return new CompressionNode(CompressionOp.Compress, input, encoding);
+    }
+
     public static CompressionNode uncompress(ValueNode input, CompressEncoding encoding) {
         return input.graph().unique(new CompressionNode(CompressionOp.Uncompress, input, encoding));
     }

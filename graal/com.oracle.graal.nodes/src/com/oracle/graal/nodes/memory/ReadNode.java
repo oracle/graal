@@ -133,6 +133,13 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                     return length;
                 }
             }
+            if (locationIdentity instanceof CanonicalizableLocation) {
+                CanonicalizableLocation canonicalize = (CanonicalizableLocation) locationIdentity;
+                ValueNode result = canonicalize.canonicalizeRead(read, address, object, tool);
+                assert result != null && result.stamp().isCompatible(read.stamp());
+                return result;
+            }
+
         }
         return read;
     }
