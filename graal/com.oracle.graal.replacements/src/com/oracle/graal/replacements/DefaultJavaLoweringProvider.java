@@ -303,6 +303,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerLoadHubNode(LoadHubNode loadHub, LoweringTool tool) {
         StructuredGraph graph = loadHub.graph();
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return;
+        }
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }

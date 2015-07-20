@@ -486,6 +486,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected ValueNode createReadHub(StructuredGraph graph, ValueNode object, GuardingNode guard, LoweringTool tool) {
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return graph.unique(new LoadHubNode(tool.getStampProvider(), object, guard != null ? guard.asNode() : null));
+        }
         HotSpotVMConfig config = runtime.getConfig();
         assert !object.isConstant() || object.isNullConstant();
 

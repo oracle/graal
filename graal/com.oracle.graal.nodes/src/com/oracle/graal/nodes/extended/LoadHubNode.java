@@ -75,9 +75,6 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
 
     @Override
     public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-            return;
-        }
         tool.getLowerer().lower(this, tool);
     }
 
