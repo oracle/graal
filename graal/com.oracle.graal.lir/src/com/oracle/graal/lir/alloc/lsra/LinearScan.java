@@ -152,12 +152,12 @@ class LinearScan {
      */
     private final int firstVariableNumber;
 
-    LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig) {
+    LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks) {
         this.res = res;
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
-        this.sortedBlocks = ir.linearScanOrder();
+        this.sortedBlocks = sortedBlocks;
         this.registerAttributes = regAllocConfig.getRegisterConfig().getAttributesMap();
         this.regAllocConfig = regAllocConfig;
 

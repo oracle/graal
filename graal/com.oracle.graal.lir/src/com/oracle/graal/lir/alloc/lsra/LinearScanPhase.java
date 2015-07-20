@@ -53,9 +53,9 @@ public final class LinearScanPhase extends AllocationPhase {
                     RegisterAllocationConfig registerAllocationConfig) {
         final LinearScan allocator;
         if (LinearScanPhase.SSA_LSRA.getValue()) {
-            allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig);
+            allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
         } else {
-            allocator = new LinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig);
+            allocator = new LinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
         }
         allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
     }
