@@ -243,8 +243,10 @@ public class PartialEvaluator {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
-            if (invocationPlugins.lookupInvocation(original) != null || loopExplosionPlugin.shouldExplodeLoops(original)) {
+            if (invocationPlugins.lookupInvocation(original) != null) {
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+            } else if (loopExplosionPlugin.shouldExplodeLoops(original)) {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
             if (truffleBoundary != null) {
@@ -255,7 +257,7 @@ public class PartialEvaluator {
             }
 
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
-                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             if (hasMethodHandleArgument(arguments)) {
                 /*
