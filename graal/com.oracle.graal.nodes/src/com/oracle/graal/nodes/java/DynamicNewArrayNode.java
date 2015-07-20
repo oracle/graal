@@ -47,12 +47,25 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
      */
     protected final Kind knownElementKind;
 
-    public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
-        this(TYPE, elementType, length, fillContents, knownElementKind, null);
+    public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
+        this(TYPE, elementType, length, fillContents, null, null, null);
     }
 
-    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind, FrameState stateBefore) {
-        super(c, StampFactory.objectNonNull(), length, fillContents, stateBefore);
+    public DynamicNewArrayNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
+        this(TYPE, elementType, length, fillContents, knownElementKind, null, metaAccess);
+    }
+
+    private static Stamp computeStamp(Kind knownElementKind, MetaAccessProvider metaAccess) {
+        if (knownElementKind != null && metaAccess != null) {
+            ResolvedJavaType arrayType = metaAccess.lookupJavaType(knownElementKind == Kind.Object ? Object.class : knownElementKind.toJavaClass()).getArrayClass();
+            return StampFactory.declaredNonNull(arrayType);
+        }
+        return StampFactory.objectNonNull();
+    }
+
+    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind, FrameState stateBefore,
+                    MetaAccessProvider metaAccess) {
+        super(c, computeStamp(knownElementKind, metaAccess), length, fillContents, stateBefore);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
         assert knownElementKind != Kind.Void && knownElementKind != Kind.Illegal;

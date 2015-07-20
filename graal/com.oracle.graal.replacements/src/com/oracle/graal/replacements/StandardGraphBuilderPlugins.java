@@ -127,7 +127,7 @@ public class StandardGraphBuilderPlugins {
         Registration r = new Registration(plugins, Array.class);
         r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
-                b.addPush(Kind.Object, new DynamicNewArrayNode(componentType, length, true, null));
+                b.addPush(Kind.Object, new DynamicNewArrayNode(componentType, length, true));
                 return true;
             }
         });

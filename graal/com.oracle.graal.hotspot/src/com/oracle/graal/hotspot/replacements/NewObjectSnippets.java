@@ -197,7 +197,8 @@ public class NewObjectSnippets implements Snippets {
     @Snippet
     public static Object allocateArray(KlassPointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext) {
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false);
+        Object result = allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false);
+        return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
     private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents,
@@ -219,7 +220,7 @@ public class NewObjectSnippets implements Snippets {
             result = newArray(HotSpotBackend.NEW_ARRAY, hub, length);
         }
         profileAllocation("array", allocationSize, typeContext);
-        return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
+        return result;
     }
 
     @NodeIntrinsic(ForeignCallNode.class)
@@ -240,7 +241,12 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
-                    @ConstantParameter Kind knownElementKind) {
+                    @ConstantParameter Kind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord) {
+        Object result = allocateArrayDynamicImpl(elementType, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord);
+        return result;
+    }
+
+    private static Object allocateArrayDynamicImpl(Class<?> elementType, int length, boolean fillContents, Register threadRegister, Kind knownElementKind, int knownLayoutHelper, Word prototypeMarkWord) {
         /*
          * We only need the dynamic check for void when we have no static information from
          * knownElementKind.
@@ -250,13 +256,11 @@ public class NewObjectSnippets implements Snippets {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
-        Word hub = loadWordFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION);
-        if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH))) {
-            return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
+        KlassPointer klass = KlassPointer.fromWord(loadWordFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION));
+        if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, klass.isNull() || length < 0)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-
-        KlassPointer klass = KlassPointer.fromWord(hub);
-        int layoutHelper = readLayoutHelper(klass);
+        int layoutHelper = knownElementKind != Kind.Illegal ? knownLayoutHelper : readLayoutHelper(klass);
         //@formatter:off
         // from src/share/vm/oops/klass.hpp:
         //
@@ -272,9 +276,9 @@ public class NewObjectSnippets implements Snippets {
 
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
-        Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
+        Object result = allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
+        return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
     /**
@@ -479,6 +483,7 @@ public class NewObjectSnippets implements Snippets {
             args.add("hub", hub);
             ValueNode length = newArrayNode.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
+            assert arrayType.prototypeMarkWord() == lookupArrayClass(tool, Kind.Object).prototypeMarkWord() : "all array types are assumed to have the same prototypeMarkWord";
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
@@ -515,9 +520,18 @@ public class NewObjectSnippets implements Snippets {
              * parameters cannot be null.
              */
             args.addConst("knownElementKind", newArrayNode.getKnownElementKind() == null ? Kind.Illegal : newArrayNode.getKnownElementKind());
-
+            if (newArrayNode.getKnownElementKind() != null) {
+                args.addConst("knownLayoutHelper", lookupArrayClass(tool, newArrayNode.getKnownElementKind()).layoutHelper());
+            } else {
+                args.addConst("knownLayoutHelper", 0);
+            }
+            args.add("prototypeMarkWord", lookupArrayClass(tool, Kind.Object).prototypeMarkWord());
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
+        }
+
+        private static HotSpotResolvedObjectType lookupArrayClass(LoweringTool tool, Kind kind) {
+            return (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(kind == Kind.Object ? Object.class : kind.toJavaClass()).getArrayClass();
         }
 
         public void lower(NewMultiArrayNode newmultiarrayNode, LoweringTool tool) {
