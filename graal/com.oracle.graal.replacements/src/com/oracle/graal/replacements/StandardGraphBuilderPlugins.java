@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.replacements.nodes.arithmetic.*;
 
@@ -660,6 +661,19 @@ public class StandardGraphBuilderPlugins {
                 FixedGuardNode fixedGuard = b.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
                 Stamp newStamp = objectStamp.improveWith(StampFactory.objectNonNull());
                 b.addPush(value.getKind(), new PiNode(value, newStamp, fixedGuard));
+                return true;
+            }
+        });
+
+        r.register1("ensureVirtualized", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.add(new EnsureVirtualizedNode(object, false));
+                return true;
+            }
+        });
+        r.register1("ensureVirtualizedHere", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.add(new EnsureVirtualizedNode(object, true));
                 return true;
             }
         });

@@ -74,7 +74,8 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         List<ValueNode> values = new ArrayList<>(8);
         List<List<MonitorIdNode>> locks = new ArrayList<>(2);
         List<ValueNode> otherAllocations = new ArrayList<>(2);
-        materializeWithCommit(fixed, virtual, objects, locks, values, otherAllocations, state);
+        List<Boolean> ensureVirtual = new ArrayList<>(2);
+        materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations, state);
 
         materializeEffects.add("materializeBefore", (graph, obsoleteNodes) -> {
             for (ValueNode otherAllocation : otherAllocations) {
@@ -102,6 +103,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                 for (List<MonitorIdNode> monitorIds : locks) {
                     commit.addLocks(monitorIds);
                 }
+                commit.getEnsureVirtual().addAll(ensureVirtual);
 
                 assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount();
                 List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
@@ -115,7 +117,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
     }
 
     private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<List<MonitorIdNode>> locks, List<ValueNode> values,
-                    List<ValueNode> otherAllocations, EscapeState state) {
+                    List<Boolean> ensureVirtual, List<ValueNode> otherAllocations, EscapeState state) {
         ObjectState obj = getObjectState(virtual);
 
         ValueNode[] entries = obj.getEntries();
@@ -125,6 +127,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         if (representation instanceof AllocatedObjectNode) {
             objects.add((AllocatedObjectNode) representation);
             locks.add(LockState.asList(obj.getLocks()));
+            ensureVirtual.add(obj.getEnsureVirtualized());
             int pos = values.size();
             while (values.size() < pos + entries.length) {
                 values.add(null);
@@ -133,7 +136,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                 if (entries[i] instanceof VirtualObjectNode) {
                     ObjectState entryObj = getObjectState((VirtualObjectNode) entries[i]);
                     if (entryObj.isVirtual()) {
-                        materializeWithCommit(fixed, entryObj.getVirtualObject(), objects, locks, values, otherAllocations, state);
+                        materializeWithCommit(fixed, entryObj.getVirtualObject(), objects, locks, values, ensureVirtual, otherAllocations, state);
                     }
                     values.set(pos + i, entryObj.getMaterializedValue());
                 } else {

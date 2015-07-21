@@ -52,6 +52,10 @@ public interface Virtualizable {
         public abstract MonitorIdNode removeLock();
 
         public abstract ValueNode getMaterializedValue();
+
+        public abstract void setEnsureVirtualized(boolean ensureVirtualized);
+
+        public abstract boolean getEnsureVirtualized();
     }
 
     /**

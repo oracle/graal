@@ -67,8 +67,9 @@ public interface VirtualizerTool {
      * @param virtualObject the new virtual object.
      * @param entryState the initial state of the virtual object's fields.
      * @param locks the initial locking depths.
+     * @param ensureVirtualized true if this object needs to stay virtual
      */
-    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks);
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, boolean ensureVirtualized);
 
     /**
      * Queries the current state of the given value: if it is virtualized (thread-local and the
