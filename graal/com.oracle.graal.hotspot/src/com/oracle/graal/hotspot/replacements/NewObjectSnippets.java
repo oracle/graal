@@ -368,9 +368,8 @@ public class NewObjectSnippets implements Snippets {
      * @param startOffset offset to begin zeroing. May not be word aligned.
      * @param manualUnroll maximally unroll zeroing
      */
-    private static boolean fillWithGarbage(int size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, boolean useSnippetCounters) {
+    private static void fillWithGarbage(int size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, boolean useSnippetCounters) {
         fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, useSnippetCounters);
-        return true;
     }
 
     /**
@@ -389,8 +388,8 @@ public class NewObjectSnippets implements Snippets {
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
-        } else {
-            ReplacementsUtil.runtimeAssert(fillWithGarbage(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters), "");
+        } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
+            fillWithGarbage(size, memory, constantSize, instanceHeaderSize(), false, useSnippetCounters);
         }
         return memory.toObject();
     }
@@ -420,8 +419,8 @@ public class NewObjectSnippets implements Snippets {
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters);
-        } else {
-            ReplacementsUtil.runtimeAssert(fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters), "");
+        } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
+            fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters);
         }
         return memory.toObject();
     }

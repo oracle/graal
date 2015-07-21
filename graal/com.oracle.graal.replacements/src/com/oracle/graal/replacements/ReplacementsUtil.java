@@ -31,7 +31,7 @@ public final class ReplacementsUtil {
         // empty
     }
 
-    private static final boolean REPLACEMENTS_ASSERTIONS_ENABLED;
+    public static final boolean REPLACEMENTS_ASSERTIONS_ENABLED;
 
     static {
         boolean assertionsEnabled = false;
