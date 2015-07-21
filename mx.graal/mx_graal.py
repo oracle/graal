@@ -32,7 +32,9 @@ import json
 
 import mx
 import mx_jvmci
-from mx_jvmci import JDKDeployedDist, buildvms, vm, VM, Task, parseVmArgs, get_vm, unittest, ctw, isVMSupported
+from mx_jvmci import JDKDeployedDist, buildvms, vm, VM, Task, parseVmArgs, get_vm, ctw, isVMSupported
+import mx_unittest
+from mx_unittest import unittest
 
 _suite = mx.suite('graal')
 
@@ -71,6 +73,17 @@ mx_jvmci.jdkDeployedDists += [
 
 mx_jvmci.jacocoIncludes += ['com.oracle.graal.*']
 mx_jvmci.jacocoExcludedAnnotations += ['@Snippet', '@ClassSubstitution']
+
+def _unittest_config_participant(config):
+    vmArgs, mainClass, mainClassArgs = config
+    # Unconditionally prepend truffle.jar to the boot class path.
+    # This used to be done by the VM itself but was removed to
+    # separate the VM from Truffle.
+    truffle_jar = mx.distribution('truffle:TRUFFLE').path
+    vmArgs = ['-Xbootclasspath/p:' + truffle_jar] + vmArgs
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _run_benchmark(args, availableBenchmarks, runBenchmark):
 
