@@ -237,10 +237,10 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    void spillCollectActiveAny() {
+    void spillCollectActiveAny(RegisterPriority registerPriority) {
         Interval interval = activeLists.get(RegisterBinding.Any);
         while (interval != Interval.EndMarker) {
-            setUsePos(interval, Math.min(interval.nextUsage(RegisterPriority.LiveAtLoopEnd, currentPosition), interval.to()), false);
+            setUsePos(interval, Math.min(interval.nextUsage(registerPriority, currentPosition), interval.to()), false);
             interval = interval.next;
         }
     }
@@ -777,7 +777,7 @@ class LinearScanWalker extends IntervalWalker {
             // spillBlockUnhandledFixed(cur);
             assert unhandledLists.get(RegisterBinding.Fixed) == Interval.EndMarker : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
             spillBlockInactiveFixed(interval);
-            spillCollectActiveAny();
+            spillCollectActiveAny(RegisterPriority.LiveAtLoopEnd);
             spillCollectInactiveAny(interval);
 
             if (Debug.isLogEnabled()) {
