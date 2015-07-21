@@ -785,7 +785,7 @@ class LinearScanWalker extends IntervalWalker {
             int firstShouldHaveUsage = interval.firstUsage(RegisterPriority.ShouldHaveRegister);
             int regNeededUntil = Math.min(firstUsage, interval.from() + 1);
             int intervalTo = interval.to();
-            assert regNeededUntil > 0 && regNeededUntil < Integer.MAX_VALUE : "interval has no use";
+            assert regNeededUntil >= 0 && regNeededUntil < Integer.MAX_VALUE : "interval has no use";
 
             Register reg;
             Register ignore;
