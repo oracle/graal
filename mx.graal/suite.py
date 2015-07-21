@@ -15,9 +15,9 @@ suite = {
     },
 
     "HCFDIS" : {
-      "path" : "lib/hcfdis-2.jar",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/hcfdis-2.jar"],
-      "sha1" : "bc8b2253436485e9dbaf81771c259ccfa1a24c80",
+      "path" : "lib/hcfdis-3.jar",
+      "urls" : ["http://lafo.ssw.uni-linz.ac.at/hcfdis-3.jar"],
+      "sha1" : "a71247c6ddb90aad4abf7c77e501acc60674ef57",
     },
 
     "C1VISUALIZER_DIST" : {
