@@ -1013,7 +1013,7 @@ public final class Interval {
     int previousUsage(RegisterPriority minRegisterPriority, int from) {
         assert isVariable(operand) : "cannot access use positions for fixed intervals";
 
-        int prev = 0;
+        int prev = -1;
         for (int i = usePosList.size() - 1; i >= 0; --i) {
             int usePos = usePosList.usePos(i);
             if (usePos > from) {
