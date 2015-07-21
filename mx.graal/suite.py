@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "ed0b8310ac569181a1a568a09296d0887e03086c",
+               "version" : "910bc6794d834901ff7252299d459013f7a585c4",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                 ]
@@ -901,6 +901,28 @@ suite = {
       ],
     },
 
+    "GRAAL_TEST" : {
+      "path" : "build/graal-test.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-test.src.zip",
+      "dependencies" : [
+        "com.oracle.graal.api.test",
+        "com.oracle.graal.api.directives.test",
+        "com.oracle.graal.asm.amd64.test",
+        "com.oracle.graal.compiler.amd64.test",
+        "com.oracle.graal.compiler.sparc.test",
+        "com.oracle.graal.hotspot.amd64.test",
+        "com.oracle.graal.jtt",
+        "com.oracle.graal.lir.jtt",
+        "com.oracle.graal.lir.test",
+        "com.oracle.graal.nodes.test",
+        "com.oracle.graal.phases.common.test",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+      ],
+    },
+
     "GRAAL_TRUFFLE" : {
       "path" : "build/graal-truffle.jar",
       "subDir" : "graal",
@@ -924,6 +946,7 @@ suite = {
         "com.oracle.graal.truffle.test"
       ],
       "distDependencies" : [
+        "GRAAL_TEST",
         "GRAAL_TRUFFLE",
         "truffle:TRUFFLE_SL",
       ],
