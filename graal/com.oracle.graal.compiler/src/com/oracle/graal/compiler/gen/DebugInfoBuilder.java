@@ -23,29 +23,30 @@
 package com.oracle.graal.compiler.gen;
 
 import java.util.*;
-import java.util.Map.Entry;
+import java.util.Map.*;
+
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.virtual.nodes.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.virtual.nodes.*;
-
 /**
  * Builds {@link LIRFrameState}s from {@link FrameState}s.
  */
 public class DebugInfoBuilder {
 
-    protected final NodeMap<Value> nodeOperands;
+    protected final NodeValueMap nodeValueMap;
 
-    public DebugInfoBuilder(NodeMap<Value> nodeOperands) {
-        this.nodeOperands = nodeOperands;
+    public DebugInfoBuilder(NodeValueMap nodeValueMap) {
+        this.nodeValueMap = nodeValueMap;
     }
 
     protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = Node.newMap();
@@ -216,7 +217,7 @@ public class DebugInfoBuilder {
 
                 } else if (value != null) {
                     STATE_VARIABLES.increment();
-                    Value operand = nodeOperands.get(value);
+                    Value operand = nodeValueMap.operand(value);
                     assert operand != null && (operand instanceof Variable || operand instanceof JavaConstant) : operand + " for " + value;
                     return operand;
 

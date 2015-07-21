@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.hotspot;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static jdk.internal.jvmci.code.BytecodeFrame.*;
 
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Extends {@link DebugInfoBuilder} to allocate the extra debug information required for locks.
@@ -38,8 +39,8 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
 
     private final HotSpotLockStack lockStack;
 
-    public HotSpotDebugInfoBuilder(NodeMap<Value> nodeOperands, HotSpotLockStack lockStack) {
-        super(nodeOperands);
+    public HotSpotDebugInfoBuilder(NodeValueMap nodeValueMap, HotSpotLockStack lockStack) {
+        super(nodeValueMap);
         this.lockStack = lockStack;
     }
 

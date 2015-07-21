@@ -79,7 +79,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
             for (int i = 0; i < state.length; i++) {
                 state[i] = defaultFieldValue(fields[i]);
             }
-            tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList());
+            tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), false);
             tool.replaceWithVirtual(virtualObject);
         }
     }

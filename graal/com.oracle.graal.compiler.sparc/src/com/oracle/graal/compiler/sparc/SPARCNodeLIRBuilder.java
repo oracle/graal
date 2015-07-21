@@ -111,10 +111,52 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
         };
     }
 
+    private ComplexMatchResult emitZeroExtendMemory(Access access, int fromBits, int toBits) {
+        assert fromBits <= toBits && toBits <= 64;
+        Kind toKind = null;
+        Kind fromKind = null;
+        if (fromBits == toBits) {
+            return null;
+        } else if (toBits > 32) {
+            toKind = Kind.Long;
+        } else if (toBits > 16) {
+            toKind = Kind.Int;
+        } else {
+            toKind = Kind.Short;
+        }
+        switch (fromBits) {
+            case 8:
+                fromKind = Kind.Byte;
+                break;
+            case 16:
+                fromKind = Kind.Short;
+                break;
+            case 32:
+                fromKind = Kind.Int;
+                break;
+            default:
+                throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+        }
+
+        Kind localFromKind = fromKind;
+        Kind localToKind = toKind;
+        return builder -> {
+            // Loads are always zero extending load
+            Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
+            return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
+        };
+    }
+
     @MatchRule("(SignExtend Read=access)")
     @MatchRule("(SignExtend FloatingRead=access)")
     public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
         return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
+    }
+
+    @MatchRule("(ZeroExtend Read=access)")
+    @MatchRule("(ZeroExtend FloatingRead=access)")
+    public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
+        return emitZeroExtendMemory(access, root.getInputBits(), root.getResultBits());
     }
 
     @Override

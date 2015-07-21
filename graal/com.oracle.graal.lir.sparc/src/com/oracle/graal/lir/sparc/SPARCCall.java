@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -81,7 +82,7 @@ public class SPARCCall {
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             if (!emitted) {
                 emitCallPrefixCode(crb, masm);
-                directCall(crb, masm, callTarget, null, true, state);
+                directCall(crb, masm, callTarget, null, state);
             } else {
                 int after = masm.position();
                 if (after - before == 4) {
@@ -165,7 +166,7 @@ public class SPARCCall {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            directCall(crb, masm, callTarget, null, false, state);
+            directCall(crb, masm, callTarget, null, state);
         }
     }
 
@@ -180,15 +181,13 @@ public class SPARCCall {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            directCall(crb, masm, callTarget, o7, false, state);
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                directCall(crb, masm, callTarget, scratch.getRegister(), state);
+            }
         }
     }
 
-    public static void directCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
-        if (align) {
-            // We don't need alignment on SPARC.
-        }
-
+    public static void directCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info) {
         int before;
         if (scratch != null) {
             // offset might not fit a 30-bit displacement, generate an

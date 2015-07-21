@@ -36,13 +36,13 @@ import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
  * inline cache so it's just a patchable call site.
  */
 @Opcode("CALL_DIRECT")
-final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
-    public static final LIRInstructionClass<AMD64HotspotDirectStaticCallOp> TYPE = LIRInstructionClass.create(AMD64HotspotDirectStaticCallOp.class);
+final class AMD64HotSpotDirectStaticCallOp extends DirectCallOp {
+    public static final LIRInstructionClass<AMD64HotSpotDirectStaticCallOp> TYPE = LIRInstructionClass.create(AMD64HotSpotDirectStaticCallOp.class);
 
     private final InvokeKind invokeKind;
     private final HotSpotVMConfig config;
 
-    AMD64HotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
+    AMD64HotSpotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, HotSpotVMConfig config) {
         super(TYPE, target, result, parameters, temps, state);
         assert invokeKind.isDirect();
         this.invokeKind = invokeKind;

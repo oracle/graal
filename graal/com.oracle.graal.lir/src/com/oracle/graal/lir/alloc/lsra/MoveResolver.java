@@ -165,7 +165,15 @@ class MoveResolver {
         }
         for (int i = 0; i < mappingTo.size(); i++) {
             Interval interval = mappingTo.get(i);
-            assert !usedRegs.contains(interval.location()) || interval.location().equals(mappingFrom.get(i).location()) : "stack slots used in mappingFrom must be disjoint to mappingTo";
+            assert !usedRegs.contains(interval.location()) || checkIntervalLocation(mappingFrom.get(i), interval, mappingFromOpr.get(i)) : "stack slots used in mappingFrom must be disjoint to mappingTo";
+        }
+    }
+
+    private static boolean checkIntervalLocation(Interval from, Interval to, Value fromOpr) {
+        if (from == null) {
+            return fromOpr != null;
+        } else {
+            return to.location().equals(from.location());
         }
     }
 

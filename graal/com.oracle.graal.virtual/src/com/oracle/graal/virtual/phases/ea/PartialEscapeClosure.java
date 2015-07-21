@@ -562,7 +562,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         materialized |= mergeObjectStates(object, objStates, states);
                     } else {
                         if (uniqueMaterializedValue != null) {
-                            newState.addObject(object, new ObjectState(object, uniqueMaterializedValue, EscapeState.Materialized, null));
+                            newState.addObject(object, new ObjectState(object, uniqueMaterializedValue, EscapeState.Materialized, null, false));
                         } else {
                             PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(Kind.Object));
                             mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
@@ -574,7 +574,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                                 }
                                 setPhiInput(materializedValuePhi, i, obj.getMaterializedValue());
                             }
-                            newState.addObject(object, new ObjectState(object, materializedValuePhi, EscapeState.Materialized, null));
+                            newState.addObject(object, new ObjectState(object, materializedValuePhi, EscapeState.Materialized, null, false));
                         }
                     }
                 }
@@ -615,6 +615,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          */
         private boolean mergeObjectStates(VirtualObjectNode object, ObjectState[] objStates, List<BlockT> blockStates) {
             boolean compatible = true;
+            boolean ensureVirtual = true;
             ValueNode[] values = objStates[0].getEntries().clone();
 
             // determine all entries that have a two-slot value
@@ -622,6 +623,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             outer: for (int i = 0; i < objStates.length; i++) {
                 ValueNode[] entries = objStates[i].getEntries();
                 int valueIndex = 0;
+                ensureVirtual &= objStates[i].getEnsureVirtualized();
                 while (valueIndex < values.length) {
                     Kind otherKind = entries[valueIndex].getKind();
                     Kind entryKind = object.entryKind(valueIndex);
@@ -705,7 +707,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         values[i] = phi;
                     }
                 }
-                newState.addObject(object, new ObjectState(object, values, EscapeState.Virtual, objStates[0].getLocks()));
+                newState.addObject(object, new ObjectState(object, values, EscapeState.Virtual, objStates[0].getLocks(), ensureVirtual));
                 return materialized;
             } else {
                 // not compatible: materialize in all predecessors
@@ -716,7 +718,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     ensureMaterialized(blockStates.get(i), obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
                     setPhiInput(materializedValuePhi, i, obj.getMaterializedValue());
                 }
-                newState.addObject(object, new ObjectState(object, materializedValuePhi, EscapeState.Materialized, null));
+                newState.addObject(object, new ObjectState(object, materializedValuePhi, EscapeState.Materialized, null, false));
                 return true;
             }
         }

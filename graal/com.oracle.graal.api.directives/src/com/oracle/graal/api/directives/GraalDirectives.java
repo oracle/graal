@@ -283,4 +283,17 @@ public final class GraalDirectives {
         }
         return value;
     }
+
+    /**
+     * Ensures that the given object will be virtual (escape analyzed) at all points that are
+     * dominated by the current position.
+     */
+    public static void ensureVirtualized(@SuppressWarnings("unused") Object object) {
+    }
+
+    /**
+     * Ensures that the given object will be virtual at the current position.
+     */
+    public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
+    }
 }

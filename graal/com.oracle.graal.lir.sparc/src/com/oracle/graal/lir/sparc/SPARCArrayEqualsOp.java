@@ -83,8 +83,8 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         this.lengthValue = length;
 
         // Allocate some temporaries.
-        this.temp1 = tool.newVariable(LIRKind.derivedReference(tool.target().wordKind));
-        this.temp2 = tool.newVariable(LIRKind.derivedReference(tool.target().wordKind));
+        this.temp1 = tool.newVariable(LIRKind.unknownReference(tool.target().wordKind));
+        this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().wordKind));
         this.temp3 = tool.newVariable(LIRKind.value(tool.target().wordKind));
         this.temp4 = tool.newVariable(LIRKind.value(tool.target().wordKind));
         this.temp5 = tool.newVariable(LIRKind.value(tool.target().wordKind));

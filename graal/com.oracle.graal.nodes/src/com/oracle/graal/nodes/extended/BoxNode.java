@@ -82,7 +82,7 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
         VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
         assert newVirtual.getFields().length == 1;
 
-        tool.createVirtualObject(newVirtual, new ValueNode[]{v}, Collections.<MonitorIdNode> emptyList());
+        tool.createVirtualObject(newVirtual, new ValueNode[]{v}, Collections.<MonitorIdNode> emptyList(), false);
         tool.replaceWithVirtual(newVirtual);
     }
 }

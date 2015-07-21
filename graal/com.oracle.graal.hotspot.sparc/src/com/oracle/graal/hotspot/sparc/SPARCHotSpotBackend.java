@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new SPARCFrameMap(getCodeCache(), registerConfig);
+        return new SPARCFrameMap(getCodeCache(), registerConfig, this);
     }
 
     @Override
@@ -140,6 +140,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     } else {
                         try (ScratchRegister sc = masm.getScratchRegister()) {
                             Register scratch = sc.getRegister();
+                            assert afterFrameInit || isGlobalRegister(scratch) : "Only global (g1-g7) registers are allowed if the frame was not initialized here. Got register " + scratch;
                             new Setx(address.getDisplacement(), scratch).emit(masm);
                             masm.stx(g0, new SPARCAddress(sp, scratch));
                         }
@@ -175,6 +176,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             } else {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
+                    assert isGlobalRegister(scratch) : "Only global registers are allowed before save. Got register " + scratch;
                     new Setx(stackpoinerChange, scratch).emit(masm);
                     masm.save(sp, scratch, sp);
                 }
@@ -283,7 +285,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         // TODO: (sa) Fold the two traversals into one
         stuffDelayedControlTransfers(lir);
         int constantSize = calculateConstantSize(lir);
-        boolean canUseImmediateConstantLoad = constantSize < (1 << 13) - 1;
+        boolean canUseImmediateConstantLoad = constantSize < (1 << 13);
         masm.setImmediateConstantLoad(canUseImmediateConstantLoad);
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
@@ -332,9 +334,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
         if (!frameContext.isStub) {
             crb.recordMark(config.MARKID_EXCEPTION_HANDLER_ENTRY);
-            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, null);
             crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
-            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, false, null);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries

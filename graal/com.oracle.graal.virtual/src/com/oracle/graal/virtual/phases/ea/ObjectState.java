@@ -49,28 +49,31 @@ public class ObjectState extends Virtualizable.State {
     private ValueNode[] entries;
     private ValueNode materializedValue;
     private LockState locks;
+    private boolean ensureVirtualized;
 
     private EscapeObjectState cachedState;
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, List<MonitorIdNode> locks) {
-        this(virtual, entries, state, (LockState) null);
+    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, List<MonitorIdNode> locks, boolean ensureVirtualized) {
+        this(virtual, entries, state, (LockState) null, ensureVirtualized);
         for (int i = locks.size() - 1; i >= 0; i--) {
             this.locks = new LockState(locks.get(i), this.locks);
         }
     }
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, LockState locks) {
+    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, LockState locks, boolean ensureVirtualized) {
         this.virtual = virtual;
         this.entries = entries;
         this.state = state;
         this.locks = locks;
+        this.ensureVirtualized = ensureVirtualized;
     }
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode materializedValue, EscapeState state, LockState locks) {
+    public ObjectState(VirtualObjectNode virtual, ValueNode materializedValue, EscapeState state, LockState locks, boolean ensureVirtualized) {
         this.virtual = virtual;
         this.materializedValue = materializedValue;
         this.state = state;
         this.locks = locks;
+        this.ensureVirtualized = ensureVirtualized;
     }
 
     private ObjectState(ObjectState other) {
@@ -80,6 +83,7 @@ public class ObjectState extends Virtualizable.State {
         locks = other.locks;
         state = other.state;
         cachedState = other.cachedState;
+        ensureVirtualized = other.ensureVirtualized;
     }
 
     public ObjectState cloneState() {
@@ -182,6 +186,16 @@ public class ObjectState extends Virtualizable.State {
             b = b.next;
         }
         return a == null && b == null;
+    }
+
+    @Override
+    public void setEnsureVirtualized(boolean ensureVirtualized) {
+        this.ensureVirtualized = ensureVirtualized;
+    }
+
+    @Override
+    public boolean getEnsureVirtualized() {
+        return ensureVirtualized;
     }
 
     @Override

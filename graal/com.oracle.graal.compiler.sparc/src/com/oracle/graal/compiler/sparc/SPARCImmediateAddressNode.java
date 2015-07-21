@@ -57,6 +57,11 @@ public class SPARCImmediateAddressNode extends AddressNode implements LIRLowerab
         AllocatableValue baseValue = tool.asAllocatable(gen.operand(base));
 
         LIRKind kind = tool.getLIRKind(stamp());
+        AllocatableValue baseReference = LIRKind.derivedBaseFromValue(baseValue);
+        if (baseReference != null) {
+            kind = kind.makeDerivedReference(baseReference);
+        }
+
         gen.setResult(this, new SPARCImmediateAddressValue(kind, baseValue, displacement));
     }
 

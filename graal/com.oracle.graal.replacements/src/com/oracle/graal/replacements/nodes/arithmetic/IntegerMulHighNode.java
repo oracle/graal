@@ -83,10 +83,10 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        Value a = builder.operand(getX());
-        Value b = builder.operand(getY());
-        builder.setResult(this, gen.emitMulHigh(a, b));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        Value a = nodeValueMap.operand(getX());
+        Value b = nodeValueMap.operand(getY());
+        nodeValueMap.setResult(this, gen.emitMulHigh(a, b));
     }
 
     public static int multiplyHigh(int x, int y) {

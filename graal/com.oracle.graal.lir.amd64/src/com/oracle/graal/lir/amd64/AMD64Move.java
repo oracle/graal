@@ -673,6 +673,10 @@ public class AMD64Move {
                 assert NumUtil.isShort(imm) : "Is not in short range: " + imm;
                 AMD64MIOp.MOV.emit(masm, OperandSize.WORD, dest, (int) imm);
                 break;
+            case Char:
+                assert NumUtil.isUShort(imm) : "Is not in char range: " + imm;
+                AMD64MIOp.MOV.emit(masm, OperandSize.WORD, dest, (int) imm);
+                break;
             case Int:
             case Float:
                 assert NumUtil.isInt(imm) : "Is not in int range: " + imm;

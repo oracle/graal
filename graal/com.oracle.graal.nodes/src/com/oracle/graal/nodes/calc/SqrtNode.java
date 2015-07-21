@@ -43,7 +43,7 @@ public final class SqrtNode extends UnaryArithmeticNode<Sqrt> implements Arithme
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitMathSqrt(builder.operand(getValue())));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitMathSqrt(nodeValueMap.operand(getValue())));
     }
 }

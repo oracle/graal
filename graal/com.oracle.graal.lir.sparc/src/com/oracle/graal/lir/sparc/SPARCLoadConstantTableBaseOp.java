@@ -24,7 +24,6 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
-import jdk.internal.jvmci.code.CompilationResult.DataSectionReference;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -71,16 +70,11 @@ public class SPARCLoadConstantTableBaseOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         Register baseRegister = asRegister(base);
-        DataSectionReference ref = new DataSectionReference();
-        ref.setOffset(0);
-        crb.compilationResult.recordDataPatch(masm.position(), ref);
-        // TODO: (sa) Make this relocation shorter (right now it takes always 8 instructions)
-        new SPARCMacroAssembler.Setx(0, baseRegister, true).emit(masm);
-        /**
-         * Place the base register into the center of the reachable 8k range. This bias is reflected
-         * in CodeInstaller::pd_patch_DataSectionReference (jvmciCodeInstaller_sparc.cpp)
-         */
-        masm.sub(baseRegister, -1 & ~((1 << 12) - 1), baseRegister);
+        int beforePosition = masm.position();
+        masm.rdpc(baseRegister);
+        // Must match with CodeInstaller::pd_patch_DataSectionReference
+        masm.add(baseRegister, (int) SPARCAssembler.minSimm(13), baseRegister);
+        masm.sub(baseRegister, beforePosition, baseRegister);
     }
 
     public AllocatableValue getResult() {

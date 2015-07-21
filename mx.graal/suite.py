@@ -671,6 +671,7 @@ suite = {
         "com.oracle.graal.compiler",
         "com.oracle.graal.lir.sparc"
       ],
+      "annotationProcessors" : ["com.oracle.graal.compiler.match.processor"],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -925,6 +926,10 @@ suite = {
       "distDependencies" : [
         "GRAAL_TRUFFLE",
         "truffle:TRUFFLE_SL",
+      ],
+      "exclude" : [
+        "TRUFFLE",
+        "TRUFFLE_DSL_PROCESSOR",
       ],
     },
 

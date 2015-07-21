@@ -183,7 +183,7 @@ public final class OptimizedOSRLoopNode extends LoopNode implements ReplaceObser
         @Child private OptimizedOSRLoopNode loopNode;
 
         public OSRRootNode(OptimizedOSRLoopNode loop) {
-            super(loop.getSourceSection(), loop.getRootNode().getFrameDescriptor());
+            super(TruffleLanguage.class, loop.getSourceSection(), loop.getRootNode().getFrameDescriptor());
             this.loopNode = loop;
         }
 

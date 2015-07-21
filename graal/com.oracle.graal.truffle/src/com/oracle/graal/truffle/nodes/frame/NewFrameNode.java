@@ -182,12 +182,12 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             graph().getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
         }
 
-        tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList());
+        tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList(), false);
         if (virtualFramePrimitiveArray != null) {
-            tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList());
+            tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), false);
         }
         if (virtualFrameTagArray != null) {
-            tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList());
+            tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList(), false);
         }
 
         assert frameFields.length == 5 || frameFields.length == 3;
@@ -202,7 +202,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         if (tagsField != null) {
             frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
         }
-        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList());
+        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList(), false);
         tool.replaceWithVirtual(virtualFrame);
     }
 

@@ -588,7 +588,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed;
             if (encoding.shift <= 3) {
-                LIRKind wordKind = LIRKind.derivedReference(target().wordKind);
+                LIRKind wordKind = LIRKind.unknownReference(target().wordKind);
                 uncompressed = new AMD64AddressValue(wordKind, getProviders().getRegisters().getHeapBaseRegister().asValue(wordKind), asAllocatable(address), Scale.fromInt(1 << encoding.shift), 0);
             } else {
                 uncompressed = emitUncompress(address, encoding, false);

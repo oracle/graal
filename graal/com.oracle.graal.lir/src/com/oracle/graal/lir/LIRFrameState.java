@@ -31,6 +31,7 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.dfa.*;
 import com.oracle.graal.lir.framemap.*;
 
 /**
@@ -43,6 +44,8 @@ public class LIRFrameState {
     private final VirtualObject[] virtualObjects;
     public final LabelRef exceptionEdge;
     protected DebugInfo debugInfo;
+
+    private ValueSet liveBasePointers;
 
     public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
         this.topFrame = topFrame;
@@ -73,6 +76,9 @@ public class LIRFrameState {
                 processValues(inst, obj.getValues(), proc);
             }
         }
+        if (liveBasePointers != null) {
+            liveBasePointers.forEach(inst, OperandMode.ALIVE, STATE_FLAGS, proc);
+        }
     }
 
     /**
@@ -88,6 +94,9 @@ public class LIRFrameState {
             for (VirtualObject obj : virtualObjects) {
                 processValues(inst, obj.getValues(), proc);
             }
+        }
+        if (liveBasePointers != null) {
+            liveBasePointers.forEach(inst, OperandMode.ALIVE, STATE_FLAGS, proc);
         }
     }
 
@@ -169,7 +178,15 @@ public class LIRFrameState {
      * @param canHaveRegisters True if there can be any register map entries.
      */
     public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
-        debugInfo = new DebugInfo(topFrame, frameMap.initReferenceMap(canHaveRegisters), virtualObjects);
+        debugInfo = new DebugInfo(topFrame, virtualObjects);
+    }
+
+    public ValueSet getLiveBasePointers() {
+        return liveBasePointers;
+    }
+
+    public void setLiveBasePointers(ValueSet liveBasePointers) {
+        this.liveBasePointers = liveBasePointers;
     }
 
     @Override

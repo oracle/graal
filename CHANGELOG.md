@@ -1,17 +1,22 @@
 # GraalVM Changelog
 
-This changelog summarizes major changes between Graal versions relevant to languages implementors building upon the Truffle framework and developers building technology on top of Graal. The main focus is on APIs exported by Graal and Truffle.
-
+This changelog summarizes major changes between Graal versions relevant to developers building technology on top of Graal. The main focus is on APIs exported by Graal.
 
 ## `tip`
+...
+
+## Version 0.8
+15-Jul-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.8)
 ### Graal
 * Add support for constructing low-level IR in SSA form (default behavior).
 * Add support for SSA linear scan register allocation (default behavior).
 * Remove dummy parameter `includeAbstract` from `ResolvedJavaType#resolveMethod()`; The behavior is now the `includeAbstract==true` case. The `includeAbstract==false` variant is available via `resolveConcreteMethod()`.
-...
+* HotSpot modifications have been renamed to JVMCI in preparation for [JEP 243](http://openjdk.java.net/jeps/243). As a result HotSpot options containing "Graal" have been changed to "JVMCI" (e.g., -XX:+BootstrapJVMCI).
+* All the APIs used to interface with the VM (`api.meta`, `api.code` etc.) have been moved to `jdk.internal.jvmci` packages (e.g., `jdk.internal.jvmci.meta`).
+* Fast JVMCI services do not need to implement an interface anymore, implementations simply need to be annotated with `jdk.internal.jvmci.service.ServiceProvider`.
 
 ### Truffle
-...
+* Moved Truffle to it own [repository](http://lafo.ssw.uni-linz.ac.at/hg/truffle/)
 
 ## Version 0.7
 29-Apr-2015, [Repository Revision](http://hg.openjdk.java.net/graal/graal/shortlog/graal-0.7)

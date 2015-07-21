@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
         this.opcode = opcode;
         this.result = result;
         this.input = input;
-        scratch = gen.newVariable(LIRKind.derive(input));
+        scratch = gen.newVariable(LIRKind.combine(input));
     }
 
     @Override

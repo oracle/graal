@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.test.nodes;
 
+import com.oracle.graal.truffle.test.MockLanguage;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
@@ -33,7 +34,7 @@ public class RootTestNode extends RootNode {
     @Child AbstractTestNode node;
 
     public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node) {
-        super(null, descriptor);
+        super(MockLanguage.class, null, descriptor);
         this.name = name;
         this.node = node;
     }

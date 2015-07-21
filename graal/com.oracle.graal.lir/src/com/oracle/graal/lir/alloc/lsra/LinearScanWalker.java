@@ -781,16 +781,7 @@ class LinearScanWalker extends IntervalWalker {
             spillCollectInactiveAny(interval);
 
             if (Debug.isLogEnabled()) {
-                try (Indent indent2 = Debug.logAndIndent("state of registers:")) {
-                    for (Register reg : availableRegs) {
-                        int i = reg.number;
-                        try (Indent indent3 = Debug.logAndIndent("reg %d: usePos: %d, blockPos: %d, intervals: ", i, usePos[i], blockPos[i])) {
-                            for (int j = 0; j < spillIntervals[i].size(); j++) {
-                                Debug.log("%d ", spillIntervals[i].get(j).operandNumber);
-                            }
-                        }
-                    }
-                }
+                printRegisterState();
             }
 
             // the register must be free at least until this position
@@ -820,10 +811,11 @@ class LinearScanWalker extends IntervalWalker {
                 }
 
                 if (firstUsage <= interval.from() + 1) {
-                    String description = "cannot spill interval that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage + ", interval.from()=" +
-                                    interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
+                    String description = "cannot spill interval (" + interval + ") that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage +
+                                    ", interval.from()=" + interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
                     // assign a reasonable register and do a bailout in product mode to avoid errors
                     allocator.assignSpillSlot(interval);
+                    Debug.dump(allocator.ir, description);
                     allocator.printIntervals(description);
                     throw new OutOfRegistersException("LinearScan: no register found", description);
                 }
@@ -850,6 +842,19 @@ class LinearScanWalker extends IntervalWalker {
 
             // perform splitting and spilling for all affected intervals
             splitAndSpillIntersectingIntervals(reg);
+        }
+    }
+
+    void printRegisterState() {
+        try (Indent indent2 = Debug.logAndIndent("state of registers:")) {
+            for (Register reg : availableRegs) {
+                int i = reg.number;
+                try (Indent indent3 = Debug.logAndIndent("reg %d: usePos: %d, blockPos: %d, intervals: ", i, usePos[i], blockPos[i])) {
+                    for (int j = 0; j < spillIntervals[i].size(); j++) {
+                        Debug.log("%s ", spillIntervals[i].get(j));
+                    }
+                }
+            }
         }
     }
 

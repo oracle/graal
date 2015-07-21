@@ -91,7 +91,7 @@ public final class DivNode extends BinaryArithmeticNode<Div> {
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitDiv(builder.operand(getX()), builder.operand(getY()), null));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitDiv(nodeValueMap.operand(getX()), nodeValueMap.operand(getY()), null));
     }
 }

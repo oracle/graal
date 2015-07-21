@@ -53,7 +53,7 @@ public final class GetObjectAddressNode extends FixedWithNextNode implements LIR
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        AllocatableValue obj = gen.getLIRGeneratorTool().newVariable(LIRKind.derivedReference(gen.getLIRGeneratorTool().target().wordKind));
+        AllocatableValue obj = gen.getLIRGeneratorTool().newVariable(LIRKind.unknownReference(gen.getLIRGeneratorTool().target().wordKind));
         gen.getLIRGeneratorTool().emitMove(obj, gen.operand(object));
         gen.setResult(this, obj);
     }

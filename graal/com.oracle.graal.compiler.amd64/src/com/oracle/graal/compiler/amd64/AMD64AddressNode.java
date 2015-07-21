@@ -66,7 +66,19 @@ public class AMD64AddressNode extends AddressNode implements LIRLowerable {
         AllocatableValue baseValue = base == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(base));
         AllocatableValue indexValue = index == null ? Value.ILLEGAL : tool.asAllocatable(gen.operand(index));
 
-        LIRKind kind = tool.getLIRKind(stamp());
+        AllocatableValue baseReference = LIRKind.derivedBaseFromValue(baseValue);
+        AllocatableValue indexReference;
+        if (scale.equals(Scale.Times1)) {
+            indexReference = LIRKind.derivedBaseFromValue(indexValue);
+        } else {
+            if (indexValue.getLIRKind().isValue()) {
+                indexReference = null;
+            } else {
+                indexReference = Value.ILLEGAL;
+            }
+        }
+
+        LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp()), baseReference, indexReference);
         gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, scale, displacement));
     }
 

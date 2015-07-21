@@ -24,6 +24,7 @@ package com.oracle.graal.truffle;
 
 import jdk.internal.jvmci.common.*;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 
 class ReadOnlyFrame implements Frame {
@@ -33,102 +34,127 @@ class ReadOnlyFrame implements Frame {
         this.delegate = delegate;
     }
 
+    @TruffleBoundary
     public FrameDescriptor getFrameDescriptor() {
         return delegate.getFrameDescriptor();
     }
 
+    @TruffleBoundary
     public Object[] getArguments() {
         return delegate.getArguments().clone();
     }
 
+    @TruffleBoundary
     public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getObject(slot);
     }
 
+    @TruffleBoundary
     public void setObject(FrameSlot slot, Object value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getByte(slot);
     }
 
+    @TruffleBoundary
     public void setByte(FrameSlot slot, byte value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getBoolean(slot);
     }
 
+    @TruffleBoundary
     public void setBoolean(FrameSlot slot, boolean value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public int getInt(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getInt(slot);
     }
 
+    @TruffleBoundary
     public void setInt(FrameSlot slot, int value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public long getLong(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getLong(slot);
     }
 
+    @TruffleBoundary
     public void setLong(FrameSlot slot, long value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getFloat(slot);
     }
 
+    @TruffleBoundary
     public void setFloat(FrameSlot slot, float value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
         return delegate.getDouble(slot);
     }
 
+    @TruffleBoundary
     public void setDouble(FrameSlot slot, double value) {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public Object getValue(FrameSlot slot) {
         return delegate.getValue(slot);
     }
 
+    @TruffleBoundary
     public MaterializedFrame materialize() {
         throw JVMCIError.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public boolean isObject(FrameSlot slot) {
         return delegate.isObject(slot);
     }
 
+    @TruffleBoundary
     public boolean isByte(FrameSlot slot) {
         return delegate.isByte(slot);
     }
 
+    @TruffleBoundary
     public boolean isBoolean(FrameSlot slot) {
         return delegate.isBoolean(slot);
     }
 
+    @TruffleBoundary
     public boolean isInt(FrameSlot slot) {
         return delegate.isInt(slot);
     }
 
+    @TruffleBoundary
     public boolean isLong(FrameSlot slot) {
         return delegate.isLong(slot);
     }
 
+    @TruffleBoundary
     public boolean isFloat(FrameSlot slot) {
         return delegate.isFloat(slot);
     }
 
+    @TruffleBoundary
     public boolean isDouble(FrameSlot slot) {
         return delegate.isDouble(slot);
     }

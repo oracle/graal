@@ -32,9 +32,9 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
@@ -122,13 +122,13 @@ public class TypeCheckSnippetUtils {
         }
     }
 
-    static Hints createHints(TypeCheckHints hints, MetaAccessProvider metaAccess, boolean positiveOnly, StructuredGraph graph) {
+    static Hints createHints(TypeCheckHints hints, MetaAccessProvider metaAccess, boolean positiveOnly, StructuredGraph graph, LoweringTool tool) {
         ConstantNode[] hubs = new ConstantNode[hints.hints.length];
         boolean[] isPositive = new boolean[hints.hints.length];
         int index = 0;
         for (int i = 0; i < hubs.length; i++) {
             if (!positiveOnly || hints.hints[i].positive) {
-                hubs[index] = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hints.hints[i].type).klass(), metaAccess, graph);
+                hubs[index] = ConstantNode.forConstant(tool.getStampProvider().createHubStamp(true), ((HotSpotResolvedObjectType) hints.hints[i].type).klass(), metaAccess, graph);
                 isPositive[index] = hints.hints[i].positive;
                 index++;
             }

@@ -39,8 +39,17 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
      */
     public static class InlineInfo {
 
-        /** Marker return value to use when the call site must not be inlined. */
-        public static final InlineInfo DO_NOT_INLINE = new InlineInfo(null, false);
+        /**
+         * Denotes a call site that must not be inlined and should be implemented by a node that
+         * does not speculate on the call not raising an exception.
+         */
+        public static final InlineInfo DO_NOT_INLINE_WITH_EXCEPTION = new InlineInfo(null, false);
+
+        /**
+         * Denotes a call site must not be inlined and can be implemented by a node that speculates
+         * the call will not throw an exception.
+         */
+        public static final InlineInfo DO_NOT_INLINE_NO_EXCEPTION = new InlineInfo(null, false);
 
         private final ResolvedJavaMethod methodToInline;
         private final boolean isIntrinsic;
@@ -75,8 +84,8 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
      * method than the one specified here as the parameter, which allows method substitutions.
      * <p>
      * Non-null return value with a null {@link InlineInfo#getMethodToInline method}, e.g.,
-     * {@link InlineInfo#DO_NOT_INLINE}: The method is not inlined, and other plugins with a lower
-     * priority cannot overwrite this decision.
+     * {@link InlineInfo#DO_NOT_INLINE_WITH_EXCEPTION}: The method is not inlined, and other plugins
+     * with a lower priority cannot overwrite this decision.
      * <p>
      * Null return value: This plugin made no decision, other plugins with a lower priority are
      * asked.

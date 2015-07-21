@@ -29,6 +29,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.Scope;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
@@ -78,18 +79,20 @@ final class RegisterVerifier {
     }
 
     void verify(AbstractBlockBase<?> start) {
-        // setup input registers (method arguments) for first block
-        Interval[] inputState = new Interval[stateSize()];
-        setStateForBlock(start, inputState);
-        addToWorkList(start);
+        try (Scope s = Debug.scope("RegisterVerifier")) {
+            // setup input registers (method arguments) for first block
+            Interval[] inputState = new Interval[stateSize()];
+            setStateForBlock(start, inputState);
+            addToWorkList(start);
 
-        // main loop for verification
-        do {
-            AbstractBlockBase<?> block = workList.get(0);
-            workList.remove(0);
+            // main loop for verification
+            do {
+                AbstractBlockBase<?> block = workList.get(0);
+                workList.remove(0);
 
-            processBlock(block);
-        } while (!workList.isEmpty());
+                processBlock(block);
+            } while (!workList.isEmpty());
+        }
     }
 
     private void processBlock(AbstractBlockBase<?> block) {
@@ -98,21 +101,31 @@ final class RegisterVerifier {
             Interval[] inputState = copy(stateForBlock(block));
 
             try (Indent indent2 = Debug.logAndIndent("Input-State of intervals:")) {
-                for (int i = 0; i < stateSize(); i++) {
-                    if (inputState[i] != null) {
-                        Debug.log(" %4d", inputState[i].operandNumber);
-                    } else {
-                        Debug.log("   __");
-                    }
-                }
+                printState(inputState);
             }
 
             // process all operations of the block
-            processOperations(allocator.ir.getLIRforBlock(block), inputState);
+            processOperations(block, inputState);
+
+            try (Indent indent2 = Debug.logAndIndent("Output-State of intervals:")) {
+                printState(inputState);
+            }
 
             // iterate all successors
             for (AbstractBlockBase<?> succ : block.getSuccessors()) {
                 processSuccessor(succ, inputState);
+            }
+        }
+    }
+
+    protected void printState(Interval[] inputState) {
+        for (int i = 0; i < stateSize(); i++) {
+            Register reg = allocator.registers[i];
+            assert reg.number == i;
+            if (inputState[i] != null) {
+                Debug.log(" %6s %4d  --  %s", reg, inputState[i].operandNumber, inputState[i]);
+            } else {
+                Debug.log(" %6s   __", reg);
             }
         }
     }
@@ -177,16 +190,19 @@ final class RegisterVerifier {
         }
     }
 
-    static boolean checkState(Interval[] inputState, Value reg, Interval interval) {
+    static boolean checkState(AbstractBlockBase<?> block, LIRInstruction op, Interval[] inputState, Value operand, Value reg, Interval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
-                throw new JVMCIError("!! Error in register allocation: register %s does not contain interval %s but interval %s", reg, interval.operand, inputState[asRegister(reg).number]);
+                throw new JVMCIError(
+                                "Error in register allocation: operation (%s) in block %s expected register %s (operand %s) to contain the value of interval %s but data-flow says it contains interval %s",
+                                op, block, reg, operand, interval, inputState[asRegister(reg).number]);
             }
         }
         return true;
     }
 
-    void processOperations(List<LIRInstruction> ops, final Interval[] inputState) {
+    void processOperations(AbstractBlockBase<?> block, final Interval[] inputState) {
+        List<LIRInstruction> ops = allocator.ir.getLIRforBlock(block);
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
 
             @Override
@@ -198,7 +214,7 @@ final class RegisterVerifier {
                         interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
                     }
 
-                    assert checkState(inputState, interval.location(), interval.splitParent());
+                    assert checkState(block, op, inputState, interval.operand, interval.location(), interval.splitParent());
                 }
             }
         };

@@ -28,5 +28,5 @@ import com.oracle.graal.lir.gen.*;
 
 public interface ArithmeticLIRLowerable extends ArithmeticOperation {
 
-    void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen);
+    void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen);
 }

@@ -100,15 +100,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen) {
         this.gen = gen;
         this.nodeOperands = graph.createNodeMap();
-        this.debugInfoBuilder = createDebugInfoBuilder(graph, nodeOperands);
+        this.debugInfoBuilder = createDebugInfoBuilder(graph, this);
         if (MatchExpressions.getValue()) {
             matchRules = MatchRuleRegistry.lookup(getClass());
         }
     }
 
-    @SuppressWarnings({"unused", "hiding"})
-    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeMap<Value> nodeOperands) {
-        return new DebugInfoBuilder(nodeOperands);
+    @SuppressWarnings({"unused"})
+    protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
+        return new DebugInfoBuilder(nodeValueMap);
     }
 
     /**
@@ -138,7 +138,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     public ValueNode valueForOperand(Value value) {
-        for (Entry<Node, Value> entry : getNodeOperands().entries()) {
+        assert nodeOperands != null;
+        for (Entry<Node, Value> entry : nodeOperands.entries()) {
             if (entry.getValue().equals(value)) {
                 return (ValueNode) entry.getKey();
             }
@@ -215,7 +216,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     private static boolean verifyPHIKind(LIRKind derivedKind, LIRKind phiKind) {
-        assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isDerivedReference();
+        assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isUnknownReference();
         PlatformKind phiPlatformKind = phiKind.getPlatformKind();
         assert derivedKind.equals(phiKind) || derivedKind.getPlatformKind().equals(phiPlatformKind instanceof Kind ? ((Kind) phiPlatformKind).getStackKind() : phiPlatformKind);
         return true;
@@ -631,11 +632,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 }
             }
         }
-    }
-
-    public final NodeMap<Value> getNodeOperands() {
-        assert nodeOperands != null;
-        return nodeOperands;
     }
 
     public DebugInfoBuilder getDebugInfoBuilder() {

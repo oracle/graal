@@ -38,6 +38,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.sparc.*;
 import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.*;
@@ -311,12 +312,15 @@ public class SPARCControlFlow {
 
     private static boolean isShortBranch(SPARCAssembler asm, int position, LabelHint hint, Label label) {
         int disp = 0;
+        boolean dispValid = true;
         if (label.isBound()) {
             disp = label.position() - position;
         } else if (hint != null && hint.isValid()) {
             disp = hint.getTarget() - hint.getPosition();
+        } else {
+            dispValid = false;
         }
-        if (disp != 0) {
+        if (dispValid) {
             if (disp < 0) {
                 disp -= maximumSelfOffsetInstructions * asm.target.wordSize;
             } else {
@@ -403,7 +407,8 @@ public class SPARCControlFlow {
         @Alive({REG, ILLEGAL}) protected Value constantTableBase;
         @Temp({REG}) protected Value scratch;
         private final SwitchStrategy strategy;
-        private final LabelHint[] labelHints;
+        private final Map<Label, LabelHint> labelHints;
+        private final List<Label> conditionalLabels = new ArrayList<>();
 
         public StrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
             super(TYPE);
@@ -414,7 +419,7 @@ public class SPARCControlFlow {
             this.constantTableBase = constantTableBase;
             this.key = key;
             this.scratch = scratch;
-            this.labelHints = new LabelHint[keyTargets.length];
+            this.labelHints = new HashMap<>();
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
         }
@@ -424,9 +429,31 @@ public class SPARCControlFlow {
             final Register keyRegister = asRegister(key);
             final Register constantBaseRegister = AllocatableValue.ILLEGAL.equals(constantTableBase) ? g0 : asRegister(constantTableBase);
             BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
+                int conditionalLabelPointer = 0;
+
+                /**
+                 * This method caches the generated labels over two assembly passes to get
+                 * information about branch lengths.
+                 */
+                @Override
+                public Label conditionalJump(int index, Condition condition) {
+                    Label label;
+                    if (conditionalLabelPointer <= conditionalLabels.size()) {
+                        label = new Label();
+                        conditionalLabels.add(label);
+                        conditionalLabelPointer = conditionalLabels.size();
+                    } else {
+                        // TODO: (sa) We rely here on the order how the labels are generated during
+                        // code generation; if the order is not stable ower two assembly passes, the
+                        // result can be wrong
+                        label = conditionalLabels.get(conditionalLabelPointer++);
+                    }
+                    conditionalJump(index, condition, label);
+                    return label;
+                }
+
                 @Override
                 protected void conditionalJump(int index, Condition condition, Label target) {
-                    requestHint(masm, index);
                     JavaConstant constant = keyConstants[index];
                     CC conditionCode;
                     Long bits;
@@ -452,10 +479,15 @@ public class SPARCControlFlow {
                             throw new JVMCIError("switch only supported for int, long and object");
                     }
                     ConditionFlag conditionFlag = fromCondition(conditionCode, condition, false);
-                    LabelHint hint = labelHints[index];
-                    boolean canUseShortBranch = masm.hasFeature(CBCOND) && hint.isValid() && isShortBranch(masm, masm.position(), hint, target);
+                    LabelHint hint = requestHint(masm, target);
+                    boolean isShortConstant = isSimm5(constant);
+                    int cbCondPosition = masm.position();
+                    if (!isShortConstant) { // Load constant takes one instruction
+                        cbCondPosition += SPARC.INSTRUCTION_SIZE;
+                    }
+                    boolean canUseShortBranch = masm.hasFeature(CBCOND) && isShortBranch(masm, cbCondPosition, hint, target);
                     if (bits != null && canUseShortBranch) {
-                        if (isSimm5(constant)) {
+                        if (isShortConstant) {
                             if (conditionCode == Icc) {
                                 masm.cbcondw(conditionFlag, keyRegister, (int) (long) bits, target);
                             } else {
@@ -486,8 +518,13 @@ public class SPARCControlFlow {
             strategy.run(closure);
         }
 
-        private void requestHint(SPARCMacroAssembler masm, int index) {
-            labelHints[index] = masm.requestLabelHint(keyTargets[index].label());
+        private LabelHint requestHint(SPARCMacroAssembler masm, Label label) {
+            LabelHint hint = labelHints.get(label);
+            if (hint == null) {
+                hint = masm.requestLabelHint(label);
+                labelHints.put(label, hint);
+            }
+            return hint;
         }
 
         @Override

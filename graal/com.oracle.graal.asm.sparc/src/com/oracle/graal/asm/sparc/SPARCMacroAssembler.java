@@ -39,7 +39,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
      * patched.
      */
     private static final SPARCAddress Placeholder = new SPARCAddress(g0, 0);
-    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(g1), new ScratchRegister(g3)};
+    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(g3), new ScratchRegister(o7)};
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
     /**

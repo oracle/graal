@@ -35,6 +35,7 @@ import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -56,11 +57,11 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
         LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
-        HotSpotStampProvider stampProvider = new HotSpotStampProvider();
+        HotSpotStampProvider stampProvider = new HotSpotStampProvider(codeCache.getTarget().wordKind);
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, runtime.getConfig(), target);
-        HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
+        HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind, stampProvider.createHubStamp(false), MethodPointerStamp.method());
         Plugins plugins = createGraphBuilderPlugins(runtime, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(runtime, plugins, codeCache);
@@ -99,6 +100,9 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         Set<Register> callerSavedRegisters = new HashSet<>();
         Collections.addAll(callerSavedRegisters, regConfig.getCalleeSaveLayout().registers);
         Collections.addAll(callerSavedRegisters, SPARC.fpuRegisters);
+        callerSavedRegisters.add(SPARC.g1);
+        callerSavedRegisters.add(SPARC.g4);
+        callerSavedRegisters.add(SPARC.g5);
         Value[] nativeABICallerSaveRegisters = new Value[callerSavedRegisters.size()];
         int i = 0;
         for (Register reg : callerSavedRegisters) {

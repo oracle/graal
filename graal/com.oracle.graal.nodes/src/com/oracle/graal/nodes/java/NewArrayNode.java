@@ -84,7 +84,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
                     state[i] = defaultForKind;
                 }
                 VirtualObjectNode virtualObject = createVirtualArrayNode(constantLength);
-                tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList());
+                tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), false);
                 tool.replaceWithVirtual(virtualObject);
             }
         }

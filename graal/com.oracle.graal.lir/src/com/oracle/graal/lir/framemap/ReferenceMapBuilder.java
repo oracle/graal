@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.lir.framemap;
 
-package com.oracle.graal.nodes.spi;
-
+import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.lir.*;
 
-public interface NodeMappableLIRBuilder {
+public abstract class ReferenceMapBuilder {
 
-    Value operand(Node object);
+    public abstract void addLiveValue(Value value);
 
-    boolean hasOperand(Node object);
-
-    Value setResult(ValueNode x, Value operand);
+    public abstract ReferenceMap finish(LIRFrameState state);
 }

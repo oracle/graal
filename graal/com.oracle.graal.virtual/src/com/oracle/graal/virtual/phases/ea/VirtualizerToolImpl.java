@@ -151,7 +151,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     }
 
     @Override
-    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks) {
+    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, boolean ensureVirtualized) {
         VirtualUtil.trace("{{%s}} ", current);
         if (!virtualObject.isAlive()) {
             effects.addFloatingNode(virtualObject, "newVirtualObject");
@@ -166,7 +166,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                 }
             }
         }
-        state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, locks));
+        state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, locks, ensureVirtualized));
         closure.addAndMarkAlias(virtualObject, virtualObject);
         PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
     }

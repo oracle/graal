@@ -40,18 +40,28 @@ public final class ArrayCopySlowPathNode extends BasicArrayCopyNode {
 
     private final SnippetTemplate.SnippetInfo snippet;
 
-    public ArrayCopySlowPathNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, SnippetTemplate.SnippetInfo snippet) {
+    /**
+     * Extra context for the slow path snippet.
+     */
+    private final Object argument;
+
+    public ArrayCopySlowPathNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, SnippetTemplate.SnippetInfo snippet, Object argument) {
         super(TYPE, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
         assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dest) : "must have been null checked";
         this.snippet = snippet;
+        this.argument = argument;
     }
 
     @NodeIntrinsic
     public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter Kind elementKind,
-                    @ConstantNodeParameter SnippetTemplate.SnippetInfo snippet);
+                    @ConstantNodeParameter SnippetTemplate.SnippetInfo snippet, @ConstantNodeParameter Object argument);
 
     public SnippetTemplate.SnippetInfo getSnippet() {
         return snippet;
+    }
+
+    public Object getArgument() {
+        return argument;
     }
 
     @Override

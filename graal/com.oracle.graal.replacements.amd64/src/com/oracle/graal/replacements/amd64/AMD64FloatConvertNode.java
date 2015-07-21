@@ -54,7 +54,7 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         return this;
     }
 
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(op, builder.operand(getValue())));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitFloatConvert(op, nodeValueMap.operand(getValue())));
     }
 }

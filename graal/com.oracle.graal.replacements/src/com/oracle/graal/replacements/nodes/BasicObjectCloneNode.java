@@ -66,7 +66,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     *
+     * 
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     protected static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
@@ -99,7 +99,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
                     newEntryState[i] = originalState.getEntry(i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList());
+                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
@@ -120,7 +120,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
                     state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
                     tool.addNode(loads[i]);
                 }
-                tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList());
+                tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList(), false);
                 tool.replaceWithVirtual(newVirtual);
             }
         }

@@ -97,6 +97,22 @@ public class PartialEvaluator {
         }
     }
 
+    public Providers getProviders() {
+        return providers;
+    }
+
+    public SnippetReflectionProvider getSnippetReflection() {
+        return snippetReflection;
+    }
+
+    public ResolvedJavaMethod[] getCompilationRootMethods() {
+        return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
+    }
+
+    public ResolvedJavaMethod[] getNeverInlineMethods() {
+        return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
+    }
+
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(callTarget, "truffle tree");
@@ -158,11 +174,12 @@ public class PartialEvaluator {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
-            if (original.getAnnotation(TruffleBoundary.class) != null) {
-                return InlineInfo.DO_NOT_INLINE;
+            TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
+            if (truffleBoundary != null) {
+                return truffleBoundary.throwsControlFlowException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION : InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }
             if (replacements.hasSubstitution(original, builder.bci())) {
-                return InlineInfo.DO_NOT_INLINE;
+                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }
             assert !builder.parsingIntrinsic();
 
@@ -226,18 +243,21 @@ public class PartialEvaluator {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments, JavaType returnType) {
-            if (invocationPlugins.lookupInvocation(original) != null || loopExplosionPlugin.shouldExplodeLoops(original)) {
-                return InlineInfo.DO_NOT_INLINE;
+            if (invocationPlugins.lookupInvocation(original) != null) {
+                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+            } else if (loopExplosionPlugin.shouldExplodeLoops(original)) {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
-            if (original.getAnnotation(TruffleBoundary.class) != null) {
-                return InlineInfo.DO_NOT_INLINE;
+            TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
+            if (truffleBoundary != null) {
+                return truffleBoundary.throwsControlFlowException() ? InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION : InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }
             if (replacements.hasSubstitution(original, builder.bci())) {
-                return InlineInfo.DO_NOT_INLINE;
+                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }
 
             if (original.equals(callSiteProxyMethod) || original.equals(callDirectMethod)) {
-                return InlineInfo.DO_NOT_INLINE;
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             if (hasMethodHandleArgument(arguments)) {
                 /*

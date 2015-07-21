@@ -47,7 +47,7 @@ public class HotSpotProviders extends Providers {
     public HotSpotProviders(MetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, SuitesProvider suites, HotSpotRegistersProvider registers, SnippetReflectionProvider snippetReflection,
                     HotSpotWordTypes wordTypes, Plugins graphBuilderPlugins) {
-        super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, new HotSpotStampProvider());
+        super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, new HotSpotStampProvider(codeCache.getTarget().wordKind));
         this.suites = suites;
         this.registers = registers;
         this.snippetReflection = snippetReflection;

@@ -101,5 +101,10 @@ public abstract class SPARCLIRInstruction extends LIRInstruction {
                 return new SizeEstimate(instructionSize, 0);
             }
         }
+
+        @Override
+        public String toString() {
+            return "SE[i=" + instructionSize + ", c=" + constantSize + "]";
+        }
     }
 }

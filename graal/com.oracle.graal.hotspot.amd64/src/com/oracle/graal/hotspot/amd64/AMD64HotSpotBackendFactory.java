@@ -38,6 +38,7 @@ import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.amd64.*;
@@ -76,7 +77,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Lowerer provider")) {
                 lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, target);
             }
-            HotSpotStampProvider stampProvider = new HotSpotStampProvider();
+            HotSpotStampProvider stampProvider = new HotSpotStampProvider(target.wordKind);
             Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null, stampProvider);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
@@ -86,7 +87,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                 replacements = createReplacements(runtime, p, snippetReflection);
             }
             try (InitTimer rt = timer("create WordTypes")) {
-                wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
+                wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind, stampProvider.createHubStamp(false), MethodPointerStamp.method());
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(runtime, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, stampProvider);
@@ -167,15 +168,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             * 
+             *
              * Draft Version 0.96
-             * 
+             *
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             * 
+             *
              * 3.2.1
-             * 
+             *
              * ...
-             * 
+             *
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

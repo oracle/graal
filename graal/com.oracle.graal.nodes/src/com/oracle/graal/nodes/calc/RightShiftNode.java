@@ -97,8 +97,8 @@ public final class RightShiftNode extends ShiftNode<Shr> {
     }
 
     @Override
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitShr(builder.operand(getX()), builder.operand(getY())));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitShr(nodeValueMap.operand(getX()), nodeValueMap.operand(getY())));
     }
 
     @Override

@@ -36,6 +36,11 @@ public interface StampProvider {
     Stamp createHubStamp(ObjectStamp object);
 
     /**
+     * Create the stamp of a possibly null hub.
+     */
+    Stamp createHubStamp(boolean nonNull);
+
+    /**
      * Create the stamp of a pointer to a method.
      */
     Stamp createMethodStamp();

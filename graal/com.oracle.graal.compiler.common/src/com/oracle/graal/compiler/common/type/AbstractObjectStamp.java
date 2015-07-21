@@ -265,7 +265,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         int result = 1;
         result = prime * result + super.hashCode();
         result = prime * result + (exactType ? 1231 : 1237);
-        result = prime * result + ((type == null) ? 0 : type.hashCode());
+        result = prime * result + ((type == null || type.isJavaLangObject()) ? 0 : type.hashCode());
         return result;
     }
 
@@ -278,7 +278,19 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
             return false;
         }
         AbstractObjectStamp other = (AbstractObjectStamp) obj;
-        if (exactType != other.exactType || !Objects.equals(type, other.type)) {
+        if (exactType != other.exactType) {
+            return false;
+        }
+        // null == java.lang.Object
+        if (type == null) {
+            if (other.type != null && !other.type.isJavaLangObject()) {
+                return false;
+            }
+        } else if (other.type == null) {
+            if (type != null && !type.isJavaLangObject()) {
+                return false;
+            }
+        } else if (!type.equals(other.type)) {
             return false;
         }
         return super.equals(other);

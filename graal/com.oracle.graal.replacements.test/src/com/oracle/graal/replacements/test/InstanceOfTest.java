@@ -25,11 +25,14 @@ package com.oracle.graal.replacements.test;
 import java.util.*;
 
 import jdk.internal.jvmci.code.CompilationResult.*;
+import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.replacements.test.CheckCastTest.Depth12;
@@ -429,5 +432,65 @@ public class InstanceOfTest extends TypeCheckTest {
         test("conditionalInstantiation", "foo");
         test("conditionalInstantiation", new StringBuilder());
         test("conditionalInstantiation", 1);
+    }
+
+    public boolean exactlyObject(Thread thread) {
+        return thread != null && ((Object) thread).getClass() == Object.class;
+    }
+
+    public boolean exactlyObjectArray(Thread[] threads) {
+        return threads != null && ((Object[]) threads).getClass() == Object[].class;
+    }
+
+    public boolean exactlyString(Thread thread) {
+        return thread != null && ((Object) thread).getClass() == String.class;
+    }
+
+    public boolean exactlyStringArray(Thread[] threads) {
+        return threads != null && ((Object[]) threads).getClass() == String[].class;
+    }
+
+    @SuppressWarnings("cast")
+    public boolean instanceofStringArray(Thread[] threads) {
+        return threads != null && ((Object[]) threads) instanceof String[];
+    }
+
+    @SuppressWarnings("cast")
+    public boolean instanceofString(Thread thread) {
+        return thread != null && ((Object) thread) instanceof String;
+    }
+
+    /**
+     * {@link TypeCheckNode} and {@link InstanceOfNode} should be equivalently powerful when
+     * comparing disjoint types.
+     */
+    @Test
+    public void testTypeCheck() {
+        testConstantReturn("exactlyObject", 0);
+        testConstantReturn("exactlyObjectArray", 0);
+        testConstantReturn("exactlyString", 0);
+        testConstantReturn("exactlyStringArray", 0);
+        testConstantReturn("instanceofString", 0);
+        testConstantReturn("instanceofStringArray", 0);
+    }
+
+    private void testConstantReturn(String name, Object value) {
+        StructuredGraph result = buildGraph(name);
+        ReturnNode ret = result.getNodes(ReturnNode.TYPE).first();
+        assertDeepEquals(1, result.getNodes(ReturnNode.TYPE).count());
+
+        assertDeepEquals(true, ret.result().isConstant());
+        assertDeepEquals(value, ret.result().asJavaConstant().asBoxedPrimitive());
+    }
+
+    protected StructuredGraph buildGraph(final String snippet) {
+        try (Scope s = Debug.scope("InstanceOfTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
+            StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+            compile(graph.method(), graph);
+            Debug.dump(graph, snippet);
+            return graph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 }

@@ -113,7 +113,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         tool.getLowerer().lower(this, tool);
     }
 
-    public void generate(NodeMappableLIRBuilder builder, ArithmeticLIRGenerator gen) {
-        builder.setResult(this, gen.emitFloatConvert(getFloatConvert(), builder.operand(getValue())));
+    public void generate(NodeValueMap nodeValueMap, ArithmeticLIRGenerator gen) {
+        nodeValueMap.setResult(this, gen.emitFloatConvert(getFloatConvert(), nodeValueMap.operand(getValue())));
     }
 }
