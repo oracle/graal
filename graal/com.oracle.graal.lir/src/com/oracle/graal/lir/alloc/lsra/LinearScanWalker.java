@@ -771,19 +771,6 @@ class LinearScanWalker extends IntervalWalker {
     void allocLockedRegister(Interval interval) {
         try (Indent indent = Debug.logAndIndent("alloc locked register: need to split and spill to get register for %s", interval)) {
 
-            // collect current usage of registers
-            initUseLists(false);
-            spillExcludeActiveFixed();
-            // spillBlockUnhandledFixed(cur);
-            assert unhandledLists.get(RegisterBinding.Fixed) == Interval.EndMarker : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
-            spillBlockInactiveFixed(interval);
-            spillCollectActiveAny(RegisterPriority.LiveAtLoopEnd);
-            spillCollectInactiveAny(interval);
-
-            if (Debug.isLogEnabled()) {
-                printRegisterState();
-            }
-
             // the register must be free at least until this position
             int firstUsage = interval.firstUsage(RegisterPriority.MustHaveRegister);
             int firstShouldHaveUsage = interval.firstUsage(RegisterPriority.ShouldHaveRegister);
@@ -791,37 +778,73 @@ class LinearScanWalker extends IntervalWalker {
             int intervalTo = interval.to();
             assert regNeededUntil > 0 && regNeededUntil < Integer.MAX_VALUE : "interval has no use";
 
-            Register reg = null;
-            Register ignore = interval.location() != null && isRegister(interval.location()) ? asRegister(interval.location()) : null;
-            for (Register availableReg : availableRegs) {
-                int number = availableReg.number;
-                if (availableReg.equals(ignore)) {
-                    // this register must be ignored
-                } else if (usePos[number] > regNeededUntil) {
-                    if (reg == null || (usePos[number] > usePos[reg.number])) {
-                        reg = availableReg;
+            Register reg;
+            Register ignore;
+            /*
+             * In the common case we don't spill registers that have _any_ use position that is
+             * closer than the next use of the current interval, but if we can't spill the current
+             * interval we weaken this strategy and also allow spilling of intervals that have a
+             * non-mandatory requirements (no MustHaveRegister use position).
+             */
+            for (RegisterPriority registerPriority = RegisterPriority.LiveAtLoopEnd; true; registerPriority = RegisterPriority.MustHaveRegister) {
+                // collect current usage of registers
+                initUseLists(false);
+                spillExcludeActiveFixed();
+                // spillBlockUnhandledFixed(cur);
+                assert unhandledLists.get(RegisterBinding.Fixed) == Interval.EndMarker : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
+                spillBlockInactiveFixed(interval);
+                spillCollectActiveAny(registerPriority);
+                spillCollectInactiveAny(interval);
+                if (Debug.isLogEnabled()) {
+                    printRegisterState();
+                }
+
+                reg = null;
+                ignore = interval.location() != null && isRegister(interval.location()) ? asRegister(interval.location()) : null;
+
+                for (Register availableReg : availableRegs) {
+                    int number = availableReg.number;
+                    if (availableReg.equals(ignore)) {
+                        // this register must be ignored
+                    } else if (usePos[number] > regNeededUntil) {
+                        if (reg == null || (usePos[number] > usePos[reg.number])) {
+                            reg = availableReg;
+                        }
                     }
                 }
-            }
 
-            int regUsePos = (reg == null ? 0 : usePos[reg.number]);
-            if (regUsePos <= firstShouldHaveUsage) {
-                if (Debug.isLogEnabled()) {
-                    Debug.log("able to spill current interval. firstUsage(register): %d, usePos: %d", firstUsage, regUsePos);
+                int regUsePos = (reg == null ? 0 : usePos[reg.number]);
+                if (regUsePos <= firstShouldHaveUsage) {
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("able to spill current interval. firstUsage(register): %d, usePos: %d", firstUsage, regUsePos);
+                    }
+
+                    if (firstUsage <= interval.from() + 1) {
+                        if (registerPriority.equals(RegisterPriority.LiveAtLoopEnd)) {
+                            /*
+                             * Tool of last resort: we can not spill the current interval so we try
+                             * to spill an active interval that has a usage but do not require a
+                             * register.
+                             */
+                            Debug.log("retry with register priority must have register");
+                            continue;
+                        }
+                        String description = "cannot spill interval (" + interval + ") that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage +
+                                        ", interval.from()=" + interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
+                        /*
+                         * assign a reasonable register and do a bailout in product mode to avoid
+                         * errors
+                         */
+                        allocator.assignSpillSlot(interval);
+                        Debug.dump(allocator.ir, description);
+                        allocator.printIntervals(description);
+                        throw new OutOfRegistersException("LinearScan: no register found", description);
+                    }
+
+                    splitAndSpillInterval(interval);
+                    return;
                 }
-
-                if (firstUsage <= interval.from() + 1) {
-                    String description = "cannot spill interval (" + interval + ") that is used in first instruction (possible reason: no register found) firstUsage=" + firstUsage +
-                                    ", interval.from()=" + interval.from() + "; already used candidates: " + Arrays.toString(availableRegs);
-                    // assign a reasonable register and do a bailout in product mode to avoid errors
-                    allocator.assignSpillSlot(interval);
-                    Debug.dump(allocator.ir, description);
-                    allocator.printIntervals(description);
-                    throw new OutOfRegistersException("LinearScan: no register found", description);
-                }
-
-                splitAndSpillInterval(interval);
-                return;
+                break;
             }
 
             boolean needSplit = blockPos[reg.number] <= intervalTo;
@@ -842,6 +865,7 @@ class LinearScanWalker extends IntervalWalker {
 
             // perform splitting and spilling for all affected intervals
             splitAndSpillIntersectingIntervals(reg);
+            return;
         }
     }
 
