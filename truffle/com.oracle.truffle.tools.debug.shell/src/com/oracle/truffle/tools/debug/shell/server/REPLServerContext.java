@@ -35,6 +35,7 @@ import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
 import com.oracle.truffle.tools.debug.shell.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class REPLServerContext {
@@ -89,7 +90,12 @@ public abstract class REPLServerContext {
 
     public abstract int getBreakpointID(Breakpoint breakpoint);
 
-    List<FrameDebugDescription> getStack() {
+    /**
+     * Provides access to the execution stack.
+     * 
+     * @return immutable list of stack elements
+     */
+    public List<FrameDebugDescription> getStack() {
         List<FrameDebugDescription> frames = new ArrayList<>();
         int frameCount = 1;
         for (FrameInstance frameInstance : event.getStack()) {
@@ -100,7 +106,7 @@ public abstract class REPLServerContext {
             }
             frameCount++;
         }
-        return frames;
+        return Collections.unmodifiableList(frames);
     }
 
     void prepareStepOut() {
