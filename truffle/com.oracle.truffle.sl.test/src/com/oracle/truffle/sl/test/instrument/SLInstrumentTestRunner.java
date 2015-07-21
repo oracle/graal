@@ -44,6 +44,7 @@ import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
+import com.oracle.truffle.sl.test.*;
 import com.oracle.truffle.sl.test.instrument.SLInstrumentTestRunner.InstrumentTestCase;
 
 /**
@@ -138,11 +139,13 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
 
         String[] paths = suite.value();
 
-        Path root = null;
-        for (String path : paths) {
-            root = FileSystems.getDefault().getPath(path);
-            if (Files.exists(root)) {
-                break;
+        Path root = SLTestRunner.getRootViaResourceURL(c, paths);
+        if (root == null) {
+            for (String path : paths) {
+                root = FileSystems.getDefault().getPath(path);
+                if (Files.exists(root)) {
+                    break;
+                }
             }
         }
         if (root == null && paths.length > 0) {
