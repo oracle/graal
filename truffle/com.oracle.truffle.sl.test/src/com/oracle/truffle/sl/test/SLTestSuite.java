@@ -29,7 +29,7 @@ import java.lang.annotation.*;
 public @interface SLTestSuite {
 
     /**
-     * Defines the base path of the test suite. Multiple base pathes can be specified. However only
+     * Defines the base path of the test suite. Multiple base paths can be specified. However only
      * the first base that exists is used to lookup the test cases.
      */
     String[] value();
