@@ -6,14 +6,14 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "2ea24a36675cf5264577361bddbc2ee2517dd08d",
+               "version" : "706aa848a8d7128dcb5692964aefeaed99fd22f4",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                 ]
             },
             {
                "name" : "truffle",
-               "version" : "6efd3e3389adfcc1f43e07be8f0aae2cb8cd5499",
+               "version" : "854e52a0869cd26ebd7d5556d98a347a55679b99",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
                     # Disable reference to snapshots until they are built from truffle-mx2 or truffle-mx2 is renamed to truffle
@@ -926,10 +926,6 @@ suite = {
       "distDependencies" : [
         "GRAAL_TRUFFLE",
         "truffle:TRUFFLE_SL",
-      ],
-      "exclude" : [
-        "TRUFFLE",
-        "TRUFFLE_DSL_PROCESSOR",
       ],
     },
 
