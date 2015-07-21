@@ -125,76 +125,84 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
     void resolveDataFlow() {
         try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 
-            int numBlocks = allocator.blockCount();
             MoveResolver moveResolver = allocator.createMoveResolver();
-            BitSet blockCompleted = new BitSet(numBlocks);
-            BitSet alreadyResolved = new BitSet(numBlocks);
+            BitSet blockCompleted = new BitSet(allocator.blockCount());
 
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
+            optimizeEmptyBlocks(moveResolver, blockCompleted);
 
-                // check if block has only one predecessor and only one successor
-                if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
-                    List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(block);
-                    assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
-                    assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
-
-                    // check if block is empty (only label and branch)
-                    if (instructions.size() == 2) {
-                        AbstractBlockBase<?> pred = block.getPredecessors().iterator().next();
-                        AbstractBlockBase<?> sux = block.getSuccessors().iterator().next();
-
-                        // prevent optimization of two consecutive blocks
-                        if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
-                            if (Debug.isLogEnabled()) {
-                                Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
-                            }
-
-                            blockCompleted.set(block.getLinearScanNumber());
-
-                            /*
-                             * Directly resolve between pred and sux (without looking at the empty
-                             * block between).
-                             */
-                            resolveCollectMappings(pred, sux, block, moveResolver);
-                            if (moveResolver.hasMappings()) {
-                                moveResolver.setInsertPosition(instructions, 1);
-                                moveResolver.resolveAndAppendMoves();
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (AbstractBlockBase<?> fromBlock : allocator.sortedBlocks) {
-                if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
-                    alreadyResolved.clear();
-                    alreadyResolved.or(blockCompleted);
-
-                    for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
-
-                        /*
-                         * Check for duplicate edges between the same blocks (can happen with switch
-                         * blocks).
-                         */
-                        if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
-                            }
-
-                            alreadyResolved.set(toBlock.getLinearScanNumber());
-
-                            // collect all intervals that have been split between
-                            // fromBlock and toBlock
-                            resolveCollectMappings(fromBlock, toBlock, null, moveResolver);
-                            if (moveResolver.hasMappings()) {
-                                resolveFindInsertPos(fromBlock, toBlock, moveResolver);
-                                moveResolver.resolveAndAppendMoves();
-                            }
-                        }
-                    }
-                }
-            }
+            resolveDataFlow0(moveResolver, blockCompleted);
 
         }
     }
+
+    protected void optimizeEmptyBlocks(MoveResolver moveResolver, BitSet blockCompleted) {
+        for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
+
+            // check if block has only one predecessor and only one successor
+            if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
+                List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(block);
+                assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
+                assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
+
+                // check if block is empty (only label and branch)
+                if (instructions.size() == 2) {
+                    AbstractBlockBase<?> pred = block.getPredecessors().iterator().next();
+                    AbstractBlockBase<?> sux = block.getSuccessors().iterator().next();
+
+                    // prevent optimization of two consecutive blocks
+                    if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
+                        if (Debug.isLogEnabled()) {
+                            Debug.log(" optimizing empty block B%d (pred: B%d, sux: B%d)", block.getId(), pred.getId(), sux.getId());
+                        }
+
+                        blockCompleted.set(block.getLinearScanNumber());
+
+                        /*
+                         * Directly resolve between pred and sux (without looking at the empty block
+                         * between).
+                         */
+                        resolveCollectMappings(pred, sux, block, moveResolver);
+                        if (moveResolver.hasMappings()) {
+                            moveResolver.setInsertPosition(instructions, 1);
+                            moveResolver.resolveAndAppendMoves();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    protected void resolveDataFlow0(MoveResolver moveResolver, BitSet blockCompleted) {
+        BitSet alreadyResolved = new BitSet(allocator.blockCount());
+        for (AbstractBlockBase<?> fromBlock : allocator.sortedBlocks) {
+            if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
+                alreadyResolved.clear();
+                alreadyResolved.or(blockCompleted);
+
+                for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
+
+                    /*
+                     * Check for duplicate edges between the same blocks (can happen with switch
+                     * blocks).
+                     */
+                    if (!alreadyResolved.get(toBlock.getLinearScanNumber())) {
+                        if (Debug.isLogEnabled()) {
+                            Debug.log("processing edge between B%d and B%d", fromBlock.getId(), toBlock.getId());
+                        }
+
+                        alreadyResolved.set(toBlock.getLinearScanNumber());
+
+                        // collect all intervals that have been split between
+                        // fromBlock and toBlock
+                        resolveCollectMappings(fromBlock, toBlock, null, moveResolver);
+                        if (moveResolver.hasMappings()) {
+                            resolveFindInsertPos(fromBlock, toBlock, moveResolver);
+                            moveResolver.resolveAndAppendMoves();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
