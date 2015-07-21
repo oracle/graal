@@ -671,7 +671,6 @@ suite = {
         "com.oracle.graal.compiler",
         "com.oracle.graal.lir.sparc"
       ],
-      "annotationProcessors" : ["com.oracle.graal.compiler.match.processor"],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
