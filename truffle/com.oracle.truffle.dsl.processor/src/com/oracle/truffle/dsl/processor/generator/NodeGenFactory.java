@@ -972,7 +972,7 @@ public class NodeGenFactory {
     private List<SpecializationData> calculateReachableSpecializations() {
         List<SpecializationData> specializations = new ArrayList<>();
         for (SpecializationData specialization : node.getSpecializations()) {
-            if (specialization.isReachable() && //
+            if (specialization.isReachable() &&   //
                             (specialization.isSpecialized() //
                             || (specialization.isFallback() && optimizeFallback(specialization)))) {
                 specializations.add(specialization);
@@ -1233,7 +1233,7 @@ public class NodeGenFactory {
             if (limitExpression == null) {
                 limitExpressionTree = CodeTreeBuilder.singleString("3");
             } else {
-                limitExpressionTree = DSLExpressionGenerator.write(limitExpression, accessParent(null), //
+                limitExpressionTree = DSLExpressionGenerator.write(limitExpression, accessParent(null),   //
                                 castBoundTypes(bindExpressionValues(limitExpression, specialization, currentValues)));
             }
 

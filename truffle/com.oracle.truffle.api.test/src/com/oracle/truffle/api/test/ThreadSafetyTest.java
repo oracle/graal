@@ -84,7 +84,7 @@ public class ThreadSafetyTest {
         @Child private ValueNode child;
 
         public TestRootNode(ValueNode child) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.child = child;
         }
 

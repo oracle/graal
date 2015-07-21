@@ -24,35 +24,36 @@
  */
 
 /**
- * This package contains an experimental framework for building simple command-line oriented debuggers
- * that work with Truffle-implemented languages; it is used mainly for testing Truffle's built-in
- * {@link com.oracle.truffle.tools.debug.engine.DebugEngine}, which actually provides the debugging services.
+ * This package contains an experimental framework for building simple command-line oriented
+ * debuggers that work with Truffle-implemented languages; it is used mainly for testing Truffle's
+ * built-in , which actually provides the
+ * debugging services.
  * <p>
- * Truffle debugging is made possible by the general purpose Instrumentation Framework built
- * into the Truffle platform.  Some online documentation for the Instrumentation Framework is available
+ * Truffle debugging is made possible by the general purpose Instrumentation Framework built into
+ * the Truffle platform. Some online documentation for the Instrumentation Framework is available
  * online:
- * <quote>
- * <a href="https://wiki.openjdk.java.net/display/Graal/Instrumentation+API">https://wiki.openjdk.java.net/display/Graal/Instrumentation+API</a>
- * </quote>
+ * <quote> <a href="https://wiki.openjdk.java.net/display/Graal/Instrumentation+API">https://wiki.
+ * openjdk.java.net/display/Graal/Instrumentation+API</a> </quote>
  * <p>
  * Building one of these command line debuggers requires creating language-specific instances of:
  * <ol>
- * <li>{@link com.oracle.truffle.tools.debug.engine.DebugEngine},
- * noting that this instance also depends on related services provided by the language implementation,</li>
- * <li>{@link com.oracle.truffle.tools.debug.shell.REPLServer}, best accomplished by copying the implementation for
- * Truffle's demonstration language "Simple" (a.k.a. "SL").</li>
+ * <li>DebugEngine, noting that this instance also
+ * depends on related services provided by the language implementation,</li>
+ * <li>{@link com.oracle.truffle.tools.debug.shell.REPLServer}, best accomplished by copying the
+ * implementation for Truffle's demonstration language "Simple" (a.k.a. "SL").</li>
  * </ol>
  *
- * <strong>Disclaimer: </strong> although these command line debuggers are useful, they are
- * not intended, and will not be maintained as, fully functioning debuggers.  They should be
- * considered valuable tools for the maintainers of the {@link com.oracle.truffle.tools.debug.engine.DebugEngine},
- * as well as for Truffle language implementors for whom concurrent access to any kind debugging services can
- * be quite helpful.
+ * <strong>Disclaimer: </strong> although these command line debuggers are useful, they are not
+ * intended, and will not be maintained as, fully functioning debuggers. They should be considered
+ * valuable tools for the maintainers of the
+ * DebugEngine, as well as for Truffle language
+ * implementors for whom concurrent access to any kind debugging services can be quite helpful.
  * <p>
- * <strong>Note:</strong> Both the functionality and API for this package are under active development.
+ * <strong>Note:</strong> Both the functionality and API for this package are under active
+ * development.
  * <p>
+ *
  * @see com.oracle.truffle.api.instrument
- * @see com.oracle.truffle.tools.debug.engine
  */
 package com.oracle.truffle.tools.debug.shell;
 

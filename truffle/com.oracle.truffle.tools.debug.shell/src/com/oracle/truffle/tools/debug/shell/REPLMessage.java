@@ -46,7 +46,6 @@ public final class REPLMessage {
     public static final String BREAK_AT_THROW = "break-at-throw";
     public static final String BREAK_AT_THROW_ONCE = "break-at-throw-once";
     public static final String BREAKPOINT_CONDITION = "breakpoint-condition";
-    public static final String BREAKPOINT_GROUP_ID = "breakpoint-group-id";
     public static final String BREAKPOINT_HIT_COUNT = "breakpoint-hit-count";
     public static final String BREAKPOINT_ID = "breakpoint-id";
     public static final String BREAKPOINT_IGNORE_COUNT = "breakpoint-ignore-count";

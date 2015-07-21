@@ -63,7 +63,7 @@ public class FrameSlotTypeSpecializationTest {
         @Child TestChildNode right;
 
         public TestRootNode(FrameDescriptor descriptor, TestChildNode left, TestChildNode right) {
-            super(null, descriptor);
+            super(TestingLanguage.class, null, descriptor);
             this.left = left;
             this.right = right;
         }

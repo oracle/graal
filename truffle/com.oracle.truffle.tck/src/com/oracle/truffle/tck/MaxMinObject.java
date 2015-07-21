@@ -27,6 +27,7 @@ package com.oracle.truffle.tck;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -175,6 +176,7 @@ final class MaxMinObject implements TruffleObject {
         private final boolean max;
 
         MaxMinNode(boolean max) {
+            super(MMLanguage.class, null, null);
             this.max = max;
         }
 
@@ -194,4 +196,9 @@ final class MaxMinObject implements TruffleObject {
         }
     }
 
+    private abstract class MMLanguage extends TruffleLanguage {
+        public MMLanguage(Env env) {
+            super(env);
+        }
+    }
 }

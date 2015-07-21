@@ -148,7 +148,7 @@ public class TypeSystemTest {
         @Child private E node;
 
         public TestRootNode(E node) {
-            super(null);
+            super(TestingLanguage.class, null, null);
             this.node = node;
         }
 

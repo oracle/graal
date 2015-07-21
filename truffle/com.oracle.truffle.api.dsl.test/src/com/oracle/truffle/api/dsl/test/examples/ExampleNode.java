@@ -25,6 +25,7 @@ package com.oracle.truffle.api.dsl.test.examples;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.internal.*;
+import com.oracle.truffle.api.dsl.test.TestingLanguage;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -68,6 +69,7 @@ public abstract class ExampleNode extends Node {
         @Child ExampleNode child;
 
         public ExampleRootNode(ExampleNode child) {
+            super(TestingLanguage.class, null, null);
             this.child = child;
         }
 
@@ -105,6 +107,7 @@ public abstract class ExampleNode extends Node {
         private final int argumentIndex;
 
         public DummyCallRootNode(int argumentIndex) {
+            super(TestingLanguage.class, null, null);
             this.argumentIndex = argumentIndex;
         }
 

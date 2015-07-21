@@ -37,20 +37,57 @@ import com.oracle.truffle.api.source.*;
  * {@link TruffleRuntime#createCallTarget(RootNode)}.
  */
 public abstract class RootNode extends Node {
-
+    final Class<? extends TruffleLanguage> language;
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
 
+    /**
+     * @deprecated each RootNode should be associated with a {@link TruffleLanguage} use constructor
+     *             that allows you to specify it. This method will be removed on Aug 15, 2015.
+     */
+    @Deprecated
     protected RootNode() {
-        this(null, null);
+        this(null, null, null, false);
     }
 
+    /**
+     * @deprecated each RootNode should be associated with a {@link TruffleLanguage} use constructor
+     *             that allows you to specify it. This method will be removed on Aug 15, 2015.
+     */
+    @Deprecated
     protected RootNode(SourceSection sourceSection) {
-        this(sourceSection, null);
+        this(null, sourceSection, null, false);
     }
 
+    /**
+     * @deprecated each RootNode should be associated with a {@link TruffleLanguage} use constructor
+     *             that allows you to specify it. This method will be removed on Aug 15, 2015.
+     */
+    @Deprecated
     protected RootNode(SourceSection sourceSection, FrameDescriptor frameDescriptor) {
+        this(null, sourceSection, frameDescriptor, false);
+    }
+
+    /**
+     * Creates new root node. Each {@link RootNode} is associated with a particular language - if
+     * the root node represents a method it is assumed the method is written in such language.
+     *
+     * @param language the language of the node, <b>cannot be</b> <code>null</code>
+     * @param sourceSection a part of source associated with this node, can be <code>null</code>
+     * @param frameDescriptor descriptor of slots, can be <code>null</code>
+     */
+    protected RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
+        this(language, sourceSection, frameDescriptor, true);
+    }
+
+    private RootNode(Class<? extends TruffleLanguage> language, SourceSection sourceSection, FrameDescriptor frameDescriptor, boolean checkLanguage) {
         super(sourceSection);
+        if (checkLanguage) {
+            if (!TruffleLanguage.class.isAssignableFrom(language)) {
+                throw new IllegalStateException();
+            }
+        }
+        this.language = language;
         if (frameDescriptor == null) {
             this.frameDescriptor = new FrameDescriptor();
         } else {

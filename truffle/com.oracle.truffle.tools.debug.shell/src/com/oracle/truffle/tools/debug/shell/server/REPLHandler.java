@@ -24,14 +24,14 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
+import com.oracle.truffle.api.debug.Breakpoint;
+import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.api.vm.TruffleVM.Language;
-import com.oracle.truffle.tools.debug.engine.*;
 import com.oracle.truffle.tools.debug.shell.*;
 
 /**
@@ -43,9 +43,6 @@ public abstract class REPLHandler {
 
     // TODO (mlvdv) add support for setting/using ignore count
     private static final int DEFAULT_IGNORE_COUNT = 0;
-
-    // TODO (mlvdv) add support for setting/using groupId
-    private static final int DEFAULT_GROUP_ID = 0;
 
     private final String op;
 
@@ -99,11 +96,9 @@ public abstract class REPLHandler {
         return replies;
     }
 
-    protected static REPLMessage createBreakpointInfoMessage(Breakpoint breakpoint) {
+    static final REPLMessage createBreakpointInfoMessage(Breakpoint breakpoint, REPLServerContext serverContext) {
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.BREAKPOINT_INFO);
-        infoMessage.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpoint.getId()));
-        infoMessage.put(REPLMessage.BREAKPOINT_GROUP_ID, Integer.toString(breakpoint.getGroupId()));
-        infoMessage.put(REPLMessage.BREAKPOINT_STATE, breakpoint.getState().toString());
+        infoMessage.put(REPLMessage.BREAKPOINT_ID, Integer.toString(serverContext.getBreakpointID(breakpoint)));
         infoMessage.put(REPLMessage.BREAKPOINT_HIT_COUNT, Integer.toString(breakpoint.getHitCount()));
         infoMessage.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, Integer.toString(breakpoint.getIgnoreCount()));
         infoMessage.put(REPLMessage.INFO_VALUE, breakpoint.getLocationDescription().toString());
@@ -115,7 +110,7 @@ public abstract class REPLHandler {
     }
 
     protected static REPLMessage createFrameInfoMessage(final REPLServerContext serverContext, FrameDebugDescription frame) {
-        final Visualizer visualizer = serverContext.getLanguage().getDebugSupport().getVisualizer();
+        final Visualizer visualizer = serverContext.getVisualizer();
         final REPLMessage infoMessage = new REPLMessage(REPLMessage.OP, REPLMessage.FRAME_INFO);
         infoMessage.put(REPLMessage.FRAME_NUMBER, Integer.toString(frame.index()));
         final Node node = frame.node();
@@ -127,11 +122,11 @@ public abstract class REPLHandler {
             SourceSection section = node.getSourceSection();
             if (section == null) {
                 section = node.getEncapsulatingSourceSection();
-                if (section != null) {
-                    infoMessage.put(REPLMessage.FILE_PATH, section.getSource().getPath());
-                    infoMessage.put(REPLMessage.LINE_NUMBER, Integer.toString(section.getStartLine()));
-                    infoMessage.put(REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCode(section.getStartLine()));
-                }
+            }
+            if (section != null) {
+                infoMessage.put(REPLMessage.FILE_PATH, section.getSource().getPath());
+                infoMessage.put(REPLMessage.LINE_NUMBER, Integer.toString(section.getStartLine()));
+                infoMessage.put(REPLMessage.SOURCE_LINE_TEXT, section.getSource().getCode(section.getStartLine()));
             }
         }
         infoMessage.put(REPLMessage.STATUS, REPLMessage.SUCCEEDED);
@@ -144,7 +139,7 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
             final ArrayList<REPLMessage> frameMessages = new ArrayList<>();
-            for (FrameDebugDescription frame : serverContext.getDebugEngine().getStack()) {
+            for (FrameDebugDescription frame : serverContext.getStack()) {
                 frameMessages.add(createFrameInfoMessage(serverContext, frame));
             }
             if (frameMessages.size() > 0) {
@@ -179,15 +174,16 @@ public abstract class REPLHandler {
             if (ignoreCount == null) {
                 ignoreCount = 0;
             }
-            LineBreakpoint breakpoint;
+            Breakpoint breakpoint;
             try {
-                breakpoint = serverContext.getDebugEngine().setLineBreakpoint(DEFAULT_GROUP_ID, DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
+                breakpoint = serverContext.db().setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), false);
+                serverContext.registerBreakpoint(breakpoint);
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex.getMessage());
             }
             reply.put(REPLMessage.SOURCE_NAME, fileName);
             reply.put(REPLMessage.FILE_PATH, source.getPath());
-            reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpoint.getId()));
+            reply.put(REPLMessage.BREAKPOINT_ID, Integer.toString(serverContext.getBreakpointID(breakpoint)));
             reply.put(REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
             reply.put(REPLMessage.BREAKPOINT_IGNORE_COUNT, ignoreCount.toString());
             return finishReplySucceeded(reply, "Breakpoint set");
@@ -216,7 +212,8 @@ public abstract class REPLHandler {
                 return finishReplyFailed(reply, "missing line number");
             }
             try {
-                serverContext.getDebugEngine().setLineBreakpoint(DEFAULT_GROUP_ID, DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
+                Breakpoint b = serverContext.db().setLineBreakpoint(DEFAULT_IGNORE_COUNT, source.createLineLocation(lineNumber), true);
+                serverContext.registerBreakpoint(b);
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex.getMessage());
             }
@@ -233,7 +230,8 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
             try {
-                serverContext.getDebugEngine().setTagBreakpoint(DEFAULT_GROUP_ID, DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, false);
+                Breakpoint b = serverContext.db().setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, false);
+                serverContext.registerBreakpoint(b);
                 return finishReplySucceeded(reply, "Breakpoint at any throw set");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex.getMessage());
@@ -247,7 +245,7 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
             try {
-                serverContext.getDebugEngine().setTagBreakpoint(DEFAULT_GROUP_ID, DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, true);
+                serverContext.db().setTagBreakpoint(DEFAULT_IGNORE_COUNT, StandardSyntaxTag.THROW, true);
                 return finishReplySucceeded(reply, "One-shot breakpoint at any throw set");
             } catch (Exception ex) {
                 return finishReplyFailed(reply, ex.getMessage());
@@ -261,8 +259,8 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
             final ArrayList<REPLMessage> infoMessages = new ArrayList<>();
-            for (Breakpoint breakpoint : serverContext.getDebugEngine().getBreakpoints()) {
-                infoMessages.add(createBreakpointInfoMessage(breakpoint));
+            for (Breakpoint breakpoint : serverContext.db().getBreakpoints()) {
+                infoMessages.add(createBreakpointInfoMessage(breakpoint, serverContext));
             }
             if (infoMessages.size() > 0) {
                 return infoMessages.toArray(new REPLMessage[0]);
@@ -280,7 +278,7 @@ public abstract class REPLHandler {
             if (breakpointNumber == null) {
                 return finishReplyFailed(reply, "missing breakpoint number");
             }
-            final Breakpoint breakpoint = serverContext.getDebugEngine().findBreakpoint(breakpointNumber);
+            final Breakpoint breakpoint = serverContext.findBreakpoint(breakpointNumber);
             if (breakpoint == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
@@ -295,7 +293,7 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
-            serverContext.getDebugEngine().prepareContinue();
+            serverContext.prepareContinue();
             return finishReplySucceeded(reply, "Continue mode entered");
         }
     };
@@ -306,7 +304,7 @@ public abstract class REPLHandler {
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
             int deleteCount = 0;
-            for (Breakpoint breakpoint : serverContext.getDebugEngine().getBreakpoints()) {
+            for (Breakpoint breakpoint : serverContext.db().getBreakpoints()) {
                 breakpoint.dispose();
                 deleteCount++;
             }
@@ -326,7 +324,7 @@ public abstract class REPLHandler {
             if (breakpointNumber == null) {
                 return finishReplyFailed(reply, "missing breakpoint number");
             }
-            final Breakpoint breakpoint = serverContext.getDebugEngine().findBreakpoint(breakpointNumber);
+            final Breakpoint breakpoint = serverContext.findBreakpoint(breakpointNumber);
             if (breakpoint == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
@@ -345,7 +343,7 @@ public abstract class REPLHandler {
             if (breakpointNumber == null) {
                 return finishReplyFailed(reply, "missing breakpoint number");
             }
-            final Breakpoint breakpoint = serverContext.getDebugEngine().findBreakpoint(breakpointNumber);
+            final Breakpoint breakpoint = serverContext.findBreakpoint(breakpointNumber);
             if (breakpoint == null) {
                 return finishReplyFailed(reply, "no breakpoint number " + breakpointNumber);
             }
@@ -395,15 +393,14 @@ public abstract class REPLHandler {
             if (frameNumber == null) {
                 return finishReplyFailed(reply, "no frame number specified");
             }
-            final List<FrameDebugDescription> stack = serverContext.getDebugEngine().getStack();
+            final List<FrameDebugDescription> stack = serverContext.getStack();
             if (frameNumber < 0 || frameNumber >= stack.size()) {
                 return finishReplyFailed(reply, "frame number " + frameNumber + " out of range");
             }
             final FrameDebugDescription frameDescription = stack.get(frameNumber);
             final REPLMessage frameMessage = createFrameInfoMessage(serverContext, frameDescription);
             final Frame frame = frameDescription.frameInstance().getFrame(FrameInstance.FrameAccess.READ_ONLY, true);
-            final Language language = serverContext.getLanguage();
-            final Visualizer visualizer = language.getDebugSupport().getVisualizer();
+            final Visualizer visualizer = serverContext.getVisualizer();
             final FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
             try {
                 final StringBuilder sb = new StringBuilder();
@@ -452,7 +449,7 @@ public abstract class REPLHandler {
                 return finishReplyFailed(message, "missing breakpoint number");
             }
             message.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            final Breakpoint breakpoint = serverContext.getDebugEngine().findBreakpoint(breakpointNumber);
+            final Breakpoint breakpoint = serverContext.findBreakpoint(breakpointNumber);
             if (breakpoint == null) {
                 return finishReplyFailed(message, "no breakpoint number " + breakpointNumber);
             }
@@ -462,7 +459,7 @@ public abstract class REPLHandler {
             }
             try {
                 breakpoint.setCondition(expr);
-            } catch (DebugException ex) {
+            } catch (IOException ex) {
                 return finishReplyFailed(message, "invalid condition for " + breakpointNumber);
             } catch (UnsupportedOperationException ex) {
                 return finishReplyFailed(message, "conditions not unsupported by breakpoint " + breakpointNumber);
@@ -481,7 +478,7 @@ public abstract class REPLHandler {
             if (repeat == null) {
                 repeat = 1;
             }
-            serverContext.getDebugEngine().prepareStepInto(repeat);
+            serverContext.prepareStepInto(repeat);
             return finishReplySucceeded(reply, "StepInto <" + repeat + "> enabled");
         }
     };
@@ -490,7 +487,7 @@ public abstract class REPLHandler {
 
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
-            serverContext.getDebugEngine().prepareStepOut();
+            serverContext.prepareStepOut();
             return finishReplySucceeded(createReply(), "StepOut enabled");
         }
     };
@@ -504,7 +501,7 @@ public abstract class REPLHandler {
             if (repeat == null) {
                 repeat = 1;
             }
-            debugServerContextFrame.getDebugEngine().prepareStepOver(repeat);
+            debugServerContextFrame.prepareStepOver(repeat);
             return finishReplySucceeded(reply, "StepOver <" + repeat + "> enabled");
         }
     };
@@ -514,10 +511,10 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = serverContext.getLanguage().getDebugSupport().getVisualizer().getASTPrinter();
+            final ASTPrinter astPrinter = serverContext.getVisualizer().getASTPrinter();
             final String topic = request.get(REPLMessage.TOPIC);
             reply.put(REPLMessage.TOPIC, topic);
-            Node node = serverContext.getNode();
+            Node node = serverContext.getNodeAtHalt();
             if (node == null) {
                 return finishReplyFailed(reply, "no current AST node");
             }
@@ -531,7 +528,7 @@ public abstract class REPLHandler {
                         while (node.getParent() != null) {
                             node = node.getParent();
                         }
-                        final String astText = astPrinter.printTreeToString(node, depth, serverContext.getNode());
+                        final String astText = astPrinter.printTreeToString(node, depth, serverContext.getNodeAtHalt());
                         return finishReplySucceeded(reply, astText);
                     case REPLMessage.SUBTREE:
                     case REPLMessage.SUB:
@@ -557,13 +554,13 @@ public abstract class REPLHandler {
                 return finishReplyFailed(message, "missing breakpoint number");
             }
             message.put(REPLMessage.BREAKPOINT_ID, Integer.toString(breakpointNumber));
-            final Breakpoint breakpoint = serverContext.getDebugEngine().findBreakpoint(breakpointNumber);
+            final Breakpoint breakpoint = serverContext.findBreakpoint(breakpointNumber);
             if (breakpoint == null) {
                 return finishReplyFailed(message, "no breakpoint number " + breakpointNumber);
             }
             try {
                 breakpoint.setCondition(null);
-            } catch (DebugException e) {
+            } catch (IOException e) {
                 return finishReplyFailed(message, e.getMessage());
             }
             return finishReplyFailed(message, "Breakpoint " + breakpointNumber + " condition cleared");
@@ -575,8 +572,8 @@ public abstract class REPLHandler {
         @Override
         public REPLMessage[] receive(REPLMessage request, REPLServerContext serverContext) {
             final REPLMessage reply = createReply();
-            final ASTPrinter astPrinter = serverContext.getLanguage().getDebugSupport().getVisualizer().getASTPrinter();
-            final Node node = serverContext.getNode();
+            final ASTPrinter astPrinter = serverContext.getVisualizer().getASTPrinter();
+            final Node node = serverContext.getNodeAtHalt();
             if (node == null) {
                 return finishReplyFailed(reply, "no current AST node");
             }

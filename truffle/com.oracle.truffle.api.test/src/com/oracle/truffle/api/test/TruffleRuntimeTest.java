@@ -59,7 +59,7 @@ public class TruffleRuntimeTest {
     }
 
     private static RootNode createTestRootNode() {
-        return new RootNode() {
+        return new RootNode(TestingLanguage.class, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return 42;

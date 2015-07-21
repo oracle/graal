@@ -24,22 +24,27 @@
  */
 package com.oracle.truffle.tools.debug.shell.server;
 
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrument.Visualizer;
+import com.oracle.truffle.api.instrument.impl.DefaultVisualizer;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
-import com.oracle.truffle.tools.debug.engine.*;
 import com.oracle.truffle.tools.debug.shell.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class REPLServerContext {
 
     private final int level;
-    private final Node astNode;
-    private final MaterializedFrame mFrame;
+    private final SuspendedEvent event;
 
-    protected REPLServerContext(int level, Node astNode, MaterializedFrame mFrame) {
+    protected REPLServerContext(int level, SuspendedEvent event) {
         this.level = level;
-        this.astNode = astNode;
-        this.mFrame = mFrame;
+        this.event = event;
     }
 
     /**
@@ -52,24 +57,65 @@ public abstract class REPLServerContext {
     /**
      * The AST node where execution is halted in this context.
      */
-    public Node getNode() {
-        return astNode;
+    public Node getNodeAtHalt() {
+        return event.getNode();
     }
 
     /**
      * The frame where execution is halted in this context.
      */
-    public MaterializedFrame getFrame() {
-        return mFrame;
+    public MaterializedFrame getFrameAtHalt() {
+        return event.getFrame();
     }
 
     public abstract Language getLanguage();
 
-    public abstract DebugEngine getDebugEngine();
+    public Visualizer getVisualizer() {
+        return new DefaultVisualizer();
+    }
+
+    public abstract TruffleVM vm();
+
+    protected abstract Debugger db();
 
     /**
      * Dispatches a REPL request to the appropriate handler.
      */
     public abstract REPLMessage[] receive(REPLMessage request);
 
+    public abstract void registerBreakpoint(Breakpoint breakpoint);
+
+    public abstract Breakpoint findBreakpoint(int id);
+
+    public abstract int getBreakpointID(Breakpoint breakpoint);
+
+    List<FrameDebugDescription> getStack() {
+        List<FrameDebugDescription> frames = new ArrayList<>();
+        int frameCount = 1;
+        for (FrameInstance frameInstance : event.getStack()) {
+            if (frameCount == 1) {
+                frames.add(new FrameDebugDescription(frameCount, event.getNode(), frameInstance));
+            } else {
+                frames.add(new FrameDebugDescription(frameCount, frameInstance.getCallNode(), frameInstance));
+            }
+            frameCount++;
+        }
+        return frames;
+    }
+
+    void prepareStepOut() {
+        event.prepareStepOut();
+    }
+
+    void prepareStepInto(int repeat) {
+        event.prepareStepInto(repeat);
+    }
+
+    void prepareStepOver(int repeat) {
+        event.prepareStepOver(repeat);
+    }
+
+    void prepareContinue() {
+        event.prepareContinue();
+    }
 }

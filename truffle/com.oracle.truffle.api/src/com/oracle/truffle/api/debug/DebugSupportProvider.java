@@ -33,15 +33,6 @@ import com.oracle.truffle.api.source.*;
  * Access to language-specific information and execution services to enable debugging.
  */
 public interface DebugSupportProvider extends ToolSupportProvider {
-
-    /**
-     * Runs source code.
-     *
-     * @param source code
-     * @throws DebugSupportException if unable to run successfully
-     */
-    void run(Source source) throws DebugSupportException;
-
     /**
      * Runs source code in a halted execution context, or at top level.
      *

@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.api.debug;
 
-import static com.oracle.truffle.tools.debug.engine.Breakpoint.BreakpointState.*;
+import static com.oracle.truffle.api.debug.Breakpoint.State.*;
 
 import java.io.*;
 import java.util.*;
@@ -32,13 +32,13 @@ import java.util.Map.Entry;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
+import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.utilities.*;
-import com.oracle.truffle.tools.debug.engine.DebugEngine.BreakpointCallback;
-import com.oracle.truffle.tools.debug.engine.DebugEngine.WarningLog;
 
 // TODO (mlvdv) some common functionality could be factored out of this and LineBreakpointSupport
 
@@ -86,7 +86,7 @@ final class TagBreakpointFactory {
         }
     };
 
-    private final DebugExecutionSupport executionSupport;
+    private final Debugger executionSupport;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -102,7 +102,7 @@ final class TagBreakpointFactory {
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
 
-    TagBreakpointFactory(DebugExecutionSupport executionSupport, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
+    TagBreakpointFactory(Debugger executionSupport, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.executionSupport = executionSupport;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
@@ -115,7 +115,7 @@ final class TagBreakpointFactory {
                 if (breakpoint != null) {
                     try {
                         breakpoint.attach(probe);
-                    } catch (DebugException e) {
+                    } catch (IOException e) {
                         warningLog.addWarning(BREAKPOINT_NAME + " failure attaching to newly tagged Probe: " + e.getMessage());
                         if (TRACE) {
                             OUT.println(BREAKPOINT_NAME + " failure: " + e.getMessage());
@@ -141,18 +141,6 @@ final class TagBreakpointFactory {
     }
 
     /**
-     * Returns the (not yet disposed) breakpoint by id, if any; null if none.
-     */
-    TagBreakpoint find(long id) {
-        for (TagBreakpointImpl breakpoint : tagToBreakpoint.values()) {
-            if (breakpoint.getId() == id) {
-                return breakpoint;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Gets all current tag breakpoints,regardless of status; sorted and modification safe.
      */
     List<TagBreakpoint> getAll() {
@@ -174,15 +162,15 @@ final class TagBreakpointFactory {
      * @param ignoreCount number of initial hits before the breakpoint starts causing breaks.
      * @param oneShot whether the breakpoint should dispose itself after one hit
      * @return a possibly new breakpoint
-     * @throws DebugException if a breakpoint already exists for the tag and the ignore count is the
+     * @throws IOException if a breakpoint already exists for the tag and the ignore count is the
      *             same
      */
-    TagBreakpoint create(int groupId, int ignoreCount, SyntaxTag tag, boolean oneShot) throws DebugException {
+    TagBreakpoint create(int ignoreCount, SyntaxTag tag, boolean oneShot) throws IOException {
 
         TagBreakpointImpl breakpoint = tagToBreakpoint.get(tag);
 
         if (breakpoint == null) {
-            breakpoint = new TagBreakpointImpl(groupId, ignoreCount, tag, oneShot);
+            breakpoint = new TagBreakpointImpl(ignoreCount, tag, oneShot);
 
             if (TRACE) {
                 trace("NEW " + breakpoint.getShortDescription());
@@ -195,7 +183,7 @@ final class TagBreakpointFactory {
             }
         } else {
             if (ignoreCount == breakpoint.getIgnoreCount()) {
-                throw new DebugException(BREAKPOINT_NAME + " already set for tag " + tag.name());
+                throw new IOException(BREAKPOINT_NAME + " already set for tag " + tag.name());
             }
             breakpoint.setIgnoreCount(ignoreCount);
             if (TRACE) {
@@ -256,8 +244,8 @@ final class TagBreakpointFactory {
          */
         private List<Instrument> instruments = new ArrayList<>();
 
-        private TagBreakpointImpl(int groupId, int ignoreCount, SyntaxTag tag, boolean oneShot) {
-            super(ENABLED, groupId, ignoreCount, oneShot);
+        private TagBreakpointImpl(int ignoreCount, SyntaxTag tag, boolean oneShot) {
+            super(ENABLED, ignoreCount, oneShot);
             this.tag = tag;
             this.breakpointsActiveAssumption = TagBreakpointFactory.this.breakpointsActiveUnchanged.getAssumption();
             this.isEnabled = true;
@@ -297,7 +285,7 @@ final class TagBreakpointFactory {
         }
 
         @Override
-        public void setCondition(String expr) throws DebugException {
+        public void setCondition(String expr) throws IOException {
             if (this.conditionExpr != null || expr != null) {
                 // De-instrument the Probes instrumented by this breakpoint
                 final ArrayList<Probe> probes = new ArrayList<>();
@@ -330,7 +318,7 @@ final class TagBreakpointFactory {
             }
         }
 
-        private void attach(Probe newProbe) throws DebugException {
+        private void attach(Probe newProbe) throws IOException {
             if (getState() == DISPOSED) {
                 throw new IllegalStateException("Attempt to attach a disposed " + BREAKPOINT_NAME);
             }
@@ -338,7 +326,7 @@ final class TagBreakpointFactory {
             if (conditionExpr == null) {
                 newInstrument = Instrument.create(new UnconditionalTagBreakInstrumentListener(), BREAKPOINT_NAME);
             } else {
-                newInstrument = Instrument.create(this, executionSupport.createAdvancedInstrumentRootFactory(conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
+                newInstrument = Instrument.create(this, executionSupport.createAdvancedInstrumentRootFactory(newProbe, conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
             }
             newProbe.attach(newInstrument);
             instruments.add(newInstrument);
@@ -356,7 +344,7 @@ final class TagBreakpointFactory {
             return BREAKPOINT_NAME + "@" + tag.name();
         }
 
-        private void changeState(BreakpointState after) {
+        private void changeState(State after) {
             if (TRACE) {
                 trace("STATE %s-->%s %s", getState().getName(), after.getName(), getShortDescription());
             }

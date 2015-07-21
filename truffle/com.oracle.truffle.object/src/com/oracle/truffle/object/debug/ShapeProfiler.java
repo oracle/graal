@@ -204,6 +204,7 @@ public class ShapeProfiler {
     }
 
     private static final ShapeProfiler shapeProf;
+
     static {
         if (ObjectStorageOptions.Profile) {
             shapeProf = new ShapeProfiler();

@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.api.debug;
 
-import static com.oracle.truffle.tools.debug.engine.Breakpoint.BreakpointState.*;
+import static com.oracle.truffle.api.debug.Breakpoint.State.*;
 
 import java.io.*;
 import java.util.*;
@@ -33,15 +33,14 @@ import java.util.Map.Entry;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
+import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.utilities.*;
-import com.oracle.truffle.tools.*;
-import com.oracle.truffle.tools.debug.engine.DebugEngine.BreakpointCallback;
-import com.oracle.truffle.tools.debug.engine.DebugEngine.WarningLog;
 
 //TODO (mlvdv) some common functionality could be factored out of this and TagBreakpointSupport
 
@@ -90,7 +89,7 @@ final class LineBreakpointFactory {
         }
     };
 
-    private final DebugExecutionSupport executionSupport;
+    private final Debugger executionSupport;
     private final BreakpointCallback breakpointCallback;
     private final WarningLog warningLog;
 
@@ -113,7 +112,7 @@ final class LineBreakpointFactory {
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
 
-    LineBreakpointFactory(DebugExecutionSupport executionSupport, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
+    LineBreakpointFactory(Debugger executionSupport, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
         this.executionSupport = executionSupport;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
@@ -135,7 +134,7 @@ final class LineBreakpointFactory {
                             if (breakpoint != null) {
                                 try {
                                     breakpoint.attach(probe);
-                                } catch (DebugException e) {
+                                } catch (IOException e) {
                                     warningLog.addWarning(BREAKPOINT_NAME + " failure attaching to newly tagged Probe: " + e.getMessage());
                                     if (TRACE) {
                                         OUT.println(BREAKPOINT_NAME + " failure: " + e.getMessage());
@@ -164,18 +163,6 @@ final class LineBreakpointFactory {
     }
 
     /**
-     * Returns the (not yet disposed) breakpoint by id; null if none.
-     */
-    LineBreakpoint find(long id) {
-        for (LineBreakpoint breakpoint : lineToBreakpoint.values()) {
-            if (breakpoint.getId() == id) {
-                return breakpoint;
-            }
-        }
-        return null;
-    }
-
-    /**
      * Gets all current line breakpoints,regardless of status; sorted and modification safe.
      */
     List<LineBreakpoint> getAll() {
@@ -197,15 +184,15 @@ final class LineBreakpointFactory {
      * @param ignoreCount number of initial hits before the breakpoint starts causing breaks.
      * @param oneShot whether the breakpoint should dispose itself after one hit
      * @return a possibly new breakpoint
-     * @throws DebugException if a breakpoint already exists at the location and the ignore count is
+     * @throws IOException if a breakpoint already exists at the location and the ignore count is
      *             the same
      */
-    LineBreakpoint create(int groupId, int ignoreCount, LineLocation lineLocation, boolean oneShot) throws DebugException {
+    LineBreakpoint create(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
 
         LineBreakpointImpl breakpoint = lineToBreakpoint.get(lineLocation);
 
         if (breakpoint == null) {
-            breakpoint = new LineBreakpointImpl(groupId, ignoreCount, lineLocation, oneShot);
+            breakpoint = new LineBreakpointImpl(ignoreCount, lineLocation, oneShot);
 
             if (TRACE) {
                 trace("NEW " + breakpoint.getShortDescription());
@@ -221,7 +208,7 @@ final class LineBreakpointFactory {
             }
         } else {
             if (ignoreCount == breakpoint.getIgnoreCount()) {
-                throw new DebugException(BREAKPOINT_NAME + " already set at line " + lineLocation);
+                throw new IOException(BREAKPOINT_NAME + " already set at line " + lineLocation);
             }
             breakpoint.setIgnoreCount(ignoreCount);
             if (TRACE) {
@@ -286,8 +273,8 @@ final class LineBreakpointFactory {
          */
         private List<Instrument> instruments = new ArrayList<>();
 
-        public LineBreakpointImpl(int groupId, int ignoreCount, LineLocation lineLocation, boolean oneShot) {
-            super(ENABLED_UNRESOLVED, groupId, ignoreCount, oneShot);
+        public LineBreakpointImpl(int ignoreCount, LineLocation lineLocation, boolean oneShot) {
+            super(ENABLED_UNRESOLVED, ignoreCount, oneShot);
             this.lineLocation = lineLocation;
 
             this.breakpointsActiveAssumption = LineBreakpointFactory.this.breakpointsActiveUnchanged.getAssumption();
@@ -335,7 +322,7 @@ final class LineBreakpointFactory {
         }
 
         @Override
-        public void setCondition(String expr) throws DebugException {
+        public void setCondition(String expr) throws IOException {
             if (this.conditionExpr != null || expr != null) {
                 // De-instrument the Probes instrumented by this breakpoint
                 final ArrayList<Probe> probes = new ArrayList<>();
@@ -368,7 +355,7 @@ final class LineBreakpointFactory {
             }
         }
 
-        private void attach(Probe newProbe) throws DebugException {
+        private void attach(Probe newProbe) throws IOException {
             if (getState() == DISPOSED) {
                 throw new IllegalStateException("Attempt to attach a disposed " + BREAKPOINT_NAME);
             }
@@ -376,7 +363,7 @@ final class LineBreakpointFactory {
             if (conditionExpr == null) {
                 newInstrument = Instrument.create(new UnconditionalLineBreakInstrumentListener(), BREAKPOINT_NAME);
             } else {
-                newInstrument = Instrument.create(this, executionSupport.createAdvancedInstrumentRootFactory(conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
+                newInstrument = Instrument.create(this, executionSupport.createAdvancedInstrumentRootFactory(newProbe, conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
             }
             newProbe.attach(newInstrument);
             instruments.add(newInstrument);
@@ -394,7 +381,7 @@ final class LineBreakpointFactory {
             return BREAKPOINT_NAME + "@" + getLineLocation().getShortDescription();
         }
 
-        private void changeState(BreakpointState after) {
+        private void changeState(State after) {
             if (TRACE) {
                 trace("STATE %s-->%s %s", getState().getName(), after.getName(), getShortDescription());
             }

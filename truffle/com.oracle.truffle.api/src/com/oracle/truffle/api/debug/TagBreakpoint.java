@@ -22,21 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.instrument.*;
+
+// TODO (mlvdv) generic?
 /**
- * An unexpected failure in the operation of the {@link DebugEngine}.
+ * A breakpoint associated with a {@link SyntaxTag}.
+ *
+ * @see Debugger
  */
-public class DebugException extends Exception {
+abstract class TagBreakpoint extends Breakpoint {
 
-    public DebugException(String string) {
-        super(string);
+    TagBreakpoint(State state, int ignoreCount, boolean isOneShot) {
+        super(state, ignoreCount, isOneShot);
     }
 
-    public DebugException(Exception ex) {
-        super(ex);
-    }
-
-    private static final long serialVersionUID = 3307454453821997224L;
+    /**
+     * Gets the tag that specifies where this breakpoint will trigger.
+     */
+    public abstract SyntaxTag getTag();
 
 }

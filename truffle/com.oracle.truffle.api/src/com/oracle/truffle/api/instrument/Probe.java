@@ -30,6 +30,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
@@ -47,8 +48,8 @@ import com.oracle.truffle.api.utilities.*;
  * </ol>
  * <p>
  * Client-oriented documentation for the use of Probes is available online at <a
- * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes"
- * >https://wiki.openjdk.java.net/display/Graal/Finding+Probes</a>
+ * HREF="https://wiki.openjdk.java.net/display/Graal/Finding+Probes" >https://wiki.openjdk.java.
+ * net/display/Graal/Finding+Probes</a>
  * <p>
  * <h4>Implementation notes:</h4>
  * <p>
@@ -100,6 +101,7 @@ import com.oracle.truffle.api.utilities.*;
  * @see SyntaxTag
  */
 public final class Probe {
+    private final Class<? extends TruffleLanguage> language;
 
     private static final boolean TRACE = false;
     private static final String TRACE_PREFIX = "PROBE: ";
@@ -303,7 +305,7 @@ public final class Probe {
     /**
      * Intended for use only by {@link ProbeNode}.
      */
-    Probe(ProbeNode probeNode, SourceSection sourceSection) {
+    Probe(Class<? extends TruffleLanguage> l, ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;
         probes.add(new WeakReference<>(this));
         registerProbeNodeClone(probeNode);
@@ -314,6 +316,7 @@ public final class Probe {
         for (ProbeListener listener : probeListeners) {
             listener.newProbeInserted(this);
         }
+        this.language = l;
     }
 
     /**
@@ -483,4 +486,18 @@ public final class Probe {
         sb.append("]");
         return sb.toString();
     }
+
+    static final class AccessorInstrument extends Accessor {
+        @Override
+        protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
+            return super.findLanguage(n);
+        }
+
+        @Override
+        protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
+            return probe.language;
+        }
+    }
+
+    static final AccessorInstrument ACCESSOR = new AccessorInstrument();
 }

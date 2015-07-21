@@ -63,6 +63,8 @@ public final class TruffleVM {
     private final Reader in;
     private final Writer err;
     private final Writer out;
+    private final EventConsumer<?>[] handlers;
+    private Debugger debugger;
 
     /**
      * Private & temporary only constructor.
@@ -73,6 +75,7 @@ public final class TruffleVM {
         this.err = null;
         this.out = null;
         this.langs = null;
+        this.handlers = null;
     }
 
     /**
@@ -82,10 +85,11 @@ public final class TruffleVM {
      * @param err stderr
      * @param in stdin
      */
-    private TruffleVM(Writer out, Writer err, Reader in) {
+    private TruffleVM(Writer out, Writer err, Reader in, EventConsumer<?>[] handlers) {
         this.out = out;
         this.err = err;
         this.in = in;
+        this.handlers = handlers;
         this.initThread = Thread.currentThread();
         this.langs = new HashMap<>();
         Enumeration<URL> en;
@@ -169,12 +173,13 @@ public final class TruffleVM {
         private Writer out;
         private Writer err;
         private Reader in;
+        private List<EventConsumer<?>> handlers = new ArrayList<>();
 
         Builder() {
         }
 
         /**
-         * Changes the defaut output for languages running in <em>to be created</em>
+         * Changes the default output for languages running in <em>to be created</em>
          * {@link TruffleVM virtual machine}. The default is to use {@link System#out}.
          *
          * @param w the writer to use as output
@@ -210,6 +215,19 @@ public final class TruffleVM {
         }
 
         /**
+         * Registers another instance of {@link EventConsumer} into the to be created
+         * {@link TruffleVM}.
+         *
+         * @param handler the handler to register
+         * @return instance of this builder
+         */
+        public Builder onEvent(EventConsumer<?> handler) {
+            handler.getClass();
+            handlers.add(handler);
+            return this;
+        }
+
+        /**
          * Creates the {@link TruffleVM Truffle virtual machine}. The configuration is taken from
          * values passed into configuration methods in this class.
          *
@@ -225,7 +243,7 @@ public final class TruffleVM {
             if (in == null) {
                 in = new InputStreamReader(System.in);
             }
-            return new TruffleVM(out, err, in);
+            return new TruffleVM(out, err, in, handlers.toArray(new EventConsumer[0]));
         }
     }
 
@@ -273,7 +291,7 @@ public final class TruffleVM {
         if (l == null) {
             throw new IOException("No language for " + location + " with MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
-        return SPI.eval(l, s);
+        return eval(l, s);
     }
 
     /**
@@ -291,7 +309,7 @@ public final class TruffleVM {
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
-        return SPI.eval(l, Source.fromReader(reader, mimeType));
+        return eval(l, Source.fromReader(reader, mimeType));
     }
 
     /**
@@ -309,7 +327,18 @@ public final class TruffleVM {
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
-        return SPI.eval(l, Source.fromText(code, mimeType));
+        return eval(l, Source.fromText(code, mimeType));
+    }
+
+    private Object eval(TruffleLanguage l, Source s) throws IOException {
+        TruffleVM.findDebuggerSupport(l);
+        Debugger[] fillIn = {debugger};
+        try (Closeable d = SPI.executionStart(this, fillIn, s)) {
+            if (debugger == null) {
+                debugger = fillIn[0];
+            }
+            return SPI.eval(l, s);
+        }
     }
 
     /**
@@ -331,12 +360,14 @@ public final class TruffleVM {
      */
     public Symbol findGlobalSymbol(String globalName) {
         checkThread();
+        TruffleLanguage lang = null;
         Object obj = null;
         Object global = null;
         for (Language dl : langs.values()) {
             TruffleLanguage l = dl.getImpl();
             obj = SPI.findExportedSymbol(l, globalName, true);
             if (obj != null) {
+                lang = l;
                 global = SPI.languageGlobal(l);
                 break;
             }
@@ -346,12 +377,13 @@ public final class TruffleVM {
                 TruffleLanguage l = dl.getImpl();
                 obj = SPI.findExportedSymbol(l, globalName, false);
                 if (obj != null) {
+                    lang = l;
                     global = SPI.languageGlobal(l);
                     break;
                 }
             }
         }
-        return obj == null ? null : new Symbol(obj, global);
+        return obj == null ? null : new Symbol(lang, obj, global);
     }
 
     private void checkThread() {
@@ -366,15 +398,46 @@ public final class TruffleVM {
         return l == null ? null : l.getImpl();
     }
 
+    @SuppressWarnings("all")
+    void dispatch(Object ev) {
+        Class type = ev.getClass();
+        if (type == SuspendedEvent.class) {
+            dispatchSuspendedEvent((SuspendedEvent) ev);
+        }
+        if (type == ExecutionEvent.class) {
+            dispatchExecutionEvent((ExecutionEvent) ev);
+        }
+        dispatch(type, ev);
+    }
+
+    @SuppressWarnings("unused")
+    void dispatchSuspendedEvent(SuspendedEvent event) {
+    }
+
+    @SuppressWarnings("unused")
+    void dispatchExecutionEvent(ExecutionEvent event) {
+    }
+
+    @SuppressWarnings("all")
+    <Event> void dispatch(Class<Event> type, Event event) {
+        for (EventConsumer handler : handlers) {
+            if (handler.type == type) {
+                handler.on(event);
+            }
+        }
+    }
+
     /**
      * Represents {@link TruffleVM#findGlobalSymbol(java.lang.String) global symbol} provided by one
      * of the initialized languages in {@link TruffleVM Truffle virtual machine}.
      */
     public class Symbol {
+        private final TruffleLanguage language;
         private final Object obj;
         private final Object global;
 
-        Symbol(Object obj, Object global) {
+        Symbol(TruffleLanguage language, Object obj, Object global) {
+            this.language = language;
             this.obj = obj;
             this.global = global;
         }
@@ -392,16 +455,22 @@ public final class TruffleVM {
          * @throws IOException signals problem during execution
          */
         public Object invoke(Object thiz, Object... args) throws IOException {
-            List<Object> arr = new ArrayList<>();
-            if (thiz == null) {
-                if (global != null) {
-                    arr.add(global);
+            Debugger[] fillIn = {debugger};
+            try (Closeable c = SPI.executionStart(TruffleVM.this, fillIn, null)) {
+                if (debugger == null) {
+                    debugger = fillIn[0];
                 }
-            } else {
-                arr.add(thiz);
+                List<Object> arr = new ArrayList<>();
+                if (thiz == null) {
+                    if (global != null) {
+                        arr.add(global);
+                    }
+                } else {
+                    arr.add(thiz);
+                }
+                arr.addAll(Arrays.asList(args));
+                return SPI.invoke(language, obj, arr.toArray());
             }
-            arr.addAll(Arrays.asList(args));
-            return SPI.invoke(obj, arr.toArray());
         }
     }
 
@@ -472,14 +541,6 @@ public final class TruffleVM {
             return shortName;
         }
 
-        public ToolSupportProvider getToolSupport() {
-            return SPI.getToolSupport(getImpl());
-        }
-
-        public DebugSupportProvider getDebugSupport() {
-            return SPI.getDebugSupport(getImpl());
-        }
-
         TruffleLanguage getImpl() {
             if (impl == null) {
                 String n = props.getProperty(prefix + "className");
@@ -499,6 +560,25 @@ public final class TruffleVM {
             return "[" + getShortName() + " for " + getMimeTypes() + "]";
         }
     } // end of Language
+
+    //
+    // Accessor helper methods
+    //
+
+    TruffleLanguage findLanguage(Probe probe) {
+        Class<? extends TruffleLanguage> languageClazz = SPI.findLanguage(probe);
+        for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
+            Language languageDescription = entrySet.getValue();
+            if (languageClazz.isInstance(languageDescription.impl)) {
+                return languageDescription.impl;
+            }
+        }
+        throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
+    }
+
+    static DebugSupportProvider findDebuggerSupport(TruffleLanguage l) {
+        return SPI.getDebugSupport(l);
+    }
 
     private static class SPIAccessor extends Accessor {
         @Override
@@ -548,8 +628,8 @@ public final class TruffleVM {
         }
 
         @Override
-        public Object invoke(Object obj, Object[] args) throws IOException {
-            return super.invoke(obj, args);
+        protected Object invoke(TruffleLanguage lang, Object obj, Object[] args) throws IOException {
+            return super.invoke(lang, obj, args);
         }
 
         @Override
@@ -560,6 +640,21 @@ public final class TruffleVM {
         @Override
         public DebugSupportProvider getDebugSupport(TruffleLanguage l) {
             return super.getDebugSupport(l);
+        }
+
+        @Override
+        protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
+            return super.findLanguage(probe);
+        }
+
+        @Override
+        protected Closeable executionStart(TruffleVM aThis, Debugger[] fillIn, Source s) {
+            return super.executionStart(aThis, fillIn, s);
+        }
+
+        @Override
+        protected void dispatchEvent(TruffleVM vm, Object event) {
+            vm.dispatch(event);
         }
     } // end of SPIAccessor
 }

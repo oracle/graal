@@ -22,26 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.debug.engine;
+package com.oracle.truffle.tools.debug.shell.server;
 
-import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
-// TODO (mlvdv) generic?
-/**
- * A breakpoint associated with a {@linkplain LineLocation source line location}.
- *
- * @see DebugEngine
- */
-public abstract class LineBreakpoint extends Breakpoint {
+public final class FrameDebugDescription {
+    private final int index;
+    private final Node node;
+    private final FrameInstance frameInstance;
 
-    LineBreakpoint(BreakpointState state, int groupId, int ignoreCount, boolean isOneShot) {
-        super(state, groupId, ignoreCount, isOneShot);
+    FrameDebugDescription(int index, Node node, FrameInstance frameInstance) {
+        this.index = index;
+        this.node = node;
+        this.frameInstance = frameInstance;
     }
 
     /**
-     * Gets the {@linkplain LineLocation source line location} that specifies where this breakpoint
-     * will trigger.
+     * Position in the current stack: {@code 0} at the top.
      */
-    public abstract LineLocation getLineLocation();
+    public int index() {
+        return index;
+    }
 
+    /**
+     * AST location.
+     */
+    public Node node() {
+        return node;
+    }
+
+    /**
+     * Access to the Truffle {@link Frame}.
+     */
+    public FrameInstance frameInstance() {
+        return frameInstance;
+    }
 }

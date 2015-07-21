@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,30 +21,45 @@
  * questions.
  */
 /**
- * <p>This package contains basic tests of the Truffle API and serves at the same
- * time as an introduction to the Truffle API for language implementors. Every test gives an example on how to use the construct explained in the class description.</p>
+ * <p>
+ * This package contains basic tests of the Truffle API and serves at the same time as an
+ * introduction to the Truffle API for language implementors. Every test gives an example on how to
+ * use the construct explained in the class description.
+ * </p>
  *
  * <p>
- * Truffle is a language implementation framework. A guest language method is represented as a tree of executable nodes.
- * The framework provides mechanisms for those trees to call each other. Additionally it contains dedicated data structures for storing data local to a tree invocation.
+ * Truffle is a language implementation framework. A guest language method is represented as a tree
+ * of executable nodes. The framework provides mechanisms for those trees to call each other.
+ * Additionally it contains dedicated data structures for storing data local to a tree invocation.
  * </p>
  *
  * <p>
  * This introduction to Truffle contains items in the following recommended order:
  *
  * <ul>
- * <li>How to get access to the Truffle runtime? {@link com.oracle.truffle.api.test.TruffleRuntimeTest}</li>
+ * <li>How to get access to the Truffle runtime?
+ * {@link com.oracle.truffle.api.test.TruffleRuntimeTest}</li>
  * <li>How to create a root node? {@link com.oracle.truffle.api.test.RootNodeTest}</li>
- * <li>How to create a child node and link it with its parent? {@link com.oracle.truffle.api.test.ChildNodeTest}</li>
- * <li>How to create an array of child nodes? {@link com.oracle.truffle.api.test.ChildrenNodesTest}</li>
- * <li>Why are final fields in node classes important? {@link com.oracle.truffle.api.test.FinalFieldTest}</li>
- * <li>How to replace one node with another node and what for? {@link com.oracle.truffle.api.test.ReplaceTest}</li>
- * <li>How to let one Truffle tree invoke another one? {@link com.oracle.truffle.api.test.CallTest}</li>
- * <li>How to pass arguments when executing a tree? {@link com.oracle.truffle.api.test.ArgumentsTest}</li>
- * <li>How to use frames and frame slots to store values local to an activation? {@link com.oracle.truffle.api.test.FrameTest}</li>
- * <li>How to use type specialization and speculation for frame slots? {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}</li>
- * <li>How to use type specialization and speculation for node return values? {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}</li>
- * <li>How to "instrument" an AST with nodes that can provide access to runtime state from external tools {@code com.oracle.truffle.api.test.instrument.InstrumentationTest}</li>
+ * <li>How to create a child node and link it with its parent?
+ * {@link com.oracle.truffle.api.test.ChildNodeTest}</li>
+ * <li>How to create an array of child nodes? {@link com.oracle.truffle.api.test.ChildrenNodesTest}
+ * </li>
+ * <li>Why are final fields in node classes important?
+ * {@link com.oracle.truffle.api.test.FinalFieldTest}</li>
+ * <li>How to replace one node with another node and what for?
+ * {@link com.oracle.truffle.api.test.ReplaceTest}</li>
+ * <li>How to let one Truffle tree invoke another one? {@link com.oracle.truffle.api.test.CallTest}
+ * </li>
+ * <li>How to pass arguments when executing a tree?
+ * {@link com.oracle.truffle.api.test.ArgumentsTest}</li>
+ * <li>How to use frames and frame slots to store values local to an activation?
+ * {@link com.oracle.truffle.api.test.FrameTest}</li>
+ * <li>How to use type specialization and speculation for frame slots?
+ * {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}</li>
+ * <li>How to use type specialization and speculation for node return values?
+ * {@link com.oracle.truffle.api.test.ReturnTypeSpecializationTest}</li>
+ * <li>How to "instrument" an AST with nodes that can provide access to runtime state from external
+ * tools {@code com.oracle.truffle.api.test.instrument.InstrumentationTest}</li>
  * </ul>
  *
  *

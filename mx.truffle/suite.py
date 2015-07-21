@@ -144,19 +144,10 @@ suite = {
       "workingSets" : "Truffle,Tools",
     },
 
-    "com.oracle.truffle.tools.debug.engine" : {
-      "subDir" : "truffle",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.tools"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.7",
-      "workingSets" : "Truffle,Tools",
-    },
-
     "com.oracle.truffle.tools.debug.shell" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.tools.debug.engine",
+      "dependencies" : ["com.oracle.truffle.tools",
                         "JLINE"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
@@ -171,7 +162,6 @@ suite = {
         "com.oracle.truffle.api.object",
         "com.oracle.truffle.tools",
       ],
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
@@ -182,9 +172,9 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.tck",
-        "com.oracle.truffle.sl"
+        "com.oracle.truffle.sl",
       ],
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Test",
     },
@@ -194,7 +184,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.tools.debug.shell",
                         "com.oracle.truffle.sl"],
-      "checkstyle" : "com.oracle.truffle.api",
+      "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Tools",
     },
@@ -207,7 +197,7 @@ suite = {
     "TRUFFLE" : {
       "path" : "build/truffle-api.jar",
       "subDir" : "truffle",
-      "sourcesPath" : "build/truffle.src.zip",
+      "sourcesPath" : "build/truffle-api.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.api.dsl",
