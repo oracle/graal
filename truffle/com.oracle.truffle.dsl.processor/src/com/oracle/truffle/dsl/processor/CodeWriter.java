@@ -53,11 +53,11 @@ public final class CodeWriter extends AbstractCodeWriter {
         if (env == null) {
             return;
         }
+        writeLn("// CheckStyle: start generated");
         String comment = CompilerFactory.getCompiler(originalElement).getHeaderComment(env, originalElement);
         if (comment != null) {
             writeLn(comment);
         }
-        writeLn("// CheckStyle: start generated");
     }
 
 }
