@@ -485,7 +485,16 @@ class LinearScanWalker extends IntervalWalker {
     void splitForSpilling(Interval interval) {
         // calculate allowed range of splitting position
         int maxSplitPos = currentPosition;
-        int minSplitPos = Math.max(interval.previousUsage(RegisterPriority.ShouldHaveRegister, maxSplitPos) + 1, interval.from());
+        int previousUsage = interval.previousUsage(RegisterPriority.ShouldHaveRegister, maxSplitPos);
+        if (previousUsage == currentPosition) {
+            /*
+             * If there is a usage with ShouldHaveRegister priority at the current position fall
+             * back to MustHaveRegister priority. This only happens if register priority was
+             * downgraded to MustHaveRegister in #allocLockedRegister.
+             */
+            previousUsage = interval.previousUsage(RegisterPriority.MustHaveRegister, maxSplitPos);
+        }
+        int minSplitPos = Math.max(previousUsage + 1, interval.from());
 
         try (Indent indent = Debug.logAndIndent("splitting and spilling interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
 
