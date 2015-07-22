@@ -652,13 +652,13 @@ public class SPARCMove {
             Value scratchRegisterValue = sc.getRegister().asValue(LIRKind.combine(input));
             emitLoad(crb, masm, inputAddress, scratchRegisterValue, false, input.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null);
             SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
-            emitStore(scratchRegisterValue, resultAddress, input.getPlatformKind(), delaySlotLir, null, crb, masm);
+            emitStore(scratchRegisterValue, resultAddress, result.getPlatformKind(), delaySlotLir, null, crb, masm);
         }
     }
 
     public static void reg2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
         SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
-        emitStore(input, resultAddress, input.getPlatformKind(), delaySlotLir, null, crb, masm);
+        emitStore(input, resultAddress, result.getPlatformKind(), delaySlotLir, null, crb, masm);
     }
 
     public static void reg2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
