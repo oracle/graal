@@ -32,17 +32,18 @@ import json
 
 import mx
 import mx_jvmci
-from mx_jvmci import JDKDeployedDist, buildvms, vm, VM, Task, parseVmArgs, get_vm, ctw, isVMSupported
+from mx_jvmci import JvmciJDKDeployedDist, buildvms, vm, VM, Task, parseVmArgs, get_vm, ctw, isVMSupported
 import mx_unittest
 from mx_unittest import unittest
 
 _suite = mx.suite('graal')
 
-class GraalJDKDeployedDist(JDKDeployedDist):
+class GraalJDKDeployedDist(JvmciJDKDeployedDist):
     def __init__(self):
-        JDKDeployedDist.__init__(self, 'GRAAL', usesJVMCIClassLoader=True)
+        JvmciJDKDeployedDist.__init__(self, 'GRAAL')
 
-    def onPostJdkInstall(self, jdkDir, targetDir):
+    def deploy(self, jdkDir):
+        JvmciJDKDeployedDist.deploy(self, jdkDir)
         self._updateGraalPropertiesFile(join(jdkDir, 'jre', 'lib'))
 
     def _updateGraalPropertiesFile(self, jreLibDir):
@@ -68,7 +69,7 @@ class GraalJDKDeployedDist(JDKDeployedDist):
 
 mx_jvmci.jdkDeployedDists += [
     GraalJDKDeployedDist(),
-    JDKDeployedDist('GRAAL_TRUFFLE', usesJVMCIClassLoader=True)
+    JvmciJDKDeployedDist('GRAAL_TRUFFLE'),
 ]
 
 mx_jvmci.jacocoIncludes += ['com.oracle.graal.*']
