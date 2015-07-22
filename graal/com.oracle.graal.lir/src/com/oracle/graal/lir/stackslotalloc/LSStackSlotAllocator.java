@@ -77,8 +77,10 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     }
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
-        try (DebugCloseable t = MainTimer.start()) {
-            new Allocator(res.getLIR(), builder).allocate();
+        if (builder.getNumberOfStackSlots() > 0) {
+            try (DebugCloseable t = MainTimer.start()) {
+                new Allocator(res.getLIR(), builder).allocate();
+            }
         }
     }
 
