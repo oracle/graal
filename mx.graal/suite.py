@@ -21,9 +21,9 @@ suite = {
     },
 
     "C1VISUALIZER_DIST" : {
-      "path" : "lib/c1visualizer_2014-04-22.zip",
-      "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2014-04-22.zip"],
-      "sha1" : "220488d87affb569b893c7201f8ce5d2b0e03141",
+      "path" : "lib/c1visualizer_2015-07-22.zip",
+      "urls" : ["https://java.net/downloads/c1visualizer/c1visualizer_2015-07-22.zip"],
+      "sha1" : "7ead6b2f7ed4643ef4d3343a5562e3d3f39564ac",
     },
 
     "JOL_INTERNALS" : {
