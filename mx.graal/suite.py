@@ -894,9 +894,8 @@ suite = {
         "com.oracle.graal.printer",
       ],
       "distDependencies" : [
-        "jvmci:JVMCI_API",
-        "jvmci:JVMCI_SERVICE",
         "jvmci:JVMCI_HOTSPOT",
+        "jvmci:JVMCI_OPTIONS_PROCESSOR",
       ],
     },
 
@@ -919,6 +918,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL",
+        "jvmci:JVMCI_HOTSPOT",
       ],
     },
 
@@ -963,6 +963,9 @@ suite = {
       "subDir" : "graal",
       "sourcesPath" : "build/graal-replacements-verifier.src.zip",
       "dependencies" : ["com.oracle.graal.replacements.verifier"],
+      "distDependencies" : [
+        "jvmci:JVMCI_API",
+      ],
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
@@ -970,6 +973,10 @@ suite = {
       "subDir" : "graal",
       "sourcesPath" : "build/graal-compiler-match-processor.src.zip",
       "dependencies" : ["com.oracle.graal.compiler.match.processor"],
+      "distDependencies" : [
+        "jvmci:JVMCI_SERVICE",
+        "jvmci:JVMCI_API",
+      ]
     },
   },
 }
