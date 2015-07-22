@@ -283,7 +283,7 @@ public class StandardOp {
     public static final class BlackholeOp extends LIRInstruction {
         public static final LIRInstructionClass<BlackholeOp> TYPE = LIRInstructionClass.create(BlackholeOp.class);
 
-        @Use({REG, STACK}) private Value value;
+        @Use({REG, STACK, CONST}) private Value value;
 
         public BlackholeOp(Value value) {
             super(TYPE);
