@@ -26,12 +26,20 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
 
+/**
+ * Breakpoint in a {@link TruffleVM} with {@link com.oracle.truffle.api.debug debugging turned on}.
+ * You can ask
+ * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)} or
+ * {@link Debugger#setTagBreakpoint(int, com.oracle.truffle.api.instrument.SyntaxTag, boolean)} to
+ * create an instance of {@link Breakpoint}.
+ */
 public abstract class Breakpoint {
 
     /**
-     * A general model of the states occupied by a breakpoint during its lifetime.
+     * A general model of the states occupied by a {@link Breakpoint} during its lifetime.
      */
     public enum State {
 

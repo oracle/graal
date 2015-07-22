@@ -37,7 +37,9 @@ import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
- * Language-agnostic engine for running Truffle languages under debugging control.
+ * Represents debugging related state of a {@link TruffleVM}. Instance of this class is delivered
+ * via {@link SuspendedEvent#getDebugger()} and {@link ExecutionEvent#getDebugger()} events, once
+ * {@link com.oracle.truffle.api.debug debugging is turned on}.
  */
 public final class Debugger {
 

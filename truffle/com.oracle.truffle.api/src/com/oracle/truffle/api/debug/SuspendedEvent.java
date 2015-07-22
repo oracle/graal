@@ -44,8 +44,8 @@ import java.util.List;
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)
  * breakpoint} or during {@link #prepareStepInto(int) stepping}. Methods in this event can only be
  * used while the handlers process the event. Then the state of the event becomes invalid and
- * subsequent calls to the event methods yield {@link IllegalStateException}.
- *
+ * subsequent calls to the event methods yield {@link IllegalStateException}. One can call
+ * {@link #getDebugger()} and keep reference to it for as long as necessary.
  */
 public final class SuspendedEvent {
     private final List<String> recentWarnings;
@@ -81,7 +81,7 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Debugger associated with the just suspended execution. This debuger remains valid after the
+     * Debugger associated with the just suspended execution. This debugger remains valid after the
      * event is processed, it is possible and suggested to keep a reference to it and use it any
      * time later when evaluating sources in the {@link TruffleVM}.
      *
