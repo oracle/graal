@@ -53,8 +53,8 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        SPARCMove.reg2stack(crb, masm, tmpSlot, input, SPARCDelayedControlTransfer.DUMMY);
         SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
+        SPARCMove.emitStore(input, addr, result.getKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
         if (addr.getIndex().equals(Register.None)) {
             Register tempReg = ValueUtil.asLongReg(tempIndex);
             new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
