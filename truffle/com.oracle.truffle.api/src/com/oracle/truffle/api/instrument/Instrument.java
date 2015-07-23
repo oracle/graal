@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.instrument;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.InstrumentationNode.TruffleEvents;
 import com.oracle.truffle.api.nodes.*;
@@ -471,11 +472,21 @@ public abstract class Instrument {
                     return;
                 }
                 if (result == null) {
-                    throw new RuntimeException("Instrument result null: " + requiredResultType.getSimpleName() + " is required");
+                    throw instrumentResultNull();
                 }
                 if (!(requiredResultType.isAssignableFrom(result.getClass()))) {
-                    throw new RuntimeException("Instrument result " + result.toString() + " not assignable to " + requiredResultType.getSimpleName());
+                    throw instrumentResultWrongType(result);
                 }
+            }
+
+            @TruffleBoundary
+            private RuntimeException instrumentResultNull() {
+                return new RuntimeException("Instrument result null: " + requiredResultType.getSimpleName() + " is required");
+            }
+
+            @TruffleBoundary
+            private RuntimeException instrumentResultWrongType(Object result) {
+                return new RuntimeException("Instrument result " + result.toString() + " not assignable to " + requiredResultType.getSimpleName());
             }
 
             public void returnVoid(Node node, VirtualFrame vFrame) {

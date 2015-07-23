@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -86,9 +87,14 @@ class GenericObjectAccessNode extends ObjectAccessNode {
         final ForeignAccess fa = truffleObject.getForeignAccess();
         final CallTarget ct = fa.access(access);
         if (ct == null) {
-            throw new IllegalStateException("Message " + access + " not recognized by " + fa);
+            throw messageNotRecognizedException(fa);
         }
         return indirectCallNode.call(frame, ct, ForeignAccessArguments.create(truffleObject, arguments));
+    }
+
+    @TruffleBoundary
+    private RuntimeException messageNotRecognizedException(final ForeignAccess fa) {
+        throw new IllegalStateException("Message " + access + " not recognized by " + fa);
     }
 }
 

@@ -27,6 +27,7 @@ package com.oracle.truffle.api.utilities;
 import java.util.concurrent.atomic.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Holds an {@link Assumption}, and knows how to recreate it with the same properties on
@@ -45,6 +46,7 @@ public class CyclicAssumption {
         this.assumption = new AtomicReference<>(Truffle.getRuntime().createAssumption(name));
     }
 
+    @TruffleBoundary
     public void invalidate() {
         Assumption newAssumption = Truffle.getRuntime().createAssumption(name);
         Assumption oldAssumption = assumption.getAndSet(newAssumption);
