@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "ccee68149d93d01cb4be55623aa3d123e9530970",
+               "version" : "9e49e61995d6408db1d2f2399f6c4a96e26b7c90",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -14,7 +14,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "8dcb99fb00d7a913964b067d048a210b94dd27a6",
+               "version" : "237f34c6d7bd433e5dd687ada51463f42a24a74d",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -83,7 +83,7 @@ suite = {
       "dependencies" : [
         "com.oracle.nfi",
         "jvmci:JVMCI_API",
-        "JUNIT",
+        "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.7",
@@ -146,7 +146,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "JUNIT",
+        "mx:JUNIT",
         "com.oracle.graal.api.runtime",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -283,7 +283,7 @@ suite = {
       "sourceDirs" : ["src"],
       "checkstyle" : "com.oracle.graal.graph",
       "dependencies" : [
-        "JUNIT",
+        "mx:JUNIT",
         "com.oracle.graal.graph",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
@@ -385,7 +385,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "JUNIT",
+        "mx:JUNIT",
         "com.oracle.graal.lir",
       ],
       "checkstyle" : "com.oracle.graal.graph",
@@ -556,7 +556,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.runtime",
-        "JUNIT",
+        "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -746,7 +746,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "JUNIT",
+        "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
