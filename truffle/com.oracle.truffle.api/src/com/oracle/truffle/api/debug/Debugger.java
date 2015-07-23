@@ -399,7 +399,7 @@ public final class Debugger {
         @Override
         protected void setStrategy(final int stackDepth) {
             Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
-
+                @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
                     // HALT: just before statement
@@ -413,7 +413,7 @@ public final class Debugger {
                 }
             });
             Probe.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
-
+                @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
                     --unfinishedStepCount;
@@ -500,7 +500,7 @@ public final class Debugger {
         @Override
         protected void setStrategy(final int stackDepth) {
             Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
-
+                @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
                     final int currentStackDepth = currentStackDepth();
@@ -525,7 +525,7 @@ public final class Debugger {
             });
 
             Probe.setAfterTagTrap(new SyntaxTagTrap(CALL_TAG) {
-
+                @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
                     final int currentStackDepth = currentStackDepth();
@@ -575,7 +575,7 @@ public final class Debugger {
         @Override
         protected void setStrategy(final int stackDepth) {
             Probe.setBeforeTagTrap(new SyntaxTagTrap(STEPPING_TAG) {
-
+                @TruffleBoundary
                 @Override
                 public void tagTrappedAt(Node node, MaterializedFrame mFrame) {
                     final int currentStackDepth = currentStackDepth();

@@ -32,6 +32,7 @@ import java.util.Map.Entry;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.Debugger.BreakpointCallback;
 import com.oracle.truffle.api.debug.Debugger.WarningLog;
 import com.oracle.truffle.api.frame.*;
@@ -72,6 +73,7 @@ final class TagBreakpointFactory {
 
     private static final String BREAKPOINT_NAME = "TAG BREAKPOINT";
 
+    @TruffleBoundary
     private static void trace(String format, Object... args) {
         if (TRACE) {
             OUT.println(String.format("%s: %s", BREAKPOINT_NAME, String.format(format, args)));
@@ -307,6 +309,7 @@ final class TagBreakpointFactory {
             return conditionExpr;
         }
 
+        @TruffleBoundary
         @Override
         public void dispose() {
             if (getState() != DISPOSED) {
@@ -340,6 +343,7 @@ final class TagBreakpointFactory {
             }
         }
 
+        @TruffleBoundary
         private String getShortDescription() {
             return BREAKPOINT_NAME + "@" + tag.name();
         }
@@ -398,12 +402,17 @@ final class TagBreakpointFactory {
         }
 
         public void notifyFailure(Node node, VirtualFrame vFrame, RuntimeException ex) {
-            warningLog.addWarning(String.format("Exception in %s:  %s", getShortDescription(), ex.getMessage()));
+            addExceptionWarning(ex);
             if (TRACE) {
-                trace("breakpoint failure = %s  %s", ex.toString(), getShortDescription());
+                trace("breakpoint failure = %s  %s", ex, getShortDescription());
             }
             // Take the breakpoint if evaluation fails.
             nodeEnter(node, vFrame);
+        }
+
+        @TruffleBoundary
+        private void addExceptionWarning(RuntimeException ex) {
+            warningLog.addWarning(String.format("Exception in %s:  %s", getShortDescription(), ex.getMessage()));
         }
 
         @Override
