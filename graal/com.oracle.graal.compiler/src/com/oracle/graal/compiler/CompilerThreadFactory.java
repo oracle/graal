@@ -39,7 +39,7 @@ public class CompilerThreadFactory implements ThreadFactory {
          * Get a thread-local debug configuration for the current thread. This will be null if
          * debugging is disabled.
          */
-        JVMCIDebugConfig getDebugConfig();
+        GraalDebugConfig getDebugConfig();
     }
 
     protected final String threadNamePrefix;

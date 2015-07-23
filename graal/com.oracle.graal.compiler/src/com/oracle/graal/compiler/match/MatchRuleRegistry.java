@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static com.oracle.graal.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.*;
 
 import java.util.*;
 import java.util.Map.Entry;

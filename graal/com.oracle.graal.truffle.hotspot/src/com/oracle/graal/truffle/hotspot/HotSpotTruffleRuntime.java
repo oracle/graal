@@ -91,9 +91,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         // Create compilation queue.
         CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", new CompilerThreadFactory.DebugConfigAccess() {
-            public JVMCIDebugConfig getDebugConfig() {
+            public GraalDebugConfig getDebugConfig() {
                 if (Debug.isEnabled()) {
-                    JVMCIDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
+                    GraalDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
                     debugConfig.dumpHandlers().add(new TruffleTreeDumpHandler());
                     return debugConfig;
                 } else {

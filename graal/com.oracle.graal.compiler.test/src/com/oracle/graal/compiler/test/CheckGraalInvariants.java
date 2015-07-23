@@ -125,7 +125,7 @@ public class CheckGraalInvariants extends GraalTest {
         String[] filters = property == null ? null : property.split(",");
 
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread", new DebugConfigAccess() {
-            public JVMCIDebugConfig getDebugConfig() {
+            public GraalDebugConfig getDebugConfig() {
                 return DebugEnvironment.initialize(System.out);
             }
         });

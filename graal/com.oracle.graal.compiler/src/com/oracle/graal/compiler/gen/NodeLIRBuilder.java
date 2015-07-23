@@ -26,7 +26,7 @@ import static com.oracle.graal.compiler.common.BackendOptions.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
-import static com.oracle.graal.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.*;
 
 import java.util.*;
 import java.util.Map.Entry;

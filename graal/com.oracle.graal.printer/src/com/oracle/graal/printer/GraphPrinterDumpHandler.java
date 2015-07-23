@@ -23,7 +23,7 @@
 package com.oracle.graal.printer;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.*;
 
 import java.io.*;
 import java.net.*;

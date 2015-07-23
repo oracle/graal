@@ -29,7 +29,7 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
-public class JVMCIDebugConfig implements DebugConfig {
+public class GraalDebugConfig implements DebugConfig {
     @SuppressWarnings("all")
     private static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
@@ -109,7 +109,7 @@ public class JVMCIDebugConfig implements DebugConfig {
     private final PrintStream output;
     private final Set<Object> extraFilters = new HashSet<>();
 
-    public JVMCIDebugConfig(String logFilter, String meterFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String verifyFilter, String methodFilter, PrintStream output,
+    public GraalDebugConfig(String logFilter, String meterFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String verifyFilter, String methodFilter, PrintStream output,
                     List<DebugDumpHandler> dumpHandlers, List<DebugVerifyHandler> verifyHandlers) {
         this.logFilter = DebugFilter.parse(logFilter);
         this.meterFilter = DebugFilter.parse(meterFilter);

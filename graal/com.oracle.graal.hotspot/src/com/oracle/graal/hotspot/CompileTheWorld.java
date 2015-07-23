@@ -214,8 +214,8 @@ public final class CompileTheWorld {
      */
     public void compile() throws Throwable {
         // By default only report statistics for the CTW threads themselves
-        if (JVMCIDebugConfig.DebugValueThreadFilter.hasDefaultValue()) {
-            JVMCIDebugConfig.DebugValueThreadFilter.setValue("^CompileTheWorld");
+        if (GraalDebugConfig.DebugValueThreadFilter.hasDefaultValue()) {
+            GraalDebugConfig.DebugValueThreadFilter.setValue("^CompileTheWorld");
         }
 
         if (SUN_BOOT_CLASS_PATH.equals(files)) {
@@ -268,7 +268,7 @@ public final class CompileTheWorld {
         long start = System.currentTimeMillis();
 
         CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
-            public JVMCIDebugConfig getDebugConfig() {
+            public GraalDebugConfig getDebugConfig() {
                 if (Debug.isEnabled() && DebugScope.getConfig() == null) {
                     return DebugEnvironment.initialize(System.out);
                 }

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.*;
 
 import java.io.*;
 import java.util.*;

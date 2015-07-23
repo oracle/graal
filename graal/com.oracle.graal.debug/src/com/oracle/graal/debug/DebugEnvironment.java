@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import static com.oracle.graal.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.GraalDebugConfig.*;
 
 import java.io.*;
 import java.util.*;
@@ -31,7 +31,7 @@ import jdk.internal.jvmci.service.*;
 
 public class DebugEnvironment {
 
-    public static JVMCIDebugConfig initialize(PrintStream log) {
+    public static GraalDebugConfig initialize(PrintStream log) {
 
         if (!Debug.isEnabled()) {
             log.println("WARNING: Scope debugging needs to be enabled with -esa or -D" + Debug.Initialization.INITIALIZER_PROPERTY_NAME + "=true");
@@ -39,7 +39,7 @@ public class DebugEnvironment {
         }
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-        JVMCIDebugConfig debugConfig = new JVMCIDebugConfig(Log.getValue(), Meter.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), Verify.getValue(), MethodFilter.getValue(),
+        GraalDebugConfig debugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), Verify.getValue(), MethodFilter.getValue(),
                         log, dumpHandlers, verifyHandlers);
 
         for (DebugConfigCustomizer customizer : Services.load(DebugConfigCustomizer.class)) {
