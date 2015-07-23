@@ -352,7 +352,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    private void reportFailure(int numBlocks) {
+    protected void reportFailure(int numBlocks) {
         try (Scope s = Debug.forceLog()) {
             try (Indent indent = Debug.logAndIndent("report failure")) {
 
@@ -436,7 +436,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    private void verifyLiveness() {
+    protected void verifyLiveness() {
         /*
          * Check that fixed intervals are not live at block boundaries (live set must be empty at
          * fixed intervals).
@@ -520,7 +520,7 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             }
         }
 
-        changeSpillDefinitionPos(interval, defPos);
+        changeSpillDefinitionPos(op, operand, interval, defPos);
         if (registerPriority == RegisterPriority.None && interval.spillState().ordinal() <= SpillState.StartInMemory.ordinal() && isStackSlot(operand)) {
             // detection of method-parameters and roundfp-results
             interval.setSpillState(SpillState.StartInMemory);
@@ -591,8 +591,11 @@ class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
     /**
      * Eliminates moves from register to stack if the stack slot is known to be correct.
+     *
+     * @param op
+     * @param operand
      */
-    void changeSpillDefinitionPos(Interval interval, int defPos) {
+    protected void changeSpillDefinitionPos(LIRInstruction op, AllocatableValue operand, Interval interval, int defPos) {
         assert interval.isSplitParent() : "can only be called for split parents";
 
         switch (interval.spillState()) {

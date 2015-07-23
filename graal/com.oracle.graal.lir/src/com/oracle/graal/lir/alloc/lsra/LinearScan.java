@@ -115,7 +115,7 @@ class LinearScan {
     final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
     /** @see #intervals() */
-    private Interval[] intervals;
+    protected Interval[] intervals;
 
     /**
      * The number of valid entries in {@link #intervals}.

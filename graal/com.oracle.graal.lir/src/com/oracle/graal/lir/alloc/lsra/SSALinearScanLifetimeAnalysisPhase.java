@@ -60,7 +60,7 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
         }
     }
 
-    private static void setHint(final LIRInstruction op, Interval target, Interval source) {
+    static void setHint(final LIRInstruction op, Interval target, Interval source) {
         Interval currentHint = target.locationHint(false);
         if (currentHint == null || currentHint.from() > target.from()) {
             /*
