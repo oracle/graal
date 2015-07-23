@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "7d453d4d855a8c44503386f288b833ee28139558",
+               "version" : "2ecfec90e51edea0a4a59ffeaf407aaa0d3df3df",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -34,18 +34,6 @@ suite = {
         "http://softlayer.dl.sourceforge.net/project/dacapobench/9.12-bach/dacapo-9.12-bach.jar",
       ],
       "sha1" : "2626a9546df09009f6da0df854e6dc1113ef7dd4",
-    },
-
-    "JACOCOAGENT" : {
-      "path" : "lib/jacocoagent.jar",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/jacoco/jacocoagent-0.7.1-1.jar"],
-      "sha1" : "2f73a645b02e39290e577ce555f00b02004650b0",
-    },
-
-    "JACOCOREPORT" : {
-      "path" : "lib/jacocoreport.jar",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/jacoco/jacocoreport-0.7.1-2.jar"],
-      "sha1" : "a630436391832d697a12c8f7daef8655d7a1efd2",
     },
 
     "DACAPO_SCALA" : {

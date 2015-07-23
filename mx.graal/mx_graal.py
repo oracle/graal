@@ -32,9 +32,10 @@ import json
 
 import mx
 import mx_jvmci
-from mx_jvmci import JvmciJDKDeployedDist, buildvms, vm, VM, Task, parseVmArgs, get_vm, ctw, isVMSupported
+from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, ctw, isVMSupported
 import mx_unittest
 from mx_unittest import unittest
+import mx_gate
 
 _suite = mx.suite('graal')
 
@@ -72,8 +73,8 @@ mx_jvmci.jdkDeployedDists += [
     JvmciJDKDeployedDist('GRAAL_TRUFFLE'),
 ]
 
-mx_jvmci.jacocoIncludes += ['com.oracle.graal.*']
-mx_jvmci.jacocoExcludedAnnotations += ['@Snippet', '@ClassSubstitution']
+mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
+mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -171,14 +172,6 @@ def microbench(args):
     vm(args + jmhArgs)
 
 def _graal_gate_runner(args, tasks):
-    # Build server-hosted-jvmci now so we can run the unit tests
-    with Task('BuildHotSpotJVMCIHosted: product', tasks) as t:
-        if t: buildvms(['--vms', 'server', '--builds', 'product', '--check-distributions'])
-
-    # Run unit tests on server-hosted-jvmci
-    with VM('server', 'product'):
-        with Task('UnitTests:hosted-product', tasks) as t:
-            if t: unittest(['--enable-timing', '--verbose', '--fail-fast'])
 
     # Run unit tests on server-hosted-jvmci with -G:-SSA_LIR
     with VM('server', 'product'):
@@ -190,36 +183,13 @@ def _graal_gate_runner(args, tasks):
             if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose'])
 
     # Build the other VM flavors
-    with Task('BuildHotSpotGraalOthers: fastdebug,product', tasks) as t:
-        if t: buildvms(['--vms', 'jvmci,server', '--builds', 'fastdebug,product', '--check-distributions'])
-
-    with VM('jvmci', 'fastdebug'):
-        with Task('BootstrapWithSystemAssertions:fastdebug', tasks) as t:
-            if t: vm(['-esa', '-XX:-TieredCompilation', '-version'])
-
     with VM('jvmci', 'fastdebug'):
         with Task('BootstrapEconomyWithSystemAssertions:fastdebug', tasks) as t:
             if t: vm(['-esa', '-XX:-TieredCompilation', '-G:CompilerConfiguration=economy', '-version'])
 
     with VM('jvmci', 'fastdebug'):
-        with Task('BootstrapWithSystemAssertionsNoCoop:fastdebug', tasks) as t:
-            if t: vm(['-esa', '-XX:-TieredCompilation', '-XX:-UseCompressedOops', '-version'])
-
-    with VM('jvmci', 'fastdebug'):
         with Task('BootstrapWithExceptionEdges:fastdebug', tasks) as t:
             if t: vm(['-esa', '-XX:-TieredCompilation', '-G:+StressInvokeWithExceptionNode', '-version'])
-
-    with VM('jvmci', 'product'):
-        with Task('BootstrapWithGCVerification:product', tasks) as t:
-            if t:
-                out = mx.DuplicateSuppressingStream(['VerifyAfterGC:', 'VerifyBeforeGC:']).write
-                vm(['-XX:-TieredCompilation', '-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-version'], out=out)
-
-    with VM('jvmci', 'product'):
-        with Task('BootstrapWithG1GCVerification:product', tasks) as t:
-            if t:
-                out = mx.DuplicateSuppressingStream(['VerifyAfterGC:', 'VerifyBeforeGC:']).write
-                vm(['-XX:-TieredCompilation', '-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-version'], out=out)
 
     with VM('jvmci', 'product'):
         with Task('BootstrapWithRegisterPressure:product', tasks) as t:
@@ -248,11 +218,6 @@ def _graal_gate_runner(args, tasks):
         with Task('DaCapo_pmd:BatchMode:product', tasks) as t:
             if t: dacapo(['-Xbatch', 'pmd'])
 
-    # ensure -Xcomp still works
-    with VM('jvmci', 'product'):
-        with Task('XCompMode:product', tasks) as t:
-            if t: vm(['-Xcomp', '-version'])
-
     # Prevent JVMCI modifications from breaking the standard builds
     if args.buildNonJVMCI:
         for vmbuild in ['product', 'fastdebug']:
@@ -267,7 +232,7 @@ def _graal_gate_runner(args, tasks):
                     with Task('UnitTests:' + theVm + ':' + vmbuild, tasks) as t:
                         if t: unittest(['-XX:CompileCommand=exclude,*::run*', 'graal.api', 'java.test'])
 
-mx_jvmci.gateRunners.append(_graal_gate_runner)
+mx_gate.add_gate_runner(_graal_gate_runner)
 
 def deoptalot(args):
     """bootstrap a VM with DeoptimizeALot and VerifyOops on
