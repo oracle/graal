@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
+import static com.oracle.graal.nodes.NamedLocationIdentity.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.nodes.*;

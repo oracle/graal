@@ -41,10 +41,10 @@ import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
+import static com.oracle.graal.nodes.NamedLocationIdentity.*;
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
 import static com.oracle.graal.replacements.Log.*;
 import static jdk.internal.jvmci.code.CallingConvention.Type.*;
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
 
@@ -55,6 +55,7 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.word.*;
 
 /**

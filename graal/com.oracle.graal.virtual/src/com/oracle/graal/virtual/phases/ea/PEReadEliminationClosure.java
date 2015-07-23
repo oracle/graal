@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
+import static com.oracle.graal.nodes.NamedLocationIdentity.*;
 
 import java.util.*;
 
