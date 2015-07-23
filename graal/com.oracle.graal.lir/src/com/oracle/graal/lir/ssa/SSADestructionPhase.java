@@ -25,7 +25,6 @@ package com.oracle.graal.lir.ssa;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
@@ -33,13 +32,6 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
 public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Destruct SSA LIR eagerly (before other LIR phases).", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIREagerSSADestruction = new OptionValue<>(false);
-        // @formatter:on
-    }
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {

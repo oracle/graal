@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.compiler.amd64;
 
-import com.oracle.graal.compiler.common.*;
+import static com.oracle.graal.compiler.common.BackendOptions.*;
+
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.amd64.phases.*;
@@ -37,7 +38,7 @@ public class AMD64SuitesProvider extends DefaultSuitesProvider {
     @Override
     public LIRSuites createLIRSuites() {
         LIRSuites lirSuites = super.createLIRSuites();
-        if (StackMoveOptimizationPhase.Options.LIROptStackMoveOptimizer.getValue() && GraalOptions.SSA_LIR.getValue()) {
+        if (StackMoveOptimizationPhase.Options.LIROptStackMoveOptimizer.getValue() && ShouldOptimizeStackToStackMoves.getValue()) {
             /* Note: this phase must be inserted <b>after</b> RedundantMoveElimination */
             lirSuites.getPostAllocationOptimizationStage().appendPhase(new StackMoveOptimizationPhase());
         }

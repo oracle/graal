@@ -22,40 +22,34 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.BackendOptions.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.DerivedOptionValue.*;
+import jdk.internal.jvmci.common.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.ssa.*;
 
 public final class LinearScanPhase extends AllocationPhase {
-
-    public static final DerivedOptionValue<Boolean> SSA_LSRA = new DerivedOptionValue<>(new OptionSupplier<Boolean>() {
-
-        private static final long serialVersionUID = 9115795480259228194L;
-
-        public Boolean get() {
-            return SSA_LIR.getValue() && !SSADestructionPhase.Options.LIREagerSSADestruction.getValue();
-        }
-    });
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         final LinearScan allocator;
-        if (LinearScanPhase.SSA_LSRA.getValue()) {
-            allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
-        } else {
-            allocator = new LinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
+        switch (LinearScanVariant.getValue()) {
+            case SSA_LSRA:
+                allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
+                break;
+            case NONSSA_LSAR:
+                allocator = new LinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
+                break;
+            default:
+                throw JVMCIError.shouldNotReachHere();
         }
         allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
     }

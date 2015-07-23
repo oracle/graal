@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.gen;
 
+import static com.oracle.graal.compiler.common.BackendOptions.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
@@ -267,7 +268,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 emitPrologue(graph);
             } else {
                 assert block.getPredecessorCount() > 0;
-                if (SSA_LIR.getValue()) {
+                if (ConstructionSSAlirDuringLirBuilding.getValue()) {
                     // create phi-in value array
                     AbstractBeginNode begin = block.getBeginNode();
                     if (begin instanceof AbstractMergeNode) {
@@ -428,7 +429,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     public void visitEndNode(AbstractEndNode end) {
         AbstractMergeNode merge = end.merge();
         JumpOp jump = newJumpOp(getLIRBlock(merge));
-        if (SSA_LIR.getValue()) {
+        if (ConstructionSSAlirDuringLirBuilding.getValue()) {
             jump.setOutgoingValues(createPhiOut(merge, end));
         } else {
             moveToPhi(merge, end);
