@@ -232,7 +232,7 @@ def _graal_gate_runner(args, tasks):
                     with Task('UnitTests:' + theVm + ':' + vmbuild, tasks) as t:
                         if t: unittest(['-XX:CompileCommand=exclude,*::run*', 'graal.api', 'java.test'])
 
-mx_gate.add_gate_runner(_graal_gate_runner)
+mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 
 def deoptalot(args):
     """bootstrap a VM with DeoptimizeALot and VerifyOops on
