@@ -1273,6 +1273,9 @@ public abstract class Source {
          */
         public int offsetToLine(int offset) throws IllegalArgumentException {
             if (offset < 0 || offset >= textLength) {
+                if (offset == 0 && textLength == 0) {
+                    return 1;
+                }
                 throw new IllegalArgumentException("offset out of bounds");
             }
             int line = 1;
@@ -1319,7 +1322,10 @@ public abstract class Source {
          * @throws IllegalArgumentException if there is no such line in the text.
          */
         public int lineStartOffset(int line) throws IllegalArgumentException {
-            if (textLength == 0 || lineOutOfRange(line)) {
+            if (textLength == 0) {
+                return 0;
+            }
+            if (lineOutOfRange(line)) {
                 throw new IllegalArgumentException("line out of bounds");
             }
             return nlOffsets[line - 1];
@@ -1332,7 +1338,10 @@ public abstract class Source {
          * @throws IllegalArgumentException if there is no such line in the text.
          */
         public int lineLength(int line) throws IllegalArgumentException {
-            if (textLength == 0 || lineOutOfRange(line)) {
+            if (textLength == 0) {
+                return 0;
+            }
+            if (lineOutOfRange(line)) {
                 throw new IllegalArgumentException("line out of bounds");
             }
             if (line == nlOffsets.length - 1 && !finalNL) {
