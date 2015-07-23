@@ -32,7 +32,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
-        "JUNIT",
+        "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
@@ -55,7 +55,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
-        "JUNIT",
+        "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.7",
@@ -115,7 +115,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.interop",
-        "JUNIT"
+        "mx:JUNIT"
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -137,7 +137,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
           "com.oracle.truffle.tools",
-          "JUNIT"
+          "mx:JUNIT"
           ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
