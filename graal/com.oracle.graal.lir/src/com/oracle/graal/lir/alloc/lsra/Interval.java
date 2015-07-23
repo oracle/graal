@@ -657,7 +657,7 @@ public final class Interval {
     }
 
     void setSpillDefinitionPos(int pos) {
-        assert spillState() == SpillState.SpillInDominator || spillDefinitionPos() == -1 : "cannot set the position twice";
+        assert spillState() == SpillState.SpillInDominator || spillState() == SpillState.NoDefinitionFound || spillDefinitionPos() == -1 : "cannot set the position twice";
         splitParent().spillDefinitionPos = pos;
     }
 
