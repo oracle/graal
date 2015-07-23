@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static jdk.internal.jvmci.debug.internal.MemUseTrackerImpl.*;
-import static jdk.internal.jvmci.hotspot.CompileTheWorld.*;
-import static jdk.internal.jvmci.hotspot.CompileTheWorld.Options.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.internal.*;
+import static com.oracle.graal.debug.internal.MemUseTrackerImpl.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.CompileTheWorld.Config;
 
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 /**
@@ -173,9 +171,8 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
     public void run() {
         compileAndTime("simple");
         compileAndTime("complex");
-        if (CompileTheWorldClasspath.getValue() != SUN_BOOT_CLASS_PATH) {
-            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
-                            CompileTheWorldStopAt.getValue(), CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
+        if (CompileTheWorld.Options.CompileTheWorldClasspath.getValue() != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
+            CompileTheWorld ctw = new CompileTheWorld();
             try {
                 ctw.compile();
             } catch (Throwable e) {

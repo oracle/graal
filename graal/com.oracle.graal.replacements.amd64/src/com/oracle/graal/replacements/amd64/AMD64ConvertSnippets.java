@@ -23,7 +23,7 @@
 package com.oracle.graal.replacements.amd64;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 

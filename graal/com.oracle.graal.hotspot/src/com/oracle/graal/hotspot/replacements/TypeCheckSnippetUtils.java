@@ -28,7 +28,6 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import java.util.*;
 
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 

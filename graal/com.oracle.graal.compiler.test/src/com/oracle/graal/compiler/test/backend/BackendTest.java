@@ -24,8 +24,8 @@ package com.oracle.graal.compiler.test.backend;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import static jdk.internal.jvmci.code.CodeUtil.*;
 
 import com.oracle.graal.compiler.*;

@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static jdk.internal.jvmci.common.UnsafeAccess.*;
-import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.JVMCIDebugConfig.*;
 import static jdk.internal.jvmci.hotspot.InitTimer.*;
 
 import java.lang.reflect.*;
@@ -35,6 +35,9 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.stack.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
+
+import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.hotspot.logging.*;
 import jdk.internal.jvmci.meta.*;

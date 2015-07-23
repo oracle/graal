@@ -35,7 +35,7 @@ import static jdk.internal.jvmci.code.UnsignedMath.*;
 import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;

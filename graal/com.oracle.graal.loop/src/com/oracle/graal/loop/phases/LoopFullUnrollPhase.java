@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.loop.phases;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;

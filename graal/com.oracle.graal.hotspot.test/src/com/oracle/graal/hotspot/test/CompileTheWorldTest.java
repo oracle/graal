@@ -23,12 +23,12 @@
 package com.oracle.graal.hotspot.test;
 
 import static jdk.internal.jvmci.compiler.Compiler.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.CompileTheWorld.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.CompileTheWorld.Config;
 
 /**
  * Tests {@link CompileTheWorld} functionality.

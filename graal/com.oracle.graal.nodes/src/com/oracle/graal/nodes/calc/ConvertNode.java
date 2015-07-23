@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.calc.*;

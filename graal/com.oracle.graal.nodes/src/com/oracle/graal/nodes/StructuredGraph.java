@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.*;
 import java.util.function.*;
 
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.meta.Assumptions.Assumption;
 

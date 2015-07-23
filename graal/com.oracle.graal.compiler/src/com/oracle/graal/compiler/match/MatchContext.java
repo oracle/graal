@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.compiler.match;
 
-import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.JVMCIDebugConfig.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.match.MatchPattern.Result;

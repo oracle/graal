@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static jdk.internal.jvmci.debug.DelegatingDebugConfig.Feature.*;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -31,16 +31,16 @@ import java.util.concurrent.*;
 import java.util.zip.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.Register.*;
-import jdk.internal.jvmci.compiler.*;
-import jdk.internal.jvmci.compiler.CompilerThreadFactory.*;
-import jdk.internal.jvmci.debug.*;
+import jdk.internal.jvmci.code.Register.RegisterCategory;
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;

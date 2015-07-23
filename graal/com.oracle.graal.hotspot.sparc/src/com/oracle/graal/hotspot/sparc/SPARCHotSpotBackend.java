@@ -37,7 +37,7 @@ import java.util.concurrent.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.DataSection.Data;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 

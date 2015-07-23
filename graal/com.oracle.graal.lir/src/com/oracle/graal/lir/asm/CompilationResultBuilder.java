@@ -31,7 +31,7 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CompilationResult.*;
 import jdk.internal.jvmci.code.DataSection.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 

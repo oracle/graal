@@ -25,7 +25,7 @@ package com.oracle.graal.phases.graph;
 import java.util.*;
 import java.util.function.*;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

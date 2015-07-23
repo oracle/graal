@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static jdk.internal.jvmci.debug.DelegatingDebugConfig.Feature.*;
+import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.*;
 
 import java.lang.reflect.*;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;

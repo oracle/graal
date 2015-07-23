@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.function.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import sun.misc.*;
 
 import com.oracle.graal.compiler.common.*;

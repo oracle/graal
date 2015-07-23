@@ -22,15 +22,27 @@
  */
 package com.oracle.graal.hotspot;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.service.*;
+
+import com.oracle.graal.debug.*;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     @Override
     public void notifyCompileTheWorld() throws Throwable {
-
+        CompilerToVM compilerToVM = HotSpotJVMCIRuntime.runtime().getCompilerToVM();
+        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
+        for (int i = 0; i < iterations; i++) {
+            compilerToVM.resetCompilationStatistics();
+            TTY.println("CompileTheWorld : iteration " + i);
+            CompileTheWorld ctw = new CompileTheWorld();
+            ctw.compile();
+        }
+        System.exit(0);
     }
 
     @Override
@@ -40,6 +52,17 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     @Override
     public void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long jvmciEnv, int id) {
+        HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
+        CompilationTask.compileMethod(method, entryBCI, jvmciEnv, id);
+    }
 
+    @Override
+    public void notifyInstall(HotSpotCodeCacheProvider codeCache, InstalledCode installedCode, CompilationResult compResult) {
+        if (Debug.isDumpEnabled()) {
+            Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
+        }
+        if (Debug.isLogEnabled()) {
+            Debug.log("%s", codeCache.disassemble(installedCode));
+        }
     }
 }

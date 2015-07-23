@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.gen;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIR.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
-import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.JVMCIDebugConfig.*;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -33,7 +33,10 @@ import java.util.Map.Entry;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.calc.*;

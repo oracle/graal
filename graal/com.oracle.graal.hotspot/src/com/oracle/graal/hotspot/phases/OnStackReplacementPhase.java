@@ -26,7 +26,7 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;

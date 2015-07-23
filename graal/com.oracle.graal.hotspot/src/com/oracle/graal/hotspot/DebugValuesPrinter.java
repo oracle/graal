@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
-import static jdk.internal.jvmci.debug.JVMCIDebugConfig.*;
+import static com.oracle.graal.debug.JVMCIDebugConfig.*;
 
 import java.io.*;
 import java.util.*;
@@ -31,7 +31,8 @@ import java.util.stream.*;
 
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.internal.*;
+
+import com.oracle.graal.debug.internal.*;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all
