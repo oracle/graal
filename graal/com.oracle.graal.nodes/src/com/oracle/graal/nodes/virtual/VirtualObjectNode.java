@@ -35,10 +35,30 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
 
     public static final NodeClass<VirtualObjectNode> TYPE = NodeClass.create(VirtualObjectNode.class);
     protected boolean hasIdentity;
+    private int objectId = -1;
 
     protected VirtualObjectNode(NodeClass<? extends VirtualObjectNode> c, ResolvedJavaType type, boolean hasIdentity) {
         super(c, StampFactory.exactNonNull(type));
         this.hasIdentity = hasIdentity;
+    }
+
+    public final int getObjectId() {
+        return objectId;
+    }
+
+    public final void resetObjectId() {
+        this.objectId = -1;
+    }
+
+    public final void setObjectId(int objectId) {
+        assert objectId != -1;
+        this.objectId = objectId;
+    }
+
+    @Override
+    protected void afterClone(Node other) {
+        super.afterClone(other);
+        resetObjectId();
     }
 
     /**

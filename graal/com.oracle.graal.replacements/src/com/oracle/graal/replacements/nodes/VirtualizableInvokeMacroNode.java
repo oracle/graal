@@ -29,6 +29,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * A helper class to allow elimination of byte code instrumentation that could interfere with escape
@@ -46,8 +47,8 @@ public class VirtualizableInvokeMacroNode extends MacroStateSplitNode implements
     @Override
     public void virtualize(VirtualizerTool tool) {
         for (ValueNode arg : arguments) {
-            State state = tool.getObjectState(arg);
-            if (state != null && state.getState() == EscapeState.Virtual) {
+            ValueNode alias = tool.getAlias(arg);
+            if (alias instanceof VirtualObjectNode) {
                 tool.delete();
             }
         }

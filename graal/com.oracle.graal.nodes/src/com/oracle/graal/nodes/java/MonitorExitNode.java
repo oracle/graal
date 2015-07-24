@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code MonitorExitNode} represents a monitor release. If it is the release of the monitor of
@@ -79,12 +80,15 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object());
         // the monitor exit for a synchronized method should never be virtualized
-        if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
-            MonitorIdNode removedLock = state.removeLock();
-            assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();
-            tool.delete();
+        ValueNode alias = tool.getAlias(object());
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            if (virtual.hasIdentity()) {
+                MonitorIdNode removedLock = tool.removeLock(virtual);
+                assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();
+                tool.delete();
+            }
         }
     }
 }

@@ -464,7 +464,7 @@ public class ArrayCopySnippets implements Snippets {
                         /*
                          * At least one array is of a known type requiring no store checks, so
                          * assume the other is of the same type. Generally this is working around
-                         * deficiencies in our propation of type information.
+                         * deficiencies in our propagation of type information.
                          */
                         componentKind = predictedKind;
                         if (predictedKind == Kind.Object) {

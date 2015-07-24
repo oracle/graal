@@ -29,7 +29,6 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
@@ -72,45 +71,43 @@ public interface VirtualizerTool {
     void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, boolean ensureVirtualized);
 
     /**
-     * Queries the current state of the given value: if it is virtualized (thread-local and the
-     * compiler knows all entries) or not.
+     * Returns a VirtualObjectNode if the given value is aliased with a virtual object that is still
+     * virtual, the materialized value of the given value is aliased with a virtual object that was
+     * materialized, the replacement if the give value was replaced, otherwise the given value.
      *
-     * @param value the value whose state should be queried.
-     * @return the {@link State} representing the value if it has been virtualized at some point,
-     *         null otherwise.
+     * Replacements via {@link #replaceWithValue(ValueNode)} are not immediately committed. This
+     * method can be used to determine if a value was replaced by another one (e.g., a load field by
+     * the loaded value).
      */
-    State getObjectState(ValueNode value);
+    ValueNode getAlias(ValueNode value);
 
     /**
      * Sets the entry (field or array element) with the given index in the virtualized object.
      *
-     * @param state the state.
      * @param index the index to be set.
      * @param value the new value for the given index.
      * @param unsafe if true, then mismatching value {@link Kind}s will be accepted.
      */
-    void setVirtualEntry(State state, int index, ValueNode value, boolean unsafe);
+    void setVirtualEntry(VirtualObjectNode virtualObject, int index, ValueNode value, boolean unsafe);
 
-    // scalar replacement
+    ValueNode getEntry(VirtualObjectNode virtualObject, int index);
 
-    /**
-     * Replacements via {@link #replaceWithValue(ValueNode)} are not immediately committed. This
-     * method can be used to determine if a value was replaced by another one (e.g., a load field by
-     * the loaded value).
-     *
-     * @param original the original input value.
-     * @return the replacement value, or the original value if there is no replacement.
-     */
-    ValueNode getReplacedValue(ValueNode original);
+    void addLock(VirtualObjectNode virtualObject, MonitorIdNode monitorId);
+
+    MonitorIdNode removeLock(VirtualObjectNode virtualObject);
+
+    void setEnsureVirtualized(VirtualObjectNode virtualObject, boolean ensureVirtualized);
+
+    boolean getEnsureVirtualized(VirtualObjectNode virtualObject);
 
     // operations on the current node
 
     /**
      * Deletes the current node and replaces it with the given virtualized object.
      *
-     * @param virtual the virtualized object that should replace the current node.
+     * @param virtualObject the virtualized object that should replace the current node.
      */
-    void replaceWithVirtual(VirtualObjectNode virtual);
+    void replaceWithVirtual(VirtualObjectNode virtualObject);
 
     /**
      * Deletes the current node and replaces it with the given value.

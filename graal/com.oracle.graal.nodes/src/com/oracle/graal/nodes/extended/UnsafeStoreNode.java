@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Store of a value at a location specified as an offset relative to an object. No null check is
@@ -79,26 +80,27 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object());
-        if (state != null && state.getState() == EscapeState.Virtual) {
-            ValueNode indexValue = tool.getReplacedValue(offset());
+        ValueNode alias = tool.getAlias(object());
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            ValueNode indexValue = tool.getAlias(offset());
             if (indexValue.isConstant()) {
                 long off = indexValue.asJavaConstant().asLong();
-                int entryIndex = state.getVirtualObject().entryIndexForOffset(off, accessKind());
+                int entryIndex = virtual.entryIndexForOffset(off, accessKind());
                 if (entryIndex != -1) {
-                    Kind entryKind = state.getVirtualObject().entryKind(entryIndex);
-                    ValueNode entry = state.getEntry(entryIndex);
+                    Kind entryKind = virtual.entryKind(entryIndex);
+                    ValueNode entry = tool.getEntry(virtual, entryIndex);
                     if (entry.getKind() == value.getKind() || entryKind == accessKind()) {
-                        tool.setVirtualEntry(state, entryIndex, value(), true);
+                        tool.setVirtualEntry(virtual, entryIndex, value(), true);
                         tool.delete();
                     } else {
                         if ((accessKind() == Kind.Long || accessKind() == Kind.Double) && entryKind == Kind.Int) {
-                            int nextIndex = state.getVirtualObject().entryIndexForOffset(off + 4, entryKind);
+                            int nextIndex = virtual.entryIndexForOffset(off + 4, entryKind);
                             if (nextIndex != -1) {
-                                Kind nextKind = state.getVirtualObject().entryKind(nextIndex);
+                                Kind nextKind = virtual.entryKind(nextIndex);
                                 if (nextKind == Kind.Int) {
-                                    tool.setVirtualEntry(state, entryIndex, value(), true);
-                                    tool.setVirtualEntry(state, nextIndex, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
+                                    tool.setVirtualEntry(virtual, entryIndex, value(), true);
+                                    tool.setVirtualEntry(virtual, nextIndex, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
                                     tool.delete();
                                 }
                             }

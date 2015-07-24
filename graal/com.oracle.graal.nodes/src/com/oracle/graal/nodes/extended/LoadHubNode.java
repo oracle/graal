@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import jdk.internal.jvmci.meta.Assumptions.AssumptionResult;
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.Assumptions.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
@@ -116,10 +116,10 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(value);
-        if (state != null) {
-            Constant constantHub = state.getVirtualObject().type().getObjectHub();
-            tool.replaceWithValue(ConstantNode.forConstant(stamp(), constantHub, tool.getMetaAccessProvider(), graph()));
+        ValueNode alias = tool.getAlias(getValue());
+        ResolvedJavaType type = findSynonymType(graph(), tool.getMetaAccessProvider(), alias);
+        if (type != null) {
+            tool.replaceWithValue(ConstantNode.forConstant(stamp(), type.getObjectHub(), tool.getMetaAccessProvider(), graph()));
         }
     }
 }
