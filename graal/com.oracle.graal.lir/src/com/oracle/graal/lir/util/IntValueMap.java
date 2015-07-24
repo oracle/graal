@@ -55,9 +55,6 @@ public final class IntValueMap {
     }
 
     public void put(int index, Value value) {
-        if (value != null && value.getLIRKind().isValue()) {
-            return;
-        }
         if (values.length <= index) {
             if (value == null) {
                 return;

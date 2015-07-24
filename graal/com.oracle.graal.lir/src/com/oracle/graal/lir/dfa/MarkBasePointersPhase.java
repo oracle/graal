@@ -69,6 +69,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
             @Override
             public void put(Value v) {
                 Variable base = (Variable) v.getLIRKind().getDerivedReferenceBase();
+                assert !base.getLIRKind().isValue();
                 variables.put(base.index, base);
             }
 
@@ -80,6 +81,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
             @Override
             public void remove(Value v) {
                 Variable base = (Variable) v.getLIRKind().getDerivedReferenceBase();
+                assert !base.getLIRKind().isValue();
                 variables.put(base.index, null);
             }
 
