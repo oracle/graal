@@ -84,12 +84,12 @@ class LinearScanWalker extends IntervalWalker {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();
-        spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
-        for (int i = 0; i < allocator.registers.length; i++) {
+        spillIntervals = Util.uncheckedCast(new List[allocator.getRegisters().length]);
+        for (int i = 0; i < allocator.getRegisters().length; i++) {
             spillIntervals[i] = EMPTY_LIST;
         }
-        usePos = new int[allocator.registers.length];
-        blockPos = new int[allocator.registers.length];
+        usePos = new int[allocator.getRegisters().length];
+        blockPos = new int[allocator.getRegisters().length];
     }
 
     void initUseLists(boolean onlyProcessUsePos) {
@@ -892,7 +892,7 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     boolean noAllocationPossible(Interval interval) {
-        if (allocator.callKillsRegisters) {
+        if (allocator.callKillsRegisters()) {
             // fast calculation of intervals that can never get a register because the
             // the next instruction is a call that blocks all registers
             // Note: this only works if a call kills all registers
@@ -917,7 +917,7 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        AllocatableRegisters allocatableRegisters = allocator.regAllocConfig.getAllocatableRegisters(interval.kind().getPlatformKind());
+        AllocatableRegisters allocatableRegisters = allocator.getRegisterAllocationConfig().getAllocatableRegisters(interval.kind().getPlatformKind());
         availableRegs = allocatableRegisters.allocatableRegisters;
         minReg = allocatableRegisters.minRegisterNumber;
         maxReg = allocatableRegisters.maxRegisterNumber;

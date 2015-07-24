@@ -55,18 +55,6 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
  */
 public class LinearScan {
 
-    private final LIR ir;
-    private final FrameMapBuilder frameMapBuilder;
-    final RegisterAttributes[] registerAttributes;
-    final Register[] registers;
-    final RegisterAllocationConfig regAllocConfig;
-    private final SpillMoveFactory moveFactory;
-
-    final boolean callKillsRegisters;
-
-    public static final int DOMINATOR_SPILL_MOVE_ID = -2;
-    static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
-
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
@@ -106,6 +94,16 @@ public class LinearScan {
         public BitSet liveKill;
     }
 
+    public static final int DOMINATOR_SPILL_MOVE_ID = -2;
+    private static final int SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT = 1;
+
+    private final LIR ir;
+    private final FrameMapBuilder frameMapBuilder;
+    private final RegisterAttributes[] registerAttributes;
+    private final Register[] registers;
+    private final RegisterAllocationConfig regAllocConfig;
+    private final SpillMoveFactory moveFactory;
+
     private final BlockMap<BlockData> blockData;
 
     /**
@@ -114,7 +112,7 @@ public class LinearScan {
     private final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
     /** @see #intervals() */
-    protected Interval[] intervals;
+    private Interval[] intervals;
 
     /**
      * The number of valid entries in {@link #intervals}.
@@ -161,14 +159,8 @@ public class LinearScan {
         this.regAllocConfig = regAllocConfig;
 
         this.registers = target.arch.getRegisters();
-        this.firstVariableNumber = registers.length;
+        this.firstVariableNumber = getRegisters().length;
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
-
-        /*
-         * If all allocatable registers are caller saved, then no registers are live across a call
-         * site. The register allocator can save time not trying to find a register at a call site.
-         */
-        this.callKillsRegisters = regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -881,6 +873,18 @@ public class LinearScan {
 
     public List<? extends AbstractBlockBase<?>> sortedBlocks() {
         return sortedBlocks;
+    }
+
+    public Register[] getRegisters() {
+        return registers;
+    }
+
+    public RegisterAllocationConfig getRegisterAllocationConfig() {
+        return regAllocConfig;
+    }
+
+    public boolean callKillsRegisters() {
+        return regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
 }

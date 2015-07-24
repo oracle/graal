@@ -708,7 +708,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             };
 
             // create a list with all caller-save registers (cpu, fpu, xmm)
-            Register[] callerSaveRegs = allocator.regAllocConfig.getRegisterConfig().getCallerSaveRegisters();
+            Register[] callerSaveRegs = allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters();
 
             // iterate all blocks in reverse order
             for (int i = allocator.blockCount() - 1; i >= 0; i--) {

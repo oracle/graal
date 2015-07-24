@@ -62,7 +62,7 @@ public final class TraceLinearScan extends LinearScan {
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-            try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals)) {
+            try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
                 sortIntervalsBeforeAllocation();
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
