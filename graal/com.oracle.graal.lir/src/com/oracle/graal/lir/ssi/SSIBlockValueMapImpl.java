@@ -40,15 +40,15 @@ import com.oracle.graal.lir.util.*;
 
 public final class SSIBlockValueMapImpl implements BlockValueMap {
 
-    private final class BlockData {
+    private static final class BlockData {
 
         /** Mapping from value to index into {@link #incoming} */
         private final ValueMap<Value, Integer> valueIndexMap;
         private final ArrayList<Value> incoming;
         private final ArrayList<Value> outgoing;
 
-        private BlockData() {
-            valueIndexMap = new GenericValueMap<>();
+        private BlockData(int initialVariableCapacity, int initialStackSlotCapacity) {
+            valueIndexMap = new VariableVirtualStackValueMap<>(initialVariableCapacity, initialStackSlotCapacity);
             incoming = new ArrayList<>();
             outgoing = new ArrayList<>();
         }
@@ -66,6 +66,7 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
         }
 
         public int addIncoming(Value operand) {
+            assert isVariable(operand) || isVirtualStackSlot(operand) : "Not a variable or vstack: " + operand;
             int index = incoming.size();
             incoming.add(Value.ILLEGAL);
             valueIndexMap.put(operand, index);
@@ -87,9 +88,13 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
     /** Mapping from value to definition block. */
     private final ValueMap<Value, AbstractBlockBase<?>> valueToDefBlock;
     private final BlockMap<BlockData> blockData;
+    private final int initialVariableCapacity;
+    private final int initialStackSlotCapacity;
 
-    public SSIBlockValueMapImpl(AbstractControlFlowGraph<?> cfg, int initialVariableCapacity, int initialStackSlotCapazity) {
-        valueToDefBlock = new VariableVirtualStackValueMap<>(initialVariableCapacity, initialStackSlotCapazity);
+    public SSIBlockValueMapImpl(AbstractControlFlowGraph<?> cfg, int initialVariableCapacity, int initialStackSlotCapacity) {
+        this.initialVariableCapacity = initialVariableCapacity;
+        this.initialStackSlotCapacity = initialStackSlotCapacity;
+        valueToDefBlock = new VariableVirtualStackValueMap<>(initialVariableCapacity, initialStackSlotCapacity);
         blockData = new BlockMap<>(cfg);
     }
 
@@ -143,7 +148,7 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
     private BlockData getOrInit(AbstractBlockBase<?> block) {
         BlockData data = blockData.get(block);
         if (data == null) {
-            data = new BlockData();
+            data = new BlockData(initialVariableCapacity, initialStackSlotCapacity);
             blockData.put(block, data);
         }
         return data;
