@@ -76,48 +76,8 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     protected final void patchJumpTarget(int branch, int branchTarget) {
         final int disp = (branchTarget - branch) / 4;
         final int inst = getInt(branch);
-        Op2s op2 = Op2s.byValue((inst & OP2_MASK) >> OP2_SHIFT);
-        int maskBits;
-        int setBits;
-        switch (op2) {
-            case Br:
-            case Fb:
-            case Sethi:
-            case Illtrap:
-                // Disp 22 in the lower 22 bits
-                assert isSimm(disp, 22);
-                setBits = disp << DISP22_SHIFT;
-                maskBits = DISP22_MASK;
-                break;
-            case Fbp:
-            case Bp:
-                // Disp 19 in the lower 19 bits
-                assert isSimm(disp, 19);
-                setBits = disp << DISP19_SHIFT;
-                maskBits = DISP19_MASK;
-                break;
-            case Bpr:
-                if (isCBCond(inst)) {
-                    assert isSimm10(disp) : String.format("%d: instruction: 0x%x", disp, inst);
-                    int d10Split = 0;
-                    d10Split |= (disp & 0b11_0000_0000) << D10HI_SHIFT - 8;
-                    d10Split |= (disp & 0b00_1111_1111) << D10LO_SHIFT;
-                    setBits = d10Split;
-                    maskBits = D10LO_MASK | D10HI_MASK;
-                } else {
-                    assert isSimm(disp, 16);
-                    int d16Split = 0;
-                    d16Split |= (disp & 0b1100_0000_0000_0000) << D16HI_SHIFT - 14;
-                    d16Split |= (disp & 0b0011_1111_1111_1111) << D16LO_SHIFT;
-                    setBits = d16Split;
-                    maskBits = D16HI_MASK | D16LO_MASK;
-                }
-                break;
-            default:
-                throw new InternalError("Unknown op2 " + op2);
-        }
-        int newInst = ~maskBits & inst;
-        newInst |= setBits;
+        ControlTransferOp op = (ControlTransferOp) getSPARCOp(inst);
+        int newInst = op.setDisp(inst, disp);
         emitInt(newInst, branch);
     }
 
