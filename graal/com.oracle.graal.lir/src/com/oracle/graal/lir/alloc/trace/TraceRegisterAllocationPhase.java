@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.trace;
 
 import static jdk.internal.jvmci.code.ValueUtil.*;
 

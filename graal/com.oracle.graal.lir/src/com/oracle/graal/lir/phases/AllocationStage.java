@@ -23,7 +23,9 @@
 package com.oracle.graal.lir.phases;
 
 import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
+
 import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.alloc.trace.*;
 import com.oracle.graal.lir.dfa.*;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.stackslotalloc.*;

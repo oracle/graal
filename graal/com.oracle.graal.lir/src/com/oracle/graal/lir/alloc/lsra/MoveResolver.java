@@ -36,7 +36,7 @@ import com.oracle.graal.lir.*;
 
 /**
  */
-class MoveResolver {
+public class MoveResolver {
 
     private final LinearScan allocator;
 
@@ -81,7 +81,7 @@ class MoveResolver {
         return allocator;
     }
 
-    MoveResolver(LinearScan allocator) {
+    protected MoveResolver(LinearScan allocator) {
 
         this.allocator = allocator;
         this.multipleReadsAllowed = false;
@@ -93,7 +93,7 @@ class MoveResolver {
         this.registerBlocked = new int[allocator.registers.length];
     }
 
-    boolean checkEmpty() {
+    protected boolean checkEmpty() {
         assert mappingFrom.size() == 0 && mappingFromOpr.size() == 0 && mappingTo.size() == 0 : "list must be empty before and after processing";
         for (int i = 0; i < getAllocator().registers.length; i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
@@ -351,7 +351,7 @@ class MoveResolver {
         // one stack slot to another can happen (not allowed by LIRAssembler
         StackSlotValue spillSlot = fromInterval.spillSlot();
         if (spillSlot == null) {
-            spillSlot = getAllocator().frameMapBuilder.allocateSpillSlot(fromInterval.kind());
+            spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
             fromInterval.setSpillSlot(spillSlot);
         }
         spillInterval(spillCandidate, fromInterval, spillSlot);
@@ -420,7 +420,7 @@ class MoveResolver {
         this.insertIdx = newInsertIdx;
     }
 
-    void addMapping(Interval fromInterval, Interval toInterval) {
+    public void addMapping(Interval fromInterval, Interval toInterval) {
 
         if (isIllegal(toInterval.location()) && toInterval.canMaterialize()) {
             if (Debug.isLogEnabled()) {
@@ -446,7 +446,7 @@ class MoveResolver {
         mappingTo.add(toInterval);
     }
 
-    void addMapping(Value fromOpr, Interval toInterval) {
+    public void addMapping(Value fromOpr, Interval toInterval) {
         if (Debug.isLogEnabled()) {
             Debug.log("add move mapping from %s to %s", fromOpr, toInterval);
         }

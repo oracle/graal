@@ -20,24 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssi;
 
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.alloc.lsra.ssa.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.ssa.*;
+import com.oracle.graal.lir.ssi.*;
 
-final class SSALinearScan extends LinearScan {
+public final class SSILinearScan extends LinearScan {
 
-    SSALinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks) {
+    public SSILinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
+                    List<? extends AbstractBlockBase<?>> sortedBlocks) {
         super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks);
+    }
+
+    @Override
+    protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+        assert SSIVerifier.verify(lirGenRes.getLIR()) : "LIR not in SSI form.";
+        super.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
     }
 
     @Override
@@ -49,32 +57,16 @@ final class SSALinearScan extends LinearScan {
 
     @Override
     protected LinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
-        return new SSALinearScanLifetimeAnalysisPhase(this);
+        return new SSILinearScanLifetimeAnalysisPhase(this);
     }
 
     @Override
     protected LinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
-        return new SSALinarScanResolveDataFlowPhase(this);
+        return new SSILinearScanResolveDataFlowPhase(this);
     }
 
     @Override
     protected LinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
-        return new SSALinearScanEliminateSpillMovePhase(this);
+        return new SSILinearScanEliminateSpillMovePhase(this);
     }
-
-    @Override
-    protected void beforeSpillMoveElimination() {
-        /*
-         * PHI Ins are needed for the RegisterVerifier, otherwise PHIs where the Out and In value
-         * matches (ie. there is no resolution move) are falsely detected as errors.
-         */
-        try (Scope s1 = Debug.scope("Remove Phi In")) {
-            for (AbstractBlockBase<?> toBlock : sortedBlocks) {
-                if (toBlock.getPredecessorCount() > 1) {
-                    SSAUtils.removePhiIn(ir, toBlock);
-                }
-            }
-        }
-    }
-
 }

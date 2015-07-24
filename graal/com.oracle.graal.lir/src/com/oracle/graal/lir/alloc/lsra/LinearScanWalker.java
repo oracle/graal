@@ -268,7 +268,7 @@ class LinearScanWalker extends IntervalWalker {
         // numbering of instructions is known.
         // When the block already contains spill moves, the index must be increased until the
         // correct index is reached.
-        List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(opBlock);
+        List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(opBlock);
         int index = (opId - instructions.get(0).id()) >> 1;
         assert instructions.get(index).id() <= opId : "error in calculation";
 
@@ -845,7 +845,7 @@ class LinearScanWalker extends IntervalWalker {
                          * errors
                          */
                         allocator.assignSpillSlot(interval);
-                        Debug.dump(allocator.ir, description);
+                        Debug.dump(allocator.getLIR(), description);
                         allocator.printIntervals(description);
                         throw new OutOfRegistersException("LinearScan: no register found", description);
                     }

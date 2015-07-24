@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.lir.alloc.lsra.TraceRegisterAllocationPhase.Options.*;
+import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -40,6 +40,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
@@ -127,8 +128,8 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
 
     private void addInterTraceHints() {
         // set hints for phi/sigma intervals
-        LIR lir = allocator.ir;
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
+        LIR lir = allocator.getLIR();
+        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
             LabelOp label = SSIUtils.incoming(lir, block);
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 if (isAllocatedOrCurrent(block, pred)) {
@@ -179,7 +180,7 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
     }
 
     @Override
-    void handleMethodArguments(LIRInstruction op) {
+    protected void handleMethodArguments(LIRInstruction op) {
         if (op instanceof MoveOp) {
             // do not optimize method arguments
             return;
@@ -223,7 +224,7 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
                             // block has successors
                             if (n > 0) {
                                 for (AbstractBlockBase<?> successor : block.getSuccessors()) {
-                                    if (allocator.sortedBlocks.contains(successor)) {
+                                    if (allocator.sortedBlocks().contains(successor)) {
                                         liveOut.or(allocator.getBlockData(successor).liveIn);
                                     }
                                 }
@@ -247,7 +248,7 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             * 
+                             *
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */

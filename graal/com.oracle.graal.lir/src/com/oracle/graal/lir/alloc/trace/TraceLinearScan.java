@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
@@ -33,6 +33,9 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.lir.alloc.lsra.*;
+import com.oracle.graal.lir.alloc.lsra.ssa.*;
+import com.oracle.graal.lir.alloc.lsra.ssi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
@@ -70,7 +73,7 @@ public final class TraceLinearScan extends LinearScan {
                 // resolve intra-trace data-flow
                 LinearScanResolveDataFlowPhase dataFlowPhase = createResolveDataFlowPhase();
                 dataFlowPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks, "%s", dataFlowPhase.getName());
+                Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", dataFlowPhase.getName());
 
                 LinearScanAssignLocationsPhase assignPhase = createAssignLocationsPhase();
                 assignPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
@@ -107,16 +110,16 @@ public final class TraceLinearScan extends LinearScan {
     }
 
     @Override
-    void printIntervals(String label) {
+    protected void printIntervals(String label) {
         if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
             super.printIntervals(label);
         }
     }
 
     @Override
-    void printLir(String label, boolean hirValid) {
+    protected void printLir(String label, boolean hirValid) {
         if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
-            Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks, label);
+            Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), label);
         }
     }
 

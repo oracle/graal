@@ -20,17 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.ssa.*;
 
@@ -41,7 +43,7 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
     }
 
     @Override
-    void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
+    protected void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
         super.addRegisterHint(op, targetValue, mode, flags, hintAtDef);
 
         if (hintAtDef && op instanceof LabelOp) {
@@ -49,7 +51,7 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
 
             Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
-            SSAUtils.forEachPhiRegisterHint(allocator.ir, allocator.blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
+            SSAUtils.forEachPhiRegisterHint(allocator.getLIR(), allocator.blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
                 if (LinearScan.isVariableOrRegister(registerHint)) {
                     Interval from = allocator.getOrCreateInterval((AllocatableValue) registerHint);
 
@@ -60,7 +62,7 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
         }
     }
 
-    static void setHint(final LIRInstruction op, Interval target, Interval source) {
+    public static void setHint(final LIRInstruction op, Interval target, Interval source) {
         Interval currentHint = target.locationHint(false);
         if (currentHint == null || currentHint.from() > target.from()) {
             /*

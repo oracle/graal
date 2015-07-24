@@ -45,7 +45,7 @@ import com.oracle.graal.lir.phases.*;
 /**
  * Phase 7: Assign register numbers back to LIR.
  */
-final class LinearScanAssignLocationsPhase extends AllocationPhase {
+public final class LinearScanAssignLocationsPhase extends AllocationPhase {
 
     private final LinearScan allocator;
 
@@ -80,7 +80,7 @@ final class LinearScanAssignLocationsPhase extends AllocationPhase {
                      * before the branch instruction. So the split child information for this branch
                      * would be incorrect.
                      */
-                    LIRInstruction instr = allocator.ir.getLIRforBlock(block).get(allocator.ir.getLIRforBlock(block).size() - 1);
+                    LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
                     if (instr instanceof StandardOp.JumpOp) {
                         if (allocator.getBlockData(block).liveOut.get(allocator.operandNumber(operand))) {
                             assert false : String.format(
@@ -125,10 +125,10 @@ final class LinearScanAssignLocationsPhase extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             *
+             * 
              * Solution: use the first opId of the branch target block instead.
              */
-            final LIRInstruction instr = allocator.ir.getLIRforBlock(block).get(allocator.ir.getLIRforBlock(block).size() - 1);
+            final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 if (allocator.getBlockData(block).liveOut.get(allocator.operandNumber(operand))) {
                     tempOpId = allocator.getFirstLirInstructionId(block.getSuccessors().iterator().next());
@@ -208,9 +208,9 @@ final class LinearScanAssignLocationsPhase extends AllocationPhase {
 
     private void assignLocations() {
         try (Indent indent = Debug.logAndIndent("assign locations")) {
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
+            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                 try (Indent indent2 = Debug.logAndIndent("assign locations in block B%d", block.getId())) {
-                    assignLocations(allocator.ir.getLIRforBlock(block));
+                    assignLocations(allocator.getLIR().getLIRforBlock(block));
                 }
             }
         }

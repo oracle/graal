@@ -53,11 +53,11 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
  * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
-class LinearScan {
+public class LinearScan {
 
     final LIRGenerationResult res;
-    final LIR ir;
-    final FrameMapBuilder frameMapBuilder;
+    private final LIR ir;
+    private final FrameMapBuilder frameMapBuilder;
     final RegisterAttributes[] registerAttributes;
     final Register[] registers;
     final RegisterAllocationConfig regAllocConfig;
@@ -112,7 +112,7 @@ class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    final List<? extends AbstractBlockBase<?>> sortedBlocks;
+    private final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
     /** @see #intervals() */
     protected Interval[] intervals;
@@ -152,7 +152,8 @@ class LinearScan {
      */
     private final int firstVariableNumber;
 
-    LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, List<? extends AbstractBlockBase<?>> sortedBlocks) {
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
+                    List<? extends AbstractBlockBase<?>> sortedBlocks) {
         this.res = res;
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
@@ -172,20 +173,20 @@ class LinearScan {
         this.callKillsRegisters = regAllocConfig.getRegisterConfig().areAllAllocatableRegistersCallerSaved();
     }
 
-    int getFirstLirInstructionId(AbstractBlockBase<?> block) {
+    public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
         int result = ir.getLIRforBlock(block).get(0).id();
         assert result >= 0;
         return result;
     }
 
-    int getLastLirInstructionId(AbstractBlockBase<?> block) {
+    public int getLastLirInstructionId(AbstractBlockBase<?> block) {
         List<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
         return result;
     }
 
-    SpillMoveFactory getSpillMoveFactory() {
+    public SpillMoveFactory getSpillMoveFactory() {
         return moveFactory;
     }
 
@@ -228,7 +229,7 @@ class LinearScan {
         return firstVariableNumber - 1;
     }
 
-    BlockData getBlockData(AbstractBlockBase<?> block) {
+    public BlockData getBlockData(AbstractBlockBase<?> block) {
         return blockData.get(block);
     }
 
@@ -287,7 +288,7 @@ class LinearScan {
     /**
      * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
      */
-    Interval[] intervals() {
+    public Interval[] intervals() {
         return intervals;
     }
 
@@ -334,11 +335,11 @@ class LinearScan {
     }
 
     // access to block list (sorted in linear scan order)
-    int blockCount() {
+    public int blockCount() {
         return sortedBlocks.size();
     }
 
-    AbstractBlockBase<?> blockAt(int index) {
+    public AbstractBlockBase<?> blockAt(int index) {
         return sortedBlocks.get(index);
     }
 
@@ -347,7 +348,7 @@ class LinearScan {
      * block. These sets do not include any operands allocated as a result of creating
      * {@linkplain #createDerivedInterval(Interval) derived intervals}.
      */
-    int liveSetSize() {
+    public int liveSetSize() {
         return firstDerivedIntervalIndex == -1 ? operandSize() : firstDerivedIntervalIndex;
     }
 
@@ -359,13 +360,13 @@ class LinearScan {
         return intervals[operandNumber];
     }
 
-    Interval intervalFor(Value operand) {
+    public Interval intervalFor(Value operand) {
         int operandNumber = operandNumber(operand);
         assert operandNumber < intervalsSize;
         return intervals[operandNumber];
     }
 
-    Interval getOrCreateInterval(AllocatableValue operand) {
+    public Interval getOrCreateInterval(AllocatableValue operand) {
         Interval ret = intervalFor(operand);
         if (ret == null) {
             return createInterval(operand);
@@ -407,7 +408,7 @@ class LinearScan {
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the instruction whose {@linkplain LIRInstruction#id} {@code == id}
      */
-    LIRInstruction instructionForId(int opId) {
+    public LIRInstruction instructionForId(int opId) {
         assert isEven(opId) : "opId not even";
         LIRInstruction instr = opIdToInstructionMap[opIdToIndex(opId)];
         assert instr.id() == opId;
@@ -420,7 +421,7 @@ class LinearScan {
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the block containing the instruction denoted by {@code opId}
      */
-    AbstractBlockBase<?> blockForId(int opId) {
+    public AbstractBlockBase<?> blockForId(int opId) {
         assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range";
         return opIdToBlockMap[opIdToIndex(opId)];
     }
@@ -515,7 +516,7 @@ class LinearScan {
         return new Interval.Pair(list1, list2);
     }
 
-    void sortIntervalsBeforeAllocation() {
+    protected void sortIntervalsBeforeAllocation() {
         int sortedLen = 0;
         for (Interval interval : intervals) {
             if (interval != null) {
@@ -585,7 +586,7 @@ class LinearScan {
 
     // wrapper for Interval.splitChildAtOpId that performs a bailout in product mode
     // instead of returning null
-    Interval splitChildAtOpId(Interval interval, int opId, LIRInstruction.OperandMode mode) {
+    public Interval splitChildAtOpId(Interval interval, int opId, LIRInstruction.OperandMode mode) {
         Interval result = interval.getSplitChildAtOpId(opId, mode, this);
 
         if (result != null) {
@@ -622,8 +623,8 @@ class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
-    <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig) {
+    protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
+                    SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
@@ -688,7 +689,7 @@ class LinearScan {
         return new LinearScanAssignLocationsPhase(this);
     }
 
-    void printIntervals(String label) {
+    protected void printIntervals(String label) {
         if (Debug.isLogEnabled()) {
             try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
                 for (Interval interval : intervals) {
@@ -708,7 +709,7 @@ class LinearScan {
         Debug.dump(Arrays.copyOf(intervals, intervalsSize), label);
     }
 
-    void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
+    protected void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
         Debug.dump(ir, label);
     }
 
@@ -731,7 +732,7 @@ class LinearScan {
         }
     }
 
-    void verifyIntervals() {
+    protected void verifyIntervals() {
         try (Indent indent = Debug.logAndIndent("verifying intervals")) {
             int len = intervalsSize;
 
@@ -870,6 +871,18 @@ class LinearScan {
                 }
             }
         }
+    }
+
+    public LIR getLIR() {
+        return ir;
+    }
+
+    public FrameMapBuilder getFrameMapBuilder() {
+        return frameMapBuilder;
+    }
+
+    public List<? extends AbstractBlockBase<?>> sortedBlocks() {
+        return sortedBlocks;
     }
 
 }

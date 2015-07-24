@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssi;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.alloc.lsra.*;
 
 public class SSILinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 

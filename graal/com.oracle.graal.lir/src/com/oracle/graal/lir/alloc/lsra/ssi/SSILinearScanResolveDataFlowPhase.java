@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssi;
 
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
@@ -28,38 +28,59 @@ import java.util.*;
 
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.*;
 
-public class TraceLinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
+public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
     private static final DebugMetric numSSIResolutionMoves = Debug.metric("SSI LSRA[numSSIResolutionMoves]");
     private static final DebugMetric numStackToStackMoves = Debug.metric("SSI LSRA[numStackToStackMoves]");
 
-    public TraceLinearScanResolveDataFlowPhase(LinearScan allocator) {
+    public SSILinearScanResolveDataFlowPhase(LinearScan allocator) {
         super(allocator);
     }
 
     @Override
-    protected void optimizeEmptyBlocks(MoveResolver moveResolver, BitSet blockCompleted) {
-        // do not optimize
+    protected void resolveDataFlow() {
+        super.resolveDataFlow();
+        /*
+         * Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the Out
+         * and In value matches (ie. there is no resolution move) are falsely detected as errors.
+         */
+        for (AbstractBlockBase<?> toBlock : allocator.sortedBlocks()) {
+            if (toBlock.getPredecessorCount() != 0) {
+                SSIUtils.removeIncoming(allocator.getLIR(), toBlock);
+            } else {
+                assert allocator.getLIR().getControlFlowGraph().getStartBlock().equals(toBlock);
+            }
+            SSIUtils.removeOutgoing(allocator.getLIR(), toBlock);
+        }
     }
 
     @Override
     protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
-        assert midBlock == null;
-        if (containedInTrace(fromBlock) && containedInTrace(toBlock)) {
-            super.resolveCollectMappings(fromBlock, toBlock, midBlock, moveResolver);
-            SSIUtils.forEachValuePair(allocator.ir, toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
+        super.resolveCollectMappings(fromBlock, toBlock, midBlock, moveResolver);
+
+        if (midBlock != null) {
+            HashMap<Value, Value> map = CollectionsFactory.newMap();
+            SSIUtils.forEachValuePair(allocator.getLIR(), midBlock, fromBlock, (to, from) -> map.put(to, from));
+
+            MyPhiValueVisitor visitor = new MyPhiValueVisitor(moveResolver, toBlock, fromBlock);
+            SSIUtils.forEachValuePair(allocator.getLIR(), toBlock, midBlock, (to, from) -> {
+                Value phiOut = isConstant(from) ? from : map.get(from);
+                assert phiOut != null : "No entry for " + from;
+                visitor.visit(to, phiOut);
+            });
+        } else {
+            // default case
+            SSIUtils.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
         }
 
-    }
-
-    private boolean containedInTrace(AbstractBlockBase<?> block) {
-        return allocator.sortedBlocks.contains(block);
     }
 
     private class MyPhiValueVisitor implements PhiValueVisitor {

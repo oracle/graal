@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssi;
 
-import static com.oracle.graal.lir.alloc.lsra.SSALinearScanLifetimeAnalysisPhase.*;
+import static com.oracle.graal.lir.alloc.lsra.ssa.SSALinearScanLifetimeAnalysisPhase.*;
 
 import java.util.*;
 
@@ -33,6 +33,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.ssi.*;
@@ -52,7 +53,7 @@ public class SSILinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
 
             Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
-            SSIUtils.forEachRegisterHint(allocator.ir, allocator.blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
+            SSIUtils.forEachRegisterHint(allocator.getLIR(), allocator.blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
                 if (LinearScan.isVariableOrRegister(registerHint)) {
                     Interval from = allocator.getOrCreateInterval((AllocatableValue) registerHint);
 

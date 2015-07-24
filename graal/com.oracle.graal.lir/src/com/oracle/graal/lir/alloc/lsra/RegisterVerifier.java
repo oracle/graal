@@ -202,7 +202,7 @@ final class RegisterVerifier {
     }
 
     void processOperations(AbstractBlockBase<?> block, final Interval[] inputState) {
-        List<LIRInstruction> ops = allocator.ir.getLIRforBlock(block);
+        List<LIRInstruction> ops = allocator.getLIR().getLIRforBlock(block);
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
 
             @Override
