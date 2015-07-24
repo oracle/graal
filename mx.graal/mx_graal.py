@@ -1339,6 +1339,10 @@ def _basic_gate_body(args, tasks):
     with VM('server', 'product'):
         with Task('UnitTestsNonSSA:hosted-product', tasks) as t:
             if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:-SSA_LIR'])
+    # Run unit tests on server-hosted-jvmci with TraceRA
+    with VM('server', 'product'):
+        with Task('UnitTestsTraceRA:hosted-product', tasks) as t:
+            if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:+TraceRA'])
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
         with Task('CTW:hosted-product', tasks) as t:
@@ -1386,6 +1390,11 @@ def _basic_gate_body(args, tasks):
         with Task('BootstrapNonSSAWithRegisterPressure:product', tasks) as t:
             if t:
                 vm(['-XX:-TieredCompilation', '-G:-SSA_LIR', '-G:RegisterPressure=' + registers, '-esa', '-version'])
+
+    with VM('jvmci', 'product'):
+        with Task('BootstrapTraceRAWithRegisterPressure:product', tasks) as t:
+            if t:
+                vm(['-XX:-TieredCompilation', '-G:+TraceRA', '-G:RegisterPressure=' + registers, '-esa', '-version'])
 
     with VM('jvmci', 'product'):
         with Task('BootstrapWithImmutableCode:product', tasks) as t:
