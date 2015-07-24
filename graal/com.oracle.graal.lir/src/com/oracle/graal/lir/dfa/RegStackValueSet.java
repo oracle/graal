@@ -31,6 +31,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.util.*;
 
 final class RegStackValueSet extends ValueSet<RegStackValueSet> {
 

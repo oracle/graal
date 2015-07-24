@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.dfa;
+package com.oracle.graal.lir.util;
 
 import java.util.*;
 
@@ -33,11 +33,11 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 public final class IntValueMap {
     private Value[] values;
 
-    IntValueMap() {
+    public IntValueMap() {
         values = Value.NO_VALUES;
     }
 
-    IntValueMap(IntValueMap other) {
+    public IntValueMap(IntValueMap other) {
         int limit = other.values.length;
         while (limit > 0) {
             if (other.values[limit - 1] == null) {
@@ -54,7 +54,7 @@ public final class IntValueMap {
         return values[index];
     }
 
-    void put(int index, Value value) {
+    public void put(int index, Value value) {
         if (value != null && value.getLIRKind().isValue()) {
             return;
         }

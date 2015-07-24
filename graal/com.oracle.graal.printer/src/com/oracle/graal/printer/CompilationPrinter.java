@@ -29,7 +29,7 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.lir.dfa.*;
+import com.oracle.graal.lir.util.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The

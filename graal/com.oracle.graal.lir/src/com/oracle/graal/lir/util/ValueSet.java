@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.dfa;
+package com.oracle.graal.lir.util;
 
 import jdk.internal.jvmci.meta.*;
 
-abstract class ValueSet<S extends ValueSet<S>> {
+public abstract class ValueSet<S extends ValueSet<S>> {
 
     public abstract void put(Value v);
 

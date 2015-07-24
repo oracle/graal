@@ -31,8 +31,8 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.dfa.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.util.*;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR

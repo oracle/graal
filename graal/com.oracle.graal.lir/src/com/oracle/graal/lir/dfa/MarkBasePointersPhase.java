@@ -34,6 +34,7 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.util.*;
 
 /**
  * Record all derived reference base pointers in a frame state.
