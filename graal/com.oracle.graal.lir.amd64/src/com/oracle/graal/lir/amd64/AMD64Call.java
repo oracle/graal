@@ -30,6 +30,7 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 

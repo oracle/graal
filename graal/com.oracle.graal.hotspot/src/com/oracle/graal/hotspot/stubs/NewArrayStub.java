@@ -29,9 +29,8 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;

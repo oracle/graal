@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
@@ -37,7 +38,9 @@ import com.oracle.graal.nodes.CallTargetNode.*;
 import com.oracle.graal.nodes.spi.*;
 
 import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 

@@ -23,12 +23,12 @@
 package com.oracle.graal.replacements.amd64;
 
 import jdk.internal.jvmci.amd64.*;
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.compiler.target.Backend.*;
 import static com.oracle.graal.replacements.amd64.AMD64MathIntrinsicNode.Operation.*;
 import sun.misc.*;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;

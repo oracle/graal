@@ -20,31 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package com.oracle.graal.compiler.common.spi;
 
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.compiler.common.spi.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
+/**
+ * Details about a set of supported {@link ForeignCallDescriptor foreign calls}.
+ */
+public interface ForeignCallsProvider {
 
-public class SPARCHotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
+    /**
+     * Determines if a given foreign call is side-effect free. Deoptimization cannot return
+     * execution to a point before a foreign call that has a side effect.
+     */
+    boolean isReexecutable(ForeignCallDescriptor descriptor);
 
-    public SPARCHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
-                    TargetDescription target) {
-        super(runtime, metaAccess, foreignCalls, registers, target);
-    }
+    /**
+     * Gets the set of memory locations killed by a given foreign call. Returning the special value
+     * {@link LocationIdentity#any()} denotes that the call kills all memory locations. Returning
+     * any empty array denotes that the call does not kill any memory locations.
+     */
+    LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor);
 
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        if (n instanceof FloatConvertNode) {
-            // FloatConvertNodes are handled in SPARCLIRGenerator.emitConvert
-        } else {
-            super.lower(n, tool);
-        }
-    }
+    /**
+     * Determines if deoptimization can occur during a given foreign call.
+     */
+    boolean canDeoptimize(ForeignCallDescriptor descriptor);
+
+    /**
+     * Gets the linkage for a foreign call.
+     */
+    ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
 }

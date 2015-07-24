@@ -33,6 +33,7 @@ import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;

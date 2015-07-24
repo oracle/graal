@@ -35,12 +35,15 @@ import static jdk.internal.jvmci.code.UnsignedMath.*;
 import static jdk.internal.jvmci.hotspot.HotSpotMetaAccessProvider.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;

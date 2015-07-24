@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
