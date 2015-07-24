@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "486822772780ac210c484d4ae2d457d1ef6c01fd",
+               "version" : "6128b5118a28cec509865f88b63e13a732c032a7",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -898,6 +898,41 @@ suite = {
 
     # ------------- Distributions -------------
 
+    "GRAAL_NODEINFO" : {
+      "path" : "build/graal-nodeinfo.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-nodeinfo.src.zip",
+      "dependencies" : [
+        "com.oracle.graal.nodeinfo",
+      ],
+    },
+
+    "GRAAL_API" : {
+      "path" : "build/graal-api.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-api.src.zip",
+      "dependencies" : [
+        "com.oracle.graal.api.replacements",
+        "com.oracle.graal.graph",
+      ],
+      "distDependencies" : [
+        "jvmci:JVMCI_API",
+        "GRAAL_NODEINFO",
+      ],
+    },
+
+    "GRAAL_COMPILER" : {
+      "path" : "build/graal-compiler.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-compiler.src.zip",
+      "dependencies" : [
+        "com.oracle.graal.compiler",
+      ],
+      "distDependencies" : [
+        "GRAAL_API",
+      ],
+    },
+
     "GRAAL" : {
       "path" : "build/graal.jar",
       "subDir" : "graal",
@@ -911,6 +946,7 @@ suite = {
       "distDependencies" : [
         "jvmci:JVMCI_HOTSPOT",
         "jvmci:JVMCI_OPTIONS_PROCESSOR",
+        "GRAAL_COMPILER",
       ],
     },
 
@@ -971,6 +1007,9 @@ suite = {
       "subDir" : "graal",
       "sourcesPath" : "build/graal-nodeinfo-processor.src.zip",
       "dependencies" : ["com.oracle.graal.nodeinfo.processor"],
+      "distDependencies" : [
+        "GRAAL_NODEINFO",
+      ],
     },
 
     "GRAAL_REPLACEMENTS_VERIFIER" : {
@@ -979,7 +1018,7 @@ suite = {
       "sourcesPath" : "build/graal-replacements-verifier.src.zip",
       "dependencies" : ["com.oracle.graal.replacements.verifier"],
       "distDependencies" : [
-        "jvmci:JVMCI_API",
+        "GRAAL_API",
       ],
     },
 
@@ -989,8 +1028,7 @@ suite = {
       "sourcesPath" : "build/graal-compiler-match-processor.src.zip",
       "dependencies" : ["com.oracle.graal.compiler.match.processor"],
       "distDependencies" : [
-        "jvmci:JVMCI_SERVICE",
-        "jvmci:JVMCI_API",
+        "GRAAL_COMPILER",
       ]
     },
   },

@@ -70,6 +70,9 @@ class GraalJDKDeployedDist(JvmciJDKDeployedDist):
                 fp.write(os.linesep.join(content))
 
 mx_jvmci.jdkDeployedDists += [
+    JvmciJDKDeployedDist('GRAAL_NODEINFO'),
+    JvmciJDKDeployedDist('GRAAL_API'),
+    JvmciJDKDeployedDist('GRAAL_COMPILER'),
     GraalJDKDeployedDist(),
     JvmciJDKDeployedDist('GRAAL_TRUFFLE'),
 ]
