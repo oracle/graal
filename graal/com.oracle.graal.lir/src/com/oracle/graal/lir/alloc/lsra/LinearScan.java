@@ -55,7 +55,6 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
  */
 public class LinearScan {
 
-    final LIRGenerationResult res;
     private final LIR ir;
     private final FrameMapBuilder frameMapBuilder;
     final RegisterAttributes[] registerAttributes;
@@ -154,7 +153,6 @@ public class LinearScan {
 
     protected LinearScan(TargetDescription target, LIRGenerationResult res, SpillMoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig,
                     List<? extends AbstractBlockBase<?>> sortedBlocks) {
-        this.res = res;
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
