@@ -30,7 +30,7 @@ import jdk.internal.jvmci.meta.*;
 import org.junit.*;
 
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.utils.*;
+import com.oracle.graal.lir.util.*;
 
 public class GenericValueMapTest {
 

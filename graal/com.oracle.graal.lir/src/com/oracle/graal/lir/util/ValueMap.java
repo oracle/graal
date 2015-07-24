@@ -20,35 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.utils;
-
-import java.util.*;
+package com.oracle.graal.lir.util;
 
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.compiler.common.*;
+/**
+ * A map interface to map {@link Value}s to other objects.
+ */
+public abstract class ValueMap<K extends Value, T> {
 
-public final class GenericValueMap<T> extends ValueMap<Value, T> {
+    /**
+     * Gets the object associated with {@code value} or {@code null} if there is no such mapping.
+     */
+    public abstract T get(K value);
 
-    private final Map<Value, T> data;
+    /**
+     * Removes the object associated with {@code value} from the map.
+     */
+    public abstract void remove(K value);
 
-    public GenericValueMap() {
-        data = CollectionsFactory.newMap();
-    }
-
-    @Override
-    public T get(Value value) {
-        return data.get(value);
-    }
-
-    @Override
-    public void remove(Value value) {
-        data.remove(value);
-    }
-
-    @Override
-    public void put(Value value, T object) {
-        data.put(value, object);
-    }
-
+    /**
+     * Associates {@code object} with {@code value}.
+     */
+    public abstract void put(K value, T object);
 }
