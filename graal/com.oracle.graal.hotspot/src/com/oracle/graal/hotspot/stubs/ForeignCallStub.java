@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static jdk.internal.jvmci.code.CallingConvention.Type.*;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;

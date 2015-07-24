@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.util.*;

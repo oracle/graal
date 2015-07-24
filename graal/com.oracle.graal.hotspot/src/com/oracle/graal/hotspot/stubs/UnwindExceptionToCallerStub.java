@@ -23,13 +23,13 @@
 package com.oracle.graal.hotspot.stubs;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerInCallerNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;

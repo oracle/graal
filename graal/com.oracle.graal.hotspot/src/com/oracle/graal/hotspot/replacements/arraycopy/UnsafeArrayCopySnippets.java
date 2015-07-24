@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.hotspot.replacements.arraycopy;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.NamedLocationIdentity.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;

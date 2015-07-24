@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.nodes.NamedLocationIdentity.*;
 import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
 import static jdk.internal.jvmci.code.MemoryBarriers.*;
 import static jdk.internal.jvmci.meta.DeoptimizationAction.*;
 import static jdk.internal.jvmci.meta.DeoptimizationReason.*;
-import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.util.*;
 

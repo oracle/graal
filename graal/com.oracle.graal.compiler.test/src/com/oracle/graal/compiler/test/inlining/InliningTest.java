@@ -23,8 +23,8 @@
 package com.oracle.graal.compiler.test.inlining;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;

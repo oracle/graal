@@ -23,17 +23,16 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 /**
  * Superclass for operations that leave a method's frame.
  */
-abstract class SPARCHotSpotEpilogueOp extends SPARCLIRInstruction implements BlockEndOp {
+abstract class SPARCHotSpotEpilogueOp extends SPARCBlockEndOp {
     public static final LIRInstructionClass<SPARCHotSpotEpilogueOp> TYPE = LIRInstructionClass.create(SPARCHotSpotEpilogueOp.class);
 
-    protected SPARCHotSpotEpilogueOp(LIRInstructionClass<? extends LIRInstruction> c, SizeEstimate size) {
+    protected SPARCHotSpotEpilogueOp(LIRInstructionClass<? extends SPARCHotSpotEpilogueOp> c, SizeEstimate size) {
         super(c, size);
     }
 

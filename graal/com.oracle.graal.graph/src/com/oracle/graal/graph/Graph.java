@@ -28,7 +28,7 @@ import java.util.*;
 import java.util.function.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.*;

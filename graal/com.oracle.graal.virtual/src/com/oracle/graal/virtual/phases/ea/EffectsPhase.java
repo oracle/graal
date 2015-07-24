@@ -23,11 +23,11 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
-import static jdk.internal.jvmci.debug.Debug.*;
+import static com.oracle.graal.debug.Debug.*;
 
 import java.util.*;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.*;

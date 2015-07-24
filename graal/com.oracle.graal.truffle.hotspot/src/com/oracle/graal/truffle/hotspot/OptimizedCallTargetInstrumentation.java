@@ -30,6 +30,7 @@ import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.hotspot.*;
 
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;

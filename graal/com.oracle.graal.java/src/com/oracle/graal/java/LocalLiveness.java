@@ -23,7 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.bytecode.Bytecodes.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.java.BciBlockMapping.BciBlock;

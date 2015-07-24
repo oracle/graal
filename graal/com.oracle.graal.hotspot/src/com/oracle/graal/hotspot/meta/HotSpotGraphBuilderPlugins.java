@@ -29,13 +29,13 @@ import static com.oracle.graal.java.BytecodeParser.Options.*;
 import java.lang.invoke.*;
 import java.util.zip.*;
 
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 import sun.reflect.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;

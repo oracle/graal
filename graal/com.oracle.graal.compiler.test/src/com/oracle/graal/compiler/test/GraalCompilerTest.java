@@ -65,7 +65,10 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 

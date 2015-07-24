@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.graph.Edges.Type;

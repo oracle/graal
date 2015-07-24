@@ -29,6 +29,7 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.alloc.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;

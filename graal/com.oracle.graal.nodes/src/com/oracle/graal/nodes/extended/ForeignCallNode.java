@@ -27,6 +27,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;

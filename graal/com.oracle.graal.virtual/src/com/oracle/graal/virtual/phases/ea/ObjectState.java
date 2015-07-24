@@ -24,7 +24,7 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;

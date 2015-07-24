@@ -38,6 +38,7 @@ import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;

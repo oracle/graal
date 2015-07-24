@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;

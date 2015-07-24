@@ -28,12 +28,11 @@ import jdk.internal.jvmci.sparc.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 
 @Opcode("DEOPT")
-final class SPARCDeoptimizeOp extends SPARCLIRInstruction implements BlockEndOp {
+final class SPARCDeoptimizeOp extends SPARCBlockEndOp {
     public static final LIRInstructionClass<SPARCDeoptimizeOp> TYPE = LIRInstructionClass.create(SPARCDeoptimizeOp.class);
     public static final SizeEstimate SIZE = SizeEstimate.create(1);
     @Temp AllocatableValue pcRegister;

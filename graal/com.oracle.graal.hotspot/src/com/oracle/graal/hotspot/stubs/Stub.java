@@ -29,9 +29,9 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
-import jdk.internal.jvmci.debug.internal.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
+import com.oracle.graal.debug.internal.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 

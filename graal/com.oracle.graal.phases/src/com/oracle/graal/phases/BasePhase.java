@@ -24,8 +24,8 @@ package com.oracle.graal.phases;
 
 import java.util.regex.*;
 
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

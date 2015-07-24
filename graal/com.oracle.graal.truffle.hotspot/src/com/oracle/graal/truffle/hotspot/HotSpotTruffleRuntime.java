@@ -33,17 +33,18 @@ import java.util.concurrent.*;
 import java.util.stream.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.code.CallingConvention.Type;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.compiler.*;
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.hotspot.*;
@@ -90,9 +91,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
         // Create compilation queue.
         CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", new CompilerThreadFactory.DebugConfigAccess() {
-            public JVMCIDebugConfig getDebugConfig() {
+            public GraalDebugConfig getDebugConfig() {
                 if (Debug.isEnabled()) {
-                    JVMCIDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
+                    GraalDebugConfig debugConfig = DebugEnvironment.initialize(TTY.out().out());
                     debugConfig.dumpHandlers().add(new TruffleTreeDumpHandler());
                     return debugConfig;
                 } else {

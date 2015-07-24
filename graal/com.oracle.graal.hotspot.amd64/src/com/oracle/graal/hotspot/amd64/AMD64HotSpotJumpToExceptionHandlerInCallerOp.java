@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static jdk.internal.jvmci.amd64.AMD64.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
@@ -31,15 +29,17 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Sets up the arguments for an exception handler in the callers frame, removes the current frame
  * and jumps to the handler.
  */
 @Opcode("JUMP_TO_EXCEPTION_HANDLER_IN_CALLER")
-final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpilogueBlockEndOp {
 
     public static final LIRInstructionClass<AMD64HotSpotJumpToExceptionHandlerInCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotJumpToExceptionHandlerInCallerOp.class);
 

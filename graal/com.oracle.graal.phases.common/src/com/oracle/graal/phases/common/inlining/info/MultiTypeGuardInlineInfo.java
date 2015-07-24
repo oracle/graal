@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining.info;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.ResolvedJavaType;
 import jdk.internal.jvmci.meta.Kind;
 import jdk.internal.jvmci.meta.DeoptimizationReason;

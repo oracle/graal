@@ -23,19 +23,19 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.hotspot.HotSpotHostBackend.*;
-import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
+
+import jdk.internal.jvmci.meta.*;
 
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
  */
 @Opcode("DEOPT_CALLER")
-final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp implements BlockEndOp {
+final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueBlockEndOp {
 
     public static final LIRInstructionClass<AMD64HotSpotDeoptimizeCallerOp> TYPE = LIRInstructionClass.create(AMD64HotSpotDeoptimizeCallerOp.class);
 

@@ -97,10 +97,13 @@ public class DerivedOopTest extends GraalCompilerTest implements Snippets {
 
     @Test
     public void testFieldOffset() {
-        Result r = new Result();
-        test("fieldOffsetSnippet", r, 16L);
+        // Run a couple times to encourage objects to move
+        for (int i = 0; i < 4; i++) {
+            Result r = new Result();
+            test("fieldOffsetSnippet", r, 16L);
 
-        Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+            Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        }
     }
 
     static long getRawPointer(Object obj) {

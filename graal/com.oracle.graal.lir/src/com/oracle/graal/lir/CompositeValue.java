@@ -25,7 +25,7 @@ package com.oracle.graal.lir;
 import java.lang.annotation.*;
 import java.util.*;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;

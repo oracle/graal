@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
 import com.oracle.graal.hotspot.*;
@@ -37,7 +38,9 @@ import com.oracle.graal.nodes.CallTargetNode.*;
 import com.oracle.graal.nodes.spi.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
+
+import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -137,6 +140,7 @@ public class SPARCHotSpotNodeLIRBuilder extends SPARCNodeLIRBuilder implements H
         super.emitPrologue(graph);
         AllocatableValue var = getGen().getSafepointAddressValue();
         append(new SPARCHotSpotSafepointOp.SPARCLoadSafepointPollAddress(var, getGen().config));
+        getGen().append(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
     }
 
     @Override

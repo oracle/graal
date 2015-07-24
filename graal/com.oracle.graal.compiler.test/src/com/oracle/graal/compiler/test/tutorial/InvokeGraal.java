@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.Scope;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.runtime.*;

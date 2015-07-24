@@ -31,7 +31,7 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 @Opcode("DEOPT")
-final class AMD64DeoptimizeOp extends AMD64LIRInstruction implements BlockEndOp {
+final class AMD64DeoptimizeOp extends AMD64BlockEndOp implements BlockEndOp {
     public static final LIRInstructionClass<AMD64DeoptimizeOp> TYPE = LIRInstructionClass.create(AMD64DeoptimizeOp.class);
 
     @State private LIRFrameState info;

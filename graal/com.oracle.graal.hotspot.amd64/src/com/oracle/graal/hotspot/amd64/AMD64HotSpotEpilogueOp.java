@@ -46,6 +46,10 @@ abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
     @Use({REG, STACK}) private AllocatableValue savedRbp;
 
     protected void leaveFrameAndRestoreRbp(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        leaveFrameAndRestoreRbp(savedRbp, crb, masm);
+    }
+
+    static void leaveFrameAndRestoreRbp(AllocatableValue savedRbp, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         if (isStackSlot(savedRbp)) {
             // Restoring RBP from the stack must be done before the frame is removed
             masm.movq(rbp, (AMD64Address) crb.asAddress(savedRbp));

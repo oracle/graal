@@ -26,8 +26,8 @@ import java.util.*;
 import java.util.regex.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;

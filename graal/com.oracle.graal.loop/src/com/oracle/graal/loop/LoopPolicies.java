@@ -26,7 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.graph.*;

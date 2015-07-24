@@ -23,11 +23,11 @@
 package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.*;
-import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.meta.Assumptions.*;
 
 import com.oracle.graal.compiler.common.type.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodeinfo.*;

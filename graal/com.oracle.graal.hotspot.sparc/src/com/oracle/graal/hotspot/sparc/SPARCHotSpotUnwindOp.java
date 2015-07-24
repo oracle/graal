@@ -29,6 +29,7 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;

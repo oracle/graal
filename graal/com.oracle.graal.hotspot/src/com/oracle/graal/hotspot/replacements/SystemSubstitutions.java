@@ -24,9 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import jdk.internal.jvmci.meta.*;
-
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.common.spi.*;
 
 /**
  * Substitutions for {@link java.lang.System} methods.

@@ -33,7 +33,7 @@ import java.util.*;
 import jdk.internal.jvmci.amd64.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
 import jdk.internal.jvmci.meta.*;

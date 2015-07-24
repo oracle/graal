@@ -32,6 +32,7 @@ import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;

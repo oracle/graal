@@ -25,7 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.*;
 import static com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates.*;
 import static java.util.FormattableFlags.*;
-import static jdk.internal.jvmci.debug.Debug.*;
+import static com.oracle.graal.debug.Debug.*;
 import static jdk.internal.jvmci.meta.LocationIdentity.*;
 
 import java.lang.reflect.*;
@@ -38,7 +38,10 @@ import java.util.stream.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.Scope;
+
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;

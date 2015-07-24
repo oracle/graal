@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import java.lang.reflect.*;
 
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;

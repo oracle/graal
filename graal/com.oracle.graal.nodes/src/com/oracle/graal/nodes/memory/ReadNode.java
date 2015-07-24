@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.memory;
 
+import static com.oracle.graal.nodes.NamedLocationIdentity.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -126,7 +127,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                     return ConstantNode.forConstant(read.stamp(), constant, metaAccess);
                 }
             }
-            if (locationIdentity.equals(LocationIdentity.ARRAY_LENGTH_LOCATION)) {
+            if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
                 ValueNode length = GraphUtil.arrayLength(object);
                 if (length != null) {
                     // TODO Does this need a PiCastNode to the positive range?

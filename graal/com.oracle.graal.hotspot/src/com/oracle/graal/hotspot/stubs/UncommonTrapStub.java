@@ -22,20 +22,22 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.*;
@@ -149,7 +151,7 @@ public class UncommonTrapStub extends SnippetStub {
          * Stack bang to make sure there's enough room for the interpreter frames. Bang stack for
          * total size of the interpreter frames plus shadow page size. Bang one page at a time
          * because large sizes can bang beyond yellow and red zones.
-         *
+         * 
          * @deprecated This code should go away as soon as JDK-8032410 hits the Graal repository.
          */
         final int totalFrameSizes = unrollBlock.readInt(deoptimizationUnrollBlockTotalFrameSizesOffset());

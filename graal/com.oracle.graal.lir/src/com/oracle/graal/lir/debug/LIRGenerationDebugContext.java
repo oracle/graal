@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.debug;
 
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.*;

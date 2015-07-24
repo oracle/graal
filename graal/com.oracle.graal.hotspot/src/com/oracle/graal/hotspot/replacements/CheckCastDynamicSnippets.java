@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
+import com.oracle.graal.debug.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.PiNode.*;

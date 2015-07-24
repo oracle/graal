@@ -29,8 +29,8 @@ import java.util.*;
 import java.util.function.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
-import jdk.internal.jvmci.debug.Debug.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
@@ -77,8 +77,10 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
     }
 
     public void allocateStackSlots(FrameMapBuilderTool builder, LIRGenerationResult res) {
-        try (DebugCloseable t = MainTimer.start()) {
-            new Allocator(res.getLIR(), builder).allocate();
+        if (builder.getNumberOfStackSlots() > 0) {
+            try (DebugCloseable t = MainTimer.start()) {
+                new Allocator(res.getLIR(), builder).allocate();
+            }
         }
     }
 

@@ -25,6 +25,7 @@ package com.oracle.graal.lir.asm;
 import jdk.internal.jvmci.code.*;
 
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.lir.framemap.*;
 
 /**
