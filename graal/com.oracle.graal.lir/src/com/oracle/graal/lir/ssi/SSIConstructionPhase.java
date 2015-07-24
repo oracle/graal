@@ -38,7 +38,7 @@ public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
-        assert SSAUtils.verifySSAForm(lirGenRes.getLIR());
+        assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         LIR lir = lirGenRes.getLIR();
         new SSIBuilder(lir).build(lirGen);
     }

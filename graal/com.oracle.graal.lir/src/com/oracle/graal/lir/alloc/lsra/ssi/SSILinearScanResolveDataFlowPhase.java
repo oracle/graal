@@ -33,7 +33,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
+import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.*;
 
 public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {

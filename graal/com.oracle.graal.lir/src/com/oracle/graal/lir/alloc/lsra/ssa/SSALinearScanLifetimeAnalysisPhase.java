@@ -51,7 +51,7 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
 
             Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
-            SSAUtils.forEachPhiRegisterHint(allocator.getLIR(), allocator.blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
+            SSAUtil.forEachPhiRegisterHint(allocator.getLIR(), allocator.blockForId(label.id()), label, targetValue, mode, (ValueConsumer) (registerHint, valueMode, valueFlags) -> {
                 if (LinearScan.isVariableOrRegister(registerHint)) {
                     Interval from = allocator.getOrCreateInterval((AllocatableValue) registerHint);
 

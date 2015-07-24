@@ -64,7 +64,7 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
             emitBlock(nodeLirBuilder, lirGenRes, (Block) b, graph, schedule.getBlockToNodesMap());
         }
         context.lirGen.beforeRegisterAllocation();
-        assert !ConstructionSSAlirDuringLirBuilding.getValue() || SSAUtils.verifySSAForm(lirGenRes.getLIR());
+        assert !ConstructionSSAlirDuringLirBuilding.getValue() || SSAUtil.verifySSAForm(lirGenRes.getLIR());
     }
 
     private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<Node>> blockMap) {

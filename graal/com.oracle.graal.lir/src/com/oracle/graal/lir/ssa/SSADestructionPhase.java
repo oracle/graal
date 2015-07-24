@@ -48,15 +48,15 @@ public final class SSADestructionPhase extends PreAllocationOptimizationPhase {
 
                 List<LIRInstruction> instructions = lir.getLIRforBlock(pred);
 
-                int insertBefore = SSAUtils.phiOutIndex(lir, pred);
+                int insertBefore = SSAUtil.phiOutIndex(lir, pred);
 
                 PhiResolver resolver = PhiResolver.create(lirGen, new LIRInsertionBuffer(), instructions, insertBefore);
-                SSAUtils.forEachPhiValuePair(lir, block, pred, resolver::move);
+                SSAUtil.forEachPhiValuePair(lir, block, pred, resolver::move);
                 resolver.dispose();
 
-                SSAUtils.removePhiOut(lir, pred);
+                SSAUtil.removePhiOut(lir, pred);
             }
-            SSAUtils.removePhiIn(lir, block);
+            SSAUtil.removePhiIn(lir, block);
         }
     }
 

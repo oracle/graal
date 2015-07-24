@@ -73,7 +73,7 @@ public final class SSALinearScan extends LinearScan {
         try (Scope s1 = Debug.scope("Remove Phi In")) {
             for (AbstractBlockBase<?> toBlock : sortedBlocks()) {
                 if (toBlock.getPredecessorCount() > 1) {
-                    SSAUtils.removePhiIn(getLIR(), toBlock);
+                    SSAUtil.removePhiIn(getLIR(), toBlock);
                 }
             }
         }

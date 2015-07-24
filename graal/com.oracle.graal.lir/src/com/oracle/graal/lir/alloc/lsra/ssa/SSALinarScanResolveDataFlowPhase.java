@@ -34,7 +34,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
+import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 
 class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
@@ -55,7 +55,7 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
             AbstractBlockBase<?> phiOutBlock = midBlock != null ? midBlock : fromBlock;
             List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(phiOutBlock);
-            int phiOutIdx = SSAUtils.phiOutIndex(allocator.getLIR(), phiOutBlock);
+            int phiOutIdx = SSAUtil.phiOutIndex(allocator.getLIR(), phiOutBlock);
             int phiOutId = midBlock != null ? fromBlockLastInstructionId : instructions.get(phiOutIdx).id();
             assert phiOutId >= 0;
 
@@ -83,8 +83,8 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
                 }
             };
 
-            SSAUtils.forEachPhiValuePair(allocator.getLIR(), toBlock, phiOutBlock, visitor);
-            SSAUtils.removePhiOut(allocator.getLIR(), phiOutBlock);
+            SSAUtil.forEachPhiValuePair(allocator.getLIR(), toBlock, phiOutBlock, visitor);
+            SSAUtil.removePhiOut(allocator.getLIR(), phiOutBlock);
         }
     }
 

@@ -40,7 +40,7 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
+import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.*;
 
 public class TraceRegisterAllocationPhase extends AllocationPhase {

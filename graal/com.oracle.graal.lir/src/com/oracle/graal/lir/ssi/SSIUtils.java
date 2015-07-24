@@ -31,7 +31,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.ssa.SSAUtils.*;
+import com.oracle.graal.lir.ssa.SSAUtil.*;
 
 public final class SSIUtils {
 

@@ -68,7 +68,7 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
  *   ...
  * </pre>
  */
-public final class SSAUtils {
+public final class SSAUtil {
 
     public interface PhiValueVisitor {
         /**
