@@ -54,7 +54,7 @@ public class TraceLinearScanResolveDataFlowPhase extends LinearScanResolveDataFl
         assert midBlock == null;
         if (containedInTrace(fromBlock) && containedInTrace(toBlock)) {
             super.resolveCollectMappings(fromBlock, toBlock, midBlock, moveResolver);
-            SSIUtils.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
+            SSIUtil.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
         }
 
     }

@@ -130,10 +130,10 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
         // set hints for phi/sigma intervals
         LIR lir = allocator.getLIR();
         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
-            LabelOp label = SSIUtils.incoming(lir, block);
+            LabelOp label = SSIUtil.incoming(lir, block);
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 if (isAllocatedOrCurrent(block, pred)) {
-                    BlockEndOp outgoing = SSIUtils.outgoing(lir, pred);
+                    BlockEndOp outgoing = SSIUtil.outgoing(lir, pred);
                     for (int i = 0; i < outgoing.getOutgoingSize(); i++) {
                         Value toValue = label.getIncomingValue(i);
                         if (!isIllegal(toValue)) {

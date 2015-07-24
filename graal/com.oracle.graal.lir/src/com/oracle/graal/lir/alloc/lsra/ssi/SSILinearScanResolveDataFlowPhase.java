@@ -54,11 +54,11 @@ public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlow
          */
         for (AbstractBlockBase<?> toBlock : allocator.sortedBlocks()) {
             if (toBlock.getPredecessorCount() != 0) {
-                SSIUtils.removeIncoming(allocator.getLIR(), toBlock);
+                SSIUtil.removeIncoming(allocator.getLIR(), toBlock);
             } else {
                 assert allocator.getLIR().getControlFlowGraph().getStartBlock().equals(toBlock);
             }
-            SSIUtils.removeOutgoing(allocator.getLIR(), toBlock);
+            SSIUtil.removeOutgoing(allocator.getLIR(), toBlock);
         }
     }
 
@@ -68,17 +68,17 @@ public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlow
 
         if (midBlock != null) {
             HashMap<Value, Value> map = CollectionsFactory.newMap();
-            SSIUtils.forEachValuePair(allocator.getLIR(), midBlock, fromBlock, (to, from) -> map.put(to, from));
+            SSIUtil.forEachValuePair(allocator.getLIR(), midBlock, fromBlock, (to, from) -> map.put(to, from));
 
             MyPhiValueVisitor visitor = new MyPhiValueVisitor(moveResolver, toBlock, fromBlock);
-            SSIUtils.forEachValuePair(allocator.getLIR(), toBlock, midBlock, (to, from) -> {
+            SSIUtil.forEachValuePair(allocator.getLIR(), toBlock, midBlock, (to, from) -> {
                 Value phiOut = isConstant(from) ? from : map.get(from);
                 assert phiOut != null : "No entry for " + from;
                 visitor.visit(to, phiOut);
             });
         } else {
             // default case
-            SSIUtils.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
+            SSIUtil.forEachValuePair(allocator.getLIR(), toBlock, fromBlock, new MyPhiValueVisitor(moveResolver, toBlock, fromBlock));
         }
 
     }

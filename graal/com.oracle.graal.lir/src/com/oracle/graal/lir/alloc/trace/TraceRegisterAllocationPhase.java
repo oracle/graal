@@ -90,11 +90,11 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
          */
         for (AbstractBlockBase<?> toBlock : lir.getControlFlowGraph().getBlocks()) {
             if (toBlock.getPredecessorCount() != 0) {
-                SSIUtils.removeIncoming(lir, toBlock);
+                SSIUtil.removeIncoming(lir, toBlock);
             } else {
                 assert lir.getControlFlowGraph().getStartBlock().equals(toBlock);
             }
-            SSIUtils.removeOutgoing(lir, toBlock);
+            SSIUtil.removeOutgoing(lir, toBlock);
         }
     }
 
@@ -152,7 +152,7 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
                                 }
 
                                 moveResolver.setInsertPosition(instructions, insertIdx);
-                                SSIUtils.forEachValuePair(lir, toBlock, fromBlock, visitor);
+                                SSIUtil.forEachValuePair(lir, toBlock, fromBlock, visitor);
                                 moveResolver.resolveAndAppendMoves();
                             }
                         }

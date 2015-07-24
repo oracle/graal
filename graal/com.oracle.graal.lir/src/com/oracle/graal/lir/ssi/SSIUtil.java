@@ -33,7 +33,7 @@ import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.ssa.SSAUtil.*;
 
-public final class SSIUtils {
+public final class SSIUtil {
 
     public static BlockEndOp outgoing(LIR lir, AbstractBlockBase<?> block) {
         return (BlockEndOp) outgoingInst(lir, block);

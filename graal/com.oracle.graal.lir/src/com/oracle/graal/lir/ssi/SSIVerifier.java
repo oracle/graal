@@ -68,8 +68,8 @@ public class SSIVerifier {
     }
 
     private void verifyEdge(AbstractBlockBase<?> from, AbstractBlockBase<?> to) {
-        BlockEndOp out = SSIUtils.outgoing(lir, from);
-        LabelOp in = SSIUtils.incoming(lir, to);
+        BlockEndOp out = SSIUtil.outgoing(lir, from);
+        LabelOp in = SSIUtil.incoming(lir, to);
         int outgoingSize = out.getOutgoingSize();
         int incomingSize = in.getIncomingSize();
         assert outgoingSize == incomingSize : String.format("Outgoing size %d and incoming size %d do not match", outgoingSize, incomingSize);
