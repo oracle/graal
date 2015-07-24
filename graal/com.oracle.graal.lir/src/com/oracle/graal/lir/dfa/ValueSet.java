@@ -29,7 +29,6 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.framemap.*;
 
 public final class ValueSet {
     private Value[] values;
@@ -120,14 +119,6 @@ public final class ValueSet {
             return true;
         }
         return false;
-    }
-
-    public void addLiveValues(ReferenceMapBuilder refMap) {
-        for (Value v : values) {
-            if (v != null) {
-                refMap.addLiveValue(v);
-            }
-        }
     }
 
     public void forEach(LIRInstruction inst, OperandMode mode, EnumSet<OperandFlag> flags, InstructionValueProcedure proc) {

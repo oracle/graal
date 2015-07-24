@@ -28,6 +28,8 @@ import java.util.*;
 
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.framemap.*;
 
 final class RegStackValueSet extends LiveValueSet<RegStackValueSet> {
@@ -120,8 +122,13 @@ final class RegStackValueSet extends LiveValueSet<RegStackValueSet> {
     }
 
     public void addLiveValues(ReferenceMapBuilder refMap) {
-        registers.addLiveValues(refMap);
-        stack.addLiveValues(refMap);
+        ValueConsumer addLiveValue = new ValueConsumer() {
+            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                refMap.addLiveValue(value);
+            }
+        };
+        registers.forEach(null, null, null, addLiveValue);
+        stack.forEach(null, null, null, addLiveValue);
         if (extraStack != null) {
             for (Value v : extraStack) {
                 refMap.addLiveValue(v);
