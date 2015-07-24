@@ -42,6 +42,9 @@ public final class LinearScanPhase extends AllocationPhase {
                     RegisterAllocationConfig registerAllocationConfig) {
         final LinearScan allocator;
         switch (LinearScanVariant.getValue()) {
+            case SSI_LSRA:
+                allocator = new SSILinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
+                break;
             case SSA_LSRA:
                 allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
                 break;

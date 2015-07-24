@@ -20,27 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package com.oracle.graal.lir.gen;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.BackendOptions.*;
+import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.lir.ssi.*;
+import com.oracle.graal.compiler.common.cfg.*;
 
-public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
-    public PreAllocationOptimizationStage() {
-        if (SSA_LIR.getValue() && BackendOptions.UserOptions.LIREagerSSADestruction.getValue()) {
-            appendPhase(new SSADestructionPhase());
-        }
-        if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
-            appendPhase(new ConstantLoadOptimization());
-        }
-        if (EnableSSIConstruction.getValue()) {
-            appendPhase(new SSIConstructionPhase());
-        }
-    }
+public interface BlockValueMap {
+
+    void accessOperand(Value operand, AbstractBlockBase<?> block);
+
+    void defineOperand(Value operand, AbstractBlockBase<?> block);
+
 }

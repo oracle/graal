@@ -20,27 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package com.oracle.graal.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.compiler.common.BackendOptions.*;
+import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.lir.constopt.*;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.lir.ssi.*;
+public class SSILinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 
-public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
-    public PreAllocationOptimizationStage() {
-        if (SSA_LIR.getValue() && BackendOptions.UserOptions.LIREagerSSADestruction.getValue()) {
-            appendPhase(new SSADestructionPhase());
-        }
-        if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
-            appendPhase(new ConstantLoadOptimization());
-        }
-        if (EnableSSIConstruction.getValue()) {
-            appendPhase(new SSIConstructionPhase());
-        }
+    public SSILinearScanEliminateSpillMovePhase(LinearScan allocator) {
+        super(allocator);
+    }
+
+    @Override
+    protected int firstInstructionOfInterest() {
+        // also look at Labels as they define PHI values
+        return 0;
+    }
+
+    @Override
+    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
+        // TODO (je) do not eliminate spill moves yet!
+        return false;
     }
 }
