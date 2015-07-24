@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "9e49e61995d6408db1d2f2399f6c4a96e26b7c90",
+               "version" : "486822772780ac210c484d4ae2d457d1ef6c01fd",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -90,6 +90,30 @@ suite = {
     },
 
     # ------------- Graal -------------
+
+    "com.oracle.graal.debug" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.graal.graph",
+      "dependencies" : [
+        "jvmci:JVMCI_API",
+      ],
+      "annotationProcessors" : ["jvmci:JVMCI_OPTIONS_PROCESSOR"],
+      "javaCompliance" : "1.8",
+      "workingSets" : "JVMCI,Debug",
+    },
+
+    "com.oracle.graal.debug.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "com.oracle.graal.debug",
+      ],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "JVMCI,Debug,Test",
+    },
 
     "com.oracle.graal.code" : {
       "subDir" : "graal",
@@ -268,7 +292,6 @@ suite = {
         "com.oracle.graal.debug",
         "com.oracle.graal.nodeinfo",
         "com.oracle.graal.compiler.common",
-        "com.oracle.graal.debug",
         "com.oracle.graal.api.collections",
         "com.oracle.graal.api.runtime",
       ],
@@ -340,7 +363,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.code",
         "com.oracle.graal.test",
-        "jvmci:JVMCI_API",
+        "com.oracle.graal.debug",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",

@@ -26,13 +26,14 @@
 
 import os, platform
 from os.path import join, exists
+from argparse import ArgumentParser
 import sanitycheck
 import itertools
 import json
 
 import mx
 import mx_jvmci
-from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, ctw, isVMSupported
+from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, isVMSupported, isJVMCIEnabled, get_jvmci_jdk
 import mx_unittest
 from mx_unittest import unittest
 import mx_gate
@@ -170,6 +171,40 @@ def microbench(args):
         (_, _, jvm, _, _) = parseVmArgs(vmArgs)
         args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + vmArgs)]
     vm(args + jmhArgs)
+
+def ctw(args):
+    """run CompileTheWorld"""
+
+    defaultCtwopts = '-Inline'
+
+    parser = ArgumentParser(prog='mx ctw')
+    parser.add_argument('--ctwopts', action='store', help='space separated JVMCI options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', default=defaultCtwopts, metavar='<options>')
+    parser.add_argument('--jar', action='store', help='jar of classes to compiled instead of rt.jar', metavar='<path>')
+
+    args, vmargs = parser.parse_known_args(args)
+
+    if args.ctwopts:
+        vmargs.append('-G:CompileTheWorldConfig=' + args.ctwopts)
+
+    if args.jar:
+        jar = os.path.abspath(args.jar)
+    else:
+        jar = join(get_jvmci_jdk(installJars=False), 'jre', 'lib', 'rt.jar')
+        vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
+
+    vmargs += ['-XX:+CompileTheWorld']
+    vm_ = get_vm()
+    if isJVMCIEnabled(vm_):
+        if vm_ == 'jvmci':
+            vmargs += ['-XX:+BootstrapJVMCI']
+        vmargs += ['-G:CompileTheWorldClasspath=' + jar]
+    else:
+        vmargs += ['-Xbootclasspath/p:' + jar]
+
+    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
+    vmargs = ['-Djava.awt.headless=true'] + vmargs
+
+    vm(vmargs)
 
 def _graal_gate_runner(args, tasks):
 
@@ -390,6 +425,7 @@ def specjbb2005(args):
     _run_benchmark(args, None, launcher)
 
 mx.update_commands(_suite, {
+    'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'dacapo': [dacapo, '[VM options] benchmarks...|"all" [DaCapo options]'],
     'scaladacapo': [scaladacapo, '[VM options] benchmarks...|"all" [Scala DaCapo options]'],
     'specjvm2008': [specjvm2008, '[VM options] benchmarks...|"all" [SPECjvm2008 options]'],
