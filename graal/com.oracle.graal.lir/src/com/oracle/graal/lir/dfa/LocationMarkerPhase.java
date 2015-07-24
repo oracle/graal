@@ -49,105 +49,7 @@ public final class LocationMarkerPhase extends AllocationPhase {
         new Marker<B>(lirGenRes.getLIR(), lirGenRes.getFrameMap()).build();
     }
 
-    private static final class Marker<T extends AbstractBlockBase<T>> extends LocationMarker<T, Marker<T>.RegStackValueSet> {
-
-        private final class RegStackValueSet extends LiveValueSet<Marker<T>.RegStackValueSet> {
-
-            private final ValueSet registers;
-            private final ValueSet stack;
-            private Set<Value> extraStack;
-
-            public RegStackValueSet() {
-                registers = new ValueSet();
-                stack = new ValueSet();
-            }
-
-            private RegStackValueSet(RegStackValueSet s) {
-                registers = new ValueSet(s.registers);
-                stack = new ValueSet(s.stack);
-                if (s.extraStack != null) {
-                    extraStack = new HashSet<>(s.extraStack);
-                }
-            }
-
-            @Override
-            public Marker<T>.RegStackValueSet copy() {
-                return new RegStackValueSet(this);
-            }
-
-            @Override
-            public void put(Value v) {
-                if (isRegister(v)) {
-                    int index = asRegister(v).getReferenceMapIndex();
-                    registers.put(index, v);
-                } else if (isStackSlot(v)) {
-                    int index = frameMap.offsetForStackSlot(asStackSlot(v));
-                    assert index >= 0;
-                    if (index % 4 == 0) {
-                        stack.put(index / 4, v);
-                    } else {
-                        if (extraStack == null) {
-                            extraStack = new HashSet<>();
-                        }
-                        extraStack.add(v);
-                    }
-                }
-            }
-
-            @Override
-            public void putAll(RegStackValueSet v) {
-                registers.putAll(v.registers);
-                stack.putAll(v.stack);
-                if (v.extraStack != null) {
-                    if (extraStack == null) {
-                        extraStack = new HashSet<>();
-                    }
-                    extraStack.addAll(v.extraStack);
-                }
-            }
-
-            @Override
-            public void remove(Value v) {
-                if (isRegister(v)) {
-                    int index = asRegister(v).getReferenceMapIndex();
-                    registers.put(index, null);
-                } else if (isStackSlot(v)) {
-                    int index = frameMap.offsetForStackSlot(asStackSlot(v));
-                    assert index >= 0;
-                    if (index % 4 == 0) {
-                        stack.put(index / 4, null);
-                    } else if (extraStack != null) {
-                        extraStack.remove(v);
-                    }
-                }
-            }
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean equals(Object obj) {
-                if (obj instanceof Marker.RegStackValueSet) {
-                    RegStackValueSet other = (RegStackValueSet) obj;
-                    return registers.equals(other.registers) && stack.equals(other.stack) && Objects.equals(extraStack, other.extraStack);
-                } else {
-                    return false;
-                }
-            }
-
-            @Override
-            public int hashCode() {
-                throw new UnsupportedOperationException();
-            }
-
-            public void addLiveValues(ReferenceMapBuilder refMap) {
-                registers.addLiveValues(refMap);
-                stack.addLiveValues(refMap);
-                if (extraStack != null) {
-                    for (Value v : extraStack) {
-                        refMap.addLiveValue(v);
-                    }
-                }
-            }
-        }
+    static final class Marker<T extends AbstractBlockBase<T>> extends LocationMarker<T, RegStackValueSet> {
 
         private final RegisterAttributes[] registerAttributes;
 
@@ -157,8 +59,8 @@ public final class LocationMarkerPhase extends AllocationPhase {
         }
 
         @Override
-        protected Marker<T>.RegStackValueSet newLiveValueSet() {
-            return new RegStackValueSet();
+        protected RegStackValueSet newLiveValueSet() {
+            return new RegStackValueSet(frameMap);
         }
 
         @Override
