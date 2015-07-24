@@ -30,14 +30,14 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
-public final class ValueSet {
+public final class IntValueMap {
     private Value[] values;
 
-    ValueSet() {
+    IntValueMap() {
         values = Value.NO_VALUES;
     }
 
-    ValueSet(ValueSet other) {
+    IntValueMap(IntValueMap other) {
         int limit = other.values.length;
         while (limit > 0) {
             if (other.values[limit - 1] == null) {
@@ -71,7 +71,7 @@ public final class ValueSet {
         }
     }
 
-    public void putAll(ValueSet stack) {
+    public void putAll(IntValueMap stack) {
         Value[] otherValues = stack.values;
         int limit = otherValues.length;
         if (limit > values.length) {
@@ -98,8 +98,8 @@ public final class ValueSet {
 
     @Override
     public boolean equals(Object other) {
-        if (other instanceof ValueSet) {
-            ValueSet that = (ValueSet) other;
+        if (other instanceof IntValueMap) {
+            IntValueMap that = (IntValueMap) other;
             int limit = Math.min(values.length, that.values.length);
             for (int i = 0; i < limit; i++) {
                 if (!Objects.equals(values[i], that.values[i])) {

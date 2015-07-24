@@ -50,14 +50,14 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
         private final class BasePointersSet extends LiveValueSet<Marker<T>.BasePointersSet> {
 
-            private final ValueSet variables;
+            private final IntValueMap variables;
 
             public BasePointersSet() {
-                variables = new ValueSet();
+                variables = new IntValueMap();
             }
 
             private BasePointersSet(BasePointersSet s) {
-                variables = new ValueSet(s.variables);
+                variables = new IntValueMap(s.variables);
             }
 
             @Override
@@ -115,7 +115,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
         @Override
         protected void processState(LIRInstruction op, LIRFrameState info, BasePointersSet values) {
-            info.setLiveBasePointers(new ValueSet(values.variables));
+            info.setLiveBasePointers(new IntValueMap(values.variables));
         }
     }
 }
