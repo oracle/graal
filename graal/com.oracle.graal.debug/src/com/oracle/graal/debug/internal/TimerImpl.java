@@ -27,8 +27,6 @@ import static com.oracle.graal.debug.DebugCloseable.*;
 import java.lang.management.*;
 import java.util.concurrent.*;
 
-import jdk.internal.jvmci.debug.*;
-
 import com.oracle.graal.debug.*;
 
 public final class TimerImpl extends AccumulatedDebugValue implements DebugTimer {

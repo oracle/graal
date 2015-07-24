@@ -26,8 +26,6 @@ import static org.junit.Assert.*;
 
 import java.lang.management.*;
 
-import jdk.internal.jvmci.debug.*;
-
 import com.oracle.graal.debug.*;
 
 import org.junit.*;
