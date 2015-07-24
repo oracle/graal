@@ -278,6 +278,8 @@ public final class TruffleVM {
                 mimeType = "text/x-c";
             } else if (file.getName().endsWith(".sl")) {
                 mimeType = "application/x-sl";
+            } else if (file.getName().endsWith(".R") || file.getName().endsWith(".r")) {
+                mimeType = "application/x-r";
             } else {
                 mimeType = Files.probeContentType(file.toPath());
             }
