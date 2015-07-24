@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.gen;
+package com.oracle.graal.lir.ssi;
 
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
@@ -35,9 +35,10 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.util.*;
 
-public class SSIBlockValueMapImpl implements BlockValueMap {
+public final class SSIBlockValueMapImpl implements BlockValueMap {
 
     private final class BlockData {
 
