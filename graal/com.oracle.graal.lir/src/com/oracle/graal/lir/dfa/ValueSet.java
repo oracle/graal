@@ -24,7 +24,7 @@ package com.oracle.graal.lir.dfa;
 
 import jdk.internal.jvmci.meta.*;
 
-abstract class LiveValueSet<S extends LiveValueSet<S>> {
+abstract class ValueSet<S extends ValueSet<S>> {
 
     public abstract void put(Value v);
 

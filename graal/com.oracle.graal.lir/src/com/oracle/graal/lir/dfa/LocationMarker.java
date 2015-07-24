@@ -36,7 +36,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
 
-public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends LiveValueSet<S>> {
+public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends ValueSet<S>> {
 
     private final LIR lir;
     private final BlockMap<S> liveInMap;

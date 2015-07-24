@@ -32,7 +32,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.framemap.*;
 
-final class RegStackValueSet extends LiveValueSet<RegStackValueSet> {
+final class RegStackValueSet extends ValueSet<RegStackValueSet> {
 
     private final FrameMap frameMap;
     private final IntValueMap registers;

@@ -48,7 +48,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
     private static final class Marker<T extends AbstractBlockBase<T>> extends LocationMarker<T, Marker<T>.BasePointersSet> {
 
-        private final class BasePointersSet extends LiveValueSet<Marker<T>.BasePointersSet> {
+        private final class BasePointersSet extends ValueSet<Marker<T>.BasePointersSet> {
 
             private final IntValueMap variables;
 
