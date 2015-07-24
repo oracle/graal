@@ -30,6 +30,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.ssa.*;
@@ -40,17 +41,17 @@ public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, LIRGeneratorTool lirGen) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         LIR lir = lirGenRes.getLIR();
-        new SSIBuilder(lir).build(lirGen);
+        new SSIBuilder(lir, lirGenRes.getFrameMapBuilder()).build(lirGen);
     }
 
-    private static class SSIBuilder {
+    private static final class SSIBuilder {
         private final SSIBlockValueMapImpl valueMap;
         private final LIR lir;
         private final BitSet processed;
 
-        private SSIBuilder(LIR lir) {
+        private SSIBuilder(LIR lir, FrameMapBuilder frameMapBuilder) {
             this.lir = lir;
-            valueMap = new SSIBlockValueMapImpl(lir.getControlFlowGraph());
+            valueMap = new SSIBlockValueMapImpl(lir.getControlFlowGraph(), lir.nextVariable(), ((FrameMapBuilderTool) frameMapBuilder).getNumberOfStackSlots());
             processed = new BitSet(lir.getControlFlowGraph().getBlocks().size());
         }
 

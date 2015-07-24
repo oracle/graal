@@ -87,8 +87,8 @@ public class SSIBlockValueMapImpl implements BlockValueMap {
     private final ValueMap<Value, AbstractBlockBase<?>> valueToDefBlock;
     private final BlockMap<BlockData> blockData;
 
-    public SSIBlockValueMapImpl(AbstractControlFlowGraph<?> cfg) {
-        valueToDefBlock = new GenericValueMap<>();
+    public SSIBlockValueMapImpl(AbstractControlFlowGraph<?> cfg, int initialVariableCapacity, int initialStackSlotCapazity) {
+        valueToDefBlock = new VariableVirtualStackValueMap<>(initialVariableCapacity, initialStackSlotCapazity);
         blockData = new BlockMap<>(cfg);
     }
 
