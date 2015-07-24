@@ -158,10 +158,10 @@ public final class SSAMoveResolver extends MoveResolver {
             super.breakCycle(spillCandidate);
             return;
         }
-        assert mappingFrom.size() > 1;
+        assert mappingFromSize() > 1;
         // Arbitrarily select the first entry for spilling.
         int stackSpillCandidate = 0;
-        Interval fromInterval = mappingFrom.get(stackSpillCandidate);
+        Interval fromInterval = getMappingFrom(stackSpillCandidate);
         assert isStackSlotValue(fromInterval.location());
         // allocate new stack slot
         StackSlotValue spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());

@@ -43,7 +43,7 @@ public class MoveResolver {
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
-    protected final List<Interval> mappingFrom;
+    private final List<Interval> mappingFrom;
     private final List<Value> mappingFromOpr;
     private final List<Interval> mappingTo;
     private boolean multipleReadsAllowed;
@@ -56,6 +56,14 @@ public class MoveResolver {
         } else {
             throw JVMCIError.shouldNotReachHere("unhandled value " + location);
         }
+    }
+
+    protected Interval getMappingFrom(int i) {
+        return mappingFrom.get(i);
+    }
+
+    protected int mappingFromSize() {
+        return mappingFrom.size();
     }
 
     protected int valueBlocked(Value location) {

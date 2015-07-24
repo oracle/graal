@@ -74,7 +74,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
     /**
      * Bit set for each variable that is contained in each loop.
      */
-    BitMap2D intervalInLoop;
+    private BitMap2D intervalInLoop;
 
     boolean isIntervalInLoop(int interval, int loop) {
         return intervalInLoop.at(interval, loop);
@@ -313,7 +313,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             *
+                             * 
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */
