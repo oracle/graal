@@ -162,7 +162,7 @@ public abstract class Accessor {
     }
 
     protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
-        return API.findLanguage(vm, languageClass);
+        return SPI.findLanguage(vm, languageClass);
     }
 
     protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {

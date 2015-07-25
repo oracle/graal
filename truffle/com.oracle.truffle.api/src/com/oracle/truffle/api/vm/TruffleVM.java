@@ -567,6 +567,10 @@ public final class TruffleVM {
 
     TruffleLanguage findLanguage(Probe probe) {
         Class<? extends TruffleLanguage> languageClazz = SPI.findLanguage(probe);
+        return findLanguage(languageClazz);
+    }
+
+    TruffleLanguage findLanguage(Class<? extends TruffleLanguage> languageClazz) {
         for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
             Language languageDescription = entrySet.getValue();
             if (languageClazz.isInstance(languageDescription.impl)) {
@@ -645,6 +649,11 @@ public final class TruffleVM {
         @Override
         protected Class<? extends TruffleLanguage> findLanguage(Probe probe) {
             return super.findLanguage(probe);
+        }
+
+        @Override
+        protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+            return vm.findLanguage(languageClass);
         }
 
         @Override
