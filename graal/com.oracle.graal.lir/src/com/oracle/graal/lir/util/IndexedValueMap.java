@@ -30,14 +30,14 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
-public final class IntValueMap {
+public final class IndexedValueMap {
     private Value[] values;
 
-    public IntValueMap() {
+    public IndexedValueMap() {
         values = Value.NO_VALUES;
     }
 
-    public IntValueMap(IntValueMap other) {
+    public IndexedValueMap(IndexedValueMap other) {
         int limit = other.values.length;
         while (limit > 0) {
             if (other.values[limit - 1] == null) {
@@ -68,7 +68,7 @@ public final class IntValueMap {
         }
     }
 
-    public void putAll(IntValueMap stack) {
+    public void putAll(IndexedValueMap stack) {
         Value[] otherValues = stack.values;
         int limit = otherValues.length;
         if (limit > values.length) {
@@ -95,8 +95,8 @@ public final class IntValueMap {
 
     @Override
     public boolean equals(Object other) {
-        if (other instanceof IntValueMap) {
-            IntValueMap that = (IntValueMap) other;
+        if (other instanceof IndexedValueMap) {
+            IndexedValueMap that = (IndexedValueMap) other;
             int limit = Math.min(values.length, that.values.length);
             for (int i = 0; i < limit; i++) {
                 if (!Objects.equals(values[i], that.values[i])) {

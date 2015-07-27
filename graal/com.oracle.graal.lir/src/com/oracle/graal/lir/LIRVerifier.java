@@ -131,7 +131,7 @@ public final class LIRVerifier {
                 assert last instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
             }
             if (block.getPredecessorCount() > 1) {
-                SSAUtils.verifyPhi(lir, block);
+                SSAUtil.verifyPhi(lir, block);
             }
 
             for (LIRInstruction op : lir.getLIRforBlock(block)) {

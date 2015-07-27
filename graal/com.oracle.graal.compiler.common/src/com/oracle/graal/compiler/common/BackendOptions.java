@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.common;
 import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.DerivedOptionValue.*;
+import jdk.internal.jvmci.options.DerivedOptionValue.OptionSupplier;
 
 /**
  * Options to control the backend configuration.
@@ -36,27 +36,44 @@ public final class BackendOptions {
         // @formatter:off
         @Option(help = "Destruct SSA LIR eagerly (before other LIR phases).", type = OptionType.Debug)
         public static final OptionValue<Boolean> LIREagerSSADestruction = new OptionValue<>(false);
+        @Option(help = "Enable Linear Scan on SSI form.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> LIROptSSILinearScan = new OptionValue<>(false);
+        @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRA = new OptionValue<>(false);
         // @formatter:on
     }
+
+    /* Enable SSI Construction. */
+    public static final DerivedOptionValue<Boolean> EnableSSIConstruction = new DerivedOptionValue<>(new OptionSupplier<Boolean>() {
+        private static final long serialVersionUID = -7375589337502162545L;
+
+        public Boolean get() {
+            return LIROptSSILinearScan.getValue() || TraceRA.getValue();
+        }
+    });
 
     /* Create SSA LIR during LIR generation. */
     public static final DerivedOptionValue<Boolean> ConstructionSSAlirDuringLirBuilding = new DerivedOptionValue<>(new OptionSupplier<Boolean>() {
         private static final long serialVersionUID = 7657622005438210681L;
 
         public Boolean get() {
-            return SSA_LIR.getValue();
+            return SSA_LIR.getValue() || EnableSSIConstruction.getValue();
         }
     });
 
     public enum LSRAVariant {
         NONSSA_LSAR,
-        SSA_LSRA
+        SSA_LSRA,
+        SSI_LSRA
     }
 
     public static final DerivedOptionValue<LSRAVariant> LinearScanVariant = new DerivedOptionValue<>(new OptionSupplier<LSRAVariant>() {
         private static final long serialVersionUID = 364925071685235153L;
 
         public LSRAVariant get() {
+            if (LIROptSSILinearScan.getValue()) {
+                return LSRAVariant.SSI_LSRA;
+            }
             if (SSA_LIR.getValue() && !LIREagerSSADestruction.getValue()) {
                 return LSRAVariant.SSA_LSRA;
             }
@@ -71,9 +88,14 @@ public final class BackendOptions {
         public Boolean get() {
             switch (LinearScanVariant.getValue()) {
                 case SSA_LSRA:
+                case SSI_LSRA:
                     return true;
+            }
+            if (TraceRA.getValue()) {
+                return true;
             }
             return false;
         }
     });
+
 }

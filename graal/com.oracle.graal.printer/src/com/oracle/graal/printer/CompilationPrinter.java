@@ -114,7 +114,7 @@ public class CompilationPrinter implements Closeable {
     /**
      * Formats given debug info as a multi line string.
      */
-    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, IntValueMap liveBasePointers, RegisterSaveLayout calleeSaveInfo) {
+    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, IndexedValueMap liveBasePointers, RegisterSaveLayout calleeSaveInfo) {
         StringBuilder sb = new StringBuilder();
         if (refMap != null) {
             sb.append("reference-map: ");

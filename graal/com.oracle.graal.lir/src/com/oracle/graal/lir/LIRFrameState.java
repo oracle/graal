@@ -45,7 +45,7 @@ public class LIRFrameState {
     public final LabelRef exceptionEdge;
     protected DebugInfo debugInfo;
 
-    private IntValueMap liveBasePointers;
+    private IndexedValueMap liveBasePointers;
 
     public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
         this.topFrame = topFrame;
@@ -181,11 +181,11 @@ public class LIRFrameState {
         debugInfo = new DebugInfo(topFrame, virtualObjects);
     }
 
-    public IntValueMap getLiveBasePointers() {
+    public IndexedValueMap getLiveBasePointers() {
         return liveBasePointers;
     }
 
-    public void setLiveBasePointers(IntValueMap liveBasePointers) {
+    public void setLiveBasePointers(IndexedValueMap liveBasePointers) {
         this.liveBasePointers = liveBasePointers;
     }
 

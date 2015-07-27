@@ -36,14 +36,14 @@ import com.oracle.graal.lir.*;
 
 /**
  */
-class MoveResolver {
+public class MoveResolver {
 
     private final LinearScan allocator;
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
-    protected final List<Interval> mappingFrom;
+    private final List<Interval> mappingFrom;
     private final List<Value> mappingFromOpr;
     private final List<Interval> mappingTo;
     private boolean multipleReadsAllowed;
@@ -56,6 +56,14 @@ class MoveResolver {
         } else {
             throw JVMCIError.shouldNotReachHere("unhandled value " + location);
         }
+    }
+
+    protected Interval getMappingFrom(int i) {
+        return mappingFrom.get(i);
+    }
+
+    protected int mappingFromSize() {
+        return mappingFrom.size();
     }
 
     protected int valueBlocked(Value location) {
@@ -81,7 +89,7 @@ class MoveResolver {
         return allocator;
     }
 
-    MoveResolver(LinearScan allocator) {
+    protected MoveResolver(LinearScan allocator) {
 
         this.allocator = allocator;
         this.multipleReadsAllowed = false;
@@ -90,12 +98,12 @@ class MoveResolver {
         this.mappingTo = new ArrayList<>(8);
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
-        this.registerBlocked = new int[allocator.registers.length];
+        this.registerBlocked = new int[allocator.getRegisters().length];
     }
 
-    boolean checkEmpty() {
+    protected boolean checkEmpty() {
         assert mappingFrom.size() == 0 && mappingFromOpr.size() == 0 && mappingTo.size() == 0 : "list must be empty before and after processing";
-        for (int i = 0; i < getAllocator().registers.length; i++) {
+        for (int i = 0; i < getAllocator().getRegisters().length; i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
         }
         checkMultipleReads();
@@ -351,7 +359,7 @@ class MoveResolver {
         // one stack slot to another can happen (not allowed by LIRAssembler
         StackSlotValue spillSlot = fromInterval.spillSlot();
         if (spillSlot == null) {
-            spillSlot = getAllocator().frameMapBuilder.allocateSpillSlot(fromInterval.kind());
+            spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
             fromInterval.setSpillSlot(spillSlot);
         }
         spillInterval(spillCandidate, fromInterval, spillSlot);
@@ -420,7 +428,7 @@ class MoveResolver {
         this.insertIdx = newInsertIdx;
     }
 
-    void addMapping(Interval fromInterval, Interval toInterval) {
+    public void addMapping(Interval fromInterval, Interval toInterval) {
 
         if (isIllegal(toInterval.location()) && toInterval.canMaterialize()) {
             if (Debug.isLogEnabled()) {
@@ -446,7 +454,7 @@ class MoveResolver {
         mappingTo.add(toInterval);
     }
 
-    void addMapping(Value fromOpr, Interval toInterval) {
+    public void addMapping(Value fromOpr, Interval toInterval) {
         if (Debug.isLogEnabled()) {
             Debug.log("add move mapping from %s to %s", fromOpr, toInterval);
         }

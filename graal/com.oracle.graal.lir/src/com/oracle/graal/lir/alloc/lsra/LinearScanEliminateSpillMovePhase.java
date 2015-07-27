@@ -42,7 +42,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-class LinearScanEliminateSpillMovePhase extends AllocationPhase {
+public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     private static final IntervalPredicate mustStoreAtDefinition = new LinearScan.IntervalPredicate() {
 
@@ -54,7 +54,7 @@ class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     protected final LinearScan allocator;
 
-    LinearScanEliminateSpillMovePhase(LinearScan allocator) {
+    protected LinearScanEliminateSpillMovePhase(LinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -88,9 +88,9 @@ class LinearScanEliminateSpillMovePhase extends AllocationPhase {
             }
 
             LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
+            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                 try (Indent indent1 = Debug.logAndIndent("Handle %s", block)) {
-                    List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(block);
+                    List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                     int numInst = instructions.size();
 
                     // iterate all instructions of the block.

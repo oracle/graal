@@ -36,20 +36,20 @@ import com.oracle.graal.lir.util.*;
 final class RegStackValueSet extends ValueSet<RegStackValueSet> {
 
     private final FrameMap frameMap;
-    private final IntValueMap registers;
-    private final IntValueMap stack;
+    private final IndexedValueMap registers;
+    private final IndexedValueMap stack;
     private Set<Value> extraStack;
 
     public RegStackValueSet(FrameMap frameMap) {
         this.frameMap = frameMap;
-        registers = new IntValueMap();
-        stack = new IntValueMap();
+        registers = new IndexedValueMap();
+        stack = new IndexedValueMap();
     }
 
     private RegStackValueSet(FrameMap frameMap, RegStackValueSet s) {
         this.frameMap = frameMap;
-        registers = new IntValueMap(s.registers);
-        stack = new IntValueMap(s.stack);
+        registers = new IndexedValueMap(s.registers);
+        stack = new IndexedValueMap(s.stack);
         if (s.extraStack != null) {
             extraStack = new HashSet<>(s.extraStack);
         }

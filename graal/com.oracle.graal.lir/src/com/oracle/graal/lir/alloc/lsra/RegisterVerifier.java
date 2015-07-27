@@ -120,7 +120,7 @@ final class RegisterVerifier {
 
     protected void printState(Interval[] inputState) {
         for (int i = 0; i < stateSize(); i++) {
-            Register reg = allocator.registers[i];
+            Register reg = allocator.getRegisters()[i];
             assert reg.number == i;
             if (inputState[i] != null) {
                 Debug.log(" %6s %4d  --  %s", reg, inputState[i].operandNumber, inputState[i]);
@@ -202,7 +202,7 @@ final class RegisterVerifier {
     }
 
     void processOperations(AbstractBlockBase<?> block, final Interval[] inputState) {
-        List<LIRInstruction> ops = allocator.ir.getLIRforBlock(block);
+        List<LIRInstruction> ops = allocator.getLIR().getLIRforBlock(block);
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
 
             @Override
@@ -242,7 +242,7 @@ final class RegisterVerifier {
             op.visitEachInput(useConsumer);
             // invalidate all caller save registers at calls
             if (op.destroysCallerSavedRegisters()) {
-                for (Register r : allocator.regAllocConfig.getRegisterConfig().getCallerSaveRegisters()) {
+                for (Register r : allocator.getRegisterAllocationConfig().getRegisterConfig().getCallerSaveRegisters()) {
                     statePut(inputState, r.asValue(), null);
                 }
             }
