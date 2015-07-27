@@ -220,7 +220,26 @@ def _graal_gate_runner(args, tasks):
         with Task('CTW:hosted-product', tasks) as t:
             if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose'])
 
-    # Build the other VM flavors
+    with VM('jvmci', 'fastdebug'):
+        with Task('BootstrapWithSystemAssertions:fastdebug', tasks) as t:
+            if t: vm(['-esa', '-XX:-TieredCompilation', '-version'])
+
+    with VM('jvmci', 'fastdebug'):
+        with Task('BootstrapWithSystemAssertionsNoCoop:fastdebug', tasks) as t:
+            if t: vm(['-esa', '-XX:-TieredCompilation', '-XX:-UseCompressedOops', '-version'])
+
+    with VM('jvmci', 'product'):
+        with Task('BootstrapWithGCVerification:product', tasks) as t:
+            if t:
+                out = mx.DuplicateSuppressingStream(['VerifyAfterGC:', 'VerifyBeforeGC:']).write
+                vm(['-XX:-TieredCompilation', '-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-version'], out=out)
+
+    with VM('jvmci', 'product'):
+        with Task('BootstrapWithG1GCVerification:product', tasks) as t:
+            if t:
+                out = mx.DuplicateSuppressingStream(['VerifyAfterGC:', 'VerifyBeforeGC:']).write
+                vm(['-XX:-TieredCompilation', '-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-version'], out=out)
+
     with VM('jvmci', 'fastdebug'):
         with Task('BootstrapEconomyWithSystemAssertions:fastdebug', tasks) as t:
             if t: vm(['-esa', '-XX:-TieredCompilation', '-G:CompilerConfiguration=economy', '-version'])
