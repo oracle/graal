@@ -113,7 +113,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Clears any previously assigned guest language source code from this node.
      */
-    public final void clearSourceSection() {
+    public void clearSourceSection() {
         this.sourceSection = null;
     }
 
