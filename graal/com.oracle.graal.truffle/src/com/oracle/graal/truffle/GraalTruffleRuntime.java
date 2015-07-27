@@ -29,15 +29,12 @@ import java.util.concurrent.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.debug.*;
-
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.debug.*;
 import com.oracle.graal.truffle.unsafe.*;

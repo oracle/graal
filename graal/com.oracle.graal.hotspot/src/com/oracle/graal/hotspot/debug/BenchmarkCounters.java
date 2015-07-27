@@ -29,11 +29,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
-
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.options.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.debug.*;
 

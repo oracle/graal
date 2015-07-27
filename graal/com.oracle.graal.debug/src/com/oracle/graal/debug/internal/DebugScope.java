@@ -26,8 +26,6 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import jdk.internal.jvmci.debug.*;
-
 import com.oracle.graal.debug.*;
 
 public final class DebugScope implements Debug.Scope {

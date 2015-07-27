@@ -24,8 +24,9 @@ package com.oracle.graal.compiler.common.util;
 
 import java.util.*;
 
+import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
 
 /**
  * The {@code Util} class contains a motley collection of utility methods used throughout the

@@ -23,8 +23,8 @@
 package com.oracle.graal.compiler.gen;
 
 import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.*;
-import jdk.internal.jvmci.debug.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 
 /**

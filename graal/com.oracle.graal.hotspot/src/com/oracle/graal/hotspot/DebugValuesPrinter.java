@@ -30,8 +30,8 @@ import java.util.regex.*;
 import java.util.stream.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 
 /**
