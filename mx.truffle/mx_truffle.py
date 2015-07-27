@@ -28,6 +28,10 @@
 
 import mx
 
+from mx_unittest import unittest
+from mx_gate import Task
+import mx_gate
+
 _suite = mx.suite('truffle')
 
 def build(args, vm=None):
@@ -59,6 +63,12 @@ def sldebug(args):
     """run a simple command line debugger for the Simple Language"""
     vmArgs, slArgs = mx.extract_VM_args(args, useDoubleDash=True)
     mx.run_java(vmArgs + ['-cp', mx.classpath("com.oracle.truffle.sl.tools"), "com.oracle.truffle.sl.tools.debug.SLREPLServer"] + slArgs)
+
+def _truffle_gate_runner(args, tasks):
+    with Task('Truffle UnitTests', tasks) as t:
+        if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
+
+mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
 mx.update_commands(_suite, {
     'maven-install-truffle' : [maven_install_truffle, ''],
