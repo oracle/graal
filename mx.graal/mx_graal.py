@@ -33,7 +33,7 @@ import json
 
 import mx
 import mx_jvmci
-from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, isVMSupported, isJVMCIEnabled, get_jvmci_jdk, buildvms
+from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, isJVMCIEnabled, get_jvmci_jdk, buildvms
 import mx_unittest
 from mx_unittest import unittest
 import mx_gate
