@@ -37,7 +37,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 
-public class SSIVerifier {
+public final class SSIVerifier {
 
     public static boolean verify(LIR lir) {
         return new SSIVerifier(lir).verify();

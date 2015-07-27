@@ -140,10 +140,7 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
                             Value fromValue = outgoing.getOutgoingValue(i);
                             assert sameTrace(block, pred) || !isVariable(fromValue) : "Unallocated variable: " + fromValue;
 
-                            if (isStackSlotValue(fromValue)) {
-
-                            } else if (isConstant(fromValue)) {
-                            } else {
+                            if (!isStackSlotValue(fromValue) && !isConstant(fromValue)) {
                                 Interval from = allocator.getOrCreateInterval((AllocatableValue) fromValue);
                                 Interval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
                                 setHint(label, to, from);

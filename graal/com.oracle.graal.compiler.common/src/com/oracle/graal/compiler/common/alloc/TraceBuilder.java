@@ -49,7 +49,7 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
     }
 
     /**
-     * Build traces of sequentially executed blocks
+     * Build traces of sequentially executed blocks.
      */
     public static <T extends AbstractBlockBase<T>> TraceBuilderResult<T> computeTraces(T startBlock, List<T> blocks) {
         return new TraceBuilder<>(blocks).build(startBlock);

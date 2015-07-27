@@ -42,7 +42,7 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
 
     private static final class BlockData {
 
-        /** Mapping from value to index into {@link #incoming} */
+        /** Mapping from value to index into {@link #incoming}. */
         private final ValueMap<Value, Integer> valueIndexMap;
         private final ArrayList<Value> incoming;
         private final ArrayList<Value> outgoing;

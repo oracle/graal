@@ -147,7 +147,7 @@ public final class SSIUtil {
     public static void forEachValuePair(LIR lir, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock, PhiValueVisitor visitor) {
         assert toBlock.getPredecessors().contains(fromBlock) : String.format("%s not in predecessor list: %s", fromBlock, toBlock.getPredecessors());
         assert fromBlock.getSuccessorCount() == 1 || toBlock.getPredecessorCount() == 1 : String.format("Critical Edge? %s has %d successors and %s has %d predecessors", fromBlock,
-                        fromBlock.getSuccessors(), toBlock, toBlock.getPredecessorCount());
+                        fromBlock.getSuccessorCount(), toBlock, toBlock.getPredecessorCount());
         assert fromBlock.getSuccessors().contains(toBlock) : String.format("Predecessor block %s has wrong successor: %s, should contain: %s", fromBlock, fromBlock.getSuccessors(), toBlock);
 
         BlockEndOp blockEnd = outgoing(lir, fromBlock);
