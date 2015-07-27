@@ -33,7 +33,7 @@ import json
 
 import mx
 import mx_jvmci
-from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, isVMSupported, isJVMCIEnabled, get_jvmci_jdk
+from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, isVMSupported, isJVMCIEnabled, get_jvmci_jdk, buildvms
 import mx_unittest
 from mx_unittest import unittest
 import mx_gate
@@ -211,15 +211,30 @@ def ctw(args):
 
 def _graal_gate_runner(args, tasks):
 
-    # Run unit tests on server-hosted-jvmci with -G:-SSA_LIR
+    # Build server-hosted-jvmci now so we can run the unit tests
+    with Task('BuildHotSpotGraalHosted: product', tasks) as t:
+        if t: buildvms(['--vms', 'server', '--builds', 'product'])
+
+    # Run graal unit tests on server-hosted-jvmci
     with VM('server', 'product'):
-        with Task('UnitTestsNonSSA:hosted-product', tasks) as t:
-            if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:-SSA_LIR'])
+        with Task('Graal UnitTests: hosted-product', tasks) as t:
+            if t: unittest(['--suite', 'graal', '--enable-timing', '--verbose', '--fail-fast'])
+
+    # Run graal unit tests on server-hosted-jvmci with -G:-SSA_LIR
+    with VM('server', 'product'):
+        with Task('Graal UnitTestsNonSSA: hosted-product', tasks) as t:
+            if t: unittest(['--suite', 'graal', '--enable-timing', '--verbose', '--fail-fast', '-G:-SSA_LIR'])
+
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
         with Task('CTW:hosted-product', tasks) as t:
             if t: ctw(['--ctwopts', '-Inline +ExitVMOnException', '-esa', '-G:+CompileTheWorldMultiThreaded', '-G:-InlineDuringParsing', '-G:-CompileTheWorldVerbose'])
 
+    # Build the jvmci VMs so we can run the other tests
+    with Task('BuildHotSpotGraalOthers: fastdebug,product', tasks) as t:
+        if t: buildvms(['--vms', 'jvmci', '--builds', 'fastdebug,product'])
+
+    # bootstrap tests
     with VM('jvmci', 'fastdebug'):
         with Task('BootstrapWithSystemAssertions:fastdebug', tasks) as t:
             if t: vm(['-esa', '-XX:-TieredCompilation', '-version'])
@@ -263,6 +278,7 @@ def _graal_gate_runner(args, tasks):
         with Task('BootstrapWithImmutableCode:product', tasks) as t:
             if t: vm(['-XX:-TieredCompilation', '-G:+ImmutableCode', '-G:+VerifyPhases', '-esa', '-version'])
 
+    # run dacapo sanitychecks
     for vmbuild in ['fastdebug', 'product']:
         for test in sanitycheck.getDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild) + sanitycheck.getScalaDacapos(level=sanitycheck.SanityCheckLevel.Gate, gateBuildLevel=vmbuild):
             with Task(str(test) + ':' + vmbuild, tasks) as t:
@@ -273,20 +289,6 @@ def _graal_gate_runner(args, tasks):
     with VM('jvmci', 'product'):
         with Task('DaCapo_pmd:BatchMode:product', tasks) as t:
             if t: dacapo(['-Xbatch', 'pmd'])
-
-    # Prevent JVMCI modifications from breaking the standard builds
-    if args.buildNonJVMCI:
-        for vmbuild in ['product', 'fastdebug']:
-            for theVm in ['client', 'server']:
-                if not isVMSupported(theVm):
-                    mx.log('The ' + theVm + ' VM is not supported on this platform')
-                    continue
-                with VM(theVm, vmbuild):
-                    with Task('DaCapo_pmd:' + theVm + ':' + vmbuild, tasks) as t:
-                        if t: dacapo(['pmd'])
-
-                    with Task('UnitTests:' + theVm + ':' + vmbuild, tasks) as t:
-                        if t: unittest(['-XX:CompileCommand=exclude,*::run*', 'graal.api', 'java.test'])
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 
