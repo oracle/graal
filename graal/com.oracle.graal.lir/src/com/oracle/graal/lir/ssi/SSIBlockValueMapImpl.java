@@ -157,6 +157,15 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
     // implementation
 
     private void accessRecursive(Value operand, AbstractBlockBase<?> defBlock, AbstractBlockBase<?> block) {
+        Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
+        worklist.add(block);
+
+        while (!worklist.isEmpty()) {
+            accessRecursive(operand, defBlock, worklist.pollLast(), worklist);
+        }
+    }
+
+    private void accessRecursive(Value operand, AbstractBlockBase<?> defBlock, AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
         try (Indent indent = Debug.logAndIndent("get operand %s in block %s", operand, block)) {
             if (block.equals(defBlock)) {
                 Debug.log("found definition!");
@@ -181,7 +190,7 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
             data.setIncoming(idx, operand);
 
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                accessRecursive(operand, defBlock, pred);
+                worklist.addLast(pred);
             }
         }
     }
