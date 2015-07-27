@@ -6,7 +6,7 @@ suite = {
     "suites": [
             {
                "name" : "jvmci",
-               "version" : "f150f5e00ccde39b8c67a1b70f87eb51b0760eed",
+               "version" : "2c352e8d76ecd626a83cfb0960328e16226f1475",
                "urls" : [
                     {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -57,12 +57,6 @@ suite = {
       "path" : "lib/jmh-runner-1.4.2.jar",
       "sha1" : "f44bffaf237305512002303a306fc5ce3fa63f76",
       "urls" : ["http://lafo.ssw.uni-linz.ac.at/jmh/jmh-runner-1.4.2.jar"],
-    },
-
-    "BATIK" : {
-      "path" : "lib/batik-all-1.7.jar",
-      "sha1" : "122b87ca88e41a415cf8b523fd3d03b4325134a3",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/graal-external-deps/batik-all-1.7.jar"],
     },
   },
 
