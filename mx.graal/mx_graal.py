@@ -1340,10 +1340,9 @@ def _basic_gate_body(args, tasks):
         with Task('UnitTestsNonSSA:hosted-product', tasks) as t:
             if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:-SSA_LIR'])
     # Run unit tests on server-hosted-jvmci with TraceRA
-    if platform.processor() != 'sparc':
-        with VM('server', 'product'):
-            with Task('UnitTestsTraceRA:hosted-product', tasks) as t:
-                if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:+TraceRA'])
+    with VM('server', 'product'):
+        with Task('UnitTestsTraceRA:hosted-product', tasks) as t:
+            if t: unittest(['--enable-timing', '--verbose', '--fail-fast', '-G:+TraceRA'])
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
         with Task('CTW:hosted-product', tasks) as t:
