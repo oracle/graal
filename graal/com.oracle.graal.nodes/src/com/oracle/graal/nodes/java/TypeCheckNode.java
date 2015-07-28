@@ -47,6 +47,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
         this.type = type;
         assert type != null;
         assert type.isConcrete() || type.isArray();
+        assert ((ObjectStamp) object.stamp()).nonNull();
     }
 
     public static LogicNode create(ResolvedJavaType type, ValueNode object) {
@@ -71,7 +72,6 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
             return this;
         }
         ObjectStamp objectStamp = (ObjectStamp) forValue.stamp();
-        assert objectStamp.nonNull();
 
         ResolvedJavaType stampType = objectStamp.type();
         if (stampType != null) {
