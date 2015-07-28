@@ -114,6 +114,10 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
     @Override
     protected void buildIntervals() {
         super.buildIntervals();
+        postBuildIntervals();
+    }
+
+    protected void postBuildIntervals() {
         // fix spill state for phi/sigma intervals
         for (Interval interval : allocator.intervals()) {
             if (interval != null && interval.spillState().equals(SpillState.NoDefinitionFound) && interval.spillDefinitionPos() != -1) {

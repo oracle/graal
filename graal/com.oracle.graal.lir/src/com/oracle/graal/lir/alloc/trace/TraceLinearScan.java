@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceLinearScan.Options.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -41,6 +43,13 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 
 public final class TraceLinearScan extends LinearScan {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRAsimpleLifetimeAnalysis = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     private final TraceBuilderResult<?> traceBuilderResult;
 
@@ -96,6 +105,9 @@ public final class TraceLinearScan extends LinearScan {
 
     @Override
     protected LinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
+        if (TraceRAsimpleLifetimeAnalysis.getValue()) {
+            return new TraceSimpleLifetimeAnalysisPhase(this, traceBuilderResult);
+        }
         return new TraceLinearScanLifetimeAnalysisPhase(this, traceBuilderResult);
     }
 
