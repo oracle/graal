@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.test;
 
 import java.io.*;
+import java.net.*;
 import java.nio.charset.*;
 import java.nio.file.*;
 import java.nio.file.attribute.*;
@@ -114,17 +115,21 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
             throw new InitializationError(String.format("@%s annotation required on class '%s' to run with '%s'.", SLTestSuite.class.getSimpleName(), c.getName(), SLTestRunner.class.getSimpleName()));
         }
 
-        String[] pathes = suite.value();
+        String[] paths = suite.value();
 
-        Path root = null;
-        for (String path : pathes) {
-            root = FileSystems.getDefault().getPath(path);
-            if (Files.exists(root)) {
-                break;
+        Path root = getRootViaResourceURL(c, paths);
+
+        if (root == null) {
+            for (String path : paths) {
+                Path candidate = FileSystems.getDefault().getPath(path);
+                if (Files.exists(candidate)) {
+                    root = candidate;
+                    break;
+                }
             }
         }
-        if (root == null && pathes.length > 0) {
-            throw new FileNotFoundException(pathes[0]);
+        if (root == null && paths.length > 0) {
+            throw new FileNotFoundException(paths[0]);
         }
 
         final Path rootPath = root;
@@ -155,6 +160,27 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
             }
         });
         return foundCases;
+    }
+
+    public static Path getRootViaResourceURL(final Class<?> c, String[] paths) {
+        URL url = c.getResource(c.getSimpleName() + ".class");
+        if (url != null) {
+            String externalForm = url.toExternalForm();
+            if (externalForm.startsWith("file:")) {
+                char sep = File.separatorChar;
+                String suffix = sep + "bin" + sep + c.getName().replace('.', sep) + ".class";
+                if (externalForm.endsWith(suffix)) {
+                    String base = externalForm.substring("file:".length(), externalForm.length() - suffix.length());
+                    for (String path : paths) {
+                        String candidate = base + sep + path;
+                        if (new File(candidate).exists()) {
+                            return FileSystems.getDefault().getPath(candidate);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static String readAllLines(Path file) throws IOException {

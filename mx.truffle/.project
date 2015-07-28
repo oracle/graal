@@ -3,7 +3,7 @@
 	<name>mx.truffle</name>
 	<comment></comment>
 	<projects>
-		<project>mxtool</project>
+		<project>mxtool2</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

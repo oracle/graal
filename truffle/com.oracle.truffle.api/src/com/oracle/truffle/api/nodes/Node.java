@@ -78,7 +78,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @param section the object representing a section in guest language source code
      */
-    public final void assignSourceSection(SourceSection section) {
+    public void assignSourceSection(SourceSection section) {
         if (sourceSection != null) {
             // Patch this test during the transition to constructor-based
             // source attribution, which would otherwise trigger this
@@ -113,7 +113,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Clears any previously assigned guest language source code from this node.
      */
-    public final void clearSourceSection() {
+    public void clearSourceSection() {
         this.sourceSection = null;
     }
 
@@ -122,7 +122,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @return the source code represented by this Node
      */
-    public final SourceSection getSourceSection() {
+    public SourceSection getSourceSection() {
         return sourceSection;
     }
 
@@ -134,7 +134,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @return an approximation of the source code represented by this Node
      */
     @ExplodeLoop
-    public final SourceSection getEncapsulatingSourceSection() {
+    public SourceSection getEncapsulatingSourceSection() {
         Node current = this;
         while (current != null) {
             if (current.sourceSection != null) {

@@ -38,8 +38,6 @@ import com.oracle.truffle.dsl.processor.parser.*;
 /**
  * THIS IS NOT PUBLIC API.
  */
-// @SupportedAnnotationTypes({"com.oracle.truffle.codegen.Operation",
-// "com.oracle.truffle.codegen.TypeLattice"})
 public class TruffleProcessor extends AbstractProcessor implements ProcessCallback {
 
     private List<AnnotationProcessor<?>> generators;
