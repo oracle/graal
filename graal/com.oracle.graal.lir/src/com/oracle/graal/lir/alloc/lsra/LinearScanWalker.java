@@ -509,7 +509,7 @@ class LinearScanWalker extends IntervalWalker {
 
                 try (Indent indent2 = Debug.logAndIndent("spilling entire interval because split pos is at beginning of interval (use positions: %d)", interval.usePosList().size())) {
 
-                    assert interval.firstUsage(RegisterPriority.ShouldHaveRegister) > currentPosition : String.format("interval %s must not have use position before currentPosition %d", interval,
+                    assert interval.firstUsage(RegisterPriority.MustHaveRegister) > currentPosition : String.format("interval %s must not have use position before currentPosition %d", interval,
                                     currentPosition);
 
                     allocator.assignSpillSlot(interval);
