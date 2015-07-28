@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.util.*;
  * A graph that contains at least one distinguished node : the {@link #start() start} node. This
  * node is the start of the control flow of the graph.
  */
-public class StructuredGraph extends Graph implements JavaMethodContex {
+public class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of

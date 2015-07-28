@@ -113,7 +113,7 @@ public class ForeignCallStub extends Stub {
         return null;
     }
 
-    private class DebugScopeContext implements JavaMethod, JavaMethodContex {
+    private class DebugScopeContext implements JavaMethod, JavaMethodContext {
         public JavaMethod asJavaMethod() {
             return this;
         }
