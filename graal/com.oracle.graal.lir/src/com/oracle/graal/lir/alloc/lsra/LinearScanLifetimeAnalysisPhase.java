@@ -84,7 +84,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Numbers all instructions in all blocks. The numbering follows the
      * {@linkplain ComputeBlockOrder linear scan order}.
      */
-    void numberInstructions() {
+    protected void numberInstructions() {
 
         allocator.initIntervals();
 
@@ -450,7 +450,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
+    protected void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, LIRKind kind) {
         if (!allocator.isProcessed(operand)) {
             return;
         }
@@ -470,7 +470,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
+    protected void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, LIRKind kind) {
         if (!allocator.isProcessed(operand)) {
             return;
         }
@@ -489,7 +489,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
-    void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, LIRKind kind) {
+    protected void addDef(AllocatableValue operand, LIRInstruction op, RegisterPriority registerPriority, LIRKind kind) {
         if (!allocator.isProcessed(operand)) {
             return;
         }
@@ -654,7 +654,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Determines the priority which with an instruction's input operand will be allocated a
      * register.
      */
-    private static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
+    protected static RegisterPriority registerPriorityOfInputOperand(EnumSet<OperandFlag> flags) {
         if (flags.contains(OperandFlag.STACK)) {
             return RegisterPriority.ShouldHaveRegister;
         }
@@ -811,7 +811,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      *         reload-locations in case the interval of this instruction is spilled. Currently this
      *         can only be a {@link JavaConstant}.
      */
-    static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    protected static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
             if (move.getInput() instanceof JavaConstant) {

@@ -110,14 +110,14 @@ public final class TraceLinearScan extends LinearScan {
     }
 
     @Override
-    protected void printIntervals(String label) {
+    public void printIntervals(String label) {
         if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
             super.printIntervals(label);
         }
     }
 
     @Override
-    protected void printLir(String label, boolean hirValid) {
+    public void printLir(String label, boolean hirValid) {
         if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
             Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), label);
         }

@@ -256,7 +256,7 @@ public class LinearScan {
      * Gets an object describing the attributes of a given register according to this register
      * configuration.
      */
-    RegisterAttributes attributes(Register reg) {
+    public RegisterAttributes attributes(Register reg) {
         return registerAttributes[reg.number];
     }
 
@@ -442,7 +442,7 @@ public class LinearScan {
         abstract boolean apply(Interval i);
     }
 
-    boolean isProcessed(Value operand) {
+    public boolean isProcessed(Value operand) {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
@@ -680,7 +680,7 @@ public class LinearScan {
         return new LinearScanAssignLocationsPhase(this);
     }
 
-    protected void printIntervals(String label) {
+    public void printIntervals(String label) {
         if (Debug.isLogEnabled()) {
             try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
                 for (Interval interval : intervals) {
@@ -700,7 +700,7 @@ public class LinearScan {
         Debug.dump(Arrays.copyOf(intervals, intervalsSize), label);
     }
 
-    protected void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
+    public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {
         Debug.dump(ir, label);
     }
 

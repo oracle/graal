@@ -568,7 +568,7 @@ public final class Interval {
         return kind;
     }
 
-    void setKind(LIRKind kind) {
+    public void setKind(LIRKind kind) {
         assert isRegister(operand) || this.kind().equals(LIRKind.Illegal) || this.kind().equals(kind) : "overwriting existing type";
         this.kind = kind;
     }
@@ -738,7 +738,7 @@ public final class Interval {
     /**
      * Sets the value which is used for re-materialization.
      */
-    void addMaterializationValue(JavaConstant value) {
+    public void addMaterializationValue(JavaConstant value) {
         if (numMaterializationValuesAdded == 0) {
             materializedValue = value;
         } else {
@@ -1025,8 +1025,8 @@ public final class Interval {
         return prev;
     }
 
-    void addUsePos(int pos, RegisterPriority registerPriority) {
-        assert covers(pos, LIRInstruction.OperandMode.USE) : "use position not covered by live range";
+    public void addUsePos(int pos, RegisterPriority registerPriority) {
+        assert covers(pos, LIRInstruction.OperandMode.USE) : String.format("use position %d not covered by live range of interval %s", pos, this);
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
