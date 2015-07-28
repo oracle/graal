@@ -41,7 +41,7 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
     @Def({REG, HINT}) protected Value result;
     @Use({REG}) protected Value input;
     @Temp({REG}) protected Value tempIndex;
-    @Use({STACK}) protected StackSlotValue tmpSlot;
+    @Use({STACK, UNINITIALIZED}) protected StackSlotValue tmpSlot;
 
     public SPARCByteSwapOp(LIRGeneratorTool tool, Value result, Value input) {
         super(TYPE, SIZE);
