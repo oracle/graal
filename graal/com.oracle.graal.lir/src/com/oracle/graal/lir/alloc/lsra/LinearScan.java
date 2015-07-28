@@ -24,6 +24,7 @@ package com.oracle.graal.lir.alloc.lsra;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
 import static jdk.internal.jvmci.code.CodeUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
@@ -31,13 +32,13 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -58,7 +59,7 @@ public class LinearScan {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptimizeSpillPosition = new OptionValue<>(true);
+        public static final OptionValue<Boolean> LSRAOptimizeSpillPosition = new NestedBooleanOptionValue(LIROptimization, true);
         // @formatter:on
     }
 
