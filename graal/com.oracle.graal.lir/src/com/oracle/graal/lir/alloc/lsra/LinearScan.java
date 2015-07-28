@@ -59,7 +59,7 @@ public class LinearScan {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptimizeSpillPosition = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final OptionValue<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionValue(LIROptimization, true);
         // @formatter:on
     }
 
@@ -630,7 +630,7 @@ public class LinearScan {
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-                if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
+                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
                 }
                 createResolveDataFlowPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);

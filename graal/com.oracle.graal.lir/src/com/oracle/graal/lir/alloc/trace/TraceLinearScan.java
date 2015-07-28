@@ -67,7 +67,7 @@ public final class TraceLinearScan extends LinearScan {
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-                if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
+                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
                 }
                 // resolve intra-trace data-flow

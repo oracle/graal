@@ -594,7 +594,7 @@ class LinearScanWalker extends IntervalWalker {
                      * The loop depth of the spilling position is higher then the loop depth at the
                      * definition of the interval. Move write to memory out of loop.
                      */
-                    if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
+                    if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                         // find best spill position in dominator the tree
                         interval.setSpillState(SpillState.SpillInDominator);
                     } else {
@@ -612,7 +612,7 @@ class LinearScanWalker extends IntervalWalker {
             }
 
             case OneSpillStore: {
-                if (LinearScan.Options.LSRAOptimizeSpillPosition.getValue()) {
+                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                     // the interval is spilled more then once
                     interval.setSpillState(SpillState.SpillInDominator);
                 } else {
