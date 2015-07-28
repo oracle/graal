@@ -272,6 +272,11 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
         with Task('DaCapo_pmd:BatchMode:product', tasks) as t:
             if t: dacapo(['-Xbatch', 'pmd'])
 
+    # ensure -Xcomp still works
+    with VM('jvmci', 'product'):
+        with Task('XCompMode:product', tasks) as t:
+            if t: vm(['-Xcomp', '-version'])
+
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', []),
