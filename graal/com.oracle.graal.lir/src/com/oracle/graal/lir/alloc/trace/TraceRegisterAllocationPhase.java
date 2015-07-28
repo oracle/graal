@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -46,10 +47,14 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
         // @formatter:off
         @Option(help = "Use inter-trace register hints.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRAuseInterTraceHints = new OptionValue<>(true);
+        @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRAtrivialBlockAllocator = new OptionValue<>(true);
         // @formatter:on
     }
 
     static final int TRACE_DUMP_LEVEL = 3;
+    private static final DebugMetric trivialTracesMetric = Debug.metric("TraceRA[trivialTraces]");
+    private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
 
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
@@ -64,9 +69,17 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
         int traceNumber = 0;
         for (List<B> trace : resultTraces.getTraces()) {
             try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", traceNumber, trace); Scope s = Debug.scope("AllocateTrace", trace)) {
+                tracesMetric.increment();
+                if (trivialTracesMetric.isEnabled() && isTrivialTrace(lir, trace)) {
+                    trivialTracesMetric.increment();
+                }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace" + traceNumber + ": " + trace);
-                TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces);
-                allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                if (TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
+                    new TraceTrivialAllocator(resultTraces).apply(target, lirGenRes, codeEmittingOrder, trace, new AllocationContext(spillMoveFactory, registerAllocationConfig), false);
+                } else {
+                    TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces);
+                    allocator.allocate(target, lirGenRes, codeEmittingOrder, linearScanOrder, spillMoveFactory, registerAllocationConfig);
+                }
                 Debug.dump(TRACE_DUMP_LEVEL, trace, "After Trace" + traceNumber + ": " + trace);
                 traceNumber++;
             } catch (Throwable e) {
@@ -93,6 +106,10 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
             }
             SSIUtil.removeOutgoing(lir, toBlock);
         }
+    }
+
+    static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
+        return trace.size() == 1 && lir.getLIRforBlock(trace.iterator().next()).size() == 2;
     }
 
     /**
