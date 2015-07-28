@@ -209,21 +209,43 @@ def ctw(args):
 
     vm(vmargs)
 
-def _graal_gate_runner(args, tasks):
+class UnitTestRun:
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+
+    def run(self, suites, tasks):
+        for suite in suites:
+            with Task(self.name + ': hosted-product ' + suite, tasks) as t:
+                if t: unittest(['--suite', suite, '--enable-timing', '--verbose', '--fail-fast'] + self.args)
+
+class BootstrapTest:
+    def __init__(self, name, vmbuild, args, suppress=None):
+        self.name = name
+        self.vmbuild = vmbuild
+        self.args = args
+        self.suppress = suppress
+
+    def run(self, tasks):
+        with VM('jvmci', self.vmbuild):
+            with Task(self.name + ':' + self.vmbuild, tasks) as t:
+                if t:
+                    if self.suppress:
+                        out = mx.DuplicateSuppressingStream(self.suppress).write
+                    else:
+                        out = None
+                    vm(self.args + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
+
+def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
 
     # Build server-hosted-jvmci now so we can run the unit tests
     with Task('BuildHotSpotGraalHosted: product', tasks) as t:
         if t: buildvms(['--vms', 'server', '--builds', 'product'])
 
-    # Run graal unit tests on server-hosted-jvmci
+    # Run unit tests on server-hosted-jvmci
     with VM('server', 'product'):
-        with Task('Graal UnitTests: hosted-product', tasks) as t:
-            if t: unittest(['--suite', 'graal', '--enable-timing', '--verbose', '--fail-fast'])
-
-    # Run graal unit tests on server-hosted-jvmci with -G:-SSA_LIR
-    with VM('server', 'product'):
-        with Task('Graal UnitTestsNonSSA: hosted-product', tasks) as t:
-            if t: unittest(['--suite', 'graal', '--enable-timing', '--verbose', '--fail-fast', '-G:-SSA_LIR'])
+        for r in unit_test_runs:
+            r.run(suites, tasks)
 
     # Run ctw against rt.jar on server-hosted-jvmci
     with VM('server', 'product'):
@@ -235,48 +257,8 @@ def _graal_gate_runner(args, tasks):
         if t: buildvms(['--vms', 'jvmci', '--builds', 'fastdebug,product'])
 
     # bootstrap tests
-    with VM('jvmci', 'fastdebug'):
-        with Task('BootstrapWithSystemAssertions:fastdebug', tasks) as t:
-            if t: vm(['-esa', '-XX:-TieredCompilation', '-version'])
-
-    with VM('jvmci', 'fastdebug'):
-        with Task('BootstrapWithSystemAssertionsNoCoop:fastdebug', tasks) as t:
-            if t: vm(['-esa', '-XX:-TieredCompilation', '-XX:-UseCompressedOops', '-version'])
-
-    with VM('jvmci', 'product'):
-        with Task('BootstrapWithGCVerification:product', tasks) as t:
-            if t:
-                out = mx.DuplicateSuppressingStream(['VerifyAfterGC:', 'VerifyBeforeGC:']).write
-                vm(['-XX:-TieredCompilation', '-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-version'], out=out)
-
-    with VM('jvmci', 'product'):
-        with Task('BootstrapWithG1GCVerification:product', tasks) as t:
-            if t:
-                out = mx.DuplicateSuppressingStream(['VerifyAfterGC:', 'VerifyBeforeGC:']).write
-                vm(['-XX:-TieredCompilation', '-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-version'], out=out)
-
-    with VM('jvmci', 'fastdebug'):
-        with Task('BootstrapEconomyWithSystemAssertions:fastdebug', tasks) as t:
-            if t: vm(['-esa', '-XX:-TieredCompilation', '-G:CompilerConfiguration=economy', '-version'])
-
-    with VM('jvmci', 'fastdebug'):
-        with Task('BootstrapWithExceptionEdges:fastdebug', tasks) as t:
-            if t: vm(['-esa', '-XX:-TieredCompilation', '-G:+StressInvokeWithExceptionNode', '-version'])
-
-    registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if platform.processor() == 'sparc' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
-    with VM('jvmci', 'product'):
-        with Task('BootstrapWithRegisterPressure:product', tasks) as t:
-            if t:
-                vm(['-XX:-TieredCompilation', '-G:RegisterPressure=' + registers, '-esa', '-version'])
-
-    with VM('jvmci', 'product'):
-        with Task('BootstrapNonSSAWithRegisterPressure:product', tasks) as t:
-            if t:
-                vm(['-XX:-TieredCompilation', '-G:-SSA_LIR', '-G:RegisterPressure=' + registers, '-esa', '-version'])
-
-    with VM('jvmci', 'product'):
-        with Task('BootstrapWithImmutableCode:product', tasks) as t:
-            if t: vm(['-XX:-TieredCompilation', '-G:+ImmutableCode', '-G:+VerifyPhases', '-esa', '-version'])
+    for b in bootstrap_tests:
+        b.run(tasks)
 
     # run dacapo sanitychecks
     for vmbuild in ['fastdebug', 'product']:
@@ -289,6 +271,29 @@ def _graal_gate_runner(args, tasks):
     with VM('jvmci', 'product'):
         with Task('DaCapo_pmd:BatchMode:product', tasks) as t:
             if t: dacapo(['-Xbatch', 'pmd'])
+
+
+graal_unit_test_runs = [
+    UnitTestRun('UnitTests', []),
+    UnitTestRun('UnitTestsNonSSA', ['-G:-SSA_LIR']),
+]
+
+_registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if platform.processor() == 'sparc' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
+
+graal_bootstrap_tests = [
+    BootstrapTest('BootstrapWithSystemAssertions', 'fastdebug', ['-esa']),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops']),
+    BootstrapTest('BootstrapWithGCVecification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC'], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVecification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC'], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-G:CompilerConfiguration=economy']),
+    BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode']),
+    BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers]),
+    BootstrapTest('BootstrapNonSSAWithRegisterPressure', 'product', ['-esa', '-G:-SSA_LIR', '-G:RegisterPressure=' + _registers]),
+    BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-G:+ImmutableCode', '-G:+VerifyPhases']),
+]
+
+def _graal_gate_runner(args, tasks):
+    compiler_gate_runner(['graal'], graal_unit_test_runs, graal_bootstrap_tests, tasks)
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
 
