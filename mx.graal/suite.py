@@ -8,7 +8,7 @@ suite = {
                "name" : "jvmci",
                "version" : "528eeeca785ef0ed43138966bc0a301707fbf5d7",
                "urls" : [
-                    {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
+                    {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/graal-jvmci-8", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
@@ -16,7 +16,7 @@ suite = {
                "name" : "truffle",
                "version" : "7be57462fa848708ea0d942d11c874668aa3866c",
                "urls" : [
-                    {"url" : "https://lafo.ssw.uni-linz.ac.at/hg/truffle-mx2", "kind" : "hg"},
+                    {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
