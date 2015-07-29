@@ -39,21 +39,6 @@ def build(args, vm=None):
     opts2 = mx.build(['--source', '1.7'] + args)
     assert len(opts2.remainder) == 0
 
-def maven_install_truffle(args):
-    """install Truffle into your local Maven repository"""
-    for name in mx._dists:
-        dist = mx._dists[name]
-        if dist.isProcessorDistribution:
-            continue
-        mx.archive(["@" + name])
-        path = dist.path
-        slash = path.rfind('/')
-        dot = path.rfind('.')
-        if dot <= slash:
-            mx.abort('Dot should be after / in ' + path)
-        artifactId = path[slash + 1: dot]
-        mx.run(['mvn', 'install:install-file', '-DgroupId=com.oracle.' + dist.suite.name, '-DartifactId=' + artifactId, '-Dversion=' + mx.suite('truffle').release_version('SNAPSHOT'), '-Dpackaging=jar', '-Dfile=' + path])
-
 def sl(args):
     """run an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
@@ -71,7 +56,6 @@ def _truffle_gate_runner(args, tasks):
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
 mx.update_commands(_suite, {
-    'maven-install-truffle' : [maven_install_truffle, ''],
     'sl' : [sl, '[SL args|@VM options]'],
     'sldebug' : [sldebug, '[SL args|@VM options]'],
 })
