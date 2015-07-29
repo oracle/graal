@@ -51,7 +51,8 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
         STACK2REG("Reg", "Stack"),
         CONST2REG("Reg", "Const"),
         REG2STACK("Stack", "Reg"),
-        CONST2STACK("Stack", "Const");
+        CONST2STACK("Stack", "Const"),
+        STACK2STACK("Stack", "Stack");
 
         private final String name;
 
@@ -83,6 +84,9 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
                 }
                 if (isConstant(src)) {
                     return CONST2STACK;
+                }
+                if (isStackSlot(src)) {
+                    return STACK2STACK;
                 }
             }
             throw JVMCIError.shouldNotReachHere(String.format("Unrecognized Move: %s dst=%s, src=%s", move, dst, src));

@@ -30,11 +30,10 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
-
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.util.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -292,7 +291,7 @@ public final class Interval {
     /**
      * Constants used in optimization of spilling of an interval.
      */
-    enum SpillState {
+    public enum SpillState {
         /**
          * Starting state of calculation: no definition found yet.
          */
@@ -569,7 +568,7 @@ public final class Interval {
         return kind;
     }
 
-    void setKind(LIRKind kind) {
+    public void setKind(LIRKind kind) {
         assert isRegister(operand) || this.kind().equals(LIRKind.Illegal) || this.kind().equals(kind) : "overwriting existing type";
         this.kind = kind;
     }
@@ -578,7 +577,7 @@ public final class Interval {
         return first;
     }
 
-    int from() {
+    public int from() {
         return first.from;
     }
 
@@ -594,11 +593,11 @@ public final class Interval {
         return usePosList.size();
     }
 
-    void setLocationHint(Interval interval) {
+    public void setLocationHint(Interval interval) {
         locationHint = interval;
     }
 
-    boolean isSplitParent() {
+    public boolean isSplitParent() {
         return splitParent == this;
     }
 
@@ -647,22 +646,22 @@ public final class Interval {
         return splitParent().spillState;
     }
 
-    int spillDefinitionPos() {
+    public int spillDefinitionPos() {
         return splitParent().spillDefinitionPos;
     }
 
-    void setSpillState(SpillState state) {
+    public void setSpillState(SpillState state) {
         assert state.ordinal() >= spillState().ordinal() : "state cannot decrease";
         splitParent().spillState = state;
     }
 
-    void setSpillDefinitionPos(int pos) {
-        assert spillState() == SpillState.SpillInDominator || spillDefinitionPos() == -1 : "cannot set the position twice";
+    public void setSpillDefinitionPos(int pos) {
+        assert spillState() == SpillState.SpillInDominator || spillState() == SpillState.NoDefinitionFound || spillDefinitionPos() == -1 : "cannot set the position twice";
         splitParent().spillDefinitionPos = pos;
     }
 
     // returns true if this interval has a shadow copy on the stack that is always correct
-    boolean alwaysInMemory() {
+    public boolean alwaysInMemory() {
         return (splitParent().spillState == SpillState.SpillInDominator || splitParent().spillState == SpillState.StoreAtDefinition || splitParent().spillState == SpillState.StartInMemory) &&
                         !canMaterialize();
     }
@@ -739,7 +738,7 @@ public final class Interval {
     /**
      * Sets the value which is used for re-materialization.
      */
-    void addMaterializationValue(JavaConstant value) {
+    public void addMaterializationValue(JavaConstant value) {
         if (numMaterializationValuesAdded == 0) {
             materializedValue = value;
         } else {
@@ -1013,7 +1012,7 @@ public final class Interval {
     int previousUsage(RegisterPriority minRegisterPriority, int from) {
         assert isVariable(operand) : "cannot access use positions for fixed intervals";
 
-        int prev = 0;
+        int prev = -1;
         for (int i = usePosList.size() - 1; i >= 0; --i) {
             int usePos = usePosList.usePos(i);
             if (usePos > from) {
@@ -1026,8 +1025,8 @@ public final class Interval {
         return prev;
     }
 
-    void addUsePos(int pos, RegisterPriority registerPriority) {
-        assert covers(pos, LIRInstruction.OperandMode.USE) : "use position not covered by live range";
+    public void addUsePos(int pos, RegisterPriority registerPriority) {
+        assert covers(pos, LIRInstruction.OperandMode.USE) : String.format("use position %d not covered by live range of interval %s", pos, this);
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
@@ -1052,7 +1051,7 @@ public final class Interval {
         }
     }
 
-    void addRange(int from, int to) {
+    public void addRange(int from, int to) {
         assert from < to : "invalid range";
         assert first() == Range.EndMarker || to < first().next.from : "not inserting at begin of interval";
         assert from <= first().to : "not inserting at begin of interval";
@@ -1283,7 +1282,7 @@ public final class Interval {
         buf.append("} uses{");
 
         // print use positions
-        int prev = 0;
+        int prev = -1;
         for (int i = usePosList.size() - 1; i >= 0; --i) {
             assert prev < usePosList.usePos(i) : "use positions not sorted";
             if (i != usePosList.size() - 1) {

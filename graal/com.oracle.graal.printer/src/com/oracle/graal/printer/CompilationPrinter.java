@@ -26,10 +26,10 @@ import java.io.*;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.meta.*;
 
-import com.oracle.graal.lir.dfa.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.util.*;
 
 /**
  * Utility for printing compilation related data structures at various compilation phases. The
@@ -114,7 +114,7 @@ public class CompilationPrinter implements Closeable {
     /**
      * Formats given debug info as a multi line string.
      */
-    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, ValueSet liveBasePointers, RegisterSaveLayout calleeSaveInfo) {
+    protected String debugInfoToString(BytecodePosition codePos, ReferenceMap refMap, IndexedValueMap liveBasePointers, RegisterSaveLayout calleeSaveInfo) {
         StringBuilder sb = new StringBuilder();
         if (refMap != null) {
             sb.append("reference-map: ");

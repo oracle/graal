@@ -23,8 +23,6 @@
 package com.oracle.graal.debug.internal;
 
 import static com.oracle.graal.debug.DebugCloseable.*;
-import jdk.internal.jvmci.debug.*;
-
 import com.oracle.graal.debug.*;
 
 public final class MemUseTrackerImpl extends AccumulatedDebugValue implements DebugMemUseTracker {

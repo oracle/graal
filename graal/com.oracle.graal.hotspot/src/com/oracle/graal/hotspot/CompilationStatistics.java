@@ -30,9 +30,9 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 
+import com.oracle.graal.debug.*;
 import com.sun.management.*;
 
 @SuppressWarnings("unused")

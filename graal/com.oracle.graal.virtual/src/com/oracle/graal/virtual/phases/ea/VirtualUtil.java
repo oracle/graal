@@ -27,8 +27,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import java.util.*;
 
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
-
 import com.oracle.graal.debug.*;
 
 import jdk.internal.jvmci.meta.*;
@@ -109,6 +107,7 @@ public final class VirtualUtil {
         }
         if (!success) {
             TTY.println();
+            Debug.dump(graph, "assertNonReachable");
         }
         return success;
     }

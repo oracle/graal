@@ -35,13 +35,6 @@ import com.oracle.graal.replacements.nodes.*;
 public @interface Snippet {
 
     /**
-     * Specifies whether all FrameStates within this snippet should always be removed. If this is
-     * false, FrameStates are only removed if there are no side-effecting instructions in the
-     * snippet.
-     */
-    boolean removeAllFrameStates() default false;
-
-    /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during
      * snippet template {@linkplain SnippetTemplate#instantiate instantiation}. During snippet
      * template creation, its value must be an array whose length specifies the number of arguments

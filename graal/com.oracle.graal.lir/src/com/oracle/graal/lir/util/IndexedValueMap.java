@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.dfa;
+package com.oracle.graal.lir.util;
 
 import java.util.*;
 
@@ -29,16 +29,15 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.framemap.*;
 
-public final class ValueSet {
+public final class IndexedValueMap {
     private Value[] values;
 
-    ValueSet() {
+    public IndexedValueMap() {
         values = Value.NO_VALUES;
     }
 
-    ValueSet(ValueSet other) {
+    public IndexedValueMap(IndexedValueMap other) {
         int limit = other.values.length;
         while (limit > 0) {
             if (other.values[limit - 1] == null) {
@@ -55,10 +54,7 @@ public final class ValueSet {
         return values[index];
     }
 
-    void put(int index, Value value) {
-        if (value != null && value.getLIRKind().isValue()) {
-            return;
-        }
+    public void put(int index, Value value) {
         if (values.length <= index) {
             if (value == null) {
                 return;
@@ -72,7 +68,7 @@ public final class ValueSet {
         }
     }
 
-    public void putAll(ValueSet stack) {
+    public void putAll(IndexedValueMap stack) {
         Value[] otherValues = stack.values;
         int limit = otherValues.length;
         if (limit > values.length) {
@@ -99,8 +95,8 @@ public final class ValueSet {
 
     @Override
     public boolean equals(Object other) {
-        if (other instanceof ValueSet) {
-            ValueSet that = (ValueSet) other;
+        if (other instanceof IndexedValueMap) {
+            IndexedValueMap that = (IndexedValueMap) other;
             int limit = Math.min(values.length, that.values.length);
             for (int i = 0; i < limit; i++) {
                 if (!Objects.equals(values[i], that.values[i])) {
@@ -120,14 +116,6 @@ public final class ValueSet {
             return true;
         }
         return false;
-    }
-
-    public void addLiveValues(ReferenceMapBuilder refMap) {
-        for (Value v : values) {
-            if (v != null) {
-                refMap.addLiveValue(v);
-            }
-        }
     }
 
     public void forEach(LIRInstruction inst, OperandMode mode, EnumSet<OperandFlag> flags, InstructionValueProcedure proc) {

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
@@ -31,24 +31,25 @@ import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.framemap.*;
 
-final class SSAMoveResolver extends MoveResolver {
+public final class SSAMoveResolver extends MoveResolver {
 
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private int[] stackBlocked;
     private final int firstVirtualStackIndex;
 
-    SSAMoveResolver(LinearScan allocator) {
+    public SSAMoveResolver(LinearScan allocator) {
         super(allocator);
-        FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.frameMapBuilder;
+        FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.getFrameMapBuilder();
         FrameMap frameMap = frameMapBuilderTool.getFrameMap();
         this.stackBlocked = new int[frameMapBuilderTool.getNumberOfStackSlots()];
         this.firstVirtualStackIndex = !frameMap.frameNeedsAllocating() ? 0 : frameMap.currentFrameSize() + 1;
     }
 
     @Override
-    boolean checkEmpty() {
+    public boolean checkEmpty() {
         for (int i = 0; i < stackBlocked.length; i++) {
             assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
         }
@@ -157,13 +158,13 @@ final class SSAMoveResolver extends MoveResolver {
             super.breakCycle(spillCandidate);
             return;
         }
-        assert mappingFrom.size() > 1;
+        assert mappingFromSize() > 1;
         // Arbitrarily select the first entry for spilling.
         int stackSpillCandidate = 0;
-        Interval fromInterval = mappingFrom.get(stackSpillCandidate);
+        Interval fromInterval = getMappingFrom(stackSpillCandidate);
         assert isStackSlotValue(fromInterval.location());
         // allocate new stack slot
-        StackSlotValue spillSlot = getAllocator().frameMapBuilder.allocateSpillSlot(fromInterval.kind());
+        StackSlotValue spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
         spillInterval(stackSpillCandidate, fromInterval, spillSlot);
     }
 }

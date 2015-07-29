@@ -29,6 +29,9 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Ops.*;
 import static java.lang.String.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
+
+import java.util.*;
+
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.sparc.*;
@@ -78,6 +81,10 @@ public abstract class SPARCAssembler extends Assembler {
 
     private static final Ops[] OPS;
     private static final Op2s[] OP2S;
+    private static final Op3s[][] OP3S;
+
+    private ArrayList<Integer> delaySlotOptimizationPoints = new ArrayList<>(5);
+
     static {
         Ops[] ops = Ops.values();
         OPS = new Ops[ops.length];
@@ -88,6 +95,13 @@ public abstract class SPARCAssembler extends Assembler {
         OP2S = new Op2s[op2s.length];
         for (Op2s op2 : op2s) {
             OP2S[op2.value] = op2;
+        }
+        OP3S = new Op3s[2][64];
+        for (Op3s op3 : Op3s.values()) {
+            if (op3.value >= 1 << 6) {
+                throw new RuntimeException("Error " + op3 + " " + op3.value);
+            }
+            OP3S[op3.op.value & 1][op3.value] = op3;
         }
     }
 
@@ -238,7 +252,7 @@ public abstract class SPARCAssembler extends Assembler {
         Lddf  (0b10_0011, "lddf", LdstOp),
         Stf   (0b10_0100, "stf", LdstOp),
         Stfsr (0b10_0101, "stfsr", LdstOp),
-        Staf  (0x10_0110, "staf", LdstOp),
+        Staf  (0b10_0110, "staf", LdstOp),
         Stdf  (0b10_0111, "stdf", LdstOp),
 
         Rd    (0b10_1000, "rd", ArithOp),
@@ -257,6 +271,7 @@ public abstract class SPARCAssembler extends Assembler {
         private final Ops op;
 
         private Op3s(int value, String name, Ops op) {
+            assert isImm(value, 6);
             this.value = value;
             this.operator = name;
             this.op = op;
@@ -270,8 +285,21 @@ public abstract class SPARCAssembler extends Assembler {
             return operator;
         }
 
-        public boolean appliesTo(int instructionWord) {
-            return ((instructionWord >>> 19) & 0b1_1111) == value;
+        public boolean throwsException() {
+            if (op == LdstOp) {
+                return true;
+            }
+            switch (this) {
+                case Udiv:
+                case Udivx:
+                case Sdiv:
+                case Sdivx:
+                case Udivcc:
+                case Sdivcc:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 
@@ -796,6 +824,574 @@ public abstract class SPARCAssembler extends Assembler {
         }
     }
 
+    /**
+     * Specifies various bit fields used in SPARC instructions.
+     */
+    @SuppressWarnings("unused")
+    public abstract static class BitSpec {
+        private static final BitSpec op = new ContinousBitSpec(31, 30, "op");
+        private static final BitSpec op2 = new ContinousBitSpec(24, 22, "op2");
+        private static final BitSpec op3 = new ContinousBitSpec(24, 19, "op3");
+        private static final BitSpec rd = new ContinousBitSpec(29, 25, "rd");
+        private static final BitSpec rs1 = new ContinousBitSpec(18, 14, "rs1");
+        private static final BitSpec rs2 = new ContinousBitSpec(4, 0, "rs2");
+        private static final BitSpec simm13 = new ContinousBitSpec(12, 0, "simm13");
+        private static final BitSpec imm22 = new ContinousBitSpec(21, 0, "imm22");
+        private static final BitSpec immAsi = new ContinousBitSpec(12, 5, "immASI");
+        private static final BitSpec i = new ContinousBitSpec(13, 13, "i");
+        private static final BitSpec disp19 = new ContinousBitSpec(18, 0, true, "disp19");
+        private static final BitSpec disp22 = new ContinousBitSpec(21, 0, true, "disp22");
+        private static final BitSpec disp30 = new ContinousBitSpec(29, 0, true, "disp30");
+        private static final BitSpec a = new ContinousBitSpec(29, 29, "a");
+        private static final BitSpec p = new ContinousBitSpec(19, 19, "p");
+        private static final BitSpec cond = new ContinousBitSpec(28, 25, "cond");
+        private static final BitSpec rcond = new ContinousBitSpec(27, 25, "rcond");
+        private static final BitSpec cc = new ContinousBitSpec(21, 20, "cc");
+        private static final BitSpec d16hi = new ContinousBitSpec(21, 20, "d16hi");
+        private static final BitSpec d16lo = new ContinousBitSpec(13, 0, "d16lo");
+        private static final BitSpec d16 = new CompositeBitSpec(d16hi, d16lo);
+        // CBCond
+        private static final BitSpec cLo = new ContinousBitSpec(27, 25, "cLo");
+        private static final BitSpec cHi = new ContinousBitSpec(29, 29, "cHi");
+        private static final BitSpec c = new CompositeBitSpec(cHi, cLo);
+        private static final BitSpec cbcond = new ContinousBitSpec(28, 28, "cbcond");
+        private static final BitSpec cc2 = new ContinousBitSpec(21, 21, "cc2");
+        private static final BitSpec d10Lo = new ContinousBitSpec(12, 5, "d10Lo");
+        private static final BitSpec d10Hi = new ContinousBitSpec(20, 19, "d10Hi");
+        private static final BitSpec d10 = new CompositeBitSpec(d10Hi, d10Lo);
+        private static final BitSpec simm5 = new ContinousBitSpec(4, 0, true, "simm5");
+
+        public abstract int setBits(int word, int value);
+
+        public abstract int getBits(int word);
+
+        public abstract int getWidth();
+
+        public abstract boolean valueFits(int value);
+    }
+
+    public static class ContinousBitSpec extends BitSpec {
+        private final int hiBit;
+        private final int lowBit;
+        private final int width;
+        private final boolean signExt;
+        private final int mask;
+        private final String name;
+
+        public ContinousBitSpec(int hiBit, int lowBit, String name) {
+            this(hiBit, lowBit, false, name);
+        }
+
+        public ContinousBitSpec(int hiBit, int lowBit, boolean signExt, String name) {
+            super();
+            this.hiBit = hiBit;
+            this.lowBit = lowBit;
+            this.signExt = signExt;
+            this.width = hiBit - lowBit + 1;
+            mask = ((1 << width) - 1) << lowBit;
+            this.name = name;
+        }
+
+        @Override
+        public int setBits(int word, int value) {
+            assert valueFits(value) : "Value: " + value + " does not fit in " + this;
+            return (word & ~mask) | ((value << lowBit) & mask);
+        }
+
+        @Override
+        public int getBits(int word) {
+            if (signExt) {
+                return ((word & mask) << (31 - hiBit)) >> (32 - width);
+            } else {
+                return (word & mask) >>> lowBit;
+            }
+        }
+
+        @Override
+        public int getWidth() {
+            return width;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s [%d:%d]", name, hiBit, lowBit);
+        }
+
+        @Override
+        public boolean valueFits(int value) {
+            if (signExt) {
+                return isSimm(value, getWidth());
+            } else {
+                return isImm(value, getWidth());
+            }
+        }
+    }
+
+    public static class CompositeBitSpec extends BitSpec {
+        private final BitSpec left;
+        private final int leftWidth;
+        private final BitSpec right;
+        private final int rightWidth;
+
+        public CompositeBitSpec(BitSpec left, BitSpec right) {
+            super();
+            this.left = left;
+            this.leftWidth = left.getWidth();
+            this.right = right;
+            this.rightWidth = right.getWidth();
+        }
+
+        @Override
+        public int getBits(int word) {
+            int l = left.getBits(word);
+            int r = right.getBits(word);
+            return l << rightWidth | r;
+        }
+
+        @Override
+        public int setBits(int word, int value) {
+            int l = leftBits(value);
+            int r = rightBits(value);
+            return left.setBits(right.setBits(word, r), l);
+        }
+
+        private int leftBits(int value) {
+            return SPARCAssembler.getBits(value, rightWidth + leftWidth, rightWidth);
+        }
+
+        private int rightBits(int value) {
+            return SPARCAssembler.getBits(value, rightWidth - 1, 0);
+        }
+
+        @Override
+        public int getWidth() {
+            return left.getWidth() + right.getWidth();
+        }
+
+        @Override
+        public String toString() {
+            return String.format("CompositeBitSpec[%s, %s]", left, right);
+        }
+
+        @Override
+        public boolean valueFits(int value) {
+            return left.valueFits(leftBits(value)) && right.valueFits(rightBits(value));
+        }
+    }
+
+    public static class BitKey {
+        private final BitSpec spec;
+        private final int value;
+
+        public BitKey(BitSpec spec, int value) {
+            super();
+            this.spec = spec;
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("BitKey %s=%s", spec, value);
+        }
+    }
+
+    /**
+     * Represents a prefix tree of {@link BitSpec} objects to find the most accurate SPARCOp.
+     */
+    public static class BitKeyIndex {
+        private final BitSpec spec;
+        private final Map<Integer, BitKeyIndex> nodes;
+        private SPARCOp op;
+
+        public BitKeyIndex(SPARCOp op) {
+            assert op != null;
+            this.op = op;
+            this.nodes = null;
+            this.spec = null;
+        }
+
+        public BitKeyIndex(BitSpec spec) {
+            assert spec != null;
+            this.op = null;
+            this.nodes = new HashMap<>(4);
+            this.spec = spec;
+        }
+
+        /**
+         * Adds operation to the index.
+         *
+         * @param keys Ordered by the importance
+         * @param operation Operation represented by this list of keys
+         */
+        private void addOp(List<BitKey> keys, SPARCOp operation) {
+            assert keys.size() > 0;
+            BitKey first = keys.get(0);
+            assert first.spec.equals(spec) : first.spec + " " + spec;
+            BitKeyIndex node;
+            if (keys.size() == 1) {
+                if (nodes.containsKey(first.value)) {
+                    node = nodes.get(first.value);
+                    assert node.op == null : node + " " + keys;
+                    node.op = operation;
+                } else {
+                    assert !nodes.containsKey(first.value) : "Index must be unique. Existing key: " + nodes.get(first.value);
+                    node = new BitKeyIndex(operation);
+                }
+            } else {
+                node = nodes.get(first.value);
+                if (node == null) {
+                    node = new BitKeyIndex(keys.get(1).spec);
+                }
+                node.addOp(keys.subList(1, keys.size()), operation);
+            }
+            nodes.put(first.value, node);
+        }
+
+        /**
+         * Finds the best matching {@link SPARCOp} for this instruction.
+         */
+        public SPARCOp find(int inst) {
+            if (nodes != null) {
+                int key = spec.getBits(inst);
+                BitKeyIndex sub = nodes.get(key);
+                if (sub == null) {
+                    if (op != null) {
+                        return op;
+                    } else {
+                        throw new RuntimeException(String.format("%s 0x%x, 0x%x %s", spec, inst, key, nodes));
+                    }
+                }
+                return sub.find(inst);
+            } else {
+                return this.op;
+            }
+        }
+
+        @Override
+        public String toString() {
+            return this.op == null ? this.spec + ": " + this.nodes : this.op.toString();
+        }
+    }
+
+    public static final Bpcc BPCC = new Bpcc(Op2s.Bp);
+    public static final Bpcc FBPCC = new Bpcc(Op2s.Fbp);
+    public static final CBCond CBCOND = new CBCond();
+    public static final Bpr BPR = new Bpr();
+    public static final Br BR = new Br();
+    public static final Sethi SETHI = new Sethi();
+    public static final Op3Op OP3 = new Op3Op();
+    public static final SPARCOp LDST = new SPARCOp(Ops.LdstOp);
+    public static final SPARCOp BRANCH = new SPARCOp(Ops.BranchOp);
+    public static final SPARCOp CALL = new SPARCOp(Ops.CallOp);
+    private static final BitKeyIndex INDEX = new BitKeyIndex(BitSpec.op);
+
+    static {
+        for (SPARCOp op : SPARCOp.OPS) {
+            INDEX.addOp(op.getKeys(), op);
+        }
+    }
+
+    public static SPARCOp getSPARCOp(int inst) {
+        return INDEX.find(inst);
+    }
+
+    /**
+     * Represents a class of SPARC instruction and gives methods to modify its fields.
+     */
+    public static class SPARCOp {
+        private final Ops op;
+        private final BitKey opKey;
+        private List<BitKey> keyFields;
+        private static final List<SPARCOp> OPS = new ArrayList<>();
+
+        public SPARCOp(Ops op) {
+            super();
+            this.op = op;
+            this.opKey = new BitKey(BitSpec.op, op.value);
+            OPS.add(this);
+        }
+
+        protected int setBits(int word) {
+            return BitSpec.op.setBits(word, op.value);
+        }
+
+        public boolean match(int inst) {
+            for (BitKey k : keyFields) {
+                if (k.spec.getBits(inst) != k.value) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        protected List<BitKey> getKeys() {
+            if (keyFields == null) {
+                keyFields = new ArrayList<>(4);
+                keyFields.add(opKey);
+            }
+            return keyFields;
+        }
+
+        public Ops getOp(int inst) {
+            return SPARCAssembler.OPS[BitSpec.op.getBits(inst)];
+        }
+
+        @Override
+        public String toString() {
+            String name = getClass().getName();
+            name = name.substring(name.lastIndexOf(".") + 1);
+            return name + "[op: " + op + "]";
+        }
+    }
+
+    /**
+     * Base class for control transfer operations; provides access to the disp field.
+     */
+    public abstract static class ControlTransferOp extends SPARCOp {
+        private final Op2s op2;
+        private final boolean delaySlot;
+        private final BitSpec disp;
+        private final BitKey op2Key;
+
+        private ControlTransferOp(Ops op, Op2s op2, boolean delaySlot, BitSpec disp) {
+            super(op);
+            this.op2 = op2;
+            this.delaySlot = delaySlot;
+            this.disp = disp;
+            this.op2Key = new BitKey(BitSpec.op2, op2.value);
+        }
+
+        public boolean hasDelaySlot() {
+            return delaySlot;
+        }
+
+        @Override
+        protected int setBits(int word) {
+            return BitSpec.op2.setBits(super.setBits(word), op2.value);
+        }
+
+        protected int setDisp(int inst, SPARCMacroAssembler masm, Label lab) {
+            if (lab.isBound()) {
+                int d = (lab.position() - masm.position()) / 4;
+                return setDisp(inst, d);
+            } else {
+                masm.patchUnbound(lab);
+                return inst;
+            }
+        }
+
+        public int setDisp(int inst, int d) {
+            assert this.match(inst);
+            return this.disp.setBits(inst, d);
+        }
+
+        public boolean isValidDisp(int d) {
+            return this.disp.valueFits(d);
+        }
+
+        public int setAnnul(int inst, boolean a) {
+            return BitSpec.a.setBits(inst, a ? 1 : 0);
+        }
+
+        @Override
+        protected List<BitKey> getKeys() {
+            List<BitKey> keys = super.getKeys();
+            keys.add(op2Key);
+            return keys;
+        }
+
+        public int getDisp(int inst) {
+            return this.disp.getBits(inst);
+        }
+
+        public abstract boolean isAnnulable(int inst);
+
+        public abstract boolean isConditional(int inst);
+    }
+
+    public static class Bpcc extends ControlTransferOp {
+        public Bpcc(Op2s op2) {
+            super(Ops.BranchOp, op2, true, BitSpec.disp19);
+        }
+
+        public void emit(SPARCMacroAssembler masm, CC cc, ConditionFlag cf, Annul annul, BranchPredict p, Label lab) {
+            int inst = setBits(0);
+            inst = BitSpec.a.setBits(inst, annul.flag);
+            inst = BitSpec.cond.setBits(inst, cf.value);
+            inst = BitSpec.cc.setBits(inst, cc.value);
+            inst = BitSpec.p.setBits(inst, p.flag);
+            masm.emitInt(setDisp(inst, masm, lab));
+        }
+
+        @Override
+        public boolean isAnnulable(int inst) {
+            return isConditional(inst);
+        }
+
+        @Override
+        public boolean isConditional(int inst) {
+            int cond = BitSpec.cond.getBits(inst);
+            return cond != ConditionFlag.Always.value && cond != ConditionFlag.Never.value;
+        }
+    }
+
+    public static class Br extends ControlTransferOp {
+        public Br() {
+            super(Ops.BranchOp, Op2s.Br, true, BitSpec.disp22);
+        }
+
+        @Override
+        public boolean isAnnulable(int inst) {
+            return isConditional(inst);
+        }
+
+        @Override
+        public boolean isConditional(int inst) {
+            int cond = BitSpec.cond.getBits(inst);
+            return cond != ConditionFlag.Always.value && cond != ConditionFlag.Never.value;
+        }
+    }
+
+    public static class Bpr extends ControlTransferOp {
+        private static final BitKey CBCOND_KEY = new BitKey(BitSpec.cbcond, 0);
+
+        public Bpr() {
+            super(Ops.BranchOp, Op2s.Bpr, true, BitSpec.d16);
+        }
+
+        public void emit(SPARCMacroAssembler masm, RCondition rcond, Annul a, BranchPredict p, Register rs1, Label lab) {
+            int inst = setBits(0);
+            inst = BitSpec.rcond.setBits(inst, rcond.value);
+            inst = BitSpec.a.setBits(inst, a.flag);
+            inst = BitSpec.p.setBits(inst, p.flag);
+            inst = BitSpec.rs1.setBits(inst, rs1.encoding);
+            masm.emitInt(setDisp(inst, masm, lab));
+        }
+
+        @Override
+        protected List<BitKey> getKeys() {
+            List<BitKey> keys = super.getKeys();
+            keys.add(CBCOND_KEY);
+            return keys;
+        }
+
+        @Override
+        public boolean isAnnulable(int inst) {
+            return isConditional(inst);
+        }
+
+        @Override
+        public boolean isConditional(int inst) {
+            int cond = BitSpec.cond.getBits(inst);
+            return cond != ConditionFlag.Always.value && cond != ConditionFlag.Never.value;
+        }
+    }
+
+    public static final class CBCond extends ControlTransferOp {
+        private static final BitKey CBCOND_KEY = new BitKey(BitSpec.cbcond, 1);
+
+        private CBCond() {
+            super(Ops.BranchOp, Op2s.Bpr, false, BitSpec.d10);
+        }
+
+        @Override
+        protected List<BitKey> getKeys() {
+            List<BitKey> keys = super.getKeys();
+            keys.add(CBCOND_KEY);
+            return keys;
+        }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag cf, boolean cc2, Register rs1, Register rs2, Label lab) {
+            int inst = setBits(0, cf, cc2, rs1);
+            inst = BitSpec.rs2.setBits(inst, rs2.encoding);
+            emit(masm, lab, inst);
+        }
+
+        public void emit(SPARCMacroAssembler masm, ConditionFlag cf, boolean cc2, Register rs1, int simm5, Label lab) {
+            int inst = setBits(0, cf, cc2, rs1);
+            inst = BitSpec.simm5.setBits(inst, simm5);
+            emit(masm, lab, inst);
+        }
+
+        private void emit(SPARCMacroAssembler masm, Label lab, int baseInst) {
+            int inst = baseInst;
+            masm.insertNopAfterCBCond();
+            masm.emitInt(setDisp(inst, masm, lab));
+        }
+
+        private int setBits(int base, ConditionFlag cf, boolean cc2, Register rs1) {
+            int inst = super.setBits(base);
+            inst = BitSpec.rs1.setBits(inst, rs1.encoding);
+            inst = BitSpec.cc2.setBits(inst, cc2 ? 1 : 0);
+            inst = BitSpec.c.setBits(inst, cf.value);
+            return BitSpec.cbcond.setBits(inst, 1);
+        }
+
+        @Override
+        public boolean isAnnulable(int inst) {
+            return false;
+        }
+
+        @Override
+        public boolean isConditional(int inst) {
+            return true;
+        }
+    }
+
+    public static class Op2Op extends SPARCOp {
+        private final Op2s op2;
+        private final BitKey op2Key;
+
+        public Op2Op(Ops op, Op2s op2) {
+            super(op);
+            this.op2 = op2;
+            op2Key = new BitKey(BitSpec.op2, op2.value);
+        }
+
+        @Override
+        protected int setBits(int word) {
+            int result = super.setBits(word);
+            return BitSpec.op2.setBits(result, op2.value);
+        }
+
+        @Override
+        protected List<BitKey> getKeys() {
+            List<BitKey> keys = super.getKeys();
+            keys.add(op2Key);
+            return keys;
+        }
+    }
+
+    public static class Sethi extends Op2Op {
+        public Sethi() {
+            super(Ops.BranchOp, Op2s.Sethi);
+        }
+
+        public Register getRS1(int word) {
+            int regNum = BitSpec.rs1.getBits(word);
+            return SPARC.cpuRegisters[regNum];
+        }
+
+        public int getImm22(int word) {
+            return BitSpec.imm22.getBits(word);
+        }
+
+        public boolean isNop(int inst) {
+            return getRS1(inst).equals(g0) && getImm22(inst) == 0;
+        }
+    }
+
+    public static class Op3Op extends SPARCOp {
+        public Op3Op() {
+            super(ArithOp);
+        }
+
+        public Op3s getOp3(int inst) {
+            assert match(inst);
+            return OP3S[ArithOp.value & 1][BitSpec.op3.getBits(inst)];
+        }
+    }
+
     public boolean hasFeature(CPUFeature feature) {
         return ((SPARC) this.target.arch).features.contains(feature);
     }
@@ -897,7 +1493,12 @@ public abstract class SPARCAssembler extends Assembler {
     // @formatter:on
     protected void fmt00(int a, int op2, int b) {
         assert isImm(a, 5) && isImm(op2, 3) && isImm(b, 22) : String.format("a: 0x%x op2: 0x%x b: 0x%x", a, op2, b);
-        this.emitInt(a << 25 | op2 << 22 | b);
+        int word = 0;
+        BitSpec.op.setBits(word, 0);
+        BitSpec.rd.setBits(word, a);
+        BitSpec.op2.setBits(word, op2);
+        BitSpec.imm22.setBits(word, b);
+        emitInt(a << 25 | op2 << 22 | b);
     }
 
     private void op3(Op3s op3, Opfs opf, Register rs1, Register rs2, Register rd) {
@@ -975,7 +1576,11 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     protected static boolean isCBCond(int inst) {
-        return getOp(inst).equals(Ops.BranchOp) && getOp2(inst).equals(Op2s.Bpr) && getBits(inst, 28, 28) == 1;
+        return isOp2(Ops.BranchOp, Op2s.Bpr, inst) && getBits(inst, 28, 28) == 1;
+    }
+
+    private static boolean isOp2(Ops ops, Op2s op2s, int inst) {
+        return getOp(inst).equals(ops) && getOp2(inst).equals(op2s);
     }
 
     private static Ops getOp(int inst) {
@@ -986,7 +1591,7 @@ public abstract class SPARCAssembler extends Assembler {
         return OP2S[getBits(inst, 24, 22)];
     }
 
-    private static int getBits(int inst, int hiBit, int lowBit) {
+    public static int getBits(int inst, int hiBit, int lowBit) {
         return (inst >> lowBit) & ((1 << (hiBit - lowBit + 1)) - 1);
     }
 
@@ -1033,6 +1638,7 @@ public abstract class SPARCAssembler extends Assembler {
         pos &= (1 << disp) - 1;
         int a = (annul.flag << 4) | cond.getValue();
         int b = (cc.getValue() << 20) | ((predictTaken.flag) << 19) | pos;
+        delaySlotOptimizationPoints.add(position());
         fmt00(a, op2.getValue(), b);
     }
 
@@ -1055,10 +1661,11 @@ public abstract class SPARCAssembler extends Assembler {
         int d16hi = (pos >> 13) << 13;
         int d16lo = d16hi ^ pos;
         int b = (d16hi << 20) | (predictTaken.flag << 19) | (rs1.encoding() << 14) | d16lo;
+        delaySlotOptimizationPoints.add(position());
         fmt00(a, Op2s.Bpr.getValue(), b);
     }
 
-    private int patchUnbound(Label label) {
+    protected int patchUnbound(Label label) {
         label.addPatchAt(position());
         return 0;
     }
@@ -1377,6 +1984,7 @@ public abstract class SPARCAssembler extends Assembler {
     public void fcmp(CC cc, Opfs opf, Register rs1, Register rs2) {
         int a = cc.value;
         int b = opf.value << 5 | rs2.encoding;
+        delaySlotOptimizationPoints.add(position());
         fmt10(a, Fcmp.value, rs1.encoding, b);
     }
 
@@ -1829,5 +2437,70 @@ public abstract class SPARCAssembler extends Assembler {
 
     public void fpadd32(Register rs1, Register rs2, Register rd) {
         op3(Impdep1, Fpadd32, rs1, rs2, rd);
+    }
+
+    /**
+     * Does peephole optimization on code generated by this assembler. This method should be called
+     * at the end of code generation.
+     * <p>
+     * It searches for conditional branch instructions which has nop in the delay slot then looks at
+     * the instruction at branch target; if it is an arithmetic instruction, which does not throw an
+     * exception (e.g. division), it pulls this instruction into the delay slot and increments the
+     * displacement by 1.
+     */
+    public void peephole() {
+        for (int i : delaySlotOptimizationPoints) {
+            optimizeDelaySlot(i);
+        }
+    }
+
+    /**
+     * Optimizes branch instruction <i>b</t> which has a nop in the delay slot. It tries to stuff
+     * the instruction at <i>b</i>s branch target into the delay slot of <i>b</i>, set the annul
+     * flag and increments <i>b</i>s disp field by 1;
+     * <p>
+     * If <i>b</i>s branch target instruction is an unconditional branch <i>t</i>, then it tries to
+     * put <i>t</i>s delayed instruction into the delay slot of <i>b</i> and add the <i>t</i>s disp
+     * field to <i>b</i>s disp field.
+     */
+    private void optimizeDelaySlot(int i) {
+        int delaySlotAbsolute = i + INSTRUCTION_SIZE;
+        int nextInst = getInt(delaySlotAbsolute);
+        SPARCOp nextOp = getSPARCOp(nextInst);
+        if (nextOp instanceof Sethi && ((Sethi) nextOp).isNop(nextInst)) {
+            int inst = getInt(i);
+            SPARCOp op = getSPARCOp(inst);
+            if (op instanceof ControlTransferOp && ((ControlTransferOp) op).hasDelaySlot() && ((ControlTransferOp) op).isAnnulable(inst)) {
+                ControlTransferOp ctOp = (ControlTransferOp) op;
+                int disp = ctOp.getDisp(inst);
+                int branchTargetAbsolute = i + disp * INSTRUCTION_SIZE;
+                int branchTargetInst = getInt(branchTargetAbsolute);
+                SPARCOp branchTargetOp = getSPARCOp(branchTargetInst);
+                if (branchTargetOp instanceof Op3Op) {
+                    Op3s op3 = ((Op3Op) branchTargetOp).getOp3(branchTargetInst);
+                    if (!op3.throwsException()) {
+                        inst = ctOp.setDisp(inst, disp + 1); // Increment the offset
+                        inst = ctOp.setAnnul(inst, true);
+                        emitInt(inst, i);
+                        emitInt(branchTargetInst, delaySlotAbsolute);
+                    }
+                } else if (branchTargetOp instanceof ControlTransferOp && !((ControlTransferOp) branchTargetOp).isConditional(branchTargetInst)) {
+                    // If branchtarget is a unconditional branch
+                    ControlTransferOp branchTargetOpBranch = (ControlTransferOp) branchTargetOp;
+                    int btDisp = branchTargetOpBranch.getDisp(branchTargetInst);
+                    int newDisp = disp + btDisp;
+                    if (ctOp.isValidDisp(newDisp)) { // Test if we don't exceed field size
+                        int instAfter = ctOp.setDisp(inst, newDisp);
+                        instAfter = ctOp.setAnnul(instAfter, true);
+                        branchTargetInst = getInt(branchTargetAbsolute + INSTRUCTION_SIZE);
+                        branchTargetOp = getSPARCOp(branchTargetInst);
+                        if (branchTargetOp instanceof Op3Op && !((Op3Op) branchTargetOp).getOp3(branchTargetInst).throwsException()) {
+                            emitInt(instAfter, i);
+                            emitInt(branchTargetInst, delaySlotAbsolute);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

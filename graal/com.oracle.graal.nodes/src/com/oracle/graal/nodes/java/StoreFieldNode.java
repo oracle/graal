@@ -72,11 +72,12 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object());
-        if (state != null && state.getState() == EscapeState.Virtual) {
-            int fieldIndex = ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(field());
+        ValueNode alias = tool.getAlias(object());
+        if (alias instanceof VirtualObjectNode) {
+            VirtualInstanceNode virtual = (VirtualInstanceNode) alias;
+            int fieldIndex = virtual.fieldIndex(field());
             if (fieldIndex != -1) {
-                tool.setVirtualEntry(state, fieldIndex, value(), false);
+                tool.setVirtualEntry(virtual, fieldIndex, value(), false);
                 tool.delete();
             }
         }

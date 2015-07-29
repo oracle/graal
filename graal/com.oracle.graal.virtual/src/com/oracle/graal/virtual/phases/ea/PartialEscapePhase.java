@@ -33,6 +33,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
@@ -83,6 +84,9 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
     @Override
     protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule, ControlFlowGraph cfg) {
+        for (VirtualObjectNode virtual : cfg.graph.getNodes(VirtualObjectNode.TYPE)) {
+            virtual.resetObjectId();
+        }
         assert schedule != null;
         if (readElimination) {
             return new PEReadEliminationClosure(schedule, context.getMetaAccess(), context.getConstantReflection());

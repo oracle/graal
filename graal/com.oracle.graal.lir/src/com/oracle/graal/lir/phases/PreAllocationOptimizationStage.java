@@ -23,11 +23,13 @@
 package com.oracle.graal.lir.phases;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.compiler.common.BackendOptions.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.lir.constopt.*;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import com.oracle.graal.lir.ssa.*;
+import com.oracle.graal.lir.ssi.*;
 
 public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
     public PreAllocationOptimizationStage() {
@@ -36,6 +38,9 @@ public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationO
         }
         if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue()) {
             appendPhase(new ConstantLoadOptimization());
+        }
+        if (EnableSSIConstruction.getValue()) {
+            appendPhase(new SSIConstructionPhase());
         }
     }
 }

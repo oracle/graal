@@ -41,11 +41,11 @@ import com.oracle.graal.lir.phases.*;
  *
  * Insert moves at edges between blocks if intervals have been split.
  */
-class LinearScanResolveDataFlowPhase extends AllocationPhase {
+public class LinearScanResolveDataFlowPhase extends AllocationPhase {
 
     protected final LinearScan allocator;
 
-    LinearScanResolveDataFlowPhase(LinearScan allocator) {
+    protected LinearScanResolveDataFlowPhase(LinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -55,7 +55,7 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
         resolveDataFlow();
     }
 
-    void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
+    protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
         assert midBlock == null ||
                         (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors().get(0).equals(fromBlock) && midBlock.getSuccessors().get(0).equals(
@@ -87,7 +87,7 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
                 Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
             }
 
-            List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(fromBlock);
+            List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(fromBlock);
             LIRInstruction instr = instructions.get(instructions.size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 // insert moves before branch
@@ -102,7 +102,7 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
             }
 
             if (DetailedAsserts.getValue()) {
-                assert allocator.ir.getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
+                assert allocator.getLIR().getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 /*
                  * Because the number of predecessor edges matches the number of successor edges,
@@ -114,7 +114,7 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
                 }
             }
 
-            moveResolver.setInsertPosition(allocator.ir.getLIRforBlock(toBlock), 1);
+            moveResolver.setInsertPosition(allocator.getLIR().getLIRforBlock(toBlock), 1);
         }
     }
 
@@ -122,7 +122,7 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
      * Inserts necessary moves (spilling or reloading) at edges between blocks for intervals that
      * have been split.
      */
-    void resolveDataFlow() {
+    protected void resolveDataFlow() {
         try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 
             MoveResolver moveResolver = allocator.createMoveResolver();
@@ -136,11 +136,11 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
     }
 
     protected void optimizeEmptyBlocks(MoveResolver moveResolver, BitSet blockCompleted) {
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks) {
+        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
 
             // check if block has only one predecessor and only one successor
             if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
-                List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(block);
+                List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                 assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
                 assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
 
@@ -174,7 +174,7 @@ class LinearScanResolveDataFlowPhase extends AllocationPhase {
 
     protected void resolveDataFlow0(MoveResolver moveResolver, BitSet blockCompleted) {
         BitSet alreadyResolved = new BitSet(allocator.blockCount());
-        for (AbstractBlockBase<?> fromBlock : allocator.sortedBlocks) {
+        for (AbstractBlockBase<?> fromBlock : allocator.sortedBlocks()) {
             if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
                 alreadyResolved.clear();
                 alreadyResolved.or(blockCompleted);

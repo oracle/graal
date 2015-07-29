@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 
 // JaCoCo Exclude
 
@@ -76,32 +77,33 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
     }
 
     public void virtualize(VirtualizerTool tool) {
-        State state1 = tool.getObjectState(array1);
-        if (state1 != null) {
-            State state2 = tool.getObjectState(array2);
-            if (state2 != null) {
-                if (state1.getVirtualObject() == state2.getVirtualObject()) {
-                    // the same virtual objects will always have the same contents
+        ValueNode alias1 = tool.getAlias(array1);
+        ValueNode alias2 = tool.getAlias(array2);
+        if (alias1 == alias2) {
+            // the same virtual objects will always have the same contents
+            tool.replaceWithValue(ConstantNode.forBoolean(true, graph()));
+        } else if (alias1 instanceof VirtualObjectNode && alias2 instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual1 = (VirtualObjectNode) alias1;
+            VirtualObjectNode virtual2 = (VirtualObjectNode) alias2;
+
+            if (virtual1.entryCount() == virtual2.entryCount()) {
+                int entryCount = virtual1.entryCount();
+                boolean allEqual = true;
+                for (int i = 0; i < entryCount; i++) {
+                    ValueNode entry1 = tool.getEntry(virtual1, i);
+                    ValueNode entry2 = tool.getEntry(virtual2, i);
+                    if (entry1 != entry2) {
+                        // the contents might be different
+                        allEqual = false;
+                    }
+                    if (entry1.stamp().alwaysDistinct(entry2.stamp())) {
+                        // the contents are different
+                        tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
+                        return;
+                    }
+                }
+                if (allEqual) {
                     tool.replaceWithValue(ConstantNode.forBoolean(true, graph()));
-                } else if (state1.getVirtualObject().entryCount() == state2.getVirtualObject().entryCount() && state1.getState() == EscapeState.Virtual && state2.getState() == EscapeState.Virtual) {
-                    int entryCount = state1.getVirtualObject().entryCount();
-                    boolean allEqual = true;
-                    for (int i = 0; i < entryCount; i++) {
-                        ValueNode entry1 = state1.getEntry(i);
-                        ValueNode entry2 = state2.getEntry(i);
-                        if (entry1 != entry2) {
-                            // the contents might be different
-                            allEqual = false;
-                        }
-                        if (entry1.stamp().alwaysDistinct(entry2.stamp())) {
-                            // the contents are different
-                            tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
-                            return;
-                        }
-                    }
-                    if (allEqual) {
-                        tool.replaceWithValue(ConstantNode.forBoolean(true, graph()));
-                    }
                 }
             }
         }

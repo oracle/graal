@@ -68,8 +68,10 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (tool.getObjectState(getValue()) != null) {
-            tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+        ValueNode alias = tool.getAlias(getValue());
+        TriState fold = tryFold(alias.stamp());
+        if (fold != TriState.UNKNOWN) {
+            tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
         }
     }
 

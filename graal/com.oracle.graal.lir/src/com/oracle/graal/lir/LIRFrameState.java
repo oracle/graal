@@ -31,8 +31,8 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.dfa.*;
 import com.oracle.graal.lir.framemap.*;
+import com.oracle.graal.lir.util.*;
 
 /**
  * This class represents garbage collection and deoptimization information attached to a LIR
@@ -45,7 +45,7 @@ public class LIRFrameState {
     public final LabelRef exceptionEdge;
     protected DebugInfo debugInfo;
 
-    private ValueSet liveBasePointers;
+    private IndexedValueMap liveBasePointers;
 
     public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
         this.topFrame = topFrame;
@@ -181,11 +181,11 @@ public class LIRFrameState {
         debugInfo = new DebugInfo(topFrame, virtualObjects);
     }
 
-    public ValueSet getLiveBasePointers() {
+    public IndexedValueMap getLiveBasePointers() {
         return liveBasePointers;
     }
 
-    public void setLiveBasePointers(ValueSet liveBasePointers) {
+    public void setLiveBasePointers(IndexedValueMap liveBasePointers) {
         this.liveBasePointers = liveBasePointers;
     }
 

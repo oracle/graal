@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.hotspot;
 
+import java.lang.reflect.*;
+import java.util.*;
+
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.logging.*;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
@@ -63,6 +66,38 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
         }
         if (Debug.isLogEnabled()) {
             Debug.log("%s", codeCache.disassemble(installedCode));
+        }
+    }
+
+    @Override
+    public CompilerToVM completeInitialization(HotSpotJVMCIRuntime runtime, CompilerToVM compilerToVM) {
+        CompilerToVM toVM = compilerToVM;
+        if (CountingProxy.ENABLED) {
+            toVM = CountingProxy.getProxy(CompilerToVM.class, toVM);
+        }
+        if (Logger.ENABLED) {
+            toVM = LoggingProxy.getProxy(CompilerToVM.class, toVM);
+        }
+
+        if (Boolean.valueOf(System.getProperty("jvmci.printconfig"))) {
+            printConfig(runtime.getConfig());
+        }
+
+        return toVM;
+    }
+
+    private static void printConfig(HotSpotVMConfig config) {
+        Field[] fields = config.getClass().getDeclaredFields();
+        Map<String, Field> sortedFields = new TreeMap<>();
+        for (Field f : fields) {
+            f.setAccessible(true);
+            sortedFields.put(f.getName(), f);
+        }
+        for (Field f : sortedFields.values()) {
+            try {
+                Logger.info(String.format("%9s %-40s = %s", f.getType().getSimpleName(), f.getName(), Logger.pretty(f.get(config))));
+            } catch (Exception e) {
+            }
         }
     }
 }

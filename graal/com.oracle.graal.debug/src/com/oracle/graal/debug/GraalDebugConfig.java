@@ -199,8 +199,8 @@ public class GraalDebugConfig implements DebugConfig {
      * @return the {@link JavaMethod} represented by {@code context} or null
      */
     public static JavaMethod asJavaMethod(Object context) {
-        if (context instanceof JavaMethodContex) {
-            return ((JavaMethodContex) context).asJavaMethod();
+        if (context instanceof JavaMethodContext) {
+            return ((JavaMethodContext) context).asJavaMethod();
         }
         return null;
     }

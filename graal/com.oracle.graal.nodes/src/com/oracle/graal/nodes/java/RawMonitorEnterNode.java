@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.memory.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code MonitorEnterNode} represents the acquisition of a monitor. The object needs already be
@@ -61,10 +62,13 @@ public final class RawMonitorEnterNode extends AccessMonitorNode implements Virt
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object());
-        if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
-            state.addLock(getMonitorId());
-            tool.delete();
+        ValueNode alias = tool.getAlias(object());
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            if (virtual.hasIdentity()) {
+                tool.addLock(virtual, getMonitorId());
+                tool.delete();
+            }
         }
     }
 

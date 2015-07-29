@@ -131,21 +131,11 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         return position >= 0 && position + length <= virtualObject.entryCount();
     }
 
-    private static boolean checkEntryTypes(int srcPos, int length, State srcState, ResolvedJavaType destComponentType, VirtualizerTool tool) {
+    private static boolean checkEntryTypes(int srcPos, int length, VirtualObjectNode src, ResolvedJavaType destComponentType, VirtualizerTool tool) {
         if (destComponentType.getKind() == Kind.Object) {
             for (int i = 0; i < length; i++) {
-                ValueNode entry = srcState.getEntry(srcPos + i);
-                State state = tool.getObjectState(entry);
-                ResolvedJavaType type;
-                if (state != null) {
-                    if (state.getState() == EscapeState.Virtual) {
-                        type = state.getVirtualObject().type();
-                    } else {
-                        type = StampTool.typeOrNull(state.getMaterializedValue());
-                    }
-                } else {
-                    type = StampTool.typeOrNull(entry);
-                }
+                ValueNode entry = tool.getEntry(src, srcPos + i);
+                ResolvedJavaType type = StampTool.typeOrNull(entry);
                 if (type == null || !destComponentType.isAssignableFrom(type)) {
                     return false;
                 }
@@ -177,52 +167,49 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode sourcePosition = tool.getReplacedValue(getSourcePosition());
-        ValueNode destinationPosition = tool.getReplacedValue(getDestinationPosition());
-        ValueNode replacedLength = tool.getReplacedValue(getLength());
+        ValueNode sourcePosition = tool.getAlias(getSourcePosition());
+        ValueNode destinationPosition = tool.getAlias(getDestinationPosition());
+        ValueNode replacedLength = tool.getAlias(getLength());
 
         if (sourcePosition.isConstant() && destinationPosition.isConstant() && replacedLength.isConstant()) {
             int srcPosInt = sourcePosition.asJavaConstant().asInt();
             int destPosInt = destinationPosition.asJavaConstant().asInt();
             int len = replacedLength.asJavaConstant().asInt();
-            State destState = tool.getObjectState(getDestination());
+            ValueNode destAlias = tool.getAlias(getDestination());
 
-            if (destState != null && destState.getState() == EscapeState.Virtual) {
-                VirtualObjectNode destVirtual = destState.getVirtualObject();
-                if (!(destVirtual instanceof VirtualArrayNode)) {
-                    return;
-                }
+            if (destAlias instanceof VirtualArrayNode) {
+                VirtualArrayNode destVirtual = (VirtualArrayNode) destAlias;
                 if (len < 0 || !checkBounds(destPosInt, len, destVirtual)) {
                     return;
                 }
-                State srcState = tool.getObjectState(getSource());
-                if (srcState != null && srcState.getState() == EscapeState.Virtual) {
-                    VirtualObjectNode srcVirtual = srcState.getVirtualObject();
-                    if (((VirtualArrayNode) destVirtual).componentType().getKind() != Kind.Object) {
+                ValueNode srcAlias = tool.getAlias(getSource());
+
+                if (srcAlias instanceof VirtualObjectNode) {
+                    if (!(srcAlias instanceof VirtualArrayNode)) {
                         return;
                     }
-                    if (!(srcVirtual instanceof VirtualArrayNode)) {
+                    VirtualArrayNode srcVirtual = (VirtualArrayNode) srcAlias;
+                    if (destVirtual.componentType().getKind() != Kind.Object) {
                         return;
                     }
-                    if (((VirtualArrayNode) srcVirtual).componentType().getKind() != Kind.Object) {
+                    if (srcVirtual.componentType().getKind() != Kind.Object) {
                         return;
                     }
                     if (!checkBounds(srcPosInt, len, srcVirtual)) {
                         return;
                     }
-                    if (!checkEntryTypes(srcPosInt, len, srcState, destVirtual.type().getComponentType(), tool)) {
+                    if (!checkEntryTypes(srcPosInt, len, srcVirtual, destVirtual.type().getComponentType(), tool)) {
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        tool.setVirtualEntry(destState, destPosInt + i, srcState.getEntry(srcPosInt + i), false);
+                        tool.setVirtualEntry(destVirtual, destPosInt + i, tool.getEntry(srcVirtual, srcPosInt + i), false);
                     }
                     tool.delete();
                     if (Debug.isLogEnabled()) {
                         Debug.log("virtualized arraycopyf(%s, %d, %s, %d, %d)", getSource(), srcPosInt, getDestination(), destPosInt, len);
                     }
                 } else {
-                    ValueNode source = srcState == null ? tool.getReplacedValue(getSource()) : srcState.getMaterializedValue();
-                    ResolvedJavaType sourceType = StampTool.typeOrNull(source);
+                    ResolvedJavaType sourceType = StampTool.typeOrNull(srcAlias);
                     if (sourceType == null || !sourceType.isArray()) {
                         return;
                     }
@@ -232,9 +219,9 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        LoadIndexedNode load = new LoadIndexedNode(source, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getKind());
+                        LoadIndexedNode load = new LoadIndexedNode(srcAlias, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getKind());
                         tool.addNode(load);
-                        tool.setVirtualEntry(destState, destPosInt + i, load, false);
+                        tool.setVirtualEntry(destVirtual, destPosInt + i, load, false);
                     }
                     tool.delete();
                 }

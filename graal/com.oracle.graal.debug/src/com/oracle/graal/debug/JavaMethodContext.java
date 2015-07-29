@@ -28,6 +28,6 @@ import jdk.internal.jvmci.meta.*;
  * Interface for objects used in Debug {@linkplain Debug#context() context} that can provide a
  * {@link JavaMethod}.
  */
-public interface JavaMethodContex {
+public interface JavaMethodContext {
     JavaMethod asJavaMethod();
 }

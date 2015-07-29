@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.dfa;
+package com.oracle.graal.hotspot.logging;
 
-import jdk.internal.jvmci.meta.*;
+import java.util.*;
 
-abstract class LiveValueSet<S extends LiveValueSet<S>> {
+public final class ProxyUtil {
 
-    public abstract void put(Value v);
+    public static Class<?>[] getAllInterfaces(Class<?> clazz) {
+        HashSet<Class<?>> interfaces = new HashSet<>();
+        getAllInterfaces(clazz, interfaces);
+        return interfaces.toArray(new Class<?>[interfaces.size()]);
+    }
 
-    public abstract void remove(Value v);
-
-    public abstract void putAll(S s);
-
-    public abstract S copy();
+    private static void getAllInterfaces(Class<?> clazz, HashSet<Class<?>> interfaces) {
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (!interfaces.contains(iface)) {
+                interfaces.add(iface);
+                getAllInterfaces(iface, interfaces);
+            }
+        }
+        if (clazz.getSuperclass() != null) {
+            getAllInterfaces(clazz.getSuperclass(), interfaces);
+        }
+    }
 }

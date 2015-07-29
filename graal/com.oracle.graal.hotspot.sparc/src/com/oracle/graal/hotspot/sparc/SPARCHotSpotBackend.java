@@ -349,6 +349,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                 SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
             }
         }
+        masm.peephole();
     }
 
     private static int calculateConstantSize(LIR lir) {

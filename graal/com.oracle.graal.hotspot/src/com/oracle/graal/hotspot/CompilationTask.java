@@ -33,7 +33,6 @@ import com.oracle.graal.debug.internal.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.hotspot.events.*;
 import jdk.internal.jvmci.hotspot.events.EventProvider.CompilationEvent;

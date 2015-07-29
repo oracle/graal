@@ -35,7 +35,6 @@ import java.util.jar.*;
 import java.util.stream.*;
 
 import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;

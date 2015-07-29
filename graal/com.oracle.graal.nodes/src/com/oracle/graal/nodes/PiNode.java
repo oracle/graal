@@ -33,6 +33,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * A node that changes the type of its input, usually narrowing it. For example, a {@link PiNode}
@@ -90,9 +91,12 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
-            tool.replaceWithVirtual(state.getVirtualObject());
+        ValueNode alias = tool.getAlias(object());
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            if (StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(virtual.type())) {
+                tool.replaceWithVirtual(virtual);
+            }
         }
     }
 
@@ -107,18 +111,15 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             return object();
         }
         if (getGuard() != null) {
-            for (Node use : getGuard().asNode().usages()) {
-                if (use instanceof PiNode) {
-                    PiNode otherPi = (PiNode) use;
-                    if (object() == otherPi.object() && stamp().equals(otherPi.stamp())) {
-                        /*
-                         * Two PiNodes with the same guard and same result, so return the one with
-                         * the more precise piStamp.
-                         */
-                        Stamp newStamp = piStamp.join(otherPi.piStamp);
-                        if (newStamp.equals(otherPi.piStamp)) {
-                            return otherPi;
-                        }
+            for (PiNode otherPi : getGuard().asNode().usages().filter(PiNode.class)) {
+                if (object() == otherPi.object() && stamp().equals(otherPi.stamp())) {
+                    /*
+                     * Two PiNodes with the same guard and same result, so return the one with the
+                     * more precise piStamp.
+                     */
+                    Stamp newStamp = piStamp.join(otherPi.piStamp);
+                    if (newStamp.equals(otherPi.piStamp)) {
+                        return otherPi;
                     }
                 }
             }

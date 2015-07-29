@@ -31,6 +31,8 @@ import jdk.internal.jvmci.common.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.alloc.lsra.ssa.*;
+import com.oracle.graal.lir.alloc.lsra.ssi.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
@@ -42,6 +44,9 @@ public final class LinearScanPhase extends AllocationPhase {
                     RegisterAllocationConfig registerAllocationConfig) {
         final LinearScan allocator;
         switch (LinearScanVariant.getValue()) {
+            case SSI_LSRA:
+                allocator = new SSILinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
+                break;
             case SSA_LSRA:
                 allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, linearScanOrder);
                 break;

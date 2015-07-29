@@ -164,9 +164,10 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(getValue());
-        if (state != null) {
-            tool.replaceWithValue(LogicConstantNode.forBoolean(type().isAssignableFrom(state.getVirtualObject().type()), graph()));
+        ValueNode alias = tool.getAlias(getValue());
+        TriState fold = tryFold(alias.stamp());
+        if (fold != TriState.UNKNOWN) {
+            tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
         }
     }
 

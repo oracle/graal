@@ -22,10 +22,6 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.sparc.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
@@ -35,11 +31,15 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
-import static jdk.internal.jvmci.sparc.SPARC.CPUFeature.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.sparc.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.gen.*;
@@ -414,7 +414,7 @@ public enum SPARCArithmetic {
                     Label noOverflow = new Label();
                     masm.sra(asIntReg(dst), 0, tmp);
                     masm.xorcc(SPARC.g0, SPARC.g0, SPARC.g0);
-                    if (masm.hasFeature(CBCOND)) {
+                    if (masm.hasFeature(SPARC.CPUFeature.CBCOND)) {
                         masm.cbcondx(Equal, tmp, asIntReg(dst), noOverflow);
                         // Is necessary, otherwise we will have a penalty of 5 cycles in S3
                         masm.nop();

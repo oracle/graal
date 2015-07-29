@@ -34,6 +34,7 @@ import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.lir.util.*;
 
 /**
  * Record all derived reference base pointers in a frame state.
@@ -48,16 +49,16 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
     private static final class Marker<T extends AbstractBlockBase<T>> extends LocationMarker<T, Marker<T>.BasePointersSet> {
 
-        private final class BasePointersSet extends LiveValueSet<Marker<T>.BasePointersSet> {
+        private final class BasePointersSet extends ValueSet<Marker<T>.BasePointersSet> {
 
-            private final ValueSet variables;
+            private final IndexedValueMap variables;
 
             public BasePointersSet() {
-                variables = new ValueSet();
+                variables = new IndexedValueMap();
             }
 
             private BasePointersSet(BasePointersSet s) {
-                variables = new ValueSet(s.variables);
+                variables = new IndexedValueMap(s.variables);
             }
 
             @Override
@@ -68,6 +69,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
             @Override
             public void put(Value v) {
                 Variable base = (Variable) v.getLIRKind().getDerivedReferenceBase();
+                assert !base.getLIRKind().isValue();
                 variables.put(base.index, base);
             }
 
@@ -79,6 +81,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
             @Override
             public void remove(Value v) {
                 Variable base = (Variable) v.getLIRKind().getDerivedReferenceBase();
+                assert !base.getLIRKind().isValue();
                 variables.put(base.index, null);
             }
 
@@ -115,7 +118,7 @@ public final class MarkBasePointersPhase extends AllocationPhase {
 
         @Override
         protected void processState(LIRInstruction op, LIRFrameState info, BasePointersSet values) {
-            info.setLiveBasePointers(new ValueSet(values.variables));
+            info.setLiveBasePointers(new IndexedValueMap(values.variables));
         }
     }
 }

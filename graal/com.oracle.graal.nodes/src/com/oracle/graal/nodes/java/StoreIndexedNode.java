@@ -30,6 +30,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code StoreIndexedNode} represents a write to an array element.
@@ -66,15 +67,16 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State arrayState = tool.getObjectState(array());
-        if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {
-            ValueNode indexValue = tool.getReplacedValue(index());
+        ValueNode alias = tool.getAlias(array());
+        if (alias instanceof VirtualObjectNode) {
+            ValueNode indexValue = tool.getAlias(index());
             int idx = indexValue.isConstant() ? indexValue.asJavaConstant().asInt() : -1;
-            if (idx >= 0 && idx < arrayState.getVirtualObject().entryCount()) {
-                ResolvedJavaType componentType = arrayState.getVirtualObject().type().getComponentType();
+            VirtualArrayNode virtual = (VirtualArrayNode) alias;
+            if (idx >= 0 && idx < virtual.entryCount()) {
+                ResolvedJavaType componentType = virtual.type().getComponentType();
                 if (componentType.isPrimitive() || StampTool.isPointerAlwaysNull(value) || componentType.getSuperclass() == null ||
                                 (StampTool.typeOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value)))) {
-                    tool.setVirtualEntry(arrayState, idx, value(), false);
+                    tool.setVirtualEntry(virtual, idx, value(), false);
                     tool.delete();
                 }
             }

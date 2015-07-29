@@ -90,26 +90,20 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State originalState = tool.getObjectState(getObject());
-        if (originalState != null && originalState.getState() == EscapeState.Virtual) {
-            VirtualObjectNode originalVirtual = originalState.getVirtualObject();
+        ValueNode originalAlias = tool.getAlias(getObject());
+        if (originalAlias instanceof VirtualObjectNode) {
+            VirtualObjectNode originalVirtual = (VirtualObjectNode) originalAlias;
             if (isCloneableType(originalVirtual.type(), tool.getMetaAccessProvider())) {
                 ValueNode[] newEntryState = new ValueNode[originalVirtual.entryCount()];
                 for (int i = 0; i < newEntryState.length; i++) {
-                    newEntryState[i] = originalState.getEntry(i);
+                    newEntryState[i] = tool.getEntry(originalVirtual, i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
                 tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
-            ValueNode obj;
-            if (originalState != null) {
-                obj = originalState.getMaterializedValue();
-            } else {
-                obj = tool.getReplacedValue(getObject());
-            }
-            ResolvedJavaType type = getConcreteType(obj.stamp(), graph().getAssumptions(), tool.getMetaAccessProvider());
+            ResolvedJavaType type = getConcreteType(originalAlias.stamp(), graph().getAssumptions(), tool.getMetaAccessProvider());
             if (type != null && !type.isArray()) {
                 VirtualInstanceNode newVirtual = createVirtualInstanceNode(type, true);
                 ResolvedJavaField[] fields = newVirtual.getFields();
@@ -117,7 +111,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
                 ValueNode[] state = new ValueNode[fields.length];
                 final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
                 for (int i = 0; i < fields.length; i++) {
-                    state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
+                    state[i] = loads[i] = new LoadFieldNode(originalAlias, fields[i]);
                     tool.addNode(loads[i]);
                 }
                 tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList(), false);

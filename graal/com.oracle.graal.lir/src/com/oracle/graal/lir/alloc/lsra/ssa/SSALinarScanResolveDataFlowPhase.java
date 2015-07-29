@@ -20,19 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.ssa.*;
-import com.oracle.graal.lir.ssa.SSAUtils.PhiValueVisitor;
+import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 
 class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
@@ -44,7 +46,7 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
     }
 
     @Override
-    void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
+    protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
         super.resolveCollectMappings(fromBlock, toBlock, midBlock, moveResolver);
 
         if (toBlock.getPredecessorCount() > 1) {
@@ -52,8 +54,8 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
             int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
 
             AbstractBlockBase<?> phiOutBlock = midBlock != null ? midBlock : fromBlock;
-            List<LIRInstruction> instructions = allocator.ir.getLIRforBlock(phiOutBlock);
-            int phiOutIdx = SSAUtils.phiOutIndex(allocator.ir, phiOutBlock);
+            List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(phiOutBlock);
+            int phiOutIdx = SSAUtil.phiOutIndex(allocator.getLIR(), phiOutBlock);
             int phiOutId = midBlock != null ? fromBlockLastInstructionId : instructions.get(phiOutIdx).id();
             assert phiOutId >= 0;
 
@@ -81,8 +83,8 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
                 }
             };
 
-            SSAUtils.forEachPhiValuePair(allocator.ir, toBlock, phiOutBlock, visitor);
-            SSAUtils.removePhiOut(allocator.ir, phiOutBlock);
+            SSAUtil.forEachPhiValuePair(allocator.getLIR(), toBlock, phiOutBlock, visitor);
+            SSAUtil.removePhiOut(allocator.getLIR(), phiOutBlock);
         }
     }
 

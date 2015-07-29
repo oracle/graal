@@ -20,17 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package com.oracle.graal.lir.alloc.lsra.ssa;
 
 import static com.oracle.graal.compiler.common.BackendOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
-import com.oracle.graal.debug.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.alloc.lsra.*;
 
 public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 
@@ -77,7 +78,7 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
             return false;
         }
         AbstractBlockBase<?> intStartBlock = allocator.blockForId(toInterval.from());
-        assert allocator.ir.getLIRforBlock(intStartBlock).get(0).equals(op);
+        assert allocator.getLIR().getLIRforBlock(intStartBlock).get(0).equals(op);
         if (!block.getSuccessors().get(0).equals(intStartBlock)) {
             return false;
         }

@@ -176,8 +176,9 @@ public class GraphEffectList extends EffectList {
      *
      */
     public void replaceAtUsages(ValueNode node, ValueNode replacement) {
+        assert node != null && replacement != null : node + " " + replacement;
         add("replace at usages", (graph, obsoleteNodes) -> {
-            assert node.isAlive() && replacement.isAlive();
+            assert node.isAlive() && replacement.isAlive() : node + " " + replacement;
             if (replacement instanceof FixedWithNextNode && ((FixedWithNextNode) replacement).next() == null) {
                 assert node instanceof FixedNode;
                 graph.addBeforeFixed((FixedNode) node, (FixedWithNextNode) replacement);

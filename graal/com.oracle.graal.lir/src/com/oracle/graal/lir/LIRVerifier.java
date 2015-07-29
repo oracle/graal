@@ -29,11 +29,10 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.debug.*;
-
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.framemap.*;
@@ -132,7 +131,7 @@ public final class LIRVerifier {
                 assert last instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
             }
             if (block.getPredecessorCount() > 1) {
-                SSAUtils.verifyPhi(lir, block);
+                SSAUtil.verifyPhi(lir, block);
             }
 
             for (LIRInstruction op : lir.getLIRforBlock(block)) {

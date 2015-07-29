@@ -47,6 +47,7 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
         this.type = type;
         assert type != null;
         assert type.isConcrete() || type.isArray();
+        assert ((ObjectStamp) object.stamp()).nonNull();
     }
 
     public static LogicNode create(ResolvedJavaType type, ValueNode object) {
@@ -71,7 +72,6 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
             return this;
         }
         ObjectStamp objectStamp = (ObjectStamp) forValue.stamp();
-        assert objectStamp.nonNull();
 
         ResolvedJavaType stampType = objectStamp.type();
         if (stampType != null) {
@@ -123,9 +123,10 @@ public final class TypeCheckNode extends UnaryOpLogicNode implements Lowerable, 
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(getValue());
-        if (state != null) {
-            tool.replaceWithValue(LogicConstantNode.forBoolean(type().equals(state.getVirtualObject().type()), graph()));
+        ValueNode alias = tool.getAlias(getValue());
+        TriState state = tryFold(alias.stamp());
+        if (state != TriState.UNKNOWN) {
+            tool.replaceWithValue(LogicConstantNode.forBoolean(state.isTrue(), graph()));
         }
     }
 

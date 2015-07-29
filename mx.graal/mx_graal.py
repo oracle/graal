@@ -281,6 +281,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', []),
     UnitTestRun('UnitTestsNonSSA', ['-G:-SSA_LIR']),
+    UnitTestRun('UnitTestsTraceRA', ['-G:+TraceRA']),
 ]
 
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if platform.processor() == 'sparc' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
@@ -294,6 +295,7 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode']),
     BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers]),
     BootstrapTest('BootstrapNonSSAWithRegisterPressure', 'product', ['-esa', '-G:-SSA_LIR', '-G:RegisterPressure=' + _registers]),
+    BootstrapTest('BootstrapTraceRAWithRegisterPressure', 'product', ['-esa', '-G:+TraceRA', '-G:RegisterPressure=' + _registers]),
     BootstrapTest('BootstrapWithImmutableCode', 'product', ['-esa', '-G:+ImmutableCode', '-G:+VerifyPhases']),
 ]
 

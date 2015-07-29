@@ -32,6 +32,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Loads an object's class (i.e., this node can be created for {@code object.getClass()}).
@@ -87,9 +88,10 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object);
-        if (state != null) {
-            Constant javaClass = state.getVirtualObject().type().getJavaClass();
+        ValueNode alias = tool.getAlias(getObject());
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            Constant javaClass = virtual.type().getJavaClass();
             tool.replaceWithValue(ConstantNode.forConstant(stamp(), javaClass, tool.getMetaAccessProvider(), graph()));
         }
     }

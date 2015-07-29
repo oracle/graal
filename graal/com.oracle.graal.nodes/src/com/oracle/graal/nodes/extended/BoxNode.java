@@ -76,13 +76,13 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode v = tool.getReplacedValue(getValue());
+        ValueNode alias = tool.getAlias(getValue());
         ResolvedJavaType type = StampTool.typeOrNull(stamp());
 
         VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
         assert newVirtual.getFields().length == 1;
 
-        tool.createVirtualObject(newVirtual, new ValueNode[]{v}, Collections.<MonitorIdNode> emptyList(), false);
+        tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), false);
         tool.replaceWithVirtual(newVirtual);
     }
 }

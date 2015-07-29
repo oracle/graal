@@ -240,11 +240,9 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual) {
-            if (type.isAssignableFrom(state.getVirtualObject().type())) {
-                tool.replaceWithVirtual(state.getVirtualObject());
-            }
+        ValueNode alias = tool.getAlias(object);
+        if (tryFold(alias.stamp()) == TriState.TRUE) {
+            tool.replaceWith(alias);
         }
     }
 

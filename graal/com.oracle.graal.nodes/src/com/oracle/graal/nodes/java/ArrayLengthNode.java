@@ -136,10 +136,14 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(array());
-        if (state != null) {
-            assert state.getVirtualObject().type().isArray();
-            tool.replaceWithValue(ConstantNode.forInt(state.getVirtualObject().entryCount(), graph()));
+        ValueNode alias = tool.getAlias(array());
+        ValueNode length = GraphUtil.arrayLength(alias);
+        if (length != null) {
+            ValueNode lengthAlias = tool.getAlias(length);
+            if (!lengthAlias.isAlive()) {
+                lengthAlias = graph().addOrUnique(lengthAlias);
+            }
+            tool.replaceWithValue(lengthAlias);
         }
     }
 }

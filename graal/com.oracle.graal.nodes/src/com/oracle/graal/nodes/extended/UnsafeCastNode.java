@@ -31,6 +31,7 @@ import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code UnsafeCastNode} produces the same value as its input, but with a different type. It
@@ -92,9 +93,12 @@ public final class UnsafeCastNode extends FloatingGuardedNode implements LIRLowe
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
-            tool.replaceWithVirtual(state.getVirtualObject());
+        ValueNode alias = tool.getAlias(object);
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            if (StampTool.typeOrNull(this) != null && StampTool.typeOrNull(this).isAssignableFrom(virtual.type())) {
+                tool.replaceWithVirtual(virtual);
+            }
         }
     }
 
