@@ -45,14 +45,10 @@ public abstract class Accessor {
     private static Accessor NODES;
     private static Accessor INSTRUMENT;
     private static Accessor DEBUG;
+    private static final ThreadLocal<TruffleVM> CURRENT_VM = new ThreadLocal<>();
 
     static {
         TruffleLanguage lng = new TruffleLanguage(null) {
-            @Override
-            protected Object eval(Source code) throws IOException {
-                return null;
-            }
-
             @Override
             protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
                 return null;
@@ -76,6 +72,11 @@ public abstract class Accessor {
             @Override
             protected DebugSupportProvider getDebugSupport() {
                 return null;
+            }
+
+            @Override
+            protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+                throw new IOException();
             }
         };
         lng.hashCode();
@@ -162,11 +163,27 @@ public abstract class Accessor {
     }
 
     protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+        if (vm == null) {
+            vm = CURRENT_VM.get();
+            if (vm == null) {
+                throw new IllegalStateException();
+            }
+        }
         return SPI.findLanguage(vm, languageClass);
     }
 
     protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
-        return DEBUG.executionStart(vm, fillIn, s);
+        final Closeable debugClose = DEBUG.executionStart(vm, fillIn, s);
+        final TruffleVM prev = CURRENT_VM.get();
+        CURRENT_VM.set(vm);
+        class ContextCloseable implements Closeable {
+            @Override
+            public void close() throws IOException {
+                CURRENT_VM.set(prev);
+                debugClose.close();
+            }
+        }
+        return new ContextCloseable();
     }
 
     protected void dispatchEvent(TruffleVM vm, Object event) {

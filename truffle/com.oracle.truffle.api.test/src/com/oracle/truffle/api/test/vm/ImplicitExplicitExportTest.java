@@ -32,6 +32,8 @@ import org.junit.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 
@@ -115,28 +117,8 @@ public class ImplicitExplicitExportTest {
         private final Map<String, String> implicit = new HashMap<>();
 
         @Override
-        protected Object eval(Source code) throws IOException {
-            Properties p = new Properties();
-            try (Reader r = code.getReader()) {
-                p.load(r);
-            }
-            Enumeration<Object> en = p.keys();
-            while (en.hasMoreElements()) {
-                Object n = en.nextElement();
-                if (n instanceof String) {
-                    String k = (String) n;
-                    if (k.startsWith("explicit.")) {
-                        explicit.put(k.substring(9), p.getProperty(k));
-                    }
-                    if (k.startsWith("implicit.")) {
-                        implicit.put(k.substring(9), p.getProperty(k));
-                    }
-                    if (k.equals("return")) {
-                        return env().importSymbol(p.getProperty(k));
-                    }
-                }
-            }
-            return null;
+        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+            return new ValueCallTarget(code, getClass());
         }
 
         @Override
@@ -148,6 +130,10 @@ public class ImplicitExplicitExportTest {
                 return implicit.get(globalName);
             }
             return null;
+        }
+
+        public static <Language extends TruffleLanguage> Language findContext(Class<Language> type) {
+            return TruffleLanguage.findContext(type);
         }
 
         @Override
@@ -168,6 +154,53 @@ public class ImplicitExplicitExportTest {
         @Override
         protected DebugSupportProvider getDebugSupport() {
             return null;
+        }
+
+        private Object importExport(Source code) {
+            Properties p = new Properties();
+            try (Reader r = code.getReader()) {
+                p.load(r);
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+            Enumeration<Object> en = p.keys();
+            while (en.hasMoreElements()) {
+                Object n = en.nextElement();
+                if (n instanceof String) {
+                    String k = (String) n;
+                    if (k.startsWith("explicit.")) {
+                        explicit.put(k.substring(9), p.getProperty(k));
+                    }
+                    if (k.startsWith("implicit.")) {
+                        implicit.put(k.substring(9), p.getProperty(k));
+                    }
+                    if (k.equals("return")) {
+                        return env().importSymbol(p.getProperty(k));
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    private static final class ValueCallTarget implements RootCallTarget {
+        private final Source code;
+        private final Class<? extends AbstractExportImportLanguage> language;
+
+        private ValueCallTarget(Source code, Class<? extends AbstractExportImportLanguage> language) {
+            this.code = code;
+            this.language = language;
+        }
+
+        @Override
+        public RootNode getRootNode() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Object call(Object... arguments) {
+            AbstractExportImportLanguage context = AbstractExportImportLanguage.findContext(language);
+            return context.importExport(code);
         }
     }
 

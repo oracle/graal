@@ -164,5 +164,4 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         }
         return new DefaultLoopNode(repeating);
     }
-
 }

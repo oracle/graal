@@ -56,7 +56,6 @@ import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Symbol;
 import com.oracle.truffle.sl.builtins.*;
-import com.oracle.truffle.sl.factory.*;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.nodes.call.*;
 import com.oracle.truffle.sl.nodes.controlflow.*;
@@ -164,10 +163,10 @@ public class SLLanguage extends TruffleLanguage {
 
     public SLLanguage(Env env) {
         super(env);
-        context = SLContextFactory.create(this, new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
+        context = new SLContext(this, new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
         LAST = this;
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
-            context.installBuiltin(builtin);
+            context.installBuiltin(builtin, true);
         }
     }
 
@@ -381,14 +380,43 @@ public class SLLanguage extends TruffleLanguage {
         return result.toString();
     }
 
+    public static SLLanguage find() {
+        return SLLanguage.findContext(SLLanguage.class);
+    }
+
     @Override
-    protected Object eval(Source code) throws IOException {
+    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+        final SLContext c = new SLContext(this);
+        final Exception[] failed = {null};
         try {
-            context.evalSource(code);
+            c.evalSource(code);
+            failed[0] = null;
         } catch (Exception e) {
-            throw new IOException(e);
+            failed[0] = e;
         }
-        return null;
+        return new CallTarget() {
+            @Override
+            public Object call(Object... arguments) {
+                if (failed[0] instanceof RuntimeException) {
+                    throw (RuntimeException) failed[0];
+                }
+                if (failed[0] != null) {
+                    throw new IllegalStateException(failed[0]);
+                }
+                SLLanguage current = SLLanguage.find();
+                SLContext fillIn = current.context;
+                final SLFunctionRegistry functionRegistry = fillIn.getFunctionRegistry();
+                for (SLFunction f : c.getFunctionRegistry().getFunctions()) {
+                    RootCallTarget callTarget = f.getCallTarget();
+                    if (callTarget == null) {
+                        continue;
+                    }
+                    functionRegistry.lookup(f.getName());
+                    functionRegistry.register(f.getName(), (SLRootNode) f.getCallTarget().getRootNode());
+                }
+                return null;
+            }
+        };
     }
 
     @Override
@@ -463,6 +491,10 @@ public class SLLanguage extends TruffleLanguage {
             coverageTracker.print(System.out);
             coverageTracker.dispose();
         }
+    }
+
+    public SLContext getContext() {
+        return context;
     }
 
     private final class SLDebugProvider implements DebugSupportProvider {

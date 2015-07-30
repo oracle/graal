@@ -44,6 +44,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -56,15 +57,16 @@ import com.oracle.truffle.sl.runtime.*;
 @NodeInfo(shortName = "func")
 public final class SLFunctionLiteralNode extends SLExpressionNode {
 
-    private final SLFunction value;
+    private final String value;
 
-    public SLFunctionLiteralNode(SourceSection src, SLFunction value) {
+    public SLFunctionLiteralNode(SourceSection src, String value) {
         super(src);
         this.value = value;
     }
 
     @Override
     public SLFunction executeGeneric(VirtualFrame frame) {
-        return value;
+        SLLanguage language = SLLanguage.find();
+        return language.getContext().getFunctionRegistry().lookup(value);
     }
 }

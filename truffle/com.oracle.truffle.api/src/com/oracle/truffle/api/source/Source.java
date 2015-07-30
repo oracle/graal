@@ -814,7 +814,7 @@ public abstract class Source {
 
         @Override
         public int hashCode() {
-            return description.hashCode();
+            return description.hashCode() * code.hashCode();
         }
 
         @Override
@@ -827,7 +827,7 @@ public abstract class Source {
             }
             if (obj instanceof LiteralSource) {
                 LiteralSource other = (LiteralSource) obj;
-                return description.equals(other.description);
+                return description.equals(other.description) && code.equals(other.code);
             }
             return false;
         }

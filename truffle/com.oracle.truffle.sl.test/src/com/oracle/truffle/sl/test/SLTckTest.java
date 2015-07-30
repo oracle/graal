@@ -70,6 +70,14 @@ public class SLTckTest extends TruffleTCK {
             "function apply(f) {\n" +
             "  return f(18, 32) + 10;\n" +
             "}\n" +
+            "function cnt() {\n" +
+            "  return 0;\n" +
+            "}\n" +
+            "function count() {\n" +
+            "  n = cnt() + 1;\n" +
+            "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
+            "  return n;\n" +
+            "}\n" +
             "function null() {\n" +
             "}\n"
         );
@@ -110,5 +118,10 @@ public class SLTckTest extends TruffleTCK {
             "  retu rn 42;\n" +
             "}\n";
         // @formatter:on
+    }
+
+    @Override
+    protected String countInvocations() {
+        return "count";
     }
 }

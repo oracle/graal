@@ -31,9 +31,13 @@ import java.lang.reflect.*;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.api.vm.TruffleVM.Language;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * An entry point for everyone who wants to implement a Truffle based language. By providing
@@ -98,7 +102,24 @@ public abstract class TruffleLanguage {
         return this.env;
     }
 
-    protected abstract Object eval(Source code) throws IOException;
+    /**
+     * Parses the provided source and generates appropriate AST. The parsing should execute no user
+     * code, it should only create the {@link Node} tree to represent the source. The parsing may be
+     * performed in a context (specified as another {@link Node}) or without context. The
+     * {@code argumentNames} may contain symbolic names for actual parameters of the call to the
+     * returned value. The result should be a call target with method
+     * {@link CallTarget#call(java.lang.Object...)} that accepts as many arguments as were provided
+     * via the {@code argumentNames} array.
+     *
+     * @param code source code to parse
+     * @param context a {@link Node} defining context for the parsing
+     * @param argumentNames symbolic names for parameters of
+     *            {@link CallTarget#call(java.lang.Object...)}
+     * @return a call target to invoke which also keeps in memory the {@link Node} tree representing
+     *         just parsed <code>code</code>
+     * @throws IOException thrown when I/O or parsing goes wrong
+     */
+    protected abstract CallTarget parse(Source code, Node context, String... argumentNames) throws IOException;
 
     /**
      * Called when some other language is seeking for a global symbol. This method is supposed to do
@@ -148,6 +169,18 @@ public abstract class TruffleLanguage {
     protected abstract ToolSupportProvider getToolSupport();
 
     protected abstract DebugSupportProvider getDebugSupport();
+
+    /**
+     * Finds the currently executing context for current thread.
+     *
+     * @param <Language> type of language making the query
+     * @param language the language class
+     * @return the context associated with current execution
+     * @throws IllegalStateException if no context is associated with the execution
+     */
+    protected static <Language extends TruffleLanguage> Language findContext(Class<Language> language) {
+        return language.cast(API.findLanguage(null, language));
+    }
 
     /**
      * Represents execution environment of the {@link TruffleLanguage}. Each active
@@ -229,14 +262,33 @@ public abstract class TruffleLanguage {
             return super.importSymbol(vm, queryingLang, globalName);
         }
 
+        private static final Map<Source, CallTarget> COMPILED = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
+
         @Override
-        protected Object eval(TruffleLanguage l, Source s) throws IOException {
-            return l.eval(s);
+        protected Object eval(TruffleLanguage language, Source source) throws IOException {
+            CallTarget target = COMPILED.get(source);
+            if (target == null) {
+                target = language.parse(source, null);
+                if (target == null) {
+                    throw new IOException("Parsing has not produced a CallTarget for " + source);
+                }
+                COMPILED.put(source, target);
+            }
+            try {
+                return target.call();
+            } catch (Exception ex) {
+                throw new IOException(ex);
+            }
         }
 
         @Override
         protected Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
             return l.findExportedSymbol(globalName, onlyExplicit);
+        }
+
+        @Override
+        protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+            return super.findLanguage(vm, languageClass);
         }
 
         @Override
