@@ -383,7 +383,7 @@ public class SLLanguage extends TruffleLanguage {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+    protected CallTarget parse(Source code, Node node, String... argumentNames) throws IOException {
         final SLContext c = new SLContext(this);
         final Exception[] failed = {null};
         try {

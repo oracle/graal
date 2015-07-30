@@ -23,7 +23,6 @@
 package com.oracle.truffle.api.dsl.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;

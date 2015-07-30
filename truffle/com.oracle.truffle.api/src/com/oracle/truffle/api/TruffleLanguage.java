@@ -173,12 +173,12 @@ public abstract class TruffleLanguage {
     /**
      * Finds the currently executing context for current thread.
      *
-     * @param <Language> type of language making the query
+     * @param <Lang> type of language making the query
      * @param language the language class
      * @return the context associated with current execution
      * @throws IllegalStateException if no context is associated with the execution
      */
-    protected static <Language extends TruffleLanguage> Language findContext(Class<Language> language) {
+    protected static <Lang extends TruffleLanguage> Lang findContext(Class<Lang> language) {
         return language.cast(API.findLanguage(null, language));
     }
 

@@ -162,12 +162,15 @@ public abstract class Accessor {
         return INSTRUMENT.findLanguage(probe);
     }
 
-    protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
-        if (vm == null) {
+    protected TruffleLanguage findLanguage(TruffleVM known, Class<? extends TruffleLanguage> languageClass) {
+        TruffleVM vm;
+        if (known == null) {
             vm = CURRENT_VM.get();
             if (vm == null) {
                 throw new IllegalStateException();
             }
+        } else {
+            vm = known;
         }
         return SPI.findLanguage(vm, languageClass);
     }
