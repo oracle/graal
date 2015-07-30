@@ -180,7 +180,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      */
     private boolean checkPostLowering(StructuredGraph graph, PhaseContext context) {
         Mark expectedMark = graph.getMark();
-        lower(graph, context, 1);
+        lower(graph, context, LoweringMode.VERIFY_LOWERING);
         Mark mark = graph.getMark();
         assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(expectedMark).snapshot();
         return true;
@@ -188,13 +188,13 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
     @Override
     protected void run(final StructuredGraph graph, PhaseContext context) {
-        lower(graph, context, 0);
+        lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
     }
 
-    private void lower(StructuredGraph graph, PhaseContext context, int i) {
+    private void lower(StructuredGraph graph, PhaseContext context, LoweringMode mode) {
         IncrementalCanonicalizerPhase<PhaseContext> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
-        incrementalCanonicalizer.appendPhase(new Round(i, context));
+        incrementalCanonicalizer.appendPhase(new Round(context, mode));
         incrementalCanonicalizer.apply(graph, context);
         assert graph.verify();
     }
@@ -233,21 +233,41 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         return true;
     }
 
+    private enum LoweringMode {
+        LOWERING,
+        VERIFY_LOWERING
+    }
+
     private final class Round extends Phase {
 
         private final PhaseContext context;
+        private final LoweringMode mode;
         private final SchedulePhase schedule;
-        private final int iteration;
 
-        private Round(int iteration, PhaseContext context) {
-            this.iteration = iteration;
+        private Round(PhaseContext context, LoweringMode mode) {
             this.context = context;
-            this.schedule = new SchedulePhase();
+            this.mode = mode;
+
+            /*
+             * In VERIFY_LOWERING, we want to verify whether the lowering itself changes the graph.
+             * Make sure we're not detecting spurious changes because the SchedulePhase modifies the
+             * graph.
+             */
+            boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
+
+            this.schedule = new SchedulePhase(immutableSchedule);
         }
 
         @Override
         protected CharSequence createName() {
-            return "LoweringIteration" + iteration;
+            switch (mode) {
+                case LOWERING:
+                    return "LoweringRound";
+                case VERIFY_LOWERING:
+                    return "VerifyLoweringRound";
+                default:
+                    throw JVMCIError.shouldNotReachHere();
+            }
         }
 
         @Override
@@ -404,7 +424,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      *     if (alwaysReachedBlock != null &amp;&amp; alwaysReachedBlock.getDominator() == block) {
      *         processBlock(alwaysReachedBlock);
      *     }
-     * 
+     *
      *     // Now go for the other dominators.
      *     for (Block dominated : block.getDominated()) {
      *         if (dominated != alwaysReachedBlock) {

@@ -27,11 +27,12 @@ import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.*;
 
 import java.util.*;
 
-import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.Graph.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -80,54 +81,81 @@ public final class SchedulePhase extends Phase {
     private final SchedulingStrategy selectedStrategy;
     private NodeMap<Block> nodeToBlockMap;
 
+    private final boolean immutableGraph;
+
     public SchedulePhase() {
-        this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
+        this(false);
+    }
+
+    public SchedulePhase(boolean immutableGraph) {
+        this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST, immutableGraph);
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
+        this(strategy, false);
+    }
+
+    public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph) {
         this.selectedStrategy = strategy;
+        this.immutableGraph = immutableGraph;
+    }
+
+    private NodeEventScope verifyImmutableGraph(StructuredGraph graph) {
+        boolean assertionsEnabled = false;
+        assert (assertionsEnabled = true) == true;
+        if (immutableGraph && assertionsEnabled) {
+            return graph.trackNodeEvents(new NodeEventListener() {
+                public void event(NodeEvent e, Node node) {
+                    assert false : "graph changed: " + e + " on node " + node;
+                }
+            });
+        } else {
+            return null;
+        }
     }
 
     @Override
     protected void run(StructuredGraph graph) {
-        // assert GraphOrder.assertNonCyclicGraph(graph);
-        cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+        try (NodeEventScope scope = verifyImmutableGraph(graph)) {
+            // assert GraphOrder.assertNonCyclicGraph(graph);
+            cfg = ControlFlowGraph.compute(graph, true, true, true, false);
 
-        if (selectedStrategy == SchedulingStrategy.EARLIEST) {
-            // Assign early so we are getting a context in case of an exception.
-            this.nodeToBlockMap = graph.createNodeMap();
-            this.blockToNodesMap = new BlockMap<>(cfg);
-            NodeBitMap visited = graph.createNodeBitMap();
-            scheduleEarliestIterative(cfg, blockToNodesMap, nodeToBlockMap, visited, graph);
-            return;
-        } else {
-            boolean isOutOfLoops = selectedStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS;
-            if (selectedStrategy == SchedulingStrategy.LATEST || isOutOfLoops) {
-                NodeMap<Block> currentNodeMap = graph.createNodeMap();
-                BlockMap<List<Node>> earliestBlockToNodesMap = new BlockMap<>(cfg);
-                NodeBitMap visited = graph.createNodeBitMap();
-
+            if (selectedStrategy == SchedulingStrategy.EARLIEST) {
                 // Assign early so we are getting a context in case of an exception.
-                this.blockToNodesMap = earliestBlockToNodesMap;
-                this.nodeToBlockMap = currentNodeMap;
+                this.nodeToBlockMap = graph.createNodeMap();
+                this.blockToNodesMap = new BlockMap<>(cfg);
+                NodeBitMap visited = graph.createNodeBitMap();
+                scheduleEarliestIterative(blockToNodesMap, nodeToBlockMap, visited, graph);
+                return;
+            } else {
+                boolean isOutOfLoops = selectedStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS;
+                if (selectedStrategy == SchedulingStrategy.LATEST || isOutOfLoops) {
+                    NodeMap<Block> currentNodeMap = graph.createNodeMap();
+                    BlockMap<List<Node>> earliestBlockToNodesMap = new BlockMap<>(cfg);
+                    NodeBitMap visited = graph.createNodeBitMap();
 
-                scheduleEarliestIterative(cfg, earliestBlockToNodesMap, currentNodeMap, visited, graph);
-                BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
+                    // Assign early so we are getting a context in case of an exception.
+                    this.blockToNodesMap = earliestBlockToNodesMap;
+                    this.nodeToBlockMap = currentNodeMap;
 
-                for (Block b : cfg.getBlocks()) {
-                    latestBlockToNodesMap.put(b, new ArrayList<Node>());
+                    scheduleEarliestIterative(earliestBlockToNodesMap, currentNodeMap, visited, graph);
+                    BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
+
+                    for (Block b : cfg.getBlocks()) {
+                        latestBlockToNodesMap.put(b, new ArrayList<Node>());
+                    }
+
+                    BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(isOutOfLoops, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap);
+                    sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
+
+                    assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
+                    assert MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
+
+                    this.blockToNodesMap = latestBlockToNodesMap;
+                    this.nodeToBlockMap = currentNodeMap;
+
+                    cfg.setNodeToBlock(currentNodeMap);
                 }
-
-                BlockMap<ArrayList<FloatingReadNode>> watchListMap = calcLatestBlocks(isOutOfLoops, currentNodeMap, earliestBlockToNodesMap, visited, latestBlockToNodesMap);
-                sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
-
-                assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
-                assert MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
-
-                this.blockToNodesMap = latestBlockToNodesMap;
-                this.nodeToBlockMap = currentNodeMap;
-
-                cfg.setNodeToBlock(currentNodeMap);
             }
         }
     }
@@ -464,7 +492,7 @@ public final class SchedulePhase extends Phase {
         return currentBlock;
     }
 
-    private static void scheduleEarliestIterative(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph) {
+    private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph) {
 
         BitSet floatingReads = new BitSet(cfg.getBlocks().size());
 
@@ -532,7 +560,7 @@ public final class SchedulePhase extends Phase {
         } while (unmarkedPhi && changed);
 
         // Check for dead nodes.
-        if (visited.getCounter() < graph.getNodeCount()) {
+        if (!immutableGraph && visited.getCounter() < graph.getNodeCount()) {
             for (Node n : graph.getNodes()) {
                 if (!visited.isMarked(n)) {
                     n.clearInputs();
