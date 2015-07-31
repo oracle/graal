@@ -224,7 +224,7 @@ public class StubUtil {
             Word verifyOopCounter = Word.unsigned(verifyOopCounterAddress());
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
-            Pointer oop = Word.fromObject(object);
+            Pointer oop = Word.objectToTrackedPointer(object);
             if (object != null) {
                 GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'

@@ -112,7 +112,7 @@ public class DerivedOopTest extends GraalCompilerTest implements Snippets {
     }
 
     static long getRawPointerIntrinsic(Object obj) {
-        return Word.fromObject(obj).rawValue();
+        return Word.objectToTrackedPointer(obj).rawValue();
     }
 
     public static Result fieldOffsetSnippet(Result obj, long offset) {

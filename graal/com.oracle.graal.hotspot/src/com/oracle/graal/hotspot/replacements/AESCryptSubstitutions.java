@@ -78,7 +78,7 @@ public class AESCryptSubstitutions {
         checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, AESCryptClass);
         Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, Kind.Object, LocationIdentity.any());
-        Pointer kAddr = Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
+        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(arrayBaseOffset(Kind.Byte));
         Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, arrayBaseOffset(Kind.Byte) + inOffset));
         Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, arrayBaseOffset(Kind.Byte) + outOffset));
         if (encrypt) {

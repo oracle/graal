@@ -263,10 +263,16 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
                 b.push(returnKind, toUnsigned(b, args[0], Kind.Long));
                 break;
 
-            case FROM_OBJECT:
+            case OBJECT_TO_TRACKED:
                 assert args.length == 1;
-                WordCastNode objectToWord = b.add(WordCastNode.objectToWord(args[0], wordKind));
-                b.push(returnKind, objectToWord);
+                WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(args[0], wordKind));
+                b.push(returnKind, objectToTracked);
+                break;
+
+            case OBJECT_TO_UNTRACKED:
+                assert args.length == 1;
+                WordCastNode objectToUntracked = b.add(WordCastNode.objectToUntrackedPointer(args[0], wordKind));
+                b.push(returnKind, objectToUntracked);
                 break;
 
             case FROM_ADDRESS:

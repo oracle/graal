@@ -110,7 +110,7 @@ public class MonitorSnippets implements Snippets {
 
         final Word lock = beginLockScope(lockDepth);
 
-        trace(trace, "           object: 0x%016lx\n", Word.fromObject(object));
+        trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
         trace(trace, "             lock: 0x%016lx\n", lock);
         trace(trace, "             mark: 0x%016lx\n", mark);
 
@@ -296,7 +296,7 @@ public class MonitorSnippets implements Snippets {
 
     @Snippet
     public static void monitorexit(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
-        trace(trace, "           object: 0x%016lx\n", Word.fromObject(object));
+        trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
         if (useBiasedLocking()) {
             // Check for biased locking unlock case, which is a no-op
             // Note: we do not have to check the thread ID for two reasons.

@@ -67,7 +67,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
     @Snippet
     private static void unwindExceptionToCaller(Object exception, Word returnAddress, @ConstantParameter Register threadRegister) {
-        Pointer exceptionOop = Word.fromObject(exception);
+        Pointer exceptionOop = Word.objectToTrackedPointer(exception);
         if (logging()) {
             printf("unwinding exception %p (", exceptionOop.rawValue());
             decipher(exceptionOop.rawValue());

@@ -87,7 +87,7 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void serialImpreciseWriteBarrier(Object object) {
-        serialWriteBarrier(Word.fromObject(object));
+        serialWriteBarrier(Word.objectToTrackedPointer(object));
     }
 
     @Snippet
@@ -124,7 +124,7 @@ public class WriteBarrierSnippets implements Snippets {
         verifyOop(object);
         Object fixedExpectedObject = FixedValueAnchorNode.getObject(expectedObject);
         Pointer field = Word.fromAddress(address);
-        Pointer previousOop = Word.fromObject(fixedExpectedObject);
+        Pointer previousOop = Word.objectToTrackedPointer(fixedExpectedObject);
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(g1SATBQueueIndexOffset());
@@ -132,8 +132,8 @@ public class WriteBarrierSnippets implements Snippets {
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
-            log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.fromObject(object).rawValue());
-            log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedExpectedObject).rawValue());
+            log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
+            log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(fixedExpectedObject).rawValue());
             log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
             log(trace, "[%d] G1-Pre Thread %p Marking %d\n", gcCycle, thread.rawValue(), markingValue);
             log(trace, "[%d] G1-Pre Thread %p DoLoad %d\n", gcCycle, thread.rawValue(), doLoad ? 1L : 0L);
@@ -144,7 +144,7 @@ public class WriteBarrierSnippets implements Snippets {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (probability(LIKELY_PROBABILITY, doLoad)) {
-                previousOop = Word.fromObject(field.readObject(0, BarrierType.NONE));
+                previousOop = Word.objectToTrackedPointer(field.readObject(0, BarrierType.NONE));
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
                     verifyOop(previousOop.toObject());
@@ -181,15 +181,15 @@ public class WriteBarrierSnippets implements Snippets {
         if (usePrecise) {
             oop = Word.fromAddress(address);
         } else {
-            oop = Word.fromObject(object);
+            oop = Word.objectToTrackedPointer(object);
         }
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
-            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(object).rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
-        Pointer writtenValue = Word.fromObject(fixedValue);
+        Pointer writtenValue = Word.objectToTrackedPointer(fixedValue);
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
         Word indexAddress = thread.add(g1CardQueueIndexOffset());
         Word indexValue = thread.readWord(g1CardQueueIndexOffset());
@@ -263,7 +263,7 @@ public class WriteBarrierSnippets implements Snippets {
 
         for (int i = startIndex; i < length; i++) {
             long address = dstAddr + header + (i * scale);
-            Pointer oop = Word.fromObject(Word.unsigned(address).readObject(0, BarrierType.NONE));
+            Pointer oop = Word.objectToTrackedPointer(Word.unsigned(address).readObject(0, BarrierType.NONE));
             verifyOop(oop.toObject());
             if (oop.notEqual(0)) {
                 if (indexValue != 0) {
@@ -503,7 +503,7 @@ public class WriteBarrierSnippets implements Snippets {
      */
     public static void validateObject(Object parent, Object child) {
         if (verifyOops() && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
-            log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.fromObject(parent).rawValue(), Word.fromObject(child).rawValue());
+            log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.objectToTrackedPointer(parent).rawValue(), Word.objectToTrackedPointer(child).rawValue());
             DirectObjectStoreNode.storeObject(null, 0, 0, null, LocationIdentity.any(), Kind.Object);
         }
     }

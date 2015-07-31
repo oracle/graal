@@ -78,8 +78,8 @@ public class ExceptionHandlerStub extends SnippetStub {
         writeExceptionOop(thread, exception);
         writeExceptionPc(thread, exceptionPc);
         if (logging()) {
-            printf("handling exception %p (", Word.fromObject(exception).rawValue());
-            decipher(Word.fromObject(exception).rawValue());
+            printf("handling exception %p (", Word.objectToTrackedPointer(exception).rawValue());
+            decipher(Word.objectToTrackedPointer(exception).rawValue());
             printf(") at %p (", exceptionPc.rawValue());
             decipher(exceptionPc.rawValue());
             printf(")\n");
@@ -91,7 +91,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread);
 
         if (logging()) {
-            printf("handler for exception %p at %p is at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
+            printf("handler for exception %p at %p is at %p (", Word.objectToTrackedPointer(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
             decipher(handlerPc.rawValue());
             printf(")\n");
         }
@@ -104,7 +104,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         if (enabled) {
             Object currentException = readExceptionOop(thread);
             if (currentException != null) {
-                fatal("exception object in thread must be null, not %p", Word.fromObject(currentException).rawValue());
+                fatal("exception object in thread must be null, not %p", Word.objectToTrackedPointer(currentException).rawValue());
             }
             if (cAssertionsEnabled()) {
                 // This thread-local is only cleared in DEBUG builds of the VM

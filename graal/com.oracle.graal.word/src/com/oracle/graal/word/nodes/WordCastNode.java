@@ -33,24 +33,22 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.Word.Opcode;
 
 /**
- * Casts between Word and Object exposed by the {@link Opcode#FROM_OBJECT} and
- * {@link Opcode#TO_OBJECT} operations. It has an impact on the pointer maps for the GC, so it must
- * not be scheduled or optimized away.
+ * Casts between Word and Object exposed by the {@link Opcode#FROM_ADDRESS},
+ * {@link Opcode#OBJECT_TO_TRACKED}, {@link Opcode#OBJECT_TO_UNTRACKED} and {@link Opcode#TO_OBJECT}
+ * operations. It has an impact on the pointer maps for the GC, so it must not be scheduled or
+ * optimized away.
  */
 @NodeInfo
 public final class WordCastNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable {
 
     public static final NodeClass<WordCastNode> TYPE = NodeClass.create(WordCastNode.class);
+
     @Input ValueNode input;
+    public final boolean trackedPointer;
 
     public static WordCastNode wordToObject(ValueNode input, Kind wordKind) {
         assert input.getKind() == wordKind;
         return new WordCastNode(StampFactory.object(), input);
-    }
-
-    public static WordCastNode objectToWord(ValueNode input, Kind wordKind) {
-        assert input.stamp() instanceof ObjectStamp;
-        return new WordCastNode(StampFactory.forKind(wordKind), input);
     }
 
     public static WordCastNode addressToWord(ValueNode input, Kind wordKind) {
@@ -58,9 +56,24 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         return new WordCastNode(StampFactory.forKind(wordKind), input);
     }
 
-    public WordCastNode(Stamp stamp, ValueNode input) {
+    public static WordCastNode objectToTrackedPointer(ValueNode input, Kind wordKind) {
+        assert input.stamp() instanceof ObjectStamp;
+        return new WordCastNode(StampFactory.forKind(wordKind), input, true);
+    }
+
+    public static WordCastNode objectToUntrackedPointer(ValueNode input, Kind wordKind) {
+        assert input.stamp() instanceof ObjectStamp;
+        return new WordCastNode(StampFactory.forKind(wordKind), input, false);
+    }
+
+    protected WordCastNode(Stamp stamp, ValueNode input) {
+        this(stamp, input, true);
+    }
+
+    protected WordCastNode(Stamp stamp, ValueNode input, boolean trackedPointer) {
         super(TYPE, stamp);
         this.input = input;
+        this.trackedPointer = trackedPointer;
     }
 
     public ValueNode getInput() {
@@ -93,8 +106,8 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         LIRKind kind = generator.getLIRGeneratorTool().getLIRKind(stamp());
         assert generator.getLIRGeneratorTool().target().getSizeInBytes(kind.getPlatformKind()) == generator.getLIRGeneratorTool().target().getSizeInBytes(value.getPlatformKind());
 
-        if (kind.isValue() && !value.getLIRKind().isValue()) {
-            // only add reference information, but never drop it
+        if (trackedPointer && kind.isValue() && !value.getLIRKind().isValue()) {
+            // just change the PlatformKind, but don't drop reference information
             kind = value.getLIRKind().changeType(kind.getPlatformKind());
         }
 
