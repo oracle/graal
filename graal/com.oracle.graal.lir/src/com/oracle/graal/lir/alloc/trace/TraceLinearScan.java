@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.lir.alloc.trace.TraceLinearScan.Options.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
+import static com.oracle.graal.lir.alloc.trace.TraceLinearScan.Options.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -74,7 +75,13 @@ public final class TraceLinearScan extends LinearScan {
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
                 sortIntervalsBeforeAllocation();
 
-                createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                try (OverrideScope os = OptionValue.override(OptimizingLinearScanWalker.Options.LSRAOptimization, false)) {
+                    /*
+                     * No need for single predecessor block optimization as this is inherently done
+                     * by the trace approach.
+                     */
+                    createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
+                }
 
                 if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
