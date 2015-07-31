@@ -146,33 +146,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Handles the discovery of the {@link SyntaxNode} that this node is derived from.
-     */
-    public SyntaxNode asSyntaxNode() {
-        if (this instanceof SyntaxNode) {
-            return (SyntaxNode) this;
-        } else {
-            return getSyntaxNode();
-        }
-    }
-
-    /**
-     * Locates the {@link SyntaxNode} with which this node is associated/derived. Many nodes
-     * organize themselves in such a way that the relevant {@link SyntaxNode} can be found by
-     * following the parent chain, which is therefore the default implementation.
-     */
-    protected SyntaxNode getSyntaxNode() {
-        Node current = this;
-        while (current != null) {
-            if (current instanceof SyntaxNode) {
-                return (SyntaxNode) current;
-            }
-            current = current.getParent();
-        }
-        throw new IllegalStateException("no SyntaxNode found");
-    }
-
-    /**
      * Method that updates the link to the parent in the array of specified new child nodes to this
      * node.
      *
