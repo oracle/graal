@@ -85,7 +85,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             LIRKind kind = obj.getLIRKind();
             int bytes = bytesPerElement(kind);
             if (kind.isUnknownReference()) {
-                throw JVMCIError.unimplemented("derived references not yet implemented");
+                throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");
             } else {
                 Location base = null;
                 if (kind.isDerivedReference()) {
