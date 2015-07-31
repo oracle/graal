@@ -74,7 +74,6 @@ public abstract class Word implements Signed, Unsigned, Pointer {
          FROM_UNSIGNED,
          FROM_SIGNED,
          FROM_OBJECT,
-         FROM_WORDBASE,
          FROM_ADDRESS,
          TO_OBJECT,
          TO_RAW_VALUE,
@@ -172,9 +171,6 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     public long rawValue() {
         return unbox();
     }
-
-    @Operation(opcode = Opcode.FROM_WORDBASE)
-    public static native Word fromWordBase(WordBase val);
 
     @Operation(opcode = Opcode.FROM_OBJECT)
     public static native Pointer fromObject(Object val);

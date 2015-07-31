@@ -98,8 +98,8 @@ public class CipherBlockChainingSubstitutions {
         Object realReceiver = PiNode.piCastNonNull(rcvr, cipherBlockChainingClass);
         Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, LocationIdentity.any());
         Object rObject = UnsafeLoadNode.load(realReceiver, rOffset, Kind.Object, LocationIdentity.any());
-        Word kAddr = Word.fromWordBase(Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte)));
-        Word rAddr = Word.fromWordBase(Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte)));
+        Pointer kAddr = Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
+        Pointer rAddr = Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte));
         Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, arrayBaseOffset(Kind.Byte) + inOffset));
         Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, arrayBaseOffset(Kind.Byte) + outOffset));
         if (encrypt) {
@@ -110,8 +110,8 @@ public class CipherBlockChainingSubstitutions {
     }
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native void encryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key, Word r, int inLength);
+    public static native void encryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key, Pointer r, int inLength);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native void decryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key, Word r, int inLength);
+    public static native void decryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key, Pointer r, int inLength);
 }

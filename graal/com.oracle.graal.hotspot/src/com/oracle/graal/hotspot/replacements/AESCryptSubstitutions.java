@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.word.Word.*;
 
 import java.lang.reflect.*;
 
@@ -79,7 +78,7 @@ public class AESCryptSubstitutions {
         checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, AESCryptClass);
         Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, Kind.Object, LocationIdentity.any());
-        Word kAddr = fromWordBase(Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte)));
+        Pointer kAddr = Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
         Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, arrayBaseOffset(Kind.Byte) + inOffset));
         Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, arrayBaseOffset(Kind.Byte) + outOffset));
         if (encrypt) {
@@ -99,8 +98,8 @@ public class AESCryptSubstitutions {
     }
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native void encryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key);
+    public static native void encryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key);
+    public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
 }

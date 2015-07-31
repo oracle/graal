@@ -74,7 +74,7 @@ public class WriteBarrierSnippets implements Snippets {
         serialWriteBarrierCounter.inc();
         int cardTableShift = (isImmutableCode() && generatePIC()) ? CardTableShiftNode.cardTableShift() : cardTableShift();
         long cardTableAddress = (isImmutableCode() && generatePIC()) ? CardTableAddressNode.cardTableAddress() : cardTableStart();
-        Word base = Word.fromWordBase(ptr.unsignedShiftRight(cardTableShift));
+        Word base = (Word) ptr.unsignedShiftRight(cardTableShift);
         long startAddress = cardTableAddress;
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -123,8 +123,8 @@ public class WriteBarrierSnippets implements Snippets {
         Word thread = registerAsWord(threadRegister);
         verifyOop(object);
         Object fixedExpectedObject = FixedValueAnchorNode.getObject(expectedObject);
-        Word field = Word.fromWordBase(Word.fromAddress(address));
-        Word previousOop = Word.fromWordBase(Word.fromObject(fixedExpectedObject));
+        Pointer field = Word.fromAddress(address);
+        Pointer previousOop = Word.fromObject(fixedExpectedObject);
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(g1SATBQueueIndexOffset());
@@ -144,7 +144,7 @@ public class WriteBarrierSnippets implements Snippets {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (probability(LIKELY_PROBABILITY, doLoad)) {
-                previousOop = Word.fromWordBase(Word.fromObject(field.readObject(0, BarrierType.NONE)));
+                previousOop = Word.fromObject(field.readObject(0, BarrierType.NONE));
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
                     verifyOop(previousOop.toObject());
@@ -177,11 +177,11 @@ public class WriteBarrierSnippets implements Snippets {
         verifyOop(object);
         verifyOop(fixedValue);
         validateObject(object, fixedValue);
-        Word oop;
+        Pointer oop;
         if (usePrecise) {
-            oop = Word.fromWordBase(Word.fromAddress(address));
+            oop = Word.fromAddress(address);
         } else {
-            oop = Word.fromWordBase(Word.fromObject(object));
+            oop = Word.fromObject(object);
         }
         int gcCycle = 0;
         if (trace) {
@@ -189,17 +189,17 @@ public class WriteBarrierSnippets implements Snippets {
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(object).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
-        Word writtenValue = Word.fromWordBase(Word.fromObject(fixedValue));
+        Pointer writtenValue = Word.fromObject(fixedValue);
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
         Word indexAddress = thread.add(g1CardQueueIndexOffset());
         Word indexValue = thread.readWord(g1CardQueueIndexOffset());
         // The result of the xor reveals whether the installed pointer crosses heap regions.
         // In case it does the write barrier has to be issued.
-        Word xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes());
+        Unsigned xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes());
 
         // Calculate the address of the card to be enqueued to the
         // thread local card queue.
-        Word cardBase = oop.unsignedShiftRight(cardTableShift());
+        Unsigned cardBase = oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -207,7 +207,7 @@ public class WriteBarrierSnippets implements Snippets {
         } else {
             cardBase = cardBase.add(Word.unsigned(cardTableStart()));
         }
-        Word cardAddress = cardBase.add(displacement);
+        Word cardAddress = (Word) cardBase.add(displacement);
 
         g1AttemptedPostWriteBarrierCounter.inc();
         if (probability(FREQUENT_PROBABILITY, xorResult.notEqual(0))) {

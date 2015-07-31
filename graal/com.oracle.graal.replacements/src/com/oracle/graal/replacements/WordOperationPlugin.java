@@ -263,11 +263,6 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
                 b.push(returnKind, toUnsigned(b, args[0], Kind.Long));
                 break;
 
-            case FROM_WORDBASE:
-                assert args.length == 1;
-                b.push(returnKind, args[0]);
-                break;
-
             case FROM_OBJECT:
                 assert args.length == 1;
                 WordCastNode objectToWord = b.add(WordCastNode.objectToWord(args[0], wordKind));
