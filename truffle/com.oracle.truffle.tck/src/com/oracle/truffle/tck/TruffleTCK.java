@@ -102,6 +102,19 @@ public abstract class TruffleTCK {
     protected abstract String applyNumbers();
 
     /**
+     * Name of a function that counts number of its invocations in current {@link TruffleVM}
+     * context. Your function should somehow keep a counter to remember number of its invocations
+     * and always increment it. The first invocation should return <code>1</code>, the second
+     * <code>2</code> and so on. The returned values are expected to be instances of {@link Number}.
+     * <p>
+     * The function will be used to test that two instances of your language can co-exist next to
+     * each other. Without being mutually influenced.
+     *
+     * @return name of globally expected symbol
+     */
+    protected abstract String countInvocations();
+
+    /**
      * Return a code snippet that is invalid in your language. Its
      * {@link TruffleVM#eval(java.lang.String, java.lang.String) evaluation} should fail and yield
      * an exception.
@@ -195,6 +208,33 @@ public abstract class TruffleTCK {
         Number n = (Number) res;
 
         assert 28 == n.intValue() : "18 < 32 and plus 10";
+    }
+
+    @Test
+    public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
+        final String countMethod = countInvocations();
+        TruffleVM.Symbol count1 = findGlobalSymbol(countMethod);
+        tckVM = null; // clean-up
+        TruffleVM.Symbol count2 = findGlobalSymbol(countMethod);
+
+        int prev1 = 0;
+        int prev2 = 0;
+        Random r = new Random();
+        for (int i = 0; i < 10; i++) {
+            int quantum = r.nextInt(10);
+            for (int j = 0; j < quantum; j++) {
+                Object res = count1.invoke(null);
+                assert res instanceof Number : "expecting number: " + res;
+                assert ((Number) res).intValue() == ++prev1 : "expecting " + prev1 + " but was " + res;
+            }
+            for (int j = 0; j < quantum; j++) {
+                Object res = count2.invoke(null);
+                assert res instanceof Number : "expecting number: " + res;
+                assert ((Number) res).intValue() == ++prev2 : "expecting " + prev2 + " but was " + res;
+            }
+            assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2;
+        }
+
     }
 
     private TruffleVM.Symbol findGlobalSymbol(String name) throws Exception {

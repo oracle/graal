@@ -30,12 +30,14 @@
  * needs to turn debugging on when constructing its Truffle virtual machine:
  * <pre>
  * vm = {@link com.oracle.truffle.api.vm.TruffleVM#newVM()}.
- *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}{@code <}{@link com.oracle.truffle.api.debug.ExecutionEvent}{@code >}() {
+ *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}
+ *     {@code <}{@link com.oracle.truffle.api.debug.ExecutionEvent}{@code >}() {
  *         <b>public void</b> handle({@link com.oracle.truffle.api.debug.ExecutionEvent} ev) {
  *             <em>// configure the virtual machine as {@link com.oracle.truffle.api.vm.TruffleVM#eval(java.net.URI) new execution} is starting</em>
  *         }
  *     }).
- *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}{@code <}{@link com.oracle.truffle.api.debug.SuspendedEvent}{@code >}() {
+ *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}{@code <}
+ *     {@link com.oracle.truffle.api.debug.SuspendedEvent}{@code >}() {
  *         <b>public void</b> handle({@link com.oracle.truffle.api.debug.SuspendedEvent} ev) {
  *             <em>// execution is suspended on a breakpoint or on a step - decide what next</em>
  *         }
@@ -43,30 +45,31 @@
  * </pre>
  * The debugging is controlled by events emitted by the Truffle virtual machine
  * at important moments. The {@link com.oracle.truffle.api.debug.ExecutionEvent}
- * is sent when a call to {@link com.oracle.truffle.api.vm.TruffleVM#eval(java.net.URI) eval(...)} 
+ * is sent when a call to {@link com.oracle.truffle.api.vm.TruffleVM#eval(java.net.URI) eval(...)}
  * is made and allows one to configure {@link com.oracle.truffle.api.debug.Breakpoint breakpoints} and/or decide whether the
- * program should {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto() step-into} or 
+ * program should {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto() step-into} or
  * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareContinue() just run}. Once the execution is suspended a
  * {@link com.oracle.truffle.api.debug.SuspendedEvent} is generated which
  * allows one to inspect the stack and choose the further execution mode
- * ({@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepInto(int) step-into}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOver(int) step-over}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOut() step-out}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareContinue() continue}).
+ * ({@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepInto(int) step-into}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOver(int) step-over},
+ *  {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareStepOut() step-out}, {@link com.oracle.truffle.api.debug.SuspendedEvent#prepareContinue() continue}).
  * <p>
  * The events methods are only available when the event is being delivered and
  * shouldn't be used anytime later. Both events however provide access to
  * {@link com.oracle.truffle.api.debug.Debugger} which can be kept and used
  * during whole existence of the {@link com.oracle.truffle.api.vm.TruffleVM}.
- * {@link com.oracle.truffle.api.debug.Debugger} is the central class that 
+ * {@link com.oracle.truffle.api.debug.Debugger} is the central class that
  * keeps information about {@link com.oracle.truffle.api.debug.Debugger#getBreakpoints() registered breakpoints}
  * and allows one create new {@link com.oracle.truffle.api.debug.Breakpoint ones}.
- * 
+ *
  * <h4>Turning on Stepping Mode</h4>
- * 
+ *
  * In case you want your execution to pause on first statement, register for
  * {@link com.oracle.truffle.api.debug.ExecutionEvent} and once delivered
  * call {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto()}.
  *
  * <h4>Register a {@link com.oracle.truffle.api.debug.Breakpoint}</h4>
- * 
+ *
  * Wait for execution to be started - which generates an
  * {@link com.oracle.truffle.api.debug.ExecutionEvent}. Use its
  * {@link com.oracle.truffle.api.debug.Debugger ev.getDebugger}()

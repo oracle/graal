@@ -28,6 +28,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.dsl.test.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.*;
 
 public class LanguageRegistrationTest {
@@ -55,8 +56,8 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object eval(Source code) throws IOException {
-            return null;
+        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+            throw new IOException();
         }
 
         @Override
@@ -94,8 +95,8 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object eval(Source code) throws IOException {
-            return null;
+        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+            throw new IOException();
         }
 
         @Override
@@ -132,11 +133,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object eval(Source code) throws IOException {
-            return null;
-        }
-
-        @Override
         protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
             return null;
         }
@@ -159,6 +155,11 @@ public class LanguageRegistrationTest {
         @Override
         protected DebugSupportProvider getDebugSupport() {
             return null;
+        }
+
+        @Override
+        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+            throw new IOException();
         }
 
     }

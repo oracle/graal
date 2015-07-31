@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
@@ -65,16 +64,13 @@ public final class SLRootNode extends RootNode {
     /** The name of the function, for printing purposes only. */
     private final String name;
 
-    /** The Simple execution context for this tree. **/
-    private final SLContext context;
-
     @CompilationFinal private boolean isCloningAllowed;
 
-    public SLRootNode(SLContext context, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, String name) {
+    @SuppressWarnings("unused")
+    public SLRootNode(SLContext ignore, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, String name) {
         super(SLLanguage.class, null, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
-        this.context = context;
     }
 
     @Override
@@ -107,14 +103,5 @@ public final class SLRootNode extends RootNode {
     @Override
     public String toString() {
         return "root " + name;
-    }
-
-    public SLContext getSLContext() {
-        return this.context;
-    }
-
-    @Override
-    public ExecutionContext getExecutionContext() {
-        return this.context;
     }
 }

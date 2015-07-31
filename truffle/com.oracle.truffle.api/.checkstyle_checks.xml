@@ -209,7 +209,7 @@
   <module name="SuppressionCommentFilter">
     <property name="offCommentFormat" value="CheckStyle: start generated"/>
     <property name="onCommentFormat" value="CheckStyle: stop generated"/>
-    <property name="checkFormat" value=".*Name|.*LineLength"/>
+    <property name="checkFormat" value=".*Name|.*LineLength|.*Header"/>
   </module>
   <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>

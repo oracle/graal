@@ -22,9 +22,11 @@
  */
 package com.oracle.truffle.api.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugSupportProvider;
 import com.oracle.truffle.api.instrument.ToolSupportProvider;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 
@@ -36,7 +38,7 @@ public final class TestingLanguage extends TruffleLanguage {
     }
 
     @Override
-    protected Object eval(Source code) throws IOException {
+    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
         throw new IOException();
     }
 
