@@ -3,8 +3,8 @@
 	<name>mx.graal</name>
 	<comment></comment>
 	<projects>
+		<project>mx</project>
 		<project>mx.jvmci</project>
-		<project>mxtool2</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
