@@ -259,7 +259,7 @@ public class NewObjectSnippets implements Snippets {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
-        KlassPointer klass = KlassPointer.fromWord(loadWordFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION));
+        KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(), CLASS_ARRAY_KLASS_LOCATION);
         if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, klass.isNull() || length < 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
