@@ -93,7 +93,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
             newValue = null;
         } else {
             newValue = closure.getAliasAndResolve(state, value);
-            assert unsafe || obj.getEntry(index) == null || obj.getEntry(index).getKind() == newValue.getKind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
+            assert unsafe || obj.getEntry(index) == null || obj.getEntry(index).getStackKind() == newValue.getStackKind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
         }
         state.setEntry(virtual.getObjectId(), index, newValue);
     }
@@ -108,7 +108,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     }
 
     private static boolean isObjectEntry(ValueNode value) {
-        return value.getKind() == Kind.Object || value instanceof VirtualObjectNode;
+        return value.getStackKind() == Kind.Object || value instanceof VirtualObjectNode;
     }
 
     @Override

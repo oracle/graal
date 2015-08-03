@@ -90,7 +90,7 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
                 if (entryIndex != -1) {
                     Kind entryKind = virtual.entryKind(entryIndex);
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
-                    if (entry.getKind() == value.getKind() || entryKind == accessKind()) {
+                    if (entry.getStackKind() == value.getStackKind() || entryKind == accessKind()) {
                         tool.setVirtualEntry(virtual, entryIndex, value(), true);
                         tool.delete();
                     } else {

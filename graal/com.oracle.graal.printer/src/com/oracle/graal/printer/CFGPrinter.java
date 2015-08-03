@@ -483,10 +483,10 @@ class CFGPrinter extends CompilationPrinter {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
-            if (value.getKind() == Kind.Illegal) {
+            if (value.getStackKind() == Kind.Illegal) {
                 prefix = "v";
             } else {
-                prefix = String.valueOf(value.getKind().getTypeChar());
+                prefix = String.valueOf(value.getStackKind().getTypeChar());
             }
         } else {
             prefix = "?";

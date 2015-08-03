@@ -72,7 +72,7 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
                 if (entryIndex != -1) {
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
                     Kind entryKind = virtual.entryKind(entryIndex);
-                    if (entry.getKind() == getKind() || entryKind == accessKind()) {
+                    if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
                         tool.replaceWith(entry);
                     }
                 }

@@ -311,7 +311,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             ValueNode x = stack[i];
             ValueNode y = other.stack[i];
             assert x != null && y != null;
-            if (x != y && (x == TWO_SLOT_MARKER || x.isDeleted() || y == TWO_SLOT_MARKER || y.isDeleted() || x.getKind() != y.getKind())) {
+            if (x != y && (x == TWO_SLOT_MARKER || x.isDeleted() || y == TWO_SLOT_MARKER || y.isDeleted() || x.getStackKind() != y.getStackKind())) {
                 return false;
             }
         }
@@ -376,7 +376,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (currentValue == null || currentValue.isDeleted()) {
             return null;
         } else if (block.isPhiAtMerge(currentValue)) {
-            if (otherValue == null || otherValue == TWO_SLOT_MARKER || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
+            if (otherValue == null || otherValue == TWO_SLOT_MARKER || otherValue.isDeleted() || currentValue.getStackKind() != otherValue.getStackKind()) {
                 propagateDelete((ValuePhiNode) currentValue);
                 return null;
             }
@@ -386,7 +386,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             assert !(block instanceof LoopBeginNode) : String.format("Phi functions for loop headers are create eagerly for changed locals and all stack slots: %s != %s", currentValue, otherValue);
             if (currentValue == TWO_SLOT_MARKER || otherValue == TWO_SLOT_MARKER) {
                 return null;
-            } else if (otherValue == null || otherValue.isDeleted() || currentValue.getKind() != otherValue.getKind()) {
+            } else if (otherValue == null || otherValue.isDeleted() || currentValue.getStackKind() != otherValue.getStackKind()) {
                 return null;
             }
             return createValuePhi(currentValue, otherValue, block);
@@ -504,7 +504,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param object the object whose monitor will be locked.
      */
     public void pushLock(ValueNode object, MonitorIdNode monitorId) {
-        assert object.isAlive() && object.getKind() == Kind.Object : "unexpected value: " + object;
+        assert object.isAlive() && object.getStackKind() == Kind.Object : "unexpected value: " + object;
         lockedObjects = Arrays.copyOf(lockedObjects, lockedObjects.length + 1);
         monitorIds = Arrays.copyOf(monitorIds, monitorIds.length + 1);
         lockedObjects[lockedObjects.length - 1] = object;
@@ -635,7 +635,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         assert slotKind.getSlotCount() > 0;
 
         if (canVerifyKind) {
-            assert x.getKind().getStackKind() == slotKind.getStackKind();
+            assert x.getStackKind() == slotKind.getStackKind();
         }
         return true;
     }
@@ -933,11 +933,11 @@ public final class FrameStateBuilder implements SideEffectsState {
         Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", localsSize(), stackSize(), method));
         for (int i = 0; i < localsSize(); ++i) {
             ValueNode value = locals[i];
-            Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getKind().getJavaName(), value));
+            Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value));
         }
         for (int i = 0; i < stackSize(); ++i) {
             ValueNode value = stack[i];
-            Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getKind().getJavaName(), value));
+            Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value));
         }
     }
 }

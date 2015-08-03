@@ -58,7 +58,7 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
         IntegerStamp xStamp = (IntegerStamp) forX.stamp();
         IntegerStamp yStamp = (IntegerStamp) forY.stamp();
 
-        Kind kind = getKind();
+        Kind kind = getStackKind();
         assert kind == Kind.Int || kind == Kind.Long;
         long[] xExtremes = {xStamp.lowerBound(), xStamp.upperBound()};
         long[] yExtremes = {yStamp.lowerBound(), yStamp.upperBound()};
@@ -78,13 +78,13 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
     @Override
     public boolean inferStamp() {
         // if min is negative, then the value can reach into the unsigned range
-        return updateStamp(processExtremes(getX(), getY(), (min, max) -> (min == (long) max || min >= 0) ? StampFactory.forInteger(getKind(), min, max) : StampFactory.forKind(getKind())));
+        return updateStamp(processExtremes(getX(), getY(), (min, max) -> (min == (long) max || min >= 0) ? StampFactory.forInteger(getStackKind(), min, max) : StampFactory.forKind(getStackKind())));
     }
 
     @SuppressWarnings("cast")
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getKind(), min) : this);
+        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getStackKind(), min) : this);
     }
 
     @Override

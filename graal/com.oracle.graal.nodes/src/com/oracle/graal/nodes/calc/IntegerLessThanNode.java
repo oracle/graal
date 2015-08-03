@@ -40,8 +40,8 @@ public final class IntegerLessThanNode extends CompareNode {
 
     public IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.LT, false, x, y);
-        assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
-        assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
+        assert !x.getStackKind().isNumericFloat() && x.getStackKind() != Kind.Object;
+        assert !y.getStackKind().isNumericFloat() && y.getStackKind() != Kind.Object;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
@@ -65,7 +65,7 @@ public final class IntegerLessThanNode extends CompareNode {
             ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
-            if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
+            if (normalizeNode.getX().getStackKind() == Kind.Double || normalizeNode.getX().getStackKind() == Kind.Float) {
                 return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
             } else {
                 return new IntegerLessThanNode(a, b);

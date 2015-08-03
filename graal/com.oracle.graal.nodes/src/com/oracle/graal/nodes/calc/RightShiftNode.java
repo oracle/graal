@@ -72,10 +72,10 @@ public final class RightShiftNode extends ShiftNode<Shr> {
                             IntegerStamp istamp = (IntegerStamp) other.getX().stamp();
 
                             if (istamp.isPositive()) {
-                                return ConstantNode.forIntegerKind(getKind(), 0);
+                                return ConstantNode.forIntegerKind(getStackKind(), 0);
                             }
                             if (istamp.isStrictlyNegative()) {
-                                return ConstantNode.forIntegerKind(getKind(), -1L);
+                                return ConstantNode.forIntegerKind(getStackKind(), -1L);
                             }
 
                             /*

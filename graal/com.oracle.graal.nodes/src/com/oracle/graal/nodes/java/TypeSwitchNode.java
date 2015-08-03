@@ -71,7 +71,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public boolean isSorted() {
-        Kind kind = value().getKind();
+        Kind kind = value().getStackKind();
         if (kind.isNumericInteger()) {
             JavaConstant lastKey = null;
             for (int i = 0; i < keyCount(); i++) {

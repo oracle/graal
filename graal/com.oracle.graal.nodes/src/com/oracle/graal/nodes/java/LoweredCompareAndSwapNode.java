@@ -67,7 +67,7 @@ public final class LoweredCompareAndSwapNode extends FixedAccessNode implements 
 
     public LoweredCompareAndSwapNode(AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType) {
         super(TYPE, address, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType);
-        assert expectedValue.getKind() == newValue.getKind();
+        assert expectedValue.getStackKind() == newValue.getStackKind();
         this.expectedValue = expectedValue;
         this.newValue = newValue;
     }

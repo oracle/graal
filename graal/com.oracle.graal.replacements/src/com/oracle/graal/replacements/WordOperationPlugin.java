@@ -138,13 +138,13 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
         ResolvedJavaType arrayType = StampTool.typeOrNull(array);
         if (arrayType != null && wordTypes.isWord(arrayType.getComponentType())) {
             assert elementKind == Kind.Object;
-            if (value.getKind() != wordTypes.getWordKind()) {
+            if (value.getStackKind() != wordTypes.getWordKind()) {
                 throw b.bailout("Cannot store a non-word value into a word array: " + arrayType.toJavaName(true));
             }
             b.add(createStoreIndexedNode(array, index, value));
             return true;
         }
-        if (elementKind == Kind.Object && value.getKind() == wordTypes.getWordKind()) {
+        if (elementKind == Kind.Object && value.getStackKind() == wordTypes.getWordKind()) {
             throw b.bailout("Cannot store a word value into a non-word array: " + arrayType.toJavaName(true));
         }
         return false;
@@ -157,13 +157,13 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     @Override
     public boolean handleCheckCast(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
         if (!wordTypes.isWord(type)) {
-            if (object.getKind() != Kind.Object) {
+            if (object.getStackKind() != Kind.Object) {
                 throw b.bailout("Cannot cast a word value to a non-word type: " + type.toJavaName(true));
             }
             return false;
         }
 
-        if (object.getKind() != wordTypes.getWordKind()) {
+        if (object.getStackKind() != wordTypes.getWordKind()) {
             throw b.bailout("Cannot cast a non-word value to a word type: " + type.toJavaName(true));
         }
         b.push(Kind.Object, object);
@@ -174,7 +174,7 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     public boolean handleInstanceOf(GraphBuilderContext b, ValueNode object, ResolvedJavaType type, JavaTypeProfile profile) {
         if (wordTypes.isWord(type)) {
             throw b.bailout("Cannot use instanceof for word a type: " + type.toJavaName(true));
-        } else if (object.getKind() != Kind.Object) {
+        } else if (object.getStackKind() != Kind.Object) {
             throw b.bailout("Cannot use instanceof on a word value: " + type.toJavaName(true));
         }
         return false;
@@ -307,7 +307,7 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     }
 
     private ValueNode comparisonOp(GraphBuilderContext graph, Condition condition, ValueNode left, ValueNode right) {
-        assert left.getKind() == wordKind && right.getKind() == wordKind;
+        assert left.getStackKind() == wordKind && right.getStackKind() == wordKind;
 
         // mirroring gets the condition into canonical form
         boolean mirror = condition.canonicalMirror();
@@ -379,16 +379,16 @@ public class WordOperationPlugin implements NodePlugin, ParameterPlugin, InlineI
     }
 
     public ValueNode convert(GraphBuilderContext b, ValueNode value, Kind toKind, boolean unsigned) {
-        if (value.getKind() == toKind) {
+        if (value.getStackKind() == toKind) {
             return value;
         }
 
         if (toKind == Kind.Int) {
-            assert value.getKind() == Kind.Long;
+            assert value.getStackKind() == Kind.Long;
             return b.add(new NarrowNode(value, 32));
         } else {
             assert toKind == Kind.Long;
-            assert value.getKind().getStackKind() == Kind.Int;
+            assert value.getStackKind() == Kind.Int;
             if (unsigned) {
                 return b.add(new ZeroExtendNode(value, 64));
             } else {

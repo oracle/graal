@@ -174,9 +174,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     public static LogicNode createCompareNode(Condition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
-        assert x.getKind() == y.getKind();
+        assert x.getStackKind() == y.getStackKind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
-        assert !x.getKind().isNumericFloat();
+        assert !x.getStackKind().isNumericFloat();
 
         LogicNode comparison;
         if (condition == Condition.EQ) {
@@ -185,15 +185,15 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             } else if (x.stamp() instanceof AbstractPointerStamp) {
                 comparison = PointerEqualsNode.create(x, y);
             } else {
-                assert x.getKind().isNumericInteger();
+                assert x.getStackKind().isNumericInteger();
                 comparison = IntegerEqualsNode.create(x, y, constantReflection);
             }
         } else if (condition == Condition.LT) {
-            assert x.getKind().isNumericInteger();
+            assert x.getStackKind().isNumericInteger();
             comparison = IntegerLessThanNode.create(x, y, constantReflection);
         } else {
             assert condition == Condition.BT;
-            assert x.getKind().isNumericInteger();
+            assert x.getStackKind().isNumericInteger();
             comparison = IntegerBelowNode.create(x, y, constantReflection);
         }
 

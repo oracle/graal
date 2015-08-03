@@ -143,7 +143,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * @param bci this must be {@link BytecodeFrame#AFTER_BCI}
      */
     public FrameState(int bci, ValueNode returnValue) {
-        this(null, null, bci, 0, returnValue.getKind().getSlotCount(), 0, false, false, null, Collections.<EscapeObjectState> emptyList());
+        this(null, null, bci, 0, returnValue.getStackKind().getSlotCount(), 0, false, false, null, Collections.<EscapeObjectState> emptyList());
         assert bci == BytecodeFrame.AFTER_BCI;
         this.values.initialize(0, returnValue);
     }
@@ -303,7 +303,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * {@code pushedValue} which must be of type {@code popKind}.
      */
     public FrameState duplicateModified(Kind popKind, Kind pushedSlotKind, ValueNode pushedValue) {
-        assert pushedValue != null && pushedValue.getKind() == popKind;
+        assert pushedValue != null && pushedValue.getStackKind() == popKind;
         return duplicateModified(graph(), bci, rethrowException, duringCall, popKind, new Kind[]{pushedSlotKind}, new ValueNode[]{pushedValue});
     }
 
@@ -325,7 +325,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     copy.remove(copy.size() - 1);
                 }
                 ValueNode lastSlot = copy.get(copy.size() - 1);
-                assert lastSlot.getKind().getStackKind() == popKind.getStackKind();
+                assert lastSlot.getStackKind() == popKind.getStackKind();
                 copy.remove(copy.size() - 1);
             }
         }
@@ -531,7 +531,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks");
         for (ValueNode value : values) {
             assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
-            assertTrue(value == null || value instanceof VirtualObjectNode || (value.getKind() != Kind.Void), "unexpected value: %s", value);
+            assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != Kind.Void), "unexpected value: %s", value);
         }
         return super.verify();
     }

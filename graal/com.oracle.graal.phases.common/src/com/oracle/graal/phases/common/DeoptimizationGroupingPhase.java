@@ -58,8 +58,8 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                         EndNode firstEnd = graph.add(new EndNode());
                         ValueNode actionAndReason = ((AbstractDeoptimizeNode) target).getActionAndReason(context.getMetaAccess());
                         ValueNode speculation = ((AbstractDeoptimizeNode) target).getSpeculation(context.getMetaAccess());
-                        reasonActionPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(actionAndReason.getKind()), merge));
-                        speculationPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(speculation.getKind()), merge));
+                        reasonActionPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(actionAndReason.getStackKind()), merge));
+                        speculationPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(speculation.getStackKind()), merge));
                         merge.addForwardEnd(firstEnd);
                         reasonActionPhi.addInput(actionAndReason);
                         speculationPhi.addInput(speculation);

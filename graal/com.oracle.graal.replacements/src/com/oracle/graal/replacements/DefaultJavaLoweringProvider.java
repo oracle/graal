@@ -143,7 +143,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
-        assert loadField.getKind() != Kind.Illegal;
+        assert loadField.getStackKind() != Kind.Illegal;
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
@@ -395,7 +395,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerUnsafeStoreNode(UnsafeStoreNode store) {
         StructuredGraph graph = store.graph();
-        boolean compressible = store.value().getKind() == Kind.Object;
+        boolean compressible = store.value().getStackKind() == Kind.Object;
         Kind valueKind = store.accessKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.value(), compressible);
         AddressNode address = createUnsafeAddress(graph, store.object(), store.offset());
@@ -463,7 +463,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         omittedValues.set(valuePos);
                     } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                         // Constant.illegal is always the defaultForKind, so it is skipped
-                        Kind valueKind = value.getKind();
+                        Kind valueKind = value.getStackKind();
                         Kind entryKind = virtual.entryKind(i);
 
                         // Truffle requires some leniency in terms of what can be put where:
@@ -503,7 +503,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         assert value instanceof VirtualObjectNode;
                         ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
                         if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                            assert virtual.entryKind(i) == Kind.Object && allocValue.getKind() == Kind.Object;
+                            assert virtual.entryKind(i) == Kind.Object && allocValue.getStackKind() == Kind.Object;
                             AddressNode address;
                             BarrierType barrierType;
                             if (virtual instanceof VirtualInstanceNode) {
@@ -601,7 +601,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected BarrierType storeBarrierType(ValueNode object, ValueNode value) {
-        if (value.getKind() == Kind.Object) {
+        if (value.getStackKind() == Kind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;

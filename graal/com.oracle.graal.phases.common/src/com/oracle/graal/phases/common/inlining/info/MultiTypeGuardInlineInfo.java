@@ -169,7 +169,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         returnMerge.setStateAfter(invoke.stateAfter());
 
         PhiNode returnValuePhi = null;
-        if (invoke.asNode().getKind() != Kind.Void) {
+        if (invoke.asNode().getStackKind() != Kind.Void) {
             returnValuePhi = graph.addWithoutUnique(new ValuePhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
         }
 
@@ -363,7 +363,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         result.asNode().replaceFirstInput(result.callTarget(), callTarget);
         result.setUseForInlining(useForInlining);
 
-        Kind kind = invoke.asNode().getKind();
+        Kind kind = invoke.asNode().getStackKind();
         if (kind != Kind.Void) {
             FrameState stateAfter = invoke.stateAfter();
             stateAfter = stateAfter.duplicate(stateAfter.bci);

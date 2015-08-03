@@ -40,8 +40,8 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.EQ, false, x, y);
-        assert !x.getKind().isNumericFloat() && x.getKind() != Kind.Object;
-        assert !y.getKind().isNumericFloat() && y.getKind() != Kind.Object;
+        assert !x.getStackKind().isNumericFloat() && x.getStackKind() != Kind.Object;
+        assert !y.getStackKind().isNumericFloat() && y.getStackKind() != Kind.Object;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
@@ -78,7 +78,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
-            if (normalizeNode.getX().getKind() == Kind.Double || normalizeNode.getX().getKind() == Kind.Float) {
+            if (normalizeNode.getX().getStackKind() == Kind.Double || normalizeNode.getX().getStackKind() == Kind.Float) {
                 return new FloatEqualsNode(a, b);
             } else {
                 return new IntegerEqualsNode(a, b);
@@ -121,10 +121,10 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     if (shift.getY().isConstant()) {
                         int mask = shift.getShiftAmountMask();
                         int amount = shift.getY().asJavaConstant().asInt() & mask;
-                        if (shift.getX().getKind() == Kind.Int) {
+                        if (shift.getX().getStackKind() == Kind.Int) {
                             return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount));
                         } else {
-                            assert shift.getX().getKind() == Kind.Long;
+                            assert shift.getX().getStackKind() == Kind.Long;
                             return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L >>> amount));
                         }
                     }
@@ -133,10 +133,10 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp()).isPositive()) {
                         int mask = shift.getShiftAmountMask();
                         int amount = shift.getY().asJavaConstant().asInt() & mask;
-                        if (shift.getX().getKind() == Kind.Int) {
+                        if (shift.getX().getStackKind() == Kind.Int) {
                             return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                         } else {
-                            assert shift.getX().getKind() == Kind.Long;
+                            assert shift.getX().getStackKind() == Kind.Long;
                             return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
                         }
                     }
@@ -145,10 +145,10 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     if (shift.getY().isConstant()) {
                         int mask = shift.getShiftAmountMask();
                         int amount = shift.getY().asJavaConstant().asInt() & mask;
-                        if (shift.getX().getKind() == Kind.Int) {
+                        if (shift.getX().getStackKind() == Kind.Int) {
                             return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                         } else {
-                            assert shift.getX().getKind() == Kind.Long;
+                            assert shift.getX().getStackKind() == Kind.Long;
                             return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
                         }
                     }

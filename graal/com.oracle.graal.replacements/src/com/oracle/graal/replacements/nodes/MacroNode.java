@@ -205,7 +205,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
-            if (getKind() != Kind.Void) {
+            if (getStackKind() != Kind.Void) {
                 invoke.stateAfter().replaceFirstInput(this, invoke);
             }
         }

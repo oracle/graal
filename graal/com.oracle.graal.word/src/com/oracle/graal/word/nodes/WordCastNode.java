@@ -47,7 +47,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     public final boolean trackedPointer;
 
     public static WordCastNode wordToObject(ValueNode input, Kind wordKind) {
-        assert input.getKind() == wordKind;
+        assert input.getStackKind() == wordKind;
         return new WordCastNode(StampFactory.object(), input);
     }
 

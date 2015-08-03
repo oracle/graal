@@ -301,7 +301,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 }
             }
             for (PhiNode phi : getPhis()) {
-                if (phi.getKind() == Kind.Object) {
+                if (phi.getStackKind() == Kind.Object) {
                     for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
                         if (entry.getKey().object == getPhiValueAt(phi, 0)) {
                             mergeReadCachePhi(phi, entry.getKey().identity, entry.getKey().index, states);

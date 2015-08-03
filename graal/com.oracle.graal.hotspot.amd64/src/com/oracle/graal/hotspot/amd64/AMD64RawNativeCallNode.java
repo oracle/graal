@@ -59,7 +59,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
         CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes,
                         generator.getLIRGeneratorTool().target(), false);
         gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
-        if (this.getKind() != Kind.Void) {
+        if (this.getStackKind() != Kind.Void) {
             generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));
         }
     }
@@ -67,7 +67,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
     private static int countFloatingTypeArguments(NodeInputList<ValueNode> args) {
         int count = 0;
         for (ValueNode n : args) {
-            if (n.getKind() == Kind.Double || n.getKind() == Kind.Float) {
+            if (n.getStackKind() == Kind.Double || n.getStackKind() == Kind.Float) {
                 count++;
             }
         }

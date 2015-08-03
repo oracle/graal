@@ -75,7 +75,7 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
                 long disp = address.getOffset().asJavaConstant().asLong();
 
                 ResolvedJavaType receiverType = StampTool.typeOrNull(address.getBase());
-                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp, rn.getKind());
+                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp, rn.getStackKind());
 
                 assert field != null : "Node " + rn + " tries to access a field which doesn't exists for this type";
                 if (field.getName().equals("x")) {

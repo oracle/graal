@@ -658,10 +658,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private ConditionalNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
-        if (trueValue.getKind() != falseValue.getKind()) {
+        if (trueValue.getStackKind() != falseValue.getStackKind()) {
             return null;
         }
-        if (trueValue.getKind() != Kind.Int && trueValue.getKind() != Kind.Long) {
+        if (trueValue.getStackKind() != Kind.Int && trueValue.getStackKind() != Kind.Long) {
             return null;
         }
         if (trueValue.isConstant() && falseValue.isConstant()) {

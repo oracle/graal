@@ -42,12 +42,12 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLo
 
     public AMD64CountLeadingZerosNode(ValueNode value) {
         super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
+        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
     }
 
     @Override
     public boolean inferStamp() {
-        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
+        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         long mask = CodeUtil.mask(valueStamp.getBits());
         // Don't count zeros from the mask in the result.
@@ -61,7 +61,7 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLo
     public static ValueNode tryFold(ValueNode value) {
         if (value.isConstant()) {
             JavaConstant c = value.asJavaConstant();
-            if (value.getKind() == Kind.Int) {
+            if (value.getStackKind() == Kind.Int) {
                 return ConstantNode.forInt(Integer.numberOfLeadingZeros(c.asInt()));
             } else {
                 return ConstantNode.forInt(Long.numberOfLeadingZeros(c.asLong()));

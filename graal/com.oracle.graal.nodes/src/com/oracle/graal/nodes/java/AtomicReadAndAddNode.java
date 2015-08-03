@@ -46,7 +46,7 @@ public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint impleme
     protected final LocationIdentity locationIdentity;
 
     public AtomicReadAndAddNode(AddressNode address, ValueNode delta, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forKind(delta.getKind()));
+        super(TYPE, StampFactory.forKind(delta.getStackKind()));
         this.address = address;
         this.delta = delta;
         this.locationIdentity = locationIdentity;

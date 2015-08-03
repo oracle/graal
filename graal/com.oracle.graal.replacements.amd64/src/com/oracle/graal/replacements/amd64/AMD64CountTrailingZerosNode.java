@@ -42,7 +42,7 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements LIRL
 
     public AMD64CountTrailingZerosNode(ValueNode value) {
         super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
+        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
     }
 
     @Override
@@ -57,7 +57,7 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements LIRL
     public static ValueNode tryFold(ValueNode value) {
         if (value.isConstant()) {
             JavaConstant c = value.asJavaConstant();
-            if (value.getKind() == Kind.Int) {
+            if (value.getStackKind() == Kind.Int) {
                 return ConstantNode.forInt(Integer.numberOfTrailingZeros(c.asInt()));
             } else {
                 return ConstantNode.forInt(Long.numberOfTrailingZeros(c.asLong()));

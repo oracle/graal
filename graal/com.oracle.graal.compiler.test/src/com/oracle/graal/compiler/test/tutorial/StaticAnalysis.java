@@ -442,7 +442,7 @@ public class StaticAnalysis {
         }
 
         private boolean isObject(ValueNode node) {
-            return node.getKind() == Kind.Object;
+            return node.getStackKind() == Kind.Object;
         }
 
         @Override

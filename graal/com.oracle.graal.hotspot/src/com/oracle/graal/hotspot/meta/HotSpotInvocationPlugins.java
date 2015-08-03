@@ -78,7 +78,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             for (Node node : newNodes) {
                 if (node.hasUsages() && node instanceof ConstantNode) {
                     ConstantNode c = (ConstantNode) node;
-                    if (c.getKind() == Kind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
+                    if (c.getStackKind() == Kind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
                         if (isClass(c)) {
                             // This will be handled later by LoadJavaMirrorWithKlassPhase
                         } else {

@@ -663,7 +663,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 int valueIndex = 0;
                 ensureVirtual &= objectState.getEnsureVirtualized();
                 while (valueIndex < entryCount) {
-                    Kind otherKind = entries[valueIndex].getKind();
+                    Kind otherKind = entries[valueIndex].getStackKind();
                     Kind entryKind = virtual.entryKind(valueIndex);
                     if (entryKind == Kind.Int && otherKind.needsTwoSlots()) {
                         if (twoSlotKinds == null) {
@@ -692,7 +692,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             int object = getObject.apply(i);
                             ObjectState objectState = states[i].getObjectState(object);
                             ValueNode value = objectState.getEntry(valueIndex);
-                            Kind valueKind = value.getKind();
+                            Kind valueKind = value.getStackKind();
                             if (valueKind != twoSlotKinds[valueIndex]) {
                                 ValueNode nextValue = objectState.getEntry(valueIndex + 1);
                                 if (value.isConstant() && value.asConstant().equals(JavaConstant.INT_0) && nextValue.isConstant() && nextValue.asConstant().equals(JavaConstant.INT_0)) {

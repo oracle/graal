@@ -34,7 +34,7 @@ import com.oracle.graal.nodeinfo.*;
  * instructions.
  */
 @NodeInfo
-public abstract class ValueNode extends com.oracle.graal.graph.Node implements KindProvider {
+public abstract class ValueNode extends com.oracle.graal.graph.Node {
 
     public static final NodeClass<ValueNode> TYPE = NodeClass.create(ValueNode.class);
     /**
@@ -89,7 +89,7 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node implements K
         return false;
     }
 
-    public final Kind getKind() {
+    public final Kind getStackKind() {
         return stamp().getStackKind();
     }
 
@@ -151,7 +151,7 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node implements K
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        if (getKind() != Kind.Void && type == InputType.Value) {
+        if (getStackKind() != Kind.Void && type == InputType.Value) {
             return true;
         } else {
             return super.isAllowedUsageType(type);

@@ -194,7 +194,7 @@ public class ConditionalEliminationPhase extends Phase {
             // this piece of code handles phis
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
-                    if (phi instanceof ValuePhiNode && phi.getKind() == Kind.Object) {
+                    if (phi instanceof ValuePhiNode && phi.getStackKind() == Kind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
                         ResolvedJavaType type = getNodeType(firstValue);
                         boolean nonNull = knownNonNull.contains(firstValue);
@@ -452,13 +452,13 @@ public class ConditionalEliminationPhase extends Phase {
                     return null;
                 }
                 IntegerBelowNode below = (IntegerBelowNode) guard.condition();
-                if (below.getX().getKind() == Kind.Int && below.getX().isConstant() && !below.getY().isConstant()) {
+                if (below.getX().getStackKind() == Kind.Int && below.getX().isConstant() && !below.getY().isConstant()) {
                     Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
                         return new GuardedStamp(below.getY(), stamp, guard);
                     }
                 }
-                if (below.getY().getKind() == Kind.Int && below.getY().isConstant() && !below.getX().isConstant()) {
+                if (below.getY().getStackKind() == Kind.Int && below.getY().isConstant() && !below.getX().isConstant()) {
                     Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
                         return new GuardedStamp(below.getX(), stamp, guard);

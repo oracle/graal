@@ -183,10 +183,10 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
         }
 
         if (returnKind != Kind.Void) {
-            assert nonValueType || res.getKind().getStackKind() != Kind.Void;
+            assert nonValueType || res.getStackKind() != Kind.Void;
             res = b.addPush(returnKind, res);
         } else {
-            assert res.getKind().getStackKind() == Kind.Void;
+            assert res.getStackKind() == Kind.Void;
             res = b.add(res);
         }
 

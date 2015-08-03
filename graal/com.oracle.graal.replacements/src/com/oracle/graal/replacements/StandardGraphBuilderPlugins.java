@@ -651,7 +651,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ObjectStamp objectStamp = (ObjectStamp) value.stamp();
                 if (objectStamp.nonNull()) {
-                    b.addPush(value.getKind(), value);
+                    b.addPush(value.getStackKind(), value);
                     return true;
                 } else if (objectStamp.alwaysNull()) {
                     b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException));
@@ -660,7 +660,7 @@ public class StandardGraphBuilderPlugins {
                 IsNullNode isNull = b.add(new IsNullNode(value));
                 FixedGuardNode fixedGuard = b.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
                 Stamp newStamp = objectStamp.improveWith(StampFactory.objectNonNull());
-                b.addPush(value.getKind(), new PiNode(value, newStamp, fixedGuard));
+                b.addPush(value.getStackKind(), new PiNode(value, newStamp, fixedGuard));
                 return true;
             }
         });

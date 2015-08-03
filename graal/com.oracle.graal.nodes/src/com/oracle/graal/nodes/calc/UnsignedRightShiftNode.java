@@ -64,14 +64,14 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
                     if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forIntegerKind(getKind(), 0);
+                            return ConstantNode.forIntegerKind(getStackKind(), 0);
                         }
                         return new UnsignedRightShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {
-                        if (getKind() == Kind.Long) {
+                        if (getStackKind() == Kind.Long) {
                             return new AndNode(other.getX(), ConstantNode.forLong(-1L >>> amount));
                         } else {
-                            assert getKind() == Kind.Int;
+                            assert getStackKind() == Kind.Int;
                             return new AndNode(other.getX(), ConstantNode.forInt(-1 >>> amount));
                         }
                     }

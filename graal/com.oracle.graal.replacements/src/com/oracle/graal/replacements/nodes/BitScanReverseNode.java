@@ -44,7 +44,7 @@ public final class BitScanReverseNode extends UnaryNode implements LIRLowerable 
 
     public BitScanReverseNode(ValueNode value) {
         super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getKind() == Kind.Int || value.getKind() == Kind.Long;
+        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
     }
 
     @Override
@@ -70,7 +70,7 @@ public final class BitScanReverseNode extends UnaryNode implements LIRLowerable 
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
             if (c.asLong() != 0) {
-                return ConstantNode.forInt(forValue.getKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+                return ConstantNode.forInt(forValue.getStackKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
             }
         }
         return this;

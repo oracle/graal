@@ -181,7 +181,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
 
     @Override
     public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || (((ValueNode) node).getKind() == Kind.Void) == (getKind() == Kind.Void);
+        assert !(node instanceof ValueNode) || (((ValueNode) node).getStackKind() == Kind.Void) == (getStackKind() == Kind.Void);
         CallTargetNode call = callTarget;
         FrameState state = stateAfter();
         killExceptionEdge();
@@ -194,7 +194,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
             foreign.setBci(bci());
         }
         if (node == null) {
-            assert getKind() == Kind.Void && hasNoUsages();
+            assert getStackKind() == Kind.Void && hasNoUsages();
             graph().removeSplit(this, next());
         } else if (node instanceof ControlSinkNode) {
             this.replaceAtPredecessor(node);

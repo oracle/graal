@@ -617,7 +617,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 stateAtReturn = (FrameState) decodeFloatingNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.stateAfterOrderId);
             }
 
-            Kind invokeReturnKind = methodScope.invokeData.invoke.asNode().getKind();
+            Kind invokeReturnKind = methodScope.invokeData.invoke.asNode().getStackKind();
             FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null);
 
             /*

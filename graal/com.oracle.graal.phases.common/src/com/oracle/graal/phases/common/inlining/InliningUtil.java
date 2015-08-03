@@ -447,7 +447,7 @@ public class InliningUtil {
     protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge, boolean alwaysDuplicateStateAfter) {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
-        Kind invokeReturnKind = invoke.asNode().getKind();
+        Kind invokeReturnKind = invoke.asNode().getStackKind();
         for (FrameState original : inlineGraph.getNodes(FrameState.TYPE)) {
             FrameState frameState = (FrameState) duplicates.get(original);
             if (frameState != null && frameState.isAlive()) {
@@ -463,7 +463,7 @@ public class InliningUtil {
                     boolean alwaysDuplicateStateAfter) {
 
         FrameState stateAtReturn = invoke.stateAfter();
-        Kind invokeReturnKind = invoke.asNode().getKind();
+        Kind invokeReturnKind = invoke.asNode().getStackKind();
 
         if (frameState.bci == BytecodeFrame.AFTER_BCI) {
             FrameState stateAfterReturn = stateAtReturn;
@@ -654,7 +654,7 @@ public class InliningUtil {
         assert !callTarget.isStatic() : callTarget.targetMethod();
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
-        if (firstParam.getKind() == Kind.Object) {
+        if (firstParam.getStackKind() == Kind.Object) {
             Stamp paramStamp = firstParam.stamp();
             Stamp stamp = paramStamp.join(StampFactory.declaredNonNull(callTarget.targetMethod().getDeclaringClass()));
             if (!StampTool.isPointerNonNull(firstParam)) {

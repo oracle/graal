@@ -48,7 +48,7 @@ public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint imple
     protected final LocationIdentity locationIdentity;
 
     public AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forKind(newValue.getKind()));
+        super(TYPE, StampFactory.forKind(newValue.getStackKind()));
         this.object = object;
         this.offset = offset;
         this.newValue = newValue;

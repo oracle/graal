@@ -55,7 +55,7 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
         IntegerStamp xStamp = (IntegerStamp) forX.stamp();
         IntegerStamp yStamp = (IntegerStamp) forY.stamp();
 
-        Kind kind = getKind();
+        Kind kind = getStackKind();
         assert kind == Kind.Int || kind == Kind.Long;
         long[] xExtremes = {xStamp.lowerBound(), xStamp.upperBound()};
         long[] yExtremes = {yStamp.lowerBound(), yStamp.upperBound()};
@@ -73,13 +73,13 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(processExtremes(getX(), getY(), (min, max) -> StampFactory.forInteger(getKind(), min, max)));
+        return updateStamp(processExtremes(getX(), getY(), (min, max) -> StampFactory.forInteger(getStackKind(), min, max)));
     }
 
     @SuppressWarnings("cast")
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getKind(), min) : this);
+        return processExtremes(forX, forY, (min, max) -> min == (long) max ? ConstantNode.forIntegerKind(getStackKind(), min) : this);
     }
 
     @Override
