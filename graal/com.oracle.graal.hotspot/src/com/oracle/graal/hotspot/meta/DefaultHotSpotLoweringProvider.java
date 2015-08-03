@@ -333,13 +333,13 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor, LoweringTool tool) {
+    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor) {
         /*
          * Anchor the read of the element klass to the cfg, because it is only valid when arrayClass
          * is an object class, which might not be the case in other parts of the compiled method.
          */
         AddressNode address = createOffsetAddress(graph, arrayHub, runtime.getConfig().arrayClassElementOffset);
-        return graph.unique(new FloatingReadNode(address, OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, null, tool.getStampProvider().createHubStamp(true), AbstractBeginNode.prevBegin(anchor)));
+        return graph.unique(new FloatingReadNode(address, OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, null, KlassPointerStamp.klassNonNull(), AbstractBeginNode.prevBegin(anchor)));
     }
 
     @Override
@@ -461,8 +461,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private boolean addReadBarrier(UnsafeLoadNode load) {
-        if (runtime.getConfig().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getStackKind() == Kind.Object && load.accessKind() == Kind.Object &&
-                        !StampTool.isPointerAlwaysNull(load.object())) {
+        if (runtime.getConfig().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getStackKind() == Kind.Object &&
+                        load.accessKind() == Kind.Object && !StampTool.isPointerAlwaysNull(load.object())) {
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
             if (type != null && !type.isArray()) {
                 return true;
@@ -493,7 +493,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         HotSpotVMConfig config = runtime.getConfig();
         assert !object.isConstant() || object.isNullConstant();
 
-        KlassPointerStamp hubStamp = (KlassPointerStamp) tool.getStampProvider().createHubStamp(true);
+        KlassPointerStamp hubStamp = KlassPointerStamp.klassNonNull();
         if (config.useCompressedClassPointers) {
             hubStamp = hubStamp.compressed(config.getKlassEncoding());
         }

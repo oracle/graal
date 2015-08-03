@@ -28,6 +28,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.compiler.common.calc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.hotspot.nodes.type.*;
 import com.oracle.graal.hotspot.word.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -47,16 +48,14 @@ import com.oracle.graal.nodes.spi.*;
 public final class ClassGetHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, ConvertNode {
     public static final NodeClass<ClassGetHubNode> TYPE = NodeClass.create(ClassGetHubNode.class);
     @Input protected ValueNode clazz;
-    StampProvider stampProvider;
 
-    public ClassGetHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode clazz) {
-        this(stampProvider, clazz, null);
+    public ClassGetHubNode(ValueNode clazz) {
+        this(clazz, null);
     }
 
-    public ClassGetHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode clazz, ValueNode guard) {
-        super(TYPE, stampProvider.createHubStamp(false), (GuardingNode) guard);
+    public ClassGetHubNode(ValueNode clazz, ValueNode guard) {
+        super(TYPE, KlassPointerStamp.klass(), (GuardingNode) guard);
         this.clazz = clazz;
-        this.stampProvider = stampProvider;
     }
 
     @Override
@@ -79,7 +78,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
             }
             if (clazz instanceof GetClassNode) {
                 GetClassNode getClass = (GetClassNode) clazz;
-                return new LoadHubNode(stampProvider, getClass.getObject(), null);
+                return new LoadHubNode(KlassPointerStamp.klassNonNull(), getClass.getObject(), null);
             }
             if (clazz instanceof HubGetClassNode) {
                 // replace _klass._java_mirror._klass -> _klass

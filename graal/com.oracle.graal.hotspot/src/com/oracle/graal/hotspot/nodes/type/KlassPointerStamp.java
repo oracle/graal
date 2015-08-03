@@ -33,23 +33,34 @@ import com.oracle.graal.compiler.common.type.*;
 
 public final class KlassPointerStamp extends MetaspacePointerStamp {
 
+    private static final KlassPointerStamp KLASS = new KlassPointerStamp(false, false);
+
+    private static final KlassPointerStamp KLASS_NON_NULL = new KlassPointerStamp(true, false);
+
+    private static final KlassPointerStamp KLASS_ALWAYS_NULL = new KlassPointerStamp(false, true);
+
     private final CompressEncoding encoding;
 
-    private final Kind kind;
-
-    public KlassPointerStamp(boolean nonNull, boolean alwaysNull, Kind kind) {
-        this(nonNull, alwaysNull, null, kind);
+    public static KlassPointerStamp klass() {
+        return KLASS;
     }
 
-    private KlassPointerStamp(boolean nonNull, boolean alwaysNull, CompressEncoding encoding, Kind kind) {
+    public static KlassPointerStamp klassNonNull() {
+        return KLASS_NON_NULL;
+    }
+
+    private KlassPointerStamp(boolean nonNull, boolean alwaysNull) {
+        this(nonNull, alwaysNull, null);
+    }
+
+    private KlassPointerStamp(boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
         super(nonNull, alwaysNull);
         this.encoding = encoding;
-        this.kind = kind;
     }
 
     @Override
     protected AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull) {
-        return new KlassPointerStamp(newNonNull, newAlwaysNull, encoding, kind);
+        return new KlassPointerStamp(newNonNull, newAlwaysNull, encoding);
     }
 
     @Override
@@ -68,11 +79,11 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         if (isCompressed()) {
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                return new KlassPointerStamp(false, true, encoding, kind);
+                return new KlassPointerStamp(false, true, encoding);
             }
         } else {
             if (JavaConstant.NULL_POINTER.equals(c)) {
-                return new KlassPointerStamp(false, true, encoding, kind);
+                return KLASS_ALWAYS_NULL;
             }
         }
 
@@ -81,7 +92,11 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
         if (nonNull()) {
             return this;
         }
-        return new KlassPointerStamp(true, false, encoding, kind);
+        if (isCompressed()) {
+            return new KlassPointerStamp(true, false, encoding);
+        } else {
+            return KLASS_NON_NULL;
+        }
     }
 
     @Override
@@ -112,12 +127,12 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
 
     public KlassPointerStamp compressed(CompressEncoding newEncoding) {
         assert !isCompressed();
-        return new KlassPointerStamp(nonNull(), alwaysNull(), newEncoding, Kind.Int);
+        return new KlassPointerStamp(nonNull(), alwaysNull(), newEncoding);
     }
 
     public KlassPointerStamp uncompressed() {
         assert isCompressed();
-        return new KlassPointerStamp(nonNull(), alwaysNull(), Kind.Long);
+        return new KlassPointerStamp(nonNull(), alwaysNull());
     }
 
     @Override
@@ -161,10 +176,5 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
             ret.append("(compressed ").append(encoding).append(")");
         }
         return ret.toString();
-    }
-
-    @Override
-    public Kind getStackKind() {
-        return isCompressed() ? Kind.Int : Kind.Long;
     }
 }
