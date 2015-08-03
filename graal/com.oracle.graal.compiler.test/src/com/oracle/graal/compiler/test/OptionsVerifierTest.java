@@ -47,7 +47,7 @@ public class OptionsVerifierTest {
     public void verifyOptions() throws IOException {
         try (Classpath cp = new Classpath()) {
             HashSet<Class<?>> checked = new HashSet<>();
-            for (Options opts : ServiceLoader.load(Options.class, getClass().getClassLoader())) {
+            for (OptionDescriptors opts : ServiceLoader.load(OptionDescriptors.class, getClass().getClassLoader())) {
                 for (OptionDescriptor desc : opts) {
                     OptionsVerifier.checkClass(desc.getDeclaringClass(), desc, checked, cp);
                 }

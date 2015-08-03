@@ -30,6 +30,7 @@ from argparse import ArgumentParser
 import sanitycheck
 import itertools
 import json
+import re
 
 import mx
 import mx_jvmci
@@ -187,7 +188,9 @@ def ctw(args):
     args, vmargs = parser.parse_known_args(args)
 
     if args.ctwopts:
-        vmargs.append('-G:CompileTheWorldConfig=' + args.ctwopts)
+        # Replace spaces  with '#' since -G: options cannot contain spaces
+        # when they are collated in the "jvmci.options" system property
+        vmargs.append('-G:CompileTheWorldConfig=' + re.sub(r'\s+', '#', args.ctwopts))
 
     if args.jar:
         jar = os.path.abspath(args.jar)

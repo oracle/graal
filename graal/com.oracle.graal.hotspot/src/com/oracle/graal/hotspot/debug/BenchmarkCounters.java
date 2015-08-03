@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.*;
 
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.inittimer.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.debug.*;

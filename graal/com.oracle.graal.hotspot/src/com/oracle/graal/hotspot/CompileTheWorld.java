@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static jdk.internal.jvmci.compiler.Compiler.*;
 
 import java.io.*;
@@ -38,16 +39,14 @@ import jdk.internal.jvmci.compiler.Compiler;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionUtils.OptionConsumer;
 import jdk.internal.jvmci.options.OptionValue.OverrideScope;
+import jdk.internal.jvmci.options.OptionsParser.OptionConsumer;
 import jdk.internal.jvmci.runtime.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-
-import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 
 /**
  * This class implements compile-the-world functionality with JVMCI.
@@ -117,14 +116,14 @@ public final class CompileTheWorld {
         /**
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *
-         * @param options a space separated set of option value settings with each option setting in
-         *            a format compatible with
-         *            {@link OptionUtils#parseOption(String, OptionConsumer)}. Ignored if null.
+         * @param options a space or hash separated set of option value settings with each option
+         *            setting in a format compatible with {@link OptionsParser#parseOption}. Ignored
+         *            if null.
          */
         public Config(String options) {
             if (options != null) {
-                for (String option : options.split("\\s+")) {
-                    OptionUtils.parseOption(option, this);
+                for (String option : options.split("\\s+|#")) {
+                    OptionsParser.parseOption(option, this, null);
                 }
             }
         }

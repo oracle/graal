@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static jdk.internal.jvmci.hotspot.InitTimer.*;
+import static jdk.internal.jvmci.inittimer.InitTimer.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.amd64.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.inittimer.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.runtime.*;
 import jdk.internal.jvmci.service.*;
