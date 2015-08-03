@@ -363,7 +363,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             graph.replaceFixedWithFixed(load, valueAnchorNode);
             graph.addAfterFixed(valueAnchorNode, memoryRead);
         } else {
-            assert load.getKind() != Kind.Illegal;
             ReadNode memoryRead = createUnsafeRead(graph, load, null);
             graph.replaceFixedWithFixed(load, memoryRead);
         }
