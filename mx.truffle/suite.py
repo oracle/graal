@@ -217,7 +217,7 @@ suite = {
 
     # ------------- Distributions -------------
 
-    "TRUFFLE" : {
+    "TRUFFLE_API" : {
       "path" : "build/truffle-api.jar",
       "subDir" : "truffle",
       "sourcesPath" : "build/truffle-api.src.zip",
@@ -241,7 +241,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck"
       ],
-      "distDependencies" : ["TRUFFLE"],
+      "distDependencies" : ["TRUFFLE_API"],
       "exclude" : ["mx:JUNIT"],
       "description" : """A collection of tests that can certify language implementation to be compliant
         with most recentrequirements of the Truffle infrastructure and tooling.""",
@@ -253,7 +253,7 @@ suite = {
       "sourcesPath" : "build/truffle-dsl-processor.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
-      "distDependencies" : ["TRUFFLE"],
+      "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
     },
 
@@ -267,7 +267,7 @@ suite = {
         "com.oracle.truffle.sl.test"
       ],
       "distDependencies" : [
-          "TRUFFLE",
+          "TRUFFLE_API",
           "TRUFFLE_TCK",
           "TRUFFLE_DSL_PROCESSOR"
       ],
@@ -285,7 +285,7 @@ suite = {
       ],
       "exclude" : ["JLINE"],
       "distDependencies" : [
-          "TRUFFLE",
+          "TRUFFLE_API",
       ],
       "description" : ".",
      }
