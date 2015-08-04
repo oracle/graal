@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.2",
+  "mxversion" : "5.2.1",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -7,6 +7,12 @@ suite = {
     "email" : "graal-dev@openjdk.java.net",
     "organization" : "Graal",
     "organizationUrl" : "http://openjdk.java.net/projects/graal",
+  },
+  "repositories" : {
+    "lafo-snapshots" : {
+      "url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots",
+      "licences" : ["GPLv2-CPE", "UPL"]
+    },
   },
   "defaultLicence" : "GPLv2-CPE",
   "libraries" : {
