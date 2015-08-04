@@ -293,7 +293,7 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
       ],
-      "description" : ".",
+      "description" : "Experimental REPL server to build your debugger console for your language.",
      }
   },
 }
