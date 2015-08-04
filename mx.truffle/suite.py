@@ -1,6 +1,14 @@
 suite = {
-  "mxversion" : "5.0",
+  "mxversion" : "5.2",
   "name" : "truffle",
+  "url" : "http://openjdk.java.net/projects/graal",
+  "developer" : {
+    "name" : "Truffle and Graal developers",
+    "email" : "graal-dev@openjdk.java.net",
+    "organization" : "Graal",
+    "organizationUrl" : "http://openjdk.java.net/projects/graal",
+  },
+  "defaultLicence" : "GPLv2-CPE",
   "libraries" : {
 
     # ------------- Libraries -------------
@@ -12,6 +20,11 @@ suite = {
         "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
       ],
       "sha1" : "9504d5e2da5d78237239c5226e8200ec21182040",
+      "maven" : {
+      	"groupId" : "jline",
+    	"artifactId" : "jline",
+    	"version" : "2.11",
+      }
     },
   },
 
@@ -165,6 +178,7 @@ suite = {
       "javaCompliance" : "1.7",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
+      "licence" : "UPL",
     },
 
     "com.oracle.truffle.sl.test" : {
@@ -177,6 +191,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Test",
+      "licence" : "UPL",
     },
 
      "com.oracle.truffle.sl.tools" : {
@@ -187,7 +202,15 @@ suite = {
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Tools",
+      "licence" : "UPL",
     },
+  },
+
+  "licences" : {
+    "UPL" : {
+      "name" : "Universal Permissive License, Version 1.0",
+      "url" : "http://opensource.org/licenses/UPL",
+    }
   },
 
   "distributions" : {
@@ -206,6 +229,8 @@ suite = {
       ],
       "distDependencies" : [
       ],
+      "description" : """Truffle is a multi-language framework for executing dynamic languages
+        that achieves high performance when combined with Graal.""",
     },
 
     "TRUFFLE_TCK" : {
@@ -217,6 +242,9 @@ suite = {
         "com.oracle.truffle.tck"
       ],
       "distDependencies" : ["TRUFFLE"],
+      "exclude" : ["mx:JUNIT"],
+      "description" : """A collection of tests that can certify language implementation to be compliant
+        with most recentrequirements of the Truffle infrastructure and tooling.""",
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
@@ -226,6 +254,7 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : ["com.oracle.truffle.dsl.processor"],
       "distDependencies" : ["TRUFFLE"],
+      "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
     },
 
     "TRUFFLE_SL" : {
@@ -242,6 +271,8 @@ suite = {
           "TRUFFLE_TCK",
           "TRUFFLE_DSL_PROCESSOR"
       ],
+      "licence" : "UPL",
+      "description" : "Truffle SL is an example language implemented using the Truffle API.",
     },
 
      "TRUFFLE_DEBUG" : {
@@ -256,6 +287,7 @@ suite = {
       "distDependencies" : [
           "TRUFFLE",
       ],
+      "description" : ".",
      }
   },
 }
