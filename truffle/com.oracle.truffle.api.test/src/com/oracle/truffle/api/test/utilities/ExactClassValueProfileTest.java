@@ -30,6 +30,7 @@ import org.junit.experimental.theories.*;
 import org.junit.runner.*;
 
 import com.oracle.truffle.api.utilities.*;
+import java.lang.reflect.Method;
 
 @RunWith(Theories.class)
 public class ExactClassValueProfileTest {
@@ -40,33 +41,33 @@ public class ExactClassValueProfileTest {
     @DataPoint public static final Integer O4 = new Integer(1);
     @DataPoint public static final Integer O5 = null;
 
-    private ExactClassValueProfile profile;
+    private ValueProfile profile;
 
     @Before
     public void create() {
-        profile = (ExactClassValueProfile) ValueProfile.createClassProfile();
+        profile = ValueProfile.createClassProfile();
     }
 
     @Test
-    public void testInitial() {
-        assertThat(profile.isGeneric(), is(false));
-        assertThat(profile.isUninitialized(), is(true));
-        assertNull(profile.getCachedClass());
+    public void testInitial() throws Exception {
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
+        assertNull(getCachedClass(profile));
         profile.toString(); // test that it is not crashing
     }
 
     @Theory
-    public void testProfileOne(Object value) {
+    public void testProfileOne(Object value) throws Exception {
         Object result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedClass(), expectedClass(value));
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedClass(profile), expectedClass(value));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
     @Theory
-    public void testProfileTwo(Object value0, Object value1) {
+    public void testProfileTwo(Object value0, Object value1) throws Exception {
         Object result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
 
@@ -75,14 +76,14 @@ public class ExactClassValueProfileTest {
 
         Object expectedClass = expectedClass(value0) == expectedClass(value1) ? expectedClass(value0) : Object.class;
 
-        assertEquals(profile.getCachedClass(), expectedClass);
-        assertThat(profile.isUninitialized(), is(false));
-        assertThat(profile.isGeneric(), is(expectedClass == Object.class));
+        assertEquals(getCachedClass(profile), expectedClass);
+        assertThat(isUninitialized(profile), is(false));
+        assertThat(isGeneric(profile), is(expectedClass == Object.class));
         profile.toString(); // test that it is not crashing
     }
 
     @Theory
-    public void testProfileThree(Object value0, Object value1, Object value2) {
+    public void testProfileThree(Object value0, Object value1, Object value2) throws Exception {
         Object result0 = profile.profile(value0);
         Object result1 = profile.profile(value1);
         Object result2 = profile.profile(value2);
@@ -93,9 +94,9 @@ public class ExactClassValueProfileTest {
 
         Object expectedClass = expectedClass(value0) == expectedClass(value1) && expectedClass(value1) == expectedClass(value2) ? expectedClass(value0) : Object.class;
 
-        assertEquals(profile.getCachedClass(), expectedClass);
-        assertThat(profile.isUninitialized(), is(false));
-        assertThat(profile.isGeneric(), is(expectedClass == Object.class));
+        assertEquals(getCachedClass(profile), expectedClass);
+        assertThat(isUninitialized(profile), is(false));
+        assertThat(isGeneric(profile), is(expectedClass == Object.class));
         profile.toString(); // test that it is not crashing
     }
 
@@ -103,4 +104,21 @@ public class ExactClassValueProfileTest {
         return value == null ? Object.class : value.getClass();
     }
 
+    private static Object get(String name, ValueProfile profile) throws Exception {
+        final Method m = profile.getClass().getDeclaredMethod(name);
+        m.setAccessible(true);
+        return m.invoke(profile);
+    }
+
+    private static Object getCachedClass(ValueProfile profile) throws Exception {
+        return get("getCachedClass", profile);
+    }
+
+    private static boolean isUninitialized(ValueProfile profile) throws Exception {
+        return (Boolean) get("isUninitialized", profile);
+    }
+
+    private static boolean isGeneric(ValueProfile profile) throws Exception {
+        return (Boolean) get("isGeneric", profile);
+    }
 }

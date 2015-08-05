@@ -30,7 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 /**
  * Represents a {@link ValueProfile} that speculates on the exact class of a value.
  */
-public final class ExactClassValueProfile extends ValueProfile {
+final class ExactClassValueProfile extends ValueProfile {
 
     @CompilationFinal protected Class<?> cachedClass;
 
