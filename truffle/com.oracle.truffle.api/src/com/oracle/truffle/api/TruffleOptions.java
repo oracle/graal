@@ -31,7 +31,9 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Class containing general Truffle options.
  */
-public class TruffleOptions {
+public final class TruffleOptions {
+    private TruffleOptions() {
+    }
 
     /**
      * Force truffle to run in interpreter mode.
