@@ -30,13 +30,16 @@ questions.
 </head>
 <body>
 
-<a href="projects.html" title="Click to enlarge"><img src="projects.jpg" width="400"/></a>
 <p>
-This document is the unified Javadoc for the Graal code base.
-The project dependency graph is shown above.
-Each node in the diagram is a link to the standalone Javadoc for the denoted project.
+Truffle is a framework for writing and executing interpreters. In case
+you want to execute already written interpreters from your Java application,
+start at {@link com.oracle.truffle.api.vm.TruffleVM}. In case you'd like
+to write your own Truffle based language, start at 
+{@link com.oracle.truffle.api.TruffleLanguage}.
 <p>
-<a target="_top" href="http://openjdk.java.net/projects/graal/"><b>[go to the OpenJDK Graal project site]</b></a>
-
+To get the best speed out of your Truffle system, make sure you are running
+on top of 
+<a target="_top" href="http://openjdk.java.net/projects/graal/">Graal</a>
+virtual machine.
 </body>
 </html>
