@@ -165,17 +165,26 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
     public static Path getRootViaResourceURL(final Class<?> c, String[] paths) {
         URL url = c.getResource(c.getSimpleName() + ".class");
         if (url != null) {
+            char sep = File.separatorChar;
             String externalForm = url.toExternalForm();
-            if (externalForm.startsWith("file:")) {
-                char sep = File.separatorChar;
-                String suffix = sep + "bin" + sep + c.getName().replace('.', sep) + ".class";
-                if (externalForm.endsWith(suffix)) {
-                    String base = externalForm.substring("file:".length(), externalForm.length() - suffix.length());
-                    for (String path : paths) {
-                        String candidate = base + sep + path;
-                        if (new File(candidate).exists()) {
-                            return FileSystems.getDefault().getPath(candidate);
-                        }
+            String classPart = sep + c.getName().replace('.', sep) + ".class";
+            String suffix = null;
+            String prefix = null;
+            if (externalForm.startsWith("jar:file:")) {
+                prefix = "jar:file:";
+                suffix = sep + "build/truffle-sl.jar!" + classPart;
+            } else if (externalForm.startsWith("file:")) {
+                prefix = "file:";
+                suffix = sep + "bin" + classPart;
+            } else {
+                return null;
+            }
+            if (externalForm.endsWith(suffix)) {
+                String base = externalForm.substring(prefix.length(), externalForm.length() - suffix.length());
+                for (String path : paths) {
+                    String candidate = base + sep + path;
+                    if (new File(candidate).exists()) {
+                        return FileSystems.getDefault().getPath(candidate);
                     }
                 }
             }
