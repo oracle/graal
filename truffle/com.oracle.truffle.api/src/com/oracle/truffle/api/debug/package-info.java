@@ -23,6 +23,12 @@
  * questions.
  */
 
+/*
+ @ApiInfo(
+ group="Stable"
+ )
+ */
+
 /**
  * Control over {@link com.oracle.truffle.api.debug.Debugger debugging} of your {@link com.oracle.truffle.api.vm.TruffleVM}. Each {@link com.oracle.truffle.api.vm.TruffleVM}
  * is inherently capable to run in debugging mode - there is just one thing

@@ -23,6 +23,12 @@
  * questions.
  */
 
+/*
+ @ApiInfo(
+ group="Stable"
+ )
+ */
+
 /**
  * Central place to create and control {@link com.oracle.truffle.api.vm.TruffleVM Truffle Virtual
  * Machine} and all languages hosted in it.
