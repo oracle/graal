@@ -86,7 +86,7 @@ def _unittest_config_participant(config):
     # Unconditionally prepend truffle.jar to the boot class path.
     # This used to be done by the VM itself but was removed to
     # separate the VM from Truffle.
-    truffle_jar = mx.distribution('truffle:TRUFFLE').path
+    truffle_jar = mx.distribution('truffle:TRUFFLE_API').path
     vmArgs = ['-Xbootclasspath/p:' + truffle_jar] + vmArgs
     return (vmArgs, mainClass, mainClassArgs)
 

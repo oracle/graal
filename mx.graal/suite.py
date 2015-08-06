@@ -14,7 +14,7 @@ suite = {
             },
             {
                "name" : "truffle",
-               "version" : "ffbc7f472438044ca1134d803605cbcd03679a5b",
+               "version" : "38e0e8fd22dc8ef4148a47f07c3eee1108e24074",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -808,7 +808,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE",
+        "truffle:TRUFFLE_API",
         "com.oracle.graal.runtime",
         "com.oracle.graal.replacements",
       ],
@@ -976,7 +976,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL",
-        "truffle:TRUFFLE",
+        "truffle:TRUFFLE_API",
       ],
     },
 
