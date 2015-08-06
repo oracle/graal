@@ -70,7 +70,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
 
     @Override
     public SLFunction executeGeneric(VirtualFrame frame) {
-        SLContext context = SLLanguage.INSTANCE.findContext(contextNode);
+        SLContext context = SLLanguage.INSTANCE.findContext0(contextNode);
         if (context != cachedContext) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.cachedContext = context;

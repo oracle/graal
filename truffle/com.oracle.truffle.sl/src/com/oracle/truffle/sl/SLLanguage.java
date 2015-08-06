@@ -403,7 +403,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                     throw new IllegalStateException(failed[0]);
                 }
                 Node n = createFindContextNode();
-                SLContext fillIn = findContext(n, null);
+                SLContext fillIn = findContext(n);
                 final SLFunctionRegistry functionRegistry = fillIn.getFunctionRegistry();
                 for (SLFunction f : c.getFunctionRegistry().getFunctions()) {
                     RootCallTarget callTarget = f.getCallTarget();
@@ -494,6 +494,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public Node createFindContextNode0() {
         return createFindContextNode();
+    }
+
+    public SLContext findContext0(Node contextNode) {
+        return findContext(contextNode);
     }
 
     private final class SLDebugProvider implements DebugSupportProvider {

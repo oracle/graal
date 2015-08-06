@@ -185,6 +185,7 @@ public abstract class Accessor {
 
     private static Reference<TruffleVM> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
+
     protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
         final Closeable debugClose = DEBUG.executionStart(vm, fillIn, s);
         final TruffleVM prev = CURRENT_VM.get();
@@ -192,7 +193,7 @@ public abstract class Accessor {
             previousVM = new WeakReference<>(vm);
             oneVM.invalidate();
             oneVM = Truffle.getRuntime().createAssumption();
-            
+
         }
         CURRENT_VM.set(vm);
         class ContextCloseable implements Closeable {
@@ -208,13 +209,13 @@ public abstract class Accessor {
     protected void dispatchEvent(TruffleVM vm, Object event) {
         SPI.dispatchEvent(vm, event);
     }
-    
+
     static Assumption oneVMAssumption() {
         return oneVM;
     }
-    
-    @SuppressWarnings("unchecked")
-    static <C> C findContext(Class<? extends TruffleLanguage<C>> type) {
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static <C> C findContext(Class<? extends TruffleLanguage> type) {
         Env env = SPI.findLanguage(CURRENT_VM.get(), type);
         return (C) API.findContext(env);
     }
