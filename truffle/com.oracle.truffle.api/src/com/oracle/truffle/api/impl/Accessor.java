@@ -35,6 +35,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.api.vm.*;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 
 /**
  * Communication between TruffleVM and TruffleLanguage API/SPI.
@@ -181,9 +183,17 @@ public abstract class Accessor {
         return SPI.findLanguage(vm, languageClass);
     }
 
+    private static Reference<TruffleVM> previousVM = new WeakReference<>(null);
+    private static Assumption oneVM = Truffle.getRuntime().createAssumption();
     protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
         final Closeable debugClose = DEBUG.executionStart(vm, fillIn, s);
         final TruffleVM prev = CURRENT_VM.get();
+        if (!(vm == previousVM.get())) {
+            previousVM = new WeakReference<>(vm);
+            oneVM.invalidate();
+            oneVM = Truffle.getRuntime().createAssumption();
+            
+        }
         CURRENT_VM.set(vm);
         class ContextCloseable implements Closeable {
             @Override
@@ -198,6 +208,16 @@ public abstract class Accessor {
     protected void dispatchEvent(TruffleVM vm, Object event) {
         SPI.dispatchEvent(vm, event);
     }
+    
+    static Assumption oneVMAssumption() {
+        return oneVM;
+    }
+    
+    @SuppressWarnings("unchecked")
+    static <C> C findContext(Class<? extends TruffleLanguage<C>> type) {
+        Env env = SPI.findLanguage(CURRENT_VM.get(), type);
+        return (C) API.findContext(env);
+    }
 
     /**
      * Don't call me. I am here only to let NetBeans debug any Truffle project.
@@ -206,5 +226,9 @@ public abstract class Accessor {
      */
     public static void main(String... args) {
         throw new IllegalStateException();
+    }
+
+    protected Object findContext(Env env) {
+        return API.findContext(env);
     }
 }
