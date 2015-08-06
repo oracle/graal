@@ -64,21 +64,4 @@ public class SPARCImmediateAddressNode extends AddressNode implements LIRLowerab
 
         gen.setResult(this, new SPARCImmediateAddressValue(kind, baseValue, displacement));
     }
-
-    public ValueNode getBase() {
-        return base;
-    }
-
-    public void setBase(ValueNode base) {
-        updateUsages(this.base, base);
-        this.base = base;
-    }
-
-    public int getDisplacement() {
-        return displacement;
-    }
-
-    public void setDisplacement(int displacement) {
-        this.displacement = displacement;
-    }
 }
