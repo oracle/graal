@@ -93,31 +93,32 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     emitError("Registered language inner-class must be static", e);
                     continue;
                 }
-                TypeMirror truffleLang = processingEnv.getElementUtils().getTypeElement(TruffleLanguage.class.getName()).asType();
+                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(processingEnv.getElementUtils().getTypeElement(TruffleLanguage.class.getName()).asType());
                 if (!processingEnv.getTypeUtils().isAssignable(e.asType(), truffleLang)) {
                     emitError("Registered language class must subclass TruffleLanguage", e);
                     continue;
                 }
                 boolean found = false;
                 for (Element mem : e.getEnclosedElements()) {
-                    if (mem.getKind() != ElementKind.CONSTRUCTOR) {
+                    if (!mem.getModifiers().contains(Modifier.PUBLIC)) {
                         continue;
                     }
-                    ExecutableElement ee = (ExecutableElement) mem;
-                    if (ee.getParameters().size() != 1) {
+                    if (mem.getKind() != ElementKind.FIELD) {
                         continue;
                     }
-                    if (!ee.getModifiers().contains(Modifier.PUBLIC)) {
+                    if (!mem.getModifiers().contains(Modifier.FINAL)) {
                         continue;
                     }
-                    TypeMirror env = processingEnv.getElementUtils().getTypeElement(TruffleLanguage.Env.class.getCanonicalName()).asType();
-                    if (processingEnv.getTypeUtils().isSameType(ee.getParameters().get(0).asType(), env)) {
+                    if (!"INSTANCE".equals(mem.getSimpleName().toString())) {
+                        continue;
+                    }
+                    if (processingEnv.getTypeUtils().isAssignable(mem.asType(), truffleLang)) {
                         found = true;
                         break;
                     }
                 }
                 if (!found) {
-                    emitError("Language must have a public constructor accepting TruffleLanguage.Env as parameter", e);
+                    emitError("Language class must have public static final singleton field called INSTANCE", e);
                     continue;
                 }
                 assertNoErrorExpected(e);

@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.vm;
 
 import java.io.*;
-import java.lang.reflect.*;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
@@ -55,6 +54,7 @@ import com.oracle.truffle.api.source.*;
  * has been {@link Builder#build() created} by and checks that all subsequent calls are coming from
  * the same thread.
  */
+@SuppressWarnings("rawtypes")
 public final class TruffleVM {
     private static final Logger LOG = Logger.getLogger(TruffleVM.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
@@ -289,7 +289,7 @@ public final class TruffleVM {
             URLConnection conn = url.openConnection();
             mimeType = conn.getContentType();
         }
-        TruffleLanguage l = getTruffleLang(mimeType);
+        TruffleLanguage<?> l = getTruffleLang(mimeType);
         if (l == null) {
             throw new IOException("No language for " + location + " with MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
@@ -307,7 +307,7 @@ public final class TruffleVM {
      */
     public Object eval(String mimeType, Reader reader) throws IOException {
         checkThread();
-        TruffleLanguage l = getTruffleLang(mimeType);
+        TruffleLanguage<?> l = getTruffleLang(mimeType);
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
@@ -325,14 +325,14 @@ public final class TruffleVM {
      */
     public Object eval(String mimeType, String code) throws IOException {
         checkThread();
-        TruffleLanguage l = getTruffleLang(mimeType);
+        TruffleLanguage<?> l = getTruffleLang(mimeType);
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
         return eval(l, Source.fromText(code, mimeType));
     }
 
-    private Object eval(TruffleLanguage l, Source s) throws IOException {
+    private Object eval(TruffleLanguage<?> l, Source s) throws IOException {
         TruffleVM.findDebuggerSupport(l);
         Debugger[] fillIn = {debugger};
         try (Closeable d = SPI.executionStart(this, fillIn, s)) {
@@ -362,25 +362,25 @@ public final class TruffleVM {
      */
     public Symbol findGlobalSymbol(String globalName) {
         checkThread();
-        TruffleLanguage lang = null;
+        TruffleLanguage<?> lang = null;
         Object obj = null;
         Object global = null;
         for (Language dl : langs.values()) {
-            TruffleLanguage l = dl.getImpl();
-            obj = SPI.findExportedSymbol(l, globalName, true);
+            TruffleLanguage<?> l = dl.getImpl();
+            obj = SPI.findExportedSymbol(dl.env, globalName, true);
             if (obj != null) {
                 lang = l;
-                global = SPI.languageGlobal(l);
+                global = SPI.languageGlobal(dl.env);
                 break;
             }
         }
         if (obj == null) {
             for (Language dl : langs.values()) {
-                TruffleLanguage l = dl.getImpl();
-                obj = SPI.findExportedSymbol(l, globalName, false);
+                TruffleLanguage<?> l = dl.getImpl();
+                obj = SPI.findExportedSymbol(dl.env, globalName, false);
                 if (obj != null) {
                     lang = l;
-                    global = SPI.languageGlobal(l);
+                    global = SPI.languageGlobal(dl.env);
                     break;
                 }
             }
@@ -394,7 +394,7 @@ public final class TruffleVM {
         }
     }
 
-    private TruffleLanguage getTruffleLang(String mimeType) {
+    private TruffleLanguage<?> getTruffleLang(String mimeType) {
         checkThread();
         Language l = langs.get(mimeType);
         return l == null ? null : l.getImpl();
@@ -434,11 +434,11 @@ public final class TruffleVM {
      * of the initialized languages in {@link TruffleVM Truffle virtual machine}.
      */
     public class Symbol {
-        private final TruffleLanguage language;
+        private final TruffleLanguage<?> language;
         private final Object obj;
         private final Object global;
 
-        Symbol(TruffleLanguage language, Object obj, Object global) {
+        Symbol(TruffleLanguage<?> language, Object obj, Object global) {
             this.language = language;
             this.obj = obj;
             this.global = global;
@@ -487,7 +487,8 @@ public final class TruffleVM {
      */
     public final class Language {
         private final Properties props;
-        private TruffleLanguage impl;
+        private TruffleLanguage<?> impl;
+        private TruffleLanguage.Env env;
         private final String prefix;
         private String shortName;
 
@@ -543,13 +544,14 @@ public final class TruffleVM {
             return shortName;
         }
 
-        TruffleLanguage getImpl() {
+        TruffleLanguage<?> getImpl() {
             if (impl == null) {
                 String n = props.getProperty(prefix + "className");
                 try {
                     Class<?> langClazz = Class.forName(n, true, loader());
-                    Constructor<?> constructor = langClazz.getConstructor(Env.class);
-                    impl = SPI.attachEnv(TruffleVM.this, constructor, out, err, in);
+                    TruffleLanguage<?> language = (TruffleLanguage<?>) langClazz.getField("INSTANCE").get(null);
+                    env = SPI.attachEnv(TruffleVM.this, language, out, err, in);
+                    impl = language;
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + n, ex);
                 }
@@ -567,12 +569,8 @@ public final class TruffleVM {
     // Accessor helper methods
     //
 
-    TruffleLanguage findLanguage(Probe probe) {
+    TruffleLanguage<?> findLanguage(Probe probe) {
         Class<? extends TruffleLanguage> languageClazz = SPI.findLanguage(probe);
-        return findLanguage(languageClazz);
-    }
-
-    TruffleLanguage findLanguage(Class<? extends TruffleLanguage> languageClazz) {
         for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
             Language languageDescription = entrySet.getValue();
             if (languageClazz.isInstance(languageDescription.impl)) {
@@ -582,30 +580,40 @@ public final class TruffleVM {
         throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
     }
 
-    static DebugSupportProvider findDebuggerSupport(TruffleLanguage l) {
+    Env findEnv(Class<? extends TruffleLanguage> languageClazz) {
+        for (Map.Entry<String, Language> entrySet : langs.entrySet()) {
+            Language languageDescription = entrySet.getValue();
+            if (languageClazz.isInstance(languageDescription.impl)) {
+                return languageDescription.env;
+            }
+        }
+        throw new IllegalStateException("Cannot find language " + languageClazz + " among " + langs);
+    }
+
+    static DebugSupportProvider findDebuggerSupport(TruffleLanguage<?> l) {
         return SPI.getDebugSupport(l);
     }
 
     private static class SPIAccessor extends Accessor {
         @Override
-        public Object importSymbol(TruffleVM vm, TruffleLanguage ownLang, String globalName) {
+        public Object importSymbol(TruffleVM vm, TruffleLanguage<?> ownLang, String globalName) {
             Set<Language> uniqueLang = new LinkedHashSet<>(vm.langs.values());
             for (Language dl : uniqueLang) {
-                TruffleLanguage l = dl.getImpl();
+                TruffleLanguage<?> l = dl.getImpl();
                 if (l == ownLang) {
                     continue;
                 }
-                Object obj = SPI.findExportedSymbol(l, globalName, true);
+                Object obj = SPI.findExportedSymbol(dl.env, globalName, true);
                 if (obj != null) {
                     return obj;
                 }
             }
             for (Language dl : uniqueLang) {
-                TruffleLanguage l = dl.getImpl();
+                TruffleLanguage<?> l = dl.getImpl();
                 if (l == ownLang) {
                     continue;
                 }
-                Object obj = SPI.findExportedSymbol(l, globalName, false);
+                Object obj = SPI.findExportedSymbol(dl.env, globalName, false);
                 if (obj != null) {
                     return obj;
                 }
@@ -614,37 +622,37 @@ public final class TruffleVM {
         }
 
         @Override
-        public TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz, Writer stdOut, Writer stdErr, Reader stdIn) {
-            return super.attachEnv(vm, langClazz, stdOut, stdErr, stdIn);
+        public Env attachEnv(TruffleVM vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+            return super.attachEnv(vm, language, stdOut, stdErr, stdIn);
         }
 
         @Override
-        public Object eval(TruffleLanguage l, Source s) throws IOException {
+        public Object eval(TruffleLanguage<?> l, Source s) throws IOException {
             return super.eval(l, s);
         }
 
         @Override
-        public Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
-            return super.findExportedSymbol(l, globalName, onlyExplicit);
+        public Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
+            return super.findExportedSymbol(env, globalName, onlyExplicit);
         }
 
         @Override
-        public Object languageGlobal(TruffleLanguage l) {
-            return super.languageGlobal(l);
+        protected Object languageGlobal(TruffleLanguage.Env env) {
+            return super.languageGlobal(env);
         }
 
         @Override
-        protected Object invoke(TruffleLanguage lang, Object obj, Object[] args) throws IOException {
+        protected Object invoke(TruffleLanguage<?> lang, Object obj, Object[] args) throws IOException {
             return super.invoke(lang, obj, args);
         }
 
         @Override
-        public ToolSupportProvider getToolSupport(TruffleLanguage l) {
+        public ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
             return super.getToolSupport(l);
         }
 
         @Override
-        public DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+        public DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
             return super.getDebugSupport(l);
         }
 
@@ -654,8 +662,8 @@ public final class TruffleVM {
         }
 
         @Override
-        protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
-            return vm.findLanguage(languageClass);
+        protected Env findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+            return vm.findEnv(languageClass);
         }
 
         @Override

@@ -194,9 +194,6 @@ final class MaxMinObject implements TruffleObject {
         }
     }
 
-    private abstract class MMLanguage extends TruffleLanguage {
-        public MMLanguage(Env env) {
-            super(env);
-        }
+    private abstract class MMLanguage extends TruffleLanguage<Object> {
     }
 }

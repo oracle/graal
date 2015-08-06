@@ -100,6 +100,7 @@ import com.oracle.truffle.api.utilities.*;
  * @see ProbeListener
  * @see SyntaxTag
  */
+@SuppressWarnings("rawtypes")
 public final class Probe {
     private final Class<? extends TruffleLanguage> language;
 

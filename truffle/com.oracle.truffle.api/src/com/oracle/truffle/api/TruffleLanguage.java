@@ -26,7 +26,6 @@ package com.oracle.truffle.api;
 
 import java.io.*;
 import java.lang.annotation.*;
-import java.lang.reflect.*;
 
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.impl.*;
@@ -45,18 +44,16 @@ import java.util.WeakHashMap;
  * language becomes accessible to users of the {@link TruffleVM Truffle virtual machine} - all they
  * will need to do is to include your JAR into their application and all the Truffle goodies (multi
  * language support, multitenant hosting, debugging, etc.) will be made available to them.
+ * 
+ * @param <C> internal state of the language associated with every thread that is executing program
+ *            {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)
+ *            parsed} by the language
  */
-public abstract class TruffleLanguage {
-    private final Env env;
-
+public abstract class TruffleLanguage<C> {
     /**
      * Constructor to be called by subclasses.
-     *
-     * @param env language environment that will be available via {@link #env()} method to
-     *            subclasses.
      */
-    protected TruffleLanguage(Env env) {
-        this.env = env;
+    protected TruffleLanguage() {
     }
 
     /**
@@ -95,12 +92,18 @@ public abstract class TruffleLanguage {
         String[] mimeType();
     }
 
-    protected final Env env() {
-        if (this.env == null) {
-            throw new NullPointerException("Accessing env before initialization is finished");
-        }
-        return this.env;
-    }
+    /**
+     * Creates internal representation of the executing context suitable for given environment. Each
+     * time the {@link TruffleLanguage language} is used by a new {@link TruffleVM} or in a new
+     * thread, the system calls this method to let the {@link TruffleLanguage language} prepare for
+     * <em>execution</em>. The returned execution context is completely language specific; it is
+     * however expected it will contain reference to here-in provided <code>env</code> and adjust
+     * itself according to parameters provided by the <code>env</code> object.
+     * 
+     * @param env the environment the language is supposed to operate in
+     * @return internal data of the language in given environment
+     */
+    protected abstract C createContext(Env env);
 
     /**
      * Parses the provided source and generates appropriate AST. The parsing should execute no user
@@ -145,7 +148,7 @@ public abstract class TruffleLanguage {
      * @return an exported object or <code>null</code>, if the symbol does not represent anything
      *         meaningful in this language
      */
-    protected abstract Object findExportedSymbol(String globalName, boolean onlyExplicit);
+    protected abstract Object findExportedSymbol(C context, String globalName, boolean onlyExplicit);
 
     /**
      * Returns global object for the language.
@@ -156,7 +159,7 @@ public abstract class TruffleLanguage {
      *
      * @return the global object or <code>null</code> if the language does not support such concept
      */
-    protected abstract Object getLanguageGlobal();
+    protected abstract Object getLanguageGlobal(C context);
 
     /**
      * Checks whether the object is provided by this language.
@@ -171,15 +174,37 @@ public abstract class TruffleLanguage {
     protected abstract DebugSupportProvider getDebugSupport();
 
     /**
-     * Finds the currently executing context for current thread.
+     * Finds the currently executing context for this language and current thread. Obtains data
+     * previously created by {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
+     * method.
      *
-     * @param <Lang> type of language making the query
-     * @param language the language class
      * @return the context associated with current execution
      * @throws IllegalStateException if no context is associated with the execution
      */
-    protected static <Lang extends TruffleLanguage> Lang findContext(Class<Lang> language) {
-        return language.cast(API.findLanguage(null, language));
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    protected final C findContext() {
+        final Class<? extends TruffleLanguage> c = getClass();
+        final Env env = API.findLanguage(null, c);
+        assert env.langCtx.lang == this;
+        return (C) env.langCtx.ctx;
+    }
+
+    private static final class LangCtx<C> {
+        final TruffleLanguage<C> lang;
+        final C ctx;
+
+        public LangCtx(TruffleLanguage<C> lang, Env env) {
+            this.lang = lang;
+            this.ctx = lang.createContext(env);
+        }
+
+        Object findExportedSymbol(String globalName, boolean onlyExplicit) {
+            return lang.findExportedSymbol(ctx, globalName, onlyExplicit);
+        }
+
+        Object getLanguageGlobal() {
+            return lang.getLanguageGlobal(ctx);
+        }
     }
 
     /**
@@ -190,21 +215,17 @@ public abstract class TruffleLanguage {
      */
     public static final class Env {
         private final TruffleVM vm;
-        private final TruffleLanguage lang;
+        private final LangCtx<?> langCtx;
         private final Reader in;
         private final Writer err;
         private final Writer out;
 
-        Env(TruffleVM vm, Constructor<?> langConstructor, Writer out, Writer err, Reader in) {
+        Env(TruffleVM vm, TruffleLanguage<?> lang, Writer out, Writer err, Reader in) {
             this.vm = vm;
             this.in = in;
             this.err = err;
             this.out = out;
-            try {
-                this.lang = (TruffleLanguage) langConstructor.newInstance(this);
-            } catch (Exception ex) {
-                throw new IllegalStateException("Cannot construct language " + langConstructor.getDeclaringClass().getName(), ex);
-            }
+            this.langCtx = new LangCtx<>(lang, this);
         }
 
         /**
@@ -217,7 +238,7 @@ public abstract class TruffleLanguage {
          * @return object representing the symbol or <code>null</code>
          */
         public Object importSymbol(String globalName) {
-            return API.importSymbol(vm, lang, globalName);
+            return API.importSymbol(vm, langCtx.lang, globalName);
         }
 
         /**
@@ -250,22 +271,23 @@ public abstract class TruffleLanguage {
 
     private static final AccessAPI API = new AccessAPI();
 
+    @SuppressWarnings("rawtypes")
     private static final class AccessAPI extends Accessor {
         @Override
-        protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz, Writer stdOut, Writer stdErr, Reader stdIn) {
-            Env env = new Env(vm, langClazz, stdOut, stdErr, stdIn);
-            return env.lang;
+        protected Env attachEnv(TruffleVM vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+            Env env = new Env(vm, language, stdOut, stdErr, stdIn);
+            return env;
         }
 
         @Override
-        public Object importSymbol(TruffleVM vm, TruffleLanguage queryingLang, String globalName) {
+        public Object importSymbol(TruffleVM vm, TruffleLanguage<?> queryingLang, String globalName) {
             return super.importSymbol(vm, queryingLang, globalName);
         }
 
         private static final Map<Source, CallTarget> COMPILED = Collections.synchronizedMap(new WeakHashMap<Source, CallTarget>());
 
         @Override
-        protected Object eval(TruffleLanguage language, Source source) throws IOException {
+        protected Object eval(TruffleLanguage<?> language, Source source) throws IOException {
             CallTarget target = COMPILED.get(source);
             if (target == null) {
                 target = language.parse(source, null);
@@ -282,27 +304,27 @@ public abstract class TruffleLanguage {
         }
 
         @Override
-        protected Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
-            return l.findExportedSymbol(globalName, onlyExplicit);
+        protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
+            return env.langCtx.findExportedSymbol(globalName, onlyExplicit);
         }
 
         @Override
-        protected TruffleLanguage findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+        protected Env findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
             return super.findLanguage(vm, languageClass);
         }
 
         @Override
-        protected Object languageGlobal(TruffleLanguage l) {
-            return l.getLanguageGlobal();
+        protected Object languageGlobal(TruffleLanguage.Env env) {
+            return env.langCtx.getLanguageGlobal();
         }
 
         @Override
-        protected ToolSupportProvider getToolSupport(TruffleLanguage l) {
+        protected ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
             return l.getToolSupport();
         }
 
         @Override
-        protected DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+        protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
             return l.getDebugSupport();
         }
     }

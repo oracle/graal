@@ -589,6 +589,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     private static final class AccessorNodes extends Accessor {
+        @SuppressWarnings("rawtypes")
         @Override
         protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {
             return n.language;

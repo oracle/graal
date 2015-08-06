@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
@@ -54,13 +55,18 @@ public class AccessorTest {
 
         Object afterInitialization = findLanguageByClass(vm);
         assertNotNull("Language found", afterInitialization);
-        assertTrue("Right instance", afterInitialization instanceof ExportImportLanguage1);
+        assertTrue("Right instance: " + afterInitialization, afterInitialization instanceof ExportImportLanguage1);
     }
 
-    Object findLanguageByClass(TruffleVM vm) throws IllegalAccessException, NoSuchMethodException, SecurityException, IllegalArgumentException, InvocationTargetException {
+    Object findLanguageByClass(TruffleVM vm) throws IllegalAccessException, NoSuchMethodException, SecurityException, IllegalArgumentException, InvocationTargetException, NoSuchFieldException {
         Method find = Accessor.class.getDeclaredMethod("findLanguage", TruffleVM.class, Class.class);
         find.setAccessible(true);
-        Object language1 = find.invoke(API, vm, ExportImportLanguage1.class);
-        return language1;
+        TruffleLanguage.Env env = (TruffleLanguage.Env) find.invoke(API, vm, ExportImportLanguage1.class);
+        Field f = env.getClass().getDeclaredField("langCtx");
+        f.setAccessible(true);
+        Object langCtx = f.get(env);
+        f = langCtx.getClass().getDeclaredField("lang");
+        f.setAccessible(true);
+        return f.get(langCtx);
     }
 }

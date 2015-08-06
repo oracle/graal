@@ -153,19 +153,24 @@ import com.oracle.truffle.tools.*;
  *
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
-public class SLLanguage extends TruffleLanguage {
+public class SLLanguage extends TruffleLanguage<SLContext> {
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
     private static ASTProber registeredASTProber; // non-null if prober already registered
-    private final SLContext context;
     private DebugSupportProvider debugSupport;
 
-    public SLLanguage(Env env) {
-        super(env);
-        context = new SLContext(this, new BufferedReader(env().stdIn()), new PrintWriter(env().stdOut(), true));
+    private SLLanguage() {
+    }
+
+    public static final SLLanguage INSTANCE = new SLLanguage();
+
+    @Override
+    protected SLContext createContext(Env env) {
+        SLContext context = new SLContext(this, new BufferedReader(env.stdIn()), new PrintWriter(env.stdOut(), true));
         for (NodeFactory<? extends SLBuiltinNode> builtin : builtins) {
             context.installBuiltin(builtin, true);
         }
+        return context;
     }
 
     // TODO (mlvdv) command line options
@@ -378,10 +383,6 @@ public class SLLanguage extends TruffleLanguage {
         return result.toString();
     }
 
-    public static SLLanguage find() {
-        return SLLanguage.findContext(SLLanguage.class);
-    }
-
     @Override
     protected CallTarget parse(Source code, Node node, String... argumentNames) throws IOException {
         final SLContext c = new SLContext(this);
@@ -401,8 +402,7 @@ public class SLLanguage extends TruffleLanguage {
                 if (failed[0] != null) {
                     throw new IllegalStateException(failed[0]);
                 }
-                SLLanguage current = SLLanguage.find();
-                SLContext fillIn = current.context;
+                SLContext fillIn = getContext();
                 final SLFunctionRegistry functionRegistry = fillIn.getFunctionRegistry();
                 for (SLFunction f : c.getFunctionRegistry().getFunctions()) {
                     RootCallTarget callTarget = f.getCallTarget();
@@ -418,7 +418,7 @@ public class SLLanguage extends TruffleLanguage {
     }
 
     @Override
-    protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
+    protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
         for (SLFunction f : context.getFunctionRegistry().getFunctions()) {
             if (globalName.equals(f.getName())) {
                 return f;
@@ -428,7 +428,7 @@ public class SLLanguage extends TruffleLanguage {
     }
 
     @Override
-    protected Object getLanguageGlobal() {
+    protected Object getLanguageGlobal(SLContext context) {
         return context;
     }
 
@@ -492,7 +492,7 @@ public class SLLanguage extends TruffleLanguage {
     }
 
     public SLContext getContext() {
-        return context;
+        return findContext();
     }
 
     private final class SLDebugProvider implements DebugSupportProvider {

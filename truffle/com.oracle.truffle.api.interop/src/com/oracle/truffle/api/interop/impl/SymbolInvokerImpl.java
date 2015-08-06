@@ -37,8 +37,9 @@ import com.oracle.truffle.api.nodes.*;
 public final class SymbolInvokerImpl extends SymbolInvoker {
     static final FrameDescriptor UNUSED_FRAMEDESCRIPTOR = new FrameDescriptor();
 
+    @SuppressWarnings("unchecked")
     @Override
-    protected Object invoke(TruffleLanguage lang, Object symbol, Object... arr) throws IOException {
+    protected Object invoke(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
         if (symbol instanceof String) {
             return symbol;
         }
@@ -48,8 +49,9 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
         if (symbol instanceof Boolean) {
             return symbol;
         }
+        Class<? extends TruffleLanguage<?>> type = (Class<? extends TruffleLanguage<?>>) lang.getClass();
         Node executeMain = Message.createExecute(arr.length).createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(lang, executeMain, (TruffleObject) symbol, arr));
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, executeMain, (TruffleObject) symbol, arr));
         VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(arr, UNUSED_FRAMEDESCRIPTOR);
         Object ret = callTarget.call(frame);
         if (ret instanceof TruffleObject) {
@@ -57,20 +59,20 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
             Object isBoxedResult;
             try {
                 Node isBoxed = Message.IS_BOXED.createNode();
-                CallTarget isBoxedTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(lang, isBoxed, tret));
+                CallTarget isBoxedTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, isBoxed, tret));
                 isBoxedResult = isBoxedTarget.call(frame);
             } catch (IllegalArgumentException ex) {
                 isBoxedResult = false;
             }
             if (Boolean.TRUE.equals(isBoxedResult)) {
                 Node unbox = Message.UNBOX.createNode();
-                CallTarget unboxTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(lang, unbox, tret));
+                CallTarget unboxTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, unbox, tret));
                 Object unboxResult = unboxTarget.call(frame);
                 return unboxResult;
             } else {
                 try {
                     Node isNull = Message.IS_NULL.createNode();
-                    CallTarget isNullTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(lang, isNull, tret));
+                    CallTarget isNullTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, isNull, tret));
                     Object isNullResult = isNullTarget.call(frame);
                     if (Boolean.TRUE.equals(isNullResult)) {
                         return null;
@@ -88,8 +90,8 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
         private final TruffleObject function;
         private final Object[] args;
 
-        public TemporaryRoot(TruffleLanguage lang, Node foreignAccess, TruffleObject function, Object... args) {
-            super(lang.getClass(), null, null);
+        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function, Object... args) {
+            super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.function = function;
             this.args = args;

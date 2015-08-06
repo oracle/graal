@@ -36,6 +36,7 @@ import com.oracle.truffle.api.source.*;
  * root node can be used to create a call target using
  * {@link TruffleRuntime#createCallTarget(RootNode)}.
  */
+@SuppressWarnings("rawtypes")
 public abstract class RootNode extends Node {
     final Class<? extends TruffleLanguage> language;
     private RootCallTarget callTarget;

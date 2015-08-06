@@ -32,5 +32,5 @@ import java.io.*;
  * associated nodes too much.
  */
 public abstract class SymbolInvoker {
-    protected abstract Object invoke(TruffleLanguage lang, Object symbol, Object... args) throws IOException;
+    protected abstract Object invoke(TruffleLanguage<?> lang, Object symbol, Object... args) throws IOException;
 }

@@ -30,11 +30,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 
-public final class TestingLanguage extends TruffleLanguage {
-    public static final TruffleLanguage INSTANCE = new TestingLanguage();
+public final class TestingLanguage extends TruffleLanguage<Object> {
+    public static final TestingLanguage INSTANCE = new TestingLanguage();
 
     private TestingLanguage() {
-        super(null);
+        super();
     }
 
     @Override
@@ -43,12 +43,12 @@ public final class TestingLanguage extends TruffleLanguage {
     }
 
     @Override
-    protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
+    protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
         return null;
     }
 
     @Override
-    protected Object getLanguageGlobal() {
+    protected Object getLanguageGlobal(Object context) {
         return null;
     }
 
@@ -67,4 +67,8 @@ public final class TestingLanguage extends TruffleLanguage {
         return null;
     }
 
+    @Override
+    protected Object createContext(Env env) {
+        return null;
+    }
 }

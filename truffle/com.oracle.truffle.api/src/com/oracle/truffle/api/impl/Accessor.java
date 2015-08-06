@@ -25,10 +25,10 @@
 package com.oracle.truffle.api.impl;
 
 import java.io.*;
-import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.Node;
@@ -39,6 +39,7 @@ import com.oracle.truffle.api.vm.*;
 /**
  * Communication between TruffleVM and TruffleLanguage API/SPI.
  */
+@SuppressWarnings("rawtypes")
 public abstract class Accessor {
     private static Accessor API;
     private static Accessor SPI;
@@ -48,14 +49,14 @@ public abstract class Accessor {
     private static final ThreadLocal<TruffleVM> CURRENT_VM = new ThreadLocal<>();
 
     static {
-        TruffleLanguage lng = new TruffleLanguage(null) {
+        TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
             @Override
-            protected Object findExportedSymbol(String globalName, boolean onlyExplicit) {
+            protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
                 return null;
             }
 
             @Override
-            protected Object getLanguageGlobal() {
+            protected Object getLanguageGlobal(Object context) {
                 return null;
             }
 
@@ -77,6 +78,11 @@ public abstract class Accessor {
             @Override
             protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
                 throw new IOException();
+            }
+
+            @Override
+            protected Object createContext(TruffleLanguage.Env env) {
+                return null;
             }
         };
         lng.hashCode();
@@ -119,35 +125,35 @@ public abstract class Accessor {
         }
     }
 
-    protected TruffleLanguage attachEnv(TruffleVM vm, Constructor<?> langClazz, Writer stdOut, Writer stdErr, Reader stdIn) {
-        return API.attachEnv(vm, langClazz, stdOut, stdErr, stdIn);
+    protected Env attachEnv(TruffleVM vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+        return API.attachEnv(vm, language, stdOut, stdErr, stdIn);
     }
 
-    protected Object eval(TruffleLanguage l, Source s) throws IOException {
+    protected Object eval(TruffleLanguage<?> l, Source s) throws IOException {
         return API.eval(l, s);
     }
 
-    protected Object importSymbol(TruffleVM vm, TruffleLanguage queryingLang, String globalName) {
+    protected Object importSymbol(TruffleVM vm, TruffleLanguage<?> queryingLang, String globalName) {
         return SPI.importSymbol(vm, queryingLang, globalName);
     }
 
-    protected Object findExportedSymbol(TruffleLanguage l, String globalName, boolean onlyExplicit) {
-        return API.findExportedSymbol(l, globalName, onlyExplicit);
+    protected Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
+        return API.findExportedSymbol(env, globalName, onlyExplicit);
     }
 
-    protected Object languageGlobal(TruffleLanguage l) {
-        return API.languageGlobal(l);
+    protected Object languageGlobal(TruffleLanguage.Env env) {
+        return API.languageGlobal(env);
     }
 
-    protected ToolSupportProvider getToolSupport(TruffleLanguage l) {
+    protected ToolSupportProvider getToolSupport(TruffleLanguage<?> l) {
         return API.getToolSupport(l);
     }
 
-    protected DebugSupportProvider getDebugSupport(TruffleLanguage l) {
+    protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
         return API.getDebugSupport(l);
     }
 
-    protected Object invoke(TruffleLanguage lang, Object obj, Object[] args) throws IOException {
+    protected Object invoke(TruffleLanguage<?> lang, Object obj, Object[] args) throws IOException {
         for (SymbolInvoker si : ServiceLoader.load(SymbolInvoker.class)) {
             return si.invoke(lang, obj, args);
         }
@@ -162,7 +168,7 @@ public abstract class Accessor {
         return INSTRUMENT.findLanguage(probe);
     }
 
-    protected TruffleLanguage findLanguage(TruffleVM known, Class<? extends TruffleLanguage> languageClass) {
+    protected Env findLanguage(TruffleVM known, Class<? extends TruffleLanguage> languageClass) {
         TruffleVM vm;
         if (known == null) {
             vm = CURRENT_VM.get();

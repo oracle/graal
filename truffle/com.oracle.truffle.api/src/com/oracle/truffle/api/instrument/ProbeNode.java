@@ -118,6 +118,7 @@ public final class ProbeNode extends Node implements TruffleEvents, Instrumentat
      * Create a new {@link Probe} associated with, and attached to, a Guest Language specific
      * instance of {@link WrapperNode}.
      */
+    @SuppressWarnings("rawtypes")
     public static Probe insertProbe(WrapperNode wrapper) {
         final SourceSection sourceSection = wrapper.getChild().getSourceSection();
         final ProbeNode probeNode = new ProbeNode(); // private constructor
