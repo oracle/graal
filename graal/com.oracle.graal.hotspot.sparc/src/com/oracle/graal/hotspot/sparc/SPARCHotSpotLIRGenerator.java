@@ -206,19 +206,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
+        append(new LoadOp(kind.getPlatformKind(), result, loadAddress, state));
         return result;
-    }
-
-    private static boolean canStoreConstant(JavaConstant c) {
-        // SPARC can only store integer null constants (via g0)
-        switch (c.getKind()) {
-            case Float:
-            case Double:
-                return false;
-            default:
-                return c.isDefaultForKind();
-        }
     }
 
     @Override
@@ -237,17 +226,16 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         SPARCAddressValue storeAddress = asAddressValue(address);
         if (isConstant(inputVal)) {
             JavaConstant c = asConstant(inputVal);
-            if (canStoreConstant(c)) {
-                append(new StoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
+            if (c.isDefaultForKind()) {
+                append(new StoreConstantOp(kind.getPlatformKind(), storeAddress, c, state));
                 return;
             }
         }
         Variable input = load(inputVal);
-        append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
+        append(new StoreOp(kind.getPlatformKind(), storeAddress, input, state));
     }
 
     public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
-
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
         Kind memKind = (Kind) kind.getPlatformKind();

@@ -910,7 +910,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new MoveFpGp(dst, src, tempSlot));
     }
 
-    private StackSlotValue getTempSlot(LIRKind kind) {
+    protected StackSlotValue getTempSlot(LIRKind kind) {
         if (tmpStackSlot == null) {
             tmpStackSlot = getResult().getFrameMapBuilder().allocateSpillSlot(kind);
         }
@@ -1061,7 +1061,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public Value emitSignExtendLoad(LIRKind kind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state, true));
+        append(new LoadOp(kind.getPlatformKind(), result, loadAddress, state, true));
         return result;
     }
 

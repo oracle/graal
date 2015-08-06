@@ -96,24 +96,10 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            final Runnable recordReference;
-            final Kind constantKind = constant.getKind().equals(Object) ? Kind.Long : constant.getKind();
-            switch (constantKind) {
-                case Object:
-                case Float:
-                case Double:
-                case Char:
-                case Short:
-                case Int:
-                case Long:
-                    recordReference = () -> crb.recordDataReferenceInCode(constant, constantKind.getByteCount());
-                    break;
-                case Byte:
-                case Boolean: // Byte and Boolean always fits into simm13
-                    throw JVMCIError.shouldNotReachHere("Byte/Boolean must not be loaded via constant table");
-                default:
-                    throw JVMCIError.shouldNotReachHere("Unimplemented constant type: " + constant);
-            }
+            final int byteCount = crb.target.getSizeInBytes(constant.getKind());
+            assert byteCount >= 1 : "Byte values must not be loaded via constant table";
+            final Kind constantKind = constant.getKind();
+            final Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
             Register baseRegister = asRegister(constantTableBase);
             if (isRegister(result)) {
                 Register resultRegister = asRegister(result);
@@ -123,8 +109,7 @@ public class SPARCMove {
                     Register scratchRegister = scratch.getRegister();
                     loadFromConstantTable(crb, masm, constantKind, baseRegister, scratchRegister, delayedControlTransfer, recordReference);
                     StackSlot slot = asStackSlot(result);
-                    delayedControlTransfer.emitControlTransfer(crb, masm);
-                    masm.stx(scratchRegister, (SPARCAddress) crb.asAddress(slot));
+                    reg2stack(crb, masm, slot, scratchRegister.asValue(), delayedControlTransfer);
                 }
             }
         }
@@ -146,12 +131,7 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            assert !isConstant(input);
-            if (isStackSlot(input) && isStackSlot(result)) {
-                stack2stack(crb, masm, reInterpret(asStackSlot(result)), reInterpret(asStackSlot(input)), delayedControlTransfer);
-            } else {
-                move(crb, masm, getResult(), getInput(), delayedControlTransfer);
-            }
+            move(crb, masm, getResult(), getInput(), delayedControlTransfer);
         }
 
         @Override
@@ -162,25 +142,6 @@ public class SPARCMove {
         @Override
         public AllocatableValue getResult() {
             return result;
-        }
-
-        private static StackSlot reInterpret(StackSlot slot) {
-            switch ((Kind) slot.getPlatformKind()) {
-                case Boolean:
-                case Byte:
-                case Short:
-                case Char:
-                case Int:
-                case Long:
-                case Object:
-                    return slot;
-                case Float:
-                    return StackSlot.get(LIRKind.value(Kind.Int), slot.getRawOffset(), slot.getRawAddFrameSize());
-                case Double:
-                    return StackSlot.get(LIRKind.value(Kind.Long), slot.getRawOffset(), slot.getRawAddFrameSize());
-                default:
-                    throw JVMCIError.shouldNotReachHere();
-            }
         }
     }
 
@@ -252,66 +213,15 @@ public class SPARCMove {
         }
 
         private void moveViaStack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind inputKind, Kind resultKind) {
+            int inputKindSize = crb.target.getSizeInBytes(inputKind);
             int resultKindSize = crb.target.getSizeInBytes(resultKind);
+            assert inputKindSize == resultKindSize;
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 SPARCAddress tempAddress = generateSimm13OffsetLoad((SPARCAddress) crb.asAddress(temp), masm, scratch);
-                switch (inputKind) {
-                    case Float:
-                        assert resultKindSize == 4;
-                        masm.stf(asFloatReg(input), tempAddress);
-                        break;
-                    case Double:
-                        assert resultKindSize == 8;
-                        masm.stdf(asDoubleReg(input), tempAddress);
-                        break;
-                    case Long:
-                    case Int:
-                    case Short:
-                    case Char:
-                    case Byte:
-                        if (resultKindSize == 8) {
-                            masm.stx(asLongReg(input), tempAddress);
-                        } else if (resultKindSize == 4) {
-                            masm.stw(asIntReg(input), tempAddress);
-                        } else if (resultKindSize == 2) {
-                            masm.sth(asIntReg(input), tempAddress);
-                        } else if (resultKindSize == 1) {
-                            masm.stb(asIntReg(input), tempAddress);
-                        } else {
-                            throw JVMCIError.shouldNotReachHere();
-                        }
-                        break;
-                    default:
-                        JVMCIError.shouldNotReachHere();
-                }
+                masm.st(asRegister(input), tempAddress, resultKindSize);
                 delayedControlTransfer.emitControlTransfer(crb, masm);
-                switch (resultKind) {
-                    case Long:
-                        masm.ldx(tempAddress, asLongReg(result));
-                        break;
-                    case Int:
-                        masm.ldsw(tempAddress, asIntReg(result));
-                        break;
-                    case Short:
-                        masm.ldsh(tempAddress, asIntReg(input));
-                        break;
-                    case Char:
-                        masm.lduh(tempAddress, asIntReg(input));
-                        break;
-                    case Byte:
-                        masm.ldsb(tempAddress, asIntReg(input));
-                        break;
-                    case Float:
-                        masm.ldf(tempAddress, asFloatReg(result));
-                        break;
-                    case Double:
-                        masm.lddf(tempAddress, asDoubleReg(result));
-                        break;
-                    default:
-                        JVMCIError.shouldNotReachHere();
-                        break;
-                }
+                masm.ld(tempAddress, asRegister(result), resultKindSize, false);
             }
         }
     }
@@ -353,11 +263,11 @@ public class SPARCMove {
         @Def({REG}) protected AllocatableValue result;
         protected boolean signExtend;
 
-        public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state) {
+        public LoadOp(PlatformKind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state) {
             this(kind, result, address, state, false);
         }
 
-        public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state, boolean signExtend) {
+        public LoadOp(PlatformKind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state, boolean signExtend) {
             super(TYPE, SIZE, kind, address, state);
             this.result = result;
             this.signExtend = signExtend;
@@ -535,7 +445,7 @@ public class SPARCMove {
 
         @Use({REG}) protected AllocatableValue input;
 
-        public StoreOp(Kind kind, SPARCAddressValue address, AllocatableValue input, LIRFrameState state) {
+        public StoreOp(PlatformKind kind, SPARCAddressValue address, AllocatableValue input, LIRFrameState state) {
             super(TYPE, SIZE, kind, address, state);
             this.input = input;
         }
@@ -552,7 +462,7 @@ public class SPARCMove {
 
         protected final JavaConstant input;
 
-        public StoreConstantOp(Kind kind, SPARCAddressValue address, JavaConstant input, LIRFrameState state) {
+        public StoreConstantOp(PlatformKind kind, SPARCAddressValue address, JavaConstant input, LIRFrameState state) {
             super(TYPE, SIZE, kind, address, state);
             this.input = input;
             if (!input.isDefaultForKind()) {
@@ -569,28 +479,8 @@ public class SPARCMove {
                 if (state != null) {
                     crb.recordImplicitException(masm.position(), state);
                 }
-                switch ((Kind) kind) {
-                    case Boolean:
-                    case Byte:
-                        masm.stb(g0, addr);
-                        break;
-                    case Short:
-                    case Char:
-                        masm.sth(g0, addr);
-                        break;
-                    case Int:
-                        masm.stw(g0, addr);
-                        break;
-                    case Long:
-                    case Object:
-                        masm.stx(g0, addr);
-                        break;
-                    case Float:
-                    case Double:
-                        throw JVMCIError.shouldNotReachHere("Cannot store float constants to memory");
-                    default:
-                        throw JVMCIError.shouldNotReachHere();
-                }
+                int byteCount = crb.target.getSizeInBytes(kind);
+                masm.st(g0, addr, byteCount);
             }
         }
     }
@@ -646,14 +536,19 @@ public class SPARCMove {
         }
     }
 
-    public static void stack2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
+    public static void stack2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, PlatformKind resultKind, PlatformKind inputKind, Value result, Value input,
+                    SPARCDelayedControlTransfer delaySlotLir) {
         try (ScratchRegister sc = masm.getScratchRegister()) {
             SPARCAddress inputAddress = (SPARCAddress) crb.asAddress(input);
             Value scratchRegisterValue = sc.getRegister().asValue(LIRKind.combine(input));
-            emitLoad(crb, masm, inputAddress, scratchRegisterValue, false, input.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null);
+            emitLoad(crb, masm, inputAddress, scratchRegisterValue, false, inputKind, SPARCDelayedControlTransfer.DUMMY, null);
             SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
-            emitStore(scratchRegisterValue, resultAddress, result.getPlatformKind(), delaySlotLir, null, crb, masm);
+            emitStore(scratchRegisterValue, resultAddress, resultKind, delaySlotLir, null, crb, masm);
         }
+    }
+
+    public static void stack2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
+        stack2stack(crb, masm, result.getPlatformKind(), input.getPlatformKind(), result, input, delaySlotLir);
     }
 
     public static void reg2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input, SPARCDelayedControlTransfer delaySlotLir) {
@@ -667,33 +562,15 @@ public class SPARCMove {
         if (src.equals(dst)) {
             return;
         }
-        switch (input.getKind()) {
-            case Boolean:
-            case Byte:
-            case Short:
-            case Char:
-            case Int:
-            case Long:
-            case Object:
-                delaySlotLir.emitControlTransfer(crb, masm);
-                masm.mov(src, dst);
-                break;
-            case Float:
-                if (result.getPlatformKind() == Kind.Float) {
-                    masm.fsrc2s(src, dst);
-                } else {
-                    throw JVMCIError.shouldNotReachHere();
-                }
-                break;
-            case Double:
-                if (result.getPlatformKind() == Kind.Double) {
-                    masm.fsrc2d(src, dst);
-                } else {
-                    throw JVMCIError.shouldNotReachHere();
-                }
-                break;
-            default:
-                throw JVMCIError.shouldNotReachHere("Input is a: " + input.getKind());
+        delaySlotLir.emitControlTransfer(crb, masm);
+        if (SPARC.isCPURegister(src) && SPARC.isCPURegister(dst)) {
+            masm.mov(src, dst);
+        } else if (SPARC.isSingleFloatRegister(src) && SPARC.isSingleFloatRegister(dst)) {
+            masm.fsrc2s(src, dst);
+        } else if (SPARC.isDoubleFloatRegister(src) && SPARC.isDoubleFloatRegister(dst)) {
+            masm.fsrc2d(src, dst);
+        } else {
+            throw JVMCIError.shouldNotReachHere(String.format("Trying to move between register domains src: %s dst: %s", src, dst));
         }
     }
 
@@ -737,7 +614,7 @@ public class SPARCMove {
                             throw JVMCIError.shouldNotReachHere();
                         } else {
                             Runnable recordReference = () -> crb.recordDataReferenceInCode(input, input.getKind().getByteCount());
-                            loadFromConstantTable(crb, masm, input.getKind(), constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, Int, constantTableBase, resultRegister, delaySlotLir, recordReference);
                         }
                     }
                     break;
@@ -821,7 +698,7 @@ public class SPARCMove {
         }
     }
 
-    private static void emitLoad(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCAddress address, Value result, boolean signExtend, PlatformKind kind,
+    public static void emitLoad(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCAddress address, Value result, boolean signExtend, PlatformKind kind,
                     SPARCDelayedControlTransfer delayedControlTransfer, LIRFrameState state) {
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
@@ -831,51 +708,8 @@ public class SPARCMove {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            switch ((Kind) kind) {
-                case Boolean:
-                case Byte:
-                    if (signExtend) {
-                        masm.ldsb(addr, dst);
-                    } else {
-                        masm.ldub(addr, dst);
-                    }
-                    break;
-                case Short:
-                    if (signExtend) {
-                        masm.ldsh(addr, dst);
-                    } else {
-                        masm.lduh(addr, dst);
-                    }
-                    break;
-                case Char:
-                    if (signExtend) {
-                        masm.ldsh(addr, dst);
-                    } else {
-                        masm.lduh(addr, dst);
-                    }
-                    break;
-                case Int:
-                    if (signExtend) {
-                        masm.ldsw(addr, dst);
-                    } else {
-                        masm.lduw(addr, dst);
-                    }
-                    break;
-                case Long:
-                    masm.ldx(addr, dst);
-                    break;
-                case Float:
-                    masm.ldf(addr, dst);
-                    break;
-                case Double:
-                    masm.lddf(addr, dst);
-                    break;
-                case Object:
-                    masm.ldx(addr, dst);
-                    break;
-                default:
-                    throw JVMCIError.shouldNotReachHere();
-            }
+            int byteCount = crb.target.getSizeInBytes(kind);
+            masm.ld(addr, dst, byteCount, signExtend);
         }
     }
 
@@ -888,33 +722,8 @@ public class SPARCMove {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            switch ((Kind) kind) {
-                case Boolean:
-                case Byte:
-                    masm.stb(asRegister(input), addr);
-                    break;
-                case Short:
-                case Char:
-                    masm.sth(asRegister(input), addr);
-                    break;
-                case Int:
-                    masm.stw(asRegister(input), addr);
-                    break;
-                case Long:
-                    masm.stx(asRegister(input), addr);
-                    break;
-                case Object:
-                    masm.stx(asRegister(input), addr);
-                    break;
-                case Float:
-                    masm.stf(asRegister(input), addr);
-                    break;
-                case Double:
-                    masm.stdf(asRegister(input), addr);
-                    break;
-                default:
-                    throw JVMCIError.shouldNotReachHere("missing: " + kind);
-            }
+            int byteCount = crb.target.getSizeInBytes(kind);
+            masm.st(asRegister(input), addr, byteCount);
         }
     }
 
@@ -924,7 +733,7 @@ public class SPARCMove {
      * generated patterns by this method must be understood by
      * CodeInstaller::pd_patch_DataSectionReference (jvmciCodeInstaller_sparc.cpp).
      */
-    public static void loadFromConstantTable(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, Register constantTableBase, Register dest,
+    public static void loadFromConstantTable(CompilationResultBuilder crb, SPARCMacroAssembler masm, PlatformKind kind, Register constantTableBase, Register dest,
                     SPARCDelayedControlTransfer delaySlotInstruction, Runnable recordReference) {
         SPARCAddress address;
         ScratchRegister scratch = null;
@@ -941,30 +750,8 @@ public class SPARCMove {
                 new Sethix(0, sr, true).emit(masm);
                 address = new SPARCAddress(sr, 0);
             }
-            switch (kind) {
-                case Boolean:
-                case Byte:
-                    masm.ldub(address, dest);
-                    break;
-                case Short:
-                case Char:
-                    masm.lduh(address, dest);
-                    break;
-                case Int:
-                    masm.lduw(address, dest);
-                    break;
-                case Long:
-                    masm.ldx(address, dest);
-                    break;
-                case Float:
-                    masm.ldf(address, dest);
-                    break;
-                case Double:
-                    masm.lddf(address, dest);
-                    break;
-                default:
-                    throw new InternalError("Unknown constant load kind: " + kind);
-            }
+            int byteCount = crb.target.getSizeInBytes(kind);
+            masm.ld(address, dest, byteCount, false);
         } finally {
             if (scratch != null) {
                 scratch.close();

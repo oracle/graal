@@ -2300,26 +2300,9 @@ public abstract class SPARCAssembler extends Assembler {
         ld(Ldsh, src, dst);
     }
 
-    public void ld(SPARCAddress src, Register dst, int bytes, boolean signed) {
+    public void ld(SPARCAddress src, Register dst, int bytes, boolean signExtend) {
         if (SPARC.isCPURegister(dst)) {
-            if (signed) {
-                switch (bytes) {
-                    case 1:
-                        ldub(src, dst);
-                        break;
-                    case 2:
-                        lduh(src, dst);
-                        break;
-                    case 4:
-                        lduw(src, dst);
-                        break;
-                    case 8:
-                        ldx(src, dst);
-                        break;
-                    default:
-                        throw new InternalError();
-                }
-            } else {
+            if (signExtend) {
                 switch (bytes) {
                     case 1:
                         ldsb(src, dst);
@@ -2336,13 +2319,32 @@ public abstract class SPARCAssembler extends Assembler {
                     default:
                         throw new InternalError();
                 }
+            } else {
+                switch (bytes) {
+                    case 1:
+                        ldub(src, dst);
+                        break;
+                    case 2:
+                        lduh(src, dst);
+                        break;
+                    case 4:
+                        lduw(src, dst);
+                        break;
+                    case 8:
+                        ldx(src, dst);
+                        break;
+                    default:
+                        throw new InternalError();
+                }
             }
         } else if (SPARC.isDoubleFloatRegister(dst) && bytes == 8) {
+            assert !signExtend;
             lddf(src, dst);
         } else if (SPARC.isSingleFloatRegister(dst) && bytes == 4) {
+            assert !signExtend;
             ldf(src, dst);
         } else {
-            throw new InternalError();
+            throw new InternalError(String.format("src: %s dst: %s bytes: %d signExtend: %b", src, dst, bytes, signExtend));
         }
     }
 
@@ -2369,7 +2371,7 @@ public abstract class SPARCAssembler extends Assembler {
         } else if (SPARC.isSingleFloatRegister(src) && bytes == 4) {
             stf(src, dst);
         } else {
-            throw new InternalError();
+            throw new InternalError(String.format("src: %s dst: %s bytes: %d", src, dst, bytes));
         }
     }
 
