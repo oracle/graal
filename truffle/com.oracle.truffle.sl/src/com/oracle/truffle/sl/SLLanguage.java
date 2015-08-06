@@ -153,7 +153,7 @@ import com.oracle.truffle.tools.*;
  *
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
-public class SLLanguage extends TruffleLanguage<SLContext> {
+public final class SLLanguage extends TruffleLanguage<SLContext> {
     private static List<NodeFactory<? extends SLBuiltinNode>> builtins = Collections.emptyList();
     private static Visualizer visualizer = new SLDefaultVisualizer();
     private static ASTProber registeredASTProber; // non-null if prober already registered
