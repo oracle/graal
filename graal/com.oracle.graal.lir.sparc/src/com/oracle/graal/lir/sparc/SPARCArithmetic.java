@@ -414,15 +414,7 @@ public enum SPARCArithmetic {
                     Label noOverflow = new Label();
                     masm.sra(asIntReg(dst), 0, tmp);
                     masm.xorcc(SPARC.g0, SPARC.g0, SPARC.g0);
-                    if (masm.hasFeature(SPARC.CPUFeature.CBCOND)) {
-                        masm.cbcondx(Equal, tmp, asIntReg(dst), noOverflow);
-                        // Is necessary, otherwise we will have a penalty of 5 cycles in S3
-                        masm.nop();
-                    } else {
-                        masm.cmp(tmp, asIntReg(dst));
-                        masm.bpcc(Equal, NOT_ANNUL, noOverflow, Xcc, PREDICT_TAKEN);
-                        masm.nop();
-                    }
+                    masm.compareBranch(tmp, asRegister(dst), Equal, Xcc, noOverflow, PREDICT_TAKEN, null);
                     masm.wrccr(SPARC.g0, 1 << (SPARCAssembler.CCR_ICC_SHIFT + SPARCAssembler.CCR_V_SHIFT));
                     masm.bind(noOverflow);
                 }

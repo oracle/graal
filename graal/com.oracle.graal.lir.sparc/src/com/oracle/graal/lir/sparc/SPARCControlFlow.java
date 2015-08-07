@@ -240,26 +240,26 @@ public class SPARCControlFlow {
                 case Int:
                     if (isConstant(actualY)) {
                         int constantY = asConstant(actualY).asInt();
-                        masm.cbcondw(conditionFlag, asIntReg(actualX), constantY, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, false, asIntReg(actualX), constantY, actualTrueTarget);
                     } else {
-                        masm.cbcondw(conditionFlag, asIntReg(actualX), asIntReg(actualY), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, false, asIntReg(actualX), asIntReg(actualY), actualTrueTarget);
                     }
                     break;
                 case Long:
                     if (isConstant(actualY)) {
                         int constantY = (int) asConstant(actualY).asLong();
-                        masm.cbcondx(conditionFlag, asLongReg(actualX), constantY, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asLongReg(actualX), constantY, actualTrueTarget);
                     } else {
-                        masm.cbcondx(conditionFlag, asLongReg(actualX), asLongReg(actualY), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asLongReg(actualX), asLongReg(actualY), actualTrueTarget);
                     }
                     break;
                 case Object:
                     if (isConstant(actualY)) {
                         // Object constant valid can only be null
                         assert asConstant(actualY).isNull();
-                        masm.cbcondx(conditionFlag, asObjectReg(actualX), 0, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asObjectReg(actualX), 0, actualTrueTarget);
                     } else { // this is already loaded
-                        masm.cbcondx(conditionFlag, asObjectReg(actualX), asObjectReg(actualY), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asObjectReg(actualX), asObjectReg(actualY), actualTrueTarget);
                     }
                     break;
                 default:
@@ -486,19 +486,11 @@ public class SPARCControlFlow {
                     boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && isShortBranch(masm, cbCondPosition, hint, target);
                     if (bits != null && canUseShortBranch) {
                         if (isShortConstant) {
-                            if (conditionCode == Icc) {
-                                masm.cbcondw(conditionFlag, keyRegister, (int) (long) bits, target);
-                            } else {
-                                masm.cbcondx(conditionFlag, keyRegister, (int) (long) bits, target);
-                            }
+                            CBCOND.emit(masm, conditionFlag, conditionCode == Icc, keyRegister, (int) (long) bits, target);
                         } else {
                             Register scratchRegister = asRegister(scratch);
                             const2reg(crb, masm, scratch, constantBaseRegister, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
-                            if (conditionCode == Icc) {
-                                masm.cbcondw(conditionFlag, keyRegister, scratchRegister, target);
-                            } else {
-                                masm.cbcondx(conditionFlag, keyRegister, scratchRegister, target);
-                            }
+                            CBCOND.emit(masm, conditionFlag, conditionCode == Icc, keyRegister, scratchRegister, target);
                         }
                     } else {
                         if (bits != null && isSimm13(constant)) {

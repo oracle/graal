@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,17 @@
 package com.oracle.graal.asm.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import java.util.function.*;
 
 import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.sparc.*;
+import jdk.internal.jvmci.sparc.SPARC.CPUFeature;
 
 import com.oracle.graal.asm.*;
 
@@ -387,6 +392,58 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         public void close() {
             assert nextFreeScratchRegister > 0 : "Close called too often";
             nextFreeScratchRegister--;
+        }
+    }
+
+    public void compareBranch(Register rs1, Register rs2, ConditionFlag cond, CC ccRegister, Label label, BranchPredict predict, Runnable delaySlotInstruction) {
+        assert isCPURegister(rs1, rs2);
+        assert ccRegister == Icc || ccRegister == Xcc;
+        if (hasFeature(CPUFeature.CBCOND)) {
+            if (delaySlotInstruction != null) {
+                delaySlotInstruction.run();
+            }
+            CBCOND.emit(this, cond, ccRegister == Xcc, rs1, rs2, label);
+        } else {
+            if (cond == Equal && rs1.equals(g0)) {
+                bpr(Rc_z, NOT_ANNUL, label, PREDICT_NOT_TAKEN, rs1);
+            } else {
+                cmp(rs1, rs2);
+                bpcc(cond, NOT_ANNUL, label, ccRegister, predict);
+            }
+            if (delaySlotInstruction != null) {
+                int positionBefore = position();
+                delaySlotInstruction.run();
+                int positionAfter = position();
+                assert positionBefore - positionAfter > SPARC.INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
+            } else {
+                nop();
+            }
+        }
+    }
+
+    public void compareBranch(Register rs1, int simm, ConditionFlag cond, CC ccRegister, Label label, BranchPredict predict, Runnable delaySlotInstruction) {
+        assert isCPURegister(rs1);
+        assert ccRegister == Icc || ccRegister == Xcc;
+        if (hasFeature(CPUFeature.CBCOND)) {
+            if (delaySlotInstruction != null) {
+                delaySlotInstruction.run();
+            }
+            CBCOND.emit(this, cond, ccRegister == Xcc, rs1, simm, label);
+        } else {
+            if (cond == Equal && simm == 0) {
+                bpr(Rc_z, NOT_ANNUL, label, PREDICT_NOT_TAKEN, rs1);
+            } else {
+                cmp(rs1, simm);
+                bpcc(cond, NOT_ANNUL, label, ccRegister, predict);
+            }
+            if (delaySlotInstruction != null) {
+                int positionBefore = position();
+                delaySlotInstruction.run();
+                int positionAfter = position();
+                assert positionBefore - positionAfter > SPARC.INSTRUCTION_SIZE : "Emitted more than one instruction into delay slot";
+            } else {
+                nop();
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,25 +60,6 @@ public abstract class SPARCAssembler extends Assembler {
     public static final int CCR_XCC_SHIFT = 4;
     public static final int CCR_V_SHIFT = 1;
 
-    protected static final int OP2_SHIFT = 22;
-    protected static final int OP2_MASK = 0b0000_0001_1100_0000_0000_0000_0000_0000;
-
-    protected static final int DISP22_SHIFT = 0;
-    protected static final int DISP22_MASK = 0b00000000001111111111111111111111;
-
-    protected static final int DISP19_SHIFT = 0;
-    protected static final int DISP19_MASK = 0b00000000000001111111111111111111;
-
-    protected static final int D16HI_SHIFT = 20;
-    protected static final int D16HI_MASK = 0b0000_0000_0011_0000_0000_0000_0000_0000;
-    protected static final int D16LO_SHIFT = 0;
-    protected static final int D16LO_MASK = 0b0000_0000_0000_0000_0011_1111_1111_1111;
-
-    protected static final int D10LO_MASK = 0b0000_0000_0000_0000_0001_1111_1110_0000;
-    protected static final int D10HI_MASK = 0b0000_0000_0001_1000_0000_0000_0000_0000;
-    protected static final int D10LO_SHIFT = 5;
-    protected static final int D10HI_SHIFT = 19;
-
     private static final Ops[] OPS;
     private static final Op2s[] OP2S;
     private static final Op3s[][] OP3S;
@@ -107,12 +88,10 @@ public abstract class SPARCAssembler extends Assembler {
 
     public enum Ops {
         // @formatter:off
-
         BranchOp(0b00),
         CallOp(0b01),
         ArithOp(0b10),
         LdstOp(0b11);
-
         // @formatter:on
 
         private final int value;
@@ -133,7 +112,6 @@ public abstract class SPARCAssembler extends Assembler {
 
     public enum Op2s {
         // @formatter:off
-
         Illtrap(0b000),
         Bpr    (0b011),
         Fb     (0b110),
@@ -142,8 +120,6 @@ public abstract class SPARCAssembler extends Assembler {
         Bp     (0b001),
         Cb     (0b111),
         Sethi  (0b100);
-
-
         // @formatter:on
 
         private final int value;
@@ -956,7 +932,7 @@ public abstract class SPARCAssembler extends Assembler {
         }
 
         private int leftBits(int value) {
-            return SPARCAssembler.getBits(value, rightWidth + leftWidth, rightWidth);
+            return SPARCAssembler.getBits(value, rightWidth + leftWidth - 1, rightWidth);
         }
 
         private int rightBits(int value) {
@@ -1304,12 +1280,14 @@ public abstract class SPARCAssembler extends Assembler {
         public void emit(SPARCMacroAssembler masm, ConditionFlag cf, boolean cc2, Register rs1, Register rs2, Label lab) {
             int inst = setBits(0, cf, cc2, rs1);
             inst = BitSpec.rs2.setBits(inst, rs2.encoding);
+            inst = BitSpec.i.setBits(inst, 0);
             emit(masm, lab, inst);
         }
 
         public void emit(SPARCMacroAssembler masm, ConditionFlag cf, boolean cc2, Register rs1, int simm5, Label lab) {
             int inst = setBits(0, cf, cc2, rs1);
             inst = BitSpec.simm5.setBits(inst, simm5);
+            inst = BitSpec.i.setBits(inst, 1);
             emit(masm, lab, inst);
         }
 
@@ -1668,38 +1646,6 @@ public abstract class SPARCAssembler extends Assembler {
     protected int patchUnbound(Label label) {
         label.addPatchAt(position());
         return 0;
-    }
-
-    public void cbcondw(ConditionFlag cf, Register rs1, Register rs2, Label lab) {
-        cbcond(0, 0, cf, rs1, rs2.encoding, lab);
-    }
-
-    public void cbcondw(ConditionFlag cf, Register rs1, int rs2, Label lab) {
-        assert isSimm(rs2, 5);
-        cbcond(0, 1, cf, rs1, rs2 & ((1 << 5) - 1), lab);
-    }
-
-    public void cbcondx(ConditionFlag cf, Register rs1, Register rs2, Label lab) {
-        cbcond(1, 0, cf, rs1, rs2.encoding, lab);
-    }
-
-    public void cbcondx(ConditionFlag cf, Register rs1, int rs2, Label lab) {
-        assert isSimm(rs2, 5);
-        cbcond(1, 1, cf, rs1, rs2 & ((1 << 5) - 1), lab);
-    }
-
-    private void cbcond(int cc2, int i, ConditionFlag cf, Register rs1, int rs2, Label l) {
-        insertNopAfterCBCond();
-        int disp10 = !l.isBound() ? patchUnbound(l) : (l.position() - position()) / 4;
-        assert isSimm(disp10, 10) && isImm(rs2, 5);
-        disp10 &= (1 << 10) - 1;
-        final int cLo = cf.value & 0b111;
-        final int cHi = cf.value >> 3;
-        final int d10Lo = disp10 & ((1 << 8) - 1);
-        final int d10Hi = disp10 >> 8;
-        int a = cHi << 4 | 0b1000 | cLo;
-        int b = cc2 << 21 | d10Hi << D10HI_SHIFT | rs1.encoding << 14 | i << 13 | d10Lo << D10LO_SHIFT | rs2;
-        fmt00(a, Op2s.Bpr.value, b);
     }
 
     // @formatter:off

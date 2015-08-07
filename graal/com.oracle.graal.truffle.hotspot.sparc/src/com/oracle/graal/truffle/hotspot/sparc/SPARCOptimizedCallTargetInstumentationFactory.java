@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,11 @@
  */
 package com.oracle.graal.truffle.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static jdk.internal.jvmci.code.CallingConvention.Type.*;
 import static jdk.internal.jvmci.meta.Kind.*;
-import static jdk.internal.jvmci.sparc.SPARC.CPUFeature.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
@@ -36,7 +34,7 @@ import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.compiler.common.spi.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
@@ -62,13 +60,7 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
                     SPARCAddress verifiedEntryPointAddress = new SPARCAddress(spillRegister, config.nmethodEntryOffset);
 
                     asm.ldx(codeBlobAddress, spillRegister);
-                    if (asm.hasFeature(CBCOND)) {
-                        asm.cbcondx(Equal, spillRegister, 0, doProlog);
-                    } else {
-                        asm.cmp(spillRegister, 0);
-                        asm.bpcc(Equal, NOT_ANNUL, doProlog, Xcc, PREDICT_NOT_TAKEN);
-                        asm.nop();
-                    }
+                    asm.compareBranch(spillRegister, 0, Equal, Xcc, doProlog, PREDICT_NOT_TAKEN, null);
                     asm.ldx(verifiedEntryPointAddress, spillRegister); // in delay slot
                     asm.jmp(spillRegister);
                     asm.nop();
