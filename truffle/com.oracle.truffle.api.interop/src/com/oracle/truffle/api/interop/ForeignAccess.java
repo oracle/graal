@@ -61,45 +61,7 @@ public final class ForeignAccess {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        class DelegatingFactory implements Factory {
-            @Override
-            public boolean canHandle(TruffleObject obj) {
-                if (baseClass == null) {
-                    return ((Factory) factory).canHandle(obj);
-                }
-                return baseClass.isInstance(obj);
-            }
-
-            @Override
-            public CallTarget accessMessage(Message msg) {
-                if (msg instanceof KnownMessage) {
-                    switch (msg.hashCode()) {
-                        case Execute.HASH1:
-                            return factory.accessInvoke(((Execute) msg).getArity());
-                        case Execute.HASH2:
-                            return factory.accessExecute(((Execute) msg).getArity());
-                        case GetSize.HASH:
-                            return factory.accessGetSize();
-                        case HasSize.HASH:
-                            return factory.accessHasSize();
-                        case IsBoxed.HASH:
-                            return factory.accessIsBoxed();
-                        case IsExecutable.HASH:
-                            return factory.accessIsExecutable();
-                        case IsNull.HASH:
-                            return factory.accessIsNull();
-                        case Read.HASH:
-                            return factory.accessRead();
-                        case Unbox.HASH:
-                            return factory.accessUnbox();
-                        case Write.HASH:
-                            return factory.accessWrite();
-                    }
-                }
-                return factory.accessMessage(msg);
-            }
-        }
-        return new ForeignAccess(new DelegatingFactory());
+        return new ForeignAccess(new DelegatingFactory(baseClass, factory));
     }
 
     /**
@@ -150,6 +112,17 @@ public final class ForeignAccess {
      */
     public static TruffleObject getReceiver(Frame frame) {
         return (TruffleObject) frame.getArguments()[ForeignAccessArguments.RECEIVER_INDEX];
+    }
+
+    @Override
+    public String toString() {
+        Object f;
+        if (factory instanceof DelegatingFactory) {
+            f = ((DelegatingFactory) factory).factory;
+        } else {
+            f = factory;
+        }
+        return "ForeignAccess[" + f.getClass().getName() + "]";
     }
 
     private void checkThread() {
@@ -295,4 +268,52 @@ public final class ForeignAccess {
          */
         CallTarget accessMessage(Message unknown);
     }
+
+    private static class DelegatingFactory implements Factory {
+        private final Class<?> baseClass;
+        private final Factory10 factory;
+
+        public DelegatingFactory(Class<?> baseClass, Factory10 factory) {
+            this.baseClass = baseClass;
+            this.factory = factory;
+        }
+
+        @Override
+        public boolean canHandle(TruffleObject obj) {
+            if (baseClass == null) {
+                return ((Factory) factory).canHandle(obj);
+            }
+            return baseClass.isInstance(obj);
+        }
+
+        @Override
+        public CallTarget accessMessage(Message msg) {
+            if (msg instanceof KnownMessage) {
+                switch (msg.hashCode()) {
+                    case Execute.HASH1:
+                        return factory.accessInvoke(((Execute) msg).getArity());
+                    case Execute.HASH2:
+                        return factory.accessExecute(((Execute) msg).getArity());
+                    case GetSize.HASH:
+                        return factory.accessGetSize();
+                    case HasSize.HASH:
+                        return factory.accessHasSize();
+                    case IsBoxed.HASH:
+                        return factory.accessIsBoxed();
+                    case IsExecutable.HASH:
+                        return factory.accessIsExecutable();
+                    case IsNull.HASH:
+                        return factory.accessIsNull();
+                    case Read.HASH:
+                        return factory.accessRead();
+                    case Unbox.HASH:
+                        return factory.accessUnbox();
+                    case Write.HASH:
+                        return factory.accessWrite();
+                }
+            }
+            return factory.accessMessage(msg);
+        }
+    }
+
 }
