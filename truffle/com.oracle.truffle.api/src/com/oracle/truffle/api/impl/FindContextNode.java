@@ -29,13 +29,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("rawtypes")
 public final class FindContextNode<C> extends Node {
-    private final Class<TruffleLanguage> languageClass;
+    private final Class<? extends TruffleLanguage<C>> languageClass;
     @CompilerDirectives.CompilationFinal private C context;
     @CompilerDirectives.CompilationFinal private Assumption oneVM;
 
-    public FindContextNode(Class<TruffleLanguage> type) {
+    public FindContextNode(Class<? extends TruffleLanguage<C>> type) {
         this.languageClass = type;
     }
 
@@ -48,7 +47,7 @@ public final class FindContextNode<C> extends Node {
         return context = Accessor.findContext(languageClass);
     }
 
-    public Class<? extends TruffleLanguage> getLanguageClass() {
+    public Class<? extends TruffleLanguage<C>> getLanguageClass() {
         return languageClass;
     }
 }
