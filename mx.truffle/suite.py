@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.2.1",
+  "mxversion" : "5.2.2",
   "name" : "truffle",
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -11,10 +11,10 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots",
-      "licences" : ["GPLv2-CPE", "UPL"]
+      "licenses" : ["GPLv2-CPE", "UPL"]
     },
   },
-  "defaultLicence" : "GPLv2-CPE",
+  "defaultLicense" : "GPLv2-CPE",
   "libraries" : {
 
     # ------------- Libraries -------------
@@ -182,7 +182,7 @@ suite = {
       "javaCompliance" : "1.7",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
-      "licence" : "UPL",
+      "license" : "UPL",
     },
 
     "com.oracle.truffle.sl.test" : {
@@ -195,7 +195,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Test",
-      "licence" : "UPL",
+      "license" : "UPL",
     },
 
      "com.oracle.truffle.sl.tools" : {
@@ -206,11 +206,11 @@ suite = {
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,SimpleLanguage,Tools",
-      "licence" : "UPL",
+      "license" : "UPL",
     },
   },
 
-  "licences" : {
+  "licenses" : {
     "UPL" : {
       "name" : "Universal Permissive License, Version 1.0",
       "url" : "http://opensource.org/licenses/UPL",
@@ -275,7 +275,7 @@ suite = {
           "TRUFFLE_TCK",
           "TRUFFLE_DSL_PROCESSOR"
       ],
-      "licence" : "UPL",
+      "license" : "UPL",
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
     },
 
