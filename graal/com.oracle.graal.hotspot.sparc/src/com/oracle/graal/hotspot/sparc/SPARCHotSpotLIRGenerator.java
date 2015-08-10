@@ -254,7 +254,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    protected SPARCLIRInstruction createMove(AllocatableValue dst, Value src) {
+    protected LIRInstruction createMove(AllocatableValue dst, Value src) {
         Value usedSource;
         if (COMPRESSED_NULL.equals(src)) {
             usedSource = INT_0;

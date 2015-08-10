@@ -22,65 +22,32 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.AbstractBlockEndOp;
+import com.oracle.graal.lir.asm.*;
 
-import jdk.internal.jvmci.meta.*;
-
-public abstract class SPARCBlockEndOp extends SPARCLIRInstruction implements BlockEndOp {
+public abstract class SPARCBlockEndOp extends AbstractBlockEndOp implements SPARCLIRInstructionMixin {
     public static final LIRInstructionClass<SPARCBlockEndOp> TYPE = LIRInstructionClass.create(SPARCBlockEndOp.class);
-
-    @Alive({REG, STACK, CONST}) private Value[] outgoingValues;
-    private int size;
+    private final SPARCLIRInstructionMixinStore store;
 
     protected SPARCBlockEndOp(LIRInstructionClass<? extends SPARCBlockEndOp> c) {
         this(c, null);
     }
 
     protected SPARCBlockEndOp(LIRInstructionClass<? extends SPARCBlockEndOp> c, SizeEstimate sizeEstimate) {
-        super(c, sizeEstimate);
-        this.outgoingValues = Value.NO_VALUES;
-        this.size = 0;
+        super(c);
+        store = new SPARCLIRInstructionMixinStore(sizeEstimate);
     }
 
-    public void setOutgoingValues(Value[] values) {
-        assert outgoingValues.length == 0;
-        assert values != null;
-        outgoingValues = values;
-        size = values.length;
+    public SPARCLIRInstructionMixinStore getSPARCLIRInstructionStore() {
+        return store;
     }
 
-    public int getOutgoingSize() {
-        return size;
+    @Override
+    public void emitCode(CompilationResultBuilder crb) {
+        emitCode(crb, (SPARCMacroAssembler) crb.asm);
     }
 
-    public Value getOutgoingValue(int idx) {
-        assert checkRange(idx);
-        return outgoingValues[idx];
-    }
-
-    private boolean checkRange(int idx) {
-        return idx < size;
-    }
-
-    public void clearOutgoingValues() {
-        outgoingValues = Value.NO_VALUES;
-        size = 0;
-    }
-
-    public int addOutgoingValues(Value[] v) {
-
-        int t = size + v.length;
-        if (t >= outgoingValues.length) {
-            Value[] newArray = new Value[t];
-            System.arraycopy(outgoingValues, 0, newArray, 0, size);
-            outgoingValues = newArray;
-        }
-        System.arraycopy(v, 0, outgoingValues, size, v.length);
-        size = t;
-        return t;
-
-    }
+    protected abstract void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm);
 }

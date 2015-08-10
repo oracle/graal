@@ -61,6 +61,6 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction imple
         masm.stx(scratchRegister, new SPARCAddress(thread, threadLastJavaSpOffset));
 
         // Save the thread register when calling out to the runtime.
-        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(Kind.Long)), delayedControlTransfer);
+        SPARCMove.move(crb, masm, threadTemp, thread.asValue(LIRKind.value(Kind.Long)), getDelayedControlTransfer());
     }
 }

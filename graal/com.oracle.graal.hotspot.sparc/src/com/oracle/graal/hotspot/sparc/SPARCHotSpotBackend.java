@@ -37,7 +37,6 @@ import java.util.concurrent.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.DataSection.Data;
-import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -47,6 +46,7 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -56,7 +56,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCLIRInstruction.SizeEstimate;
+import com.oracle.graal.lir.sparc.SPARCLIRInstructionMixin.SizeEstimate;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -252,8 +252,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                 assert after.equals(op) : "Instructions before/after don't match " + op + "/" + after;
                 int constantSizeAfter = calculateDataSectionSize(crb.compilationResult.getDataSection());
                 int actual = constantSizeAfter - constantSizeBefore;
-                if (op instanceof SPARCLIRInstruction) {
-                    SizeEstimate size = ((SPARCLIRInstruction) op).estimateSize();
+                if (op instanceof SPARCLIRInstructionMixin) {
+                    com.oracle.graal.lir.sparc.SPARCLIRInstructionMixin.SizeEstimate size = ((SPARCLIRInstructionMixin) op).estimateSize();
                     assert size != null : "No size prediction available for op: " + op;
                     Class<?> c = op.getClass();
                     CONSTANT_ESTIMATED_STATS.add(c, size.constantSize);
@@ -356,8 +356,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         int size = 0;
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
-                if (inst instanceof SPARCLIRInstruction) {
-                    SizeEstimate pred = ((SPARCLIRInstruction) inst).estimateSize();
+                if (inst instanceof SPARCLIRInstructionMixin) {
+                    SizeEstimate pred = ((SPARCLIRInstructionMixin) inst).estimateSize();
                     if (pred != null) {
                         size += pred.constantSize;
                     }
@@ -414,7 +414,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     boolean overlap = acc.add(inst);
                     if (!overlap && inst instanceof SPARCTailDelayedLIRInstruction) {
                         // We have found a non overlapping LIR instruction which can be delayed
-                        ((SPARCTailDelayedLIRInstruction) inst).setDelayedControlTransfer(delayedTransfer);
+                        ((SPARCLIRInstructionMixin) inst).setDelayedControlTransfer(delayedTransfer);
                         delayedTransfer = null;
                     }
                 }
@@ -423,7 +423,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     private static boolean leavesRegisterWindow(LIRInstruction inst) {
-        return inst instanceof SPARCLIRInstruction && ((SPARCLIRInstruction) inst).leavesRegisterWindow();
+        return inst instanceof SPARCLIRInstructionMixin && ((SPARCLIRInstructionMixin) inst).leavesRegisterWindow();
     }
 
     /**

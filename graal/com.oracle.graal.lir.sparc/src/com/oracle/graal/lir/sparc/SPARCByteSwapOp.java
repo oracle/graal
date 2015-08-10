@@ -60,7 +60,7 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
             new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
-        delayedControlTransfer.emitControlTransfer(crb, masm);
+        getDelayedControlTransfer().emitControlTransfer(crb, masm);
         switch (input.getKind()) {
             case Int:
                 masm.lduwa(addr.getBase(), addr.getIndex(), asIntReg(result), Asi.ASI_PRIMARY_LITTLE);

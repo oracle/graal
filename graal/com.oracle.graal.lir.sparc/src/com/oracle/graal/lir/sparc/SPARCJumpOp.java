@@ -24,22 +24,23 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.*;
 
+import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.sparc.SPARCLIRInstruction.*;
 
-public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer {
+public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer, SPARCLIRInstructionMixin {
     public static final LIRInstructionClass<SPARCJumpOp> TYPE = LIRInstructionClass.create(SPARCJumpOp.class);
     public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
     private boolean emitDone = false;
     private int delaySlotPosition = -1;
+    private final SPARCLIRInstructionMixinStore store;
 
     public SPARCJumpOp(LabelRef destination) {
         super(TYPE, destination);
+        this.store = new SPARCLIRInstructionMixinStore(SIZE);
     }
 
     public void emitControlTransfer(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
@@ -65,12 +66,12 @@ public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTran
         }
     }
 
-    public static SizeEstimate getSize() {
-        return SIZE;
-    }
-
     public void resetState() {
         delaySlotPosition = -1;
         emitDone = false;
+    }
+
+    public SPARCLIRInstructionMixinStore getSPARCLIRInstructionStore() {
+        return store;
     }
 }

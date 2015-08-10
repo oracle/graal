@@ -53,7 +53,7 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         Kind inputKind = (Kind) input.getLIRKind().getPlatformKind();
-        delayedControlTransfer.emitControlTransfer(crb, masm);
+        getDelayedControlTransfer().emitControlTransfer(crb, masm);
         switch (opcode) {
             case SQRT:
                 switch (inputKind) {

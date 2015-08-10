@@ -44,6 +44,5 @@ import com.oracle.graal.lir.*;
  * {@link SPARCDelayedControlTransfer#emitControlTransfer(com.oracle.graal.lir.asm.CompilationResultBuilder, SPARCMacroAssembler)}
  * . The DelayedControlTransfer instruction will emit the code just with Nop in the delay slot.
  */
-public interface SPARCTailDelayedLIRInstruction {
-    void setDelayedControlTransfer(SPARCDelayedControlTransfer holder);
+public interface SPARCTailDelayedLIRInstruction extends SPARCLIRInstructionMixin {
 }
