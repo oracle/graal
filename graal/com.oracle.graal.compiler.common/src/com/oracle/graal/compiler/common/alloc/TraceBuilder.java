@@ -111,7 +111,9 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
         while (!worklist.isEmpty()) {
             T block = worklist.poll();
             assert block != null;
-            traces.add(startTrace(block, traces.size()));
+            if (!processed(block)) {
+                traces.add(startTrace(block, traces.size()));
+            }
         }
         return traces;
     }
@@ -127,7 +129,6 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
             for (T currentBlock = block; currentBlock != null; currentBlock = selectNext(currentBlock)) {
                 Debug.log("add %s (prob: %f)", currentBlock, currentBlock.probability());
                 processed.set(currentBlock.getId());
-                worklist.remove(currentBlock);
                 trace.add(currentBlock);
                 unblock(currentBlock);
                 currentBlock.setLinearScanNumber(blockNumber++);
