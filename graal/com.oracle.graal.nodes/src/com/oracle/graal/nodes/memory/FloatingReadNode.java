@@ -75,9 +75,17 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     public Node canonical(CanonicalizerTool tool) {
         if (getAddress() instanceof OffsetAddressNode) {
             OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
-            if (objAddress.getBase() instanceof PiNode && ((PiNode) objAddress.getBase()).getGuard() == getGuard()) {
-                OffsetAddressNode newAddress = new OffsetAddressNode(((PiNode) objAddress.getBase()).getOriginalNode(), objAddress.getOffset());
-                return new FloatingReadNode(newAddress, getLocationIdentity(), getLastLocationAccess(), stamp(), getGuard(), getBarrierType());
+            if (objAddress.getBase() instanceof PiNode) {
+                PiNode piBase = (PiNode) objAddress.getBase();
+                /*
+                 * If the Pi and the read have the same guard or the read is unguarded, use the
+                 * guard of the Pi along with the original value. This encourages a canonical form
+                 * guarded reads.
+                 */
+                if (piBase.getGuard() == getGuard() || getGuard() == null) {
+                    OffsetAddressNode newAddress = new OffsetAddressNode(piBase.getOriginalNode(), objAddress.getOffset());
+                    return new FloatingReadNode(newAddress, getLocationIdentity(), getLastLocationAccess(), stamp(), getGuard() == null ? piBase.getGuard() : getGuard(), getBarrierType());
+                }
             }
         }
         return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
