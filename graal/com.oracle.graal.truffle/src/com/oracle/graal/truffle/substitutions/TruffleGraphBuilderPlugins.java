@@ -38,6 +38,7 @@ import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.replacements.nodes.arithmetic.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
@@ -200,6 +201,18 @@ public class TruffleGraphBuilderPlugins {
         r.register1("materialize", Object.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.add(new ForceMaterializeNode(value));
+                return true;
+            }
+        });
+        r.register1("ensureVirtualized", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.add(new EnsureVirtualizedNode(object, false));
+                return true;
+            }
+        });
+        r.register1("ensureVirtualizedHere", Object.class, new InvocationPlugin() {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.add(new EnsureVirtualizedNode(object, true));
                 return true;
             }
         });
