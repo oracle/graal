@@ -183,7 +183,7 @@ public class CompilationResultBuilder {
         }
     }
 
-    private AbstractAddress recordDataSectionReference(Data data) {
+    public AbstractAddress recordDataSectionReference(Data data) {
         assert data != null;
         DataSectionReference reference = compilationResult.getDataSection().insertData(data);
         compilationResult.recordDataPatch(asm.position(), reference);
