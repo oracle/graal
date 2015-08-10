@@ -24,8 +24,8 @@ package com.oracle.graal.truffle.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 
-public abstract class MockLanguage extends TruffleLanguage {
-    public MockLanguage(Env env) {
-        super(env);
+public abstract class MockLanguage extends TruffleLanguage<Object> {
+    public MockLanguage() {
+        super();
     }
 }

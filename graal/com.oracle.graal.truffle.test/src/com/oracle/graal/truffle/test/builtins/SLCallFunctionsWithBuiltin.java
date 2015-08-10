@@ -28,7 +28,6 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
 import com.oracle.truffle.sl.*;
-import com.oracle.truffle.sl.nodes.*;
 import com.oracle.truffle.sl.runtime.*;
 
 /**
@@ -41,7 +40,8 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
     public SLNull runTests(VirtualFrame frame, String startsWith, SLFunction harness) {
-        SLContext context = ((SLRootNode) getRootNode()).getSLContext();
+        Node n = SLLanguage.INSTANCE.createFindContextNode0();
+        SLContext context = SLLanguage.INSTANCE.findContext0(n);
         boolean found = false;
         for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
             if (function.getName().startsWith(startsWith) && getSource(function) == getSource(harness) && getSource(function) != null) {
