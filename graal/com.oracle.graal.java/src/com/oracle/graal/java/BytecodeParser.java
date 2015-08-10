@@ -2969,7 +2969,10 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ValueNode checkCastNode = null;
         if (profile != null) {
-            if (profile.getNullSeen().isFalse()) {
+            if (CheckCastNode.findSynonym(resolvedType, object) == object) {
+                // Don't insert a profiled type check if the checkcast would simply go away
+                checkCastNode = object;
+            } else if (profile.getNullSeen().isFalse()) {
                 object = appendNullCheck(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {

@@ -193,7 +193,7 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
         return this;
     }
 
-    protected static ValueNode findSynonym(ResolvedJavaType type, ValueNode object) {
+    public static ValueNode findSynonym(ResolvedJavaType type, ValueNode object) {
         ResolvedJavaType objectType = StampTool.typeOrNull(object);
         if (objectType != null && type.isAssignableFrom(objectType)) {
             // we don't have to check for null types here because they will also pass the
