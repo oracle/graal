@@ -478,6 +478,7 @@ public class MatchProcessor extends AbstractProcessor {
         try (PrintWriter out = createSourceFile(pkg, matchStatementClassName, filer, originatingElements)) {
 
             out.println("// CheckStyle: stop header check");
+            out.println("// CheckStyle: stop line length check");
             out.println("// GENERATED CONTENT - DO NOT EDIT");
             out.println("// Source: " + topDeclaringClass + ".java");
             out.println("package " + pkg + ";");
