@@ -31,6 +31,7 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 
@@ -417,24 +418,20 @@ public class InliningUtil {
         if (inlineGraph.getNodes(SimpleInfopointNode.TYPE).isEmpty()) {
             return;
         }
-        BytecodePosition pos = null;
+        BytecodePosition caller = null;
         for (SimpleInfopointNode original : inlineGraph.getNodes(SimpleInfopointNode.TYPE)) {
+            if (caller == null) {
+                assert invoke.stateAfter() != null;
+                caller = new BytecodePosition(FrameState.toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.stateAfter().method(), invoke.bci());
+            }
             SimpleInfopointNode duplicate = (SimpleInfopointNode) duplicates.get(original);
-            pos = processSimpleInfopoint(invoke, duplicate, pos);
+            addSimpleInfopointCaller(duplicate, caller);
         }
     }
 
-    public static BytecodePosition processSimpleInfopoint(Invoke invoke, SimpleInfopointNode infopointNode, BytecodePosition incomingPos) {
-        BytecodePosition pos = processBytecodePosition(invoke, incomingPos);
-        infopointNode.addCaller(pos);
+    public static void addSimpleInfopointCaller(SimpleInfopointNode infopointNode, BytecodePosition caller) {
+        infopointNode.addCaller(caller);
         assert infopointNode.verify();
-        return pos;
-    }
-
-    public static BytecodePosition processBytecodePosition(Invoke invoke, BytecodePosition incomingPos) {
-        assert invoke.stateAfter() != null;
-        assert incomingPos == null || incomingPos.equals(InliningUtil.processBytecodePosition(invoke, null)) : incomingPos + " " + InliningUtil.processBytecodePosition(invoke, null);
-        return incomingPos != null ? incomingPos : new BytecodePosition(FrameState.toBytecodePosition(invoke.stateAfter().outerFrameState()), invoke.stateAfter().method(), invoke.bci());
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
