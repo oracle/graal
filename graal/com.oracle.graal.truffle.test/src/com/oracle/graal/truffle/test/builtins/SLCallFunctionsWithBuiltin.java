@@ -37,11 +37,11 @@ import com.oracle.truffle.sl.runtime.*;
 public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
 
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
+    @Child private Node findContextNode = SLLanguage.INSTANCE.createFindContextNode0();
 
     @Specialization
     public SLNull runTests(VirtualFrame frame, String startsWith, SLFunction harness) {
-        Node n = SLLanguage.INSTANCE.createFindContextNode0();
-        SLContext context = SLLanguage.INSTANCE.findContext0(n);
+        SLContext context = SLLanguage.INSTANCE.findContext0(findContextNode);
         boolean found = false;
         for (SLFunction function : context.getFunctionRegistry().getFunctions()) {
             if (function.getName().startsWith(startsWith) && getSource(function) == getSource(harness) && getSource(function) != null) {
