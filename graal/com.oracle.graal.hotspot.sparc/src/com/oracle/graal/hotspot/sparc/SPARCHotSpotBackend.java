@@ -414,7 +414,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     boolean overlap = acc.add(inst);
                     if (!overlap && inst instanceof SPARCTailDelayedLIRInstruction) {
                         // We have found a non overlapping LIR instruction which can be delayed
-                        ((SPARCLIRInstructionMixin) inst).setDelayedControlTransfer(delayedTransfer);
+                        ((SPARCTailDelayedLIRInstruction) inst).setDelayedControlTransfer(delayedTransfer);
                         delayedTransfer = null;
                     }
                 }

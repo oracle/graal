@@ -28,15 +28,6 @@ public interface SPARCLIRInstructionMixin {
         return false;
     }
 
-    default void setDelayedControlTransfer(SPARCDelayedControlTransfer holder) {
-        assert this instanceof SPARCTailDelayedLIRInstruction : this;
-        getSPARCLIRInstructionStore().delayedControlTransfer = holder;
-    }
-
-    default SPARCDelayedControlTransfer getDelayedControlTransfer() {
-        return getSPARCLIRInstructionStore().delayedControlTransfer;
-    }
-
     default SizeEstimate estimateSize() {
         return getSPARCLIRInstructionStore().estimate;
     }

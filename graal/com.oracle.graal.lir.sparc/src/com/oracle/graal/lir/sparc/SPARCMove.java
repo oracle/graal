@@ -377,7 +377,7 @@ public class SPARCMove {
     }
 
     @Opcode("CAS")
-    public static final class CompareAndSwapOp extends SPARCLIRInstruction {
+    public static final class CompareAndSwapOp extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
