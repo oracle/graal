@@ -58,7 +58,7 @@ public final class SPARCImmediateAddressValue extends SPARCAddressValue {
     }
 
     @Override
-    protected void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
+    protected void visitEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
         proc.visitValue(inst, base, mode, flags);
     }
 

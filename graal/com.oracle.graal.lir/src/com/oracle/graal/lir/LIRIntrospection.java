@@ -244,7 +244,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                 Value value = values.getValue(inst, i);
                 if (value instanceof CompositeValue) {
                     CompositeValue composite = (CompositeValue) value;
-                    composite.forEachComponent(inst, mode, proc);
+                    composite.visitEachComponent(inst, mode, proc);
                 } else {
                     proc.visitValue(inst, value, mode, values.getFlags(i));
                 }
@@ -254,7 +254,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                     Value value = valueArray[j];
                     if (value instanceof CompositeValue) {
                         CompositeValue composite = (CompositeValue) value;
-                        composite.forEachComponent(inst, mode, proc);
+                        composite.visitEachComponent(inst, mode, proc);
                     } else {
                         proc.visitValue(inst, value, mode, values.getFlags(i));
                     }

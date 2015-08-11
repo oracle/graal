@@ -90,7 +90,7 @@ public abstract class CompositeValue extends AbstractValue {
         return newValues != null ? newValues : values;
     }
 
-    protected abstract void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc);
+    protected abstract void visitEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc);
 
     @Override
     public String toString() {

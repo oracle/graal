@@ -63,7 +63,7 @@ public class CompositeValueReplacementTest1 {
         }
 
         @Override
-        protected void forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
+        protected void visitEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc) {
             proc.visitValue(inst, value, mode, flags);
         }
     }
