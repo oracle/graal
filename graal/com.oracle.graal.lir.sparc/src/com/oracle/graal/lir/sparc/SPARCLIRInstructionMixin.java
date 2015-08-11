@@ -89,7 +89,7 @@ public interface SPARCLIRInstructionMixin {
     }
 
     public static class SPARCLIRInstructionMixinStore {
-        public SizeEstimate estimate;
+        public final SizeEstimate estimate;
         public SPARCDelayedControlTransfer delayedControlTransfer = SPARCDelayedControlTransfer.DUMMY;
 
         public SPARCLIRInstructionMixinStore(SizeEstimate estimate) {
