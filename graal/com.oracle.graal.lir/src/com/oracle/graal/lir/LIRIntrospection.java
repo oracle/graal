@@ -236,7 +236,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         }
     }
 
-    protected static void forEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueConsumer proc) {
+    protected static void visitEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueConsumer proc) {
         for (int i = 0; i < values.getCount(); i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
 

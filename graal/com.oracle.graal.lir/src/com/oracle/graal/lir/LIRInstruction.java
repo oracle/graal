@@ -263,44 +263,44 @@ public abstract class LIRInstruction {
 
     // InstructionValueConsumers
     public final void visitEachInput(InstructionValueConsumer proc) {
-        instructionClass.forEachUse(this, proc);
+        instructionClass.visitEachUse(this, proc);
     }
 
     public final void visitEachAlive(InstructionValueConsumer proc) {
-        instructionClass.forEachAlive(this, proc);
+        instructionClass.visitEachAlive(this, proc);
     }
 
     public final void visitEachTemp(InstructionValueConsumer proc) {
-        instructionClass.forEachTemp(this, proc);
+        instructionClass.visitEachTemp(this, proc);
     }
 
     public final void visitEachOutput(InstructionValueConsumer proc) {
-        instructionClass.forEachDef(this, proc);
+        instructionClass.visitEachDef(this, proc);
     }
 
     public final void visitEachState(InstructionValueConsumer proc) {
-        instructionClass.forEachState(this, proc);
+        instructionClass.visitEachState(this, proc);
     }
 
     // ValueConsumers
     public final void visitEachInput(ValueConsumer proc) {
-        instructionClass.forEachUse(this, proc);
+        instructionClass.visitEachUse(this, proc);
     }
 
     public final void visitEachAlive(ValueConsumer proc) {
-        instructionClass.forEachAlive(this, proc);
+        instructionClass.visitEachAlive(this, proc);
     }
 
     public final void visitEachTemp(ValueConsumer proc) {
-        instructionClass.forEachTemp(this, proc);
+        instructionClass.visitEachTemp(this, proc);
     }
 
     public final void visitEachOutput(ValueConsumer proc) {
-        instructionClass.forEachDef(this, proc);
+        instructionClass.visitEachDef(this, proc);
     }
 
     public final void visitEachState(ValueConsumer proc) {
-        instructionClass.forEachState(this, proc);
+        instructionClass.visitEachState(this, proc);
     }
 
     @SuppressWarnings("unused")

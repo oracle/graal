@@ -240,20 +240,20 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         forEach(obj, defs, OperandMode.DEF, proc);
     }
 
-    final void forEachUse(LIRInstruction obj, InstructionValueConsumer proc) {
-        forEach(obj, uses, OperandMode.USE, proc);
+    final void visitEachUse(LIRInstruction obj, InstructionValueConsumer proc) {
+        visitEach(obj, uses, OperandMode.USE, proc);
     }
 
-    final void forEachAlive(LIRInstruction obj, InstructionValueConsumer proc) {
-        forEach(obj, alives, OperandMode.ALIVE, proc);
+    final void visitEachAlive(LIRInstruction obj, InstructionValueConsumer proc) {
+        visitEach(obj, alives, OperandMode.ALIVE, proc);
     }
 
-    final void forEachTemp(LIRInstruction obj, InstructionValueConsumer proc) {
-        forEach(obj, temps, OperandMode.TEMP, proc);
+    final void visitEachTemp(LIRInstruction obj, InstructionValueConsumer proc) {
+        visitEach(obj, temps, OperandMode.TEMP, proc);
     }
 
-    final void forEachDef(LIRInstruction obj, InstructionValueConsumer proc) {
-        forEach(obj, defs, OperandMode.DEF, proc);
+    final void visitEachDef(LIRInstruction obj, InstructionValueConsumer proc) {
+        visitEach(obj, defs, OperandMode.DEF, proc);
     }
 
     final void forEachState(LIRInstruction obj, InstructionValueProcedure proc) {
@@ -265,7 +265,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         }
     }
 
-    final void forEachState(LIRInstruction obj, InstructionValueConsumer proc) {
+    final void visitEachState(LIRInstruction obj, InstructionValueConsumer proc) {
         for (int i = 0; i < states.getCount(); i++) {
             LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {
