@@ -47,6 +47,7 @@ public class CompilationTask {
     private static final DebugMetric BAILOUTS = Debug.metric("Bailouts");
 
     private static final EventProvider eventProvider;
+
     static {
         EventProvider provider = Services.loadSingle(EventProvider.class, false);
         if (provider == null) {
@@ -55,7 +56,6 @@ public class CompilationTask {
             eventProvider = provider;
         }
     }
-    private static final Compiler compiler = Services.loadSingle(Compiler.class, true);
 
     private final HotSpotResolvedJavaMethod method;
     private final int entryBCI;
@@ -158,6 +158,7 @@ public class CompilationTask {
                 // Begin the compilation event.
                 compilationEvent.begin();
 
+                HotSpotGraalCompiler compiler = new HotSpotGraalCompiler();
                 result = compiler.compile(method, entryBCI, mustRecordMethodInlining(config));
 
                 result.setId(getId());

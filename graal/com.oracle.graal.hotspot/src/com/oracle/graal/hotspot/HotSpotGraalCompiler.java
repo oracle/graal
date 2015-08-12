@@ -26,34 +26,33 @@ import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationContext.*;
 import static jdk.internal.jvmci.code.CallingConvention.Type.*;
 import static jdk.internal.jvmci.code.CodeUtil.*;
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.Type;
-import jdk.internal.jvmci.compiler.Compiler;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
+import com.oracle.graal.phases.OptimisticOptimizations.*;
 import com.oracle.graal.phases.tiers.*;
 
-@ServiceProvider(Compiler.class)
-public class HotSpotGraalCompiler implements Compiler {
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.CallingConvention.*;
+import jdk.internal.jvmci.compiler.Compiler;
+import jdk.internal.jvmci.meta.*;
+
+public class HotSpotGraalCompiler {
 
     public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean mustRecordMethodInlining) {
         HotSpotBackend backend = HotSpotGraalRuntime.runtime().getHostBackend();
         HotSpotProviders providers = HotSpotGraalRuntime.runtime().getHostProviders();
-        final boolean isOSR = entryBCI != INVOCATION_ENTRY_BCI;
+        final boolean isOSR = entryBCI != Compiler.INVOCATION_ENTRY_BCI;
 
         StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
         if (graph == null) {
@@ -84,8 +83,8 @@ public class HotSpotGraalCompiler implements Compiler {
             // all code after the OSR loop is never executed.
             optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
         }
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo,
-                        suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo, suites,
+                        lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         result.setEntryBCI(entryBCI);
 
@@ -108,13 +107,14 @@ public class HotSpotGraalCompiler implements Compiler {
         Replacements replacements = providers.getReplacements();
         ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
         if (substMethod != null) {
-            assert !substMethod.equals(method);
+            assert!substMethod.equals(method);
             StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
             Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
-            assert !graph.isFrozen();
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE,
+                            initialReplacementContext).apply(graph);
+            assert!graph.isFrozen();
             return graph;
         }
         return null;
