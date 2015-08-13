@@ -34,7 +34,9 @@ import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.alloc.lsra.*;
 
 /**
- * TODO(zapster) document me!
+ * Specialization of {@link LinearScanAssignLocationsPhase} that inserts
+ * {@link ShadowedRegisterValue}s to describe {@link RegisterValue}s that are also available on the
+ * {@link StackSlotValue stack}.
  */
 class TraceLinearScanAssignLocationsPhase extends LinearScanAssignLocationsPhase {
 
