@@ -26,8 +26,10 @@ package com.oracle.truffle.api.script;
 
 import javax.script.*;
 
+@Deprecated
 /**
  * Tool access to the creation of Truffle execution engines.
+ * @deprecated no longer needed and will be removed
  */
 public abstract class TruffleScriptEngineFactory implements ScriptEngineFactory {
 
