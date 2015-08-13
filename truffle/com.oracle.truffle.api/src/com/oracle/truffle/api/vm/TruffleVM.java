@@ -67,7 +67,8 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * The <code>TruffleVM</code> is single-threaded and tries to enforce that. It records the thread it
  * has been {@link Builder#build() created} by and checks that all subsequent calls are coming from
- * the same thread.
+ * the same thread. There is 1:1 mapping between {@link TruffleVM} and a thread that can tell it
+ * what to do.
  */
 @SuppressWarnings("rawtypes")
 public final class TruffleVM {
