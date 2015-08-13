@@ -56,6 +56,8 @@ public class StandardOp {
         int addOutgoingValues(Value[] values);
 
         void clearOutgoingValues();
+
+        void forEachOutgoingValue(InstructionValueProcedure proc);
     }
 
     public interface NullCheck {
@@ -154,6 +156,7 @@ public class StandardOp {
 
     public abstract static class AbstractBlockEndOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<AbstractBlockEndOp> TYPE = LIRInstructionClass.create(AbstractBlockEndOp.class);
+        private static final EnumSet<OperandFlag> flags = EnumSet.of(REG, STACK, CONST);
 
         @Alive({REG, STACK, CONST}) private Value[] outgoingValues;
         private int size;
@@ -199,6 +202,12 @@ public class StandardOp {
 
         private boolean checkRange(int idx) {
             return idx < size;
+        }
+
+        public void forEachOutgoingValue(InstructionValueProcedure proc) {
+            for (int i = 0; i < outgoingValues.length; i++) {
+                outgoingValues[i] = proc.doValue(this, outgoingValues[i], OperandMode.ALIVE, flags);
+            }
         }
     }
 
