@@ -169,23 +169,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
-    /**
-     * Graal mirrors are stored as a {@link ClassValue} associated with the {@link Class} of the
-     * type. This data structure stores both {@link HotSpotResolvedObjectType} and
-     * {@link HotSpotResolvedPrimitiveType} types.
-     */
-    private final ClassValue<ResolvedJavaType> graalMirrors = new ClassValue<ResolvedJavaType>() {
-        @Override
-        protected ResolvedJavaType computeValue(Class<?> javaClass) {
-            if (javaClass.isPrimitive()) {
-                Kind kind = Kind.fromJavaClass(javaClass);
-                return new HotSpotResolvedPrimitiveType(kind);
-            } else {
-                return new HotSpotResolvedObjectTypeImpl(javaClass);
-            }
-        }
-    };
-
     private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
@@ -288,10 +271,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         HotSpotBackend oldValue = backends.put(arch, backend);
         assert oldValue == null : "cannot overwrite existing backend for architecture " + arch.getSimpleName();
         return backend;
-    }
-
-    public ResolvedJavaType fromClass(Class<?> javaClass) {
-        return graalMirrors.get(javaClass);
     }
 
     /**

@@ -76,11 +76,4 @@ public interface HotSpotGraalRuntimeProvider extends GraalRuntime, RuntimeProvid
     }
 
     HotSpotBackend getHostBackend();
-
-    /**
-     * Gets the Graal mirror for a {@link Class} object.
-     *
-     * @return the {@link ResolvedJavaType} corresponding to {@code javaClass}
-     */
-    ResolvedJavaType fromClass(Class<?> clazz);
 }
