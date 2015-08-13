@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import jdk.internal.jvmci.meta.*;
+
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.*;
 
@@ -38,5 +40,15 @@ class TraceUtil {
             }
         }
         return bestPred;
+    }
+
+    static boolean isShadowedRegisterValue(Value value) {
+        assert value != null;
+        return value instanceof ShadowedRegisterValue;
+    }
+
+    static ShadowedRegisterValue asShadowedRegisterValue(Value value) {
+        assert isShadowedRegisterValue(value);
+        return (ShadowedRegisterValue) value;
     }
 }

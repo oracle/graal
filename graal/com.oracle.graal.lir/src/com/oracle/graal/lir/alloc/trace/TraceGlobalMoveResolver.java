@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.alloc.trace.TraceUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -226,7 +227,18 @@ class TraceGlobalMoveResolver {
         if (to.equals(from)) {
             return true;
         }
-        if (from != null && isRegister(from) && isRegister(to) && asRegister(from).equals(asRegister(to))) {
+        if (from == null) {
+            return false;
+        }
+        if (isShadowedRegisterValue(from)) {
+            ShadowedRegisterValue shadowed = asShadowedRegisterValue(from);
+            // TODO(jeisl)if (isStackSlotValue(to)) {
+            // return to.equals(shadowed.getStackSlot());
+            // }
+            if (isRegister(to)) {
+                return asRegister(to).equals(asRegister(shadowed.getRegister()));
+            }
+        } else if (isRegister(from) && isRegister(to) && asRegister(from).equals(asRegister(to))) {
             assert LIRKind.verifyMoveKinds(to.getLIRKind(), from.getLIRKind()) : String.format("Same register but Kind mismatch %s <- %s", to, from);
             return true;
         }

@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static jdk.internal.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -63,6 +64,9 @@ class TraceLinearScanAssignLocationsPhase extends LinearScanAssignLocationsPhase
         if (isIllegal(interval.location()) && interval.canMaterialize()) {
             assert mode != OperandMode.DEF;
             return interval.getMaterializedValue();
+        }
+        if (interval.alwaysInMemory() && isRegister(interval.location())) {
+            return new ShadowedRegisterValue((RegisterValue) interval.location(), interval.spillSlot());
         }
         return interval.location();
     }
