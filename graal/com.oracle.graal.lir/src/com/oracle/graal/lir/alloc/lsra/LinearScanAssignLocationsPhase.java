@@ -45,11 +45,11 @@ import com.oracle.graal.lir.phases.*;
 /**
  * Phase 7: Assign register numbers back to LIR.
  */
-public final class LinearScanAssignLocationsPhase extends AllocationPhase {
+public class LinearScanAssignLocationsPhase extends AllocationPhase {
 
-    private final LinearScan allocator;
+    protected final LinearScan allocator;
 
-    LinearScanAssignLocationsPhase(LinearScan allocator) {
+    public LinearScanAssignLocationsPhase(LinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -62,12 +62,13 @@ public final class LinearScanAssignLocationsPhase extends AllocationPhase {
     /**
      * Assigns the allocated location for an LIR instruction operand back into the instruction.
      *
+     * @param op current {@link LIRInstruction}
      * @param operand an LIR instruction operand
-     * @param opId the id of the LIR instruction using {@code operand}
      * @param mode the usage mode for {@code operand} by the instruction
      * @return the location assigned for the operand
      */
-    private Value colorLirOperand(Variable operand, int opId, OperandMode mode) {
+    protected Value colorLirOperand(LIRInstruction op, Variable operand, OperandMode mode) {
+        int opId = op.id();
         Interval interval = allocator.intervalFor(operand);
         assert interval != null : "interval must exist";
 
@@ -125,7 +126,7 @@ public final class LinearScanAssignLocationsPhase extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             * 
+             *
              * Solution: use the first opId of the branch target block instead.
              */
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -142,7 +143,7 @@ public final class LinearScanAssignLocationsPhase extends AllocationPhase {
          * considered when building the intervals if the interval is not live, colorLirOperand will
          * cause an assert on failure.
          */
-        Value result = colorLirOperand((Variable) operand, tempOpId, mode);
+        Value result = colorLirOperand(op, (Variable) operand, mode);
         assert !allocator.hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
         return result;
     }
@@ -155,7 +156,7 @@ public final class LinearScanAssignLocationsPhase extends AllocationPhase {
         int numInst = instructions.size();
         boolean hasDead = false;
 
-        InstructionValueProcedure assignProc = (op, operand, mode, flags) -> isVariable(operand) ? colorLirOperand((Variable) operand, op.id(), mode) : operand;
+        InstructionValueProcedure assignProc = (op, operand, mode, flags) -> isVariable(operand) ? colorLirOperand(op, (Variable) operand, mode) : operand;
         for (int j = 0; j < numInst; j++) {
             final LIRInstruction op = instructions.get(j);
             if (op == null) {
