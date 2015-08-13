@@ -28,7 +28,6 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
@@ -37,7 +36,6 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
@@ -99,17 +97,6 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
             if (replaceStackToStackMoves(lir, spillMoveFactory)) {
                 Debug.dump(lir, "After fixing stack to stack moves");
             }
-            InstructionValueProcedure removeShadowedValuesProc = new InstructionValueProcedure() {
-                public Value doValue(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    try (Indent i = Debug.logAndIndent("Fixup operand %s", value)) {
-                        if (TraceUtil.isShadowedRegisterValue(value)) {
-                            Debug.log("Replace ShadowedRegister value %s in instruction %s with register %s", value, op, TraceUtil.asShadowedRegisterValue(value).getRegister());
-                            return TraceUtil.asShadowedRegisterValue(value).getRegister();
-                        }
-                    }
-                    return value;
-                }
-            };
             /*
              * Incoming Values are needed for the RegisterVerifier, otherwise SIGMAs/PHIs where the
              * Out and In value matches (ie. there is no resolution move) are falsely detected as
@@ -123,18 +110,6 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
                         assert lir.getControlFlowGraph().getStartBlock().equals(block);
                     }
                     SSIUtil.removeOutgoing(lir, block);
-                    /*
-                     * BlockEndOps with real inputs (such as switch or if) might have a
-                     * ShadowedRegisterValue assigned because we can not tell if a values belongs to
-                     * the outgoing array or not. Hear we replace all remaining
-                     * ShadowedRegisterValues with the actual register. Because we only introduced
-                     * ShadowedRegisterValues for OperandMode.ALIVE there is no need to look at
-                     * other values.
-                     */
-                    LIRInstruction blockEndOp = SSIUtil.outgoingInst(lir, block);
-                    try (Indent i1 = Debug.logAndIndent("Fixup Instruction %s", blockEndOp)) {
-                        blockEndOp.forEachAlive(removeShadowedValuesProc);
-                    }
                 }
             }
         }
