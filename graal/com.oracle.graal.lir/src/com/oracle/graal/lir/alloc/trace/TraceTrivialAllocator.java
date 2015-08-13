@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.gen.*;
@@ -72,7 +73,12 @@ public class TraceTrivialAllocator extends AllocationPhase {
 
         ValueProcedure outputConsumer = (value, mode, flags) -> {
             if (isVariable(value)) {
-                return variableMap.get(asVariable(value));
+                Value incomingValue = variableMap.get(asVariable(value));
+                if (TraceUtil.isShadowedRegisterValue(incomingValue) && !flags.contains(OperandFlag.COMPOSITE)) {
+                    /* Can not deal with a composite -> use the register instead. */
+                    return TraceUtil.asShadowedRegisterValue(incomingValue).getRegister();
+                }
+                return incomingValue;
             }
             return value;
         };
