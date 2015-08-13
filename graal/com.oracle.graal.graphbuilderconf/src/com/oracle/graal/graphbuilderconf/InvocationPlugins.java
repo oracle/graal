@@ -26,11 +26,11 @@ import static java.lang.String.*;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.stream.*;
 
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.MethodIdMap.*;
 
-import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 
@@ -194,7 +194,173 @@ public class InvocationPlugins {
         }
     }
 
-    protected final MethodIdMap<InvocationPlugin> plugins;
+    /**
+     * Key for a method.
+     */
+    static class MethodKey {
+        final boolean isStatic;
+
+        /**
+         * This method is optional. This is used for new API methods not present in previous JDK
+         * versions.
+         */
+        final boolean isOptional;
+
+        final Class<?> declaringClass;
+        final String name;
+        final Class<?>[] argumentTypes;
+        final InvocationPlugin value;
+
+        MethodKey(InvocationPlugin data, boolean isStatic, boolean isOptional, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+            assert isStatic || argumentTypes[0] == declaringClass;
+            this.value = data;
+            this.isStatic = isStatic;
+            this.isOptional = isOptional;
+            this.declaringClass = declaringClass;
+            this.name = name;
+            this.argumentTypes = argumentTypes;
+            assert isOptional || resolveJava() != null;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof MethodKey) {
+                MethodKey that = (MethodKey) obj;
+                boolean res = this.name.equals(that.name) && this.declaringClass.equals(that.declaringClass) && Arrays.equals(this.argumentTypes, that.argumentTypes);
+                assert !res || this.isStatic == that.isStatic;
+                return res;
+            }
+            return false;
+        }
+
+        public int getDeclaredParameterCount() {
+            return isStatic ? argumentTypes.length : argumentTypes.length - 1;
+        }
+
+        @Override
+        public int hashCode() {
+            // Replay compilation mandates use of stable hash codes
+            return declaringClass.getName().hashCode() ^ name.hashCode();
+        }
+
+        private ResolvedJavaMethod resolve(MetaAccessProvider metaAccess) {
+            Executable method = resolveJava();
+            if (method == null) {
+                return null;
+            }
+            return metaAccess.lookupJavaMethod(method);
+        }
+
+        private Executable resolveJava() {
+            try {
+                Executable res;
+                Class<?>[] parameterTypes = isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length);
+                if (name.equals("<init>")) {
+                    res = declaringClass.getDeclaredConstructor(parameterTypes);
+                } else {
+                    res = declaringClass.getDeclaredMethod(name, parameterTypes);
+                }
+                assert Modifier.isStatic(res.getModifiers()) == isStatic;
+                return res;
+            } catch (NoSuchMethodException | SecurityException e) {
+                if (isOptional) {
+                    return null;
+                }
+                throw new InternalError(e);
+            }
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder(declaringClass.getName()).append('.').append(name).append('(');
+            for (Class<?> p : argumentTypes) {
+                if (sb.charAt(sb.length() - 1) != '(') {
+                    sb.append(", ");
+                }
+                sb.append(p.getSimpleName());
+            }
+            return sb.append(')').toString();
+        }
+    }
+
+    private final MetaAccessProvider metaAccess;
+
+    /**
+     * Initial list of entries.
+     */
+    private final List<MethodKey> registrations = new ArrayList<>(INITIAL_CAPACITY);
+
+    /**
+     * Entry map that is initialized upon first call to {@link #get(ResolvedJavaMethod)}.
+     *
+     * Note: this must be volatile since double-checked locking is used to initialize it
+     */
+    private volatile Map<ResolvedJavaMethod, InvocationPlugin> entries;
+
+    private static final int INITIAL_CAPACITY = 64;
+
+    /**
+     * Adds an entry to this map for a specified method.
+     *
+     * @param value value to be associated with the specified method
+     * @param isStatic specifies if the method is static
+     * @param isOptional specifies if the method is optional
+     * @param declaringClass the class declaring the method
+     * @param name the name of the method
+     * @param argumentTypes the argument types of the method. Element 0 of this array must be
+     *            {@code declaringClass} iff the method is non-static.
+     * @return an object representing the method
+     */
+    MethodKey put(InvocationPlugin value, boolean isStatic, boolean isOptional, Class<?> declaringClass, String name, Class<?>... argumentTypes) {
+        assert isStatic || argumentTypes[0] == declaringClass;
+        MethodKey methodKey = new MethodKey(value, isStatic, isOptional, declaringClass, name, argumentTypes);
+        assert entries == null : "registration is closed";
+        assert !registrations.contains(methodKey) : "a value is already registered for " + methodKey;
+        registrations.add(methodKey);
+        return methodKey;
+    }
+
+    /**
+     * Determines if a method denoted by a given {@link MethodKey} is in this map.
+     */
+    boolean containsKey(MethodKey key) {
+        return registrations.contains(key);
+    }
+
+    InvocationPlugin get(ResolvedJavaMethod method) {
+        if (entries == null) {
+            initializeMap();
+        }
+
+        return entries.get(method);
+    }
+
+    /**
+     * Disallows new registrations of new plugins, and creates the internal tables for method
+     * lookup.
+     */
+    public void closeRegistration() {
+        if (entries == null) {
+            initializeMap();
+        }
+    }
+
+    void initializeMap() {
+        if (registrations.isEmpty()) {
+            entries = Collections.emptyMap();
+        } else {
+            Map<ResolvedJavaMethod, InvocationPlugin> newEntries = new HashMap<>();
+            for (MethodKey methodKey : registrations) {
+                ResolvedJavaMethod m = methodKey.resolve(metaAccess);
+                newEntries.put(m, methodKey.value);
+            }
+            entries = newEntries;
+        }
+    }
+
+    public int size() {
+        return registrations.size();
+    }
 
     /**
      * The plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} before searching in
@@ -203,7 +369,7 @@ public class InvocationPlugins {
     protected final InvocationPlugins parent;
 
     private InvocationPlugins(InvocationPlugins parent, MetaAccessProvider metaAccess) {
-        this.plugins = new MethodIdMap<>(metaAccess);
+        this.metaAccess = metaAccess;
         InvocationPlugins p = parent;
         // Only adopt a non-empty parent
         while (p != null && p.size() == 0) {
@@ -216,7 +382,11 @@ public class InvocationPlugins {
      * Creates a set of invocation plugins with a non-null {@linkplain #getParent() parent}.
      */
     public InvocationPlugins(InvocationPlugins parent) {
-        this(parent, parent.plugins.getMetaAccess());
+        this(parent, parent.getMetaAccess());
+    }
+
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
     }
 
     public InvocationPlugins(MetaAccessProvider metaAccess) {
@@ -228,7 +398,7 @@ public class InvocationPlugins {
         if (!isStatic) {
             argumentTypes[0] = declaringClass;
         }
-        MethodKey<InvocationPlugin> methodInfo = plugins.put(plugin, isStatic, isOptional, declaringClass, name, argumentTypes);
+        MethodKey methodInfo = put(plugin, isStatic, isOptional, declaringClass, name, argumentTypes);
         assert Checker.check(this, methodInfo, plugin);
     }
 
@@ -265,22 +435,13 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
-        assert method instanceof MethodIdHolder;
         if (parent != null) {
             InvocationPlugin plugin = parent.lookupInvocation(method);
             if (plugin != null) {
                 return plugin;
             }
         }
-        return plugins.get((MethodIdHolder) method);
-    }
-
-    /**
-     * Disallows new registrations of new plugins, and creates the internal tables for method
-     * lookup.
-     */
-    public void closeRegistration() {
-        plugins.createEntries();
+        return get(method);
     }
 
     /**
@@ -293,7 +454,7 @@ public class InvocationPlugins {
 
     @Override
     public String toString() {
-        return plugins + " / parent: " + this.parent;
+        return registrations.stream().map(MethodKey::toString).collect(Collectors.joining(", ")) + " / parent: " + this.parent;
     }
 
     private static class Checker {
@@ -323,10 +484,10 @@ public class InvocationPlugins {
             SIGS = sigs.toArray(new Class<?>[sigs.size()][]);
         }
 
-        public static boolean check(InvocationPlugins plugins, MethodKey<InvocationPlugin> method, InvocationPlugin plugin) {
+        public static boolean check(InvocationPlugins plugins, MethodKey method, InvocationPlugin plugin) {
             InvocationPlugins p = plugins.parent;
             while (p != null) {
-                assert !p.plugins.containsKey(method) : "a plugin is already registered for " + method;
+                assert !p.containsKey(method) : "a plugin is already registered for " + method;
                 p = p.parent;
             }
             if (plugin instanceof ForeignCallPlugin) {
@@ -349,10 +510,6 @@ public class InvocationPlugins {
             }
             throw new AssertionError(format("graph builder plugin for %s not found", method));
         }
-    }
-
-    public int size() {
-        return plugins.size();
     }
 
     /**
