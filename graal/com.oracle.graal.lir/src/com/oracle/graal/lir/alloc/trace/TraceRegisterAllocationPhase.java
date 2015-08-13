@@ -49,6 +49,8 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
         public static final OptionValue<Boolean> TraceRAuseInterTraceHints = new OptionValue<>(true);
         @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRAtrivialBlockAllocator = new OptionValue<>(true);
+        @Option(help = "Share information about spilled values to other traces.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> TraceRAshareSpillInformation = new OptionValue<>(true);
         // @formatter:on
     }
 
