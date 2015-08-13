@@ -214,8 +214,12 @@ public abstract class TruffleTCK {
     public void testCoExistanceOfMultipleLanguageInstances() throws Exception {
         final String countMethod = countInvocations();
         TruffleVM.Symbol count1 = findGlobalSymbol(countMethod);
+        TruffleVM vm1 = tckVM;
         tckVM = null; // clean-up
         TruffleVM.Symbol count2 = findGlobalSymbol(countMethod);
+        TruffleVM vm2 = tckVM;
+
+        assertNotSame("Two virtual machines allocated", vm1, vm2);
 
         int prev1 = 0;
         int prev2 = 0;
