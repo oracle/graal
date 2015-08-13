@@ -39,10 +39,25 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.source.*;
 
 /**
- * Virtual machine for Truffle based languages. Use {@link #newVM()} to create new isolated virtual
- * machine ready for execution of various languages. All the languages in a single virtual machine
- * see each other exported global symbols and can cooperate. Use {@link #newVM()} multiple times to
- * create different, isolated virtual machines completely separated from each other.
+ * <em>Virtual machine</em> for Truffle based languages. Term virtual machine is a bit overloaded,
+ * so don't think of <em>Java virtual machine</em> here - while we are running and using
+ * {@link TruffleVM} inside of a <em>JVM</em> there can be multiple instances (some would say
+ * tenants) of {@link TruffleVM} running next to each other in a single <em>JVM</em> with a complete
+ * mutual isolation. There is 1:N mapping between <em>JVM</em> and {@link TruffleVM}.
+ * <p>
+ * It would not be correct to think of a {@link TruffleVM} as a runtime for a single Truffle
+ * language (Ruby, Python, R, C, JavaScript, etc.) either. {@link TruffleVM} can host as many of
+ * Truffle languages as {@link Registration registered on a classpath} of your <em>JVM</em>
+ * application. {@link TruffleVM} orchestrates these languages, manages exchange of objects and
+ * calls among them. While it may happen that there is just one activated language inside of a
+ * {@link TruffleVM}, the greatest strength of {@link TruffleVM} is in inter-operability between all
+ * Truffle languages. There is 1:N mapping between {@link TruffleVM} and {@link TruffleLanguage
+ * Truffle language implementations}.
+ * <p>
+ * Use {@link #newVM()} to create new isolated virtual machine ready for execution of various
+ * languages. All the languages in a single virtual machine see each other exported global symbols
+ * and can cooperate. Use {@link #newVM()} multiple times to create different, isolated virtual
+ * machines completely separated from each other.
  * <p>
  * Once instantiated use {@link #eval(java.net.URI)} with a reference to a file or URL or directly
  * pass code snippet into the virtual machine via {@link #eval(java.lang.String, java.lang.String)}.
