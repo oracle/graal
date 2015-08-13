@@ -199,12 +199,19 @@ public final class NodeUtil {
     }
 
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
+        return replaceChild(parent, oldChild, newChild, false);
+    }
+
+    static boolean replaceChild(Node parent, Node oldChild, Node newChild, boolean adopt) {
         CompilerAsserts.neverPartOfCompilation();
         NodeClass nodeClass = parent.getNodeClass();
 
         for (NodeFieldAccessor nodeField : nodeClass.getChildFields()) {
             if (nodeField.getObject(parent) == oldChild) {
                 assert assertAssignable(nodeField, newChild);
+                if (adopt) {
+                    parent.adoptHelper(newChild);
+                }
                 nodeField.putObject(parent, newChild);
                 return true;
             }
@@ -217,6 +224,9 @@ public final class NodeUtil {
                 for (int i = 0; i < array.length; i++) {
                     if (array[i] == oldChild) {
                         assert assertAssignable(nodeField, newChild);
+                        if (adopt) {
+                            parent.adoptHelper(newChild);
+                        }
                         array[i] = newChild;
                         return true;
                     }
