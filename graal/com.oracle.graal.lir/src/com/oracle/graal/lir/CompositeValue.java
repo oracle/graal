@@ -62,7 +62,7 @@ public abstract class CompositeValue extends AbstractValue {
      * @param proc
      * @return the original CompositeValue or a copy with any modified values
      */
-    public abstract Value forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc);
+    public abstract CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc);
 
     /**
      * A helper method to visit {@link Value}[] ensuring that a copy of the array is made if it's
