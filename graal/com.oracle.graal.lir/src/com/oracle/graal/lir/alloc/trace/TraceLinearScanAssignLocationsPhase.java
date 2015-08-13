@@ -22,13 +22,18 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
+
+import java.util.*;
+
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.alloc.lsra.*;
@@ -48,33 +53,31 @@ class TraceLinearScanAssignLocationsPhase extends LinearScanAssignLocationsPhase
     }
 
     @Override
-    protected Value colorLirOperand(LIRInstruction op, Variable operand, OperandMode mode) {
-        if (!isBlockEndWithEdgeToUnallocatedTrace(op, mode)) {
-            return super.colorLirOperand(op, operand, mode);
+    protected boolean assignLocations(LIRInstruction op) {
+        if (isBlockEndWithEdgeToUnallocatedTrace(op)) {
+            ((BlockEndOp) op).forEachOutgoingValue(colorOutgoingValues);
         }
-
-        int opId = op.id();
-        Interval interval = allocator.intervalFor(operand);
-        assert interval != null : "interval must exist";
-
-        /*
-         * Operands are not changed when an interval is split during allocation, so search the right
-         * interval here.
-         */
-        interval = allocator.splitChildAtOpId(interval, opId, mode);
-
-        if (isIllegal(interval.location()) && interval.canMaterialize()) {
-            assert mode != OperandMode.DEF;
-            return interval.getMaterializedValue();
-        }
-        if (interval.alwaysInMemory() && isRegister(interval.location())) {
-            return new ShadowedRegisterValue((RegisterValue) interval.location(), interval.spillSlot());
-        }
-        return interval.location();
+        return super.assignLocations(op);
     }
 
-    private boolean isBlockEndWithEdgeToUnallocatedTrace(LIRInstruction op, OperandMode mode) {
-        if (!(op instanceof BlockEndOp) || !OperandMode.ALIVE.equals(mode)) {
+    private InstructionValueProcedure colorOutgoingValues = new InstructionValueProcedure() {
+
+        public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+            if (isRegister(value) || isVariable(value)) {
+                Interval interval = allocator.intervalFor(value);
+                assert interval != null : "interval must exist";
+                interval = allocator.splitChildAtOpId(interval, instruction.id(), mode);
+
+                if (interval.alwaysInMemory() && isRegister(interval.location())) {
+                    return new ShadowedRegisterValue((RegisterValue) interval.location(), interval.spillSlot());
+                }
+            }
+            return value;
+        }
+    };
+
+    private boolean isBlockEndWithEdgeToUnallocatedTrace(LIRInstruction op) {
+        if (!(op instanceof BlockEndOp)) {
             return false;
         }
         AbstractBlockBase<?> block = allocator.blockForId(op.id());
