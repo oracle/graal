@@ -148,6 +148,13 @@ public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnal
                                 Interval from = allocator.getOrCreateInterval((AllocatableValue) fromValue);
                                 Interval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
                                 setHint(label, to, from);
+                            } else if (TraceRAshareSpillInformation.getValue() && TraceUtil.isShadowedRegisterValue(fromValue)) {
+                                ShadowedRegisterValue shadowedRegisterValue = TraceUtil.asShadowedRegisterValue(fromValue);
+                                Interval from = allocator.getOrCreateInterval(shadowedRegisterValue.getRegister());
+                                Interval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
+                                setHint(label, to, from);
+                                to.setSpillSlot(shadowedRegisterValue.getStackSlot());
+                                to.setSpillState(SpillState.StartInMemory);
                             }
                         }
                     }
