@@ -24,6 +24,7 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static jdk.internal.jvmci.code.MemoryBarriers.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.meta.Kind.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
@@ -340,7 +341,12 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             getDelayedControlTransfer().emitControlTransfer(crb, masm);
-            masm.membar(barriers);
+            masm.membar(MEMBAR_STORE_LOAD);
+        }
+
+        @Override
+        public void verify() {
+            assert barriers == STORE_LOAD : String.format("Got barriers 0x%x; On SPARC only STORE_LOAD barriers are accepted; all other barriers are not neccessary due to TSO", barriers);
         }
     }
 
