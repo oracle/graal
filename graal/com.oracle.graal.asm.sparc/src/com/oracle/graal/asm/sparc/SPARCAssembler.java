@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 20txa", "15, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,11 @@ public abstract class SPARCAssembler extends Assembler {
     public static final int CCR_ICC_SHIFT = 0;
     public static final int CCR_XCC_SHIFT = 4;
     public static final int CCR_V_SHIFT = 1;
+
+    public static final int MEMBAR_LOAD_LOAD = 1;
+    public static final int MEMBAR_STORE_LOAD = 2;
+    public static final int MEMBAR_LOAD_STORE = 3;
+    public static final int MEMBAR_STORE_STORE = 4;
 
     private static final Ops[] OPS;
     private static final Op2s[] OP2S;
@@ -231,12 +236,23 @@ public abstract class SPARCAssembler extends Assembler {
         Staf  (0b10_0110, "staf", LdstOp),
         Stdf  (0b10_0111, "stdf", LdstOp),
 
+        Stba  (0b01_0101, "stba", LdstOp),
+        Stha  (0b01_0110, "stha", LdstOp),
+        Stwa  (0b01_0100, "stwa", LdstOp),
+        Stxa  (0b01_1110, "stxa", LdstOp),
+
+        Ldsba  (0b01_1001, "ldsba", LdstOp),
+        Ldsha  (0b01_1010, "ldsha", LdstOp),
+        Ldswa  (0b01_1000, "ldswa", LdstOp),
+        Lduba  (0b01_0001, "lduba", LdstOp),
+        Lduha  (0b01_0010, "lduha", LdstOp),
+        Lduwa (0b01_0000, "lduwa", LdstOp),
+
+        Ldxa  (0b01_1011, "ldxa", LdstOp),
+
         Rd    (0b10_1000, "rd", ArithOp),
         Wr    (0b11_0000, "wr", ArithOp),
         Fcmp  (0b11_0101, "fcmp", ArithOp),
-
-        Ldxa  (0b01_1011, "ldxa", LdstOp),
-        Lduwa (0b01_0000, "lduwa", LdstOp),
 
         Tcc(0b11_1010, "tcc", ArithOp);
 
@@ -2354,6 +2370,11 @@ public abstract class SPARCAssembler extends Assembler {
     public void lduwa(Register rs1, Register rs2, Register rd, Asi asi) {
         assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
         ld(Lduwa, new SPARCAddress(rs1, rs2), rd, asi);
+    }
+
+    public void stxa(Register rd, Register rs1, Register rs2, Asi asi) {
+        assert SPARC.isCPURegister(rs1, rs2, rd) : format("%s %s %s", rs1, rs2, rd);
+        ld(Stxa, new SPARCAddress(rs1, rs2), rd, asi);
     }
 
     protected void st(Op3s op3, Register rs1, SPARCAddress dest) {
