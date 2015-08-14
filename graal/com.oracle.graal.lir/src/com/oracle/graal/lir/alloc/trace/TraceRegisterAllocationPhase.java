@@ -52,6 +52,10 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 
+/**
+ * An implementation of a Trace Register Allocator as described in <a
+ * href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef Eisl.
+ */
 public final class TraceRegisterAllocationPhase extends AllocationPhase {
     public static class Options {
         // @formatter:off

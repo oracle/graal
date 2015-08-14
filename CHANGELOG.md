@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Graal versions relevant to developers building technology on top of Graal. The main focus is on APIs exported by Graal.
 
 ## `tip`
+* Added experimental Trace Register Allocator.
 * All JVMCI (and HotSpot) code has been split out into a [separate repository](http://hg.openjdk.java.net/graal/graal-jvmci-8/).
 * JVMCI code is now in idk.vm.ci.* name space.
 * Graal now works on top of a JVMCI enabled JDK9 binary.
