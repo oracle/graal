@@ -44,7 +44,7 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
         return value;
     }
 
-    protected UnboxNode(ValueNode value, Kind boxingKind) {
+    public UnboxNode(ValueNode value, Kind boxingKind) {
         super(TYPE, StampFactory.forKind(boxingKind.getStackKind()));
         this.value = value;
         this.boxingKind = boxingKind;
