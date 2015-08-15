@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 
-@ClassSubstitution(Integer.class)
 public class IntegerSubstitutions {
 
-    @MethodSubstitution
     public static int numberOfLeadingZeros(int i) {
         if (i == 0) {
             return 32;
@@ -36,7 +33,6 @@ public class IntegerSubstitutions {
         return 31 - BitScanReverseNode.unsafeScan(i);
     }
 
-    @MethodSubstitution
     public static int numberOfTrailingZeros(int i) {
         if (i == 0) {
             return 32;
