@@ -863,7 +863,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * @param type the type being instantiated
      * @param dims the dimensions for the multi-array
      */
-    protected void handleUnresolvedNewMultiArray(JavaType type, List<ValueNode> dims) {
+    protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
         assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
     }
@@ -1091,8 +1091,8 @@ public class BytecodeParser implements GraphBuilderContext {
         return new NewArrayNode(elementType, length, fillContents);
     }
 
-    protected NewMultiArrayNode createNewMultiArray(ResolvedJavaType type, List<ValueNode> dimensions) {
-        return new NewMultiArrayNode(type, dimensions.toArray(new ValueNode[0]));
+    protected NewMultiArrayNode createNewMultiArray(ResolvedJavaType type, ValueNode[] dimensions) {
+        return new NewMultiArrayNode(type, dimensions);
     }
 
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
@@ -3062,6 +3062,12 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
+        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+            if (plugin.handleNewInstance(this, resolvedType)) {
+                return;
+            }
+        }
+
         frameState.push(Kind.Object, append(createNewInstance(resolvedType, true)));
     }
 
@@ -3098,6 +3104,13 @@ public class BytecodeParser implements GraphBuilderContext {
     private void genNewPrimitiveArray(int typeCode) {
         ResolvedJavaType elementType = metaAccess.lookupJavaType(arrayTypeCodeToClass(typeCode));
         ValueNode length = frameState.pop(Kind.Int);
+
+        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+            if (plugin.handleNewArray(this, elementType, length)) {
+                return;
+            }
+        }
+
         frameState.push(Kind.Object, append(createNewArray(elementType, length, true)));
     }
 
@@ -3111,15 +3124,21 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         ResolvedJavaType resolvedType = (ResolvedJavaType) type;
 
+        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+            if (plugin.handleNewArray(this, resolvedType, length)) {
+                return;
+            }
+        }
+
         frameState.push(Kind.Object, append(createNewArray(resolvedType, length, true)));
     }
 
     private void genNewMultiArray(int cpi) {
         JavaType type = lookupType(cpi, MULTIANEWARRAY);
         int rank = getStream().readUByte(bci() + 3);
-        List<ValueNode> dims = new ArrayList<>(Collections.nCopies(rank, null));
+        ValueNode[] dims = new ValueNode[rank];
         for (int i = rank - 1; i >= 0; i--) {
-            dims.set(i, frameState.pop(Kind.Int));
+            dims[i] = frameState.pop(Kind.Int);
         }
 
         if (!(type instanceof ResolvedJavaType)) {
@@ -3127,6 +3146,12 @@ public class BytecodeParser implements GraphBuilderContext {
             return;
         }
         ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+
+        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+            if (plugin.handleNewMultiArray(this, resolvedType, dims)) {
+                return;
+            }
+        }
 
         frameState.push(Kind.Object, append(createNewMultiArray(resolvedType, dims)));
     }

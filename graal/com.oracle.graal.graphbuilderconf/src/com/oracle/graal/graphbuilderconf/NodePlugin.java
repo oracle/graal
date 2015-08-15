@@ -155,6 +155,47 @@ public interface NodePlugin extends GraphBuilderPlugin {
     }
 
     /**
+     * Handle the parsing of a NEW bytecode. If the method returns true, it must
+     * {@link GraphBuilderContext#push push} a value with the result of the allocation using
+     * {@link Kind#Object}.
+     *
+     * @param b the context
+     * @param type the type to be instantiated
+     * @return true if the plugin handles the bytecode, false otherwise
+     */
+    default boolean handleNewInstance(GraphBuilderContext b, ResolvedJavaType type) {
+        return false;
+    }
+
+    /**
+     * Handle the parsing of a NEWARRAY and ANEWARRAY bytecode. If the method returns true, it must
+     * {@link GraphBuilderContext#push push} a value with the result of the allocation using
+     * {@link Kind#Object}.
+     *
+     * @param b the context
+     * @param elementType the element type of the array to be instantiated
+     * @param length the length of the new array
+     * @return true if the plugin handles the bytecode, false otherwise
+     */
+    default boolean handleNewArray(GraphBuilderContext b, ResolvedJavaType elementType, ValueNode length) {
+        return false;
+    }
+
+    /**
+     * Handle the parsing of a MULTIANEWARRAY bytecode. If the method returns true, it must
+     * {@link GraphBuilderContext#push push} a value with the result of the allocation using
+     * {@link Kind#Object}.
+     *
+     * @param b the context
+     * @param type the type of the outermost array to be instantiated
+     * @param dimensions the array of lengths for all the dimensions to be instantiated
+     * @return true if the plugin handles the bytecode, false otherwise
+     */
+    default boolean handleNewMultiArray(GraphBuilderContext b, ResolvedJavaType type, ValueNode[] dimensions) {
+        return false;
+    }
+
+    /**
      * If the plugin {@link GraphBuilderContext#push pushes} a value with a different {@link Kind}
      * than specified by the bytecode, it must override this method and return {@code true}. This
      * disables assertion checking for value kinds.
