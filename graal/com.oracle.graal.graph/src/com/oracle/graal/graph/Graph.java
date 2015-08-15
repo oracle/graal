@@ -766,11 +766,14 @@ public class Graph {
     }
 
     private Node findFirstLiveIterable(int iterableId, Node node) {
-        assert iterableNodesFirst.get(iterableId) == node;
         Node start = node;
         while (start != null && start.isDeleted()) {
             start = start.typeCacheNext;
         }
+        /*
+         * Multiple threads iterating nodes can update this cache simultaneously. This is a benign
+         * race, since all threads update it to the same value.
+         */
         iterableNodesFirst.set(iterableId, start);
         if (start == null) {
             iterableNodesLast.set(iterableId, start);
