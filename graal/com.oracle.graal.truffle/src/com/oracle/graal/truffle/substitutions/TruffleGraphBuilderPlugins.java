@@ -36,8 +36,10 @@ import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.replacements.nodes.arithmetic.*;
 import com.oracle.graal.truffle.*;
@@ -56,7 +58,7 @@ public class TruffleGraphBuilderPlugins {
 
         registerOptimizedAssumptionPlugins(plugins, snippetReflection);
         registerExactMathPlugins(plugins);
-        registerCompilerDirectivesPlugins(plugins);
+        registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(metaAccess, plugins);
         registerUnsafeAccessImplPlugins(plugins, canDelayIntrinsification);
@@ -138,7 +140,7 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins) {
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
         Registration r = new Registration(plugins, CompilerDirectives.class);
         r.register0("inInterpreter", new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -182,6 +184,25 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register1("bailout", String.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
+                if (canDelayIntrinsification) {
+                    /*
+                     * We do not want to bailout yet, since we are still parsing individual methods
+                     * and constant folding could still eliminate the call to bailout(). However, we
+                     * also want to stop parsing, since we are sure that we will never need the
+                     * graph beyond the bailout point.
+                     *
+                     * Therefore, we manually emit the call to bailout, which will be intrinsified
+                     * later when intrinsifications can no longer be delayed. The call is followed
+                     * by a NeverPartOfCompilationNode, which is a control sink and therefore stops
+                     * any further parsing.
+                     */
+                    CallTargetNode callTarget = b.add(new MethodCallTargetNode(InvokeKind.Static, targetMethod, new ValueNode[]{message}, targetMethod.getSignature().getReturnType(null), null));
+                    b.add(new InvokeNode(callTarget, b.bci()));
+
+                    b.add(new NeverPartOfCompilationNode("intrinsification of call to bailout() will abort entire compilation"));
+                    return true;
+                }
+
                 if (message.isConstant()) {
                     throw b.bailout(message.asConstant().toValueString());
                 }
