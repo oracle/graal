@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.util.*;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}")
-public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, Virtualizable, GuardingNode {
+public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, Virtualizable, GuardingNode {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -53,7 +53,12 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     }
 
     public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
-        super(TYPE, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
+        this(TYPE, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
+    }
+
+    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
+                    FrameState stateBefore) {
+        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
     }
 
     public ReadNode(AddressNode address, LocationIdentity location, ValueNode guard, BarrierType barrierType) {

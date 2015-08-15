@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
 @NodeInfo(nameTemplate = "Write#{p#location/s}")
-public final class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
+public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
@@ -55,7 +55,11 @@ public final class WriteNode extends AbstractWriteNode implements LIRLowerable, 
     }
 
     public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, GuardingNode guard, boolean initialization) {
-        super(TYPE, address, location, value, barrierType, guard, initialization);
+        this(TYPE, address, location, value, barrierType, guard, initialization);
+    }
+
+    protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, GuardingNode guard, boolean initialization) {
+        super(c, address, location, value, barrierType, guard, initialization);
     }
 
     @Override
