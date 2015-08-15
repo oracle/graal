@@ -414,6 +414,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
         String superString = rootNode.toString();
         if (isValid()) {
             superString += " <opt>";
