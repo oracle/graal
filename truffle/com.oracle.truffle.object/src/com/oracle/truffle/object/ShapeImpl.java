@@ -888,6 +888,7 @@ public abstract class ShapeImpl extends Shape {
             @ExplodeLoop
             public DynamicObject newInstance(Object... initialValues) {
                 DynamicObject store = ShapeImpl.this.newInstance();
+                CompilerAsserts.partialEvaluationConstant(instanceFields.length);
                 for (int i = 0; i < instanceFields.length; i++) {
                     instanceFields[i].setInternal(store, initialValues[i]);
                 }
