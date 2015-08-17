@@ -910,7 +910,7 @@ public abstract class ShapeImpl extends Shape {
         return null;
     }
 
-    public abstract static class BaseAllocator extends Allocator implements LocationVisitor {
+    public abstract static class BaseAllocator extends Allocator implements LocationVisitor, Cloneable {
         protected final LayoutImpl layout;
         protected int objectArraySize;
         protected int objectFieldSize;
@@ -1045,6 +1045,20 @@ public abstract class ShapeImpl extends Shape {
 
         public void visitPrimitiveField(int index, int count) {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
+        }
+
+        @Override
+        public final BaseAllocator copy() {
+            return clone();
+        }
+
+        @Override
+        protected final BaseAllocator clone() {
+            try {
+                return (BaseAllocator) super.clone();
+            } catch (CloneNotSupportedException e) {
+                throw new AssertionError(e);
+            }
         }
     }
 

@@ -280,6 +280,11 @@ public abstract class Shape {
         public abstract Location declaredLocation(Object value);
 
         public abstract Allocator addLocation(Location location);
+
+        /**
+         * Creates an copy of this allocator.
+         */
+        public abstract Allocator copy();
     }
 
     /**
