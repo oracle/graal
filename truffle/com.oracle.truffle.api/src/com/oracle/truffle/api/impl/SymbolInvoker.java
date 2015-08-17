@@ -34,4 +34,16 @@ import java.io.*;
  */
 public abstract class SymbolInvoker {
     protected abstract CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... args) throws IOException;
+
+    public static final class ArgumentsMishmashException extends IllegalArgumentException {
+        static final long serialVersionUID = 1L;
+
+        public ArgumentsMishmashException() {
+        }
+
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
+        }
+    }
 }

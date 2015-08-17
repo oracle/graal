@@ -46,7 +46,7 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
             symbolNode = new ConstantRootNode(type, symbol);
         } else {
             Node executeMain = Message.createExecute(arr.length).createNode();
-            symbolNode = new TemporaryRoot(type, executeMain, (TruffleObject) symbol);
+            symbolNode = new TemporaryRoot(type, executeMain, (TruffleObject) symbol, arr.length);
         }
         return Truffle.getRuntime().createCallTarget(symbolNode);
     }
@@ -69,18 +69,24 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
     private static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
+        private final int argumentLength;
         private final TruffleObject function;
 
-        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function) {
+        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.convert = new ConvertNode();
             this.function = function;
+            this.argumentLength = argumentLength;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object tmp = ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            final Object[] args = frame.getArguments();
+            if (args.length != argumentLength) {
+                throw new ArgumentsMishmashException();
+            }
+            Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);
             return convert.convert(frame, tmp);
         }
     }

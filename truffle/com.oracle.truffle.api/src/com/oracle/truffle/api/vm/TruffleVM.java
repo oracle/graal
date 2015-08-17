@@ -489,10 +489,16 @@ public final class TruffleVM {
                     arr.add(thiz);
                 }
                 arr.addAll(Arrays.asList(args));
-                if (target == null) {
-                    target = SPI.createCallTarget(language, obj, arr.toArray());
+                for (;;) {
+                    if (target == null) {
+                        target = SPI.createCallTarget(language, obj, arr.toArray());
+                    }
+                    try {
+                        return target.call(arr.toArray());
+                    } catch (SymbolInvoker.ArgumentsMishmashException ex) {
+                        target = null;
+                    }
                 }
-                return target.call(arr.toArray());
             }
         }
     }
