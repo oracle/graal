@@ -34,8 +34,8 @@ import com.oracle.truffle.api.vm.TruffleVM.Builder;
  * place to initialize debugger - e.g. set
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)
  * breakpoints} or specify to execution should halt on the {@link #prepareStepInto() first possible
- * occurence}. Methods in this event can only be used while the handlers process the event. Then the
- * state of the event becomes invalid and subsequent calls to the event methods yield
+ * occurrence}. Methods in this event can only be used while the handlers process the event. Then
+ * the state of the event becomes invalid and subsequent calls to the event methods yield
  * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
  * keep it to further manipulate with debugging capabilities of the {@link TruffleVM} when it is
  * running.
@@ -48,7 +48,7 @@ public final class ExecutionEvent {
     }
 
     /**
-     * Debugger associated with the execution. This debuger remains valid after the event is
+     * Debugger associated with the execution. This debugger remains valid after the event is
      * processed, it is possible and suggested to keep a reference to it and use it any time later
      * when evaluating sources in the {@link TruffleVM}.
      *

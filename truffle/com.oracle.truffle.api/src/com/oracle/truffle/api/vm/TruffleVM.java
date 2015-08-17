@@ -47,10 +47,10 @@ import com.oracle.truffle.api.source.*;
  * <p>
  * It would not be correct to think of a {@link TruffleVM} as a runtime for a single Truffle
  * language (Ruby, Python, R, C, JavaScript, etc.) either. {@link TruffleVM} can host as many of
- * Truffle languages as {@link Registration registered on a classpath} of your <em>JVM</em>
+ * Truffle languages as {@link Registration registered on a class path} of your <em>JVM</em>
  * application. {@link TruffleVM} orchestrates these languages, manages exchange of objects and
  * calls among them. While it may happen that there is just one activated language inside of a
- * {@link TruffleVM}, the greatest strength of {@link TruffleVM} is in inter-operability between all
+ * {@link TruffleVM}, the greatest strength of {@link TruffleVM} is in interoperability between all
  * Truffle languages. There is 1:N mapping between {@link TruffleVM} and {@link TruffleLanguage
  * Truffle language implementations}.
  * <p>

@@ -39,12 +39,12 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * An entry point for everyone who wants to implement a Truffle based language. By providing
+ * An entry point for everyone who wants to implement a Truffle based language. By providing an
  * implementation of this type and registering it using {@link Registration} annotation, your
  * language becomes accessible to users of the {@link TruffleVM Truffle virtual machine} - all they
- * will need to do is to include your JAR into their application and all the Truffle goodies (multi
- * language support, multitenant hosting, debugging, etc.) will be made available to them.
- * 
+ * will need to do is to include your JAR into their application and all the Truffle goodies
+ * (multi-language support, multitenant hosting, debugging, etc.) will be made available to them.
+ *
  * @param <C> internal state of the language associated with every thread that is executing program
  *            {@link #parse(com.oracle.truffle.api.source.Source, com.oracle.truffle.api.nodes.Node, java.lang.String...)
  *            parsed} by the language
@@ -99,7 +99,7 @@ public abstract class TruffleLanguage<C> {
      * <em>execution</em>. The returned execution context is completely language specific; it is
      * however expected it will contain reference to here-in provided <code>env</code> and adjust
      * itself according to parameters provided by the <code>env</code> object.
-     * 
+     *
      * @param env the environment the language is supposed to operate in
      * @return internal data of the language in given environment
      */
@@ -179,7 +179,7 @@ public abstract class TruffleLanguage<C> {
      * Allows a language implementor to create a node that can effectively lookup up the context
      * associated with current execution. The context is created by
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method.
-     * 
+     *
      * @return node to be inserted into program to effectively find out current execution context
      *         for this language
      */
@@ -191,7 +191,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Uses the {@link #createFindContextNode()} node to obtain the current context.
-     * 
+     *
      * @param n the node created by this language's {@link #createFindContextNode()}
      * @return the context created by
      *         {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method at the
