@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.runtime.*;
+
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.stack.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
-
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.runtime.*;
 
 //JaCoCo Exclude
 

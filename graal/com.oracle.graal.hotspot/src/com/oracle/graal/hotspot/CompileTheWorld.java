@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,6 +141,10 @@ public final class CompileTheWorld {
         }
     }
 
+    private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
+
+    private final HotSpotGraalCompiler compiler;
+
     /** List of Zip/Jar files to compile (see {@link Options#CompileTheWorldClasspath}). */
     private final String files;
 
@@ -181,7 +185,10 @@ public final class CompileTheWorld {
      * @param methodFilters
      * @param excludeMethodFilters
      */
-    public CompileTheWorld(String files, Config config, int startAt, int stopAt, String methodFilters, String excludeMethodFilters, boolean verbose) {
+    public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, String files, Config config, int startAt, int stopAt, String methodFilters,
+                    String excludeMethodFilters, boolean verbose) {
+        this.jvmciRuntime = jvmciRuntime;
+        this.compiler = compiler;
         this.files = files;
         this.startAt = startAt;
         this.stopAt = stopAt;
@@ -199,8 +206,8 @@ public final class CompileTheWorld {
         config.putIfAbsent(HotSpotResolvedJavaMethodImpl.Options.UseProfilingInformation, false);
     }
 
-    public CompileTheWorld() {
-        this(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue(),
+    public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler) {
+        this(jvmciRuntime, compiler, CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue(),
                         CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
     }
 
@@ -278,7 +285,7 @@ public final class CompileTheWorld {
             // compile dummy method to get compiler initilized outside of the config debug override.
             HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
                             CompileTheWorld.class.getDeclaredMethod("dummy"));
-            CompilationTask task = new CompilationTask(dummyMethod, Compiler.INVOCATION_ENTRY_BCI, 0L, dummyMethod.allocateCompileId(Compiler.INVOCATION_ENTRY_BCI), false);
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, dummyMethod, Compiler.INVOCATION_ENTRY_BCI, 0L, dummyMethod.allocateCompileId(Compiler.INVOCATION_ENTRY_BCI), false);
             task.runCompilation();
         } catch (NoSuchMethodException | SecurityException e1) {
             e1.printStackTrace();
@@ -468,7 +475,7 @@ public final class CompileTheWorld {
             long start = System.currentTimeMillis();
             long allocatedAtStart = MemUseTrackerImpl.getCurrentThreadAllocatedBytes();
 
-            CompilationTask task = new CompilationTask(method, Compiler.INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(Compiler.INVOCATION_ENTRY_BCI), false);
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, method, Compiler.INVOCATION_ENTRY_BCI, 0L, method.allocateCompileId(Compiler.INVOCATION_ENTRY_BCI), false);
             task.runCompilation();
 
             memoryUsed.getAndAdd(MemUseTrackerImpl.getCurrentThreadAllocatedBytes() - allocatedAtStart);

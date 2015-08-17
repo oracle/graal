@@ -25,38 +25,19 @@ package com.oracle.graal.hotspot;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.logging.*;
+
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.service.*;
-
-import com.oracle.graal.debug.*;
-import com.oracle.graal.hotspot.logging.*;
 
 @ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     @Override
-    public void notifyCompileTheWorld() throws Throwable {
-        CompilerToVM compilerToVM = HotSpotJVMCIRuntime.runtime().getCompilerToVM();
-        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
-        for (int i = 0; i < iterations; i++) {
-            compilerToVM.resetCompilationStatistics();
-            TTY.println("CompileTheWorld : iteration " + i);
-            CompileTheWorld ctw = new CompileTheWorld();
-            ctw.compile();
-        }
-        System.exit(0);
-    }
-
-    @Override
     public void notifyShutdown() {
         HotSpotGraalRuntime.runtime().shutdown();
-    }
-
-    @Override
-    public void compileMetaspaceMethod(long metaspaceMethod, int entryBCI, long jvmciEnv, int id) {
-        HotSpotResolvedJavaMethod method = HotSpotResolvedJavaMethodImpl.fromMetaspace(metaspaceMethod);
-        CompilationTask.compileMethod(method, entryBCI, jvmciEnv, id);
     }
 
     @Override

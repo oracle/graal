@@ -43,7 +43,7 @@ _suite = mx.suite('graal')
 
 class GraalJDKDeployedDist(JvmciJDKDeployedDist):
     def __init__(self):
-        JvmciJDKDeployedDist.__init__(self, 'GRAAL')
+        JvmciJDKDeployedDist.__init__(self, 'GRAAL', compilers=['graal', 'graal-economy'])
 
     def deploy(self, jdkDir):
         JvmciJDKDeployedDist.deploy(self, jdkDir)
@@ -294,7 +294,7 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsNoCoop', 'fastdebug', ['-esa', '-XX:-UseCompressedOops']),
     BootstrapTest('BootstrapWithGCVecification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC'], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
     BootstrapTest('BootstrapWithG1GCVecification', 'product', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC'], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-G:CompilerConfiguration=economy']),
+    BootstrapTest('BootstrapEconomyWithSystemAssertions', 'fastdebug', ['-esa', '-Djvmci.compiler=graal-economy']),
     BootstrapTest('BootstrapWithExceptionEdges', 'fastdebug', ['-esa', '-G:+StressInvokeWithExceptionNode']),
     BootstrapTest('BootstrapWithRegisterPressure', 'product', ['-esa', '-G:RegisterPressure=' + _registers]),
     BootstrapTest('BootstrapNonSSAWithRegisterPressure', 'product', ['-esa', '-G:-SSA_LIR', '-G:RegisterPressure=' + _registers]),

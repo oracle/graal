@@ -24,28 +24,35 @@ package com.oracle.graal.hotspot.sparc;
 
 import java.util.*;
 
+import com.oracle.graal.compiler.sparc.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.replacements.sparc.*;
+
 import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.compiler.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.runtime.*;
 import jdk.internal.jvmci.service.*;
 import jdk.internal.jvmci.sparc.*;
 
-import com.oracle.graal.compiler.sparc.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.sparc.*;
-
-@ServiceProvider(HotSpotBackendFactory.class)
-public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
+@ServiceProvider(StartupEventListener.class)
+public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory, StartupEventListener {
 
     @Override
-    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, JVMCIBackend jvmci, HotSpotBackend host) {
+    public void beforeJVMCIStartup() {
+        DefaultHotSpotGraalCompilerFactory.registerBackend(SPARC.class, this);
+    }
+
+    @Override
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, JVMCIBackend jvmci, HotSpotBackend host) {
         assert host == null;
 
         HotSpotRegistersProvider registers = createRegisters();
@@ -63,7 +70,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordKind);
         Plugins plugins = createGraphBuilderPlugins(runtime, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
-        HotSpotSuitesProvider suites = createSuites(runtime, plugins, codeCache);
+        HotSpotSuitesProvider suites = createSuites(runtime, compilerConfiguration, plugins, codeCache);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, suites, registers, snippetReflection, wordTypes, plugins);
 
         return createBackend(runtime, providers);
@@ -77,8 +84,8 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         return plugins;
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins, CodeCacheProvider codeCache) {
-        return new HotSpotSuitesProvider(new DefaultSuitesProvider(plugins), runtime, new SPARCAddressLowering(codeCache));
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins, CodeCacheProvider codeCache) {
+        return new HotSpotSuitesProvider(new DefaultSuitesProvider(compilerConfiguration, plugins), runtime, new SPARCAddressLowering(codeCache));
     }
 
     protected SPARCHotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
@@ -112,17 +119,12 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
     }
 
     @Override
-    public String getArchitecture() {
+    public String toString() {
         return "SPARC";
     }
 
-    @Override
-    public String getGraalRuntimeName() {
-        return "basic";
-    }
-
-    @Override
-    public String toString() {
-        return getGraalRuntimeName() + ":" + getArchitecture();
+    public Architecture initializeArchitecture(Architecture arch) {
+        assert arch instanceof SPARC;
+        return arch;
     }
 }

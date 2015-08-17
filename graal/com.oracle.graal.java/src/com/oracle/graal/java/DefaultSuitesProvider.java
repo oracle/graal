@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@ import com.oracle.graal.phases.tiers.*;
 
 public class DefaultSuitesProvider implements SuitesProvider {
 
+    private final CompilerConfiguration compilerConfiguration;
+
     private final DerivedOptionValue<Suites> defaultSuites;
     private final PhaseSuite<HighTierContext> defaultGraphBuilderSuite;
     private final DerivedOptionValue<LIRSuites> defaultLIRSuites;
@@ -57,7 +59,8 @@ public class DefaultSuitesProvider implements SuitesProvider {
 
     }
 
-    public DefaultSuitesProvider(Plugins plugins) {
+    public DefaultSuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+        this.compilerConfiguration = compilerConfiguration;
         this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);
         this.defaultSuites = new DerivedOptionValue<>(new SuitesSupplier());
         this.defaultLIRSuites = new DerivedOptionValue<>(new LIRSuitesSupplier());
@@ -68,7 +71,7 @@ public class DefaultSuitesProvider implements SuitesProvider {
     }
 
     public Suites createSuites() {
-        return Suites.createDefaultSuites();
+        return Suites.createSuites(compilerConfiguration);
     }
 
     public PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
@@ -86,7 +89,6 @@ public class DefaultSuitesProvider implements SuitesProvider {
     }
 
     public LIRSuites createLIRSuites() {
-        return Suites.createDefaultLIRSuites();
+        return Suites.createLIRSuites(compilerConfiguration);
     }
-
 }

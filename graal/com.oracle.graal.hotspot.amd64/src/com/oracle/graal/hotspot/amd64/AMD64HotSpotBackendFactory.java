@@ -26,28 +26,35 @@ import static jdk.internal.jvmci.inittimer.InitTimer.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.compiler.amd64.*;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.word.*;
+import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.replacements.amd64.*;
+
 import jdk.internal.jvmci.amd64.*;
 import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.compiler.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.inittimer.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.runtime.*;
 import jdk.internal.jvmci.service.*;
 
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.amd64.*;
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.word.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.amd64.*;
-
-@ServiceProvider(HotSpotBackendFactory.class)
-public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
+@ServiceProvider(StartupEventListener.class)
+public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, StartupEventListener {
 
     @Override
-    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, JVMCIBackend jvmci, HotSpotBackend host) {
+    public void beforeJVMCIStartup() {
+        DefaultHotSpotGraalCompilerFactory.registerBackend(AMD64.class, this);
+    }
+
+    @Override
+    public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, JVMCIBackend jvmci, HotSpotBackend host) {
         assert host == null;
 
         HotSpotProviders providers;
@@ -94,7 +101,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
-                suites = createSuites(runtime, plugins, codeCache, registers);
+                suites = createSuites(runtime, compilerConfiguration, plugins, codeCache, registers);
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, suites, registers, snippetReflection, wordTypes, plugins);
         }
@@ -128,8 +135,9 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new AMD64HotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
     }
 
-    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, Plugins plugins, CodeCacheProvider codeCache, HotSpotRegistersProvider registers) {
-        return new HotSpotSuitesProvider(new AMD64SuitesProvider(plugins), runtime, new AMD64HotSpotAddressLowering(codeCache, runtime.getConfig().getOopEncoding().base,
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins, CodeCacheProvider codeCache,
+                    HotSpotRegistersProvider registers) {
+        return new HotSpotSuitesProvider(new AMD64SuitesProvider(compilerConfiguration, plugins), runtime, new AMD64HotSpotAddressLowering(codeCache, runtime.getConfig().getOopEncoding().base,
                         registers.getHeapBaseRegister()));
     }
 
@@ -168,15 +176,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             * 
+             *
              * Draft Version 0.96
-             * 
+             *
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             * 
+             *
              * 3.2.1
-             * 
+             *
              * ...
-             * 
+             *
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these
@@ -198,16 +206,13 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         return nativeABICallerSaveRegisters;
     }
 
-    public String getArchitecture() {
+    @Override
+    public String toString() {
         return "AMD64";
     }
 
-    public String getGraalRuntimeName() {
-        return "basic";
-    }
-
-    @Override
-    public String toString() {
-        return getGraalRuntimeName() + ":" + getArchitecture();
+    public Architecture initializeArchitecture(Architecture arch) {
+        assert arch instanceof AMD64;
+        return arch;
     }
 }

@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir.phases;
 
-import jdk.internal.jvmci.code.*;
-
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.gen.*;
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.AllocationPhase.*;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
+
+import jdk.internal.jvmci.code.*;
 
 public class LIRSuites {
 

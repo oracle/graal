@@ -24,15 +24,16 @@ package com.oracle.graal.compiler.amd64;
 
 import static com.oracle.graal.compiler.common.BackendOptions.*;
 
-import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.amd64.phases.*;
 import com.oracle.graal.lir.phases.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class AMD64SuitesProvider extends DefaultSuitesProvider {
 
-    public AMD64SuitesProvider(Plugins plugins) {
-        super(plugins);
+    public AMD64SuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {
+        super(compilerConfiguration, plugins);
     }
 
     @Override

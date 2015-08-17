@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import jdk.internal.jvmci.service.*;
-
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.lir.phases.AllocationPhase.*;
+import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
+import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-@ServiceProvider(CompilerConfiguration.class)
 public class BasicCompilerConfiguration implements CompilerConfiguration {
 
     public PhaseSuite<HighTierContext> createHighTier() {

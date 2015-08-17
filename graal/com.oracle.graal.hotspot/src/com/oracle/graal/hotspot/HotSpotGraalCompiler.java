@@ -28,6 +28,8 @@ import static jdk.internal.jvmci.code.CallingConvention.Type.*;
 import static jdk.internal.jvmci.code.CodeUtil.*;
 
 import com.oracle.graal.compiler.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graphbuilderconf.*;
 import com.oracle.graal.graphbuilderconf.GraphBuilderConfiguration.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -45,9 +47,42 @@ import com.oracle.graal.phases.tiers.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.*;
 import jdk.internal.jvmci.compiler.Compiler;
+import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
-public class HotSpotGraalCompiler {
+public class HotSpotGraalCompiler implements Compiler {
+
+    private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
+
+    HotSpotGraalCompiler(HotSpotJVMCIRuntimeProvider jvmciRuntime) {
+        this.jvmciRuntime = jvmciRuntime;
+    }
+
+    @Override
+    public void compileMethod(ResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id) {
+        // Ensure a debug configuration for this thread is initialized
+        if (Debug.isEnabled() && DebugScope.getConfig() == null) {
+            DebugEnvironment.initialize(TTY.out);
+        }
+
+        CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotResolvedJavaMethod) method, entryBCI, jvmciEnv, id, true);
+        try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig())) {
+            task.runCompilation();
+        }
+    }
+
+    @Override
+    public void compileTheWorld() throws Throwable {
+        CompilerToVM compilerToVM = jvmciRuntime.getCompilerToVM();
+        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
+        for (int i = 0; i < iterations; i++) {
+            compilerToVM.resetCompilationStatistics();
+            TTY.println("CompileTheWorld : iteration " + i);
+            CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, this);
+            ctw.compile();
+        }
+        System.exit(0);
+    }
 
     public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean mustRecordMethodInlining) {
         HotSpotBackend backend = HotSpotGraalRuntime.runtime().getHostBackend();
@@ -83,8 +118,8 @@ public class HotSpotGraalCompiler {
             // all code after the OSR loop is never executed.
             optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
         }
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo, suites,
-                        lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo,
+                        suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         result.setEntryBCI(entryBCI);
 
@@ -107,14 +142,13 @@ public class HotSpotGraalCompiler {
         Replacements replacements = providers.getReplacements();
         ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
         if (substMethod != null) {
-            assert!substMethod.equals(method);
+            assert !substMethod.equals(method);
             StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES);
             Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
             IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, ROOT_COMPILATION);
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE,
-                            initialReplacementContext).apply(graph);
-            assert!graph.isFrozen();
+            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), config, OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
+            assert !graph.isFrozen();
             return graph;
         }
         return null;

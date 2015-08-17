@@ -20,39 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.hotspot;
 
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.phases.AllocationPhase.*;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.*;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.*;
-import com.oracle.graal.phases.*;
+import java.util.*;
+
+import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class EconomyCompilerConfiguration implements CompilerConfiguration {
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.compiler.*;
+import jdk.internal.jvmci.service.*;
 
-    public PhaseSuite<HighTierContext> createHighTier() {
-        return new EconomyHighTier();
+@ServiceProvider(CompilerFactory.class)
+public class DefaultHotSpotGraalCompilerFactory extends HotSpotGraalCompilerFactory {
+
+    private static IdentityHashMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = new IdentityHashMap<>();
+
+    public static void registerBackend(Class<? extends Architecture> arch, HotSpotBackendFactory factory) {
+        assert !backends.containsKey(arch) : "duplicate graal backend";
+        backends.put(arch, factory);
     }
 
-    public PhaseSuite<MidTierContext> createMidTier() {
-        return new EconomyMidTier();
+    @Override
+    public String getCompilerName() {
+        return "graal";
     }
 
-    public PhaseSuite<LowTierContext> createLowTier() {
-        return new EconomyLowTier();
+    @Override
+    protected CompilerConfiguration createCompilerConfiguration() {
+        return new BasicCompilerConfiguration();
     }
 
-    public LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage() {
-        return new EconomyPreAllocationOptimizationStage();
+    @Override
+    protected HotSpotBackendFactory getBackendFactory(Architecture arch) {
+        return backends.get(arch.getClass());
     }
-
-    public LIRPhaseSuite<AllocationContext> createAllocationStage() {
-        return new EconomyAllocationStage();
-    }
-
-    public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage() {
-        return new EconomyPostAllocationOptimizationStage();
-    }
-
 }

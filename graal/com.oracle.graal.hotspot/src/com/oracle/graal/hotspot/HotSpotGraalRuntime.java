@@ -24,21 +24,10 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.debug.GraalDebugConfig.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static jdk.internal.jvmci.inittimer.InitTimer.*;
 
 import java.lang.reflect.*;
 import java.util.*;
-
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.stack.*;
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.inittimer.*;
-import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.runtime.*;
-import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.collections.*;
 import com.oracle.graal.api.replacements.*;
@@ -49,8 +38,17 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.runtime.*;
+
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.code.stack.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.inittimer.*;
+import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.runtime.*;
 
 //JaCoCo Exclude
 
@@ -59,27 +57,45 @@ import com.oracle.graal.runtime.*;
  */
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified {
 
-    private static final HotSpotGraalRuntime instance;
+    private static class Instance {
+        private static final HotSpotGraalRuntime instance;
 
-    static {
-        try (InitTimer t0 = timer("HotSpotGraalRuntime.<clinit>")) {
-            try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-                instance = new HotSpotGraalRuntime();
-            }
+        static {
+            try (InitTimer t0 = timer("HotSpotGraalRuntime.<clinit>")) {
+                // initJvmciRuntime and initCompilerFactory are set by the JVMCI initialization code
+                JVMCI.initialize();
+                assert initJvmciRuntime != null && initCompilerFactory != null;
 
-            try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
-                // Why deferred initialization? See comment in completeInitialization().
-                instance.completeInitialization();
+                try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
+                    instance = new HotSpotGraalRuntime(initJvmciRuntime, initCompilerFactory);
+                }
+
+                try (InitTimer t = timer("HotSpotGraalRuntime.completeInitialization")) {
+                    // Why deferred initialization? See comment in completeInitialization().
+                    instance.completeInitialization();
+                }
             }
         }
+
+        private static void forceStaticInitializer() {
+        }
+    }
+
+    private static HotSpotJVMCIRuntime initJvmciRuntime;
+    private static HotSpotGraalCompilerFactory initCompilerFactory;
+
+    public static void initialize(HotSpotJVMCIRuntime runtime, HotSpotGraalCompilerFactory factory) {
+        initJvmciRuntime = runtime;
+        initCompilerFactory = factory;
+        Instance.forceStaticInitializer();
     }
 
     /**
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
     public static HotSpotGraalRuntime runtime() {
-        assert instance != null;
-        return instance;
+        assert Instance.instance != null;
+        return Instance.instance;
     }
 
     @Override
@@ -99,71 +115,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return true;
     }
 
-    public static class Options {
-
-        // @formatter:off
-        @Option(help = "The runtime configuration to use", type = OptionType.Expert)
-        static final OptionValue<String> GraalRuntime = new OptionValue<>("");
-        // @formatter:on
-    }
-
-    private static HotSpotBackendFactory findFactory(String architecture) {
-        HotSpotBackendFactory basic = null;
-        HotSpotBackendFactory selected = null;
-        HotSpotBackendFactory nonBasic = null;
-        int nonBasicCount = 0;
-
-        assert GraalRuntime.getValue().equals(HotSpotJVMCIRuntime.Options.JVMCIRuntime.getValue());
-
-        for (HotSpotBackendFactory factory : Services.load(HotSpotBackendFactory.class)) {
-            if (factory.getArchitecture().equalsIgnoreCase(architecture)) {
-                if (factory.getGraalRuntimeName().equals(GraalRuntime.getValue())) {
-                    assert selected == null || checkFactoryOverriding(selected, factory);
-                    selected = factory;
-                }
-                if (factory.getGraalRuntimeName().equals("basic")) {
-                    assert basic == null || checkFactoryOverriding(basic, factory);
-                    basic = factory;
-                } else {
-                    nonBasic = factory;
-                    nonBasicCount++;
-                }
-            }
-        }
-
-        if (selected != null) {
-            return selected;
-        } else {
-            if (!GraalRuntime.getValue().equals("")) {
-                // Fail fast if a non-default value for GraalRuntime was specified
-                // and the corresponding factory is not available
-                throw new JVMCIError("Specified runtime \"%s\" not available for the %s architecture", GraalRuntime.getValue(), architecture);
-            } else if (nonBasicCount == 1) {
-                // If there is exactly one non-basic runtime, select this one.
-                return nonBasic;
-            } else {
-                return basic;
-            }
-        }
-    }
-
-    /**
-     * Checks that a factory overriding is valid. A factory B can only override/replace a factory A
-     * if the B.getClass() is a subclass of A.getClass(). This models the assumption that B is
-     * extends the behavior of A and has therefore understood the behavior expected of A.
-     *
-     * @param baseFactory
-     * @param overridingFactory
-     */
-    private static boolean checkFactoryOverriding(HotSpotBackendFactory baseFactory, HotSpotBackendFactory overridingFactory) {
-        return baseFactory.getClass().isAssignableFrom(overridingFactory.getClass());
-    }
-
     /**
      * Gets the kind of a word value on the {@linkplain #getHostBackend() host} backend.
      */
     public static Kind getHostWordKind() {
-        return instance.getHostBackend().getTarget().wordKind;
+        return runtime().getHostBackend().getTarget().wordKind;
     }
 
     private final HotSpotBackend hostBackend;
@@ -173,9 +129,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
-    private HotSpotGraalRuntime() {
+    private HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
 
-        jvmciRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
+        this.jvmciRuntime = jvmciRuntime;
 
         HotSpotVMConfig config = getConfig();
         CompileTheWorld.Options.overrideWithNativeOptions(config);
@@ -189,26 +145,30 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
             printConfig(config);
         }
 
-        String hostArchitecture = config.getHostArchitectureName();
+        CompilerConfiguration compilerConfiguration = compilerFactory.createCompilerConfiguration();
 
-        HotSpotBackendFactory factory;
-        try (InitTimer t = timer("find factory:", hostArchitecture)) {
-            factory = findFactory(hostArchitecture);
-        }
+        JVMCIBackend hostJvmciBackend = jvmciRuntime.getHostJVMCIBackend();
+        Architecture hostArchitecture = hostJvmciBackend.getTarget().arch;
         try (InitTimer t = timer("create backend:", hostArchitecture)) {
-            hostBackend = registerBackend(factory.createBackend(this, jvmciRuntime.getHostJVMCIBackend(), null));
+            HotSpotBackendFactory factory = compilerFactory.getBackendFactory(hostArchitecture);
+            if (factory == null) {
+                throw new JVMCIError("No backend available for host architecture \"%s\"", hostArchitecture);
+            }
+            hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime.getHostJVMCIBackend(), null));
         }
 
-        String[] gpuArchitectures = getGPUArchitectureNames(getCompilerToVM());
-        for (String arch : gpuArchitectures) {
-            try (InitTimer t = timer("find factory:", arch)) {
-                factory = findFactory(arch);
+        for (JVMCIBackend jvmciBackend : jvmciRuntime.getBackends().values()) {
+            if (jvmciBackend == hostJvmciBackend) {
+                continue;
             }
+
+            Architecture gpuArchitecture = jvmciBackend.getTarget().arch;
+            HotSpotBackendFactory factory = compilerFactory.getBackendFactory(gpuArchitecture);
             if (factory == null) {
-                throw new JVMCIError("No backend available for specified GPU architecture \"%s\"", arch);
+                throw new JVMCIError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
-            try (InitTimer t = timer("create backend:", arch)) {
-                registerBackend(factory.createBackend(this, null, hostBackend));
+            try (InitTimer t = timer("create backend:", gpuArchitecture)) {
+                registerBackend(factory.createBackend(this, compilerConfiguration, null, hostBackend));
             }
         }
     }
@@ -271,19 +231,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         HotSpotBackend oldValue = backends.put(arch, backend);
         assert oldValue == null : "cannot overwrite existing backend for architecture " + arch.getSimpleName();
         return backend;
-    }
-
-    /**
-     * Gets the names of the supported GPU architectures for the purpose of finding the
-     * corresponding {@linkplain HotSpotBackendFactory backend} objects.
-     */
-    private static String[] getGPUArchitectureNames(CompilerToVM c2vm) {
-        String gpuList = c2vm.getGPUs();
-        if (!gpuList.isEmpty()) {
-            String[] gpus = gpuList.split(",");
-            return gpus;
-        }
-        return new String[0];
     }
 
     private static void printConfig(HotSpotVMConfig config) {

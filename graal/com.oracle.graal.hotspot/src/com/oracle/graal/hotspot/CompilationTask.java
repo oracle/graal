@@ -28,15 +28,13 @@ import static jdk.internal.jvmci.compiler.Compiler.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.debug.Debug.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.compiler.Compiler;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.hotspot.events.*;
-import jdk.internal.jvmci.hotspot.events.EventProvider.CompilationEvent;
-import jdk.internal.jvmci.hotspot.events.EventProvider.CompilerFailureEvent;
+import jdk.internal.jvmci.hotspot.events.EventProvider.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
 
@@ -56,6 +54,10 @@ public class CompilationTask {
             eventProvider = provider;
         }
     }
+
+    private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
+
+    private final HotSpotGraalCompiler compiler;
 
     private final HotSpotResolvedJavaMethod method;
     private final int entryBCI;
@@ -80,7 +82,9 @@ public class CompilationTask {
      */
     private final long jvmciEnv;
 
-    public CompilationTask(HotSpotResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id, boolean installAsDefault) {
+    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id, boolean installAsDefault) {
+        this.jvmciRuntime = jvmciRuntime;
+        this.compiler = compiler;
         this.method = method;
         this.entryBCI = entryBCI;
         this.id = id;
@@ -118,7 +122,7 @@ public class CompilationTask {
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
     public void runCompilation() {
-        HotSpotVMConfig config = HotSpotJVMCIRuntime.runtime().getConfig();
+        HotSpotVMConfig config = jvmciRuntime.getConfig();
         final long threadId = Thread.currentThread().getId();
         long startCompilationTime = System.nanoTime();
         HotSpotInstalledCode installedCode = null;
@@ -158,7 +162,6 @@ public class CompilationTask {
                 // Begin the compilation event.
                 compilationEvent.begin();
 
-                HotSpotGraalCompiler compiler = new HotSpotGraalCompiler();
                 result = compiler.compile(method, entryBCI, mustRecordMethodInlining(config));
 
                 result.setId(getId());
@@ -245,7 +248,7 @@ public class CompilationTask {
             long compilationTime = System.nanoTime() - startCompilationTime;
             if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
                 long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
-                CompilerToVM c2vm = HotSpotJVMCIRuntime.runtime().getCompilerToVM();
+                CompilerToVM c2vm = jvmciRuntime.getCompilerToVM();
                 c2vm.notifyCompilationStatistics(id, method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
             }
         }
@@ -270,7 +273,7 @@ public class CompilationTask {
     }
 
     private InstalledCode installMethod(final CompilationResult compResult) {
-        final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getCodeCache();
+        final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
             installedCode = codeCache.installMethod(method, compResult, jvmciEnv, installAsDefault);
@@ -283,21 +286,5 @@ public class CompilationTask {
     @Override
     public String toString() {
         return "Compilation[id=" + id + ", " + method.format("%H.%n(%p)") + (entryBCI == Compiler.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
-    }
-
-    /**
-     * Compiles a method to machine code.
-     */
-    public static void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id) {
-        // Ensure a debug configuration for this thread is initialized
-        if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-            DebugEnvironment.initialize(TTY.out);
-        }
-
-        CompilationTask task = new CompilationTask(method, entryBCI, jvmciEnv, id, true);
-        try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig())) {
-            task.runCompilation();
-        }
-        return;
     }
 }
