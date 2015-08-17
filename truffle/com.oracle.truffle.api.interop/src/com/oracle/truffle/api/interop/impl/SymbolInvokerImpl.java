@@ -39,40 +39,48 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
 
     @SuppressWarnings("unchecked")
     @Override
-    protected Object invoke(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
-        if (symbol instanceof String) {
-            return symbol;
-        }
-        if (symbol instanceof Number) {
-            return symbol;
-        }
-        if (symbol instanceof Boolean) {
-            return symbol;
-        }
+    protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
         Class<? extends TruffleLanguage<?>> type = (Class<? extends TruffleLanguage<?>>) lang.getClass();
-        Node executeMain = Message.createExecute(arr.length).createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, executeMain, (TruffleObject) symbol, arr));
-        VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(arr, UNUSED_FRAMEDESCRIPTOR);
-        return callTarget.call(frame);
+        RootNode symbolNode;
+        if ((symbol instanceof String) || (symbol instanceof Number) || (symbol instanceof Boolean) || (symbol instanceof Character)) {
+            symbolNode = new ConstantRootNode(type, symbol);
+        } else {
+            Node executeMain = Message.createExecute(arr.length).createNode();
+            symbolNode = new TemporaryRoot(type, executeMain, (TruffleObject) symbol);
+        }
+        return Truffle.getRuntime().createCallTarget(symbolNode);
+    }
+
+    private final class ConstantRootNode extends RootNode {
+
+        private final Object value;
+
+        public ConstantRootNode(Class<? extends TruffleLanguage<?>> lang, Object value) {
+            super(lang, null, null);
+            this.value = value;
+        }
+
+        @Override
+        public Object execute(VirtualFrame vf) {
+            return value;
+        }
     }
 
     private static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
         private final TruffleObject function;
-        private final Object[] args;
 
-        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function, Object... args) {
+        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.convert = new ConvertNode();
             this.function = function;
-            this.args = args;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);
+            Object tmp = ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
             return convert.convert(frame, tmp);
         }
     }

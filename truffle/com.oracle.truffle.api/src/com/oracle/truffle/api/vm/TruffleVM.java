@@ -453,6 +453,7 @@ public final class TruffleVM {
         private final TruffleLanguage<?> language;
         private final Object obj;
         private final Object global;
+        private CallTarget target;
 
         Symbol(TruffleLanguage<?> language, Object obj, Object global) {
             this.language = language;
@@ -487,7 +488,10 @@ public final class TruffleVM {
                     arr.add(thiz);
                 }
                 arr.addAll(Arrays.asList(args));
-                return SPI.invoke(language, obj, arr.toArray());
+                if (target == null) {
+                    target = SPI.createCallTarget(language, obj, arr.toArray());
+                }
+                return target.call(arr.toArray());
             }
         }
     }
@@ -658,8 +662,8 @@ public final class TruffleVM {
         }
 
         @Override
-        protected Object invoke(TruffleLanguage<?> lang, Object obj, Object[] args) throws IOException {
-            return super.invoke(lang, obj, args);
+        protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object obj, Object[] args) throws IOException {
+            return super.createCallTarget(lang, obj, args);
         }
 
         @Override

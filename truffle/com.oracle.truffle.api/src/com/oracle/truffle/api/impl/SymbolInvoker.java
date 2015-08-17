@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import java.io.*;
 
@@ -32,5 +33,5 @@ import java.io.*;
  * associated nodes too much.
  */
 public abstract class SymbolInvoker {
-    protected abstract Object invoke(TruffleLanguage<?> lang, Object symbol, Object... args) throws IOException;
+    protected abstract CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... args) throws IOException;
 }
