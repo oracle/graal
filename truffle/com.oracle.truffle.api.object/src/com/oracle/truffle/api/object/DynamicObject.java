@@ -37,6 +37,16 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
      * Get property value.
      *
      * @param key property identifier
+     * @return property value or {@code null} if object has no such property
+     */
+    public final Object get(Object key) {
+        return get(key, null);
+    }
+
+    /**
+     * Get property value.
+     *
+     * @param key property identifier
      * @param defaultValue return value if property is not found
      * @return property value or defaultValue if object has no such property
      */
