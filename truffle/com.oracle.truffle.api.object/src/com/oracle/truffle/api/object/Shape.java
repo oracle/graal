@@ -249,10 +249,6 @@ public abstract class Shape {
 
     public abstract Shape tryMerge(Shape other);
 
-    public <R> R accept(ShapeVisitor<R> visitor) {
-        return visitor.visitShape(this);
-    }
-
     public abstract static class Allocator {
         protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
 

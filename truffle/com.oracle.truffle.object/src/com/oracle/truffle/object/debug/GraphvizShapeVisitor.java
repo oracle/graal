@@ -59,7 +59,7 @@ public class GraphvizShapeVisitor extends DebugShapeVisitor<GraphvizShapeVisitor
 
         for (Entry<? extends Transition, ? extends Shape> entry : transitions.entrySet()) {
             Shape dst = entry.getValue();
-            dst.accept(this);
+            ((ShapeImpl) dst).accept(this);
             assert drawn.contains(dst);
 
             sb.append(prefix).append(getId(shape)).append("->").append(prefix).append(getId(dst));

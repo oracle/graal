@@ -910,6 +910,10 @@ public abstract class ShapeImpl extends Shape {
         return null;
     }
 
+    public <R> R accept(ShapeVisitor<R> visitor) {
+        return visitor.visitShape(this);
+    }
+
     public abstract static class BaseAllocator extends Allocator implements LocationVisitor, Cloneable {
         protected final LayoutImpl layout;
         protected int objectArraySize;
