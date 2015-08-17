@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.object;
 
+/**
+ * A location that can store a value of a particular type.
+ */
 public interface TypedLocation extends BaseLocation {
     /**
      * The type of this location.

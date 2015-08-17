@@ -29,6 +29,11 @@ import java.util.*;
 import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
 import com.oracle.truffle.api.object.Layout.ImplicitCast;
 
+/**
+ * Layout builder.
+ *
+ * @see Layout
+ */
 public class LayoutBuilder {
     private EnumSet<ImplicitCast> allowedImplicitCasts;
     private FieldOffsetProvider fieldOffsetProvider;

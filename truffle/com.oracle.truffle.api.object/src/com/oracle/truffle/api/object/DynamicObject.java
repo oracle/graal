@@ -27,6 +27,11 @@ package com.oracle.truffle.api.object;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.interop.*;
 
+/**
+ * Represents an object members of which can be dynamically added and removed at run time.
+ *
+ * @see Shape
+ */
 public abstract class DynamicObject implements TypedObject, TruffleObject {
     /**
      * Get the object's current shape.
@@ -163,6 +168,12 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
      */
     public abstract DynamicObject copy(Shape currentShape);
 
+    /**
+     * Represents an operation on a single {@code int}-valued operand that produces an {@code int}
+     * -valued result.
+     *
+     * For Java 7 compatibility (equivalent to IntUnaryOperator).
+     */
     public interface FlagsFunction {
         int apply(int t);
     }

@@ -284,7 +284,9 @@ public abstract class Shape {
     }
 
     /**
-     * Represents a predicate (boolean-valued function) of one argument. For Java 7 compatibility.
+     * Represents a predicate (boolean-valued function) of one argument.
+     *
+     * For Java 7 compatibility (equivalent to Predicate).
      *
      * @param <T> the type of the input to the predicate
      */

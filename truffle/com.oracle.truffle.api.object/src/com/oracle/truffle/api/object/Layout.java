@@ -29,6 +29,11 @@ import java.util.*;
 import com.oracle.truffle.api.nodes.NodeUtil.FieldOffsetProvider;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
+/**
+ * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
+ *
+ * An object may change its shape but only to shapes of the same layout.
+ */
 public abstract class Layout {
     public static final EnumSet<ImplicitCast> NONE = EnumSet.noneOf(ImplicitCast.class);
     public static final EnumSet<ImplicitCast> INT_TO_DOUBLE = EnumSet.of(ImplicitCast.IntToDouble);
@@ -38,6 +43,9 @@ public abstract class Layout {
 
     private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
 
+    /**
+     * Specifies the allowed implicit casts between primitive types without losing type information.
+     */
     public enum ImplicitCast {
         IntToDouble,
         IntToLong,
