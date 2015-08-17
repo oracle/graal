@@ -474,6 +474,7 @@ public final class TruffleVM {
          * @throws IOException signals problem during execution
          */
         public Object invoke(Object thiz, Object... args) throws IOException {
+            checkThread();
             Debugger[] fillIn = {debugger};
             try (Closeable c = SPI.executionStart(TruffleVM.this, fillIn, null)) {
                 if (debugger == null) {
