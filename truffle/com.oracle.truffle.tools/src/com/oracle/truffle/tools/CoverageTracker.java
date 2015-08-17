@@ -40,9 +40,6 @@ import com.oracle.truffle.api.source.*;
  * is specified, {@linkplain StandardSyntaxTag#STATEMENT STATEMENT} is used, corresponding to
  * conventional behavior for code coverage tools.
  * <p>
- * No counts will be kept for execution in sources that hold the {@link SourceTag}
- * {@link Tags#NO_COVERAGE}.
- * <p>
  * <b>Tool Life Cycle</b>
  * <p>
  * See {@link InstrumentationTool} for the life cycle common to all such tools.
@@ -72,30 +69,6 @@ import com.oracle.truffle.api.source.*;
  * @see SyntaxTag
  */
 public final class CoverageTracker extends InstrumentationTool {
-
-    public enum Tags implements SourceTag {
-
-        /**
-         * Report no counts for sources holding this tag.
-         */
-        NO_COVERAGE("No Coverage", "Coverage Tracker will igore");
-
-        private final String name;
-        private final String description;
-
-        private Tags(String name, String description) {
-            this.name = name;
-            this.description = description;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-    }
 
     /** Counting data. */
     private final Map<LineLocation, CoverageRecord> coverageMap = new HashMap<>();
@@ -291,28 +264,28 @@ public final class CoverageTracker extends InstrumentationTool {
                 final SourceSection srcSection = probe.getProbedSourceSection();
                 if (srcSection == null) {
                     // TODO (mlvdv) report this?
-                } else if (!srcSection.getSource().isTaggedAs(Tags.NO_COVERAGE)) {
-                    // Get the source line where the
-                    final LineLocation lineLocation = srcSection.getLineLocation();
-                    CoverageRecord record = coverageMap.get(lineLocation);
-                    if (record != null) {
-                        // Another node starts on same line; count only the first (textually)
-                        if (srcSection.getCharIndex() > record.srcSection.getCharIndex()) {
-                            // Existing record, corresponds to code earlier on line
-                            return;
-                        } else {
-                            // Existing record, corresponds to code at a later position; replace it
-                            record.instrument.dispose();
-                        }
-                    }
-
-                    final CoverageRecord coverage = new CoverageRecord(srcSection);
-                    final Instrument instrument = Instrument.create(coverage, CoverageTracker.class.getSimpleName());
-                    coverage.instrument = instrument;
-                    instruments.add(instrument);
-                    probe.attach(instrument);
-                    coverageMap.put(lineLocation, coverage);
+                    return;
                 }
+                // Get the source line where the
+                final LineLocation lineLocation = srcSection.getLineLocation();
+                CoverageRecord record = coverageMap.get(lineLocation);
+                if (record != null) {
+                    // Another node starts on same line; count only the first (textually)
+                    if (srcSection.getCharIndex() > record.srcSection.getCharIndex()) {
+                        // Existing record, corresponds to code earlier on line
+                        return;
+                    } else {
+                        // Existing record, corresponds to code at a later position; replace it
+                        record.instrument.dispose();
+                    }
+                }
+
+                final CoverageRecord coverage = new CoverageRecord(srcSection);
+                final Instrument instrument = Instrument.create(coverage, CoverageTracker.class.getSimpleName());
+                coverage.instrument = instrument;
+                instruments.add(instrument);
+                probe.attach(instrument);
+                coverageMap.put(lineLocation, coverage);
             }
         }
     }
