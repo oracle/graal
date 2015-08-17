@@ -375,6 +375,11 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     }
 
     @Override
+    public final DynamicObject copy(Shape currentShape) {
+        return cloneWithShape(currentShape);
+    }
+
+    @Override
     public ForeignAccess getForeignAccess() {
         return getShape().getForeignAccessFactory();
     }

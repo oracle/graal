@@ -156,6 +156,13 @@ public abstract class DynamicObject implements TypedObject, TruffleObject {
      */
     public abstract boolean updateShape();
 
+    /**
+     * Create a shallow copy of this object.
+     *
+     * @param currentShape the object's current shape (must equal {@link #getShape()})
+     */
+    public abstract DynamicObject copy(Shape currentShape);
+
     public interface FlagsFunction {
         int apply(int t);
     }
