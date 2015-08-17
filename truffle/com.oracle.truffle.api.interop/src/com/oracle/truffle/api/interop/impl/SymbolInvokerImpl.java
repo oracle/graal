@@ -53,27 +53,61 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
         Node executeMain = Message.createExecute(arr.length).createNode();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, executeMain, (TruffleObject) symbol, arr));
         VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(arr, UNUSED_FRAMEDESCRIPTOR);
-        Object ret = callTarget.call(frame);
-        if (ret instanceof TruffleObject) {
-            TruffleObject tret = (TruffleObject) ret;
+        return callTarget.call(frame);
+    }
+
+    private static class TemporaryRoot extends RootNode {
+        @Child private Node foreignAccess;
+        @Child private ConvertNode convert;
+        private final TruffleObject function;
+        private final Object[] args;
+
+        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function, Object... args) {
+            super(lang, null, null);
+            this.foreignAccess = foreignAccess;
+            this.convert = new ConvertNode();
+            this.function = function;
+            this.args = args;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object tmp = ForeignAccess.execute(foreignAccess, frame, function, args);
+            return convert.convert(frame, tmp);
+        }
+    }
+
+    private static final class ConvertNode extends Node {
+        @Child private Node isNull;
+        @Child private Node isBoxed;
+        @Child private Node unbox;
+
+        public ConvertNode() {
+            this.isNull = Message.IS_NULL.createNode();
+            this.isBoxed = Message.IS_BOXED.createNode();
+            this.unbox = Message.UNBOX.createNode();
+        }
+
+        Object convert(VirtualFrame frame, Object obj) {
+            if (obj instanceof TruffleObject) {
+                return convert(frame, (TruffleObject) obj);
+            } else {
+                return obj;
+            }
+        }
+
+        private Object convert(VirtualFrame frame, TruffleObject obj) {
             Object isBoxedResult;
             try {
-                Node isBoxed = Message.IS_BOXED.createNode();
-                CallTarget isBoxedTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, isBoxed, tret));
-                isBoxedResult = isBoxedTarget.call(frame);
+                isBoxedResult = ForeignAccess.execute(isBoxed, frame, obj);
             } catch (IllegalArgumentException ex) {
                 isBoxedResult = false;
             }
             if (Boolean.TRUE.equals(isBoxedResult)) {
-                Node unbox = Message.UNBOX.createNode();
-                CallTarget unboxTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, unbox, tret));
-                Object unboxResult = unboxTarget.call(frame);
-                return unboxResult;
+                return ForeignAccess.execute(unbox, frame, obj);
             } else {
                 try {
-                    Node isNull = Message.IS_NULL.createNode();
-                    CallTarget isNullTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(type, isNull, tret));
-                    Object isNullResult = isNullTarget.call(frame);
+                    Object isNullResult = ForeignAccess.execute(isNull, frame, obj);
                     if (Boolean.TRUE.equals(isNullResult)) {
                         return null;
                     }
@@ -81,26 +115,7 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
                     // fallthrough
                 }
             }
-        }
-        return ret;
-    }
-
-    private static class TemporaryRoot extends RootNode {
-        @Child private Node foreignAccess;
-        private final TruffleObject function;
-        private final Object[] args;
-
-        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function, Object... args) {
-            super(lang, null, null);
-            this.foreignAccess = foreignAccess;
-            this.function = function;
-            this.args = args;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return ForeignAccess.execute(foreignAccess, frame, function, args);
+            return obj;
         }
     }
-
 }
