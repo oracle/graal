@@ -46,7 +46,6 @@ import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.graal.truffle.nodes.frame.*;
-import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -61,7 +60,6 @@ public class TruffleGraphBuilderPlugins {
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(metaAccess, plugins);
-        registerUnsafeAccessImplPlugins(plugins, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
             registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification);
@@ -315,12 +313,6 @@ public class TruffleGraphBuilderPlugins {
         Registration r = new Registration(plugins, FrameWithBoxing.class);
         registerMaterialize(r);
         registerUnsafeCast(r, canDelayIntrinsification);
-    }
-
-    public static void registerUnsafeAccessImplPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
-        Registration r = new Registration(plugins, UnsafeAccessImpl.class);
-        registerUnsafeCast(r, canDelayIntrinsification);
-        registerUnsafeLoadStorePlugins(r, Kind.Boolean, Kind.Byte, Kind.Int, Kind.Short, Kind.Long, Kind.Float, Kind.Double, Kind.Object);
     }
 
     private static void registerMaterialize(Registration r) {
