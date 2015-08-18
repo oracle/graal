@@ -128,7 +128,7 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
         StringBuilder msg = new StringBuilder();
         msg.append("Call in ").append(b.getMethod().format("%H.%n(%p)"));
         msg.append(" to ").append(method.format("%H.%n(%p)"));
-        msg.append(" cannot be intrisfied or folded, probably because an argument is not a constant. Arguments: ");
+        msg.append(" cannot be intrisified or folded, probably because an argument is not a constant. Arguments: ");
         String sep = "";
         for (ValueNode node : args) {
             msg.append(sep).append(node.toString());
