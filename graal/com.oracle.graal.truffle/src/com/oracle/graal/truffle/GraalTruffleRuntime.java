@@ -37,12 +37,10 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.debug.*;
-import com.oracle.graal.truffle.unsafe.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.unsafe.*;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -222,9 +220,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public <T> T getCapability(Class<T> capability) {
-        if (capability == UnsafeAccessFactory.class) {
-            return capability.cast(new UnsafeAccessFactoryImpl());
-        }
         return null;
     }
 
