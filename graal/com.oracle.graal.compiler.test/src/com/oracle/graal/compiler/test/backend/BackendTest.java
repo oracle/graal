@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,14 +48,13 @@ public abstract class BackendTest extends GraalCompilerTest {
     protected LIRGenerationResult getLIRGenerationResult(final StructuredGraph graph) {
         SchedulePhase schedule = null;
         try (Scope s = Debug.scope("FrontEnd")) {
-            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend().getTarget(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE, graph.method().getProfilingInfo(),
-                            getSuites());
+            schedule = GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE, graph.method().getProfilingInfo(), getSuites());
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), schedule, graph, null, cc, null, getLIRSuites());
+        LIRGenerationResult lirGen = GraalCompiler.emitLIR(getBackend(), schedule, graph, null, cc, null, getLIRSuites());
         return lirGen;
     }
 

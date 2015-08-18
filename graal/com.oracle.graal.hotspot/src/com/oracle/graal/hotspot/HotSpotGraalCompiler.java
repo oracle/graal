@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,8 +118,8 @@ public class HotSpotGraalCompiler implements Compiler {
             // all code after the OSR loop is never executed.
             optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
         }
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo,
-                        suites, lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, getGraphBuilderSuite(providers, isOSR), optimisticOpts, profilingInfo, suites, lirSuites,
+                        new CompilationResult(), CompilationResultBuilderFactory.Default);
 
         result.setEntryBCI(entryBCI);
 

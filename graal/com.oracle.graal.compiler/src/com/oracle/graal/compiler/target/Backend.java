@@ -43,7 +43,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * Represents a compiler backend for Graal.
  */
-public abstract class Backend {
+public abstract class Backend implements TargetProvider {
 
     private final Providers providers;
 

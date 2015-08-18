@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,7 @@ package com.oracle.graal.phases.tiers;
 
 import jdk.internal.jvmci.code.*;
 
-import com.oracle.graal.phases.util.*;
+public interface TargetProvider {
 
-public class LowTierContext extends PhaseContext {
-
-    private final TargetProvider target;
-
-    public LowTierContext(Providers copyFrom, TargetProvider target) {
-        super(copyFrom);
-        this.target = target;
-    }
-
-    public TargetDescription getTarget() {
-        return target.getTarget();
-    }
-
-    public TargetProvider getTargetProvider() {
-        return target;
-    }
+    TargetDescription getTarget();
 }

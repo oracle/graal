@@ -52,7 +52,6 @@ public class InvokeGraal {
     protected final Providers providers;
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
-    protected final TargetDescription target;
 
     public InvokeGraal() {
         /* Ask the hosting Java VM for the entry point object to the Graal API. */
@@ -67,7 +66,6 @@ public class InvokeGraal {
         /* Some frequently used providers and configuration objects. */
         metaAccess = providers.getMetaAccess();
         codeCache = providers.getCodeCache();
-        target = codeCache.getTarget();
     }
 
     private static AtomicInteger compilationId = new AtomicInteger();
@@ -124,7 +122,7 @@ public class InvokeGraal {
             CompilationResultBuilderFactory factory = CompilationResultBuilderFactory.Default;
 
             /* Invoke the whole Graal compilation pipeline. */
-            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, target, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory);
+            GraalCompiler.compileGraph(graph, callingConvention, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory);
 
             /*
              * Install the compilation result into the VM, i.e., copy the byte[] array that contains

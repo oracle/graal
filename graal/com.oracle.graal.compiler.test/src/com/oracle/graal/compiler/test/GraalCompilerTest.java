@@ -378,7 +378,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected TargetDescription getTarget() {
-        return getProviders().getCodeCache().getTarget();
+        return getTargetProvider().getTarget();
+    }
+
+    protected TargetProvider getTargetProvider() {
+        return getBackend();
     }
 
     protected CodeCacheProvider getCodeCache() {
@@ -715,8 +719,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graphToCompile.method(), false);
-        Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getCodeCache().getTarget(), getDefaultGraphBuilderSuite(),
-                        OptimisticOptimizations.ALL, getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
+        Request<CompilationResult> request = new Request<>(graphToCompile, cc, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+                        getProfilingInfo(graphToCompile), getSuites(), getLIRSuites(), new CompilationResult(), CompilationResultBuilderFactory.Default);
         return GraalCompiler.compile(request);
     }
 

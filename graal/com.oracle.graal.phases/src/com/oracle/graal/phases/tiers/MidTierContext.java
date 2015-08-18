@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,11 @@ import com.oracle.graal.phases.util.*;
 
 public class MidTierContext extends PhaseContext {
 
-    private final TargetDescription target;
+    private final TargetProvider target;
     private final OptimisticOptimizations optimisticOpts;
     private final ProfilingInfo profilingInfo;
 
-    public MidTierContext(Providers copyFrom, TargetDescription target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo) {
+    public MidTierContext(Providers copyFrom, TargetProvider target, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo) {
         super(copyFrom);
         this.target = target;
         this.optimisticOpts = optimisticOpts;
@@ -42,6 +42,10 @@ public class MidTierContext extends PhaseContext {
     }
 
     public TargetDescription getTarget() {
+        return target.getTarget();
+    }
+
+    public TargetProvider getTargetProvider() {
         return target;
     }
 

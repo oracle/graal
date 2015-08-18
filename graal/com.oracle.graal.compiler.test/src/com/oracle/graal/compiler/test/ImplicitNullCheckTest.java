@@ -65,7 +65,7 @@ public class ImplicitNullCheckTest extends GraphScheduleTest {
             PhaseContext context = new PhaseContext(getProviders());
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
-            MidTierContext midTierContext = new MidTierContext(getProviders(), getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
+            MidTierContext midTierContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
             new GuardLoweringPhase().apply(graph, midTierContext);
 
             Assert.assertEquals(0, graph.getNodes(DeoptimizeNode.TYPE).count());
