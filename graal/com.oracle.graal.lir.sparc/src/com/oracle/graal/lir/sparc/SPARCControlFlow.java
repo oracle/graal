@@ -486,11 +486,11 @@ public class SPARCControlFlow {
                     boolean canUseShortBranch = masm.hasFeature(CPUFeature.CBCOND) && isShortBranch(masm, cbCondPosition, hint, target);
                     if (bits != null && canUseShortBranch) {
                         if (isShortConstant) {
-                            CBCOND.emit(masm, conditionFlag, conditionCode == Icc, keyRegister, (int) (long) bits, target);
+                            CBCOND.emit(masm, conditionFlag, conditionCode == Xcc, keyRegister, (int) (long) bits, target);
                         } else {
                             Register scratchRegister = asRegister(scratch);
                             const2reg(crb, masm, scratch, constantBaseRegister, keyConstants[index], SPARCDelayedControlTransfer.DUMMY);
-                            CBCOND.emit(masm, conditionFlag, conditionCode == Icc, keyRegister, scratchRegister, target);
+                            CBCOND.emit(masm, conditionFlag, conditionCode == Xcc, keyRegister, scratchRegister, target);
                         }
                     } else {
                         if (bits != null && isSimm13(constant)) {
