@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.unsafe.*;
 
 /**
  * Default implementation of the Truffle runtime if the virtual machine does not provide a better
@@ -149,9 +148,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     public <T> T getCapability(Class<T> capability) {
-        if (capability == UnsafeAccessFactory.class) {
-            return capability.cast(new UnsafeAccessFactoryImpl());
-        }
         return null;
     }
 
