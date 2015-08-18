@@ -35,6 +35,7 @@ import com.oracle.graal.debug.Debug.*;
 
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
+import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.common.type.*;
@@ -375,6 +376,10 @@ public class PartialEvaluator {
 
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
+
+        for (TruffleInvocationPluginProvider p : Services.load(TruffleInvocationPluginProvider.class)) {
+            p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
+        }
     }
 
     protected InvocationPlugins createDecodingInvocationPlugins() {

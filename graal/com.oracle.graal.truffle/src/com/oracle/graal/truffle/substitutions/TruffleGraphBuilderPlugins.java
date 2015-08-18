@@ -332,7 +332,7 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification) {
+    public static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification) {
         r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
                 if (clazz.isConstant() && nonNull.isConstant()) {
@@ -375,7 +375,7 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    protected static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {
+    public static void registerUnsafeLoadStorePlugins(Registration r, Kind... kinds) {
         for (Kind kind : kinds) {
             String kindName = kind.getJavaName();
             kindName = toUpperCase(kindName.charAt(0)) + kindName.substring(1);
