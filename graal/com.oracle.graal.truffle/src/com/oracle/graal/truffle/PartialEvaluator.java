@@ -29,8 +29,10 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
@@ -78,7 +80,9 @@ public class PartialEvaluator {
     private final ResolvedJavaMethod callInlinedMethod;
     private final ResolvedJavaMethod callSiteProxyMethod;
     private final ResolvedJavaMethod callRootMethod;
-    private final GraphBuilderConfiguration configForRoot;
+    private final GraphBuilderConfiguration configForPartialEvaluation;
+    private final GraphBuilderConfiguration configForParsing;
+    private final InvocationPlugins decodingInvocationPlugins;
 
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
         this.providers = providers;
@@ -88,13 +92,16 @@ public class PartialEvaluator {
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
         this.callInlinedMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
         this.callSiteProxyMethod = providers.getMetaAccess().lookupJavaMethod(GraalFrameInstance.CallNodeFrame.METHOD);
-        this.configForRoot = configForRoot;
 
         try {
             callRootMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
+
+        this.configForPartialEvaluation = createGraphBuilderConfig(configForRoot, false);
+        this.configForParsing = createGraphBuilderConfig(configForRoot, true);
+        this.decodingInvocationPlugins = createDecodingInvocationPlugins();
     }
 
     public Providers getProviders() {
@@ -287,9 +294,7 @@ public class PartialEvaluator {
     }
 
     protected void doFastPE(OptimizedCallTarget callTarget, StructuredGraph graph) {
-        GraphBuilderConfiguration newConfig = configForRoot.copy();
-        InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, false, snippetReflection);
+        GraphBuilderConfiguration newConfig = configForPartialEvaluation.copy();
 
         newConfig.setUseProfiling(false);
         Plugins plugins = newConfig.getPlugins();
@@ -315,9 +320,8 @@ public class PartialEvaluator {
     }
 
     protected PEGraphDecoder createGraphDecoder(StructuredGraph graph) {
-        GraphBuilderConfiguration newConfig = configForRoot.copy();
+        GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), parsingInvocationPlugins, true, snippetReflection);
 
         LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
 
@@ -341,7 +345,6 @@ public class PartialEvaluator {
 
         LoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
         ParameterPlugin parameterPlugin = new InterceptReceiverPlugin(callTarget);
-        InvocationPlugins invocationPlugins = createDecodingInvocationPlugins();
 
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
@@ -355,16 +358,30 @@ public class PartialEvaluator {
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin};
         }
 
-        decoder.decode(graph, graph.method(), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin);
+        decoder.decode(graph, graph.method(), loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin);
 
         if (PrintTruffleExpansionHistogram.getValue()) {
             histogramPlugin.print(callTarget);
         }
     }
 
+    protected GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration config, boolean canDelayIntrinsification) {
+        GraphBuilderConfiguration newConfig = config.copy();
+        InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
+        registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
+        invocationPlugins.closeRegistration();
+        return newConfig;
+    }
+
+    protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, snippetReflection);
+    }
+
     protected InvocationPlugins createDecodingInvocationPlugins() {
+        @SuppressWarnings("hiding")
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(providers.getMetaAccess());
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), decodingInvocationPlugins, false, snippetReflection);
+        registerTruffleInvocationPlugins(decodingInvocationPlugins, false);
+        decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
     }
 
