@@ -37,10 +37,15 @@ import com.oracle.truffle.api.nodes.*;
 public final class SymbolInvokerImpl extends SymbolInvoker {
     static final FrameDescriptor UNUSED_FRAMEDESCRIPTOR = new FrameDescriptor();
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
-        Class<? extends TruffleLanguage<?>> type = (Class<? extends TruffleLanguage<?>>) lang.getClass();
+        Class<? extends TruffleLanguage<?>> type;
+        if (lang != null) {
+            type = (Class) lang.getClass();
+        } else {
+            type = (Class) TruffleLanguage.class;
+        }
         RootNode symbolNode;
         if ((symbol instanceof String) || (symbol instanceof Number) || (symbol instanceof Boolean) || (symbol instanceof Character)) {
             symbolNode = new ConstantRootNode(type, symbol);

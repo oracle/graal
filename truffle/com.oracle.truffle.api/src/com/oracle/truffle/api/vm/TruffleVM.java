@@ -80,6 +80,7 @@ public final class TruffleVM {
     private final Writer err;
     private final Writer out;
     private final EventConsumer<?>[] handlers;
+    private final Map<String, Object> globals;
     private Debugger debugger;
 
     /**
@@ -92,6 +93,7 @@ public final class TruffleVM {
         this.out = null;
         this.langs = null;
         this.handlers = null;
+        this.globals = null;
     }
 
     /**
@@ -101,12 +103,13 @@ public final class TruffleVM {
      * @param err stderr
      * @param in stdin
      */
-    private TruffleVM(Writer out, Writer err, Reader in, EventConsumer<?>[] handlers) {
+    private TruffleVM(Map<String, Object> globals, Writer out, Writer err, Reader in, EventConsumer<?>[] handlers) {
         this.out = out;
         this.err = err;
         this.in = in;
         this.handlers = handlers;
         this.initThread = Thread.currentThread();
+        this.globals = new HashMap<>(globals);
         this.langs = new HashMap<>();
         Enumeration<URL> en;
         try {
@@ -189,7 +192,8 @@ public final class TruffleVM {
         private Writer out;
         private Writer err;
         private Reader in;
-        private List<EventConsumer<?>> handlers = new ArrayList<>();
+        private final List<EventConsumer<?>> handlers = new ArrayList<>();
+        private final Map<String, Object> globals = new HashMap<>();
 
         Builder() {
         }
@@ -244,6 +248,24 @@ public final class TruffleVM {
         }
 
         /**
+         * Adds global named symbol into the configuration of to-be-built {@link TruffleVM}. This
+         * symbol will be accessible to all languages via {@link Env#importSymbol(java.lang.String)}
+         * and will take precedence over {@link TruffleLanguage#findExportedSymbol symbols exported
+         * by languages itself}. Repeated use of <code>globalSymbol</code> is possible; later
+         * definition of the same name overrides the previous one.
+         * 
+         * @param name name of the symbol to register
+         * @param obj value of the object - expected to be primitive wrapper, {@link String} or
+         *            <code>TruffleObject</code> for mutual inter-operability
+         * @return instance of this builder
+         * @see TruffleVM#findGlobalSymbol(java.lang.String)
+         */
+        public Builder globalSymbol(String name, Object obj) {
+            globals.put(name, obj);
+            return this;
+        }
+
+        /**
          * Creates the {@link TruffleVM Truffle virtual machine}. The configuration is taken from
          * values passed into configuration methods in this class.
          *
@@ -259,7 +281,7 @@ public final class TruffleVM {
             if (in == null) {
                 in = new InputStreamReader(System.in);
             }
-            return new TruffleVM(out, err, in, handlers.toArray(new EventConsumer[0]));
+            return new TruffleVM(globals, out, err, in, handlers.toArray(new EventConsumer[0]));
         }
     }
 
@@ -379,15 +401,17 @@ public final class TruffleVM {
     public Symbol findGlobalSymbol(String globalName) {
         checkThread();
         TruffleLanguage<?> lang = null;
-        Object obj = null;
+        Object obj = globals.get(globalName);
         Object global = null;
-        for (Language dl : langs.values()) {
-            TruffleLanguage<?> l = dl.getImpl();
-            obj = SPI.findExportedSymbol(dl.env, globalName, true);
-            if (obj != null) {
-                lang = l;
-                global = SPI.languageGlobal(dl.env);
-                break;
+        if (obj == null) {
+            for (Language dl : langs.values()) {
+                TruffleLanguage<?> l = dl.getImpl();
+                obj = SPI.findExportedSymbol(dl.env, globalName, true);
+                if (obj != null) {
+                    lang = l;
+                    global = SPI.languageGlobal(dl.env);
+                    break;
+                }
             }
         }
         if (obj == null) {
@@ -624,6 +648,10 @@ public final class TruffleVM {
     private static class SPIAccessor extends Accessor {
         @Override
         public Object importSymbol(TruffleVM vm, TruffleLanguage<?> ownLang, String globalName) {
+            Object g = vm.globals.get(globalName);
+            if (g != null) {
+                return g;
+            }
             Set<Language> uniqueLang = new LinkedHashSet<>(vm.langs.values());
             for (Language dl : uniqueLang) {
                 TruffleLanguage<?> l = dl.getImpl();
