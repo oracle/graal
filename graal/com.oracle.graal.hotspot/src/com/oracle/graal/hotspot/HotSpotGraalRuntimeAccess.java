@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import jdk.internal.jvmci.runtime.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.api.runtime.*;
@@ -31,6 +32,7 @@ public class HotSpotGraalRuntimeAccess implements GraalRuntimeAccess {
 
     @Override
     public GraalRuntime getRuntime() {
+        JVMCI.initialize();
         return HotSpotGraalRuntime.runtime();
     }
 }
