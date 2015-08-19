@@ -120,11 +120,6 @@ public abstract class FrameMap {
         return getTarget().arch.getReturnAddressSize();
     }
 
-    protected int calleeSaveAreaSize() {
-        CalleeSaveLayout csl = getRegisterConfig().getCalleeSaveLayout();
-        return csl != null ? csl.size : 0;
-    }
-
     /**
      * Determines if an offset to an incoming stack argument was ever returned by
      * {@link #offsetForStackSlot(StackSlot)}.
@@ -203,14 +198,6 @@ public abstract class FrameMap {
         }
         return slot.getOffset(totalFrameSize());
     }
-
-    /**
-     * Gets the offset from the stack pointer to the stack area where callee-saved registers are
-     * stored.
-     *
-     * @return The offset to the callee save area (in bytes).
-     */
-    public abstract int offsetToCalleeSaveArea();
 
     /**
      * Informs the frame map that the compiled code calls a particular method, which may need stack

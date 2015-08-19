@@ -77,7 +77,7 @@ public class AMD64FrameMap extends FrameMap {
     public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size
-        initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
+        initialSpillSize = returnAddressSize();
         spillSize = initialSpillSize;
     }
 
@@ -94,11 +94,6 @@ public class AMD64FrameMap extends FrameMap {
     @Override
     protected int alignFrameSize(int size) {
         return NumUtil.roundUp(size + returnAddressSize(), getTarget().stackAlignment) - returnAddressSize();
-    }
-
-    @Override
-    public int offsetToCalleeSaveArea() {
-        return frameSize() - calleeSaveAreaSize();
     }
 
     @Override

@@ -175,12 +175,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                         asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
                     }
                 }
-                CalleeSaveLayout csl = frameMap.getRegisterConfig().getCalleeSaveLayout();
-                if (csl != null && csl.size != 0) {
-                    int frameToCSA = frameMap.offsetToCalleeSaveArea();
-                    assert frameToCSA >= 0;
-                    asm.save(csl, frameToCSA);
-                }
+                assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
             }
         }
 
@@ -188,13 +183,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         public void leave(CompilationResultBuilder crb) {
             if (!omitFrame) {
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-                CalleeSaveLayout csl = crb.frameMap.getRegisterConfig().getCalleeSaveLayout();
-
-                if (csl != null && csl.size != 0) {
-                    // saved all registers, restore all registers
-                    int frameToCSA = crb.frameMap.offsetToCalleeSaveArea();
-                    asm.restore(csl, frameToCSA);
-                }
+                assert crb.frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
                 int frameSize = crb.frameMap.frameSize();
                 asm.incrementq(rsp, frameSize);
