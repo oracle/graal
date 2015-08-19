@@ -41,21 +41,26 @@ import com.oracle.graal.nodes.spi.*;
  */
 public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
-    private final MetaAccessProvider metaAccess;
-    private final ConstantReflectionProvider constantReflection;
-    private final StampProvider stampProvider;
-    private final StructuredGraph graph;
-    private final ResolvedJavaMethod method;
-    private final int invokeBci;
-    private FixedWithNextNode lastInstr;
-    private ValueNode[] arguments;
-    private ValueNode returnValue;
+    protected final MetaAccessProvider metaAccess;
+    protected final ConstantReflectionProvider constantReflection;
+    protected final StampProvider stampProvider;
+    protected final StructuredGraph graph;
+    protected final ResolvedJavaMethod method;
+    protected final int invokeBci;
+    protected FixedWithNextNode lastInstr;
+    protected ValueNode[] arguments;
+    protected ValueNode returnValue;
 
     public IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, ResolvedJavaMethod method, int invokeBci) {
+        this(metaAccess, constantReflection, stampProvider, method, invokeBci, AllowAssumptions.YES);
+    }
+
+    protected IntrinsicGraphBuilder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, StampProvider stampProvider, ResolvedJavaMethod method, int invokeBci,
+                    AllowAssumptions allowAssumptions) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.stampProvider = stampProvider;
-        this.graph = new StructuredGraph(method, AllowAssumptions.YES);
+        this.graph = new StructuredGraph(method, allowAssumptions);
         this.method = method;
         this.invokeBci = invokeBci;
         this.lastInstr = graph.start();
