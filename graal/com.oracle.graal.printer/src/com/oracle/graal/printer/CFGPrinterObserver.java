@@ -224,17 +224,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         return object instanceof List<?> && ((List<?>) object).size() > 0 && ((List<?>) object).get(0) instanceof AbstractBlockBase<?>;
     }
 
-    private static DisassemblerProvider disassembler;
+    /** Lazy initialization to delay service lookup until disassembler is actually needed. */
+    static class DisassemblerHolder {
+        private static final DisassemblerProvider disassembler;
 
-    private static final DisassemblerProvider NOP_DISASSEMBLER = new DisassemblerProvider() {
-        public String getName() {
-            return null;
-        }
-    };
-
-    private static DisassemblerProvider getDisassembler() {
-        if (disassembler == null) {
-            DisassemblerProvider selected = NOP_DISASSEMBLER;
+        static {
+            DisassemblerProvider selected = null;
             for (DisassemblerProvider d : Services.load(DisassemblerProvider.class)) {
                 String name = d.getName().toLowerCase();
                 if (name.contains("hcf") || name.contains("hexcodefile")) {
@@ -242,13 +237,19 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                     break;
                 }
             }
+            if (selected == null) {
+                selected = new DisassemblerProvider() {
+                    public String getName() {
+                        return "nop";
+                    }
+                };
+            }
             disassembler = selected;
         }
-        return disassembler;
     }
 
     private static String disassemble(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode installedCode) {
-        DisassemblerProvider dis = getDisassembler();
+        DisassemblerProvider dis = DisassemblerHolder.disassembler;
         if (installedCode != null) {
             return dis.disassembleInstalledCode(codeCache, compResult, installedCode);
         }

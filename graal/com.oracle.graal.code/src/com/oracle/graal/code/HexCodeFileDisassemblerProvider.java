@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.code;
 
-import java.lang.reflect.*;
+import java.lang.invoke.*;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
@@ -115,12 +115,12 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
      * {@link HexCodeFile}.
      */
     static class HexCodeFileDisTool {
-        static final Method processMethod;
+        static final MethodHandle processMethod;
         static {
-            Method toolMethod = null;
+            MethodHandle toolMethod = null;
             try {
                 Class<?> toolClass = Class.forName("com.oracle.max.hcfdis.HexCodeFileDis", true, ClassLoader.getSystemClassLoader());
-                toolMethod = toolClass.getDeclaredMethod("processEmbeddedString", String.class);
+                toolMethod = MethodHandles.lookup().unreflect(toolClass.getDeclaredMethod("processEmbeddedString", String.class));
             } catch (Exception e) {
                 // Tool not available on the class path
             }
@@ -130,8 +130,8 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         public static String tryDisassemble(String hcfEmbeddedString) {
             if (processMethod != null) {
                 try {
-                    return (String) processMethod.invoke(null, hcfEmbeddedString);
-                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                    return (String) processMethod.invokeExact(hcfEmbeddedString);
+                } catch (Throwable e) {
                     // If the tool is available, for now let's be noisy when it fails
                     throw new InternalError(e);
                 }
