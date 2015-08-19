@@ -789,7 +789,7 @@ public abstract class Source {
                 return code;
             }
             try {
-                return read(new FileReader(file));
+                return read(new InputStreamReader(new FileInputStream(file), "UTF-8"));
             } catch (IOException e) {
             }
             return null;
@@ -811,10 +811,12 @@ public abstract class Source {
                 return new StringReader(code);
             }
             try {
-                return new FileReader(file);
+                return new InputStreamReader(new FileInputStream(file), "UTF-8");
             } catch (FileNotFoundException e) {
 
                 throw new RuntimeException("Can't find file " + path, e);
+            } catch (UnsupportedEncodingException e) {
+                throw new RuntimeException("Unsupported encoding in file " + path, e);
             }
         }
 
