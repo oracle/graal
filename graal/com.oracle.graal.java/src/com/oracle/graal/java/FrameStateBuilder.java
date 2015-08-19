@@ -383,12 +383,12 @@ public final class FrameStateBuilder implements SideEffectsState {
             ((PhiNode) currentValue).addInput(otherValue);
             return currentValue;
         } else if (currentValue != otherValue) {
-            assert !(block instanceof LoopBeginNode) : String.format("Phi functions for loop headers are create eagerly for changed locals and all stack slots: %s != %s", currentValue, otherValue);
             if (currentValue == TWO_SLOT_MARKER || otherValue == TWO_SLOT_MARKER) {
                 return null;
             } else if (otherValue == null || otherValue.isDeleted() || currentValue.getStackKind() != otherValue.getStackKind()) {
                 return null;
             }
+            assert !(block instanceof LoopBeginNode) : String.format("Phi functions for loop headers are create eagerly for changed locals and all stack slots: %s != %s", currentValue, otherValue);
             return createValuePhi(currentValue, otherValue, block);
         } else {
             return currentValue;
@@ -424,18 +424,36 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin, boolean forcePhis) {
+    public void inferPhiStamps(AbstractMergeNode block) {
         for (int i = 0; i < localsSize(); i++) {
-            boolean needPhi = forcePhis || liveness.localIsChangedInLoop(loopId, i);
-            if (needPhi) {
-                locals[i] = createLoopPhi(loopBegin, locals[i]);
+            inferPhiStamp(block, locals[i]);
+        }
+        for (int i = 0; i < stackSize(); i++) {
+            inferPhiStamp(block, stack[i]);
+        }
+        for (int i = 0; i < lockedObjects.length; i++) {
+            inferPhiStamp(block, lockedObjects[i]);
+        }
+    }
+
+    private static void inferPhiStamp(AbstractMergeNode block, ValueNode node) {
+        if (block.isPhiAtMerge(node)) {
+            node.inferStamp();
+        }
+    }
+
+    public void insertLoopPhis(LocalLiveness liveness, int loopId, LoopBeginNode loopBegin, boolean forcePhis, boolean stampFromValueForForcedPhis) {
+        for (int i = 0; i < localsSize(); i++) {
+            boolean changedInLoop = liveness.localIsChangedInLoop(loopId, i);
+            if (forcePhis || changedInLoop) {
+                locals[i] = createLoopPhi(loopBegin, locals[i], stampFromValueForForcedPhis && !changedInLoop);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
-            stack[i] = createLoopPhi(loopBegin, stack[i]);
+            stack[i] = createLoopPhi(loopBegin, stack[i], false);
         }
         for (int i = 0; i < lockedObjects.length; i++) {
-            lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i]);
+            lockedObjects[i] = createLoopPhi(loopBegin, lockedObjects[i], false);
         }
     }
 
@@ -487,13 +505,13 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    private ValueNode createLoopPhi(AbstractMergeNode block, ValueNode value) {
+    private ValueNode createLoopPhi(AbstractMergeNode block, ValueNode value, boolean stampFromValue) {
         if (value == null || value == TWO_SLOT_MARKER) {
             return value;
         }
         assert !block.isPhiAtMerge(value) : "phi function for this block already created";
 
-        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(value.stamp().unrestricted(), block));
+        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(stampFromValue ? value.stamp() : value.stamp().unrestricted(), block));
         phi.addInput(value);
         return phi;
     }

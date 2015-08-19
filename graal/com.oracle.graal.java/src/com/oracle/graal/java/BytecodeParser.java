@@ -2258,7 +2258,7 @@ public class BytecodeParser implements GraphBuilderContext {
             lastInstr = loopBegin;
 
             // Create phi functions for all local variables and operand stack slots.
-            frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis());
+            frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis(), stampFromValueForForcedPhis());
             loopBegin.setStateAfter(createFrameState(block.startBci, loopBegin));
 
             /*
@@ -2275,6 +2275,12 @@ public class BytecodeParser implements GraphBuilderContext {
             Debug.log("  created loop header %s", loopBegin);
         } else if (block.isLoopHeader && explodeLoops && this.mergeExplosions) {
             frameState = frameState.copy();
+        } else if (lastInstr instanceof MergeNode) {
+            /*
+             * All inputs of non-loop phi nodes are known by now. We can infer the stamp for the
+             * phi, so that parsing continues with more precise type information.
+             */
+            frameState.inferPhiStamps((AbstractMergeNode) lastInstr);
         }
         assert lastInstr.next() == null : "instructions already appended at block " + block;
         Debug.log("  frameState: %s", frameState);
@@ -2345,6 +2351,11 @@ public class BytecodeParser implements GraphBuilderContext {
     /* Also a hook for subclasses. */
     protected boolean forceLoopPhis() {
         return graph.isOSR();
+    }
+
+    /* Hook for subclasses. */
+    protected boolean stampFromValueForForcedPhis() {
+        return false;
     }
 
     protected boolean checkLastInstruction() {
