@@ -25,7 +25,6 @@ package com.oracle.graal.api.runtime;
 import java.util.*;
 
 import jdk.internal.jvmci.service.*;
-import sun.reflect.*;
 
 /**
  * Access point for {@linkplain #getRuntime() retrieving} the single {@link GraalRuntime} instance.
@@ -56,7 +55,6 @@ public class Graal {
      *
      * @throws UnsupportedOperationException if the capability is not available
      */
-    @CallerSensitive
     public static <T> T getRequiredCapability(Class<T> clazz) {
         T t = getRuntime().getCapability(clazz);
         if (t == null) {

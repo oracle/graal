@@ -89,22 +89,12 @@ public final class SPARCFrameMap extends FrameMap {
 
     @Override
     public int currentFrameSize() {
-        return alignFrameSize(calleeSaveAreaSize() + outgoingSize + spillSize);
-    }
-
-    @Override
-    protected int calleeSaveAreaSize() {
-        return SPARC.REGISTER_SAFE_AREA_SIZE;
+        return alignFrameSize(SPARC.REGISTER_SAFE_AREA_SIZE + outgoingSize + spillSize);
     }
 
     @Override
     protected int alignFrameSize(int size) {
         return NumUtil.roundUp(size, getTarget().stackAlignment);
-    }
-
-    @Override
-    public int offsetToCalleeSaveArea() {
-        return 0;
     }
 
     @Override

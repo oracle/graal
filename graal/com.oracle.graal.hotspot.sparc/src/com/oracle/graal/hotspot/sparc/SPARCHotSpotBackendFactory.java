@@ -104,7 +104,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory, Startu
     @SuppressWarnings("unused")
     private static Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {
         Set<Register> callerSavedRegisters = new HashSet<>();
-        Collections.addAll(callerSavedRegisters, regConfig.getCalleeSaveLayout().registers);
+        Collections.addAll(callerSavedRegisters, regConfig.getCalleeSaveRegisters());
         Collections.addAll(callerSavedRegisters, SPARC.fpuRegisters);
         callerSavedRegisters.add(SPARC.g1);
         callerSavedRegisters.add(SPARC.g4);

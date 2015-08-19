@@ -318,25 +318,4 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         movdbl(dest, tmp);
         addq(AMD64.rsp, target.getSizeInBytes(Kind.Double));
     }
-
-    /**
-     * Emit code to save a given set of callee save registers in the {@linkplain CalleeSaveLayout
-     * CSA} within the frame.
-     *
-     * @param csl the description of the CSA
-     * @param frameToCSA offset from the frame pointer to the CSA
-     */
-    public final void save(CalleeSaveLayout csl, int frameToCSA) {
-        for (Register r : csl.registers) {
-            int offset = csl.offsetOf(r);
-            movq(new AMD64Address(frameRegister, frameToCSA + offset), r);
-        }
-    }
-
-    public final void restore(CalleeSaveLayout csl, int frameToCSA) {
-        for (Register r : csl.registers) {
-            int offset = csl.offsetOf(r);
-            movq(r, new AMD64Address(frameRegister, frameToCSA + offset));
-        }
-    }
 }
