@@ -57,11 +57,11 @@ public final class DirectStoreNode extends FixedWithNextNode implements LIRLower
         gen.getLIRGeneratorTool().emitStore(lirKind, gen.operand(address), v, null);
     }
 
-    protected ValueNode getAddress() {
+    public ValueNode getAddress() {
         return address;
     }
 
-    protected ValueNode getValue() {
+    public ValueNode getValue() {
         return value;
     }
 
