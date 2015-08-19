@@ -33,9 +33,11 @@ import com.oracle.graal.replacements.nodes.*;
 
 public class MethodHandlePlugin implements NodePlugin {
     private final MethodHandleAccessProvider methodHandleAccess;
+    private final boolean safeForDeoptimization;
 
-    public MethodHandlePlugin(MethodHandleAccessProvider methodHandleAccess) {
+    public MethodHandlePlugin(MethodHandleAccessProvider methodHandleAccess, boolean safeForDeoptimization) {
         this.methodHandleAccess = methodHandleAccess;
+        this.safeForDeoptimization = safeForDeoptimization;
     }
 
     @Override
@@ -62,10 +64,13 @@ public class MethodHandlePlugin implements NodePlugin {
                     argumentsList.initialize(i, b.recursiveAppend(argumentsList.get(i)));
                 }
 
-                // If a MemberName suffix argument is dropped, the replaced call cannot
-                // deoptimized since the necessary frame state cannot be reconstructed.
-                // As such, it needs to recursively inline everything.
-                boolean inlineEverything = args.length != argumentsList.size();
+                boolean inlineEverything = false;
+                if (safeForDeoptimization) {
+                    // If a MemberName suffix argument is dropped, the replaced call cannot
+                    // deoptimized since the necessary frame state cannot be reconstructed.
+                    // As such, it needs to recursively inline everything.
+                    inlineEverything = args.length != argumentsList.size();
+                }
                 b.handleReplacedInvoke(invoke.getInvokeKind(), callTarget.targetMethod(), argumentsList.toArray(new ValueNode[argumentsList.size()]), inlineEverything);
             }
             return true;
