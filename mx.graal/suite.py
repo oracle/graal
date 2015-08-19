@@ -323,7 +323,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.asm",
-        "jvmci:JVMCI_HOTSPOT",
+        "jvmci:JVMCI_API",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -335,7 +335,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.asm",
-        "jvmci:JVMCI_HOTSPOT",
+        "jvmci:JVMCI_API",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -930,15 +930,35 @@ suite = {
       "subDir" : "graal",
       "sourcesPath" : "build/graal.src.zip",
       "dependencies" : [
+        "com.oracle.graal.replacements",
+        "com.oracle.graal.runtime",
+        "com.oracle.graal.code",
+        "com.oracle.graal.printer",
+        "com.oracle.graal.compiler.amd64",
+        "com.oracle.graal.replacements.amd64",
+        "com.oracle.graal.compiler.sparc",
+        "com.oracle.graal.replacements.sparc",
+      ],
+      "distDependencies" : [
+        "GRAAL_API",
+        "GRAAL_COMPILER",
+      ],
+    },
+
+    "GRAAL_HOTSPOT" : {
+      "path" : "build/graal-hotspot.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-hotspot.src.zip",
+      "dependencies" : [
         "com.oracle.graal.hotspot.amd64",
         "com.oracle.graal.hotspot.sparc",
         "com.oracle.graal.hotspot",
-        "com.oracle.graal.printer",
       ],
       "distDependencies" : [
         "jvmci:JVMCI_HOTSPOT",
         "jvmci:JVMCI_OPTIONS_PROCESSOR",
         "GRAAL_COMPILER",
+        "GRAAL",
       ],
     },
 
@@ -960,7 +980,7 @@ suite = {
         "com.oracle.graal.phases.common.test",
       ],
       "distDependencies" : [
-        "GRAAL",
+        "GRAAL_HOTSPOT",
         "jvmci:JVMCI_HOTSPOT",
       ],
     },
@@ -971,11 +991,24 @@ suite = {
       "sourcesPath" : "build/graal-truffle.src.zip",
       "dependencies" : [
         "com.oracle.graal.truffle",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+        "truffle:TRUFFLE_API",
+      ],
+    },
+
+    "GRAAL_TRUFFLE_HOTSPOT" : {
+      "path" : "build/graal-truffle-hotspot.jar",
+      "subDir" : "graal",
+      "sourcesPath" : "build/graal-truffle-hotspot.src.zip",
+      "dependencies" : [
         "com.oracle.graal.truffle.hotspot.amd64",
         "com.oracle.graal.truffle.hotspot.sparc"
       ],
       "distDependencies" : [
-        "GRAAL",
+        "GRAAL_HOTSPOT",
+        "GRAAL_TRUFFLE",
         "truffle:TRUFFLE_API",
       ],
     },

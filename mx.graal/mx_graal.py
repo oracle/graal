@@ -43,7 +43,7 @@ _suite = mx.suite('graal')
 
 class GraalJDKDeployedDist(JvmciJDKDeployedDist):
     def __init__(self):
-        JvmciJDKDeployedDist.__init__(self, 'GRAAL', compilers=['graal', 'graal-economy'])
+        JvmciJDKDeployedDist.__init__(self, 'GRAAL_HOTSPOT', compilers=['graal', 'graal-economy'])
 
     def deploy(self, jdkDir):
         JvmciJDKDeployedDist.deploy(self, jdkDir)
@@ -74,6 +74,7 @@ mx_jvmci.jdkDeployedDists += [
     JvmciJDKDeployedDist('GRAAL_NODEINFO'),
     JvmciJDKDeployedDist('GRAAL_API'),
     JvmciJDKDeployedDist('GRAAL_COMPILER'),
+    JvmciJDKDeployedDist('GRAAL'),
     GraalJDKDeployedDist(),
     JvmciJDKDeployedDist('GRAAL_TRUFFLE'),
 ]
