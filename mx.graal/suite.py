@@ -396,6 +396,7 @@ suite = {
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,LIR",
+      "findbugs" : "false",
     },
 
     "com.oracle.graal.lir.test" : {
@@ -798,6 +799,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
+      "findbugs" : "false",
     },
 
     # ------------- GraalTruffle -------------
