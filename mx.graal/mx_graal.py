@@ -77,6 +77,7 @@ mx_jvmci.jdkDeployedDists += [
     JvmciJDKDeployedDist('GRAAL'),
     GraalJDKDeployedDist(),
     JvmciJDKDeployedDist('GRAAL_TRUFFLE'),
+    JvmciJDKDeployedDist('GRAAL_TRUFFLE_HOTSPOT'),
 ]
 
 mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
