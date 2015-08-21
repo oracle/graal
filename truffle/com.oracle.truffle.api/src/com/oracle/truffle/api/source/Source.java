@@ -151,18 +151,29 @@ public abstract class Source {
     }
 
     /**
-     * Gets the canonical representation of a source file, whose contents have already been read and
-     * need not be read again. It is confirmed that the file resolves to a file name, so it can be
-     * indexed by canonical path. It is not confirmed that the text supplied agrees with the file's
-     * contents or even whether the file is readable.
+     * Gets the canonical representation of a source file whose contents are the responsibility of
+     * the client:
+     * <ul>
+     * <li>If no Source exists corresponding to the provided file name, then a new Source is created
+     * whose contents are those provided. It is confirmed that the file resolves to a file name, so
+     * it can be indexed by canonical path. However there is no confirmation that the text supplied
+     * agrees with the file's contents or even whether the file is readable.</li>
+     * <li>If a Source exists corresponding to the provided file name, and that Source was created
+     * originally by this method, then that Source will be returned after replacement of its
+     * contents with no further confirmation.</li>
+     * <li>If a Source exists corresponding to the provided file name, and that Source was not
+     * created originally by this method, then an exception will be raised.</li>
+     * </ul>
      *
-     * @param chars textual source code already read from the file
+     * @param chars textual source code already read from the file, must not be null
      * @param fileName
      * @return canonical representation of the file's contents.
-     * @throws IOException if the file cannot be found
+     * @throws IOException if the file cannot be found, or if an existing Source not created by this
+     *             method matches the file name
      */
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
         CompilerAsserts.neverPartOfCompilation();
+        assert chars != null;
 
         final WeakReference<Source> nameRef = nameToSource.get(fileName);
         Source source = nameRef == null ? null : nameRef.get();
@@ -173,9 +184,15 @@ public abstract class Source {
             final WeakReference<Source> pathRef = nameToSource.get(path);
             source = pathRef == null ? null : pathRef.get();
             if (source == null) {
-                source = new FileSource(file, fileName, path, chars);
+                source = new ClientManagedFileSource(file, fileName, path, chars);
                 nameToSource.put(path, new WeakReference<>(source));
             }
+        } else if (source instanceof ClientManagedFileSource) {
+            final ClientManagedFileSource modifiableSource = (ClientManagedFileSource) source;
+            modifiableSource.setCode(chars);
+            return modifiableSource;
+        } else {
+            throw new IOException("Attempt to modify contents of a file Source");
         }
         return source;
     }
@@ -749,16 +766,9 @@ public abstract class Source {
         private long timeStamp;      // timestamp of the cache in the file system
 
         public FileSource(File file, String name, String path) {
-            this(file, name, path, null);
-        }
-
-        public FileSource(File file, String name, String path, CharSequence chars) {
             this.file = file.getAbsoluteFile();
             this.name = name;
             this.path = path;
-            if (chars != null) {
-                this.code = chars.toString();
-            }
         }
 
         @Override
@@ -832,6 +842,83 @@ public abstract class Source {
             }
             if (obj instanceof FileSource) {
                 FileSource other = (FileSource) obj;
+                return path.equals(other.path);
+            }
+            return false;
+        }
+
+        @Override
+        void reset() {
+            this.code = null;
+        }
+    }
+
+    // TODO (mlvdv) if we keep this, hoist a superclass in common with FileSource.
+    private static final class ClientManagedFileSource extends Source {
+
+        private final File file;
+        private final String name; // Name used originally to describe the source
+        private final String path;  // Normalized path description of an actual file
+        private String code;  // The file's contents, as provided by the client
+
+        public ClientManagedFileSource(File file, String name, String path, CharSequence chars) {
+            this.file = file.getAbsoluteFile();
+            this.name = name;
+            this.path = path;
+            setCode(chars);
+        }
+
+        void setCode(CharSequence chars) {
+            this.code = chars.toString();
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String getShortName() {
+            return file.getName();
+        }
+
+        @Override
+        Object getHashKey() {
+            return path;
+        }
+
+        @Override
+        public String getCode() {
+            return code;
+        }
+
+        @Override
+        public String getPath() {
+            return path;
+        }
+
+        @Override
+        public URL getURL() {
+            return null;
+        }
+
+        @Override
+        public Reader getReader() {
+            return new StringReader(code);
+        }
+
+        @Override
+        public int hashCode() {
+            return path.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof ClientManagedFileSource) {
+                ClientManagedFileSource other = (ClientManagedFileSource) obj;
                 return path.equals(other.path);
             }
             return false;
