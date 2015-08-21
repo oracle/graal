@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
+
 import java.math.BigInteger;
 import java.util.List;
 
@@ -57,7 +58,15 @@ import java.util.List;
  * Implementation of foreign access for {@link SLFunction}.
  */
 final class SLFunctionForeignAccess implements ForeignAccess.Factory {
-    public static final ForeignAccess INSTANCE = ForeignAccess.create(new SLFunctionForeignAccess());
+    @CompilationFinal private static ForeignAccess singleton;
+
+    public static ForeignAccess getSingleton() {
+        if (singleton == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            singleton = ForeignAccess.create(new SLFunctionForeignAccess());
+        }
+        return singleton;
+    }
 
     private SLFunctionForeignAccess() {
     }
