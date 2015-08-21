@@ -248,7 +248,7 @@ suite = {
       "distDependencies" : ["TRUFFLE_API"],
       "exclude" : ["mx:JUNIT"],
       "description" : """A collection of tests that can certify language implementation to be compliant
-        with most recentrequirements of the Truffle infrastructure and tooling.""",
+        with most recent requirements of the Truffle infrastructure and tooling.""",
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
