@@ -643,8 +643,8 @@ public abstract class Source {
 
     /**
      * Associates the source with specified MIME type. The mime type may be used to select the right
-     * {@link Registration Truffle language} to use to execute the returned source. The value of MIME
-     * type can be obtained via {@link #getMimeType()} method.
+     * {@link Registration Truffle language} to use to execute the returned source. The value of
+     * MIME type can be obtained via {@link #getMimeType()} method.
      *
      * @param mime mime type to use
      * @return new (identical) source, just associated {@link #getMimeType()}

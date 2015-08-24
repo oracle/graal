@@ -42,7 +42,6 @@ package com.oracle.truffle.sl;
 
 import java.io.*;
 import java.math.*;
-import java.net.*;
 import java.util.*;
 import java.util.Scanner;
 
