@@ -57,6 +57,9 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
+        // Note that an unconditional call to the runtime routine is made without
+        // checking that the object actually has a finalizer. This requires the
+        // runtime routine to do the check.
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(REGISTER_FINALIZER);
         gen.getLIRGeneratorTool().emitForeignCall(linkage, gen.state(this), gen.operand(getValue()));
     }
