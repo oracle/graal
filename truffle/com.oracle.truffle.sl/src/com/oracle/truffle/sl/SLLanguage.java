@@ -65,6 +65,7 @@ import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
 import com.oracle.truffle.tools.*;
+import java.nio.file.Path;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -200,11 +201,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             repeats = Integer.parseInt(args[1]);
         }
 
+        Source source;
         if (args.length == 0) {
-            vm.eval("application/x-sl", new InputStreamReader(System.in));
+            source = Source.fromReader(new InputStreamReader(System.in), "<stdin>").withMimeType("application/x-sl");
         } else {
-            vm.eval(new File(args[0]).toURI());
+            source = Source.fromFileName(args[0]);
         }
+        vm.eval(source);
         Symbol main = vm.findGlobalSymbol("main");
         if (main == null) {
             throw new SLException("No function main() defined in SL source file.");
@@ -221,7 +224,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static void run(Source source) throws IOException {
         TruffleVM vm = TruffleVM.newVM().build();
         assert vm.getLanguages().containsKey("application/x-sl");
-        vm.eval(new File(source.getPath()).toURI());
+        vm.eval(source);
         Symbol main = vm.findGlobalSymbol("main");
         if (main == null) {
             throw new SLException("No function main() defined in SL source file.");
@@ -233,7 +236,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
      * Parse and run the specified SL source. Factored out in a separate method so that it can also
      * be used by the unit test harness.
      */
-    public static long run(TruffleVM context, URI source, PrintWriter logOutput, PrintWriter out, int repeats, List<NodeFactory<? extends SLBuiltinNode>> currentBuiltins) throws IOException {
+    public static long run(TruffleVM context, Path path, PrintWriter logOutput, PrintWriter out, int repeats, List<NodeFactory<? extends SLBuiltinNode>> currentBuiltins) throws IOException {
         builtins = currentBuiltins;
 
         if (logOutput != null) {
@@ -241,8 +244,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             // logOutput.println("Source = " + source.getCode());
         }
 
+        Source src = Source.fromFileName(path.toString());
         /* Parse the SL source file. */
-        Object result = context.eval(source);
+        Object result = context.eval(src.withMimeType("application/x-sl"));
         if (result != null) {
             out.println(result);
         }

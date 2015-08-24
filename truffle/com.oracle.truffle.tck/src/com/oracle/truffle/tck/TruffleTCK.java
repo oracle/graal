@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
 import java.util.Random;
@@ -44,8 +45,8 @@ public abstract class TruffleTCK {
     /**
      * This methods is called before first test is executed. It's purpose is to set a TruffleVM with
      * your language up, so it is ready for testing.
-     * {@link TruffleVM#eval(java.lang.String, java.lang.String) Execute} any scripts you need, and
-     * prepare global symbols with proper names. The symbols will then be looked up by the
+     * {@link TruffleVM#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you need,
+     * and prepare global symbols with proper names. The symbols will then be looked up by the
      * infrastructure (using the names provided by you from methods like {@link #plusInt()}) and
      * used for internal testing.
      *
@@ -56,8 +57,8 @@ public abstract class TruffleTCK {
 
     /**
      * Mimetype associated with your language. The mimetype will be passed to
-     * {@link TruffleVM#eval(java.lang.String, java.lang.String)} method of the {@link #prepareVM()
-     * created TruffleVM}.
+     * {@link TruffleVM#eval(com.oracle.truffle.api.source.Source)} method of the
+     * {@link #prepareVM() created TruffleVM}.
      *
      * @return mime type of the tested language
      */
@@ -116,7 +117,7 @@ public abstract class TruffleTCK {
 
     /**
      * Return a code snippet that is invalid in your language. Its
-     * {@link TruffleVM#eval(java.lang.String, java.lang.String) evaluation} should fail and yield
+     * {@link TruffleVM#eval(com.oracle.truffle.api.source.Source) evaluation} should fail and yield
      * an exception.
      *
      * @return code snippet invalid in the tested language
@@ -180,7 +181,7 @@ public abstract class TruffleTCK {
     public void testInvalidTestMethod() throws Exception {
         String mime = mimeType();
         String code = invalidCode();
-        Object ret = vm().eval(mime, code);
+        Object ret = vm().eval(Source.fromText(code, "Invalid code").withMimeType(mime));
         fail("Should yield IOException, but returned " + ret);
     }
 

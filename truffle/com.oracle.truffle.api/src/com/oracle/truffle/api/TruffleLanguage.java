@@ -84,8 +84,8 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * List of MIME types associated with your language. Users will use them (directly or
-         * indirectly) when {@link TruffleVM#eval(java.lang.String, java.lang.String) executing}
-         * their code snippets or their {@link TruffleVM#eval(java.net.URI) files}.
+         * indirectly) when {@link TruffleVM#eval(com.oracle.truffle.api.source.Source) executing}
+         * their code snippets or their {@link Source files}.
          *
          * @return array of MIME types assigned to your language files
          */

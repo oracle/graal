@@ -44,6 +44,7 @@ import java.io.*;
 import java.util.*;
 
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.tools.debug.shell.*;
 import com.oracle.truffle.tools.debug.shell.client.*;
@@ -127,7 +128,7 @@ public abstract class SLREPLHandler extends REPLHandler {
                 return finishReplyFailed(reply, "can't find file \"" + fileName + "\"");
             }
             final TruffleVM vm = serverContext.vm();
-            vm.eval(file.toURI());
+            vm.eval(Source.fromFileName(file.getPath()));
             TruffleVM.Symbol main = vm.findGlobalSymbol("main");
             if (main != null) {
                 main.invoke(null);

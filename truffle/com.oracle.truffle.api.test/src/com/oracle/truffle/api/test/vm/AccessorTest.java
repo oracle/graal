@@ -24,6 +24,7 @@ package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import com.oracle.truffle.api.vm.TruffleVM;
@@ -50,7 +51,8 @@ public class AccessorTest {
         TruffleVM.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
-        Object ret = vm.eval(L1, "return nothing");
+        Source s = Source.fromText("return nothing", "nothing").withMimeType(L1);
+        Object ret = vm.eval(s);
         assertNull("nothing is returned", ret);
 
         Object afterInitialization = findLanguageByClass(vm);

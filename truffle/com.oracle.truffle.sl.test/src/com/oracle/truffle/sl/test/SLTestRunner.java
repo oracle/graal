@@ -221,7 +221,7 @@ public final class SLTestRunner extends ParentRunner<TestCase> {
             TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(repeat(testCase.testInput, repeats)))).stdOut(printer).build();
 
             String script = readAllLines(testCase.path);
-            SLLanguage.run(vm, testCase.path.toUri(), null, printer, repeats, builtins);
+            SLLanguage.run(vm, testCase.path, null, printer, repeats, builtins);
 
             printer.flush();
             String actualOutput = new String(out.toByteArray());

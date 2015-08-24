@@ -39,7 +39,7 @@
  *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}
  *     {@code <}{@link com.oracle.truffle.api.debug.ExecutionEvent}{@code >}() {
  *         <b>public void</b> handle({@link com.oracle.truffle.api.debug.ExecutionEvent} ev) {
- *             <em>// configure the virtual machine as {@link com.oracle.truffle.api.vm.TruffleVM#eval(java.net.URI) new execution} is starting</em>
+ *             <em>// configure the virtual machine as {@link com.oracle.truffle.api.vm.TruffleVM#eval(com.oracle.truffle.api.source.Source) new execution} is starting</em>
  *         }
  *     }).
  *     {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer) onEvent}(<b>new</b> {@link com.oracle.truffle.api.vm.EventConsumer EventConsumer}{@code <}
@@ -51,7 +51,7 @@
  * </pre>
  * The debugging is controlled by events emitted by the Truffle virtual machine
  * at important moments. The {@link com.oracle.truffle.api.debug.ExecutionEvent}
- * is sent when a call to {@link com.oracle.truffle.api.vm.TruffleVM#eval(java.net.URI) eval(...)}
+ * is sent when a call to {@link com.oracle.truffle.api.vm.TruffleVM#eval(com.oracle.truffle.api.source.Source)}
  * is made and allows one to configure {@link com.oracle.truffle.api.debug.Breakpoint breakpoints} and/or decide whether the
  * program should {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareStepInto() step-into} or
  * {@link com.oracle.truffle.api.debug.ExecutionEvent#prepareContinue() just run}. Once the execution is suspended a

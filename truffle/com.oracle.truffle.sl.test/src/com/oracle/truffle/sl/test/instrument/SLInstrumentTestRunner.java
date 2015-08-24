@@ -56,6 +56,7 @@ import org.junit.runners.model.*;
 
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.instrument.impl.*;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
@@ -229,7 +230,7 @@ public final class SLInstrumentTestRunner extends ParentRunner<InstrumentTestCas
                 TruffleVM vm = TruffleVM.newVM().stdIn(new BufferedReader(new StringReader(testCase.testInput))).stdOut(printer).build();
 
                 final String src = readAllLines(testCase.path);
-                vm.eval("application/x-sl", src);
+                vm.eval(Source.fromText(src, testCase.path.toString()).withMimeType("application/x-sl"));
 
                 // Attach an instrument to every probe tagged as an assignment
                 for (Probe probe : Probe.findProbesTaggedAs(StandardSyntaxTag.ASSIGNMENT)) {

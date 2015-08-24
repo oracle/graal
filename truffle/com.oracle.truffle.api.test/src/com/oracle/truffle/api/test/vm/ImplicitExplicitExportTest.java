@@ -52,11 +52,9 @@ public class ImplicitExplicitExportTest {
     @Test
     public void explicitExportFound() throws IOException {
         // @formatter:off
-        vm.eval(L1,
-            "explicit.ahoj=42"
-        );
-        Object ret = vm.eval(L3,
-            "return=ahoj"
+        vm.eval(Source.fromText("explicit.ahoj=42", "Fourty two").withMimeType(L1));
+        Object ret = vm.eval(
+            Source.fromText("return=ahoj", "Return").withMimeType(L3)
         );
         // @formatter:on
         assertEquals("42", ret);
@@ -65,11 +63,11 @@ public class ImplicitExplicitExportTest {
     @Test
     public void implicitExportFound() throws IOException {
         // @formatter:off
-        vm.eval(L1,
-            "implicit.ahoj=42"
+        vm.eval(
+            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L1)
         );
-        Object ret = vm.eval(L3,
-            "return=ahoj"
+        Object ret = vm.eval(
+            Source.fromText("return=ahoj", "Return").withMimeType(L3)
         );
         // @formatter:on
         assertEquals("42", ret);
@@ -78,14 +76,14 @@ public class ImplicitExplicitExportTest {
     @Test
     public void explicitExportPreferred2() throws IOException {
         // @formatter:off
-        vm.eval(L1,
-            "implicit.ahoj=42"
+        vm.eval(
+            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L1)
         );
-        vm.eval(L2,
-            "explicit.ahoj=43"
+        vm.eval(
+            Source.fromText("explicit.ahoj=43", "Fourty three").withMimeType(L2)
         );
-        Object ret = vm.eval(L3,
-            "return=ahoj"
+        Object ret = vm.eval(
+            Source.fromText("return=ahoj", "Return").withMimeType(L3)
         );
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);
@@ -95,14 +93,14 @@ public class ImplicitExplicitExportTest {
     @Test
     public void explicitExportPreferred1() throws IOException {
         // @formatter:off
-        vm.eval(L1,
-            "explicit.ahoj=43"
+        vm.eval(
+            Source.fromText("explicit.ahoj=43", "Fourty three").withMimeType(L1)
         );
-        vm.eval(L2,
-            "implicit.ahoj=42"
+        vm.eval(
+            Source.fromText("implicit.ahoj=42", "Fourty two").withMimeType(L2)
         );
-        Object ret = vm.eval(L3,
-            "return=ahoj"
+        Object ret = vm.eval(
+            Source.fromText("return=ahoj", "Return").withMimeType(L3)
         );
         // @formatter:on
         assertEquals("Explicit import from L2 is used", "43", ret);

@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.test.vm;
 
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.source.Source;
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
@@ -39,7 +40,7 @@ public class ExceptionDuringParsingTest {
         assertNotNull("L1 language is defined", language);
 
         try {
-            vm.eval(L1, "parse=No, no, no!");
+            vm.eval(Source.fromText("parse=No, no, no!", "Fail on parsing").withMimeType(L1));
             fail("Exception thrown");
         } catch (IOException ex) {
             assertEquals(ex.getMessage(), "No, no, no!");

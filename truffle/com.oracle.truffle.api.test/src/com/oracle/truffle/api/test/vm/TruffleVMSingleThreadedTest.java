@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import com.oracle.truffle.api.source.Source;
 import java.io.*;
 import java.net.*;
 
@@ -45,21 +46,29 @@ public class TruffleVMSingleThreadedTest {
         t.join();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = IllegalStateException.class)
     public void evalURI() throws IOException, URISyntaxException {
         tvm.eval(new URI("http://unknown.js"));
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = IllegalStateException.class)
     public void evalString() throws IOException {
         tvm.eval("text/javascript", "1 + 1");
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = IllegalStateException.class)
     public void evalReader() throws IOException {
         try (StringReader sr = new StringReader("1 + 1")) {
             tvm.eval("text/javascript", sr);
         }
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void evalSource() throws IOException {
+        tvm.eval(Source.fromText("", "Empty"));
     }
 
     @Test(expected = IllegalStateException.class)

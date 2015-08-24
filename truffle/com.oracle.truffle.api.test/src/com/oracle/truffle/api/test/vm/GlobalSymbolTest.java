@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import com.oracle.truffle.api.source.Source;
 import static org.junit.Assert.*;
 
 import java.io.*;
@@ -36,8 +37,8 @@ public class GlobalSymbolTest {
     public void globalSymbolFoundByLanguage() throws IOException {
         TruffleVM vm = TruffleVM.newVM().globalSymbol("ahoj", "42").build();
         // @formatter:off
-        Object ret = vm.eval(L3,
-            "return=ahoj"
+        Object ret = vm.eval(
+            Source.fromText("return=ahoj", "Return").withMimeType(L3)
         );
         // @formatter:on
         assertEquals("42", ret);

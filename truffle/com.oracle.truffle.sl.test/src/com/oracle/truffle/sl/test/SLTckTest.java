@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.test;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.TruffleTCK;
 import com.oracle.truffle.api.vm.TruffleVM;
 import static org.junit.Assert.*;
@@ -60,26 +61,28 @@ public class SLTckTest extends TruffleTCK {
     protected TruffleVM prepareVM() throws Exception {
         TruffleVM vm = TruffleVM.newVM().build();
         // @formatter:off
-        vm.eval("application/x-sl",
-            "function fourtyTwo() {\n" +
-            "  return 42;\n" + //
-            "}\n" +
-            "function plus(a, b) {\n" +
-            "  return a + b;\n" +
-            "}\n" +
-            "function apply(f) {\n" +
-            "  return f(18, 32) + 10;\n" +
-            "}\n" +
-            "function cnt() {\n" +
-            "  return 0;\n" +
-            "}\n" +
-            "function count() {\n" +
-            "  n = cnt() + 1;\n" +
-            "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
-            "  return n;\n" +
-            "}\n" +
-            "function null() {\n" +
-            "}\n"
+        vm.eval(
+            Source.fromText(
+                "function fourtyTwo() {\n" +
+                "  return 42;\n" + //
+                "}\n" +
+                "function plus(a, b) {\n" +
+                "  return a + b;\n" +
+                "}\n" +
+                "function apply(f) {\n" +
+                "  return f(18, 32) + 10;\n" +
+                "}\n" +
+                "function cnt() {\n" +
+                "  return 0;\n" +
+                "}\n" +
+                "function count() {\n" +
+                "  n = cnt() + 1;\n" +
+                "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
+                "  return n;\n" +
+                "}\n" +
+                "function null() {\n" +
+                "}\n", "SL TCK"
+            ).withMimeType("application/x-sl")
         );
         // @formatter:on
         return vm;
