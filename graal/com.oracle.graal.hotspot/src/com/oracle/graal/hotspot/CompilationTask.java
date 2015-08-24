@@ -249,7 +249,9 @@ public class CompilationTask {
             if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
                 long timeUnitsPerSecond = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
                 CompilerToVM c2vm = jvmciRuntime.getCompilerToVM();
-                c2vm.notifyCompilationStatistics(id, method, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond, installedCode);
+                HotSpotResolvedJavaMethodImpl methodImpl = (HotSpotResolvedJavaMethodImpl) method;
+                c2vm.notifyCompilationStatistics(id, methodImpl, entryBCI != Compiler.INVOCATION_ENTRY_BCI, compiledBytecodes, compilationTime, timeUnitsPerSecond,
+                                installedCode);
             }
         }
     }

@@ -289,8 +289,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     @Override
     public <T> T iterateFrames(ResolvedJavaMethod[] initialMethods, ResolvedJavaMethod[] matchingMethods, int initialSkip, InspectedFrameVisitor<T> visitor) {
-        final long[] initialMetaMethods = toMeta(initialMethods);
-        final long[] matchingMetaMethods = toMeta(matchingMethods);
+        final HotSpotResolvedJavaMethodImpl[] initialMetaMethods = toHotSpotResolvedJavaMethodImpls(initialMethods);
+        final HotSpotResolvedJavaMethodImpl[] matchingMetaMethods = toHotSpotResolvedJavaMethodImpls(matchingMethods);
 
         CompilerToVM compilerToVM = getCompilerToVM();
         HotSpotStackFrameReference current = compilerToVM.getNextStackFrame(null, initialMetaMethods, initialSkip);
@@ -304,13 +304,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
         return null;
     }
 
-    private static long[] toMeta(ResolvedJavaMethod[] methods) {
+    private static HotSpotResolvedJavaMethodImpl[] toHotSpotResolvedJavaMethodImpls(ResolvedJavaMethod[] methods) {
         if (methods == null) {
             return null;
+        } else if (methods instanceof HotSpotResolvedJavaMethodImpl[]) {
+            return (HotSpotResolvedJavaMethodImpl[]) methods;
         } else {
-            long[] result = new long[methods.length];
+            HotSpotResolvedJavaMethodImpl[] result = new HotSpotResolvedJavaMethodImpl[methods.length];
             for (int i = 0; i < result.length; i++) {
-                result[i] = ((HotSpotResolvedJavaMethodImpl) methods[i]).getMetaspaceMethod();
+                result[i] = (HotSpotResolvedJavaMethodImpl) methods[i];
             }
             return result;
         }
