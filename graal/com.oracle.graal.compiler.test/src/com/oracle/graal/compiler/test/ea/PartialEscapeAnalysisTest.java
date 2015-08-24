@@ -26,6 +26,7 @@ import java.lang.ref.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.directives.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -208,6 +209,36 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     @Test
     public void testBoxLoop() {
         testPartialEscapeAnalysis("testBoxLoopSnippet", 0, 0, BoxNode.class, UnboxNode.class);
+    }
+
+    static volatile int staticField;
+    static boolean executedDeoptimizeDirective;
+
+    static class A {
+        String field;
+    }
+
+    public static Object deoptWithVirtualObjectsSnippet() {
+        A a = new A();
+        a.field = "field";
+
+        staticField = 5;
+        if (staticField == 5) {
+            GraalDirectives.deoptimize();
+            executedDeoptimizeDirective = true;
+        }
+
+        return a.field;
+    }
+
+    /**
+     * Tests deoptimizing with virtual objects in debug info.
+     */
+    @Test
+    public void testDeoptWithVirtualObjects() {
+        assertFalse(executedDeoptimizeDirective);
+        test("deoptWithVirtualObjectsSnippet");
+        assertTrue(executedDeoptimizeDirective);
     }
 
     @SafeVarargs
