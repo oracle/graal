@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
@@ -44,6 +45,7 @@ public final class ForeignAccess {
     private ForeignAccess(Factory faf) {
         this.factory = faf;
         this.initThread = Thread.currentThread();
+        CompilerAsserts.neverPartOfCompilation();
     }
 
     /**
