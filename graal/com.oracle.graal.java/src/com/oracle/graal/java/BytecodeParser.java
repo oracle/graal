@@ -38,6 +38,7 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.compiler.Compiler;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 
@@ -1646,7 +1647,10 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private void beforeReturn(ValueNode x, Kind kind) {
         if (graph.method() != null && graph.method().isJavaLangObjectInit()) {
-            append(new RegisterFinalizerNode(frameState.loadLocal(0, Kind.Object)));
+            ValueNode receiver = frameState.loadLocal(0, Kind.Object);
+            if (RegisterFinalizerNode.mayHaveFinalizer(receiver, graph.getAssumptions())) {
+                append(new RegisterFinalizerNode(receiver));
+            }
         }
         if (graphBuilderConfig.insertNonSafepointDebugInfo() && !parsingIntrinsic()) {
             genInfoPointNode(InfopointReason.METHOD_END, x);
