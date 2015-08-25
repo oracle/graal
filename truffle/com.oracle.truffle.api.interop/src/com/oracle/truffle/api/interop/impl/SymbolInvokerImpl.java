@@ -35,8 +35,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.*;
 
 public final class SymbolInvokerImpl extends SymbolInvoker {
-    static final FrameDescriptor UNUSED_FRAMEDESCRIPTOR = new FrameDescriptor();
-
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
