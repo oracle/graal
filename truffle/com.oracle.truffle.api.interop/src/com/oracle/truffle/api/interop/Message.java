@@ -34,7 +34,11 @@ import com.oracle.truffle.api.interop.ForeignAccess.Factory;
  */
 public abstract class Message {
     /**
-     * Message to read a field.
+     * Message to read an object field. The
+     * {@link Factory#access(com.oracle.truffle.api.interop.Message) target} created for this
+     * message accepts single {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame)
+     * argument} identifying a field to read - e.g. either {@link String} or an {@link Integer} - if
+     * access to an array at particular index is requested.
      */
     public static final Message READ = Read.INSTANCE;
 
@@ -46,7 +50,12 @@ public abstract class Message {
     public static final Message UNBOX = Unbox.INSTANCE;
 
     /**
-     * Message to write a field.
+     * Message to write a field. The {@link Factory#access(com.oracle.truffle.api.interop.Message)
+     * target} created for this message accepts two
+     * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) arguments}. The first
+     * one identifies a field to read - e.g. either {@link String} or an {@link Integer} - if access
+     * to an array at particular index is requested. The second one is the value to assign to such
+     * field.
      */
     public static Message WRITE = Write.INSTANCE;
 
