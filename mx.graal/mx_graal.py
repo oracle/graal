@@ -200,17 +200,16 @@ def ctw(args):
         jar = join(get_jvmci_jdk(installJars=False), 'jre', 'lib', 'rt.jar')
         vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
-    vmargs += ['-XX:+CompileTheWorld']
+    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
+    vmargs = ['-Djava.awt.headless=true'] + vmargs
+
     vm_ = get_vm()
     if isJVMCIEnabled(vm_):
         if vm_ == 'jvmci':
             vmargs += ['-XX:+BootstrapJVMCI']
-        vmargs += ['-G:CompileTheWorldClasspath=' + jar]
+        vmargs += ['-G:CompileTheWorldClasspath=' + jar, '-XX:-UseJVMCIClassLoader', 'jdk.internal.jvmci.hotspot.CompileTheWorldMain']
     else:
-        vmargs += ['-Xbootclasspath/p:' + jar]
-
-    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
-    vmargs = ['-Djava.awt.headless=true'] + vmargs
+        vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + jar]
 
     vm(vmargs)
 
