@@ -113,5 +113,9 @@ public class ForeignAccessToStringTest {
             return null;
         }
 
+        @Override
+        public CallTarget accessNew(int argumentsLength) {
+            return null;
+        }
     }
 }

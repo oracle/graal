@@ -110,6 +110,11 @@ final class MaxMinObject implements TruffleObject {
         public CallTarget accessMessage(Message unknown) {
             return null;
         }
+
+        @Override
+        public CallTarget accessNew(int argumentsLength) {
+            return null;
+        }
     }
 
     static class ReadArgNode extends Node {

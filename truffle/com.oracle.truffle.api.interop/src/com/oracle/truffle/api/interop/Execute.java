@@ -25,18 +25,19 @@
 package com.oracle.truffle.api.interop;
 
 final class Execute extends KnownMessage {
-    public static final int HASH1 = 423430;
-    public static final int HASH2 = 423429;
+    public static final int EXECUTE = 423430;
+    public static final int INVOKE = 423429;
+    public static final int NEW = 423428;
 
     private final int arity;
-    private final boolean invoke;
+    private final int type;
 
-    public static Execute create(boolean invoke, int arity) {
-        return new Execute(invoke, arity);
+    public static Execute create(int type, int arity) {
+        return new Execute(type, arity);
     }
 
-    private Execute(boolean invoke, int arity) {
-        this.invoke = invoke;
+    private Execute(int type, int arity) {
+        this.type = type;
         this.arity = arity;
     }
 
@@ -51,17 +52,23 @@ final class Execute extends KnownMessage {
         }
         Execute m1 = this;
         Execute m2 = (Execute) message;
-        return m1.invoke == m2.invoke;
+        return m1.type == m2.type;
     }
 
     @Override
     public int hashCode() {
-        return invoke ? HASH1 : HASH2;
+        return type;
     }
 
     @Override
     public String toString() {
-        return invoke ? "msgInvoke" : "msgExecute";
+        switch (type) {
+            case EXECUTE:
+                return "msgExecute";
+            case INVOKE:
+                return "msgInvoke";
+            default:
+                return "msgNew";
+        }
     }
-
 }
