@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,33 +29,33 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 
 /**
  * Represents def-use tree of a constant.
  */
 class DefUseTree {
-    private final LIRInstruction instruction;
+    private final LoadConstantOp instruction;
     private final AbstractBlockBase<?> block;
     private final List<UseEntry> uses;
 
     public DefUseTree(LIRInstruction instruction, AbstractBlockBase<?> block) {
-        assert instruction instanceof MoveOp : "Not a MoveOp: " + instruction;
-        this.instruction = instruction;
+        assert instruction instanceof LoadConstantOp : "Not a LoadConstantOp: " + instruction;
+        this.instruction = (LoadConstantOp) instruction;
         this.block = block;
         this.uses = new ArrayList<>();
     }
 
     public Variable getVariable() {
-        return (Variable) ((MoveOp) instruction).getResult();
+        return (Variable) instruction.getResult();
     }
 
     public JavaConstant getConstant() {
-        return (JavaConstant) ((MoveOp) instruction).getInput();
+        return (JavaConstant) instruction.getConstant();
     }
 
     public LIRInstruction getInstruction() {
-        return instruction;
+        return (LIRInstruction) instruction;
     }
 
     public AbstractBlockBase<?> getBlock() {

@@ -27,23 +27,23 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64HotSpotMove {
 
-    public static final class HotSpotLoadObjectConstantOp extends AMD64LIRInstruction implements MoveOp {
+    public static final class HotSpotLoadObjectConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
         public static final LIRInstructionClass<HotSpotLoadObjectConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadObjectConstantOp.class);
 
         @Def({REG, STACK}) private AllocatableValue result;
@@ -88,7 +88,7 @@ public class AMD64HotSpotMove {
             }
         }
 
-        public Value getInput() {
+        public Constant getConstant() {
             return input;
         }
 
@@ -97,7 +97,7 @@ public class AMD64HotSpotMove {
         }
     }
 
-    public static final class HotSpotLoadMetaspaceConstantOp extends AMD64LIRInstruction implements MoveOp {
+    public static final class HotSpotLoadMetaspaceConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
         public static final LIRInstructionClass<HotSpotLoadMetaspaceConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadMetaspaceConstantOp.class);
 
         @Def({REG, STACK}) private AllocatableValue result;
@@ -151,8 +151,8 @@ public class AMD64HotSpotMove {
             }
         }
 
-        public Value getInput() {
-            return (Value) input;
+        public Constant getConstant() {
+            return input;
         }
 
         public AllocatableValue getResult() {

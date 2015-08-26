@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,15 @@ package com.oracle.graal.compiler.test.backend;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
@@ -83,8 +83,8 @@ public class AllocatorTest extends BackendTest {
         private void collectStats(final LIRInstruction instr) {
             instr.forEachOutput(collectStatsProc);
 
-            if (instr instanceof MoveOp) {
-                MoveOp move = (MoveOp) instr;
+            if (instr instanceof ValueMoveOp) {
+                ValueMoveOp move = (ValueMoveOp) instr;
                 Value def = move.getResult();
                 Value use = move.getInput();
                 if (ValueUtil.isRegister(def)) {

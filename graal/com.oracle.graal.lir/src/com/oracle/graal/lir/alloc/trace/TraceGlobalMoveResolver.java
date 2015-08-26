@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -281,7 +281,7 @@ class TraceGlobalMoveResolver {
      */
     private LIRInstruction createMove(Value fromOpr, AllocatableValue toOpr) {
         if (isStackSlotValue(toOpr) && isStackSlotValue(fromOpr)) {
-            return getSpillMoveFactory().createStackMove(toOpr, fromOpr);
+            return getSpillMoveFactory().createStackMove(toOpr, asStackSlotValue(fromOpr));
         }
         return getSpillMoveFactory().createMove(toOpr, fromOpr);
     }

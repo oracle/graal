@@ -31,18 +31,19 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.util.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
@@ -537,8 +538,8 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * of such moves is assigned the stack slot (which is in the caller's frame) as its spill slot.
      */
     protected void handleMethodArguments(LIRInstruction op) {
-        if (op instanceof MoveOp) {
-            MoveOp move = (MoveOp) op;
+        if (op instanceof ValueMoveOp) {
+            ValueMoveOp move = (ValueMoveOp) op;
             if (optimizeMethodArgument(move.getInput())) {
                 StackSlot slot = asStackSlot(move.getInput());
                 if (DetailedAsserts.getValue()) {
@@ -637,8 +638,8 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Determines the register priority for an instruction's output/result operand.
      */
     protected RegisterPriority registerPriorityOfOutputOperand(LIRInstruction op) {
-        if (op instanceof MoveOp) {
-            MoveOp move = (MoveOp) op;
+        if (op instanceof ValueMoveOp) {
+            ValueMoveOp move = (ValueMoveOp) op;
             if (optimizeMethodArgument(move.getInput())) {
                 return RegisterPriority.None;
             }
@@ -812,9 +813,9 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      *         can only be a {@link JavaConstant}.
      */
     protected static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
-        if (op instanceof MoveOp) {
-            MoveOp move = (MoveOp) op;
-            if (move.getInput() instanceof JavaConstant) {
+        if (op instanceof LoadConstantOp) {
+            LoadConstantOp move = (LoadConstantOp) op;
+            if (move.getConstant() instanceof JavaConstant) {
                 /*
                  * Check if the interval has any uses which would accept an stack location (priority
                  * == ShouldHaveRegister). Rematerialization of such intervals can result in a
@@ -829,7 +830,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                         return null;
                     }
                 }
-                return (JavaConstant) move.getInput();
+                return (JavaConstant) move.getConstant();
             }
         }
         return null;

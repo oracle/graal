@@ -70,6 +70,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
 import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MembarOp;
+import com.oracle.graal.lir.amd64.AMD64Move.MoveFromConstOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StackLeaOp;
@@ -104,7 +105,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         }
 
         @Override
-        protected LIRInstruction createStackMoveIntern(AllocatableValue result, Value input) {
+        protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
             return AMD64LIRGenerator.this.createStackMove(result, input);
         }
 
@@ -158,14 +159,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
     protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
         if (src instanceof AMD64AddressValue) {
             return new LeaOp(dst, (AMD64AddressValue) src);
+        } else if (isConstant(src)) {
+            return new MoveFromConstOp(dst, asConstant(src));
         } else if (isRegister(src) || isStackSlotValue(dst)) {
-            return new MoveFromRegOp(dst.getKind(), dst, src);
+            return new MoveFromRegOp(dst.getKind(), dst, (AllocatableValue) src);
         } else {
-            return new MoveToRegOp(dst.getKind(), dst, src);
+            return new MoveToRegOp(dst.getKind(), dst, (AllocatableValue) src);
         }
     }
 
-    protected LIRInstruction createStackMove(AllocatableValue result, Value input) {
+    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
         Kind kind = result.getKind();
         OperandSize size;
         switch (kind) {
@@ -185,7 +188,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator implements AMD64Ari
         return new AMD64PushPopStackMove(size, result, input);
     }
 
-    protected LIRInstruction createStackMove(AllocatableValue result, Value input, Register scratchRegister, StackSlotValue backupSlot) {
+    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input, Register scratchRegister, StackSlotValue backupSlot) {
         return new AMD64StackMove(result, input, scratchRegister, backupSlot);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -247,14 +247,27 @@ public class StandardOp {
     }
 
     /**
-     * Marker interface for a LIR operation that moves a value from {@link #getInput()} to
-     * {@link #getResult()}.
+     * Marker interface for a LIR operation that moves a value to {@link #getResult()}.
      */
     public interface MoveOp {
 
-        Value getInput();
-
         AllocatableValue getResult();
+    }
+
+    /**
+     * Marker interface for a LIR operation that moves some non-constant value to another location.
+     */
+    public interface ValueMoveOp extends MoveOp {
+
+        AllocatableValue getInput();
+    }
+
+    /**
+     * Marker interface for a LIR operation that loads a {@link #getConstant()}.
+     */
+    public interface LoadConstantOp extends MoveOp {
+
+        Constant getConstant();
     }
 
     /**
@@ -363,13 +376,13 @@ public class StandardOp {
         }
     }
 
-    public static final class StackMove extends LIRInstruction implements MoveOp {
+    public static final class StackMove extends LIRInstruction implements ValueMoveOp {
         public static final LIRInstructionClass<StackMove> TYPE = LIRInstructionClass.create(StackMove.class);
 
         @Def({STACK, HINT}) protected AllocatableValue result;
-        @Use({STACK}) protected Value input;
+        @Use({STACK}) protected AllocatableValue input;
 
-        public StackMove(AllocatableValue result, Value input) {
+        public StackMove(AllocatableValue result, AllocatableValue input) {
             super(TYPE);
             this.result = result;
             this.input = input;
@@ -381,7 +394,7 @@ public class StandardOp {
         }
 
         @Override
-        public Value getInput() {
+        public AllocatableValue getInput() {
             return input;
         }
 

@@ -43,7 +43,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
         LIRInstruction createMove(AllocatableValue result, Value input);
 
-        LIRInstruction createStackMove(AllocatableValue result, Value input);
+        LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input);
     }
 
     public abstract class BlockScope implements AutoCloseable {

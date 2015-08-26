@@ -83,7 +83,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
 
         @Override
-        protected LIRInstruction createStackMoveIntern(AllocatableValue result, Value input) {
+        protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
             return SPARCLIRGenerator.this.createStackMove(result, input);
         }
     }
@@ -129,16 +129,17 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             } else {
                 return new SPARCMove.LoadConstantFromTable(javaConstant, getConstantTableBase(), dst);
             }
-        } else if (!srcIsSlot && !dstIsSlot) {
-            return new Move(dst, src);
-        } else if (srcIsSlot != dstIsSlot) {
-            return new Move(dst, src);
         } else {
-            throw JVMCIError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
+            assert src instanceof AllocatableValue;
+            if (srcIsSlot && dstIsSlot) {
+                throw JVMCIError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
+            } else {
+                return new Move(dst, (AllocatableValue) src);
+            }
         }
     }
 
-    protected LIRInstruction createStackMove(AllocatableValue result, Value input) {
+    protected LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
         return new SPARCMove.Move(result, input);
     }
 

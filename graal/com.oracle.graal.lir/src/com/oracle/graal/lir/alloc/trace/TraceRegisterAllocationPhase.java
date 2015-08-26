@@ -36,7 +36,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
@@ -131,8 +131,8 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
             for (int i = 0; i < instructions.size(); i++) {
                 LIRInstruction inst = instructions.get(i);
 
-                if (inst instanceof MoveOp) {
-                    MoveOp move = (MoveOp) inst;
+                if (inst instanceof ValueMoveOp) {
+                    ValueMoveOp move = (ValueMoveOp) inst;
                     if (isStackSlotValue(move.getInput()) && isStackSlotValue(move.getResult())) {
                         instructions.set(i, spillMoveFactory.createStackMove(move.getResult(), move.getInput()));
                         changed = true;

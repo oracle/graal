@@ -43,13 +43,14 @@ import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Sethix;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.NullCheck;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.asm.*;
 
 public class SPARCMove {
 
-    public static class LoadInlineConstant extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction, MoveOp {
+    public static class LoadInlineConstant extends SPARCLIRInstruction implements SPARCTailDelayedLIRInstruction, LoadConstantOp {
         public static final LIRInstructionClass<LoadInlineConstant> TYPE = LIRInstructionClass.create(LoadInlineConstant.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(1);
         private JavaConstant constant;
@@ -71,7 +72,7 @@ public class SPARCMove {
             }
         }
 
-        public Value getInput() {
+        public Constant getConstant() {
             return constant;
         }
 
@@ -117,14 +118,14 @@ public class SPARCMove {
     }
 
     @Opcode("MOVE")
-    public static class Move extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static class Move extends SPARCLIRInstruction implements ValueMoveOp, SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<Move> TYPE = LIRInstructionClass.create(Move.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(8);
 
         @Def({REG, STACK, HINT}) protected AllocatableValue result;
-        @Use({REG, STACK}) protected Value input;
+        @Use({REG, STACK}) protected AllocatableValue input;
 
-        public Move(AllocatableValue result, Value input) {
+        public Move(AllocatableValue result, AllocatableValue input) {
             super(TYPE, SIZE);
             this.result = result;
             this.input = input;
@@ -136,7 +137,7 @@ public class SPARCMove {
         }
 
         @Override
-        public Value getInput() {
+        public AllocatableValue getInput() {
             return input;
         }
 
@@ -150,7 +151,7 @@ public class SPARCMove {
      * Move between floating-point and general purpose register domain.
      */
     @Opcode("MOVE_FPGP")
-    public static final class MoveFpGp extends SPARCLIRInstruction implements MoveOp, SPARCTailDelayedLIRInstruction {
+    public static final class MoveFpGp extends SPARCLIRInstruction implements ValueMoveOp, SPARCTailDelayedLIRInstruction {
         public static final LIRInstructionClass<MoveFpGp> TYPE = LIRInstructionClass.create(MoveFpGp.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(2);
 
@@ -165,7 +166,7 @@ public class SPARCMove {
             this.temp = temp;
         }
 
-        public Value getInput() {
+        public AllocatableValue getInput() {
             return input;
         }
 

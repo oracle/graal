@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,20 @@ package com.oracle.graal.lir.constopt;
 
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.constopt.ConstantTree.Flags;
 import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
 import com.oracle.graal.lir.gen.*;
@@ -146,11 +145,11 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
         }
 
         private static boolean isConstantLoad(LIRInstruction inst) {
-            if (!(inst instanceof MoveOp)) {
+            if (!(inst instanceof LoadConstantOp)) {
                 return false;
             }
-            MoveOp move = (MoveOp) inst;
-            return isConstant(move.getInput()) && isVariable(move.getResult());
+            LoadConstantOp load = (LoadConstantOp) inst;
+            return isVariable(load.getResult());
         }
 
         private void addUsageToBlockMap(UseEntry entry) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,9 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
 
@@ -81,9 +83,8 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
         }
 
         /**
-         * Determines if two operations are both {@linkplain MoveOp moves} that have the same
-         * {@linkplain MoveOp#getInput() source} and {@linkplain MoveOp#getResult() destination}
-         * operands.
+         * Determines if two operations are both {@linkplain MoveOp moves} that have the same source
+         * and {@linkplain MoveOp#getResult() destination} operands.
          *
          * @param op1 the first instruction to compare
          * @param op2 the second instruction to compare
@@ -93,10 +94,17 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             assert op1 != null;
             assert op2 != null;
 
-            if (op1 instanceof MoveOp && op2 instanceof MoveOp) {
-                MoveOp move1 = (MoveOp) op1;
-                MoveOp move2 = (MoveOp) op2;
+            if (op1 instanceof ValueMoveOp && op2 instanceof ValueMoveOp) {
+                ValueMoveOp move1 = (ValueMoveOp) op1;
+                ValueMoveOp move2 = (ValueMoveOp) op2;
                 if (move1.getInput().equals(move2.getInput()) && move1.getResult().equals(move2.getResult())) {
+                    // these moves are exactly equal and can be optimized
+                    return true;
+                }
+            } else if (op1 instanceof LoadConstantOp && op2 instanceof LoadConstantOp) {
+                LoadConstantOp move1 = (LoadConstantOp) op1;
+                LoadConstantOp move2 = (LoadConstantOp) op2;
+                if (move1.getConstant().equals(move2.getConstant()) && move1.getResult().equals(move2.getResult())) {
                     // these moves are exactly equal and can be optimized
                     return true;
                 }

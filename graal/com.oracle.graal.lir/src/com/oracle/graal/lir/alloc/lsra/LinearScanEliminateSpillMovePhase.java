@@ -29,13 +29,15 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.*;
@@ -111,8 +113,14 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
                                  * instruction.
                                  */
                                 if (Debug.isLogEnabled()) {
-                                    Debug.log("eliminating move from interval %d (%s) to %d (%s) in block %s", allocator.operandNumber(move.getInput()), move.getInput(),
-                                                    allocator.operandNumber(move.getResult()), move.getResult(), block);
+                                    if (move instanceof ValueMoveOp) {
+                                        ValueMoveOp vmove = (ValueMoveOp) move;
+                                        Debug.log("eliminating move from interval %d (%s) to %d (%s) in block %s", allocator.operandNumber(vmove.getInput()), vmove.getInput(),
+                                                        allocator.operandNumber(vmove.getResult()), vmove.getResult(), block);
+                                    } else {
+                                        LoadConstantOp load = (LoadConstantOp) move;
+                                        Debug.log("eliminating constant load from %s to %d (%s) in block %s", load.getConstant(), allocator.operandNumber(load.getResult()), load.getResult(), block);
+                                    }
                                 }
 
                                 // null-instructions are deleted by assignRegNum

@@ -47,7 +47,7 @@ public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
         return inst;
     }
 
-    public final LIRInstruction createStackMove(AllocatableValue result, Value input) {
+    public final LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input) {
         LIRInstruction inst = createStackMoveIntern(result, input);
         assert checkResult(inst, result, input);
         return inst;
@@ -55,7 +55,7 @@ public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
 
     protected abstract LIRInstruction createMoveIntern(AllocatableValue result, Value input);
 
-    protected LIRInstruction createStackMoveIntern(AllocatableValue result, Value input) {
+    protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
         return new StackMove(result, input);
     }
 

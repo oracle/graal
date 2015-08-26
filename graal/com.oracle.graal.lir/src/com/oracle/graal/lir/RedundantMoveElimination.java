@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,15 @@ import static jdk.internal.jvmci.code.ValueUtil.*;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.phases.*;
@@ -329,7 +330,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                         for (int idx = 0; idx < numInsts; idx++) {
                             LIRInstruction op = instructions.get(idx);
                             if (isEligibleMove(op)) {
-                                MoveOp moveOp = (MoveOp) op;
+                                ValueMoveOp moveOp = (ValueMoveOp) op;
                                 int sourceIdx = getStateIdx(moveOp.getInput());
                                 int destIdx = getStateIdx(moveOp.getResult());
                                 if (sourceIdx >= 0 && destIdx >= 0 && iterState[sourceIdx] == iterState[destIdx]) {
@@ -360,7 +361,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                     /*
                      * Handle the special case of a move instruction
                      */
-                    MoveOp moveOp = (MoveOp) op;
+                    ValueMoveOp moveOp = (ValueMoveOp) op;
                     int sourceIdx = getStateIdx(moveOp.getInput());
                     int destIdx = getStateIdx(moveOp.getResult());
                     if (sourceIdx >= 0 && destIdx >= 0) {
@@ -526,8 +527,8 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * Returns true for a move instruction which is a candidate for elimination.
          */
         private static boolean isEligibleMove(LIRInstruction op) {
-            if (op instanceof MoveOp) {
-                MoveOp moveOp = (MoveOp) op;
+            if (op instanceof ValueMoveOp) {
+                ValueMoveOp moveOp = (ValueMoveOp) op;
                 Value source = moveOp.getInput();
                 Value dest = moveOp.getResult();
                 /*
