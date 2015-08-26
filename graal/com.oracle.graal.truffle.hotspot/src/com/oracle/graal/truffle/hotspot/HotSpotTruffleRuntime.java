@@ -104,10 +104,10 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         if (selectedProcessors == 0) {
             // No manual selection made, check how many processors are available.
             int availableProcessors = Runtime.getRuntime().availableProcessors();
-            if (availableProcessors >= 4) {
-                selectedProcessors = 2;
-            } else if (availableProcessors >= 12) {
+            if (availableProcessors >= 12) {
                 selectedProcessors = 4;
+            } else if (availableProcessors >= 4) {
+                selectedProcessors = 2;
             }
         }
         selectedProcessors = Math.max(1, selectedProcessors);
