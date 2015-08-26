@@ -592,214 +592,222 @@ public class SnippetTemplate {
 
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method(), AllowAssumptions.NO);
-        if (!snippetGraph.isInlinedMethodRecordingEnabled()) {
-            snippetCopy.disableInlinedMethodRecording();
-        }
-        if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
-            snippetCopy.disableUnsafeAccessTracking();
-        }
 
-        Map<Node, Node> nodeReplacements = Node.newIdentityMap();
-        nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
+        try (Debug.Scope scope = Debug.scope("SpecializeSnippet", snippetCopy)) {
+            if (!snippetGraph.isInlinedMethodRecordingEnabled()) {
+                snippetCopy.disableInlinedMethodRecording();
+            }
+            if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
+                snippetCopy.disableUnsafeAccessTracking();
+            }
 
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        assert checkTemplate(metaAccess, args, method, signature);
+            Map<Node, Node> nodeReplacements = Node.newIdentityMap();
+            nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
-        int parameterCount = args.info.getParameterCount();
-        VarargsPlaceholderNode[] placeholders = new VarargsPlaceholderNode[parameterCount];
+            MetaAccessProvider metaAccess = providers.getMetaAccess();
+            assert checkTemplate(metaAccess, args, method, signature);
 
-        for (int i = 0; i < parameterCount; i++) {
-            if (args.info.isConstantParameter(i)) {
-                Object arg = args.values[i];
-                Kind kind = signature.getParameterKind(i);
-                ConstantNode constantNode;
-                if (arg instanceof Constant) {
-                    Stamp stamp = args.constStamps[i];
-                    if (stamp == null) {
-                        assert arg instanceof JavaConstant : "could not determine type of constant " + arg;
-                        constantNode = ConstantNode.forConstant((JavaConstant) arg, metaAccess, snippetCopy);
+            int parameterCount = args.info.getParameterCount();
+            VarargsPlaceholderNode[] placeholders = new VarargsPlaceholderNode[parameterCount];
+
+            for (int i = 0; i < parameterCount; i++) {
+                if (args.info.isConstantParameter(i)) {
+                    Object arg = args.values[i];
+                    Kind kind = signature.getParameterKind(i);
+                    ConstantNode constantNode;
+                    if (arg instanceof Constant) {
+                        Stamp stamp = args.constStamps[i];
+                        if (stamp == null) {
+                            assert arg instanceof JavaConstant : "could not determine type of constant " + arg;
+                            constantNode = ConstantNode.forConstant((JavaConstant) arg, metaAccess, snippetCopy);
+                        } else {
+                            constantNode = ConstantNode.forConstant(stamp, (Constant) arg, metaAccess, snippetCopy);
+                        }
                     } else {
-                        constantNode = ConstantNode.forConstant(stamp, (Constant) arg, metaAccess, snippetCopy);
+                        constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
+                    }
+                    nodeReplacements.put(snippetGraph.getParameter(i), constantNode);
+                } else if (args.info.isVarargsParameter(i)) {
+                    Varargs varargs = (Varargs) args.values[i];
+                    VarargsPlaceholderNode placeholder = snippetCopy.unique(new VarargsPlaceholderNode(varargs, providers.getMetaAccess()));
+                    nodeReplacements.put(snippetGraph.getParameter(i), placeholder);
+                    placeholders[i] = placeholder;
+                }
+            }
+            snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
+
+            Debug.dump(snippetCopy, "Before specialization");
+
+            // Gather the template parameters
+            parameters = new Object[parameterCount];
+            for (int i = 0; i < parameterCount; i++) {
+                if (args.info.isConstantParameter(i)) {
+                    parameters[i] = CONSTANT_PARAMETER;
+                } else if (args.info.isVarargsParameter(i)) {
+                    assert snippetCopy.getParameter(i) == null;
+                    Varargs varargs = (Varargs) args.values[i];
+                    int length = varargs.length;
+                    ParameterNode[] params = new ParameterNode[length];
+                    Stamp stamp = varargs.stamp;
+                    for (int j = 0; j < length; j++) {
+                        // Use a decimal friendly numbering make it more obvious how values map
+                        assert parameterCount < 10000;
+                        int idx = (i + 1) * 10000 + j;
+                        assert idx >= parameterCount : "collision in parameter numbering";
+                        ParameterNode local = snippetCopy.unique(new ParameterNode(idx, stamp));
+                        params[j] = local;
+                    }
+                    parameters[i] = params;
+
+                    VarargsPlaceholderNode placeholder = placeholders[i];
+                    assert placeholder != null;
+                    for (Node usage : placeholder.usages().snapshot()) {
+                        if (usage instanceof LoadIndexedNode) {
+                            LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
+                            Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
+                            LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp()));
+                            snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
+                            Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
+                        } else if (usage instanceof StoreIndexedNode) {
+                            /*
+                             * The template lowering doesn't really treat this as an array so you
+                             * can't store back into the varargs. Allocate your own array if you
+                             * really need this and EA should eliminate it.
+                             */
+                            throw new JVMCIError("Can't store into VarargsParameter array");
+                        }
                     }
                 } else {
-                    constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
-                }
-                nodeReplacements.put(snippetGraph.getParameter(i), constantNode);
-            } else if (args.info.isVarargsParameter(i)) {
-                Varargs varargs = (Varargs) args.values[i];
-                VarargsPlaceholderNode placeholder = snippetCopy.unique(new VarargsPlaceholderNode(varargs, providers.getMetaAccess()));
-                nodeReplacements.put(snippetGraph.getParameter(i), placeholder);
-                placeholders[i] = placeholder;
-            }
-        }
-        snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
-
-        Debug.dump(snippetCopy, "Before specialization");
-
-        // Gather the template parameters
-        parameters = new Object[parameterCount];
-        for (int i = 0; i < parameterCount; i++) {
-            if (args.info.isConstantParameter(i)) {
-                parameters[i] = CONSTANT_PARAMETER;
-            } else if (args.info.isVarargsParameter(i)) {
-                assert snippetCopy.getParameter(i) == null;
-                Varargs varargs = (Varargs) args.values[i];
-                int length = varargs.length;
-                ParameterNode[] params = new ParameterNode[length];
-                Stamp stamp = varargs.stamp;
-                for (int j = 0; j < length; j++) {
-                    // Use a decimal friendly numbering make it more obvious how values map
-                    assert parameterCount < 10000;
-                    int idx = (i + 1) * 10000 + j;
-                    assert idx >= parameterCount : "collision in parameter numbering";
-                    ParameterNode local = snippetCopy.unique(new ParameterNode(idx, stamp));
-                    params[j] = local;
-                }
-                parameters[i] = params;
-
-                VarargsPlaceholderNode placeholder = placeholders[i];
-                assert placeholder != null;
-                for (Node usage : placeholder.usages().snapshot()) {
-                    if (usage instanceof LoadIndexedNode) {
-                        LoadIndexedNode loadIndexed = (LoadIndexedNode) usage;
-                        Debug.dump(snippetCopy, "Before replacing %s", loadIndexed);
-                        LoadSnippetVarargParameterNode loadSnippetParameter = snippetCopy.add(new LoadSnippetVarargParameterNode(params, loadIndexed.index(), loadIndexed.stamp()));
-                        snippetCopy.replaceFixedWithFixed(loadIndexed, loadSnippetParameter);
-                        Debug.dump(snippetCopy, "After replacing %s", loadIndexed);
-                    } else if (usage instanceof StoreIndexedNode) {
-                        // The template lowering doesn't really treat this as an array so you can't
-                        // store back into the varargs. Allocate your own array if you really need
-                        // this and EA should eliminate it.
-                        throw new JVMCIError("Can't store into VarargsParameter array");
+                    ParameterNode local = snippetCopy.getParameter(i);
+                    if (local == null) {
+                        // Parameter value was eliminated
+                        parameters[i] = UNUSED_PARAMETER;
+                    } else {
+                        parameters[i] = local;
                     }
                 }
+            }
+
+            // Do any required loop explosion
+            boolean exploded = false;
+            do {
+                exploded = false;
+                ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
+                if (explodeLoop != null) { // Earlier canonicalization may have removed the loop
+                    // altogether
+                    LoopBeginNode loopBegin = explodeLoop.findLoopBegin();
+                    if (loopBegin != null) {
+                        LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
+                        Mark mark = snippetCopy.getMark();
+                        LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase());
+                        new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark);
+                        loop.deleteUnusedNodes();
+                    }
+                    GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
+                    exploded = true;
+                }
+            } while (exploded);
+
+            GuardsStage guardsStage = args.cacheKey.guardsStage;
+            // Perform lowering on the snippet
+            if (!guardsStage.allowsFloatingGuards()) {
+                new GuardLoweringPhase().apply(snippetCopy, null);
+            }
+            snippetCopy.setGuardsStage(guardsStage);
+            try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
+                new LoweringPhase(new CanonicalizerPhase(), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+
+            ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
+            ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
+            ArrayList<ValueNode> curStampNodes = new ArrayList<>();
+            for (Node node : snippetCopy.getNodes()) {
+                if (node instanceof ValueNode && ((ValueNode) node).stamp() == StampFactory.forNodeIntrinsic()) {
+                    curStampNodes.add((ValueNode) node);
+                }
+                if (node instanceof StateSplit) {
+                    StateSplit stateSplit = (StateSplit) node;
+                    FrameState frameState = stateSplit.stateAfter();
+                    if (stateSplit.hasSideEffect()) {
+                        curSideEffectNodes.add((StateSplit) node);
+                    }
+                    if (frameState != null) {
+                        stateSplit.setStateAfter(null);
+                    }
+                }
+                if (node instanceof DeoptimizingNode) {
+                    DeoptimizingNode deoptNode = (DeoptimizingNode) node;
+                    if (deoptNode.canDeoptimize()) {
+                        curDeoptNodes.add(deoptNode);
+                    }
+                }
+            }
+
+            new DeadCodeEliminationPhase(Required).apply(snippetCopy);
+
+            assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
+
+            new FloatingReadPhase(true, true).apply(snippetCopy);
+
+            MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode());
+            snippetCopy.start().replaceAtUsages(InputType.Memory, anchor);
+
+            this.snippet = snippetCopy;
+
+            Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
+
+            StartNode entryPointNode = snippet.start();
+            if (anchor.hasNoUsages()) {
+                anchor.safeDelete();
+                this.memoryAnchor = null;
             } else {
-                ParameterNode local = snippetCopy.getParameter(i);
-                if (local == null) {
-                    // Parameter value was eliminated
-                    parameters[i] = UNUSED_PARAMETER;
-                } else {
-                    parameters[i] = local;
+                snippetCopy.addAfterFixed(snippetCopy.start(), anchor);
+                this.memoryAnchor = anchor;
+            }
+            List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
+            if (returnNodes.isEmpty()) {
+                this.returnNode = null;
+            } else if (returnNodes.size() == 1) {
+                this.returnNode = returnNodes.get(0);
+            } else {
+                AbstractMergeNode merge = snippet.add(new MergeNode());
+                List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
+                ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
+                this.returnNode = snippet.add(new ReturnNode(returnValue));
+                MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
+                MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
+                this.returnNode.setMemoryMap(memoryMap);
+                for (MemoryMapNode mm : memMaps) {
+                    if (mm != memoryMap && mm.isAlive()) {
+                        assert mm.hasNoUsages();
+                        GraphUtil.killWithUnusedFloatingInputs(mm);
+                    }
+                }
+                merge.setNext(this.returnNode);
+            }
+
+            this.sideEffectNodes = curSideEffectNodes;
+            this.deoptNodes = curDeoptNodes;
+            this.stampNodes = curStampNodes;
+
+            nodes = new ArrayList<>(snippet.getNodeCount());
+            for (Node node : snippet.getNodes()) {
+                if (node != entryPointNode && node != entryPointNode.stateAfter()) {
+                    nodes.add(node);
                 }
             }
-        }
 
-        // Do any required loop explosion
-        boolean exploded = false;
-        do {
-            exploded = false;
-            ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
-            if (explodeLoop != null) { // Earlier canonicalization may have removed the loop
-                // altogether
-                LoopBeginNode loopBegin = explodeLoop.findLoopBegin();
-                if (loopBegin != null) {
-                    LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
-                    Mark mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase());
-                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark);
-                    loop.deleteUnusedNodes();
-                }
-                GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
-                exploded = true;
+            Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
+            if (UseSnippetTemplateCache && args.cacheable) {
+                args.info.notifyNewTemplate();
             }
-        } while (exploded);
+            Debug.dump(snippet, "SnippetTemplate final state");
 
-        GuardsStage guardsStage = args.cacheKey.guardsStage;
-        // Perform lowering on the snippet
-        if (!guardsStage.allowsFloatingGuards()) {
-            new GuardLoweringPhase().apply(snippetCopy, null);
+        } catch (Throwable ex) {
+            throw Debug.handle(ex);
         }
-        snippetCopy.setGuardsStage(guardsStage);
-        try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-            new LoweringPhase(new CanonicalizerPhase(), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-
-        ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
-        ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
-        ArrayList<ValueNode> curStampNodes = new ArrayList<>();
-        for (Node node : snippetCopy.getNodes()) {
-            if (node instanceof ValueNode && ((ValueNode) node).stamp() == StampFactory.forNodeIntrinsic()) {
-                curStampNodes.add((ValueNode) node);
-            }
-            if (node instanceof StateSplit) {
-                StateSplit stateSplit = (StateSplit) node;
-                FrameState frameState = stateSplit.stateAfter();
-                if (stateSplit.hasSideEffect()) {
-                    curSideEffectNodes.add((StateSplit) node);
-                }
-                if (frameState != null) {
-                    stateSplit.setStateAfter(null);
-                }
-            }
-            if (node instanceof DeoptimizingNode) {
-                DeoptimizingNode deoptNode = (DeoptimizingNode) node;
-                if (deoptNode.canDeoptimize()) {
-                    curDeoptNodes.add(deoptNode);
-                }
-            }
-        }
-
-        new DeadCodeEliminationPhase(Required).apply(snippetCopy);
-
-        assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
-
-        new FloatingReadPhase(true, true).apply(snippetCopy);
-
-        MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode());
-        snippetCopy.start().replaceAtUsages(InputType.Memory, anchor);
-
-        this.snippet = snippetCopy;
-
-        Debug.dump(snippet, "SnippetTemplate after fixing memory anchoring");
-
-        StartNode entryPointNode = snippet.start();
-        if (anchor.hasNoUsages()) {
-            anchor.safeDelete();
-            this.memoryAnchor = null;
-        } else {
-            snippetCopy.addAfterFixed(snippetCopy.start(), anchor);
-            this.memoryAnchor = anchor;
-        }
-        List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
-        if (returnNodes.isEmpty()) {
-            this.returnNode = null;
-        } else if (returnNodes.size() == 1) {
-            this.returnNode = returnNodes.get(0);
-        } else {
-            AbstractMergeNode merge = snippet.add(new MergeNode());
-            List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
-            ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
-            this.returnNode = snippet.add(new ReturnNode(returnValue));
-            MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
-            MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
-            this.returnNode.setMemoryMap(memoryMap);
-            for (MemoryMapNode mm : memMaps) {
-                if (mm != memoryMap && mm.isAlive()) {
-                    assert mm.hasNoUsages();
-                    GraphUtil.killWithUnusedFloatingInputs(mm);
-                }
-            }
-            merge.setNext(this.returnNode);
-        }
-
-        this.sideEffectNodes = curSideEffectNodes;
-        this.deoptNodes = curDeoptNodes;
-        this.stampNodes = curStampNodes;
-
-        nodes = new ArrayList<>(snippet.getNodeCount());
-        for (Node node : snippet.getNodes()) {
-            if (node != entryPointNode && node != entryPointNode.stateAfter()) {
-                nodes.add(node);
-            }
-        }
-
-        Debug.metric("SnippetTemplateNodeCount[%#s]", args).add(nodes.size());
-        if (UseSnippetTemplateCache && args.cacheable) {
-            args.info.notifyNewTemplate();
-        }
-        Debug.dump(snippet, "SnippetTemplate final state");
     }
 
     protected Object[] getConstantArgs(Arguments args) {
