@@ -70,9 +70,6 @@ import com.oracle.truffle.api.nodes.*;
 public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
 
     public static TruffleRuntime makeInstance() {
-        if (GraalTruffleRuntime.alternateRuntime != null) {
-            return GraalTruffleRuntime.alternateRuntime;
-        }
         return new HotSpotTruffleRuntime();
     }
 
