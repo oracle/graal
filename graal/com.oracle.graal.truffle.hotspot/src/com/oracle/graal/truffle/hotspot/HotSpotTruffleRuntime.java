@@ -77,7 +77,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private Map<OptimizedCallTarget, Future<?>> compilations = newIdentityMap();
-    private final ThreadPoolExecutor compileQueue;
+    private final ExecutorService compileQueue;
 
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
     private static final long THREAD_EETOP_OFFSET = eetopOffset();
@@ -111,8 +111,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             }
         }
         selectedProcessors = Math.max(1, selectedProcessors);
-        compileQueue = new ThreadPoolExecutor(selectedProcessors, selectedProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
-
+        compileQueue = Executors.newFixedThreadPool(selectedProcessors, factory);
     }
 
     @Override
