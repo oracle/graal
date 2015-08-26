@@ -46,8 +46,8 @@ class UnresolvedObjectAccessNode extends ObjectAccessNode {
         ForeignObjectAccessHeadNode nthParent = (ForeignObjectAccessHeadNode) NodeUtil.getNthParent(this, cacheLength);
         ObjectAccessNode first = nthParent.getFirst();
         if (cacheLength < CACHE_SIZE) {
-            cacheLength++;
             CachedObjectAccessNode createCachedAccess = createCachedAccess(receiver, nthParent.getAccessTree(), first);
+            cacheLength++;
             return first.replace(createCachedAccess).executeWith(frame, receiver, arguments);
         } else {
             return first.replace(createGenericAccess(nthParent.getAccessTree())).executeWith(frame, receiver, arguments);
