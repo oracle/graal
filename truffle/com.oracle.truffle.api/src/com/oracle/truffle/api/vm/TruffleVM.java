@@ -654,8 +654,8 @@ public final class TruffleVM {
             if (impl == null) {
                 try {
                     TruffleLanguage<?> language = data.language;
-                    env = SPI.attachEnv(TruffleVM.this, language, out, err, in);
                     impl = language;
+                    env = SPI.attachEnv(TruffleVM.this, language, out, err, in);
                 } catch (Exception ex) {
                     throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + data.language.getClass().getName(), ex);
                 }

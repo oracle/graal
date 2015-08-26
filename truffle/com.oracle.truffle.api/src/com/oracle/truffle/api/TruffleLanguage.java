@@ -234,6 +234,7 @@ public abstract class TruffleLanguage<C> {
      */
     public static final class Env {
         private final TruffleVM vm;
+        private final TruffleLanguage<?> lang;
         private final LangCtx<?> langCtx;
         private final Reader in;
         private final Writer err;
@@ -244,6 +245,7 @@ public abstract class TruffleLanguage<C> {
             this.in = in;
             this.err = err;
             this.out = out;
+            this.lang = lang;
             this.langCtx = new LangCtx<>(lang, this);
         }
 
@@ -257,7 +259,7 @@ public abstract class TruffleLanguage<C> {
          * @return object representing the symbol or <code>null</code>
          */
         public Object importSymbol(String globalName) {
-            return API.importSymbol(vm, langCtx.lang, globalName);
+            return API.importSymbol(vm, lang, globalName);
         }
 
         /**
