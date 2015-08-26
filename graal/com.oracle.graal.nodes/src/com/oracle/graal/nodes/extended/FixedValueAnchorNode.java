@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
@@ -39,7 +38,7 @@ public final class FixedValueAnchorNode extends FixedWithNextNode implements LIR
     }
 
     public FixedValueAnchorNode(ValueNode object) {
-        super(TYPE, StampFactory.forNodeIntrinsic());
+        super(TYPE, object.stamp());
         this.object = object;
     }
 

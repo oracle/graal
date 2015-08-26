@@ -144,6 +144,15 @@ public class GraphKit {
         return method;
     }
 
+    public ResolvedJavaMethod findMethod(Class<?> declaringClass, String name, Class<?>... parameterTypes) {
+        try {
+            Method m = declaringClass.getDeclaredMethod(name, parameterTypes);
+            return providers.getMetaAccess().lookupJavaMethod(m);
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     /**
      * Creates and appends an {@link InvokeNode} for a call to a given method with a given set of
      * arguments.
