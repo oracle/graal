@@ -23,19 +23,20 @@
 package com.oracle.graal.printer;
 
 import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.code.*;
+import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
@@ -110,9 +111,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         return true;
     }
 
-    private static final long timestamp = System.currentTimeMillis();
-    private static final AtomicInteger uniqueId = new AtomicInteger();
-
     private static boolean isFrontendObject(Object object) {
         return object instanceof Graph || object instanceof BciBlockMapping;
     }
@@ -127,7 +125,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         }
 
         if (cfgPrinter == null) {
-            cfgFile = new File("compilations-" + timestamp + "_" + uniqueId.incrementAndGet() + ".cfg");
+            cfgFile = getCFGPath().toFile();
             try {
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
@@ -222,6 +220,16 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     private static boolean isBlockList(Object object) {
         return object instanceof List<?> && ((List<?>) object).size() > 0 && ((List<?>) object).get(0) instanceof AbstractBlockBase<?>;
+    }
+
+    private static long timestamp;
+    private static final AtomicInteger uniqueId = new AtomicInteger();
+
+    private static Path getCFGPath() {
+        if (timestamp == 0) {
+            timestamp = System.currentTimeMillis();
+        }
+        return Paths.get(GraalOptions.DumpPath.getValue(), "compilations-" + timestamp + "_" + uniqueId.incrementAndGet() + ".cfg");
     }
 
     /** Lazy initialization to delay service lookup until disassembler is actually needed. */
