@@ -241,4 +241,8 @@ public abstract class Accessor {
     protected Object findContext(Env env) {
         return API.findContext(env);
     }
+
+    protected TruffleLanguage<?> findLanguage(Env env) {
+        return API.findLanguage(env);
+    }
 }

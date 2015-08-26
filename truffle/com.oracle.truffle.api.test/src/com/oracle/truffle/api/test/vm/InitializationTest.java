@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
@@ -47,6 +48,9 @@ import java.io.IOException;
  * It has been reported that calling {@link Env#importSymbol(java.lang.String)} in
  * {@link TruffleLanguage TruffleLanguage.createContext(env)} yields a {@link NullPointerException}.
  * <p>
+ * The other report was related to specifying an abstract language class in the RootNode and
+ * problems with debugging later on. That is what the other part of this test - once it obtains
+ * Debugger instance simulates.
  */
 public class InitializationTest {
     @Test
@@ -65,19 +69,28 @@ public class InitializationTest {
 
         assertNotNull("Debugger found", arr[0]);
 
-        Debugger d = arr[0];
-        Breakpoint b = d.setLineBreakpoint(0, source.createLineLocation(1), true);
-        b.setCondition("true");
+        try {
+            Debugger d = arr[0];
+            Breakpoint b = d.setLineBreakpoint(0, source.createLineLocation(1), true);
+            assertTrue(b.isEnabled());
+            b.setCondition("true");
 
-        vm.eval(source);
+            vm.eval(source);
+        } catch (InstrumentOKException ex) {
+            // OK
+            return;
+        }
+        fail("We should properly call up to TestLanguage.createAdvancedInstrumentRootFactory");
     }
 
     private static final class MMRootNode extends RootNode {
         @Child ANode node;
 
-        MMRootNode() {
-            super(AbstractLanguage.class, null, null);
+        MMRootNode(SourceSection ss) {
+            super(AbstractLanguage.class, ss, null);
             node = new ANode(42);
+            adoptChildren();
+            node.probe().tagAs(StandardSyntaxTag.STATEMENT, this);
         }
 
         @Override
@@ -86,11 +99,53 @@ public class InitializationTest {
         }
     }
 
-    private static final class ANode extends Node {
+    private static class ANode extends Node {
         private final int constant;
 
         public ANode(int constant) {
             this.constant = constant;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return getRootNode().getSourceSection();
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public ProbeNode.WrapperNode createWrapperNode() {
+            class WN extends ANode implements ProbeNode.WrapperNode {
+                private ProbeNode probeNode;
+
+                public WN(int constant) {
+                    super(constant);
+                }
+
+                @Override
+                public Node getChild() {
+                    return ANode.this;
+                }
+
+                @Override
+                public Probe getProbe() {
+                    return probeNode.getProbe();
+                }
+
+                @Override
+                public void insertProbe(ProbeNode pn) {
+                    this.probeNode = pn;
+                }
+
+                @Override
+                public String instrumentationInfo() {
+                    throw new UnsupportedOperationException();
+                }
+            }
+            return new WN(constant);
         }
 
         Object constant() {
@@ -114,7 +169,7 @@ public class InitializationTest {
 
         @Override
         protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-            return Truffle.getRuntime().createCallTarget(new MMRootNode());
+            return Truffle.getRuntime().createCallTarget(new MMRootNode(code.createSection("1st line", 1)));
         }
 
         @Override
@@ -149,7 +204,7 @@ public class InitializationTest {
 
         @Override
         public AdvancedInstrumentRootFactory createAdvancedInstrumentRootFactory(String expr, AdvancedInstrumentResultListener resultListener) throws DebugSupportException {
-            throw new UnsupportedOperationException();
+            throw new InstrumentOKException();
         }
 
         @Override
@@ -161,5 +216,9 @@ public class InitializationTest {
         public void enableASTProbing(ASTProber astProber) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    private static final class InstrumentOKException extends RuntimeException {
+        static final long serialVersionUID = 1L;
     }
 }

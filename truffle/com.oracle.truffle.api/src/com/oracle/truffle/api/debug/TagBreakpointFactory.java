@@ -102,8 +102,10 @@ final class TagBreakpointFactory {
      */
     @CompilationFinal private boolean breakpointsActive = true;
     private final CyclicAssumption breakpointsActiveUnchanged = new CyclicAssumption(BREAKPOINT_NAME + " globally active");
+    private final Debugger debugger;
 
-    TagBreakpointFactory(BreakpointCallback breakpointCallback, final WarningLog warningLog) {
+    TagBreakpointFactory(Debugger debugger, BreakpointCallback breakpointCallback, final WarningLog warningLog) {
+        this.debugger = debugger;
         this.breakpointCallback = breakpointCallback;
         this.warningLog = warningLog;
 
@@ -327,7 +329,7 @@ final class TagBreakpointFactory {
             if (conditionExpr == null) {
                 newInstrument = Instrument.create(new UnconditionalTagBreakInstrumentListener(), BREAKPOINT_NAME);
             } else {
-                newInstrument = Instrument.create(this, Debugger.createAdvancedInstrumentRootFactory(newProbe, conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
+                newInstrument = Instrument.create(this, debugger.createAdvancedInstrumentRootFactory(newProbe, conditionExpr, this), Boolean.class, BREAKPOINT_NAME);
             }
             newProbe.attach(newInstrument);
             instruments.add(newInstrument);

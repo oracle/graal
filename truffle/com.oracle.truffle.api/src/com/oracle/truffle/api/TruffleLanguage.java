@@ -335,6 +335,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        protected TruffleLanguage<?> findLanguage(Env env) {
+            return env.lang;
+        }
+
+        @Override
         protected Object languageGlobal(TruffleLanguage.Env env) {
             return env.langCtx.getLanguageGlobal();
         }
