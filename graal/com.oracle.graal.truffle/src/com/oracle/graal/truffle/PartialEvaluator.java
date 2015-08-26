@@ -113,6 +113,10 @@ public class PartialEvaluator {
         return snippetReflection;
     }
 
+    public GraphBuilderConfiguration getConfigForParsing() {
+        return configForParsing;
+    }
+
     public ResolvedJavaMethod[] getCompilationRootMethods() {
         return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
     }
