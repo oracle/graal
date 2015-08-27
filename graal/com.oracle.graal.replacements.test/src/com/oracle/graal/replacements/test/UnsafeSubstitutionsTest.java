@@ -349,6 +349,35 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         return unsafeDirectMemoryRead(unsafe, address);
     }
 
+    static class MyObject {
+        int i = 42;
+        final int j = 24;
+        final String a = "a";
+        final String b;
+
+        public MyObject(String b) {
+            this.b = b;
+            Thread.dumpStack();
+        }
+
+        @Override
+        public String toString() {
+            return j + a + b + i;
+        }
+    }
+
+    @SuppressWarnings("all")
+    public static String unsafeAllocateInstance(Unsafe unsafe) throws InstantiationException {
+        return unsafe.allocateInstance(MyObject.class).toString();
+    }
+
+    @Test
+    public void testAllocateInstance() throws Exception {
+        System.out.println("result: " + unsafeAllocateInstance(unsafe));
+        test("unsafeAllocateInstance", unsafe);
+        test("unsafeAllocateInstance", (Object) null);
+    }
+
     @Test
     public void testGetAndAddInt() throws Exception {
         Foo f1 = new Foo();
