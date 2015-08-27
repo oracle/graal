@@ -50,8 +50,8 @@ class DefUseTree {
         return (Variable) instruction.getResult();
     }
 
-    public JavaConstant getConstant() {
-        return (JavaConstant) instruction.getConstant();
+    public Constant getConstant() {
+        return instruction.getConstant();
     }
 
     public LIRInstruction getInstruction() {

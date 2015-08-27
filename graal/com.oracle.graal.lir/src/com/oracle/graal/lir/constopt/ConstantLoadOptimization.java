@@ -149,7 +149,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 return false;
             }
             LoadConstantOp load = (LoadConstantOp) inst;
-            return isVariable(load.getResult());
+            return isVariable(load.getResult()) && load.getConstant() instanceof JavaConstant;
         }
 
         private void addUsageToBlockMap(UseEntry entry) {
@@ -286,12 +286,12 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             }
         }
 
-        private void insertLoad(JavaConstant constant, LIRKind kind, AbstractBlockBase<?> block, List<UseEntry> usages) {
+        private void insertLoad(Constant constant, LIRKind kind, AbstractBlockBase<?> block, List<UseEntry> usages) {
             assert usages != null && usages.size() > 0 : String.format("No usages %s %s %s", constant, block, usages);
             // create variable
             Variable variable = lirGen.newVariable(kind);
             // create move
-            LIRInstruction move = lirGen.getSpillMoveFactory().createMove(variable, constant);
+            LIRInstruction move = lirGen.getSpillMoveFactory().createMove(variable, (JavaConstant) constant);
             // insert instruction
             getInsertionBuffer(block).append(1, move);
             Debug.log("new move (%s) and inserted in block %s", move, block);
