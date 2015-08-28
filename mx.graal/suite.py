@@ -54,9 +54,9 @@ suite = {
     },
 
     "JMH" : {
-      "path" : "lib/jmh-runner-1.4.2.jar",
-      "sha1" : "f44bffaf237305512002303a306fc5ce3fa63f76",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/jmh/jmh-runner-1.4.2.jar"],
+      "path" : "lib/jmh-runner-1.10.4.jar",
+      "sha1" : "be2e08e6776191e9c559a65b7d34e92e86b4fa5c",
+      "urls" : ["http://lafo.ssw.uni-linz.ac.at/jmh/jmh-runner-1.10.4.jar"],
     },
   },
 
