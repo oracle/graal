@@ -74,90 +74,6 @@ import com.oracle.truffle.api.source.*;
 public final class TruffleVM {
     private static final Logger LOG = Logger.getLogger(TruffleVM.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
-
-    /*
-     * This field cannot be private, because then the Java compiler encapsulates the access from
-     * within inner classes in a synthetic accessor method.
-     */
-    static final boolean EAGER_LOADING = Boolean.getBoolean("com.oracle.truffle.aot");
-
-    static final class LanguageData {
-        final String name;
-        final String version;
-        final Set<String> mimeTypes;
-        final String languageClassName;
-        TruffleLanguage<?> language;
-
-        LanguageData(String prefix, Properties props) {
-            this.name = props.getProperty(prefix + "name");
-            this.version = props.getProperty(prefix + "version");
-            this.languageClassName = props.getProperty(prefix + "className");
-
-            TreeSet<String> ts = new TreeSet<>();
-            for (int i = 0;; i++) {
-                String mt = props.getProperty(prefix + "mimeType." + i);
-                if (mt == null) {
-                    break;
-                }
-                ts.add(mt);
-            }
-            this.mimeTypes = Collections.unmodifiableSet(ts);
-
-            if (EAGER_LOADING) {
-                loadLanguage();
-            }
-        }
-
-        void loadLanguage() {
-            try {
-                Class<?> langClazz = Class.forName(languageClassName, true, loader());
-                language = (TruffleLanguage<?>) langClazz.getField("INSTANCE").get(null);
-            } catch (Exception ex) {
-                throw new IllegalStateException("Cannot initialize " + name + " language with implementation " + languageClassName, ex);
-            }
-        }
-    }
-
-    /**
-     * Ensure lazy loading of the language list by putting it into a separate class. This means that
-     * the {@link TruffleVM }can be loaded without filling the language list immediately. This is
-     * delayed until the first {@link TruffleVM} is instantiated, because the field
-     * {@link #ALL_LANGUAGE_DATA} is only accessed in the constructor of {@link TruffleVM}.
-     */
-    static final class LazyLanguageData {
-        private static final List<LanguageData> ALL_LANGUAGE_DATA;
-
-        static {
-            ALL_LANGUAGE_DATA = new ArrayList<>();
-            Enumeration<URL> en;
-            try {
-                en = loader().getResources("META-INF/truffle/language");
-            } catch (IOException ex) {
-                throw new IllegalStateException("Cannot read list of Truffle languages", ex);
-            }
-            while (en.hasMoreElements()) {
-                URL u = en.nextElement();
-                Properties p;
-                try {
-                    p = new Properties();
-                    try (InputStream is = u.openStream()) {
-                        p.load(is);
-                    }
-                } catch (IOException ex) {
-                    LOG.log(Level.CONFIG, "Cannot process " + u + " as language definition", ex);
-                    continue;
-                }
-                for (int cnt = 1;; cnt++) {
-                    String prefix = "language" + cnt + ".";
-                    if (p.getProperty(prefix + "name") == null) {
-                        break;
-                    }
-                    ALL_LANGUAGE_DATA.add(new LanguageData(prefix, p));
-                }
-            }
-        }
-    }
-
     private final Thread initThread;
     private final Map<String, Language> langs;
     private final Reader in;
@@ -195,11 +111,33 @@ public final class TruffleVM {
         this.initThread = Thread.currentThread();
         this.globals = new HashMap<>(globals);
         this.langs = new HashMap<>();
-
-        for (LanguageData data : LazyLanguageData.ALL_LANGUAGE_DATA) {
-            Language l = new Language(data);
-            for (String mimeType : l.getMimeTypes()) {
-                langs.put(mimeType, l);
+        Enumeration<URL> en;
+        try {
+            en = loader().getResources("META-INF/truffle/language");
+        } catch (IOException ex) {
+            throw new IllegalStateException("Cannot read list of Truffle languages", ex);
+        }
+        while (en.hasMoreElements()) {
+            URL u = en.nextElement();
+            Properties p;
+            try {
+                p = new Properties();
+                try (InputStream is = u.openStream()) {
+                    p.load(is);
+                }
+            } catch (IOException ex) {
+                LOG.log(Level.CONFIG, "Cannot process " + u + " as language definition", ex);
+                continue;
+            }
+            for (int cnt = 1;; cnt++) {
+                String prefix = "language" + cnt + ".";
+                if (p.getProperty(prefix + "name") == null) {
+                    break;
+                }
+                Language l = new Language(prefix, p);
+                for (String mimeType : l.getMimeTypes()) {
+                    langs.put(mimeType, l);
+                }
             }
         }
     }
@@ -315,7 +253,7 @@ public final class TruffleVM {
          * and will take precedence over {@link TruffleLanguage#findExportedSymbol symbols exported
          * by languages itself}. Repeated use of <code>globalSymbol</code> is possible; later
          * definition of the same name overrides the previous one.
-         *
+         * 
          * @param name name of the symbol to register
          * @param obj value of the object - expected to be primitive wrapper, {@link String} or
          *            <code>TruffleObject</code> for mutual inter-operability
@@ -624,13 +562,15 @@ public final class TruffleVM {
      * {@link TruffleVM#eval(java.lang.String, java.lang.String) a code is evaluated} in it.
      */
     public final class Language {
-        private final LanguageData data;
+        private final Properties props;
         private TruffleLanguage<?> impl;
         private TruffleLanguage.Env env;
+        private final String prefix;
         private String shortName;
 
-        Language(LanguageData data) {
-            this.data = data;
+        Language(String prefix, Properties props) {
+            this.prefix = prefix;
+            this.props = props;
         }
 
         /**
@@ -639,7 +579,15 @@ public final class TruffleVM {
          * @return returns immutable set of recognized MIME types
          */
         public Set<String> getMimeTypes() {
-            return data.mimeTypes;
+            TreeSet<String> ts = new TreeSet<>();
+            for (int i = 0;; i++) {
+                String mt = props.getProperty(prefix + "mimeType." + i);
+                if (mt == null) {
+                    break;
+                }
+                ts.add(mt);
+            }
+            return Collections.unmodifiableSet(ts);
         }
 
         /**
@@ -648,7 +596,7 @@ public final class TruffleVM {
          * @return string giving the language a name
          */
         public String getName() {
-            return data.name;
+            return props.getProperty(prefix + "name");
         }
 
         /**
@@ -657,7 +605,7 @@ public final class TruffleVM {
          * @return string specifying the language version
          */
         public String getVersion() {
-            return data.version;
+            return props.getProperty(prefix + "version");
         }
 
         /**
@@ -674,17 +622,12 @@ public final class TruffleVM {
 
         TruffleLanguage<?> getImpl() {
             if (impl == null) {
+                String n = props.getProperty(prefix + "className");
                 try {
-                    if (!EAGER_LOADING && data.language == null) {
-                        data.loadLanguage();
-                    }
-                    assert data.language != null;
-
-                    TruffleLanguage<?> language = data.language;
-                    impl = language;
-                    env = SPI.attachEnv(TruffleVM.this, language, out, err, in);
+                    impl = LanguageCache.find(n, loader());
+                    env = SPI.attachEnv(TruffleVM.this, impl, out, err, in);
                 } catch (Exception ex) {
-                    throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + data.languageClassName, ex);
+                    throw new IllegalStateException("Cannot initialize " + getShortName() + " language with implementation " + n, ex);
                 }
             }
             return impl;
