@@ -191,15 +191,15 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
             ResolvedJavaType receiverType = StampTool.typeOrNull(receiver.stamp());
             if (receiverType != null) {
                 AssumptionResult<ResolvedJavaMethod> concreteMethod = receiverType.findUniqueConcreteMethod(target);
-                if (concreteMethod != null) {
-                    assumptions.record(concreteMethod);
+                if (concreteMethod != null && concreteMethod.canRecordTo(assumptions)) {
+                    concreteMethod.recordTo(assumptions);
                     return createTargetInvokeNode(intrinsicMethod, concreteMethod.getResult(), original, bci, returnType, arguments);
                 }
             }
         } else {
             AssumptionResult<ResolvedJavaMethod> concreteMethod = target.getDeclaringClass().findUniqueConcreteMethod(target);
-            if (concreteMethod != null) {
-                assumptions.record(concreteMethod);
+            if (concreteMethod != null && concreteMethod.canRecordTo(assumptions)) {
+                concreteMethod.recordTo(assumptions);
                 return createTargetInvokeNode(intrinsicMethod, concreteMethod.getResult(), original, bci, returnType, arguments);
             }
         }

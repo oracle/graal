@@ -129,22 +129,21 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             if (resolvedMethod != null && (resolvedMethod.canBeStaticallyBound() || StampTool.isExactType(receiver) || type.isArray())) {
                 return resolvedMethod;
             }
-            Assumptions assumptions = receiver.graph().getAssumptions();
-            if (assumptions != null) {
-                AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
-                if (leafConcreteSubtype != null) {
-                    ResolvedJavaMethod methodFromUniqueType = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
-                    if (methodFromUniqueType != null) {
-                        assumptions.record(leafConcreteSubtype);
-                        return methodFromUniqueType;
-                    }
-                }
 
-                AssumptionResult<ResolvedJavaMethod> uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
-                if (uniqueConcreteMethod != null) {
-                    assumptions.record(uniqueConcreteMethod);
-                    return uniqueConcreteMethod.getResult();
+            Assumptions assumptions = receiver.graph().getAssumptions();
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
+                ResolvedJavaMethod methodFromUniqueType = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
+                if (methodFromUniqueType != null) {
+                    leafConcreteSubtype.recordTo(assumptions);
+                    return methodFromUniqueType;
                 }
+            }
+
+            AssumptionResult<ResolvedJavaMethod> uniqueConcreteMethod = type.findUniqueConcreteMethod(targetMethod);
+            if (uniqueConcreteMethod != null && uniqueConcreteMethod.canRecordTo(assumptions)) {
+                uniqueConcreteMethod.recordTo(assumptions);
+                return uniqueConcreteMethod.getResult();
             }
         }
 

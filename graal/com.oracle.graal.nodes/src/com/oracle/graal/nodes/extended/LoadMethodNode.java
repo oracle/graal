@@ -74,11 +74,11 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
             if (StampTool.isExactType(object)) {
                 return resolveExactMethod(tool, type);
             }
-            Assumptions assumptions = graph().getAssumptions();
-            if (type != null && assumptions != null) {
+            if (type != null) {
+                Assumptions assumptions = graph().getAssumptions();
                 AssumptionResult<ResolvedJavaMethod> resolvedMethod = type.findUniqueConcreteMethod(method);
-                if (resolvedMethod != null && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
-                    assumptions.record(resolvedMethod);
+                if (resolvedMethod != null && resolvedMethod.canRecordTo(assumptions) && !type.isInterface() && method.getDeclaringClass().isAssignableFrom(type)) {
+                    resolvedMethod.recordTo(assumptions);
                     return ConstantNode.forConstant(stamp(), resolvedMethod.getResult().getEncoding(), tool.getMetaAccess());
                 }
             }
