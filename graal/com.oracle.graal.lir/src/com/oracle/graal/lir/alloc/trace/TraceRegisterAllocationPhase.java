@@ -36,7 +36,7 @@ import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
@@ -116,7 +116,19 @@ public class TraceRegisterAllocationPhase extends AllocationPhase {
     }
 
     static boolean isTrivialTrace(LIR lir, List<? extends AbstractBlockBase<?>> trace) {
-        return trace.size() == 1 && lir.getLIRforBlock(trace.iterator().next()).size() == 2;
+        if (trace.size() != 1) {
+            return false;
+        }
+        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.iterator().next());
+        if (instructions.size() != 2) {
+            return false;
+        }
+        assert instructions.get(0) instanceof LabelOp : "First instruction not a LabelOp: " + instructions.get(0);
+        /*
+         * Now we need to check if the BlockEndOp has no special operand requirements (i.e.
+         * stack-slot, register). For now we just check for JumpOp because we know that it doesn't.
+         */
+        return instructions.get(1) instanceof JumpOp;
     }
 
     /**
