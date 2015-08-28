@@ -3619,7 +3619,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genArrayLength() {
-        frameState.push(Kind.Int, append(genArrayLength(frameState.pop(Kind.Object))));
+        ValueNode array = emitExplicitExceptions(frameState.pop(Kind.Object), null);
+        frameState.push(Kind.Int, append(genArrayLength(array)));
     }
 
     public ResolvedJavaMethod getMethod() {

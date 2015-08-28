@@ -563,6 +563,7 @@ public final class BciBlockMapping {
                 case BALOAD:
                 case CALOAD:
                 case SALOAD:
+                case ARRAYLENGTH:
                 case PUTFIELD:
                 case GETFIELD: {
                     ExceptionDispatchBlock handler = handleExceptions(blockMap, bci);
