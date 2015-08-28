@@ -164,7 +164,7 @@ def microbench(args):
     # find all projects with a direct JMH dependency
     jmhProjects = []
     for p in mx.projects():
-        if 'JMH' in p.deps:
+        if 'JMH' in [x.name for x in p.deps]:
             jmhProjects.append(p.name)
     cp = mx.classpath(jmhProjects)
 
