@@ -56,9 +56,6 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
         if (CountingProxy.ENABLED) {
             toVM = CountingProxy.getProxy(CompilerToVM.class, toVM);
         }
-        if (Logger.ENABLED) {
-            toVM = LoggingProxy.getProxy(CompilerToVM.class, toVM);
-        }
 
         if (Boolean.valueOf(System.getProperty("jvmci.printconfig"))) {
             printConfig(runtime.getConfig());
