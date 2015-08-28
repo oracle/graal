@@ -175,6 +175,12 @@ def microbench(args):
     args += ['org.openjdk.jmh.Main']
     if forking:
         (_, _, jvm, forkedVmArgs, _) = parseVmArgs(vmArgs)
+        def quoteSpace(s):
+            if " " in s:
+                return '"' + s + '"'
+            return s
+
+        forkedVmArgs = map(quoteSpace, forkedVmArgs)
         args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + forkedVmArgs)]
     vm(args + jmhArgs)
 
