@@ -106,22 +106,23 @@ public class LIRFrameState {
      */
     protected static final EnumSet<OperandFlag> STATE_FLAGS = EnumSet.of(OperandFlag.REG, OperandFlag.STACK);
 
-    protected void processValues(LIRInstruction inst, Value[] values, InstructionValueProcedure proc) {
+    protected void processValues(LIRInstruction inst, JavaValue[] values, InstructionValueProcedure proc) {
         for (int i = 0; i < values.length; i++) {
-            Value value = values[i];
-            if (isIllegal(value)) {
+            JavaValue value = values[i];
+            if (isIllegalJavaValue(value)) {
                 continue;
             }
             if (value instanceof AllocatableValue) {
-                Value result = proc.doValue(inst, value, OperandMode.ALIVE, STATE_FLAGS);
-                if (!value.identityEquals(result)) {
-                    values[i] = result;
+                AllocatableValue allocatable = (AllocatableValue) value;
+                Value result = proc.doValue(inst, allocatable, OperandMode.ALIVE, STATE_FLAGS);
+                if (!allocatable.identityEquals(result)) {
+                    values[i] = (JavaValue) result;
                 }
             } else if (value instanceof StackLockValue) {
                 StackLockValue monitor = (StackLockValue) value;
-                Value owner = monitor.getOwner();
+                JavaValue owner = monitor.getOwner();
                 if (owner instanceof AllocatableValue) {
-                    monitor.setOwner(proc.doValue(inst, owner, OperandMode.ALIVE, STATE_FLAGS));
+                    monitor.setOwner((JavaValue) proc.doValue(inst, (AllocatableValue) owner, OperandMode.ALIVE, STATE_FLAGS));
                 }
                 Value slot = monitor.getSlot();
                 if (isVirtualStackSlot(slot)) {
@@ -133,18 +134,18 @@ public class LIRFrameState {
         }
     }
 
-    protected void processValues(LIRInstruction inst, Value[] values, InstructionValueConsumer proc) {
+    protected void processValues(LIRInstruction inst, JavaValue[] values, InstructionValueConsumer proc) {
         for (int i = 0; i < values.length; i++) {
-            Value value = values[i];
-            if (isIllegal(value)) {
+            JavaValue value = values[i];
+            if (isIllegalJavaValue(value)) {
                 continue;
             } else if (value instanceof AllocatableValue) {
-                proc.visitValue(inst, value, OperandMode.ALIVE, STATE_FLAGS);
+                proc.visitValue(inst, (AllocatableValue) value, OperandMode.ALIVE, STATE_FLAGS);
             } else if (value instanceof StackLockValue) {
                 StackLockValue monitor = (StackLockValue) value;
-                Value owner = monitor.getOwner();
+                JavaValue owner = monitor.getOwner();
                 if (owner instanceof AllocatableValue) {
-                    proc.visitValue(inst, owner, OperandMode.ALIVE, STATE_FLAGS);
+                    proc.visitValue(inst, (AllocatableValue) owner, OperandMode.ALIVE, STATE_FLAGS);
                 }
                 Value slot = monitor.getSlot();
                 if (isVirtualStackSlot(slot)) {
@@ -156,11 +157,11 @@ public class LIRFrameState {
         }
     }
 
-    private boolean unprocessed(Value value) {
-        if (isIllegal(value)) {
+    private boolean unprocessed(JavaValue value) {
+        if (isIllegalJavaValue(value)) {
             // Ignore dead local variables.
             return true;
-        } else if (isConstant(value)) {
+        } else if (isConstantJavaValue(value)) {
             // Ignore constants, the register allocator does not need to see them.
             return true;
         } else if (isVirtualObject(value)) {
