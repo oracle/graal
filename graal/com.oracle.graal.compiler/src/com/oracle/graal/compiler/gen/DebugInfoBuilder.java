@@ -23,8 +23,12 @@
 package com.oracle.graal.compiler.gen;
 
 import java.util.*;
-import java.util.Map.*;
 
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
+
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
@@ -32,11 +36,6 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.virtual.nodes.*;
-
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-import jdk.internal.jvmci.meta.*;
 
 /**
  * Builds {@link LIRFrameState}s from {@link FrameState}s.
@@ -52,9 +51,12 @@ public class DebugInfoBuilder {
     protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = Node.newMap();
     protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = Node.newIdentityMap();
 
+    protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
+
     public LIRFrameState build(FrameState topState, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
+        assert pendingVirtualObjects.size() == 0;
 
         // collect all VirtualObjectField instances:
         FrameState current = topState;
@@ -75,43 +77,36 @@ public class DebugInfoBuilder {
 
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
-            // fill in the VirtualObject values:
-            // during this process new VirtualObjects might be discovered, so repeat until no more
-            // changes occur.
-            boolean changed;
-            do {
-                changed = false;
-                Map<VirtualObjectNode, VirtualObject> virtualObjectsCopy = Node.newIdentityMap(virtualObjects);
-                for (Entry<VirtualObjectNode, VirtualObject> entry : virtualObjectsCopy.entrySet()) {
-                    if (entry.getValue().getValues() == null) {
-                        VirtualObjectNode vobj = entry.getKey();
-                        JavaValue[] values = new JavaValue[vobj.entryCount()];
-                        Kind[] slotKinds = new Kind[vobj.entryCount()];
-                        if (values.length > 0) {
-                            changed = true;
-                            VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobj);
-                            assert currentField != null;
-                            int pos = 0;
-                            for (int i = 0; i < vobj.entryCount(); i++) {
-                                if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getKind() != Kind.Illegal) {
-                                    ValueNode value = currentField.values().get(i);
-                                    values[pos] = toJavaValue(value);
-                                    slotKinds[pos] = toSlotKind(value);
-                                    pos++;
-                                } else {
-                                    assert currentField.values().get(i - 1).getStackKind() == Kind.Double || currentField.values().get(i - 1).getStackKind() == Kind.Long : vobj + " " + i + " " +
-                                                    currentField.values().get(i - 1);
-                                }
-                            }
-                            if (pos != vobj.entryCount()) {
-                                values = Arrays.copyOf(values, pos);
-                                slotKinds = Arrays.copyOf(slotKinds, pos);
-                            }
+            // fill in the VirtualObject values
+            VirtualObjectNode vobjNode;
+            while ((vobjNode = pendingVirtualObjects.poll()) != null) {
+                VirtualObject vobjValue = virtualObjects.get(vobjNode);
+                assert vobjValue.getValues() == null;
+
+                JavaValue[] values = new JavaValue[vobjNode.entryCount()];
+                Kind[] slotKinds = new Kind[vobjNode.entryCount()];
+                if (values.length > 0) {
+                    VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobjNode);
+                    assert currentField != null;
+                    int pos = 0;
+                    for (int i = 0; i < vobjNode.entryCount(); i++) {
+                        if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getKind() != Kind.Illegal) {
+                            ValueNode value = currentField.values().get(i);
+                            values[pos] = toJavaValue(value);
+                            slotKinds[pos] = toSlotKind(value);
+                            pos++;
+                        } else {
+                            assert currentField.values().get(i - 1).getStackKind() == Kind.Double || currentField.values().get(i - 1).getStackKind() == Kind.Long : vobjNode + " " + i + " " +
+                                            currentField.values().get(i - 1);
                         }
-                        entry.getValue().setValues(values, slotKinds);
+                    }
+                    if (pos != vobjNode.entryCount()) {
+                        values = Arrays.copyOf(values, pos);
+                        slotKinds = Arrays.copyOf(slotKinds, pos);
                     }
                 }
-            } while (changed);
+                vobjValue.setValues(values, slotKinds);
+            }
 
             virtualObjectsArray = virtualObjects.values().toArray(new VirtualObject[virtualObjects.size()]);
             virtualObjects.clear();
@@ -208,10 +203,11 @@ public class DebugInfoBuilder {
                     return toJavaValue(((MaterializedObjectState) state).materializedValue());
                 } else {
                     assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
-                    VirtualObject vobject = virtualObjects.get(value);
+                    VirtualObject vobject = virtualObjects.get(obj);
                     if (vobject == null) {
                         vobject = VirtualObject.get(obj.type(), virtualObjects.size());
                         virtualObjects.put(obj, vobject);
+                        pendingVirtualObjects.add(obj);
                     }
                     STATE_VIRTUAL_OBJECTS.increment();
                     return vobject;
