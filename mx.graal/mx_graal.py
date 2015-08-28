@@ -174,8 +174,8 @@ def microbench(args):
         args += vmArgs
     args += ['org.openjdk.jmh.Main']
     if forking:
-        (_, _, jvm, _, _) = parseVmArgs(vmArgs)
-        args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + vmArgs)]
+        (_, _, jvm, forkedVmArgs, _) = parseVmArgs(vmArgs)
+        args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + forkedVmArgs)]
     vm(args + jmhArgs)
 
 def ctw(args):
