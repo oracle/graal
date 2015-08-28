@@ -65,11 +65,12 @@ public final class GetClassNode extends FloatingNode implements Lowerable, Canon
             ResolvedJavaType exactType = null;
             if (objectStamp.isExactType()) {
                 exactType = objectStamp.type();
-            } else if (objectStamp.type() != null && object.graph().getAssumptions() != null) {
+            } else if (objectStamp.type() != null) {
+                Assumptions assumptions = object.graph().getAssumptions();
                 AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
-                if (leafConcreteSubtype != null) {
+                if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions)) {
+                    leafConcreteSubtype.recordTo(assumptions);
                     exactType = leafConcreteSubtype.getResult();
-                    object.graph().getAssumptions().record(leafConcreteSubtype);
                 }
             }
 

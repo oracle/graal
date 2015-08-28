@@ -76,12 +76,10 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             return synonym;
         }
         assert object.stamp() instanceof ObjectStamp : object;
-        if (assumptions != null) {
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null && !leafConcreteSubtype.getResult().equals(type)) {
-                assumptions.record(leafConcreteSubtype);
-                type = leafConcreteSubtype.getResult();
-            }
+        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
+        if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions) && !leafConcreteSubtype.getResult().equals(type)) {
+            leafConcreteSubtype.recordTo(assumptions);
+            type = leafConcreteSubtype.getResult();
         }
         return new CheckCastNode(type, object, profile, forStoreCheck);
     }
@@ -180,14 +178,13 @@ public class CheckCastNode extends FixedWithNextNode implements Canonicalizable,
             return synonym;
         }
 
+        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
         Assumptions assumptions = graph().getAssumptions();
-        if (assumptions != null) {
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = type.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null && !leafConcreteSubtype.getResult().equals(type)) {
-                // Propagate more precise type information to usages of the checkcast.
-                assumptions.record(leafConcreteSubtype);
-                return new CheckCastNode(leafConcreteSubtype.getResult(), object, profile, forStoreCheck);
-            }
+        if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions) && !leafConcreteSubtype.getResult().equals(type)) {
+            // Propagate more precise type information to usages of the checkcast.
+            leafConcreteSubtype.recordTo(assumptions);
+            CheckCastNode result = new CheckCastNode(leafConcreteSubtype.getResult(), object, profile, forStoreCheck);
+            return result;
         }
 
         return this;

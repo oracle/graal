@@ -74,10 +74,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
             return objectStamp.type().hasFinalizer();
         } else if (objectStamp.type() != null) {
             AssumptionResult<Boolean> result = objectStamp.type().hasFinalizableSubclass();
-            if (result.isAssumptionFree()) {
-                return result.getResult();
-            } else if (assumptions != null) {
-                assumptions.record(result);
+            if (result.canRecordTo(assumptions)) {
+                result.recordTo(assumptions);
                 return result.getResult();
             }
         }

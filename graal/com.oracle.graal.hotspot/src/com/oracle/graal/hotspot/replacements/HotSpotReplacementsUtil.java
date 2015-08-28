@@ -964,9 +964,10 @@ public class HotSpotReplacementsUtil {
                 if (type != null && type.isArray()) {
                     ResolvedJavaType element = type.getComponentType();
                     if (element != null && !element.isPrimitive() && !element.getElementalType().isInterface()) {
+                        Assumptions assumptions = object.graph().getAssumptions();
                         AssumptionResult<ResolvedJavaType> leafType = element.findLeafConcreteSubtype();
-                        if (leafType != null) {
-                            object.graph().getAssumptions().record(leafType);
+                        if (leafType != null && leafType.canRecordTo(assumptions)) {
+                            leafType.recordTo(assumptions);
                             return ConstantNode.forConstant(read.stamp(), leafType.getResult().getObjectHub(), tool.getMetaAccess());
                         }
                     }

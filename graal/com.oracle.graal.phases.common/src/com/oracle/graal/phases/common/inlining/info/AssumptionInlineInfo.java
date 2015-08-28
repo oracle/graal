@@ -48,13 +48,13 @@ public class AssumptionInlineInfo extends ExactInlineInfo {
 
     @Override
     public Collection<Node> inline(Providers providers) {
-        invoke.asNode().graph().getAssumptions().record(takenAssumption);
+        takenAssumption.recordTo(invoke.asNode().graph().getAssumptions());
         return super.inline(providers);
     }
 
     @Override
     public void tryToDevirtualizeInvoke(Providers providers) {
-        invoke.asNode().graph().getAssumptions().record(takenAssumption);
+        takenAssumption.recordTo(invoke.asNode().graph().getAssumptions());
         InliningUtil.replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
     }
 

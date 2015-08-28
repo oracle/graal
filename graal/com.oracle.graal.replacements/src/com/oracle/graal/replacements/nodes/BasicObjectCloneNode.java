@@ -66,7 +66,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
     /*
      * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
      * exact type) and if it is a cloneable type.
-     * 
+     *
      * If yes, then the exact type is returned, otherwise it returns null.
      */
     protected static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
@@ -78,12 +78,12 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
             return null;
         } else if (objectStamp.isExactType()) {
             return isCloneableType(objectStamp.type(), metaAccess) ? objectStamp.type() : null;
-        } else if (assumptions != null) {
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null && isCloneableType(leafConcreteSubtype.getResult(), metaAccess)) {
-                assumptions.record(leafConcreteSubtype);
-                return leafConcreteSubtype.getResult();
-            }
+        }
+
+        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = objectStamp.type().findLeafConcreteSubtype();
+        if (leafConcreteSubtype != null && leafConcreteSubtype.canRecordTo(assumptions) && isCloneableType(leafConcreteSubtype.getResult(), metaAccess)) {
+            leafConcreteSubtype.recordTo(assumptions);
+            return leafConcreteSubtype.getResult();
         }
         return null;
     }
