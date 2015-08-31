@@ -149,7 +149,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 return false;
             }
             LoadConstantOp load = (LoadConstantOp) inst;
-            return isVariable(load.getResult()) && load.getConstant() instanceof JavaConstant;
+            return isVariable(load.getResult());
         }
 
         private void addUsageToBlockMap(UseEntry entry) {
