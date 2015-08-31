@@ -24,7 +24,6 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options.*;
 import static jdk.internal.jvmci.code.CodeUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
@@ -641,7 +640,7 @@ public class TraceLinearScan {
                 dataFlowPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
                 Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", dataFlowPhase.getName());
 
-                LinearScanAssignLocationsPhase assignPhase = createAssignLocationsPhase();
+                TraceLinearScanAssignLocationsPhase assignPhase = createAssignLocationsPhase();
                 assignPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
                 if (DetailedAsserts.getValue()) {
@@ -668,11 +667,8 @@ public class TraceLinearScan {
         return new TraceLinearScanEliminateSpillMovePhase(this);
     }
 
-    protected LinearScanAssignLocationsPhase createAssignLocationsPhase() {
-        if (TraceRAshareSpillInformation.getValue()) {
-            return new TraceLinearScanAssignLocationsPhase(this, traceBuilderResult);
-        }
-        return new LinearScanAssignLocationsPhase(this);
+    protected TraceLinearScanAssignLocationsPhase createAssignLocationsPhase() {
+        return new TraceLinearScanAssignLocationsPhase(this, traceBuilderResult);
     }
 
     protected void beforeSpillMoveElimination() {
