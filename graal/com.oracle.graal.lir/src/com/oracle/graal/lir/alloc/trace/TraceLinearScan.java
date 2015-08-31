@@ -185,7 +185,7 @@ public class TraceLinearScan {
     }
 
     protected MoveResolver createMoveResolver() {
-        SSAMoveResolver moveResolver = new SSAMoveResolver(this);
+        TraceLocalMoveResolver moveResolver = new TraceLocalMoveResolver(this);
         assert moveResolver.checkEmpty();
         return moveResolver;
     }

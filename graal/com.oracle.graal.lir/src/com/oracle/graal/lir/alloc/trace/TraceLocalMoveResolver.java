@@ -33,13 +33,13 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 
-public final class SSAMoveResolver extends MoveResolver {
+public final class TraceLocalMoveResolver extends MoveResolver {
 
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private int[] stackBlocked;
     private final int firstVirtualStackIndex;
 
-    public SSAMoveResolver(TraceLinearScan allocator) {
+    public TraceLocalMoveResolver(TraceLinearScan allocator) {
         super(allocator);
         FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.getFrameMapBuilder();
         FrameMap frameMap = frameMapBuilderTool.getFrameMap();
