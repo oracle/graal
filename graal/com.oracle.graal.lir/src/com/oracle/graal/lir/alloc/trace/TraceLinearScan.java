@@ -652,7 +652,7 @@ public class TraceLinearScan {
         }
     }
 
-    protected LinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
+    protected TraceLinearScanLifetimeAnalysisPhase createLifetimeAnalysisPhase() {
         if (Options.TraceRAsimpleLifetimeAnalysis.getValue()) {
             return new TraceSimpleLifetimeAnalysisPhase(this, traceBuilderResult);
         }
