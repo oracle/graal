@@ -40,10 +40,9 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
-import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
-import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
+import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
+import com.oracle.graal.lir.alloc.trace.LinearScan.BlockData;
 import com.oracle.graal.lir.ssi.*;
 
 public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {

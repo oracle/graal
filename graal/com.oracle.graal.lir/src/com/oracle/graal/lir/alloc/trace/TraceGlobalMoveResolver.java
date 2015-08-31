@@ -33,7 +33,6 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;

@@ -34,9 +34,8 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
-import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
+import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 

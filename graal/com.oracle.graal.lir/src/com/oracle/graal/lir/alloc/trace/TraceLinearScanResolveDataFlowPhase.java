@@ -32,7 +32,6 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.*;
 

@@ -36,7 +36,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.alloc.lsra.*;
 
 /**
  * Specialization of {@link LinearScanAssignLocationsPhase} that inserts
