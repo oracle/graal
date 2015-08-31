@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.common.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
+import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.alloc.trace.Interval.RegisterBinding;
 import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
