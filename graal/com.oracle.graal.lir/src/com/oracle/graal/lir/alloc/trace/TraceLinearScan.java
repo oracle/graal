@@ -674,8 +674,8 @@ public class TraceLinearScan {
     protected void beforeSpillMoveElimination() {
     }
 
-    protected LinearScanRegisterAllocationPhase createRegisterAllocationPhase() {
-        return new LinearScanRegisterAllocationPhase(this);
+    protected TraceLinearScanRegisterAllocationPhase createRegisterAllocationPhase() {
+        return new TraceLinearScanRegisterAllocationPhase(this);
     }
 
     protected LinearScanOptimizeSpillPositionPhase createOptimizeSpillPositionPhase() {
