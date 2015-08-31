@@ -46,19 +46,19 @@ import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
-import com.oracle.graal.lir.alloc.trace.LinearScan.BlockData;
+import com.oracle.graal.lir.alloc.trace.TraceLinearScan.BlockData;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
 public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
-    protected final LinearScan allocator;
+    protected final TraceLinearScan allocator;
 
     /**
      * @param linearScan
      */
-    protected LinearScanLifetimeAnalysisPhase(LinearScan linearScan) {
+    protected LinearScanLifetimeAnalysisPhase(TraceLinearScan linearScan) {
         allocator = linearScan;
     }
 
@@ -168,7 +168,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     }
                 };
                 ValueConsumer stateConsumer = (operand, mode, flags) -> {
-                    if (LinearScan.isVariableOrRegister(operand)) {
+                    if (TraceLinearScan.isVariableOrRegister(operand)) {
                         int operandNum = allocator.operandNumber(operand);
                         if (!liveKill.get(operandNum)) {
                             liveGen.set(operandNum);
@@ -566,10 +566,10 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
     }
 
     protected void addRegisterHint(final LIRInstruction op, final Value targetValue, OperandMode mode, EnumSet<OperandFlag> flags, final boolean hintAtDef) {
-        if (flags.contains(OperandFlag.HINT) && LinearScan.isVariableOrRegister(targetValue)) {
+        if (flags.contains(OperandFlag.HINT) && TraceLinearScan.isVariableOrRegister(targetValue)) {
 
             op.forEachRegisterHint(targetValue, mode, (registerHint, valueMode, valueFlags) -> {
-                if (LinearScan.isVariableOrRegister(registerHint)) {
+                if (TraceLinearScan.isVariableOrRegister(registerHint)) {
                     Interval from = allocator.getOrCreateInterval((AllocatableValue) registerHint);
                     Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
@@ -667,21 +667,21 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {
             InstructionValueConsumer outputConsumer = (op, operand, mode, flags) -> {
-                if (LinearScan.isVariableOrRegister(operand)) {
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
                     addDef((AllocatableValue) operand, op, registerPriorityOfOutputOperand(op), operand.getLIRKind());
                     addRegisterHint(op, operand, mode, flags, true);
                 }
             };
 
             InstructionValueConsumer tempConsumer = (op, operand, mode, flags) -> {
-                if (LinearScan.isVariableOrRegister(operand)) {
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
                     addTemp((AllocatableValue) operand, op.id(), RegisterPriority.MustHaveRegister, operand.getLIRKind());
                     addRegisterHint(op, operand, mode, flags, false);
                 }
             };
 
             InstructionValueConsumer aliveConsumer = (op, operand, mode, flags) -> {
-                if (LinearScan.isVariableOrRegister(operand)) {
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
                     RegisterPriority p = registerPriorityOfInputOperand(flags);
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
@@ -691,7 +691,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             };
 
             InstructionValueConsumer inputConsumer = (op, operand, mode, flags) -> {
-                if (LinearScan.isVariableOrRegister(operand)) {
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
                     RegisterPriority p = registerPriorityOfInputOperand(flags);
@@ -701,7 +701,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             };
 
             InstructionValueConsumer stateProc = (op, operand, mode, flags) -> {
-                if (LinearScan.isVariableOrRegister(operand)) {
+                if (TraceLinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
                     addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getLIRKind());

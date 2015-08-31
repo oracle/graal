@@ -37,7 +37,7 @@ import com.oracle.graal.lir.*;
  */
 public class MoveResolver {
 
-    private final LinearScan allocator;
+    private final TraceLinearScan allocator;
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
@@ -84,11 +84,11 @@ public class MoveResolver {
         return mappingFrom.size() > 0;
     }
 
-    protected LinearScan getAllocator() {
+    protected TraceLinearScan getAllocator() {
         return allocator;
     }
 
-    protected MoveResolver(LinearScan allocator) {
+    protected MoveResolver(TraceLinearScan allocator) {
 
         this.allocator = allocator;
         this.multipleReadsAllowed = false;

@@ -36,7 +36,7 @@ import com.oracle.graal.lir.alloc.trace.Interval.State;
 
 public class OptimizingLinearScanWalker extends LinearScanWalker {
 
-    OptimizingLinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
+    OptimizingLinearScanWalker(TraceLinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
     }
 

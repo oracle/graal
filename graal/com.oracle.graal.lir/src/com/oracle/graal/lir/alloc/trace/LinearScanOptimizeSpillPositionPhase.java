@@ -45,9 +45,9 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
     private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
     private static final DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
 
-    private final LinearScan allocator;
+    private final TraceLinearScan allocator;
 
-    LinearScanOptimizeSpillPositionPhase(LinearScan allocator) {
+    LinearScanOptimizeSpillPositionPhase(TraceLinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -159,10 +159,10 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             int spillOpId = allocator.getFirstLirInstructionId(spillBlock);
             // insert spill move
             AllocatableValue fromLocation = interval.getSplitChildAtOpId(spillOpId, OperandMode.DEF, allocator).location();
-            AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
+            AllocatableValue toLocation = TraceLinearScan.canonicalSpillOpr(interval);
             LIRInstruction move = allocator.getSpillMoveFactory().createMove(toLocation, fromLocation);
             Debug.log(3, "Insert spill move %s", move);
-            move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
+            move.setId(TraceLinearScan.DOMINATOR_SPILL_MOVE_ID);
             /*
              * We can use the insertion buffer directly because we always insert at position 1.
              */

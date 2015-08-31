@@ -46,7 +46,7 @@ class TraceLinearScanAssignLocationsPhase extends LinearScanAssignLocationsPhase
 
     private final TraceBuilderResult<?> traceBuilderResult;
 
-    TraceLinearScanAssignLocationsPhase(LinearScan allocator, TraceBuilderResult<?> traceBuilderResult) {
+    TraceLinearScanAssignLocationsPhase(TraceLinearScan allocator, TraceBuilderResult<?> traceBuilderResult) {
         super(allocator);
         this.traceBuilderResult = traceBuilderResult;
     }

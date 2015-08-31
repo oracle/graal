@@ -35,9 +35,9 @@ import com.oracle.graal.lir.phases.*;
 
 public final class LinearScanRegisterAllocationPhase extends AllocationPhase {
 
-    private final LinearScan allocator;
+    private final TraceLinearScan allocator;
 
-    LinearScanRegisterAllocationPhase(LinearScan allocator) {
+    LinearScanRegisterAllocationPhase(TraceLinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -54,7 +54,7 @@ public final class LinearScanRegisterAllocationPhase extends AllocationPhase {
             Interval precoloredIntervals;
             Interval notPrecoloredIntervals;
 
-            Interval.Pair result = allocator.createUnhandledLists(LinearScan.IS_PRECOLORED_INTERVAL, LinearScan.IS_VARIABLE_INTERVAL);
+            Interval.Pair result = allocator.createUnhandledLists(TraceLinearScan.IS_PRECOLORED_INTERVAL, TraceLinearScan.IS_VARIABLE_INTERVAL);
             precoloredIntervals = result.first;
             notPrecoloredIntervals = result.second;
 

@@ -39,7 +39,7 @@ public final class SSAMoveResolver extends MoveResolver {
     private int[] stackBlocked;
     private final int firstVirtualStackIndex;
 
-    public SSAMoveResolver(LinearScan allocator) {
+    public SSAMoveResolver(TraceLinearScan allocator) {
         super(allocator);
         FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.getFrameMapBuilder();
         FrameMap frameMap = frameMapBuilderTool.getFrameMap();

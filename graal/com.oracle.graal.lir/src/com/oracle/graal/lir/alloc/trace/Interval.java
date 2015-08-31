@@ -37,7 +37,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 
 /**
- * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.
+ * Represents an interval in the {@linkplain TraceLinearScan linear scan register allocator}.
  */
 public final class Interval {
 
@@ -829,7 +829,7 @@ public final class Interval {
         return null;
     }
 
-    Interval getSplitChildAtOpId(int opId, LIRInstruction.OperandMode mode, LinearScan allocator) {
+    Interval getSplitChildAtOpId(int opId, LIRInstruction.OperandMode mode, TraceLinearScan allocator) {
         assert isSplitParent() : "can only be called for split parents";
         assert opId >= 0 : "invalid opId (method cannot be called for spill moves)";
 
@@ -865,7 +865,7 @@ public final class Interval {
         }
     }
 
-    private boolean checkSplitChild(Interval result, int opId, LinearScan allocator, int toOffset, LIRInstruction.OperandMode mode) {
+    private boolean checkSplitChild(Interval result, int opId, TraceLinearScan allocator, int toOffset, LIRInstruction.OperandMode mode) {
         if (result == null) {
             // this is an error
             StringBuilder msg = new StringBuilder(this.toString()).append(" has no child at ").append(opId);
@@ -1067,7 +1067,7 @@ public final class Interval {
         }
     }
 
-    Interval newSplitChild(LinearScan allocator) {
+    Interval newSplitChild(TraceLinearScan allocator) {
         // allocate new interval
         Interval parent = splitParent();
         Interval result = allocator.createDerivedInterval(parent);
@@ -1103,7 +1103,7 @@ public final class Interval {
      * @param allocator the register allocator context
      * @return the child interval split off from this interval
      */
-    Interval split(int splitPos, LinearScan allocator) {
+    Interval split(int splitPos, TraceLinearScan allocator) {
         assert isVariable(operand) : "cannot split fixed intervals";
 
         // allocate new interval
@@ -1152,7 +1152,7 @@ public final class Interval {
      * Currently, only the first range can be split, and the new interval must not have split
      * positions
      */
-    Interval splitFromStart(int splitPos, LinearScan allocator) {
+    Interval splitFromStart(int splitPos, TraceLinearScan allocator) {
         assert isVariable(operand) : "cannot split fixed intervals";
         assert splitPos > from() && splitPos < to() : "can only split inside interval";
         assert splitPos > first.from && splitPos <= first.to : "can only split inside first range";
@@ -1253,7 +1253,7 @@ public final class Interval {
      *
      * @param allocator the register allocator context
      */
-    public String logString(LinearScan allocator) {
+    public String logString(TraceLinearScan allocator) {
         StringBuilder buf = new StringBuilder(100);
         buf.append(operandNumber).append(':').append(operand).append(' ');
         if (!isRegister(operand)) {

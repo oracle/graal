@@ -32,7 +32,7 @@ import com.oracle.graal.lir.alloc.trace.Interval.State;
  */
 public class IntervalWalker {
 
-    protected final LinearScan allocator;
+    protected final TraceLinearScan allocator;
 
     /**
      * Sorted list of intervals, not live before the current position.
@@ -86,7 +86,7 @@ public class IntervalWalker {
      * @param unhandledAny the list of unhandled {@linkplain RegisterBinding#Any non-fixed}
      *            intervals
      */
-    IntervalWalker(LinearScan allocator, Interval unhandledFixed, Interval unhandledAny) {
+    IntervalWalker(TraceLinearScan allocator, Interval unhandledFixed, Interval unhandledAny) {
         this.allocator = allocator;
 
         unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny, Interval.EndMarker);

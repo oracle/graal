@@ -39,14 +39,14 @@ import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
-import com.oracle.graal.lir.alloc.trace.LinearScan.IntervalPredicate;
+import com.oracle.graal.lir.alloc.trace.TraceLinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
 public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 
-    private static final IntervalPredicate mustStoreAtDefinition = new LinearScan.IntervalPredicate() {
+    private static final IntervalPredicate mustStoreAtDefinition = new TraceLinearScan.IntervalPredicate() {
 
         @Override
         public boolean apply(Interval i) {
@@ -54,9 +54,9 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
         }
     };
 
-    protected final LinearScan allocator;
+    protected final TraceLinearScan allocator;
 
-    protected LinearScanEliminateSpillMovePhase(LinearScan allocator) {
+    protected LinearScanEliminateSpillMovePhase(TraceLinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -146,7 +146,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
                                     }
 
                                     AllocatableValue fromLocation = interval.location();
-                                    AllocatableValue toLocation = LinearScan.canonicalSpillOpr(interval);
+                                    AllocatableValue toLocation = TraceLinearScan.canonicalSpillOpr(interval);
                                     if (!fromLocation.equals(toLocation)) {
 
                                         assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" +

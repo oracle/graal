@@ -40,7 +40,7 @@ public class TraceLinearScanResolveDataFlowPhase extends LinearScanResolveDataFl
     private static final DebugMetric numSSIResolutionMoves = Debug.metric("SSI LSRA[numSSIResolutionMoves]");
     private static final DebugMetric numStackToStackMoves = Debug.metric("SSI LSRA[numStackToStackMoves]");
 
-    public TraceLinearScanResolveDataFlowPhase(LinearScan allocator) {
+    public TraceLinearScanResolveDataFlowPhase(TraceLinearScan allocator) {
         super(allocator);
     }
 

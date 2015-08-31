@@ -42,14 +42,14 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
-import com.oracle.graal.lir.alloc.trace.LinearScan.BlockData;
+import com.oracle.graal.lir.alloc.trace.TraceLinearScan.BlockData;
 import com.oracle.graal.lir.ssi.*;
 
 public class TraceLinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalysisPhase {
 
     private final TraceBuilderResult<?> traceBuilderResult;
 
-    public TraceLinearScanLifetimeAnalysisPhase(LinearScan linearScan, TraceBuilderResult<?> traceBuilderResult) {
+    public TraceLinearScanLifetimeAnalysisPhase(TraceLinearScan linearScan, TraceBuilderResult<?> traceBuilderResult) {
         super(linearScan);
         this.traceBuilderResult = traceBuilderResult;
     }

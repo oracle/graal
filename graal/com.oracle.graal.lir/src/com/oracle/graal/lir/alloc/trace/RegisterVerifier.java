@@ -42,7 +42,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
  */
 final class RegisterVerifier {
 
-    LinearScan allocator;
+    TraceLinearScan allocator;
     List<AbstractBlockBase<?>> workList; // all blocks that must be processed
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
@@ -71,7 +71,7 @@ final class RegisterVerifier {
         }
     }
 
-    RegisterVerifier(LinearScan allocator) {
+    RegisterVerifier(TraceLinearScan allocator) {
         this.allocator = allocator;
         workList = new ArrayList<>(16);
         this.savedStates = new ArrayMap<>();
@@ -208,7 +208,7 @@ final class RegisterVerifier {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 // we skip spill moves inserted by the spill position optimization
-                if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != LinearScan.DOMINATOR_SPILL_MOVE_ID) {
+                if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != TraceLinearScan.DOMINATOR_SPILL_MOVE_ID) {
                     Interval interval = intervalAt(operand);
                     if (op.id() != -1) {
                         interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
@@ -220,7 +220,7 @@ final class RegisterVerifier {
         };
 
         InstructionValueConsumer defConsumer = (op, operand, mode, flags) -> {
-            if (LinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+            if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                 Interval interval = intervalAt(operand);
                 if (op.id() != -1) {
                     interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);

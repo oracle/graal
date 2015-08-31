@@ -27,7 +27,7 @@ import com.oracle.graal.lir.StandardOp.MoveOp;
 
 public class SSILinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 
-    public SSILinearScanEliminateSpillMovePhase(LinearScan allocator) {
+    public SSILinearScanEliminateSpillMovePhase(TraceLinearScan allocator) {
         super(allocator);
     }
 

@@ -43,9 +43,9 @@ import com.oracle.graal.lir.phases.*;
  */
 public class LinearScanResolveDataFlowPhase extends AllocationPhase {
 
-    protected final LinearScan allocator;
+    protected final TraceLinearScan allocator;
 
-    protected LinearScanResolveDataFlowPhase(LinearScan allocator) {
+    protected LinearScanResolveDataFlowPhase(TraceLinearScan allocator) {
         this.allocator = allocator;
     }
 
