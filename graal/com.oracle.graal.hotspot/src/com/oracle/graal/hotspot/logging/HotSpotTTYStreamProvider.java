@@ -24,13 +24,22 @@ package com.oracle.graal.hotspot.logging;
 
 import java.io.*;
 
-import com.oracle.graal.debug.*;
-
-import jdk.internal.jvmci.hotspot.HotSpotJVMCIRuntime.*;
+import jdk.internal.jvmci.options.*;
 import jdk.internal.jvmci.service.*;
+
+import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.*;
 
 @ServiceProvider(TTYStreamProvider.class)
 class HotSpotTTYStreamProvider implements TTYStreamProvider {
+
+    public static class Options {
+
+        // @formatter:off
+        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.", type = OptionType.Expert)
+        public static final PrintStreamOption LogFile = new PrintStreamOption();
+        // @formatter:on
+    }
 
     public PrintStream getStream() {
         return Options.LogFile.getStream();
