@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
     private static final Class<Value> VALUE_CLASS = Value.class;
-    private static final Class<JavaConstant> CONSTANT_CLASS = JavaConstant.class;
+    private static final Class<ConstantValue> CONSTANT_VALUE_CLASS = ConstantValue.class;
     private static final Class<Variable> VARIABLE_CLASS = Variable.class;
     private static final Class<RegisterValue> REGISTER_VALUE_CLASS = RegisterValue.class;
     private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;
@@ -166,7 +166,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         @Override
         protected void scanField(Field field, long offset) {
             Class<?> type = field.getType();
-            if (VALUE_CLASS.isAssignableFrom(type) && !CONSTANT_CLASS.isAssignableFrom(type)) {
+            if (VALUE_CLASS.isAssignableFrom(type) && !CONSTANT_VALUE_CLASS.isAssignableFrom(type)) {
                 assert !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final because it is modified by register allocator: " + field;
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
@@ -195,7 +195,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                 assert type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field with STACK flag:" + field;
             }
             if (flags.contains(CONST)) {
-                assert type.isAssignableFrom(CONSTANT_CLASS) : "Cannot assign Constant to field with CONST flag:" + field;
+                assert type.isAssignableFrom(CONSTANT_VALUE_CLASS) : "Cannot assign Constant to field with CONST flag:" + field;
             }
             return true;
         }

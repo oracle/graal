@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -99,11 +100,11 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
+        LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp());
         if (onlyUsedInVirtualState()) {
-            gen.setResult(this, (JavaConstant) value);
+            gen.setResult(this, new ConstantValue(kind, value));
         } else {
-            LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp());
-            gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(kind, value));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitConstant(kind, value));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,7 +127,7 @@ public class AMD64ControlFlow {
 
     public static final class StrategySwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
-        @Use({CONST}) protected JavaConstant[] keyConstants;
+        protected final JavaConstant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
@@ -168,7 +168,7 @@ public class AMD64ControlFlow {
                             break;
                         case Object:
                             assert condition == Condition.EQ || condition == Condition.NE;
-                            AMD64Move.move(crb, masm, scratch, keyConstants[index]);
+                            AMD64Move.const2reg(crb, masm, scratch, keyConstants[index]);
                             masm.cmpptr(keyRegister, asObjectReg(scratch));
                             break;
                         default:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,15 @@
  */
 package com.oracle.graal.lir.alloc.lsra;
 
-import static java.lang.String.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -44,7 +43,7 @@ public class MoveResolver {
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
     private final List<Interval> mappingFrom;
-    private final List<Value> mappingFromOpr;
+    private final List<Constant> mappingFromOpr;
     private final List<Interval> mappingTo;
     private boolean multipleReadsAllowed;
     private final int[] registerBlocked;
@@ -177,7 +176,7 @@ public class MoveResolver {
         }
     }
 
-    private static boolean checkIntervalLocation(Interval from, Interval to, Value fromOpr) {
+    private static boolean checkIntervalLocation(Interval from, Interval to, Constant fromOpr) {
         if (from == null) {
             return fromOpr != null;
         } else {
@@ -275,12 +274,11 @@ public class MoveResolver {
         return getAllocator().getSpillMoveFactory().createMove(toOpr, fromOpr);
     }
 
-    private void insertMove(Value fromOpr, Interval toInterval) {
-        assert LIRKind.verifyMoveKinds(toInterval.kind(), fromOpr.getLIRKind()) : format("move between different types %s %s", fromOpr.getLIRKind(), toInterval.kind());
+    private void insertMove(Constant fromOpr, Interval toInterval) {
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
-        LIRInstruction move = getAllocator().getSpillMoveFactory().createMove(toOpr, fromOpr);
+        LIRInstruction move = getAllocator().getSpillMoveFactory().createLoad(toOpr, fromOpr);
         insertionBuffer.append(insertIdx, move);
 
         if (Debug.isLogEnabled()) {
@@ -393,12 +391,12 @@ public class MoveResolver {
             for (int i = mappingFrom.size() - 1; i >= 0; i--) {
                 Interval fromInterval = mappingFrom.get(i);
                 Interval toInterval = mappingTo.get(i);
-                Value from;
+                String from;
                 Value to = toInterval.location();
                 if (fromInterval == null) {
-                    from = mappingFromOpr.get(i);
+                    from = mappingFromOpr.get(i).toString();
                 } else {
-                    from = fromInterval.location();
+                    from = fromInterval.location().toString();
                 }
                 Debug.log("move %s <- %s", from, to);
             }
@@ -438,7 +436,7 @@ public class MoveResolver {
         }
         if (isIllegal(fromInterval.location()) && fromInterval.canMaterialize()) {
             // Instead of a reload, re-materialize the value
-            Value rematValue = fromInterval.getMaterializedValue();
+            JavaConstant rematValue = fromInterval.getMaterializedValue();
             addMapping(rematValue, toInterval);
             return;
         }
@@ -450,16 +448,14 @@ public class MoveResolver {
         assert LIRKind.verifyMoveKinds(toInterval.kind(), fromInterval.kind()) : String.format("Kind mismatch: %s vs. %s, from=%s, to=%s", fromInterval.kind(), toInterval.kind(), fromInterval,
                         toInterval);
         mappingFrom.add(fromInterval);
-        mappingFromOpr.add(Value.ILLEGAL);
+        mappingFromOpr.add(null);
         mappingTo.add(toInterval);
     }
 
-    public void addMapping(Value fromOpr, Interval toInterval) {
+    public void addMapping(Constant fromOpr, Interval toInterval) {
         if (Debug.isLogEnabled()) {
             Debug.log("add move mapping from %s to %s", fromOpr, toInterval);
         }
-
-        assert isConstant(fromOpr) : "only for constants";
 
         mappingFrom.add(null);
         mappingFromOpr.add(fromOpr);

@@ -23,7 +23,6 @@
 package com.oracle.graal.lir.gen;
 
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
@@ -32,6 +31,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.StackMove;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 
@@ -53,7 +53,15 @@ public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
         return inst;
     }
 
+    public LIRInstruction createLoad(AllocatableValue result, Constant input) {
+        LIRInstruction inst = createLoadIntern(result, input);
+        assert inst instanceof LoadConstantOp && checkResult(inst, result, null);
+        return inst;
+    }
+
     protected abstract LIRInstruction createMoveIntern(AllocatableValue result, Value input);
+
+    protected abstract LIRInstruction createLoadIntern(AllocatableValue result, Constant input);
 
     protected LIRInstruction createStackMoveIntern(AllocatableValue result, AllocatableValue input) {
         return new StackMove(result, input);
@@ -93,7 +101,7 @@ public abstract class SpillMoveFactoryBase implements SpillMoveFactory {
         }
 
         void inputProc(LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-            assert value.equals(input) || isConstant(value) : String.format("SpillMoveFactory: Instruction %s can only have %s as input, got %s", op, input, value);
+            assert value.equals(input) || isJavaConstant(value) : String.format("SpillMoveFactory: Instruction %s can only have %s as input, got %s", op, input, value);
             inputCount++;
         }
 

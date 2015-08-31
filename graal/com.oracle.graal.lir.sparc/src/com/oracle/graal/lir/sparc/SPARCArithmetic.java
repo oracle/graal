@@ -29,6 +29,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 import jdk.internal.jvmci.code.*;
@@ -134,7 +135,7 @@ public enum SPARCArithmetic {
         @Override
         public void verify() {
             super.verify();
-            verifyKind(opcode, result, x, y);
+            verifyKind(opcode, result.getKind(), x.getKind(), y.getKind());
         }
 
         @Override
@@ -185,7 +186,7 @@ public enum SPARCArithmetic {
         @Override
         public void verify() {
             super.verify();
-            verifyKind(opcode, result, x, y);
+            verifyKind(opcode, result.getKind(), x.getKind(), y.getKind());
         }
     }
 
@@ -223,7 +224,7 @@ public enum SPARCArithmetic {
         @Override
         public void verify() {
             super.verify();
-            verifyKind(opcode, result, x, y);
+            verifyKind(opcode, result.getKind(), x.getKind(), y.getKind());
         }
     }
 
@@ -276,8 +277,8 @@ public enum SPARCArithmetic {
 
     private static void emitRegConstant(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, JavaConstant src2, LIRFrameState info,
                     SPARCDelayedControlTransfer delaySlotLir) {
-        assert isSimm13(crb.asIntConst(src2)) : src2;
-        int constant = crb.asIntConst(src2);
+        assert isSimm13(src2.asLong()) : src2;
+        int constant = (int) src2.asLong();
         int exceptionOffset = -1;
         delaySlotLir.emitControlTransfer(crb, masm);
         switch (opcode) {
@@ -384,8 +385,8 @@ public enum SPARCArithmetic {
     public static void emitRegReg(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info,
                     SPARCDelayedControlTransfer delaySlotLir) {
         int exceptionOffset = -1;
-        assert !isConstant(src1) : src1;
-        assert !isConstant(src2) : src2;
+        assert !isJavaConstant(src1) : src1;
+        assert !isJavaConstant(src2) : src2;
         switch (opcode) {
             case IADD:
                 delaySlotLir.emitControlTransfer(crb, masm);
@@ -573,7 +574,7 @@ public enum SPARCArithmetic {
     public static void emitRem(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info,
                     SPARCDelayedControlTransfer delaySlotLir) {
         int exceptionOffset = -1;
-        if (!isConstant(src1) && isConstant(src2)) {
+        if (!isJavaConstant(src1) && isJavaConstant(src2)) {
             assert isSimm13(crb.asIntConst(src2));
             assert !src1.equals(scratch1);
             assert !src1.equals(scratch2);
@@ -611,7 +612,7 @@ public enum SPARCArithmetic {
             Value srcLeft = src1;
             switch (opcode) {
                 case LREM:
-                    if (isConstant(src1)) {
+                    if (isJavaConstant(src1)) {
                         new Setx(crb.asLongConst(src1), asLongReg(scratch2), false).emit(masm);
                         srcLeft = scratch2;
                     }
@@ -625,7 +626,7 @@ public enum SPARCArithmetic {
                     masm.sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst));
                     break;
                 case LUREM:
-                    if (isConstant(src1)) {
+                    if (isJavaConstant(src1)) {
                         new Setx(crb.asLongConst(src1), asLongReg(scratch2), false).emit(masm);
                         srcLeft = scratch2;
                     }
@@ -638,7 +639,7 @@ public enum SPARCArithmetic {
                     masm.sub(asLongReg(srcLeft), asLongReg(scratch1), asLongReg(dst));
                     break;
                 case IREM:
-                    if (isConstant(src1)) {
+                    if (isJavaConstant(src1)) {
                         new Setx(crb.asIntConst(src1), asIntReg(scratch2), false).emit(masm);
                         srcLeft = scratch2;
                     }
@@ -796,7 +797,7 @@ public enum SPARCArithmetic {
         }
     }
 
-    private static void verifyKind(SPARCArithmetic opcode, Value result, Value x, Value y) {
+    private static void verifyKind(SPARCArithmetic opcode, Kind result, Kind x, Kind y) {
         Kind rk;
         Kind xk;
         Kind yk;
@@ -820,9 +821,9 @@ public enum SPARCArithmetic {
             case IUSHR:
             case IUDIV:
             case IUREM:
-                rk = result.getKind().getStackKind();
-                xsk = x.getKind().getStackKind();
-                ysk = y.getKind().getStackKind();
+                rk = result.getStackKind();
+                xsk = x.getStackKind();
+                ysk = y.getStackKind();
                 boolean valid = false;
                 for (Kind k : new Kind[]{Kind.Int, Kind.Short, Kind.Byte, Kind.Char}) {
                     valid |= rk == k && xsk == k && ysk == k;
@@ -842,17 +843,17 @@ public enum SPARCArithmetic {
             case LXOR:
             case LUDIV:
             case LUREM:
-                rk = result.getKind();
-                xk = x.getKind();
-                yk = y.getKind();
+                rk = result;
+                xk = x;
+                yk = y;
                 assert rk == Kind.Long && xk == Kind.Long && yk == Kind.Long;
                 break;
             case LSHL:
             case LSHR:
             case LUSHR:
-                rk = result.getKind();
-                xk = x.getKind();
-                yk = y.getKind();
+                rk = result;
+                xk = x;
+                yk = y;
                 assert rk == Kind.Long && xk == Kind.Long && (yk == Kind.Int || yk == Kind.Long);
                 break;
             case FADD:
@@ -860,9 +861,9 @@ public enum SPARCArithmetic {
             case FMUL:
             case FDIV:
             case FREM:
-                rk = result.getKind();
-                xk = x.getKind();
-                yk = y.getKind();
+                rk = result;
+                xk = x;
+                yk = y;
                 assert (rk == Kind.Float || rk == Kind.Double) && xk == Kind.Float && yk == Kind.Float;
                 break;
             case DAND:
@@ -871,9 +872,9 @@ public enum SPARCArithmetic {
             case DMUL:
             case DDIV:
             case DREM:
-                rk = result.getKind();
-                xk = x.getKind();
-                yk = y.getKind();
+                rk = result;
+                xk = x;
+                yk = y;
                 assert rk == Kind.Double && xk == Kind.Double && yk == Kind.Double : "opcode=" + opcode + ", result kind=" + rk + ", x kind=" + xk + ", y kind=" + yk;
                 break;
             default:

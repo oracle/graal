@@ -102,7 +102,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
 
         if (isIllegal(interval.location()) && interval.canMaterialize()) {
             assert mode != OperandMode.DEF;
-            return interval.getMaterializedValue();
+            return new ConstantValue(interval.kind(), interval.getMaterializedValue());
         }
         return interval.location();
     }
@@ -127,7 +127,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             *
+             * 
              * Solution: use the first opId of the branch target block instead.
              */
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -145,7 +145,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
          * cause an assert on failure.
          */
         Value result = colorLirOperand(op, (Variable) operand, mode);
-        assert !allocator.hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
+        assert !allocator.hasCall(tempOpId) || isStackSlotValue(result) || isJavaConstant(result) || !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
         return result;
     }
 

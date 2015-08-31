@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.amd64.AMD64.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.common.JVMCIError.*;
+import jdk.internal.jvmci.code.*;
+import jdk.internal.jvmci.hotspot.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
@@ -102,8 +103,8 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         // address for counter value
         AMD64Address counterAddr = new AMD64Address(countersArrayReg, displacement);
         // increment counter (in memory)
-        if (isConstant(incrementValue)) {
-            int increment = asInt(asConstant(incrementValue));
+        if (isJavaConstant(incrementValue)) {
+            int increment = asInt(asJavaConstant(incrementValue));
             masm.incrementq(counterAddr, increment);
         } else {
             masm.addq(counterAddr, asRegister(incrementValue));

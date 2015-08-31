@@ -44,7 +44,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
-        throw JVMCIError.shouldNotReachHere("illegal stamp should not reach backend");
+        return LIRKind.Illegal;
     }
 
     @Override

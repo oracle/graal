@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.lir.amd64.AMD64SaveRegistersOp.*;
 
 import java.util.*;
@@ -51,7 +50,7 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
     /**
      * The garbage values that are written to the registers.
      */
-    @Use({CONST}) protected JavaConstant[] zapValues;
+    protected final JavaConstant[] zapValues;
 
     public AMD64ZapRegistersOp(Register[] zappedRegisters, JavaConstant[] zapValues) {
         super(TYPE);
@@ -62,9 +61,11 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         for (int i = 0; i < zappedRegisters.length; i++) {
-            if (zappedRegisters[i] != null) {
-                RegisterValue registerValue = zappedRegisters[i].asValue(zapValues[i].getLIRKind());
-                AMD64Move.move(crb, masm, registerValue, zapValues[i]);
+            Register reg = zappedRegisters[i];
+            if (reg != null) {
+                PlatformKind kind = crb.target.arch.getLargestStorableKind(reg.getRegisterCategory());
+                RegisterValue registerValue = reg.asValue(LIRKind.value(kind));
+                AMD64Move.const2reg(crb, masm, registerValue, zapValues[i]);
             }
         }
     }

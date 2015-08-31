@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssa;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.debug.*;
-
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.ssa.*;
@@ -65,9 +65,9 @@ class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
                     assert !isRegister(phiOut) : "phiOut is a register: " + phiOut;
                     assert !isRegister(phiIn) : "phiIn is a register: " + phiIn;
                     Interval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiIn), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
-                    if (isConstant(phiOut)) {
+                    if (isConstantValue(phiOut)) {
                         numPhiResolutionMoves.increment();
-                        moveResolver.addMapping(phiOut, toInterval);
+                        moveResolver.addMapping(asConstant(phiOut), toInterval);
                     } else {
                         Interval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiOut), phiOutId, LIRInstruction.OperandMode.DEF);
                         if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {

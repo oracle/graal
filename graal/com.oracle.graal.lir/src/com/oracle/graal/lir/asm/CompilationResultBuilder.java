@@ -22,24 +22,25 @@
  */
 package com.oracle.graal.lir.asm;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 import java.util.function.*;
 
 import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CompilationResult.*;
-import jdk.internal.jvmci.code.DataSection.*;
+import jdk.internal.jvmci.code.CompilationResult.ConstantReference;
+import jdk.internal.jvmci.code.CompilationResult.DataSectionReference;
+import jdk.internal.jvmci.code.DataSection.Data;
+import jdk.internal.jvmci.code.DataSection.DataBuilder;
 import jdk.internal.jvmci.common.*;
-
-import com.oracle.graal.debug.*;
-
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 
@@ -215,8 +216,8 @@ public class CompilationResultBuilder {
      * including long constants that fit into the 32-bit range.
      */
     public int asIntConst(Value value) {
-        assert (value.getKind().isNumericInteger()) && isConstant(value);
-        JavaConstant constant = (JavaConstant) value;
+        assert (value.getKind().isNumericInteger()) && isJavaConstant(value);
+        JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         long c = constant.asLong();
         if (!NumUtil.isInt(c)) {
@@ -229,8 +230,8 @@ public class CompilationResultBuilder {
      * Returns the float value of any constant that can be represented by a 32-bit float value.
      */
     public float asFloatConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Float && isConstant(value));
-        JavaConstant constant = (JavaConstant) value;
+        assert (value.getKind().getStackKind() == Kind.Float && isJavaConstant(value));
+        JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asFloat();
     }
@@ -239,8 +240,8 @@ public class CompilationResultBuilder {
      * Returns the long value of any constant that can be represented by a 64-bit long value.
      */
     public long asLongConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Long && isConstant(value));
-        JavaConstant constant = (JavaConstant) value;
+        assert (value.getKind().getStackKind() == Kind.Long && isJavaConstant(value));
+        JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asLong();
     }
@@ -249,8 +250,8 @@ public class CompilationResultBuilder {
      * Returns the double value of any constant that can be represented by a 64-bit float value.
      */
     public double asDoubleConst(Value value) {
-        assert (value.getKind().getStackKind() == Kind.Double && isConstant(value));
-        JavaConstant constant = (JavaConstant) value;
+        assert (value.getKind().getStackKind() == Kind.Double && isJavaConstant(value));
+        JavaConstant constant = asJavaConstant(value);
         assert !codeCache.needsDataPatch(constant) : constant + " should be in a DataPatch";
         return constant.asDouble();
     }
@@ -258,41 +259,41 @@ public class CompilationResultBuilder {
     /**
      * Returns the address of a float constant that is embedded as a data reference into the code.
      */
-    public AbstractAddress asFloatConstRef(Value value) {
+    public AbstractAddress asFloatConstRef(JavaConstant value) {
         return asFloatConstRef(value, 4);
     }
 
-    public AbstractAddress asFloatConstRef(Value value, int alignment) {
-        assert value.getKind() == Kind.Float && isConstant(value);
-        return recordDataReferenceInCode((JavaConstant) value, alignment);
+    public AbstractAddress asFloatConstRef(JavaConstant value, int alignment) {
+        assert value.getKind() == Kind.Float;
+        return recordDataReferenceInCode(value, alignment);
     }
 
     /**
      * Returns the address of a double constant that is embedded as a data reference into the code.
      */
-    public AbstractAddress asDoubleConstRef(Value value) {
+    public AbstractAddress asDoubleConstRef(JavaConstant value) {
         return asDoubleConstRef(value, 8);
     }
 
-    public AbstractAddress asDoubleConstRef(Value value, int alignment) {
-        assert value.getKind() == Kind.Double && isConstant(value);
-        return recordDataReferenceInCode((JavaConstant) value, alignment);
+    public AbstractAddress asDoubleConstRef(JavaConstant value, int alignment) {
+        assert value.getKind() == Kind.Double;
+        return recordDataReferenceInCode(value, alignment);
     }
 
     /**
      * Returns the address of a long constant that is embedded as a data reference into the code.
      */
-    public AbstractAddress asLongConstRef(Value value) {
-        assert value.getKind() == Kind.Long && isConstant(value);
-        return recordDataReferenceInCode((JavaConstant) value, 8);
+    public AbstractAddress asLongConstRef(JavaConstant value) {
+        assert value.getKind() == Kind.Long;
+        return recordDataReferenceInCode(value, 8);
     }
 
     /**
      * Returns the address of an object constant that is embedded as a data reference into the code.
      */
-    public AbstractAddress asObjectConstRef(Value value) {
-        assert value.getKind() == Kind.Object && isConstant(value);
-        return recordDataReferenceInCode((JavaConstant) value, 8);
+    public AbstractAddress asObjectConstRef(JavaConstant value) {
+        assert value.getKind() == Kind.Object;
+        return recordDataReferenceInCode(value, 8);
     }
 
     public AbstractAddress asByteAddr(Value value) {

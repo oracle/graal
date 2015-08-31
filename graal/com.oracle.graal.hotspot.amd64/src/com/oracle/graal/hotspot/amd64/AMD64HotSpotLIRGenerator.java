@@ -26,6 +26,7 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.*;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.amd64.AMD64.*;
 
 import java.util.*;
@@ -33,9 +34,8 @@ import java.util.*;
 import jdk.internal.jvmci.amd64.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.hotspot.HotSpotVMConfig.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig.CompressEncoding;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
@@ -44,6 +44,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.compiler.amd64.*;
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.spi.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.AMD64HotSpotMove.StoreRbpOp;
 import com.oracle.graal.hotspot.debug.*;
@@ -431,15 +432,15 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         // TODO(mg): in case a native function uses floating point varargs, the ABI requires that
         // RAX contains the length of the varargs
         PrimitiveConstant intConst = JavaConstant.forInt(numberOfFloatingPointArguments);
-        AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue(intConst.getLIRKind());
-        emitMove(numberOfFloatingPointArgumentsRegister, intConst);
+        AllocatableValue numberOfFloatingPointArgumentsRegister = AMD64.rax.asValue(LIRKind.value(Kind.Int));
+        emitMoveConstant(numberOfFloatingPointArgumentsRegister, intConst);
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
             AllocatableValue loc = nativeCallingConvention.getArgument(i);
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        Value ptr = emitMove(JavaConstant.forLong(address));
+        Value ptr = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(address));
         append(new AMD64CCall(nativeCallingConvention.getReturn(), ptr, numberOfFloatingPointArgumentsRegister, argLocations));
     }
 
@@ -473,7 +474,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), JavaConstant.NULL_POINTER);
+        Value actionAndReason = emitJavaConstant(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0));
+        Value nullValue = emitConstant(LIRKind.reference(Kind.Object), JavaConstant.NULL_POINTER);
+        moveDeoptValuesToThread(actionAndReason, nullValue);
         append(new AMD64HotSpotDeoptimizeCallerOp(saveRbp.getRbpRescueSlot()));
     }
 
@@ -506,15 +509,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected void emitStoreConst(Kind kind, AMD64AddressValue address, JavaConstant value, LIRFrameState state) {
-        if (value instanceof HotSpotConstant && value.isNonNull()) {
-            HotSpotConstant c = (HotSpotConstant) value;
-            if (c.isCompressed()) {
+    protected void emitStoreConst(Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
+        Constant c = value.getConstant();
+        if (c instanceof HotSpotConstant && !JavaConstant.isNull(c)) {
+            HotSpotConstant hc = (HotSpotConstant) c;
+            if (hc.isCompressed()) {
                 assert kind == Kind.Int;
-                if (!target().inlineObjects && c instanceof HotSpotObjectConstant) {
+                if (!target().inlineObjects && hc instanceof HotSpotObjectConstant) {
                     emitStore(kind, address, asAllocatable(value), state);
                 } else {
-                    append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, address, c, state));
+                    append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, address, hc, state));
                 }
             } else {
                 emitStore(kind, address, asAllocatable(value), state);
@@ -538,7 +542,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             Variable result = newVariable(LIRKind.value(Kind.Int));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitMove(JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(encoding.base));
             }
             append(new AMD64HotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -559,7 +563,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             Variable result = newVariable(LIRKind.value(Kind.Long));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitMove(JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(encoding.base));
             }
             append(new AMD64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -567,19 +571,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
-        if (src instanceof JavaConstant) {
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createMove(dst, JavaConstant.INT_0);
-            }
-            if (src instanceof HotSpotObjectConstant) {
-                return new AMD64HotSpotMove.HotSpotLoadObjectConstantOp(dst, (HotSpotObjectConstant) src);
-            }
-            if (src instanceof HotSpotMetaspaceConstant) {
-                return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src);
-            }
+    protected AMD64LIRInstruction createMoveConstant(AllocatableValue dst, Constant src) {
+        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(src)) {
+            return super.createMoveConstant(dst, JavaConstant.INT_0);
+        } else if (src instanceof HotSpotObjectConstant) {
+            return new AMD64HotSpotMove.HotSpotLoadObjectConstantOp(dst, (HotSpotObjectConstant) src);
+        } else if (src instanceof HotSpotMetaspaceConstant) {
+            return new AMD64HotSpotMove.HotSpotLoadMetaspaceConstantOp(dst, (HotSpotMetaspaceConstant) src);
+        } else {
+            return super.createMoveConstant(dst, src);
         }
-        return super.createMove(dst, src);
     }
 
     @Override
@@ -601,32 +602,38 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     protected void emitCompareOp(PlatformKind cmpKind, Variable left, Value right) {
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(right)) {
-            append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
-        } else if (right instanceof HotSpotConstant) {
-            HotSpotConstant c = (HotSpotConstant) right;
+        if (isConstantValue(right)) {
+            Constant c = asConstant(right);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                append(new AMD64BinaryConsumer.Op(TEST, DWORD, left, left));
+                return;
+            } else if (c instanceof HotSpotConstant) {
+                HotSpotConstant hsc = (HotSpotConstant) c;
 
-            boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-            boolean generatePIC = GraalOptions.GeneratePIC.getValue();
-            if (c.isCompressed() && !(isImmutable && generatePIC)) {
-                append(new AMD64HotSpotBinaryConsumer.ConstOp(CMP.getMIOpcode(DWORD, false), left, c));
-            } else {
-                OperandSize size = c.isCompressed() ? DWORD : QWORD;
-                append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, c));
+                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
+                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+                if (hsc.isCompressed() && !(isImmutable && generatePIC)) {
+                    append(new AMD64HotSpotBinaryConsumer.ConstOp(CMP.getMIOpcode(DWORD, false), left, hsc));
+                } else {
+                    OperandSize size = hsc.isCompressed() ? DWORD : QWORD;
+                    append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, hsc));
+                }
+                return;
             }
-        } else {
-            super.emitCompareOp(cmpKind, left, right);
         }
+
+        super.emitCompareOp(cmpKind, left, right);
     }
 
     @Override
-    protected boolean emitCompareMemoryConOp(OperandSize size, JavaConstant a, AMD64AddressValue b, LIRFrameState state) {
-        if (a.isNull()) {
+    protected boolean emitCompareMemoryConOp(OperandSize size, ConstantValue a, AMD64AddressValue b, LIRFrameState state) {
+        if (JavaConstant.isNull(a.getConstant())) {
             append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, 0, state));
             return true;
-        } else if (a instanceof HotSpotConstant && size == DWORD) {
-            assert ((HotSpotConstant) a).isCompressed();
-            append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(CMP.getMIOpcode(size, false), b, (HotSpotConstant) a, state));
+        } else if (a.getConstant() instanceof HotSpotConstant && size == DWORD) {
+            HotSpotConstant hc = (HotSpotConstant) a.getConstant();
+            assert hc.isCompressed();
+            append(new AMD64HotSpotBinaryConsumer.MemoryConstOp(CMP.getMIOpcode(size, false), b, hc, state));
             return true;
         } else {
             return super.emitCompareMemoryConOp(size, a, b, state);

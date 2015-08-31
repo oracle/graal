@@ -24,6 +24,7 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.MemoryBarriers.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.meta.Kind.*;
@@ -68,7 +69,7 @@ public class SPARCMove {
                 const2reg(crb, masm, result, g0, constant, getDelayedControlTransfer());
             } else if (isStackSlot(result)) {
                 StackSlot slot = asStackSlot(result);
-                const2stack(crb, masm, slot, g0, constant, getDelayedControlTransfer(), constant);
+                const2stack(crb, masm, slot, g0, getDelayedControlTransfer(), constant);
             }
         }
 
@@ -514,12 +515,12 @@ public class SPARCMove {
             } else {
                 throw JVMCIError.shouldNotReachHere("Result is a: " + result);
             }
-        } else if (isConstant(input)) {
-            JavaConstant constant = asConstant(input);
+        } else if (isJavaConstant(input)) {
+            JavaConstant constant = asJavaConstant(input);
             if (isRegister(result)) {
                 const2reg(crb, masm, result, constantTableBase, constant, delaySlotLir);
             } else if (isStackSlot(result)) {
-                const2stack(crb, masm, result, constantTableBase, input, delaySlotLir, constant);
+                const2stack(crb, masm, result, constantTableBase, delaySlotLir, constant);
             } else {
                 throw JVMCIError.shouldNotReachHere("Result is a: " + result);
             }
@@ -528,14 +529,13 @@ public class SPARCMove {
         }
     }
 
-    public static void const2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Register constantTableBase, Value input, SPARCDelayedControlTransfer delaySlotLir,
-                    JavaConstant constant) {
+    public static void const2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Register constantTableBase, SPARCDelayedControlTransfer delaySlotLir, JavaConstant constant) {
         if (constant.isDefaultForKind() || constant.isNull()) {
             SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
-            emitStore(g0.asValue(LIRKind.combine(input)), resultAddress, result.getPlatformKind(), delaySlotLir, null, crb, masm);
+            emitStore(g0.asValue(LIRKind.combine(result)), resultAddress, result.getPlatformKind(), delaySlotLir, null, crb, masm);
         } else {
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                Value scratchRegisterValue = sc.getRegister().asValue(LIRKind.combine(constant));
+                Value scratchRegisterValue = sc.getRegister().asValue(LIRKind.combine(result));
                 const2reg(crb, masm, scratchRegisterValue, constantTableBase, constant, SPARCDelayedControlTransfer.DUMMY);
                 SPARCAddress resultAddress = (SPARCAddress) crb.asAddress(result);
                 emitStore(scratchRegisterValue, resultAddress, result.getPlatformKind(), delaySlotLir, null, crb, masm);

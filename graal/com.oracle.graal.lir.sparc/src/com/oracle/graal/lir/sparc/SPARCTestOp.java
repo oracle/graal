@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
@@ -62,7 +63,7 @@ public class SPARCTestOp extends SPARCLIRInstruction {
                 default:
                     throw JVMCIError.shouldNotReachHere();
             }
-        } else if (isConstant(y)) {
+        } else if (isJavaConstant(y)) {
             switch (x.getKind()) {
                 case Short:
                 case Byte:

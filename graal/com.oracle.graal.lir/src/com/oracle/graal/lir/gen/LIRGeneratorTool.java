@@ -44,6 +44,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
         LIRInstruction createMove(AllocatableValue result, Value input);
 
         LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input);
+
+        LIRInstruction createLoad(AllocatableValue result, Constant input);
     }
 
     public abstract class BlockScope implements AutoCloseable {
@@ -74,7 +76,11 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
     BlockScope getBlockScope(AbstractBlockBase<?> block);
 
-    Value emitLoadConstant(LIRKind kind, Constant constant);
+    Value emitConstant(LIRKind kind, Constant constant);
+
+    Value emitJavaConstant(JavaConstant constant);
+
+    AllocatableValue emitLoadConstant(LIRKind kind, Constant constant);
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
@@ -123,6 +129,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
     Variable emitMove(Value input);
 
     void emitMove(AllocatableValue dst, Value src);
+
+    void emitMoveConstant(AllocatableValue dst, Constant src);
 
     /**
      * Emits an op that loads the address of some raw data.

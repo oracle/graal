@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.hotspot.HotSpotCompressedNullConstant.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
@@ -198,7 +198,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), JavaConstant.NULL_POINTER);
+        Value actionAndReason = emitJavaConstant(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0));
+        Value nullValue = emitJavaConstant(JavaConstant.NULL_POINTER);
+        moveDeoptValuesToThread(actionAndReason, nullValue);
         append(new SPARCHotSpotDeoptimizeCallerOp());
     }
 
@@ -224,8 +226,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = asAddressValue(address);
-        if (isConstant(inputVal)) {
-            JavaConstant c = asConstant(inputVal);
+        if (isJavaConstant(inputVal)) {
+            JavaConstant c = asJavaConstant(inputVal);
             if (c.isDefaultForKind()) {
                 append(new StoreConstantOp(kind.getPlatformKind(), storeAddress, c, state));
                 return;
@@ -254,14 +256,14 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    protected LIRInstruction createMove(AllocatableValue dst, Value src) {
-        Value usedSource;
+    protected LIRInstruction createMoveConstant(AllocatableValue dst, Constant src) {
+        Constant usedSource;
         if (COMPRESSED_NULL.equals(src)) {
             usedSource = INT_0;
         } else {
             usedSource = src;
         }
-        return super.createMove(dst, usedSource);
+        return super.createMoveConstant(dst, usedSource);
     }
 
     @Override
@@ -282,15 +284,21 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     protected boolean emitCompare(PlatformKind cmpKind, Value a, Value b) {
         Value localA = a;
         Value localB = b;
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(localA)) {
-            localA = SPARC.g0.asValue(LIRKind.value(Kind.Int));
-        } else if (localA instanceof HotSpotObjectConstant) {
-            localA = load(localA);
+        if (isConstantValue(a)) {
+            Constant c = asConstant(a);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                localA = SPARC.g0.asValue(LIRKind.value(Kind.Int));
+            } else if (c instanceof HotSpotObjectConstant) {
+                localA = load(localA);
+            }
         }
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(localB)) {
-            localB = SPARC.g0.asValue(LIRKind.value(Kind.Int));
-        } else if (localB instanceof HotSpotObjectConstant) {
-            localB = load(localB);
+        if (isConstantValue(b)) {
+            Constant c = asConstant(b);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                localB = SPARC.g0.asValue(LIRKind.value(Kind.Int));
+            } else if (c instanceof HotSpotObjectConstant) {
+                localB = load(localB);
+            }
         }
         return super.emitCompare(cmpKind, localA, localB);
     }
@@ -309,7 +317,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Variable result = newVariable(LIRKind.value(Kind.Int));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitMove(JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -330,7 +338,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             Variable result = newVariable(LIRKind.value(Kind.Long));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitMove(JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;

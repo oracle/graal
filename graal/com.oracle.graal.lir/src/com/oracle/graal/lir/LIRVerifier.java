@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -233,7 +233,7 @@ public final class LIRVerifier {
         if ((isVariable(value) && flags.contains(OperandFlag.REG)) ||
             (isRegister(value) && flags.contains(OperandFlag.REG)) ||
             (isStackSlotValue(value) && flags.contains(OperandFlag.STACK)) ||
-            (isConstant(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
+            (isJavaConstant(value) && flags.contains(OperandFlag.CONST) && mode != OperandMode.DEF) ||
             (isIllegal(value) && flags.contains(OperandFlag.ILLEGAL))) {
             return;
         }

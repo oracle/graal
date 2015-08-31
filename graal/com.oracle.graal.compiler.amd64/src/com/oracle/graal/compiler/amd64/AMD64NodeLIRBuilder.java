@@ -181,7 +181,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
                 Value other;
                 if (value.isConstant()) {
-                    other = value.asJavaConstant();
+                    other = gen.emitJavaConstant(value.asJavaConstant());
                 } else {
                     other = operand(value);
                 }

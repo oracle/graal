@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -111,9 +112,9 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     }
 
     protected int getIndex(String name, String group, Value increment) {
-        if (isConstant(increment)) {
+        if (isJavaConstant(increment)) {
             // get index for the counter
-            return BenchmarkCounters.getIndexConstantIncrement(name, group, config, asLong(asConstant(increment)));
+            return BenchmarkCounters.getIndexConstantIncrement(name, group, config, asLong(asJavaConstant(increment)));
         }
         assert isRegister(increment) : "Unexpected Value: " + increment;
         // get index for the counter

@@ -22,17 +22,18 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
-
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.framemap.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
+
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
@@ -54,7 +55,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
 
     @Override
     public void addLiveValue(Value v) {
-        if (isConstant(v)) {
+        if (isJavaConstant(v)) {
             return;
         }
         LIRKind lirKind = v.getLIRKind();

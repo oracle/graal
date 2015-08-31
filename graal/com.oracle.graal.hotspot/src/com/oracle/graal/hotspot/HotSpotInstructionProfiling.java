@@ -48,16 +48,18 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     BenchmarkCounterFactory counterFactory) {
-        new Analyzer(lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
+        new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), counterFactory).run();
     }
 
     private class Analyzer {
+        private final TargetDescription target;
         private final LIR lir;
         private final BenchmarkCounterFactory counterFactory;
         private final LIRInsertionBuffer buffer;
         private final String compilationUnitName;
 
-        public Analyzer(String compilationUnitName, LIR lir, BenchmarkCounterFactory counterFactory) {
+        public Analyzer(TargetDescription target, String compilationUnitName, LIR lir, BenchmarkCounterFactory counterFactory) {
+            this.target = target;
             this.lir = lir;
             this.compilationUnitName = compilationUnitName;
             this.counterFactory = counterFactory;
@@ -83,7 +85,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
             for (int i = 0; i < instructionsToProfile.length; i++) {
                 names[i] = compilationUnitName;
                 groups[i] = COUNTER_GROUP + " " + instructionsToProfile[i];
-                increments[i] = JavaConstant.INT_0;
+                increments[i] = new ConstantValue(target.getLIRKind(Kind.Int), JavaConstant.INT_0);
             }
             HotSpotCounterOp op = (HotSpotCounterOp) counterFactory.createMultiBenchmarkCounter(names, groups, increments);
             LIRInstruction inst = new InstructionCounterOp(op, instructionsToProfile);

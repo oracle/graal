@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import jdk.internal.jvmci.common.*;
-import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
+import jdk.internal.jvmci.common.*;
+import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
@@ -101,7 +102,7 @@ public enum SPARCCompare {
                     throw JVMCIError.shouldNotReachHere();
             }
         } else {
-            assert isConstant(y);
+            assert isJavaConstant(y);
             switch (opcode) {
                 case LCMP:
                     assert isSimm13(crb.asLongConst(y));

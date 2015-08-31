@@ -26,6 +26,7 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.memory.*;
@@ -79,7 +80,13 @@ public final class LoweredCompareAndSwapNode extends FixedAccessNode implements 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert getNewValue().stamp().isCompatible(getExpectedValue().stamp());
-        Value result = gen.getLIRGeneratorTool().emitCompareAndSwap(gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()), JavaConstant.INT_1, JavaConstant.INT_0);
+        LIRGeneratorTool tool = gen.getLIRGeneratorTool();
+
+        LIRKind resultKind = tool.getLIRKind(stamp());
+        Value trueResult = tool.emitConstant(resultKind, JavaConstant.TRUE);
+        Value falseResult = tool.emitConstant(resultKind, JavaConstant.FALSE);
+        Value result = tool.emitCompareAndSwap(gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()), trueResult, falseResult);
+
         gen.setResult(this, result);
     }
 }

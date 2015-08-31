@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,46 @@ package com.oracle.graal.lir;
 
 import jdk.internal.jvmci.meta.*;
 
-public final class LIRValueUtil {
+/**
+ * Represents an inlined {@link Constant} value.
+ */
+public class ConstantValue extends AbstractValue {
 
-    public static boolean isVariable(Value value) {
-        assert value != null;
-        return value instanceof Variable;
+    private final Constant constant;
+
+    public ConstantValue(LIRKind lirKind, Constant constant) {
+        super(lirKind);
+        this.constant = constant;
     }
 
-    public static Variable asVariable(Value value) {
-        assert value != null;
-        return (Variable) value;
+    public Constant getConstant() {
+        return constant;
     }
 
-    public static boolean isConstantValue(Value value) {
-        assert value != null;
-        return value instanceof ConstantValue;
+    public boolean isJavaConstant() {
+        return constant instanceof JavaConstant;
     }
 
-    public static ConstantValue asConstantValue(Value value) {
-        assert value != null;
-        return (ConstantValue) value;
+    public JavaConstant getJavaConstant() {
+        return (JavaConstant) constant;
     }
 
-    public static Constant asConstant(Value value) {
-        return asConstantValue(value).getConstant();
+    @Override
+    public String toString() {
+        return constant.toString();
     }
 
-    public static boolean isJavaConstant(Value value) {
-        return isConstantValue(value) && asConstantValue(value).isJavaConstant();
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ConstantValue) {
+            ConstantValue other = (ConstantValue) obj;
+            return super.equals(other) && this.constant.equals(other.constant);
+        }
+        return false;
     }
 
-    public static JavaConstant asJavaConstant(Value value) {
-        return asConstantValue(value).getJavaConstant();
+    @Override
+    public int hashCode() {
+        return constant.hashCode() + super.hashCode();
     }
 }

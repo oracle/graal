@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
+import static jdk.internal.jvmci.sparc.SPARC.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
-import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.lir.*;
@@ -139,7 +140,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     throw JVMCIError.shouldNotReachHere();
 
             }
-        } else if (isConstant(input) && isSimm13(crb.asIntConst(input))) {
+        } else if (isJavaConstant(input) && isSimm13(crb.asIntConst(input))) {
             switch (opcode) {
                 case IPOPCNT:
                     masm.popc(crb.asIntConst(input), dst);

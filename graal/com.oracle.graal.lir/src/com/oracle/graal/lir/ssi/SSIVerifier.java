@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.ssi;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -141,7 +142,7 @@ public final class SSIVerifier {
     }
 
     private static boolean checkUsage(Value value) {
-        if (value instanceof Constant) {
+        if (isConstantValue(value)) {
             // Constants do not need to be defined
             return false;
         }

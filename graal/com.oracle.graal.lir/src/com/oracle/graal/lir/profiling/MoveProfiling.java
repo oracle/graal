@@ -45,7 +45,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
     @Override
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     BenchmarkCounterFactory counterFactory) {
-        new Analyzer(lirGenRes.getLIR(), counterFactory).run();
+        new Analyzer(target, lirGenRes.getLIR(), counterFactory).run();
     }
 
     private static enum MoveType {
@@ -97,12 +97,14 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
     }
 
     private static class Analyzer {
+        private final TargetDescription target;
         private final LIR lir;
         private final BenchmarkCounterFactory counterFactory;
         private final LIRInsertionBuffer buffer;
         private final int[] cnt;
 
-        public Analyzer(LIR lir, BenchmarkCounterFactory counterFactory) {
+        public Analyzer(TargetDescription target, LIR lir, BenchmarkCounterFactory counterFactory) {
+            this.target = target;
             this.lir = lir;
             this.counterFactory = counterFactory;
             this.buffer = new LIRInsertionBuffer();
@@ -139,7 +141,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
                 int i = cnt[type.ordinal()];
                 if (i > 0) {
                     names.add(type.toString());
-                    increments.add(JavaConstant.forInt(i));
+                    increments.add(new ConstantValue(target.getLIRKind(Kind.Int), JavaConstant.forInt(i)));
                 }
             }
             String[] groups = new String[names.size()];

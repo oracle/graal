@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.lsra.ssi;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -72,7 +73,7 @@ public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlow
 
             MyPhiValueVisitor visitor = new MyPhiValueVisitor(moveResolver, toBlock, fromBlock);
             SSIUtil.forEachValuePair(allocator.getLIR(), toBlock, midBlock, (to, from) -> {
-                Value phiOut = isConstant(from) ? from : map.get(from);
+                Value phiOut = isJavaConstant(from) ? from : map.get(from);
                 assert phiOut != null : "No entry for " + from;
                 visitor.visit(to, phiOut);
             });
@@ -107,9 +108,9 @@ public class SSILinearScanResolveDataFlowPhase extends LinearScanResolveDataFlow
                 return;
             }
             Interval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiIn), toId, LIRInstruction.OperandMode.DEF);
-            if (isConstant(phiOut)) {
+            if (isConstantValue(phiOut)) {
                 numSSIResolutionMoves.increment();
-                moveResolver.addMapping(phiOut, toInterval);
+                moveResolver.addMapping(asConstant(phiOut), toInterval);
             } else {
                 Interval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiOut), fromId, LIRInstruction.OperandMode.DEF);
                 if (fromInterval != toInterval) {

@@ -23,15 +23,16 @@
 
 package com.oracle.graal.lir.ssa;
 
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
@@ -126,7 +127,7 @@ final class SSAVerifier {
     }
 
     private static boolean shouldProcess(Value value) {
-        return !value.equals(Value.ILLEGAL) && !isConstant(value) && !isRegister(value) && !isStackSlotValue(value);
+        return !value.equals(Value.ILLEGAL) && !isJavaConstant(value) && !isRegister(value) && !isStackSlotValue(value);
     }
 
 }

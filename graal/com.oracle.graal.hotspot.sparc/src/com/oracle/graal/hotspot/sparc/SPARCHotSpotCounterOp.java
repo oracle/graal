@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
+import static jdk.internal.jvmci.code.ValueUtil.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
@@ -76,8 +78,8 @@ public class SPARCHotSpotCounterOp extends HotSpotCounterOp {
             masm.ldx(counterAddr, counterReg);
             counterPatchOffsets[counterIndex] = masm.position();
             // increment counter
-            if (isConstant(increment)) {
-                masm.add(counterReg, asInt(asConstant(increment)), counterReg);
+            if (isJavaConstant(increment)) {
+                masm.add(counterReg, asInt(asJavaConstant(increment)), counterReg);
             } else {
                 masm.add(counterReg, asRegister(increment), counterReg);
             }

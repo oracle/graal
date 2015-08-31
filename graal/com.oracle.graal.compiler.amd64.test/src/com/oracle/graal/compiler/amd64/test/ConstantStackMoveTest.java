@@ -51,9 +51,9 @@ public class ConstantStackMoveTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             PrimitiveConstant constantValue = JavaConstant.forBoxedPrimitive(primitive);
-            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(constantValue.getLIRKind());
+            StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(gen.target().getLIRKind(constantValue.getKind()));
             // move stuff around
-            gen.emitMove(s1, constantValue);
+            gen.emitMoveConstant(s1, constantValue);
             gen.emitBlackhole(s1);
             setResult(gen.emitMove(s1));
         }

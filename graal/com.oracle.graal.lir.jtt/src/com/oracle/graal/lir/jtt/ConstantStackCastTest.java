@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.lir.jtt;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
 
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 
@@ -52,17 +53,23 @@ public class ConstantStackCastTest extends LIRTest {
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(dstKind);
             // move stuff around
-            Value srcValue = isConstant(value) ? getConstant(srcKind, value) : value;
+            Value srcValue;
+            if (isJavaConstant(value)) {
+                srcValue = getConstant(srcKind, asJavaConstant(value));
+            } else {
+                srcValue = value;
+            }
             gen.emitMove(s1, srcValue);
             gen.emitBlackhole(s1);
             setResult(gen.emitMove(s1));
         }
 
-        private static PrimitiveConstant getConstant(LIRKind srcKind, Value value) {
+        private static ConstantValue getConstant(LIRKind srcKind, JavaConstant c) {
 
             switch ((Kind) srcKind.getPlatformKind()) {
                 case Byte:
-                    return JavaConstant.forByte((byte) asConstant(value).asInt());
+                    JavaConstant byteConst = JavaConstant.forByte((byte) c.asInt());
+                    return new ConstantValue(srcKind, byteConst);
                 default:
                     throw JVMCIError.shouldNotReachHere("Kind not supported: " + srcKind);
             }

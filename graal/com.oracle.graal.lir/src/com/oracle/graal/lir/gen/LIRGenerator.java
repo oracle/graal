@@ -119,18 +119,31 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Value emitLoadConstant(LIRKind kind, Constant constant) {
-        JavaConstant javaConstant = (JavaConstant) constant;
-        if (canInlineConstant(javaConstant)) {
-            return javaConstant;
+    public Value emitConstant(LIRKind kind, Constant constant) {
+        if (constant instanceof JavaConstant && canInlineConstant((JavaConstant) constant)) {
+            return new ConstantValue(kind, constant);
         } else {
-            return emitMove(javaConstant);
+            return emitLoadConstant(kind, constant);
         }
+    }
+
+    @Override
+    public Value emitJavaConstant(JavaConstant constant) {
+        return emitConstant(target().getLIRKind(constant.getKind()), constant);
+    }
+
+    @Override
+    public AllocatableValue emitLoadConstant(LIRKind kind, Constant constant) {
+        Variable result = newVariable(kind);
+        emitMoveConstant(result, constant);
+        return result;
     }
 
     public AllocatableValue asAllocatable(Value value) {
         if (isAllocatableValue(value)) {
             return asAllocatableValue(value);
+        } else if (isConstantValue(value)) {
+            return emitLoadConstant(value.getLIRKind(), asConstant(value));
         } else {
             return emitMove(value);
         }
@@ -154,7 +167,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected abstract boolean canInlineConstant(JavaConstant c);
 
     public Value loadNonConst(Value value) {
-        if (isConstant(value) && !canInlineConstant((JavaConstant) value)) {
+        if (isJavaConstant(value) && !canInlineConstant(asJavaConstant(value))) {
             return emitMove(value);
         }
         return value;

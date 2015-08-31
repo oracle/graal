@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static java.lang.Double.*;
 import static java.lang.Float.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
@@ -491,11 +492,11 @@ public class AMD64Move {
             } else {
                 throw JVMCIError.shouldNotReachHere();
             }
-        } else if (isConstant(input)) {
+        } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
-                const2reg(crb, masm, result, (JavaConstant) input);
+                const2reg(crb, masm, result, asJavaConstant(input));
             } else if (isStackSlot(result)) {
-                const2stack(crb, masm, result, (JavaConstant) input);
+                const2stack(crb, masm, result, asJavaConstant(input));
             } else {
                 throw JVMCIError.shouldNotReachHere();
             }
@@ -595,7 +596,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
+    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
         /*
          * Note: we use the kind of the input operand (and not the kind of the result operand)
          * because they don't match in all cases. For example, an object constant can be loaded to a
@@ -672,7 +673,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
+    public static void const2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, JavaConstant input) {
         assert !crb.codeCache.needsDataPatch(input);
         AMD64Address dest = (AMD64Address) crb.asAddress(result);
         final long imm;
