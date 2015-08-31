@@ -23,7 +23,6 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
 import java.util.*;
@@ -44,7 +43,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
+public class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     private static final IntervalPredicate mustStoreAtDefinition = new TraceLinearScan.IntervalPredicate() {
 
@@ -56,7 +55,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     protected final TraceLinearScan allocator;
 
-    protected LinearScanEliminateSpillMovePhase(TraceLinearScan allocator) {
+    protected TraceLinearScanEliminateSpillMovePhase(TraceLinearScan allocator) {
         this.allocator = allocator;
     }
 
@@ -71,8 +70,8 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
      *         {@link #eliminateSpillMoves()}
      */
     protected int firstInstructionOfInterest() {
-        // skip the first because it is always a label
-        return 1;
+        // also look at Labels as they define PHI values
+        return 0;
     }
 
     // called once before assignment of register numbers
@@ -181,15 +180,18 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
      * @param move Spill move.
      */
     protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
-        assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " + move;
-
-        Interval curInterval = allocator.intervalFor(move.getResult());
-
-        if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) {
-            assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
-            return true;
-        }
+        // TODO (je) do not eliminate spill moves yet!
         return false;
+        /*
+         * assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " +
+         * move;
+         *
+         * Interval curInterval = allocator.intervalFor(move.getResult());
+         *
+         * if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) { assert
+         * isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
+         * return true; } return false;
+         */
     }
 
     private static void checkIntervals(Interval interval) {

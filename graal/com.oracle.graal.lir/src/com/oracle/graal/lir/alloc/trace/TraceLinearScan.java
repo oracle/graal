@@ -664,8 +664,8 @@ public class TraceLinearScan {
         return new TraceLinearScanResolveDataFlowPhase(this);
     }
 
-    protected LinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
-        return new SSILinearScanEliminateSpillMovePhase(this);
+    protected TraceLinearScanEliminateSpillMovePhase createSpillMoveEliminationPhase() {
+        return new TraceLinearScanEliminateSpillMovePhase(this);
     }
 
     protected LinearScanAssignLocationsPhase createAssignLocationsPhase() {
