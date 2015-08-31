@@ -40,14 +40,14 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase {
+public final class TraceLinearScanOptimizeSpillPositionPhase extends AllocationPhase {
 
     private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
     private static final DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
 
     private final TraceLinearScan allocator;
 
-    LinearScanOptimizeSpillPositionPhase(TraceLinearScan allocator) {
+    TraceLinearScanOptimizeSpillPositionPhase(TraceLinearScan allocator) {
         this.allocator = allocator;
     }
 

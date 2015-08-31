@@ -678,8 +678,8 @@ public class TraceLinearScan {
         return new TraceLinearScanRegisterAllocationPhase(this);
     }
 
-    protected LinearScanOptimizeSpillPositionPhase createOptimizeSpillPositionPhase() {
-        return new LinearScanOptimizeSpillPositionPhase(this);
+    protected TraceLinearScanOptimizeSpillPositionPhase createOptimizeSpillPositionPhase() {
+        return new TraceLinearScanOptimizeSpillPositionPhase(this);
     }
 
     public void printIntervals(String label) {
