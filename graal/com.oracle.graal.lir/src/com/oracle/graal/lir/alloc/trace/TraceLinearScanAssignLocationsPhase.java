@@ -42,7 +42,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.alloc.lsra.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
@@ -110,7 +109,7 @@ public class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
 
         if (isIllegal(interval.location()) && interval.canMaterialize()) {
             assert mode != OperandMode.DEF;
-            return interval.getMaterializedValue();
+            return new ConstantValue(interval.kind(), interval.getMaterializedValue());
         }
         return interval.location();
     }
@@ -135,7 +134,7 @@ public class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             * 
+             *
              * Solution: use the first opId of the branch target block instead.
              */
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -153,7 +152,7 @@ public class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
          * cause an assert on failure.
          */
         Value result = colorLirOperand(op, (Variable) operand, mode);
-        assert !allocator.hasCall(tempOpId) || isStackSlotValue(result) || isConstant(result) || !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
+        assert !allocator.hasCall(tempOpId) || isStackSlotValue(result) || isConstantValue(result) || !allocator.isCallerSave(result) : "cannot have caller-save register operands at calls";
         return result;
     }
 

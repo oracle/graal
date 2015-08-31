@@ -636,7 +636,7 @@ public class TraceLinearScan {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
                 }
                 // resolve intra-trace data-flow
-                LinearScanResolveDataFlowPhase dataFlowPhase = createResolveDataFlowPhase();
+                TraceLinearScanResolveDataFlowPhase dataFlowPhase = createResolveDataFlowPhase();
                 dataFlowPhase.apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
                 Debug.dump(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", dataFlowPhase.getName());
 
@@ -659,7 +659,7 @@ public class TraceLinearScan {
         return new TraceLinearScanLifetimeAnalysisPhase(this, traceBuilderResult);
     }
 
-    protected LinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
+    protected TraceLinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
         return new TraceLinearScanResolveDataFlowPhase(this);
     }
 
