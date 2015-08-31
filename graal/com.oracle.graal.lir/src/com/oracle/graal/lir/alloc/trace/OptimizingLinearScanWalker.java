@@ -25,7 +25,6 @@ package com.oracle.graal.lir.alloc.trace;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
@@ -36,15 +35,6 @@ import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.Interval.State;
 
 public class OptimizingLinearScanWalker extends LinearScanWalker {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Enable LSRA optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(true);
-        @Option(help = "LSRA optimization: Only split but do not reassign", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptSplitOnly = new OptionValue<>(false);
-        // @formatter:on
-    }
 
     OptimizingLinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
@@ -181,7 +171,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                 Debug.log("right interval : %s", splitPart.logString(allocator));
             }
 
-            if (Options.LSRAOptSplitOnly.getValue()) {
+            if (com.oracle.graal.lir.alloc.lsra.OptimizingLinearScanWalker.Options.LSRAOptSplitOnly.getValue()) {
                 // just add the split interval to the unhandled list
                 unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Any, splitPart);
             } else {

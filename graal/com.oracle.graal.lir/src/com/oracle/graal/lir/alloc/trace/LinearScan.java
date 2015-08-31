@@ -24,7 +24,6 @@ package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.lir.phases.LIRPhase.Options.*;
 import static jdk.internal.jvmci.code.CodeUtil.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
 
@@ -33,7 +32,6 @@ import java.util.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.options.*;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
@@ -55,13 +53,6 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
  * Hanspeter Moessenboeck.
  */
 public class LinearScan {
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Enable spill position optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionValue(LIROptimization, true);
-        // @formatter:on
-    }
 
     public static class BlockData {
 
@@ -630,7 +621,7 @@ public class LinearScan {
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
-                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
+                if (com.oracle.graal.lir.alloc.lsra.LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
                 }
                 createResolveDataFlowPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context);
