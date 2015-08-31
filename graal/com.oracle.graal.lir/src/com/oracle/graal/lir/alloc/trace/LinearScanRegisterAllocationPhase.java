@@ -59,12 +59,7 @@ public final class LinearScanRegisterAllocationPhase extends AllocationPhase {
             notPrecoloredIntervals = result.second;
 
             // allocate cpu registers
-            LinearScanWalker lsw;
-            if (com.oracle.graal.lir.alloc.lsra.OptimizingLinearScanWalker.Options.LSRAOptimization.getValue()) {
-                lsw = new OptimizingLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
-            } else {
-                lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
-            }
+            LinearScanWalker lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
             lsw.walk();
             lsw.finishAllocation();
         }

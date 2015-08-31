@@ -34,7 +34,6 @@ import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.options.*;
-import jdk.internal.jvmci.options.OptionValue.OverrideScope;
 
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
@@ -70,8 +69,8 @@ public class TraceLinearScan {
         /**
          * Bit map specifying which operands are live upon entry to this block. These are values
          * used in this block or any of its successors where such value are not defined in this
-         * block. The bit index of an operand is its {@linkplain TraceLinearScan#operandNumber(Value)
-         * operand number}.
+         * block. The bit index of an operand is its
+         * {@linkplain TraceLinearScan#operandNumber(Value) operand number}.
          */
         public BitSet liveIn;
 
@@ -632,13 +631,7 @@ public class TraceLinearScan {
             try (Scope s = Debug.scope("AfterLifetimeAnalysis", (Object) intervals())) {
                 sortIntervalsBeforeAllocation();
 
-                try (OverrideScope os = OptionValue.override(com.oracle.graal.lir.alloc.lsra.OptimizingLinearScanWalker.Options.LSRAOptimization, false)) {
-                    /*
-                     * No need for single predecessor block optimization as this is inherently done
-                     * by the trace approach.
-                     */
-                    createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
-                }
+                createRegisterAllocationPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
 
                 if (com.oracle.graal.lir.alloc.lsra.LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, false);
