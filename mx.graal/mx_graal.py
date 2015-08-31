@@ -34,7 +34,7 @@ import re
 
 import mx
 import mx_jvmci
-from mx_jvmci import JvmciJDKDeployedDist, vm, VM, Task, parseVmArgs, get_vm, isJVMCIEnabled, get_jvmci_jdk, buildvms
+from mx_jvmci import JvmciJDKDeployedDist, run_vm, VM, Task, get_vm, isJVMCIEnabled, get_jvmci_jdk, get_jvmci_jdk_dir, buildvms
 import mx_unittest
 from mx_unittest import unittest
 import mx_gate
@@ -138,6 +138,9 @@ def scaladacapo(args):
 
     _run_benchmark(args, sanitycheck.dacapoScalaSanityWarmup.keys(), launcher)
 
+# This is different than the 'jmh' commmand in that it
+# looks for internal JMH benchmarks (i.e. those that
+# depend on the JMH library).
 def microbench(args):
     """run JMH microbenchmark projects"""
     vmArgs, jmhArgs = mx.extract_VM_args(args, useDoubleDash=True)
@@ -174,15 +177,16 @@ def microbench(args):
         args += vmArgs
     args += ['org.openjdk.jmh.Main']
     if forking:
-        (_, _, jvm, forkedVmArgs, _) = parseVmArgs(vmArgs)
+        jdk = get_jvmci_jdk()
+        jvm = get_vm()
         def quoteSpace(s):
             if " " in s:
                 return '"' + s + '"'
             return s
 
-        forkedVmArgs = map(quoteSpace, forkedVmArgs)
+        forkedVmArgs = map(quoteSpace, jdk.parseVmArgs(vmArgs))
         args += ['--jvmArgsPrepend', ' '.join(['-' + jvm] + forkedVmArgs)]
-    vm(args + jmhArgs)
+    run_vm(args + jmhArgs)
 
 def ctw(args):
     """run CompileTheWorld"""
@@ -203,7 +207,7 @@ def ctw(args):
     if args.jar:
         jar = os.path.abspath(args.jar)
     else:
-        jar = join(get_jvmci_jdk(installJars=False), 'jre', 'lib', 'rt.jar')
+        jar = join(get_jvmci_jdk_dir(deployDists=False), 'jre', 'lib', 'rt.jar')
         vmargs.append('-G:CompileTheWorldExcludeMethodFilter=sun.awt.X11.*.*')
 
     # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause vm crashes (on Solaris)
@@ -217,7 +221,7 @@ def ctw(args):
     else:
         vmargs += ['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + jar]
 
-    vm(vmargs)
+    run_vm(vmargs)
 
 class UnitTestRun:
     def __init__(self, name, args):
@@ -244,7 +248,7 @@ class BootstrapTest:
                         out = mx.DuplicateSuppressingStream(self.suppress).write
                     else:
                         out = None
-                    vm(self.args + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
+                    run_vm(self.args + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
 
@@ -285,7 +289,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks):
     # ensure -Xcomp still works
     with VM('jvmci', 'product'):
         with Task('XCompMode:product', tasks) as t:
-            if t: vm(['-Xcomp', '-version'])
+            if t: run_vm(['-Xcomp', '-version'])
 
 
 graal_unit_test_runs = [
@@ -325,7 +329,7 @@ def deoptalot(args):
         del args[0]
 
     for _ in range(count):
-        if not vm(['-XX:-TieredCompilation', '-XX:+DeoptimizeALot', '-XX:+VerifyOops'] + args + ['-version']) == 0:
+        if not run_vm(['-XX:-TieredCompilation', '-XX:+DeoptimizeALot', '-XX:+VerifyOops'] + args + ['-version']) == 0:
             mx.abort("Failed")
 
 def longtests(args):

@@ -336,7 +336,7 @@ class Test:
             parser.addMatcher(ValuesMatcher(failureRE, {'failed' : '1'}))
 
         tee = Tee()
-        retcode = mx_graal.vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild)
+        retcode = mx_graal.run_vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild)
         output = tee.output.getvalue()
         valueMaps = parser.parse(output)
 
@@ -409,7 +409,7 @@ class Test:
         else:
             tee = Tee()
             mx.log(startDelim)
-            if mx_graal.vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild) != 0:
+            if mx_graal.run_vm(self.vmOpts + _noneAsEmptyList(extraVmOpts) + self.cmd, vm, nonZeroIsFatal=False, out=tee.eat, err=subprocess.STDOUT, cwd=cwd, vmbuild=vmbuild) != 0:
                 mx.abort("Benchmark failed (non-zero retcode)")
             mx.log(endDelim)
             output = tee.output.getvalue()
