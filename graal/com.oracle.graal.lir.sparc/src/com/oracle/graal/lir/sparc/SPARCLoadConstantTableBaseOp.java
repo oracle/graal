@@ -51,7 +51,7 @@ import com.oracle.graal.lir.asm.*;
  * this case absolute addressing (without using the base pointer is used). See also:
  * CodeInstaller::pd_patch_DataSectionReference
  *
- * @see SPARCMove#loadFromConstantTable(CompilationResultBuilder, SPARCMacroAssembler, PlatformKind,
+ * @see SPARCMove#loadFromConstantTable(CompilationResultBuilder, SPARCMacroAssembler, int,
  *      Register, Register, SPARCDelayedControlTransfer, Runnable)
  */
 public class SPARCLoadConstantTableBaseOp extends SPARCLIRInstruction {

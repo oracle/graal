@@ -113,7 +113,7 @@ public enum SPARCCompare {
                     masm.cmp(asIntReg(x), crb.asIntConst(y));
                     break;
                 case ACMP:
-                    if (((JavaConstant) y).isNull()) {
+                    if (asJavaConstant(y).isNull()) {
                         masm.cmp(asObjectReg(x), 0);
                         break;
                     } else {

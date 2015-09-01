@@ -99,18 +99,17 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            final int byteCount = crb.target.getSizeInBytes(constant.getKind());
-            assert byteCount >= 1 : "Byte values must not be loaded via constant table";
-            final Kind constantKind = constant.getKind();
+            final int byteCount = crb.target.getSizeInBytes(result.getPlatformKind());
+            assert byteCount > 1 : "Byte values must not be loaded via constant table";
             final Runnable recordReference = () -> crb.recordDataReferenceInCode(constant, byteCount);
             Register baseRegister = asRegister(constantTableBase);
             if (isRegister(result)) {
                 Register resultRegister = asRegister(result);
-                loadFromConstantTable(crb, masm, constantKind, baseRegister, resultRegister, getDelayedControlTransfer(), recordReference);
+                loadFromConstantTable(crb, masm, byteCount, baseRegister, resultRegister, getDelayedControlTransfer(), recordReference);
             } else if (isStackSlot(result)) {
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register scratchRegister = scratch.getRegister();
-                    loadFromConstantTable(crb, masm, constantKind, baseRegister, scratchRegister, getDelayedControlTransfer(), recordReference);
+                    loadFromConstantTable(crb, masm, byteCount, baseRegister, scratchRegister, getDelayedControlTransfer(), recordReference);
                     StackSlot slot = asStackSlot(result);
                     reg2stack(crb, masm, slot, scratchRegister.asValue(), getDelayedControlTransfer());
                 }
@@ -608,6 +607,8 @@ public class SPARCMove {
             boolean hasVIS1 = cpuFeatures.contains(CPUFeature.VIS1);
             boolean hasVIS3 = cpuFeatures.contains(CPUFeature.VIS3);
             Register resultRegister = asRegister(result);
+            int byteCount = crb.target.getSizeInBytes(result.getPlatformKind());
+            Runnable recordReference = () -> crb.recordDataReferenceInCode(input, byteCount);
             switch (input.getKind().getStackKind()) {
                 case Int:
                     if (input.isDefaultForKind()) {
@@ -620,8 +621,7 @@ public class SPARCMove {
                         if (constantTableBase.equals(g0)) {
                             throw JVMCIError.shouldNotReachHere();
                         } else {
-                            Runnable recordReference = () -> crb.recordDataReferenceInCode(input, input.getKind().getByteCount());
-                            loadFromConstantTable(crb, masm, Int, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
                         }
                     }
                     break;
@@ -633,8 +633,7 @@ public class SPARCMove {
                         delaySlotLir.emitControlTransfer(crb, masm);
                         masm.or(g0, (int) input.asLong(), resultRegister);
                     } else {
-                        Runnable recordReference = () -> crb.asLongConstRef(input);
-                        loadFromConstantTable(crb, masm, Long, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                        loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
                     }
                     break;
                 case Float: {
@@ -649,9 +648,8 @@ public class SPARCMove {
                             delaySlotLir.emitControlTransfer(crb, masm);
                             masm.movwtos(scratch, resultRegister);
                         } else {
-                            Runnable recordReference = () -> crb.asFloatConstRef(input);
                             // First load the address into the scratch register
-                            loadFromConstantTable(crb, masm, Float, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
                         }
                     }
                     break;
@@ -668,8 +666,7 @@ public class SPARCMove {
                             delaySlotLir.emitControlTransfer(crb, masm);
                             masm.movxtod(scratch, resultRegister);
                         } else {
-                            Runnable recordReference = () -> crb.asDoubleConstRef(input);
-                            loadFromConstantTable(crb, masm, Double, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                            loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
                         }
                     }
                     break;
@@ -679,8 +676,7 @@ public class SPARCMove {
                         delaySlotLir.emitControlTransfer(crb, masm);
                         masm.clr(resultRegister);
                     } else {
-                        Runnable recordReference = () -> crb.recordDataReferenceInCode(input, 8);
-                        loadFromConstantTable(crb, masm, Long, constantTableBase, resultRegister, delaySlotLir, recordReference);
+                        loadFromConstantTable(crb, masm, byteCount, constantTableBase, resultRegister, delaySlotLir, recordReference);
                     }
                     break;
                 default:
@@ -740,7 +736,7 @@ public class SPARCMove {
      * generated patterns by this method must be understood by
      * CodeInstaller::pd_patch_DataSectionReference (jvmciCodeInstaller_sparc.cpp).
      */
-    public static void loadFromConstantTable(CompilationResultBuilder crb, SPARCMacroAssembler masm, PlatformKind kind, Register constantTableBase, Register dest,
+    public static void loadFromConstantTable(CompilationResultBuilder crb, SPARCMacroAssembler masm, int byteCount, Register constantTableBase, Register dest,
                     SPARCDelayedControlTransfer delaySlotInstruction, Runnable recordReference) {
         SPARCAddress address;
         ScratchRegister scratch = null;
@@ -757,7 +753,6 @@ public class SPARCMove {
                 new Sethix(0, sr, true).emit(masm);
                 address = new SPARCAddress(sr, 0);
             }
-            int byteCount = crb.target.getSizeInBytes(kind);
             masm.ld(address, dest, byteCount, false);
         } finally {
             if (scratch != null) {

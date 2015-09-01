@@ -172,6 +172,15 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new LoadDataAddressOp(dst, data));
     }
 
+    @Override
+    public Value emitConstant(LIRKind kind, Constant constant) {
+        if (JavaConstant.isNull(constant)) {
+            return new ConstantValue(kind, kind.getPlatformKind().getDefaultValue());
+        } else {
+            return super.emitConstant(kind, constant);
+        }
+    }
+
     protected SPARCAddressValue asAddressValue(Value address) {
         if (address instanceof SPARCAddressValue) {
             return (SPARCAddressValue) address;
@@ -796,7 +805,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     private Variable emitShift(SPARCArithmetic op, Value a, Value b) {
         Variable result = newVariable(LIRKind.combine(a, b).changeType(a.getPlatformKind()));
-        if (isJavaConstant(b) && canInlineConstant((JavaConstant) b)) {
+        if (isJavaConstant(b) && canInlineConstant(asJavaConstant(b))) {
             append(new BinaryRegConst(op, result, load(a), asJavaConstant(b), null));
         } else {
             append(new BinaryRegReg(op, result, load(a), load(b)));
