@@ -60,7 +60,7 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
         resolveDataFlow();
     }
 
-    protected void resolveCollectMappings0(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
+    protected void resolveCollectMappings0(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, TraceLocalMoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
         assert midBlock == null ||
                         (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors().get(0).equals(fromBlock) && midBlock.getSuccessors().get(0).equals(
@@ -86,7 +86,7 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
         }
     }
 
-    void resolveFindInsertPos(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, MoveResolver moveResolver) {
+    void resolveFindInsertPos(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, TraceLocalMoveResolver moveResolver) {
         if (fromBlock.getSuccessorCount() <= 1) {
             if (Debug.isLogEnabled()) {
                 Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
@@ -130,7 +130,7 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
     protected void resolveDataFlow() {
         try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 
-            MoveResolver moveResolver = allocator.createMoveResolver();
+            TraceLocalMoveResolver moveResolver = allocator.createMoveResolver();
             BitSet blockCompleted = new BitSet(allocator.blockCount());
 
             BitSet alreadyResolved = new BitSet(allocator.blockCount());
@@ -167,7 +167,7 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
         }
     }
 
-    protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
+    protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, TraceLocalMoveResolver moveResolver) {
         assert midBlock == null;
         if (containedInTrace(fromBlock) && containedInTrace(toBlock)) {
             assert moveResolver.checkEmpty();
@@ -206,11 +206,11 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
     private static final DebugMetric numStackToStackMoves = Debug.metric("SSI LSRA[numStackToStackMoves]");
 
     private class MyPhiValueVisitor implements PhiValueVisitor {
-        final MoveResolver moveResolver;
+        final TraceLocalMoveResolver moveResolver;
         final int toId;
         final int fromId;
 
-        public MyPhiValueVisitor(MoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
+        public MyPhiValueVisitor(TraceLocalMoveResolver moveResolver, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> fromBlock) {
             this.moveResolver = moveResolver;
             toId = allocator.getFirstLirInstructionId(toBlock);
             fromId = allocator.getLastLirInstructionId(fromBlock);

@@ -54,7 +54,7 @@ final class LinearScanWalker extends IntervalWalker {
 
     protected List<Interval>[] spillIntervals;
 
-    private MoveResolver moveResolver; // for ordering spill moves
+    private TraceLocalMoveResolver moveResolver; // for ordering spill moves
 
     private int minReg;
 

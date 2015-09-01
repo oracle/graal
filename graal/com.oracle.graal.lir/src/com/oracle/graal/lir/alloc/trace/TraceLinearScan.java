@@ -183,8 +183,8 @@ final class TraceLinearScan {
         return moveFactory;
     }
 
-    protected MoveResolver createMoveResolver() {
-        MoveResolver moveResolver = new MoveResolver(this);
+    protected TraceLocalMoveResolver createMoveResolver() {
+        TraceLocalMoveResolver moveResolver = new TraceLocalMoveResolver(this);
         assert moveResolver.checkEmpty();
         return moveResolver;
     }

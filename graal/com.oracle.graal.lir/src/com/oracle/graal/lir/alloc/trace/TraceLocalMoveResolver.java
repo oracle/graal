@@ -36,7 +36,7 @@ import com.oracle.graal.lir.framemap.*;
 
 /**
  */
-public class MoveResolver {
+public class TraceLocalMoveResolver {
 
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private final TraceLinearScan allocator;
@@ -140,7 +140,7 @@ public class MoveResolver {
         return allocator;
     }
 
-    protected MoveResolver(TraceLinearScan allocator) {
+    protected TraceLocalMoveResolver(TraceLinearScan allocator) {
 
         this.allocator = allocator;
         this.mappingFrom = new ArrayList<>(8);
