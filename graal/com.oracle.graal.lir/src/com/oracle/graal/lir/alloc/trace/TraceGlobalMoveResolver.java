@@ -208,8 +208,8 @@ final class TraceGlobalMoveResolver {
     }
 
     /**
-     * Checks if the {@linkplain TraceInterval#location() location} of {@code to} is not blocked or is
-     * only blocked by {@code from}.
+     * Checks if the {@linkplain TraceInterval#location() location} of {@code to} is not blocked or
+     * is only blocked by {@code from}.
      */
     private boolean safeToProcessMove(Value fromLocation, Value toLocation) {
         if (mightBeBlocked(toLocation)) {
