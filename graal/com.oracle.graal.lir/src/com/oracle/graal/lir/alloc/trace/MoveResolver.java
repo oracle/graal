@@ -32,11 +32,13 @@ import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.framemap.*;
 
 /**
  */
 public class MoveResolver {
 
+    private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private final TraceLinearScan allocator;
 
     private int insertIdx;
@@ -45,15 +47,58 @@ public class MoveResolver {
     private final List<Interval> mappingFrom;
     private final List<Constant> mappingFromOpr;
     private final List<Interval> mappingTo;
-    private boolean multipleReadsAllowed;
     private final int[] registerBlocked;
+
+    private int[] stackBlocked;
+    private final int firstVirtualStackIndex;
+
+    private int getStackArrayIndex(StackSlotValue stackSlotValue) {
+        if (isStackSlot(stackSlotValue)) {
+            return getStackArrayIndex(asStackSlot(stackSlotValue));
+        }
+        if (isVirtualStackSlot(stackSlotValue)) {
+            return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
+        }
+        throw JVMCIError.shouldNotReachHere("Unhandled StackSlotValue: " + stackSlotValue);
+    }
+
+    private int getStackArrayIndex(StackSlot stackSlot) {
+        int stackIdx;
+        if (stackSlot.isInCallerFrame()) {
+            // incoming stack arguments can be ignored
+            stackIdx = STACK_SLOT_IN_CALLER_FRAME_IDX;
+        } else {
+            assert stackSlot.getRawAddFrameSize() : "Unexpected stack slot: " + stackSlot;
+            int offset = -stackSlot.getRawOffset();
+            assert 0 <= offset && offset < firstVirtualStackIndex : String.format("Wrong stack slot offset: %d (first virtual stack slot index: %d", offset, firstVirtualStackIndex);
+            stackIdx = offset;
+        }
+        return stackIdx;
+    }
+
+    private int getStackArrayIndex(VirtualStackSlot virtualStackSlot) {
+        return firstVirtualStackIndex + virtualStackSlot.getId();
+    }
 
     protected void setValueBlocked(Value location, int direction) {
         assert direction == 1 || direction == -1 : "out of bounds";
-        if (isRegister(location)) {
-            registerBlocked[asRegister(location).number] += direction;
+        if (isStackSlotValue(location)) {
+            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
+                // incoming stack arguments can be ignored
+                return;
+            }
+            if (stackIdx >= stackBlocked.length) {
+                stackBlocked = Arrays.copyOf(stackBlocked, stackIdx + 1);
+            }
+            stackBlocked[stackIdx] += direction;
         } else {
-            throw JVMCIError.shouldNotReachHere("unhandled value " + location);
+            assert direction == 1 || direction == -1 : "out of bounds";
+            if (isRegister(location)) {
+                registerBlocked[asRegister(location).number] += direction;
+            } else {
+                throw JVMCIError.shouldNotReachHere("unhandled value " + location);
+            }
         }
     }
 
@@ -66,18 +111,25 @@ public class MoveResolver {
     }
 
     protected int valueBlocked(Value location) {
+        if (isStackSlotValue(location)) {
+            int stackIdx = getStackArrayIndex(asStackSlotValue(location));
+            if (stackIdx == STACK_SLOT_IN_CALLER_FRAME_IDX) {
+                // incoming stack arguments are always blocked (aka they can not be written)
+                return 1;
+            }
+            if (stackIdx >= stackBlocked.length) {
+                return 0;
+            }
+            return stackBlocked[stackIdx];
+        }
         if (isRegister(location)) {
             return registerBlocked[asRegister(location).number];
         }
         throw JVMCIError.shouldNotReachHere("unhandled value " + location);
     }
 
-    void setMultipleReadsAllowed() {
-        multipleReadsAllowed = true;
-    }
-
     protected boolean areMultipleReadsAllowed() {
-        return multipleReadsAllowed;
+        return true;
     }
 
     boolean hasMappings() {
@@ -91,17 +143,23 @@ public class MoveResolver {
     protected MoveResolver(TraceLinearScan allocator) {
 
         this.allocator = allocator;
-        this.multipleReadsAllowed = false;
         this.mappingFrom = new ArrayList<>(8);
         this.mappingFromOpr = new ArrayList<>(8);
         this.mappingTo = new ArrayList<>(8);
         this.insertIdx = -1;
         this.insertionBuffer = new LIRInsertionBuffer();
         this.registerBlocked = new int[allocator.getRegisters().length];
+        FrameMapBuilderTool frameMapBuilderTool = (FrameMapBuilderTool) allocator.getFrameMapBuilder();
+        FrameMap frameMap = frameMapBuilderTool.getFrameMap();
+        this.stackBlocked = new int[frameMapBuilderTool.getNumberOfStackSlots()];
+        this.firstVirtualStackIndex = !frameMap.frameNeedsAllocating() ? 0 : frameMap.currentFrameSize() + 1;
     }
 
     protected boolean checkEmpty() {
         assert mappingFrom.size() == 0 && mappingFromOpr.size() == 0 && mappingTo.size() == 0 : "list must be empty before and after processing";
+        for (int i = 0; i < stackBlocked.length; i++) {
+            assert stackBlocked[i] == 0 : "stack map must be empty before and after processing";
+        }
         for (int i = 0; i < getAllocator().getRegisters().length; i++) {
             assert registerBlocked[i] == 0 : "register map must be empty before and after processing";
         }
@@ -110,7 +168,7 @@ public class MoveResolver {
     }
 
     protected void checkMultipleReads() {
-        assert !areMultipleReadsAllowed() : "must have default value";
+        // multiple reads are allowed in SSA LSRA
     }
 
     private boolean verifyBeforeResolve() {
@@ -163,25 +221,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        HashSet<Value> usedRegs = new HashSet<>();
-        for (int i = 0; i < mappingFrom.size(); i++) {
-            Interval interval = mappingFrom.get(i);
-            if (interval != null && !isRegister(interval.location())) {
-                usedRegs.add(interval.location());
-            }
-        }
-        for (int i = 0; i < mappingTo.size(); i++) {
-            Interval interval = mappingTo.get(i);
-            assert !usedRegs.contains(interval.location()) || checkIntervalLocation(mappingFrom.get(i), interval, mappingFromOpr.get(i)) : "stack slots used in mappingFrom must be disjoint to mappingTo";
-        }
-    }
-
-    private static boolean checkIntervalLocation(Interval from, Interval to, Constant fromOpr) {
-        if (from == null) {
-            return fromOpr != null;
-        } else {
-            return to.location().equals(from.location());
-        }
+        // relax disjoint stack maps invariant
     }
 
     // mark assignedReg and assignedRegHi of the interval as blocked
@@ -235,7 +275,13 @@ public class MoveResolver {
     }
 
     protected boolean mightBeBlocked(Value location) {
-        return isRegister(location);
+        if (isRegister(location)) {
+            return true;
+        }
+        if (isStackSlotValue(location)) {
+            return true;
+        }
+        return false;
     }
 
     private void createInsertionBuffer(List<LIRInstruction> list) {
@@ -271,6 +317,9 @@ public class MoveResolver {
      * @param toLocation {@link Interval#location() location} of the {@code to} interval
      */
     protected LIRInstruction createMove(AllocatableValue fromOpr, AllocatableValue toOpr, AllocatableValue fromLocation, AllocatableValue toLocation) {
+        if (isStackSlotValue(toLocation) && isStackSlotValue(fromLocation)) {
+            return getAllocator().getSpillMoveFactory().createStackMove(toOpr, fromOpr);
+        }
         return getAllocator().getSpillMoveFactory().createMove(toOpr, fromOpr);
     }
 
@@ -338,29 +387,37 @@ public class MoveResolver {
             }
         }
 
-        // reset to default value
-        multipleReadsAllowed = false;
-
         // check that all intervals have been processed
         assert checkEmpty();
     }
 
     protected void breakCycle(int spillCandidate) {
-        // no move could be processed because there is a cycle in the move list
-        // (e.g. r1 . r2, r2 . r1), so one interval must be spilled to memory
-        assert spillCandidate != -1 : "no interval in register for spilling found";
+        if (spillCandidate != -1) {
+            // no move could be processed because there is a cycle in the move list
+            // (e.g. r1 . r2, r2 . r1), so one interval must be spilled to memory
+            assert spillCandidate != -1 : "no interval in register for spilling found";
 
-        // create a new spill interval and assign a stack slot to it
-        Interval fromInterval = mappingFrom.get(spillCandidate);
-        // do not allocate a new spill slot for temporary interval, but
-        // use spill slot assigned to fromInterval. Otherwise moves from
-        // one stack slot to another can happen (not allowed by LIRAssembler
-        StackSlotValue spillSlot = fromInterval.spillSlot();
-        if (spillSlot == null) {
-            spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
-            fromInterval.setSpillSlot(spillSlot);
+            // create a new spill interval and assign a stack slot to it
+            Interval fromInterval1 = mappingFrom.get(spillCandidate);
+            // do not allocate a new spill slot for temporary interval, but
+            // use spill slot assigned to fromInterval. Otherwise moves from
+            // one stack slot to another can happen (not allowed by LIRAssembler
+            StackSlotValue spillSlot1 = fromInterval1.spillSlot();
+            if (spillSlot1 == null) {
+                spillSlot1 = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval1.kind());
+                fromInterval1.setSpillSlot(spillSlot1);
+            }
+            spillInterval(spillCandidate, fromInterval1, spillSlot1);
+            return;
         }
-        spillInterval(spillCandidate, fromInterval, spillSlot);
+        assert mappingFromSize() > 1;
+        // Arbitrarily select the first entry for spilling.
+        int stackSpillCandidate = 0;
+        Interval fromInterval = getMappingFrom(stackSpillCandidate);
+        assert isStackSlotValue(fromInterval.location());
+        // allocate new stack slot
+        StackSlotValue spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
+        spillInterval(stackSpillCandidate, fromInterval, spillSlot);
     }
 
     protected void spillInterval(int spillCandidate, Interval fromInterval, StackSlotValue spillSlot) {

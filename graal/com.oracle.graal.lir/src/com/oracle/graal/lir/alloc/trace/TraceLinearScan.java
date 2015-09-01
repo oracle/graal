@@ -184,7 +184,7 @@ final class TraceLinearScan {
     }
 
     protected MoveResolver createMoveResolver() {
-        TraceLocalMoveResolver moveResolver = new TraceLocalMoveResolver(this);
+        MoveResolver moveResolver = new MoveResolver(this);
         assert moveResolver.checkEmpty();
         return moveResolver;
     }
