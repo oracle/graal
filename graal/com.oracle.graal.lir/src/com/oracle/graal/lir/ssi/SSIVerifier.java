@@ -134,6 +134,10 @@ public final class SSIVerifier {
             // registers can be redefined
             return false;
         }
+        if (isStackSlotValue(value) && !isVirtualStackSlot(value)) {
+            // non-virtual stack slots can be redefined
+            return false;
+        }
         if (value.equals(Value.ILLEGAL)) {
             // Don't care about illegal values
             return false;
@@ -148,6 +152,10 @@ public final class SSIVerifier {
         }
         if (isRegister(value)) {
             // Assume fixed registers are correct
+            return false;
+        }
+        if (isStackSlotValue(value) && !isVirtualStackSlot(value)) {
+            // non-virtual stack slots are assumed to be correct
             return false;
         }
         if (value.equals(Value.ILLEGAL)) {
