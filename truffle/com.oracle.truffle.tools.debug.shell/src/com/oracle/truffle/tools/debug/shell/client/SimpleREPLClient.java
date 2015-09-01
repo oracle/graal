@@ -233,9 +233,11 @@ public class SimpleREPLClient implements REPLClient {
 
         // Information about where the execution is halted
         /** The source where execution, if any, is halted; null if none. */
-        private Source haltedSource = null;
+        private Source haltedSource;
         /** The line number where execution, if any, is halted; 0 if none. */
         private int haltedLineNumber = 0;
+        /** The name of a source that we can't locate. */
+        private String unknownSourceName = "<unavailable>";
         /** The stack where execution, if any, is halted; null if none. Evaluated lazily. */
         private List<REPLFrame> frames = null;
 
@@ -263,6 +265,7 @@ public class SimpleREPLClient implements REPLClient {
                 } catch (IOException e1) {
                     this.haltedSource = null;
                     this.haltedLineNumber = 0;
+                    this.unknownSourceName = message.get(REPLMessage.SOURCE_NAME);
                 }
             }
             updatePrompt();
@@ -400,7 +403,7 @@ public class SimpleREPLClient implements REPLClient {
                 whereLineNumber = frame.locationLineNumber();
             }
             if (whereSource == null) {
-                displayFailReply("Frame " + selectedFrameNumber + ": source unavailable");
+                displayFailReply("Unavalable source=\"" + this.unknownSourceName + "\"");
                 return;
             }
             final int listSize = listSizeOption.getInt();
