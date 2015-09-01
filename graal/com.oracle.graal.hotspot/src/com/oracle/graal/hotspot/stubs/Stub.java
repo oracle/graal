@@ -29,13 +29,13 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-import com.oracle.graal.debug.internal.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -194,7 +194,7 @@ public abstract class Stub {
                     HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(compResult);
 
                     HotSpotGraalRuntime runtime = runtime();
-                    int result = runtime.getCompilerToVM().installCode(hsCompResult, installedCode, null);
+                    int result = runtime.getCompilerToVM().installCode(backend.getTarget(), hsCompResult, installedCode, null);
                     HotSpotVMConfig config = runtime.getConfig();
                     if (result != config.codeInstallResultOk) {
                         throw new JVMCIError("Error installing stub %s: %s", Stub.this, config.getCodeInstallResultDescription(result));
