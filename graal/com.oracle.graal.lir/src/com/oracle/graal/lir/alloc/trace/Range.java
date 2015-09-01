@@ -25,7 +25,7 @@ package com.oracle.graal.lir.alloc.trace;
 /**
  * Represents a range of integers from a start (inclusive) to an end (exclusive.
  */
-public final class Range {
+final class Range {
 
     public static final Range EndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
 

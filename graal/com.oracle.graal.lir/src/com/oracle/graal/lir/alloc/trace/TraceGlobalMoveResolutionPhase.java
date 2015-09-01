@@ -41,7 +41,7 @@ import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 import com.oracle.graal.lir.ssi.*;
 
-public class TraceGlobalMoveResolutionPhase extends AllocationPhase {
+final class TraceGlobalMoveResolutionPhase extends AllocationPhase {
 
     private final TraceBuilderResult<?> resultTraces;
 

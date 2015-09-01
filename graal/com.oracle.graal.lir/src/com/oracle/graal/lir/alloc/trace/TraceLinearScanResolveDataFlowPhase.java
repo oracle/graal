@@ -46,7 +46,7 @@ import com.oracle.graal.lir.ssi.*;
  *
  * Insert moves at edges between blocks if intervals have been split.
  */
-public class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
+final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
 
     protected final TraceLinearScan allocator;
 

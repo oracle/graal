@@ -33,7 +33,7 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.framemap.*;
 
-public final class TraceLocalMoveResolver extends MoveResolver {
+final class TraceLocalMoveResolver extends MoveResolver {
 
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private int[] stackBlocked;

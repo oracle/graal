@@ -44,7 +44,7 @@ import com.oracle.graal.lir.alloc.trace.Interval.State;
 
 /**
  */
-class LinearScanWalker extends IntervalWalker {
+final class LinearScanWalker extends IntervalWalker {
 
     protected Register[] availableRegs;
 
@@ -638,7 +638,7 @@ class LinearScanWalker extends IntervalWalker {
     /**
      * This is called for every interval that is assigned to a stack slot.
      */
-    protected void handleSpillSlot(Interval interval) {
+    protected static void handleSpillSlot(Interval interval) {
         assert interval.location() != null && (interval.canMaterialize() || isStackSlotValue(interval.location())) : "interval not assigned to a stack slot " + interval;
         // Do nothing. Stack slots are not processed in this implementation.
     }

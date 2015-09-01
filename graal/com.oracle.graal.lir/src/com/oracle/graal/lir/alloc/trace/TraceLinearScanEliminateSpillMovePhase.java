@@ -43,7 +43,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-public class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
+final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
 
     private static final IntervalPredicate mustStoreAtDefinition = new TraceLinearScan.IntervalPredicate() {
 
@@ -69,7 +69,7 @@ public class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
      * @return the index of the first instruction that is of interest for
      *         {@link #eliminateSpillMoves()}
      */
-    protected int firstInstructionOfInterest() {
+    protected static int firstInstructionOfInterest() {
         // also look at Labels as they define PHI values
         return 0;
     }
@@ -179,15 +179,15 @@ public class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
      * @param block The block {@code move} is located in.
      * @param move Spill move.
      */
-    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
+    protected static boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
         // TODO (je) do not eliminate spill moves yet!
         return false;
         /*
          * assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " +
          * move;
-         *
+         * 
          * Interval curInterval = allocator.intervalFor(move.getResult());
-         *
+         * 
          * if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) { assert
          * isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
          * return true; } return false;

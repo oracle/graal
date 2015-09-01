@@ -54,7 +54,7 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
  * >"Optimized Interval Splitting in a Linear Scan Register Allocator"</a> by Christian Wimmer and
  * Hanspeter Moessenboeck.
  */
-public class TraceLinearScan {
+final class TraceLinearScan {
 
     public static class Options {
         // @formatter:off

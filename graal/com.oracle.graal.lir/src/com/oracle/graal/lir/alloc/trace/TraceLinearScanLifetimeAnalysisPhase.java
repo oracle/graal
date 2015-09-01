@@ -46,7 +46,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
@@ -57,7 +56,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 import com.oracle.graal.lir.ssi.*;
 
-public class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
+class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
     protected final TraceLinearScan allocator;
     private final TraceBuilderResult<?> traceBuilderResult;
@@ -347,7 +346,7 @@ public class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             * 
+                             *
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */
@@ -571,29 +570,7 @@ public class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * of such moves is assigned the stack slot (which is in the caller's frame) as its spill slot.
      */
     protected void handleMethodArguments(LIRInstruction op) {
-        if (op instanceof MoveOp) {
-            // do not optimize method arguments
-            return;
-        }
-        if (op instanceof ValueMoveOp) {
-            ValueMoveOp move = (ValueMoveOp) op;
-            if (optimizeMethodArgument(move.getInput())) {
-                StackSlot slot = asStackSlot(move.getInput());
-                if (DetailedAsserts.getValue()) {
-                    assert op.id() > 0 : "invalid id";
-                    assert allocator.blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
-                    assert isVariable(move.getResult()) : "result of move must be a variable";
-
-                    if (Debug.isLogEnabled()) {
-                        Debug.log("found move from stack slot %s to %s", slot, move.getResult());
-                    }
-                }
-
-                Interval interval = allocator.intervalFor(move.getResult());
-                interval.setSpillSlot(slot);
-                interval.assignLocation(slot);
-            }
-        } else if (op instanceof StackStoreOp) {
+        if (op instanceof StackStoreOp) {
             StackStoreOp store = (StackStoreOp) op;
             StackSlot slot = asStackSlot(store.getStackSlot());
             Interval interval = allocator.intervalFor(store.getResult());

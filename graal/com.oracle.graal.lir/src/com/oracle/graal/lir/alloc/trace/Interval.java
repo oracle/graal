@@ -39,7 +39,7 @@ import com.oracle.graal.lir.*;
 /**
  * Represents an interval in the {@linkplain TraceLinearScan linear scan register allocator}.
  */
-public final class Interval {
+final class Interval {
 
     /**
      * A pair of intervals.

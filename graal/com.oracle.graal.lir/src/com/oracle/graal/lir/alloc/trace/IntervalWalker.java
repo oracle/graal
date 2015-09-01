@@ -30,7 +30,7 @@ import com.oracle.graal.lir.alloc.trace.Interval.State;
 
 /**
  */
-public class IntervalWalker {
+class IntervalWalker {
 
     protected final TraceLinearScan allocator;
 

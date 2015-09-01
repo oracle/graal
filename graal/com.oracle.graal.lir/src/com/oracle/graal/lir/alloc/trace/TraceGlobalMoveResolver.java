@@ -39,7 +39,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 
 /**
  */
-class TraceGlobalMoveResolver {
+final class TraceGlobalMoveResolver {
 
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted

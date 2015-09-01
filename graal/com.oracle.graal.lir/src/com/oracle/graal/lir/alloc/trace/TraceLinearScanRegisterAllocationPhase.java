@@ -33,7 +33,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-public final class TraceLinearScanRegisterAllocationPhase extends AllocationPhase {
+final class TraceLinearScanRegisterAllocationPhase extends AllocationPhase {
 
     private final TraceLinearScan allocator;
 

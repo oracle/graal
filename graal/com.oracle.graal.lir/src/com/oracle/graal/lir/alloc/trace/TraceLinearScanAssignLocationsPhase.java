@@ -51,7 +51,7 @@ import com.oracle.graal.lir.phases.*;
  * {@link ShadowedRegisterValue}s to describe {@link RegisterValue}s that are also available on the
  * {@link StackSlotValue stack}.
  */
-public class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
+final class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
 
     protected final TraceLinearScan allocator;
     private final TraceBuilderResult<?> traceBuilderResult;

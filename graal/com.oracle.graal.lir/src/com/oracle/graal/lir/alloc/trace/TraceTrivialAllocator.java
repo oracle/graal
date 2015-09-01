@@ -47,7 +47,7 @@ import com.oracle.graal.lir.util.*;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link BlockEndOp}.
  */
-public class TraceTrivialAllocator extends AllocationPhase {
+final class TraceTrivialAllocator extends AllocationPhase {
 
     private final TraceBuilderResult<?> resultTraces;
 

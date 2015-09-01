@@ -40,7 +40,7 @@ import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
-public final class TraceLinearScanOptimizeSpillPositionPhase extends AllocationPhase {
+final class TraceLinearScanOptimizeSpillPositionPhase extends AllocationPhase {
 
     private static final DebugMetric betterSpillPos = Debug.metric("BetterSpillPosition");
     private static final DebugMetric betterSpillPosWithLowerProbability = Debug.metric("BetterSpillPositionWithLowerProbability");
@@ -118,7 +118,7 @@ public final class TraceLinearScanOptimizeSpillPositionPhase extends AllocationP
             /*
              * The spill block is the begin of the first split child (aka the value is on the
              * stack).
-             *
+             * 
              * The problem is that if spill block has more than one predecessor, the values at the
              * end of the predecessors might differ. Therefore, we would need a spill move in all
              * predecessors. To avoid this we spill in the dominator.

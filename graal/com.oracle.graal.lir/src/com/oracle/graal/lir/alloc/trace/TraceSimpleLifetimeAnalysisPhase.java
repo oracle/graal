@@ -39,7 +39,7 @@ import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 
-public class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnalysisPhase {
+final class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnalysisPhase {
 
     public TraceSimpleLifetimeAnalysisPhase(TraceLinearScan allocator, TraceBuilderResult<?> traceBuilderResult) {
         super(allocator, traceBuilderResult);
