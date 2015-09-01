@@ -47,9 +47,9 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 import com.oracle.graal.lir.phases.*;
 
 /**
- * Specialization of {@link LinearScanAssignLocationsPhase} that inserts
- * {@link ShadowedRegisterValue}s to describe {@link RegisterValue}s that are also available on the
- * {@link StackSlotValue stack}.
+ * Specialization of {@link com.oracle.graal.lir.alloc.lsra.LinearScanAssignLocationsPhase} that
+ * inserts {@link ShadowedRegisterValue}s to describe {@link RegisterValue}s that are also available
+ * on the {@link StackSlotValue stack}.
  */
 final class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
 
@@ -134,7 +134,7 @@ final class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             *
+             * 
              * Solution: use the first opId of the branch target block instead.
              */
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
