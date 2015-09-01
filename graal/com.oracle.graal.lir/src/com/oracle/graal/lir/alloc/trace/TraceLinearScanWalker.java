@@ -45,7 +45,7 @@ import com.oracle.graal.lir.alloc.trace.TraceInterval.State;
 
 /**
  */
-final class LinearScanWalker extends TraceIntervalWalker {
+final class TraceLinearScanWalker extends TraceIntervalWalker {
 
     protected Register[] availableRegs;
 
@@ -81,7 +81,7 @@ final class LinearScanWalker extends TraceIntervalWalker {
         return allocator.blockForId(opId);
     }
 
-    LinearScanWalker(TraceLinearScan allocator, TraceInterval unhandledFixedFirst, TraceInterval unhandledAnyFirst) {
+    TraceLinearScanWalker(TraceLinearScan allocator, TraceInterval unhandledFixedFirst, TraceInterval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();

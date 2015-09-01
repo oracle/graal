@@ -59,7 +59,7 @@ final class TraceLinearScanRegisterAllocationPhase extends AllocationPhase {
             notPrecoloredIntervals = result.second;
 
             // allocate cpu registers
-            LinearScanWalker lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
+            TraceLinearScanWalker lsw = new TraceLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
             lsw.walk();
             lsw.finishAllocation();
         }
