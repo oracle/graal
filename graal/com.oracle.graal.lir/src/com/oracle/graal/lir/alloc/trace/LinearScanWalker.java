@@ -45,7 +45,7 @@ import com.oracle.graal.lir.alloc.trace.TraceInterval.State;
 
 /**
  */
-final class LinearScanWalker extends IntervalWalker {
+final class LinearScanWalker extends TraceIntervalWalker {
 
     protected Register[] availableRegs;
 

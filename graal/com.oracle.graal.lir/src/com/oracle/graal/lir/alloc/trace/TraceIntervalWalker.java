@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import com.oracle.graal.lir.alloc.trace.TraceInterval.State;
 
 /**
  */
-class IntervalWalker {
+class TraceIntervalWalker {
 
     protected final TraceLinearScan allocator;
 
@@ -86,7 +86,7 @@ class IntervalWalker {
      * @param unhandledAny the list of unhandled {@linkplain RegisterBinding#Any non-fixed}
      *            intervals
      */
-    IntervalWalker(TraceLinearScan allocator, TraceInterval unhandledFixed, TraceInterval unhandledAny) {
+    TraceIntervalWalker(TraceLinearScan allocator, TraceInterval unhandledFixed, TraceInterval unhandledAny) {
         this.allocator = allocator;
 
         unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny, TraceInterval.EndMarker);
@@ -213,8 +213,8 @@ class IntervalWalker {
      * Walk up to {@code toOpId}.
      *
      * @postcondition {@link #currentPosition} is set to {@code toOpId}, {@link #activeLists} and
-     *                {@link #inactiveLists} are populated and {@link TraceInterval#state}s are up to
-     *                date.
+     *                {@link #inactiveLists} are populated and {@link TraceInterval#state}s are up
+     *                to date.
      */
     protected void walkTo(int toOpId) {
         assert currentPosition <= toOpId : "can not walk backwards";
@@ -262,7 +262,7 @@ class IntervalWalker {
 
     /**
      * Move {@linkplain #unhandledLists unhandled} stack intervals to
-     * {@linkplain IntervalWalker #activeLists active}.
+     * {@linkplain TraceIntervalWalker #activeLists active}.
      *
      * Note that for {@linkplain RegisterBinding#Fixed fixed} and {@linkplain RegisterBinding#Any
      * any} intervals this is done in {@link #nextInterval(int)}.

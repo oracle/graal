@@ -828,7 +828,7 @@ final class TraceLinearScan {
             // with a high operation id
             otherIntervals = new TraceInterval(Value.ILLEGAL, -1);
             otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
-            IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
+            TraceIntervalWalker iw = new TraceIntervalWalker(this, fixedIntervals, otherIntervals);
 
             for (AbstractBlockBase<?> block : sortedBlocks) {
                 List<LIRInstruction> instructions = ir.getLIRforBlock(block);
