@@ -37,7 +37,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.TraceLinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
@@ -48,7 +48,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
     private static final IntervalPredicate mustStoreAtDefinition = new TraceLinearScan.IntervalPredicate() {
 
         @Override
-        public boolean apply(Interval i) {
+        public boolean apply(TraceInterval i) {
             return i.isSplitParent() && i.spillState() == SpillState.StoreAtDefinition;
         }
     };
@@ -82,7 +82,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
              * collect all intervals that must be stored after their definition. The list is sorted
              * by Interval.spillDefinitionPos.
              */
-            Interval interval;
+            TraceInterval interval;
             interval = allocator.createUnhandledLists(mustStoreAtDefinition, null).first;
             if (DetailedAsserts.getValue()) {
                 checkIntervals(interval);
@@ -131,10 +131,10 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
                              * Insert move from register to stack just after the beginning of the
                              * interval.
                              */
-                            assert interval == Interval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
-                            assert interval == Interval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
+                            assert interval == TraceInterval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
+                            assert interval == TraceInterval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
 
-                            while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
+                            while (interval != TraceInterval.EndMarker && interval.spillDefinitionPos() == opId) {
                                 if (!interval.canMaterialize()) {
                                     if (!insertionBuffer.initialized()) {
                                         /*
@@ -171,7 +171,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
                 }
             } // end of block iteration
 
-            assert interval == Interval.EndMarker : "missed an interval";
+            assert interval == TraceInterval.EndMarker : "missed an interval";
         }
     }
 
@@ -194,10 +194,10 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
          */
     }
 
-    private static void checkIntervals(Interval interval) {
-        Interval prev = null;
-        Interval temp = interval;
-        while (temp != Interval.EndMarker) {
+    private static void checkIntervals(TraceInterval interval) {
+        TraceInterval prev = null;
+        TraceInterval temp = interval;
+        while (temp != TraceInterval.EndMarker) {
             assert temp.spillDefinitionPos() > 0 : "invalid spill definition pos";
             if (prev != null) {
                 assert temp.from() >= prev.from() : "intervals not sorted";

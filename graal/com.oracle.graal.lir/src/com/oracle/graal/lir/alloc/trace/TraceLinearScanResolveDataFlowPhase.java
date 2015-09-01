@@ -76,8 +76,8 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
             assert operandNum < numOperands : "live information set for not exisiting interval";
             assert allocator.getBlockData(fromBlock).liveOut.get(operandNum) && allocator.getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
-            Interval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
-            Interval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
+            TraceInterval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
+            TraceInterval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
 
             if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
                 // need to insert move instruction
@@ -185,8 +185,8 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
                 assert operandNum < numOperands : "live information set for not exisiting interval";
                 assert allocator.getBlockData(fromBlock).liveOut.get(operandNum) && allocator.getBlockData(toBlock).liveIn.get(operandNum) : "interval not live at this edge";
 
-                Interval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
-                Interval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
+                TraceInterval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), fromBlockLastInstructionId, LIRInstruction.OperandMode.DEF);
+                TraceInterval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(operandNum), toBlockFirstInstructionId, LIRInstruction.OperandMode.DEF);
 
                 if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
                     // need to insert move instruction
@@ -228,12 +228,12 @@ final class TraceLinearScanResolveDataFlowPhase extends AllocationPhase {
                 // no need to handle virtual stack slots
                 return;
             }
-            Interval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiIn), toId, LIRInstruction.OperandMode.DEF);
+            TraceInterval toInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiIn), toId, LIRInstruction.OperandMode.DEF);
             if (isConstantValue(phiOut)) {
                 numSSIResolutionMoves.increment();
                 moveResolver.addMapping(asConstant(phiOut), toInterval);
             } else {
-                Interval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiOut), fromId, LIRInstruction.OperandMode.DEF);
+                TraceInterval fromInterval = allocator.splitChildAtOpId(allocator.intervalFor(phiOut), fromId, LIRInstruction.OperandMode.DEF);
                 if (fromInterval != toInterval) {
                     numSSIResolutionMoves.increment();
                     if (!(isStackSlotValue(toInterval.location()) && isStackSlotValue(fromInterval.location()))) {

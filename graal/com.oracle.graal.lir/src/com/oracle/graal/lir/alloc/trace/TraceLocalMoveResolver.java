@@ -44,9 +44,9 @@ public class TraceLocalMoveResolver {
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
-    private final List<Interval> mappingFrom;
+    private final List<TraceInterval> mappingFrom;
     private final List<Constant> mappingFromOpr;
-    private final List<Interval> mappingTo;
+    private final List<TraceInterval> mappingTo;
     private final int[] registerBlocked;
 
     private int[] stackBlocked;
@@ -102,7 +102,7 @@ public class TraceLocalMoveResolver {
         }
     }
 
-    protected Interval getMappingFrom(int i) {
+    protected TraceInterval getMappingFrom(int i) {
         return mappingFrom.get(i);
     }
 
@@ -195,7 +195,7 @@ public class TraceLocalMoveResolver {
         HashSet<Value> usedRegs = new HashSet<>();
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
-                Interval interval = mappingFrom.get(i);
+                TraceInterval interval = mappingFrom.get(i);
                 if (interval != null && !isIllegal(interval.location())) {
                     boolean unique = usedRegs.add(interval.location());
                     assert unique : "cannot read from same register twice";
@@ -205,7 +205,7 @@ public class TraceLocalMoveResolver {
 
         usedRegs.clear();
         for (i = 0; i < mappingTo.size(); i++) {
-            Interval interval = mappingTo.get(i);
+            TraceInterval interval = mappingTo.get(i);
             if (isIllegal(interval.location())) {
                 // After insertion the location may become illegal, so don't check it since multiple
                 // intervals might be illegal.
@@ -225,7 +225,7 @@ public class TraceLocalMoveResolver {
     }
 
     // mark assignedReg and assignedRegHi of the interval as blocked
-    private void blockRegisters(Interval interval) {
+    private void blockRegisters(TraceInterval interval) {
         Value location = interval.location();
         if (mightBeBlocked(location)) {
             assert areMultipleReadsAllowed() || valueBlocked(location) == 0 : "location already marked as used: " + location;
@@ -236,7 +236,7 @@ public class TraceLocalMoveResolver {
     }
 
     // mark assignedReg and assignedRegHi of the interval as unblocked
-    private void unblockRegisters(Interval interval) {
+    private void unblockRegisters(TraceInterval interval) {
         Value location = interval.location();
         if (mightBeBlocked(location)) {
             assert valueBlocked(location) > 0 : "location already marked as unused: " + location;
@@ -246,10 +246,10 @@ public class TraceLocalMoveResolver {
     }
 
     /**
-     * Checks if the {@linkplain Interval#location() location} of {@code to} is not blocked or is
+     * Checks if the {@linkplain TraceInterval#location() location} of {@code to} is not blocked or is
      * only blocked by {@code from}.
      */
-    private boolean safeToProcessMove(Interval from, Interval to) {
+    private boolean safeToProcessMove(TraceInterval from, TraceInterval to) {
         Value fromReg = from != null ? from.location() : null;
 
         Value location = to.location();
@@ -298,7 +298,7 @@ public class TraceLocalMoveResolver {
         insertIdx = -1;
     }
 
-    private void insertMove(Interval fromInterval, Interval toInterval) {
+    private void insertMove(TraceInterval fromInterval, TraceInterval toInterval) {
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
         assert LIRKind.verifyMoveKinds(toInterval.kind(), fromInterval.kind()) : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
@@ -311,10 +311,10 @@ public class TraceLocalMoveResolver {
     }
 
     /**
-     * @param fromOpr {@link Interval#operand operand} of the {@code from} interval
-     * @param toOpr {@link Interval#operand operand} of the {@code to} interval
-     * @param fromLocation {@link Interval#location() location} of the {@code to} interval
-     * @param toLocation {@link Interval#location() location} of the {@code to} interval
+     * @param fromOpr {@link TraceInterval#operand operand} of the {@code from} interval
+     * @param toOpr {@link TraceInterval#operand operand} of the {@code to} interval
+     * @param fromLocation {@link TraceInterval#location() location} of the {@code to} interval
+     * @param toLocation {@link TraceInterval#location() location} of the {@code to} interval
      */
     protected LIRInstruction createMove(AllocatableValue fromOpr, AllocatableValue toOpr, AllocatableValue fromLocation, AllocatableValue toLocation) {
         if (isStackSlotValue(toLocation) && isStackSlotValue(fromLocation)) {
@@ -323,7 +323,7 @@ public class TraceLocalMoveResolver {
         return getAllocator().getSpillMoveFactory().createMove(toOpr, fromOpr);
     }
 
-    private void insertMove(Constant fromOpr, Interval toInterval) {
+    private void insertMove(Constant fromOpr, TraceInterval toInterval) {
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
@@ -347,7 +347,7 @@ public class TraceLocalMoveResolver {
             // This is necessary for detecting cycles in moves.
             int i;
             for (i = mappingFrom.size() - 1; i >= 0; i--) {
-                Interval fromInterval = mappingFrom.get(i);
+                TraceInterval fromInterval = mappingFrom.get(i);
                 if (fromInterval != null) {
                     blockRegisters(fromInterval);
                 }
@@ -358,8 +358,8 @@ public class TraceLocalMoveResolver {
                 boolean processedInterval = false;
 
                 for (i = mappingFrom.size() - 1; i >= 0; i--) {
-                    Interval fromInterval = mappingFrom.get(i);
-                    Interval toInterval = mappingTo.get(i);
+                    TraceInterval fromInterval = mappingFrom.get(i);
+                    TraceInterval toInterval = mappingTo.get(i);
 
                     if (safeToProcessMove(fromInterval, toInterval)) {
                         // this interval can be processed because target is free
@@ -398,7 +398,7 @@ public class TraceLocalMoveResolver {
             assert spillCandidate != -1 : "no interval in register for spilling found";
 
             // create a new spill interval and assign a stack slot to it
-            Interval fromInterval1 = mappingFrom.get(spillCandidate);
+            TraceInterval fromInterval1 = mappingFrom.get(spillCandidate);
             // do not allocate a new spill slot for temporary interval, but
             // use spill slot assigned to fromInterval. Otherwise moves from
             // one stack slot to another can happen (not allowed by LIRAssembler
@@ -413,16 +413,16 @@ public class TraceLocalMoveResolver {
         assert mappingFromSize() > 1;
         // Arbitrarily select the first entry for spilling.
         int stackSpillCandidate = 0;
-        Interval fromInterval = getMappingFrom(stackSpillCandidate);
+        TraceInterval fromInterval = getMappingFrom(stackSpillCandidate);
         assert isStackSlotValue(fromInterval.location());
         // allocate new stack slot
         StackSlotValue spillSlot = getAllocator().getFrameMapBuilder().allocateSpillSlot(fromInterval.kind());
         spillInterval(stackSpillCandidate, fromInterval, spillSlot);
     }
 
-    protected void spillInterval(int spillCandidate, Interval fromInterval, StackSlotValue spillSlot) {
+    protected void spillInterval(int spillCandidate, TraceInterval fromInterval, StackSlotValue spillSlot) {
         assert mappingFrom.get(spillCandidate).equals(fromInterval);
-        Interval spillInterval = getAllocator().createDerivedInterval(fromInterval);
+        TraceInterval spillInterval = getAllocator().createDerivedInterval(fromInterval);
         spillInterval.setKind(fromInterval.kind());
 
         // add a dummy range because real position is difficult to calculate
@@ -446,8 +446,8 @@ public class TraceLocalMoveResolver {
     private void printMapping() {
         try (Indent indent = Debug.logAndIndent("Mapping")) {
             for (int i = mappingFrom.size() - 1; i >= 0; i--) {
-                Interval fromInterval = mappingFrom.get(i);
-                Interval toInterval = mappingTo.get(i);
+                TraceInterval fromInterval = mappingFrom.get(i);
+                TraceInterval toInterval = mappingTo.get(i);
                 String from;
                 Value to = toInterval.location();
                 if (fromInterval == null) {
@@ -483,7 +483,7 @@ public class TraceLocalMoveResolver {
         this.insertIdx = newInsertIdx;
     }
 
-    public void addMapping(Interval fromInterval, Interval toInterval) {
+    public void addMapping(TraceInterval fromInterval, TraceInterval toInterval) {
 
         if (isIllegal(toInterval.location()) && toInterval.canMaterialize()) {
             if (Debug.isLogEnabled()) {
@@ -509,7 +509,7 @@ public class TraceLocalMoveResolver {
         mappingTo.add(toInterval);
     }
 
-    public void addMapping(Constant fromOpr, Interval toInterval) {
+    public void addMapping(Constant fromOpr, TraceInterval toInterval) {
         if (Debug.isLogEnabled()) {
             Debug.log("add move mapping from %s to %s", fromOpr, toInterval);
         }

@@ -34,8 +34,8 @@ import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
-import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
 
@@ -63,7 +63,7 @@ final class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnal
             return;
         }
 
-        Interval interval = allocator.getOrCreateInterval(operand);
+        TraceInterval interval = allocator.getOrCreateInterval(operand);
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
@@ -93,7 +93,7 @@ final class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnal
             return;
         }
 
-        Interval interval = allocator.getOrCreateInterval(operand);
+        TraceInterval interval = allocator.getOrCreateInterval(operand);
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
@@ -123,7 +123,7 @@ final class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnal
         }
         int defPos = op.id();
 
-        Interval interval = allocator.getOrCreateInterval(operand);
+        TraceInterval interval = allocator.getOrCreateInterval(operand);
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
@@ -270,7 +270,7 @@ final class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnal
              * Add the range [0, 1] to all fixed intervals. the register allocator need not handle
              * unhandled fixed intervals.
              */
-            for (Interval interval : allocator.intervals()) {
+            for (TraceInterval interval : allocator.intervals()) {
                 if (interval != null && isRegister(interval.operand)) {
                     interval.addRange(0, 1);
                 }

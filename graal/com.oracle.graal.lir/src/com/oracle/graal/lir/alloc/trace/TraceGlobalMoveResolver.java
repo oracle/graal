@@ -208,7 +208,7 @@ final class TraceGlobalMoveResolver {
     }
 
     /**
-     * Checks if the {@linkplain Interval#location() location} of {@code to} is not blocked or is
+     * Checks if the {@linkplain TraceInterval#location() location} of {@code to} is not blocked or is
      * only blocked by {@code from}.
      */
     private boolean safeToProcessMove(Value fromLocation, Value toLocation) {
@@ -275,8 +275,8 @@ final class TraceGlobalMoveResolver {
     }
 
     /**
-     * @param fromOpr {@link Interval#operand operand} of the {@code from} interval
-     * @param toOpr {@link Interval#operand operand} of the {@code to} interval
+     * @param fromOpr {@link TraceInterval#operand operand} of the {@code from} interval
+     * @param toOpr {@link TraceInterval#operand operand} of the {@code to} interval
      */
     private LIRInstruction createMove(Value fromOpr, AllocatableValue toOpr) {
         if (isStackSlotValue(toOpr) && isStackSlotValue(fromOpr)) {

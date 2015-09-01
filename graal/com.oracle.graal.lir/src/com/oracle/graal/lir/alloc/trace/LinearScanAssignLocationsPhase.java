@@ -70,7 +70,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
      */
     protected Value colorLirOperand(LIRInstruction op, Variable operand, OperandMode mode) {
         int opId = op.id();
-        Interval interval = allocator.intervalFor(operand);
+        TraceInterval interval = allocator.intervalFor(operand);
         assert interval != null : "interval must exist";
 
         if (opId != -1) {

@@ -42,7 +42,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.alloc.trace.Interval.RegisterBinding;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterBinding;
 import com.oracle.graal.lir.framemap.*;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
@@ -113,7 +113,7 @@ final class TraceLinearScan {
     private final List<? extends AbstractBlockBase<?>> sortedBlocks;
 
     /** @see #intervals() */
-    private Interval[] intervals;
+    private TraceInterval[] intervals;
 
     /**
      * The number of valid entries in {@link #intervals}.
@@ -122,14 +122,14 @@ final class TraceLinearScan {
 
     /**
      * The index of the first entry in {@link #intervals} for a
-     * {@linkplain #createDerivedInterval(Interval) derived interval}.
+     * {@linkplain #createDerivedInterval(TraceInterval) derived interval}.
      */
     private int firstDerivedIntervalIndex = -1;
 
     /**
-     * Intervals sorted by {@link Interval#from()}.
+     * Intervals sorted by {@link TraceInterval#from()}.
      */
-    private Interval[] sortedIntervals;
+    private TraceInterval[] sortedIntervals;
 
     /**
      * Map from an instruction {@linkplain LIRInstruction#id id} to the instruction. Entries should
@@ -233,7 +233,7 @@ final class TraceLinearScan {
     static final IntervalPredicate IS_PRECOLORED_INTERVAL = new IntervalPredicate() {
 
         @Override
-        public boolean apply(Interval i) {
+        public boolean apply(TraceInterval i) {
             return isRegister(i.operand);
         }
     };
@@ -241,7 +241,7 @@ final class TraceLinearScan {
     static final IntervalPredicate IS_VARIABLE_INTERVAL = new IntervalPredicate() {
 
         @Override
-        public boolean apply(Interval i) {
+        public boolean apply(TraceInterval i) {
             return isVariable(i.operand);
         }
     };
@@ -249,7 +249,7 @@ final class TraceLinearScan {
     static final IntervalPredicate IS_STACK_INTERVAL = new IntervalPredicate() {
 
         @Override
-        public boolean apply(Interval i) {
+        public boolean apply(TraceInterval i) {
             return !isRegister(i.operand);
         }
     };
@@ -262,7 +262,7 @@ final class TraceLinearScan {
         return registerAttributes[reg.number];
     }
 
-    void assignSpillSlot(Interval interval) {
+    void assignSpillSlot(TraceInterval interval) {
         /*
          * Assign the canonical spill slot of the parent (if a part of the interval is already
          * spilled) or allocate a new spill slot.
@@ -281,13 +281,13 @@ final class TraceLinearScan {
     /**
      * Map from {@linkplain #operandNumber(Value) operand numbers} to intervals.
      */
-    public Interval[] intervals() {
+    public TraceInterval[] intervals() {
         return intervals;
     }
 
     void initIntervals() {
         intervalsSize = operandSize();
-        intervals = new Interval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
+        intervals = new TraceInterval[intervalsSize + (intervalsSize >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT)];
     }
 
     /**
@@ -296,10 +296,10 @@ final class TraceLinearScan {
      * @param operand the operand for the interval
      * @return the created interval
      */
-    Interval createInterval(AllocatableValue operand) {
+    TraceInterval createInterval(AllocatableValue operand) {
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
-        Interval interval = new Interval(operand, operandNumber);
+        TraceInterval interval = new TraceInterval(operand, operandNumber);
         assert operandNumber < intervalsSize;
         assert intervals[operandNumber] == null;
         intervals[operandNumber] = interval;
@@ -312,7 +312,7 @@ final class TraceLinearScan {
      * @param source an interval being split of spilled
      * @return a new interval derived from {@code source}
      */
-    Interval createDerivedInterval(Interval source) {
+    TraceInterval createDerivedInterval(TraceInterval source) {
         if (firstDerivedIntervalIndex == -1) {
             firstDerivedIntervalIndex = intervalsSize;
         }
@@ -322,7 +322,7 @@ final class TraceLinearScan {
         intervalsSize++;
         Variable variable = new Variable(source.kind(), ir.nextVariable());
 
-        Interval interval = createInterval(variable);
+        TraceInterval interval = createInterval(variable);
         assert intervals[intervalsSize - 1] == interval;
         return interval;
     }
@@ -339,7 +339,7 @@ final class TraceLinearScan {
     /**
      * Gets the size of the {@link BlockData#liveIn} and {@link BlockData#liveOut} sets for a basic
      * block. These sets do not include any operands allocated as a result of creating
-     * {@linkplain #createDerivedInterval(Interval) derived intervals}.
+     * {@linkplain #createDerivedInterval(TraceInterval) derived intervals}.
      */
     public int liveSetSize() {
         return firstDerivedIntervalIndex == -1 ? operandSize() : firstDerivedIntervalIndex;
@@ -349,18 +349,18 @@ final class TraceLinearScan {
         return ir.getControlFlowGraph().getLoops().size();
     }
 
-    Interval intervalFor(int operandNumber) {
+    TraceInterval intervalFor(int operandNumber) {
         return intervals[operandNumber];
     }
 
-    public Interval intervalFor(Value operand) {
+    public TraceInterval intervalFor(Value operand) {
         int operandNumber = operandNumber(operand);
         assert operandNumber < intervalsSize;
         return intervals[operandNumber];
     }
 
-    public Interval getOrCreateInterval(AllocatableValue operand) {
-        Interval ret = intervalFor(operand);
+    public TraceInterval getOrCreateInterval(AllocatableValue operand) {
+        TraceInterval ret = intervalFor(operand);
         if (ret == null) {
             return createInterval(operand);
         } else {
@@ -441,7 +441,7 @@ final class TraceLinearScan {
 
     abstract static class IntervalPredicate {
 
-        abstract boolean apply(Interval i);
+        abstract boolean apply(TraceInterval i);
     }
 
     public boolean isProcessed(Value operand) {
@@ -450,9 +450,9 @@ final class TraceLinearScan {
 
     // * Phase 5: actual register allocation
 
-    private static boolean isSorted(Interval[] intervals) {
+    private static boolean isSorted(TraceInterval[] intervals) {
         int from = -1;
-        for (Interval interval : intervals) {
+        for (TraceInterval interval : intervals) {
             assert interval != null;
             assert from <= interval.from();
             from = interval.from();
@@ -460,8 +460,8 @@ final class TraceLinearScan {
         return true;
     }
 
-    static Interval addToList(Interval first, Interval prev, Interval interval) {
-        Interval newFirst = first;
+    static TraceInterval addToList(TraceInterval first, TraceInterval prev, TraceInterval interval) {
+        TraceInterval newFirst = first;
         if (prev != null) {
             prev.next = interval;
         } else {
@@ -470,15 +470,15 @@ final class TraceLinearScan {
         return newFirst;
     }
 
-    Interval.Pair createUnhandledLists(IntervalPredicate isList1, IntervalPredicate isList2) {
+    TraceInterval.Pair createUnhandledLists(IntervalPredicate isList1, IntervalPredicate isList2) {
         assert isSorted(sortedIntervals) : "interval list is not sorted";
 
-        Interval list1 = Interval.EndMarker;
-        Interval list2 = Interval.EndMarker;
+        TraceInterval list1 = TraceInterval.EndMarker;
+        TraceInterval list2 = TraceInterval.EndMarker;
 
-        Interval list1Prev = null;
-        Interval list2Prev = null;
-        Interval v;
+        TraceInterval list1Prev = null;
+        TraceInterval list2Prev = null;
+        TraceInterval v;
 
         int n = sortedIntervals.length;
         for (int i = 0; i < n; i++) {
@@ -497,33 +497,33 @@ final class TraceLinearScan {
         }
 
         if (list1Prev != null) {
-            list1Prev.next = Interval.EndMarker;
+            list1Prev.next = TraceInterval.EndMarker;
         }
         if (list2Prev != null) {
-            list2Prev.next = Interval.EndMarker;
+            list2Prev.next = TraceInterval.EndMarker;
         }
 
-        assert list1Prev == null || list1Prev.next == Interval.EndMarker : "linear list ends not with sentinel";
-        assert list2Prev == null || list2Prev.next == Interval.EndMarker : "linear list ends not with sentinel";
+        assert list1Prev == null || list1Prev.next == TraceInterval.EndMarker : "linear list ends not with sentinel";
+        assert list2Prev == null || list2Prev.next == TraceInterval.EndMarker : "linear list ends not with sentinel";
 
-        return new Interval.Pair(list1, list2);
+        return new TraceInterval.Pair(list1, list2);
     }
 
     protected void sortIntervalsBeforeAllocation() {
         int sortedLen = 0;
-        for (Interval interval : intervals) {
+        for (TraceInterval interval : intervals) {
             if (interval != null) {
                 sortedLen++;
             }
         }
 
-        Interval[] sortedList = new Interval[sortedLen];
+        TraceInterval[] sortedList = new TraceInterval[sortedLen];
         int sortedIdx = 0;
         int sortedFromMax = -1;
 
         // special sorting algorithm: the original interval-list is almost sorted,
         // only some intervals are swapped. So this is much faster than a complete QuickSort
-        for (Interval interval : intervals) {
+        for (TraceInterval interval : intervals) {
             if (interval != null) {
                 int from = interval.from();
 
@@ -551,16 +551,16 @@ final class TraceLinearScan {
             return;
         }
 
-        Interval[] oldList = sortedIntervals;
-        Interval[] newList = Arrays.copyOfRange(intervals, firstDerivedIntervalIndex, intervalsSize);
+        TraceInterval[] oldList = sortedIntervals;
+        TraceInterval[] newList = Arrays.copyOfRange(intervals, firstDerivedIntervalIndex, intervalsSize);
         int oldLen = oldList.length;
         int newLen = newList.length;
 
         // conventional sort-algorithm for new intervals
-        Arrays.sort(newList, (Interval a, Interval b) -> a.from() - b.from());
+        Arrays.sort(newList, (TraceInterval a, TraceInterval b) -> a.from() - b.from());
 
         // merge old and new list (both already sorted) into one combined list
-        Interval[] combinedList = new Interval[oldLen + newLen];
+        TraceInterval[] combinedList = new TraceInterval[oldLen + newLen];
         int oldIdx = 0;
         int newIdx = 0;
 
@@ -579,8 +579,8 @@ final class TraceLinearScan {
 
     // wrapper for Interval.splitChildAtOpId that performs a bailout in product mode
     // instead of returning null
-    public Interval splitChildAtOpId(Interval interval, int opId, LIRInstruction.OperandMode mode) {
-        Interval result = interval.getSplitChildAtOpId(opId, mode, this);
+    public TraceInterval splitChildAtOpId(TraceInterval interval, int opId, LIRInstruction.OperandMode mode) {
+        TraceInterval result = interval.getSplitChildAtOpId(opId, mode, this);
 
         if (result != null) {
             if (Debug.isLogEnabled()) {
@@ -592,13 +592,13 @@ final class TraceLinearScan {
         throw new BailoutException("LinearScan: interval is null");
     }
 
-    static StackSlotValue canonicalSpillOpr(Interval interval) {
+    static StackSlotValue canonicalSpillOpr(TraceInterval interval) {
         assert interval.spillSlot() != null : "canonical spill slot not set";
         return interval.spillSlot();
     }
 
     boolean isMaterialized(AllocatableValue operand, int opId, OperandMode mode) {
-        Interval interval = intervalFor(operand);
+        TraceInterval interval = intervalFor(operand);
         assert interval != null : "interval must exist";
 
         if (opId != -1) {
@@ -686,7 +686,7 @@ final class TraceLinearScan {
         if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
             if (Debug.isLogEnabled()) {
                 try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
-                    for (Interval interval : intervals) {
+                    for (TraceInterval interval : intervals) {
                         if (interval != null) {
                             Debug.log("%s", interval.logString(this));
                         }
@@ -734,7 +734,7 @@ final class TraceLinearScan {
             int len = intervalsSize;
 
             for (int i = 0; i < len; i++) {
-                Interval i1 = intervals[i];
+                TraceInterval i1 = intervals[i];
                 if (i1 == null) {
                     continue;
                 }
@@ -774,7 +774,7 @@ final class TraceLinearScan {
                 }
 
                 for (int j = i + 1; j < len; j++) {
-                    Interval i2 = intervals[j];
+                    TraceInterval i2 = intervals[j];
                     if (i2 == null) {
                         continue;
                     }
@@ -805,7 +805,7 @@ final class TraceLinearScan {
     class CheckConsumer implements ValueConsumer {
 
         boolean ok;
-        Interval curInterval;
+        TraceInterval curInterval;
 
         @Override
         public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
@@ -821,12 +821,12 @@ final class TraceLinearScan {
         try (Indent indent = Debug.logAndIndent("verifying that no oops are in fixed intervals *")) {
             CheckConsumer checkConsumer = new CheckConsumer();
 
-            Interval fixedIntervals;
-            Interval otherIntervals;
+            TraceInterval fixedIntervals;
+            TraceInterval otherIntervals;
             fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).first;
             // to ensure a walking until the last instruction id, add a dummy interval
             // with a high operation id
-            otherIntervals = new Interval(Value.ILLEGAL, -1);
+            otherIntervals = new TraceInterval(Value.ILLEGAL, -1);
             otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
             IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
 
@@ -845,7 +845,7 @@ final class TraceLinearScan {
                          * can't handle that correctly.
                          */
                         if (checkLive) {
-                            for (Interval interval = iw.activeLists.get(RegisterBinding.Fixed); interval != Interval.EndMarker; interval = interval.next) {
+                            for (TraceInterval interval = iw.activeLists.get(RegisterBinding.Fixed); interval != TraceInterval.EndMarker; interval = interval.next) {
                                 if (interval.currentTo() > op.id() + 1) {
                                     /*
                                      * This interval is live out of this op so make sure that this

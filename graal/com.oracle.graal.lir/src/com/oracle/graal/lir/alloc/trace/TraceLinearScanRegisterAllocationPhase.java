@@ -51,10 +51,10 @@ final class TraceLinearScanRegisterAllocationPhase extends AllocationPhase {
 
     void allocateRegisters() {
         try (Indent indent = Debug.logAndIndent("allocate registers")) {
-            Interval precoloredIntervals;
-            Interval notPrecoloredIntervals;
+            TraceInterval precoloredIntervals;
+            TraceInterval notPrecoloredIntervals;
 
-            Interval.Pair result = allocator.createUnhandledLists(TraceLinearScan.IS_PRECOLORED_INTERVAL, TraceLinearScan.IS_VARIABLE_INTERVAL);
+            TraceInterval.Pair result = allocator.createUnhandledLists(TraceLinearScan.IS_PRECOLORED_INTERVAL, TraceLinearScan.IS_VARIABLE_INTERVAL);
             precoloredIntervals = result.first;
             notPrecoloredIntervals = result.second;
 

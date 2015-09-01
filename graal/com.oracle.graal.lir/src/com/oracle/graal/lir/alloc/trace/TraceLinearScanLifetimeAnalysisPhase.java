@@ -48,8 +48,8 @@ import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.StackStoreOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.alloc.trace.Interval.RegisterPriority;
-import com.oracle.graal.lir.alloc.trace.Interval.SpillState;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterPriority;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.TraceLinearScan.BlockData;
 import com.oracle.graal.lir.gen.*;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
@@ -88,8 +88,8 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
         return traceBuilderResult.getTraceForBlock(other) <= traceBuilderResult.getTraceForBlock(currentBlock);
     }
 
-    static void setHint(final LIRInstruction op, Interval target, Interval source) {
-        Interval currentHint = target.locationHint(false);
+    static void setHint(final LIRInstruction op, TraceInterval target, TraceInterval source) {
+        TraceInterval currentHint = target.locationHint(false);
         if (currentHint == null || currentHint.from() > target.from()) {
             /*
              * Update hint if there was none or if the hint interval starts after the hinted
@@ -392,7 +392,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 BitSet startBlockLiveIn = allocator.getBlockData(allocator.getLIR().getControlFlowGraph().getStartBlock()).liveIn;
                 try (Indent indent2 = Debug.logAndIndent("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):")) {
                     for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
-                        Interval interval = allocator.intervalFor(operandNum);
+                        TraceInterval interval = allocator.intervalFor(operandNum);
                         if (interval != null) {
                             Value operand = interval.operand;
                             Debug.log("var %d; operand=%s; node=%s", operandNum, operand, getSourceForOperandFromDebugContext(operand));
@@ -404,7 +404,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
                 // print some additional information to simplify debugging
                 for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
-                    Interval interval = allocator.intervalFor(operandNum);
+                    TraceInterval interval = allocator.intervalFor(operandNum);
                     Value operand = null;
                     Object valueForOperandFromDebugContext = null;
                     if (interval != null) {
@@ -488,7 +488,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
             return;
         }
 
-        Interval interval = allocator.getOrCreateInterval(operand);
+        TraceInterval interval = allocator.getOrCreateInterval(operand);
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
@@ -508,7 +508,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
             return;
         }
 
-        Interval interval = allocator.getOrCreateInterval(operand);
+        TraceInterval interval = allocator.getOrCreateInterval(operand);
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
@@ -528,7 +528,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
         int defPos = op.id();
 
-        Interval interval = allocator.getOrCreateInterval(operand);
+        TraceInterval interval = allocator.getOrCreateInterval(operand);
         if (!kind.equals(LIRKind.Illegal)) {
             interval.setKind(kind);
         }
@@ -573,7 +573,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
         if (op instanceof StackStoreOp) {
             StackStoreOp store = (StackStoreOp) op;
             StackSlot slot = asStackSlot(store.getStackSlot());
-            Interval interval = allocator.intervalFor(store.getResult());
+            TraceInterval interval = allocator.intervalFor(store.getResult());
             interval.setSpillSlot(slot);
             interval.setSpillState(SpillState.StartInMemory);
         }
@@ -584,8 +584,8 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
             op.forEachRegisterHint(targetValue, mode, (registerHint, valueMode, valueFlags) -> {
                 if (TraceLinearScan.isVariableOrRegister(registerHint)) {
-                    Interval from = allocator.getOrCreateInterval((AllocatableValue) registerHint);
-                    Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
+                    TraceInterval from = allocator.getOrCreateInterval((AllocatableValue) registerHint);
+                    TraceInterval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
                     /* hints always point from def to use */
                     if (hintAtDef) {
@@ -610,7 +610,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * @param op
      * @param operand
      */
-    protected void changeSpillDefinitionPos(LIRInstruction op, AllocatableValue operand, Interval interval, int defPos) {
+    protected void changeSpillDefinitionPos(LIRInstruction op, AllocatableValue operand, TraceInterval interval, int defPos) {
         assert interval.isSplitParent() : "can only be called for split parents";
 
         switch (interval.spillState()) {
@@ -815,7 +815,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
              * Add the range [0, 1] to all fixed intervals. the register allocator need not handle
              * unhandled fixed intervals.
              */
-            for (Interval interval : allocator.intervals()) {
+            for (TraceInterval interval : allocator.intervals()) {
                 if (interval != null && isRegister(interval.operand)) {
                     interval.addRange(0, 1);
                 }
@@ -826,7 +826,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
     protected void postBuildIntervals() {
         // fix spill state for phi/sigma intervals
-        for (Interval interval : allocator.intervals()) {
+        for (TraceInterval interval : allocator.intervals()) {
             if (interval != null && interval.spillState().equals(SpillState.NoDefinitionFound) && interval.spillDefinitionPos() != -1) {
                 // there was a definition in a phi/sigma
                 interval.setSpillState(SpillState.NoSpillStore);
@@ -852,13 +852,13 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
                             assert sameTrace(block, pred) || !isVariable(fromValue) : "Unallocated variable: " + fromValue;
 
                             if (isRegister(fromValue) || isVariable(fromValue)) {
-                                Interval from = allocator.getOrCreateInterval((AllocatableValue) fromValue);
-                                Interval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
+                                TraceInterval from = allocator.getOrCreateInterval((AllocatableValue) fromValue);
+                                TraceInterval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
                                 setHint(label, to, from);
                             } else if (TraceRAshareSpillInformation.getValue() && TraceUtil.isShadowedRegisterValue(fromValue)) {
                                 ShadowedRegisterValue shadowedRegisterValue = TraceUtil.asShadowedRegisterValue(fromValue);
-                                Interval from = allocator.getOrCreateInterval(shadowedRegisterValue.getRegister());
-                                Interval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
+                                TraceInterval from = allocator.getOrCreateInterval(shadowedRegisterValue.getRegister());
+                                TraceInterval to = allocator.getOrCreateInterval((AllocatableValue) toValue);
                                 setHint(label, to, from);
                                 to.setSpillSlot(shadowedRegisterValue.getStackSlot());
                                 to.setSpillState(SpillState.StartInMemory);
@@ -872,7 +872,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
          * Set the first range for fixed intervals to [-1, 0] to avoid intersection with incoming
          * values.
          */
-        for (Interval interval : allocator.intervals()) {
+        for (TraceInterval interval : allocator.intervals()) {
             if (interval != null && isRegister(interval.operand)) {
                 Range range = interval.first();
                 if (range == Range.EndMarker) {
@@ -895,7 +895,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
      *         reload-locations in case the interval of this instruction is spilled. Currently this
      *         can only be a {@link JavaConstant}.
      */
-    protected static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, Interval interval) {
+    protected static JavaConstant getMaterializedValue(LIRInstruction op, Value operand, TraceInterval interval) {
         if (op instanceof LoadConstantOp) {
             LoadConstantOp move = (LoadConstantOp) op;
             if (move.getConstant() instanceof JavaConstant) {
@@ -905,11 +905,11 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
                  * degradation, because rematerialization always inserts a constant load, even if
                  * the value is not needed in a register.
                  */
-                Interval.UsePosList usePosList = interval.usePosList();
+                TraceInterval.UsePosList usePosList = interval.usePosList();
                 int numUsePos = usePosList.size();
                 for (int useIdx = 0; useIdx < numUsePos; useIdx++) {
-                    Interval.RegisterPriority priority = usePosList.registerPriority(useIdx);
-                    if (priority == Interval.RegisterPriority.ShouldHaveRegister) {
+                    TraceInterval.RegisterPriority priority = usePosList.registerPriority(useIdx);
+                    if (priority == TraceInterval.RegisterPriority.ShouldHaveRegister) {
                         return null;
                     }
                 }

@@ -44,10 +44,10 @@ final class RegisterVerifier {
 
     TraceLinearScan allocator;
     List<AbstractBlockBase<?>> workList; // all blocks that must be processed
-    ArrayMap<Interval[]> savedStates; // saved information of previous check
+    ArrayMap<TraceInterval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
-    Interval intervalAt(Value operand) {
+    TraceInterval intervalAt(Value operand) {
         return allocator.intervalFor(operand);
     }
 
@@ -57,11 +57,11 @@ final class RegisterVerifier {
     }
 
     // accessors
-    Interval[] stateForBlock(AbstractBlockBase<?> block) {
+    TraceInterval[] stateForBlock(AbstractBlockBase<?> block) {
         return savedStates.get(block.getId());
     }
 
-    void setStateForBlock(AbstractBlockBase<?> block, Interval[] savedState) {
+    void setStateForBlock(AbstractBlockBase<?> block, TraceInterval[] savedState) {
         savedStates.put(block.getId(), savedState);
     }
 
@@ -81,7 +81,7 @@ final class RegisterVerifier {
     void verify(AbstractBlockBase<?> start) {
         try (Scope s = Debug.scope("RegisterVerifier")) {
             // setup input registers (method arguments) for first block
-            Interval[] inputState = new Interval[stateSize()];
+            TraceInterval[] inputState = new TraceInterval[stateSize()];
             setStateForBlock(start, inputState);
             addToWorkList(start);
 
@@ -98,7 +98,7 @@ final class RegisterVerifier {
     private void processBlock(AbstractBlockBase<?> block) {
         try (Indent indent = Debug.logAndIndent("processBlock B%d", block.getId())) {
             // must copy state because it is modified
-            Interval[] inputState = copy(stateForBlock(block));
+            TraceInterval[] inputState = copy(stateForBlock(block));
 
             try (Indent indent2 = Debug.logAndIndent("Input-State of intervals:")) {
                 printState(inputState);
@@ -118,7 +118,7 @@ final class RegisterVerifier {
         }
     }
 
-    protected void printState(Interval[] inputState) {
+    protected void printState(TraceInterval[] inputState) {
         for (int i = 0; i < stateSize(); i++) {
             Register reg = allocator.getRegisters()[i];
             assert reg.number == i;
@@ -130,8 +130,8 @@ final class RegisterVerifier {
         }
     }
 
-    private void processSuccessor(AbstractBlockBase<?> block, Interval[] inputState) {
-        Interval[] savedState = stateForBlock(block);
+    private void processSuccessor(AbstractBlockBase<?> block, TraceInterval[] inputState) {
+        TraceInterval[] savedState = stateForBlock(block);
 
         if (savedState != null) {
             // this block was already processed before.
@@ -172,11 +172,11 @@ final class RegisterVerifier {
         }
     }
 
-    static Interval[] copy(Interval[] inputState) {
+    static TraceInterval[] copy(TraceInterval[] inputState) {
         return inputState.clone();
     }
 
-    static void statePut(Interval[] inputState, Value location, Interval interval) {
+    static void statePut(TraceInterval[] inputState, Value location, TraceInterval interval) {
         if (location != null && isRegister(location)) {
             Register reg = asRegister(location);
             int regNum = reg.number;
@@ -190,7 +190,7 @@ final class RegisterVerifier {
         }
     }
 
-    static boolean checkState(AbstractBlockBase<?> block, LIRInstruction op, Interval[] inputState, Value operand, Value reg, Interval interval) {
+    static boolean checkState(AbstractBlockBase<?> block, LIRInstruction op, TraceInterval[] inputState, Value operand, Value reg, TraceInterval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
                 throw new JVMCIError(
@@ -201,7 +201,7 @@ final class RegisterVerifier {
         return true;
     }
 
-    void processOperations(AbstractBlockBase<?> block, final Interval[] inputState) {
+    void processOperations(AbstractBlockBase<?> block, final TraceInterval[] inputState) {
         List<LIRInstruction> ops = allocator.getLIR().getLIRforBlock(block);
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {
 
@@ -209,7 +209,7 @@ final class RegisterVerifier {
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 // we skip spill moves inserted by the spill position optimization
                 if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != TraceLinearScan.DOMINATOR_SPILL_MOVE_ID) {
-                    Interval interval = intervalAt(operand);
+                    TraceInterval interval = intervalAt(operand);
                     if (op.id() != -1) {
                         interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
                     }
@@ -221,7 +221,7 @@ final class RegisterVerifier {
 
         InstructionValueConsumer defConsumer = (op, operand, mode, flags) -> {
             if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
-                Interval interval = intervalAt(operand);
+                TraceInterval interval = intervalAt(operand);
                 if (op.id() != -1) {
                     interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
                 }
