@@ -40,8 +40,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
@@ -116,7 +115,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     }
 
     private LIR lastLIR = null;
-    private Interval[] delayedIntervals = null;
+    private IntervalDumper delayedIntervals = null;
 
     public void dumpSandboxed(Object object, String message) {
 
@@ -190,17 +189,15 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         } else if (isCompilationResultAndInstalledCode(object)) {
             Object[] tuple = (Object[]) object;
             cfgPrinter.printMachineCode(disassemble(codeCache, (CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
-        } else if (object instanceof Interval[]) {
+        } else if (object instanceof IntervalDumper) {
             if (lastLIR == cfgPrinter.lir) {
-                cfgPrinter.printIntervals(message, (Interval[]) object);
+                cfgPrinter.printIntervals(message, (IntervalDumper) object);
             } else {
                 if (delayedIntervals != null) {
-                    Debug.log("Some delayed intervals were dropped (%s)", (Object) delayedIntervals);
+                    Debug.log("Some delayed intervals were dropped (%s)", delayedIntervals);
                 }
-                delayedIntervals = (Interval[]) object;
+                delayedIntervals = (IntervalDumper) object;
             }
-        } else if (object instanceof StackInterval[]) {
-            cfgPrinter.printStackIntervals(message, (StackInterval[]) object);
         } else if (isBlockList(object)) {
             cfgPrinter.printCFG(message, getBlockList(object), false);
         }

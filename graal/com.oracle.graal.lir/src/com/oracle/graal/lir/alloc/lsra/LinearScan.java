@@ -697,7 +697,7 @@ public class LinearScan {
                 }
             }
         }
-        Debug.dump(Arrays.copyOf(intervals, intervalsSize), label);
+        Debug.dump(new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
     }
 
     public void printLir(String label, @SuppressWarnings("unused") boolean hirValid) {

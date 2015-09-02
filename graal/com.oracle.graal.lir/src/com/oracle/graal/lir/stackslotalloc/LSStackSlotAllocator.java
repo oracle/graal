@@ -413,7 +413,7 @@ public final class LSStackSlotAllocator extends AllocationPhase implements Stack
         }
 
         private void dumpIntervals(String label) {
-            Debug.dump(stackSlotMap, label);
+            Debug.dump(new StackIntervalDumper(Arrays.copyOf(stackSlotMap, stackSlotMap.length)), label);
         }
 
     }

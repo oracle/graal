@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.printer;
 
-import static jdk.internal.jvmci.code.ValueUtil.*;
-
 import java.io.*;
 import java.util.*;
 
@@ -35,9 +33,8 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.alloc.lsra.*;
-import com.oracle.graal.lir.alloc.lsra.Interval.UsePosList;
-import com.oracle.graal.lir.stackslotalloc.*;
+import com.oracle.graal.lir.debug.*;
+import com.oracle.graal.lir.debug.IntervalDumper.IntervalVisitor;
 import com.oracle.graal.nodeinfo.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -508,82 +505,40 @@ class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    public void printIntervals(String label, Interval[] intervals) {
+    IntervalVisitor intervalVisitor = new IntervalVisitor() {
+
+        public void visitIntervalStart(Object parentOperand, Object splitOperand, Object location, Object hint, String typeName, char typeChar) {
+            out.printf("%s %s ", splitOperand, typeName);
+            if (location != null) {
+                out.printf("\"[%s|%c]\"", location, typeChar);
+            } else {
+                out.printf("\"[%s|%c]\"", splitOperand, typeChar);
+            }
+            out.printf("%s %s ", parentOperand, hint != null ? hint : -1);
+        }
+
+        public void visitRange(int from, int to) {
+            out.printf("[%d, %d[", from, to);
+        }
+
+        public void visitUsePos(int usePos, Object registerPriority) {
+            out.printf("%d %s ", usePos, registerPriority);
+        }
+
+        public void visitIntervalEnd(Object spillState) {
+            out.printf(" \"%s\"", spillState);
+            out.println();
+        }
+
+    };
+
+    public void printIntervals(String label, IntervalDumper intervals) {
         begin("intervals");
         out.println(String.format("name \"%s\"", label));
 
-        for (Interval interval : intervals) {
-            if (interval != null) {
-                printInterval(interval);
-            }
-        }
+        intervals.visitIntervals(intervalVisitor);
 
         end("intervals");
-    }
-
-    private void printInterval(Interval interval) {
-        out.printf("%s %s ", interval.operand, (isRegister(interval.operand) ? "fixed" : interval.kind().getPlatformKind()));
-        if (isRegister(interval.operand)) {
-            out.printf("\"[%s|%c]\"", interval.operand, interval.operand.getKind().getTypeChar());
-        } else {
-            if (interval.location() != null) {
-                out.printf("\"[%s|%c]\"", interval.location(), interval.location().getKind().getTypeChar());
-            }
-        }
-
-        Interval hint = interval.locationHint(false);
-        out.printf("%s %s ", interval.splitParent().operand, hint != null ? hint.operand : -1);
-
-        // print ranges
-        Range cur = interval.first();
-        while (cur != Range.EndMarker) {
-            out.printf("[%d, %d[", cur.from, cur.to);
-            cur = cur.next;
-            assert cur != null : "range list not closed with range sentinel";
-        }
-
-        // print use positions
-        int prev = -1;
-        UsePosList usePosList = interval.usePosList();
-        for (int i = usePosList.size() - 1; i >= 0; --i) {
-            assert prev < usePosList.usePos(i) : "use positions not sorted";
-            out.printf("%d %s ", usePosList.usePos(i), usePosList.registerPriority(i));
-            prev = usePosList.usePos(i);
-        }
-
-        out.printf(" \"%s\"", interval.spillState());
-        out.println();
-    }
-
-    public void printStackIntervals(String label, StackInterval[] intervals) {
-        begin("intervals");
-        out.println(String.format("name \"%s\"", label));
-
-        for (StackInterval interval : intervals) {
-            if (interval != null) {
-                printStackInterval(interval);
-            }
-        }
-
-        end("intervals");
-    }
-
-    private void printStackInterval(StackInterval interval) {
-        out.printf("%s %s ", interval.getOperand(), interval.isFixed() ? "fixed" : interval.kind().getPlatformKind());
-        if (interval.location() != null) {
-            out.printf("\"[%s|%c]\"", interval.location(), interval.location().getKind().getTypeChar());
-        } else {
-            out.printf("\"[%s|%c]\"", interval.getOperand(), interval.getOperand().getKind().getTypeChar());
-        }
-
-        StackInterval hint = interval.locationHint();
-        out.printf("%s %s ", interval.getOperand(), hint != null ? hint.getOperand() : -1);
-
-        out.printf("[%d, %d[", interval.from(), interval.to());
-
-        // print spill state
-        out.printf(" \"NOT_SUPPORTED\"");
-        out.println();
     }
 
     public void printSchedule(String message, SchedulePhase theSchedule) {
