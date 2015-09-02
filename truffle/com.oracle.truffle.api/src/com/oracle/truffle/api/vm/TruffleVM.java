@@ -269,11 +269,11 @@ public final class TruffleVM {
         /**
          * Provides own executor for running {@link TruffleVM} scripts. By default
          * {@link TruffleVM#eval(com.oracle.truffle.api.source.Source)} and
-         * {@link Symbol#invoke(java.lang.Object, java.lang.Object...) are executed synchronously in
-         * the calling thread. Sometimes, however it is more beneficial to run them asynchronously -
-         * the easiest way to do so is to provide own executor when configuring the {
-         * @link #executor(java.util.concurrent.Executor) the builder}. The executor is expected to
-         * execute all {@link Runnable runnables} passed into its
+         * {@link Symbol#invoke(java.lang.Object, java.lang.Object...)} are executed synchronously
+         * in the calling thread. Sometimes, however it is more beneficial to run them
+         * asynchronously - the easiest way to do so is to provide own executor when configuring the
+         * { {@link #executor(java.util.concurrent.Executor) the builder}. The executor is expected
+         * to execute all {@link Runnable runnables} passed into its
          * {@link Executor#execute(java.lang.Runnable)} method in the order they arrive and in a
          * single (yet arbitrary) thread.
          *
@@ -281,6 +281,7 @@ public final class TruffleVM {
          *            be created} {@link TruffleVM}
          * @return instance of this builder
          */
+        @SuppressWarnings("hiding")
         public Builder executor(Executor executor) {
             this.executor = executor;
             return this;
@@ -334,7 +335,7 @@ public final class TruffleVM {
      * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
      */
     @Deprecated
-    public Symbol eval(URI location) throws IOException {
+    public Object eval(URI location) throws IOException {
         checkThread();
         Source s;
         String mimeType;
@@ -360,7 +361,7 @@ public final class TruffleVM {
         if (l == null) {
             throw new IOException("No language for " + location + " with MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
-        return eval(l, s);
+        return eval(l, s).get();
     }
 
     /**
@@ -374,13 +375,13 @@ public final class TruffleVM {
      * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
      */
     @Deprecated
-    public Symbol eval(String mimeType, Reader reader) throws IOException {
+    public Object eval(String mimeType, Reader reader) throws IOException {
         checkThread();
         Language l = langs.get(mimeType);
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
-        return eval(l, Source.fromReader(reader, mimeType));
+        return eval(l, Source.fromReader(reader, mimeType)).get();
     }
 
     /**
@@ -394,13 +395,13 @@ public final class TruffleVM {
      * @deprecated use {@link #eval(com.oracle.truffle.api.source.Source)}
      */
     @Deprecated
-    public Symbol eval(String mimeType, String code) throws IOException {
+    public Object eval(String mimeType, String code) throws IOException {
         checkThread();
         Language l = langs.get(mimeType);
         if (l == null) {
             throw new IOException("No language for MIME type " + mimeType + " found. Supported types: " + langs.keySet());
         }
-        return eval(l, Source.fromText(code, mimeType));
+        return eval(l, Source.fromText(code, mimeType)).get();
     }
 
     /**
@@ -409,7 +410,7 @@ public final class TruffleVM {
      * language is then allowed to parse and execute the source.
      *
      * @param source code snippet to execute
-     * @return result of an execution, possibly <code>null</code>
+     * @return a {@link Symbol} object that holds result of an execution, never <code>null</code>
      * @throws IOException thrown to signal errors while processing the code
      */
     public Symbol eval(Source source) throws IOException {
@@ -601,7 +602,8 @@ public final class TruffleVM {
          * @param thiz this/self in language that support such concept; use <code>null</code> to let
          *            the language use default this/self or ignore the value
          * @param args arguments to pass when invoking the symbol
-         * @return the value returned by invoking the symbol
+         * @return symbol wrapper around the value returned by invoking the symbol, never
+         *         <code>null</code>
          * @throws IOException signals problem during execution
          */
         public Symbol invoke(final Object thiz, final Object... args) throws IOException {
