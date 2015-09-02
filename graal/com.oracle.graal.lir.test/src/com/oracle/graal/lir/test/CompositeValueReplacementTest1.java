@@ -68,7 +68,7 @@ public class CompositeValueReplacementTest1 {
         }
     }
 
-    private static class DummyValue extends AbstractValue {
+    private static class DummyValue extends Value {
 
         private final int id;
         private static int counter = 1;

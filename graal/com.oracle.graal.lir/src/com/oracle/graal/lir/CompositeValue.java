@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,7 @@ import com.oracle.graal.lir.LIRInstruction.OperandMode;
  * intended to support addresses and not general arbitrary nesting of composite values. Because of
  * the possibility of sharing of CompositeValues they should be immutable.
  */
-public abstract class CompositeValue extends AbstractValue {
+public abstract class CompositeValue extends Value {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)

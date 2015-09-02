@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,13 +31,13 @@ import com.oracle.graal.compiler.gen.*;
  * closure because Value is serializable which is a hassle for the little inner classes which
  * usually occur here.
  */
-public class ComplexMatchValue extends AbstractValue {
+public class ComplexMatchValue extends Value {
 
     /**
      * This is the Value of a node which was matched as part of a complex match. The value isn't
      * actually useable but this marks it as having been evaluated.
      */
-    public static final Value INTERIOR_MATCH = new AbstractValue(LIRKind.Illegal) {
+    public static final Value INTERIOR_MATCH = new Value(LIRKind.Illegal) {
 
         @Override
         public String toString() {

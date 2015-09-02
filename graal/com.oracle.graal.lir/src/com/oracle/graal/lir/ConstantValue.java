@@ -27,7 +27,7 @@ import jdk.internal.jvmci.meta.*;
 /**
  * Represents an inlined {@link Constant} value.
  */
-public class ConstantValue extends AbstractValue {
+public class ConstantValue extends Value {
 
     private final Constant constant;
 
