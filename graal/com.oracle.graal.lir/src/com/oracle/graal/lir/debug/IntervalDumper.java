@@ -48,7 +48,7 @@ public interface IntervalDumper {
      * <ul>
      * <li>Call {@link IntervalVisitor#visitRange}</li>
      * </ul>
-     * <li>For every range:
+     * <li>For every use position:
      * <ul>
      * <li>Call {@link IntervalVisitor#visitUsePos}</li>
      * </ul>
