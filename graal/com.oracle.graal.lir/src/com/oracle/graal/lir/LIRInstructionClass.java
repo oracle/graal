@@ -269,7 +269,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         for (int i = 0; i < states.getCount(); i++) {
             LIRFrameState state = (LIRFrameState) states.getObject(obj, i);
             if (state != null) {
-                state.forEachState(obj, proc);
+                state.visitEachState(obj, proc);
             }
         }
     }

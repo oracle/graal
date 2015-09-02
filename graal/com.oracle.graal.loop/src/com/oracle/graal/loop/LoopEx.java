@@ -230,14 +230,22 @@ public class LoopEx {
                     break;
                 }
                 case LE:
-                    oneOff = true; // fall through
+                    oneOff = true;
+                    if (iv.direction() != Direction.Up) {
+                        return false;
+                    }
+                    break;
                 case LT:
                     if (iv.direction() != Direction.Up) {
                         return false;
                     }
                     break;
                 case GE:
-                    oneOff = true; // fall through
+                    oneOff = true;
+                    if (iv.direction() != Direction.Down) {
+                        return false;
+                    }
+                    break;
                 case GT:
                     if (iv.direction() != Direction.Down) {
                         return false;

@@ -252,7 +252,7 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("isInstance");
         testGraph("isInstance2");
         testGraph("isAssignableFrom");
-        for (Class<?> c : new Class[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
+        for (Class<?> c : new Class<?>[]{getClass(), Cloneable.class, int[].class, String[][].class}) {
             for (Object o : new Object[]{this, new int[5], new String[2][], new Object()}) {
                 test("isInstance", c, o);
                 test("isAssignableFrom", c, o.getClass());

@@ -1521,23 +1521,26 @@ public class AMD64Assembler extends Assembler {
             // Generate first nop for size between 21-12
             switch (i) {
                 case 21:
-                    i -= 1;
+                    i -= 11;
                     emitByte(0x66); // size prefix
-                    // fall through
+                    emitByte(0x66); // size prefix
+                    emitByte(0x66); // size prefix
+                    addrNop8();
+                    break;
                 case 20:
-                    // fall through
                 case 19:
-                    i -= 1;
+                    i -= 10;
                     emitByte(0x66); // size prefix
-                    // fall through
+                    emitByte(0x66); // size prefix
+                    addrNop8();
+                    break;
                 case 18:
-                    // fall through
                 case 17:
-                    i -= 1;
+                    i -= 9;
                     emitByte(0x66); // size prefix
-                    // fall through
+                    addrNop8();
+                    break;
                 case 16:
-                    // fall through
                 case 15:
                     i -= 8;
                     addrNop8();

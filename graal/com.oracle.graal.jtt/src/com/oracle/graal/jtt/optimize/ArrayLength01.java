@@ -45,7 +45,7 @@ public class ArrayLength01 extends JTTTest {
             return new Object[7].length;
         }
         if (arg == 3) {
-            return new Class[SIZE][].length;
+            return new Class<?>[SIZE][].length;
         }
         if (arg == 4) {
             return new int[arg].length;

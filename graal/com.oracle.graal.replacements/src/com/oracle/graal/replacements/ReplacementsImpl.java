@@ -195,7 +195,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 returnType = substituteMethod.getReturnType();
             } else {
                 Signature signature = providers.getMetaAccess().parseMethodDescriptor(methodSubstitution);
-                parameters = new Class[signature.getParameterCount(false)];
+                parameters = new Class<?>[signature.getParameterCount(false)];
                 for (int i = 0; i < parameters.length; i++) {
                     parameters[i] = resolveClass(signature.getParameterType(i, null));
                 }

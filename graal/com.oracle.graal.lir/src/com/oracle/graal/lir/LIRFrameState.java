@@ -82,21 +82,21 @@ public class LIRFrameState {
     }
 
     /**
-     * Iterates the frame state and calls the {@link InstructionValueProcedure} for every variable.
+     * Iterates the frame state and calls the {@link InstructionValueConsumer} for every variable.
      *
      * @param proc The procedure called for variables.
      */
-    public void forEachState(LIRInstruction inst, InstructionValueConsumer proc) {
+    public void visitEachState(LIRInstruction inst, InstructionValueConsumer proc) {
         for (BytecodeFrame cur = topFrame; cur != null; cur = cur.caller()) {
-            processValues(inst, cur.values, proc);
+            visitValues(inst, cur.values, proc);
         }
         if (virtualObjects != null) {
             for (VirtualObject obj : virtualObjects) {
-                processValues(inst, obj.getValues(), proc);
+                visitValues(inst, obj.getValues(), proc);
             }
         }
         if (liveBasePointers != null) {
-            liveBasePointers.forEach(inst, OperandMode.ALIVE, STATE_FLAGS, proc);
+            liveBasePointers.visitEach(inst, OperandMode.ALIVE, STATE_FLAGS, proc);
         }
     }
 
@@ -134,7 +134,7 @@ public class LIRFrameState {
         }
     }
 
-    protected void processValues(LIRInstruction inst, JavaValue[] values, InstructionValueConsumer proc) {
+    protected void visitValues(LIRInstruction inst, JavaValue[] values, InstructionValueConsumer proc) {
         for (int i = 0; i < values.length; i++) {
             JavaValue value = values[i];
             if (isIllegalJavaValue(value)) {

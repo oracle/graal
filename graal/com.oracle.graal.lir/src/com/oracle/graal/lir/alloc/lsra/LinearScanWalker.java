@@ -80,6 +80,7 @@ class LinearScanWalker extends IntervalWalker {
         return allocator.blockForId(opId);
     }
 
+    @SuppressWarnings("rawtypes")
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 

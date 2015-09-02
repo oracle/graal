@@ -126,7 +126,7 @@ public final class IndexedValueMap {
         }
     }
 
-    public void forEach(LIRInstruction inst, OperandMode mode, EnumSet<OperandFlag> flags, InstructionValueConsumer consumer) {
+    public void visitEach(LIRInstruction inst, OperandMode mode, EnumSet<OperandFlag> flags, InstructionValueConsumer consumer) {
         for (Value v : values) {
             if (v != null) {
                 consumer.visitValue(inst, v, mode, flags);

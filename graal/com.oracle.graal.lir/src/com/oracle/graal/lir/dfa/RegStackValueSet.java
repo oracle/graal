@@ -142,8 +142,8 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
                 refMap.addLiveValue(value);
             }
         };
-        registers.forEach(null, null, null, addLiveValue);
-        stack.forEach(null, null, null, addLiveValue);
+        registers.visitEach(null, null, null, addLiveValue);
+        stack.visitEach(null, null, null, addLiveValue);
         if (extraStack != null) {
             for (Value v : extraStack) {
                 refMap.addLiveValue(v);

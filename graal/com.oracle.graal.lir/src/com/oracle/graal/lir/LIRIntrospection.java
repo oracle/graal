@@ -57,7 +57,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             this(mode.directCount, mode.values);
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         public Values(int directCount, ArrayList<ValueFieldInfo> fields) {
             super(fields);
             this.directCount = directCount;

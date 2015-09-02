@@ -62,7 +62,7 @@ public abstract class TruffleCompiler {
     protected final GraalTruffleCompilationListener compilationNotify;
 
     // @formatter:off
-    private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class[]{
+    private static final Class<?>[] SKIPPED_EXCEPTION_CLASSES = new Class<?>[]{
         UnexpectedResultException.class,
         SlowPathException.class,
         ArithmeticException.class,

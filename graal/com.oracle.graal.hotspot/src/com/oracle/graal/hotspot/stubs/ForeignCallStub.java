@@ -100,7 +100,7 @@ public class ForeignCallStub extends Stub {
     private Class<?>[] createTargetParameters(ForeignCallDescriptor descriptor) {
         Class<?>[] parameters = descriptor.getArgumentTypes();
         if (prependThread) {
-            Class<?>[] newParameters = new Class[parameters.length + 1];
+            Class<?>[] newParameters = new Class<?>[parameters.length + 1];
             System.arraycopy(parameters, 0, newParameters, 1, parameters.length);
             newParameters[0] = Word.class;
             return newParameters;

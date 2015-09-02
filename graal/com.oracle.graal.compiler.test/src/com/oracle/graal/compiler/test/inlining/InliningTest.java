@@ -52,7 +52,7 @@ public class InliningTest extends GraalCompilerTest {
         return Boolean.valueOf(value);
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings({"all", "static"})
     public static Boolean invokeStaticOnInstanceSnippet(Boolean obj, boolean value) {
         return obj.valueOf(value);
     }

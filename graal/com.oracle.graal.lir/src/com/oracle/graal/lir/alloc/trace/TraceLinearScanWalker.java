@@ -81,6 +81,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         return allocator.blockForId(opId);
     }
 
+    @SuppressWarnings("rawtypes")
     TraceLinearScanWalker(TraceLinearScan allocator, TraceInterval unhandledFixedFirst, TraceInterval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 

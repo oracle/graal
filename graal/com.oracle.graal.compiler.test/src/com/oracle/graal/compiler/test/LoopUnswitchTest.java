@@ -90,6 +90,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         return sum;
     }
 
+    @SuppressWarnings("fallthrough")
     public static int test2Snippet(int a) {
         int sum = 0;
         for (int i = 0; i < 1000; i++) {

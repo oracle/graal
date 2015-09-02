@@ -3486,6 +3486,7 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
         return f.byteValue / byteValue;
     }
 
+    @SuppressWarnings("divzero")
     public static int testByteDivConstant1(FieldObject f) {
         return f.byteValue / byteTestValue1;
     }
@@ -3511,6 +3512,7 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
         return f.shortValue / shortValue;
     }
 
+    @SuppressWarnings("divzero")
     public static int testShortDivConstant1(FieldObject f) {
         return f.shortValue / shortTestValue1;
     }
@@ -3536,6 +3538,7 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
         return f.charValue / charValue;
     }
 
+    @SuppressWarnings("divzero")
     public static int testCharDivConstant1(FieldObject f) {
         return f.charValue / charTestValue1;
     }
@@ -3561,6 +3564,7 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
         return f.intValue / intValue;
     }
 
+    @SuppressWarnings("divzero")
     public static int testIntDivConstant1(FieldObject f) {
         return f.intValue / intTestValue1;
     }
@@ -3586,6 +3590,7 @@ public class MemoryArithmeticTest extends GraalCompilerTest {
         return f.longValue / longValue;
     }
 
+    @SuppressWarnings("divzero")
     public static long testLongDivConstant1(FieldObject f) {
         return f.longValue / longTestValue1;
     }

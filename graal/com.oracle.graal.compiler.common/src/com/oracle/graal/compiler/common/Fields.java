@@ -61,8 +61,8 @@ public class Fields {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
-        this.types = new Class[offsets.length];
-        this.declaringClasses = new Class[offsets.length];
+        this.types = new Class<?>[offsets.length];
+        this.declaringClasses = new Class<?>[offsets.length];
         int index = 0;
         for (FieldsScanner.FieldInfo f : fields) {
             offsets[index] = f.offset;

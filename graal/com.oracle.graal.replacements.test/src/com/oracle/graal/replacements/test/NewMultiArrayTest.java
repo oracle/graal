@@ -91,7 +91,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        for (Class<?> clazz : new Class[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
+        for (Class<?> clazz : new Class<?>[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
             bottomClass = clazz;
             bottomType = getMetaAccess().lookupJavaType(clazz);
             arrayType = bottomType;

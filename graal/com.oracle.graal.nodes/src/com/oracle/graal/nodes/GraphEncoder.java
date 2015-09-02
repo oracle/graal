@@ -169,7 +169,7 @@ public class GraphEncoder {
 
     public void finishPrepare() {
         objectsArray = objects.encodeAll(new Object[objects.getLength()]);
-        nodeClassesArray = nodeClasses.encodeAll(new NodeClass[nodeClasses.getLength()]);
+        nodeClassesArray = nodeClasses.encodeAll(new NodeClass<?>[nodeClasses.getLength()]);
     }
 
     public Object[] getObjects() {

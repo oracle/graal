@@ -60,7 +60,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     public static Object boxedObjectInteger() {
-        return (int) 1;
+        return 1;
     }
 
     public static Integer boxedInteger() {
