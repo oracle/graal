@@ -31,6 +31,7 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.options.*;
 import jdk.internal.jvmci.options.OptionValue.*;
 
@@ -711,6 +712,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         return getFinalSchedule(snippet, mode, SchedulingStrategy.LATEST_OUT_OF_LOOPS);
     }
 
+    @SuppressWarnings("try")
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {

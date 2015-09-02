@@ -59,6 +59,7 @@ final class SSAVerifier {
         this.defined = new HashMap<>();
     }
 
+    @SuppressWarnings("try")
     public boolean verify() {
         try (Scope s = Debug.scope("SSAVerifier", lir)) {
             for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
@@ -70,6 +71,7 @@ final class SSAVerifier {
         return true;
     }
 
+    @SuppressWarnings("try")
     private void doBlock(AbstractBlockBase<?> b) {
         if (visited.get(b.getId())) {
             return;

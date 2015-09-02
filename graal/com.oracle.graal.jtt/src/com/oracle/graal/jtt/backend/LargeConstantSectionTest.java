@@ -115,6 +115,7 @@ public class LargeConstantSectionTest extends JTTTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void run0() throws Exception {
         try (OverrideScope os = OptionValue.override(GraalOptions.InlineEverything, true)) {
             runTest("test", LOADER.findClass(NAME).newInstance(), 0L);

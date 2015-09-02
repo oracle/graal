@@ -24,8 +24,10 @@ package com.oracle.graal.compiler.test.backend;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import static jdk.internal.jvmci.code.CodeUtil.*;
 
 import com.oracle.graal.compiler.*;
@@ -45,6 +47,7 @@ public abstract class BackendTest extends GraalCompilerTest {
         super(arch);
     }
 
+    @SuppressWarnings("try")
     protected LIRGenerationResult getLIRGenerationResult(final StructuredGraph graph) {
         SchedulePhase schedule = null;
         try (Scope s = Debug.scope("FrontEnd")) {

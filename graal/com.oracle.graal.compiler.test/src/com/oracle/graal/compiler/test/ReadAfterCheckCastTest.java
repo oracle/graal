@@ -78,6 +78,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("try")
     private void test(final String snippet) {
         try (Scope s = Debug.scope("ReadAfterCheckCastTest", new DebugDumpScope(snippet))) {
             // check shape of graph, with lots of assumptions. will probably fail if graph

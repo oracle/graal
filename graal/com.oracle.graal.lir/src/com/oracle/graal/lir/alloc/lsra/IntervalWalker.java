@@ -216,6 +216,7 @@ public class IntervalWalker {
      *                {@link #inactiveLists} are populated and {@link Interval#state}s are up to
      *                date.
      */
+    @SuppressWarnings("try")
     protected void walkTo(int toOpId) {
         assert currentPosition <= toOpId : "can not walk backwards";
         for (Interval currentInterval = nextInterval(toOpId); currentInterval != null; currentInterval = nextInterval(toOpId)) {

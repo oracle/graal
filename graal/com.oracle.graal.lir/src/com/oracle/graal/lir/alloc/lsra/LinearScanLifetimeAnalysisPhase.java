@@ -134,6 +134,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill})
      * separately for each block.
      */
+    @SuppressWarnings("try")
     void computeLocalLiveSets() {
         int liveSize = allocator.liveSetSize();
 
@@ -261,6 +262,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Performs a backward dataflow analysis to compute global live sets (i.e.
      * {@link BlockData#liveIn} and {@link BlockData#liveOut}) for each block.
      */
+    @SuppressWarnings("try")
     protected void computeGlobalLiveSets() {
         try (Indent indent = Debug.logAndIndent("compute global live sets")) {
             int numBlocks = allocator.blockCount();
@@ -353,6 +355,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
+    @SuppressWarnings("try")
     protected void reportFailure(int numBlocks) {
         try (Scope s = Debug.forceLog()) {
             try (Indent indent = Debug.logAndIndent("report failure")) {
@@ -663,6 +666,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         return RegisterPriority.MustHaveRegister;
     }
 
+    @SuppressWarnings("try")
     protected void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {

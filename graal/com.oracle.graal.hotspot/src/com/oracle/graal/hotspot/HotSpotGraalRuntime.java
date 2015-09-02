@@ -57,6 +57,7 @@ import jdk.internal.jvmci.runtime.*;
  */
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, HotSpotProxified {
 
+    @SuppressWarnings("try")
     private static class Instance {
         private static final HotSpotGraalRuntime instance;
 
@@ -129,6 +130,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
+    @SuppressWarnings("try")
     private HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompilerFactory compilerFactory) {
 
         this.jvmciRuntime = jvmciRuntime;
@@ -176,6 +178,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
     /**
      * Do deferred initialization.
      */
+    @SuppressWarnings("try")
     private void completeInitialization() {
 
         if (Log.getValue() == null && !areScopedMetricsOrTimersEnabled() && Dump.getValue() == null && Verify.getValue() == null) {

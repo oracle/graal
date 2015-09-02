@@ -28,7 +28,9 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.meta.Assumptions.*;
 
@@ -350,6 +352,7 @@ public class InliningData {
         return null;
     }
 
+    @SuppressWarnings("try")
     private void doInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         InlineInfo calleeInfo = calleeInvocation.callee();
@@ -661,6 +664,7 @@ public class InliningData {
      *
      * @return true iff inlining was actually performed
      */
+    @SuppressWarnings("try")
     public boolean moveForward() {
 
         final MethodInvocation currentInvocation = currentInvocation();

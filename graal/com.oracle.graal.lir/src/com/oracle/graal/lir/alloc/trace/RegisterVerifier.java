@@ -78,6 +78,7 @@ final class RegisterVerifier {
 
     }
 
+    @SuppressWarnings("try")
     void verify(AbstractBlockBase<?> start) {
         try (Scope s = Debug.scope("RegisterVerifier")) {
             // setup input registers (method arguments) for first block
@@ -95,6 +96,7 @@ final class RegisterVerifier {
         }
     }
 
+    @SuppressWarnings("try")
     private void processBlock(AbstractBlockBase<?> block) {
         try (Indent indent = Debug.logAndIndent("processBlock B%d", block.getId())) {
             // must copy state because it is modified

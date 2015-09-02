@@ -29,14 +29,15 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.*;
-
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import sun.misc.*;
 import sun.reflect.*;
 
 public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
 
+    @SuppressWarnings("try")
     protected StructuredGraph test(final String snippet) {
         try (Scope s = Debug.scope("ConstantPoolSubstitutionsTests", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);

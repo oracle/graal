@@ -368,6 +368,7 @@ public final class DebugScope implements Debug.Scope {
         }
     }
 
+    @SuppressWarnings("try")
     private RuntimeException interceptException(final Throwable e) {
         final DebugConfig config = getConfig();
         if (config != null) {

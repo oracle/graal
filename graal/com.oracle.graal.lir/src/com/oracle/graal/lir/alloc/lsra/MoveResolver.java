@@ -286,6 +286,7 @@ public class MoveResolver {
         }
     }
 
+    @SuppressWarnings("try")
     private void resolveMappings() {
         try (Indent indent = Debug.logAndIndent("resolveMapping")) {
             assert verifyBeforeResolve();
@@ -386,6 +387,7 @@ public class MoveResolver {
         unblockRegisters(fromInterval);
     }
 
+    @SuppressWarnings("try")
     private void printMapping() {
         try (Indent indent = Debug.logAndIndent("Mapping")) {
             for (int i = mappingFrom.size() - 1; i >= 0; i--) {

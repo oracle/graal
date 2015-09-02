@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements.test;
 
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
@@ -116,6 +117,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void test() {
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(PEGraphDecoderTest.class, "doTest", Object.class);
         StructuredGraph targetGraph = null;

@@ -55,6 +55,7 @@ public abstract class AssemblerTest extends GraalTest {
         return metaAccess;
     }
 
+    @SuppressWarnings("try")
     protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
         ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(m);
         try (Scope s = Debug.scope("assembleMethod", method, codeCache)) {

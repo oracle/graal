@@ -49,6 +49,7 @@ final class TraceLinearScanRegisterAllocationPhase extends AllocationPhase {
         allocator.printIntervals("After register allocation");
     }
 
+    @SuppressWarnings("try")
     void allocateRegisters() {
         try (Indent indent = Debug.logAndIndent("allocate registers")) {
             TraceInterval precoloredIntervals;

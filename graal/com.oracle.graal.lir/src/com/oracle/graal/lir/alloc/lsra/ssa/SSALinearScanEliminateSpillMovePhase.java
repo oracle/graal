@@ -61,6 +61,7 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
         return false;
     }
 
+    @SuppressWarnings("try")
     private boolean isPhiResolutionMove(AbstractBlockBase<?> block, MoveOp move, Interval toInterval) {
         assert LinearScanVariant.getValue() == LSRAVariant.SSA_LSRA;
         if (!toInterval.isSplitParent()) {

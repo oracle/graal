@@ -59,6 +59,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     private static final DebugMetric tracesMetric = Debug.metric("TraceRA[traces]");
 
     @Override
+    @SuppressWarnings("try")
     protected <B extends AbstractBlockBase<B>> void run(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, SpillMoveFactory spillMoveFactory,
                     RegisterAllocationConfig registerAllocationConfig) {
         LIR lir = lirGenRes.getLIR();

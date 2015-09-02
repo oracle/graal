@@ -79,6 +79,7 @@ public class LambdaEagerTest extends GraalCompilerTest {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile) {
         try (OverrideScope scope = OptionValue.override(GraalOptions.InlineEverything, true)) {
             return super.getCode(installedCodeOwner, graph, forceCompile);

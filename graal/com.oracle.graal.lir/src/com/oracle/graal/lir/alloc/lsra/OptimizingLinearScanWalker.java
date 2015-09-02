@@ -50,6 +50,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
     }
 
+    @SuppressWarnings("try")
     @Override
     protected void handleSpillSlot(Interval interval) {
         assert interval.location() != null : "interval  not assigned " + interval;
@@ -71,6 +72,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         }
     }
 
+    @SuppressWarnings("try")
     @Override
     void walk() {
         try (Scope s = Debug.scope("OptimizingLinearScanWalker")) {
@@ -81,6 +83,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         super.walk();
     }
 
+    @SuppressWarnings("try")
     private void optimizeBlock(AbstractBlockBase<?> block) {
         if (block.getPredecessorCount() == 1) {
             int nextBlock = allocator.getFirstLirInstructionId(block);
@@ -117,6 +120,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         }
     }
 
+    @SuppressWarnings("try")
     private boolean optimize(int currentPos, AbstractBlockBase<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
         // BEGIN initialize and sanity checks
         assert currentBlock != null : "block must not be null";
@@ -202,6 +206,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         return true;
     }
 
+    @SuppressWarnings("try")
     private void splitRegisterInterval(Interval interval, Register reg) {
         // collect current usage of registers
         initVarsForAlloc(interval);

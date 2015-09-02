@@ -27,8 +27,10 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import java.lang.reflect.*;
 
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graphbuilderconf.*;
@@ -89,6 +91,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     public static final ThreadLocal<StructuredGraph> SnippetGraphUnderConstruction = assertionsEnabled() ? new ThreadLocal<>() : null;
 
     @Override
+    @SuppressWarnings("try")
     protected StructuredGraph getGraph() {
         Plugins defaultPlugins = providers.getGraphBuilderPlugins();
         MetaAccessProvider metaAccess = providers.getMetaAccess();

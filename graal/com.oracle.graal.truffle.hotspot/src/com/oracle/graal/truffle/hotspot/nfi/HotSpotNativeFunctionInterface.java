@@ -24,8 +24,10 @@ package com.oracle.graal.truffle.hotspot.nfi;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.*;
@@ -158,6 +160,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
     /**
      * Creates and installs a stub for calling a native function.
      */
+    @SuppressWarnings("try")
     private InstalledCode installNativeFunctionStub(long functionPointer, Class<?> returnType, Class<?>... argumentTypes) {
         StructuredGraph g = getGraph(providers, factory, functionPointer, returnType, argumentTypes);
         Suites suites = providers.getSuites().createSuites();

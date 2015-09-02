@@ -27,7 +27,9 @@ import static com.oracle.graal.graphbuilderconf.IntrinsicContext.CompilationCont
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
+
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graphbuilderconf.*;
@@ -61,6 +63,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.graphCache = new HashMap<>();
     }
 
+    @SuppressWarnings("try")
     private EncodedGraph createGraph(ResolvedJavaMethod method, boolean isIntrinsic) {
         StructuredGraph graph = new StructuredGraph(method, allowAssumptions);
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {

@@ -26,6 +26,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
@@ -48,6 +49,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
     }
 
     @Override
+    @SuppressWarnings("try")
     protected StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
         ResolvedJavaType type = StampTool.typeOrNull(getObject());
         if (type != null) {

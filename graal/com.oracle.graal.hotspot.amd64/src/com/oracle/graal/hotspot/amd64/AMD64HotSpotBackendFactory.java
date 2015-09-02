@@ -54,6 +54,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, Startu
     }
 
     @Override
+    @SuppressWarnings("try")
     public HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, JVMCIBackend jvmci, HotSpotBackend host) {
         assert host == null;
 
@@ -176,15 +177,15 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory, Startu
         } else {
             /*
              * System V Application Binary Interface, AMD64 Architecture Processor Supplement
-             *
+             * 
              * Draft Version 0.96
-             *
+             * 
              * http://www.uclibc.org/docs/psABI-x86_64.pdf
-             *
+             * 
              * 3.2.1
-             *
+             * 
              * ...
-             *
+             * 
              * This subsection discusses usage of each register. Registers %rbp, %rbx and %r12
              * through %r15 "belong" to the calling function and the called function is required to
              * preserve their values. In other words, a called function must preserve these

@@ -148,6 +148,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return createCallTargetImpl(source, root);
     }
 
+    @SuppressWarnings("try")
     public static void installOptimizedCallTargetCallMethod() {
         Providers providers = getGraalProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();

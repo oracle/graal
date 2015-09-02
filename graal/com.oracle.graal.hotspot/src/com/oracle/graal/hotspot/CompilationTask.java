@@ -121,6 +121,7 @@ public class CompilationTask {
 
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
 
+    @SuppressWarnings("try")
     public void runCompilation() {
         HotSpotVMConfig config = jvmciRuntime.getConfig();
         final long threadId = Thread.currentThread().getId();
@@ -273,6 +274,7 @@ public class CompilationTask {
                         entryBCI == Compiler.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") ");
     }
 
+    @SuppressWarnings("try")
     private InstalledCode installMethod(final CompilationResult compResult) {
         final HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
         InstalledCode installedCode = null;

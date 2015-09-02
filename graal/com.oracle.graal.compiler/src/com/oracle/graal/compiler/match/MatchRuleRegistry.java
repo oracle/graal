@@ -28,8 +28,10 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.compiler.gen.*;
@@ -70,6 +72,7 @@ public class MatchRuleRegistry {
      * @param theClass
      * @return the set of {@link MatchStatement}s applicable to theClass.
      */
+    @SuppressWarnings("try")
     public static synchronized Map<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass) {
         Map<Class<? extends Node>, List<MatchStatement>> result = registry.get(theClass);
 

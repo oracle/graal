@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
 import com.oracle.graal.debug.internal.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -626,6 +627,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         testPredicate(snippet, noCheck, removedBarrierIndices);
     }
 
+    @SuppressWarnings("try")
     private void testPredicate(final String snippet, final GraphPredicate expectedBarriers, final int... removedBarrierIndices) {
         try (Scope d = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);

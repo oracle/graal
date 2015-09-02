@@ -121,6 +121,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         /**
          * The main method doing the elimination of redundant moves.
          */
+        @SuppressWarnings("try")
         private void doOptimize(LIR lir) {
 
             try (Indent indent = Debug.logAndIndent("eliminate redundant moves")) {
@@ -205,6 +206,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          *
          * @return Returns true on success and false if the the control flow is too complex.
          */
+        @SuppressWarnings("try")
         private boolean solveDataFlow(LIR lir) {
 
             try (Indent indent = Debug.logAndIndent("solve data flow")) {
@@ -305,6 +307,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * Deletes all move instructions where the target location already contains the source
          * value.
          */
+        @SuppressWarnings("try")
         private void eliminateMoves(LIR lir) {
 
             try (Indent indent = Debug.logAndIndent("eliminate moves")) {
@@ -354,6 +357,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         /**
          * Updates the state for one instruction.
          */
+        @SuppressWarnings("try")
         private int updateState(final int[] state, LIRInstruction op, int initValueNum) {
 
             try (final Indent indent = Debug.logAndIndent("update state for op %s, initial value num = %d", op, initValueNum)) {

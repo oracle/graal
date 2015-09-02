@@ -117,6 +117,7 @@ public abstract class LIRPhase<C> {
         apply(target, lirGenRes, codeEmittingOrder, linearScanOrder, context, true);
     }
 
+    @SuppressWarnings("try")
     public final <B extends AbstractBlockBase<B>> void apply(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder, C context, boolean dumpLIR) {
         try (Scope s = Debug.scope(getName(), this)) {
             try (DebugCloseable a = timer.start(); DebugCloseable c = memUseTracker.start()) {

@@ -30,6 +30,7 @@ import com.oracle.graal.debug.*;
 
 import org.junit.*;
 
+@SuppressWarnings("try")
 public class DebugTimerTest {
 
     private static final ThreadMXBean threadMXBean = Management.getThreadMXBean();

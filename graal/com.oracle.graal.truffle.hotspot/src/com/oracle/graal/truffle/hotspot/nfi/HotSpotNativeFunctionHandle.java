@@ -26,8 +26,10 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.nfi.api.*;
@@ -44,6 +46,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
         this.code = code;
     }
 
+    @SuppressWarnings("try")
     private void traceCall(Object... args) {
         try (Scope s = Debug.scope("GNFI")) {
             if (Debug.isLogEnabled()) {
@@ -52,6 +55,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
         }
     }
 
+    @SuppressWarnings("try")
     private void traceResult(Object result) {
         try (Scope s = Debug.scope("GNFI")) {
             if (Debug.isLogEnabled()) {

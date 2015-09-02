@@ -56,6 +56,7 @@ public class LoadJavaMirrorWithKlassTest extends GraalCompilerTest {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected Suites createSuites() {
         try (OverrideScope s = OptionValue.override(GraalOptions.ImmutableCode, true)) {
             return super.createSuites();

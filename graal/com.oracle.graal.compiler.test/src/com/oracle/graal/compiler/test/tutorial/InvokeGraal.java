@@ -27,8 +27,10 @@ import java.util.concurrent.atomic.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.Type;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.runtime.*;
@@ -73,6 +75,7 @@ public class InvokeGraal {
     /**
      * The simplest way to compile a method, using the default behavior for everything.
      */
+    @SuppressWarnings("try")
     protected InstalledCode compileAndInstallMethod(ResolvedJavaMethod method) {
         /* Ensure every compilation gets a unique number, visible in IGV. */
         try (Scope s = Debug.scope("compileAndInstallMethod", new DebugDumpScope(String.valueOf(compilationId.incrementAndGet()), true))) {

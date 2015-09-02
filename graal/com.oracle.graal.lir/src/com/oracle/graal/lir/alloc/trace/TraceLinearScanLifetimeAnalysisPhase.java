@@ -164,6 +164,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Computes local live sets (i.e. {@link BlockData#liveGen} and {@link BlockData#liveKill})
      * separately for each block.
      */
+    @SuppressWarnings("try")
     void computeLocalLiveSets() {
         int liveSize = allocator.liveSetSize();
 
@@ -291,6 +292,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
      * Performs a backward dataflow analysis to compute global live sets (i.e.
      * {@link BlockData#liveIn} and {@link BlockData#liveOut}) for each block.
      */
+    @SuppressWarnings("try")
     protected void computeGlobalLiveSets() {
         try (Indent indent = Debug.logAndIndent("compute global live sets")) {
             int numBlocks = allocator.blockCount();
@@ -346,7 +348,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
                             /*
                              * liveIn(block) is the union of liveGen(block) with (liveOut(block) &
                              * !liveKill(block)).
-                             *
+                             * 
                              * Note: liveIn has to be computed only in first iteration or if liveOut
                              * has changed!
                              */
@@ -385,6 +387,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
         }
     }
 
+    @SuppressWarnings("try")
     protected void reportFailure(int numBlocks) {
         try (Scope s = Debug.forceLog()) {
             try (Indent indent = Debug.logAndIndent("report failure")) {
@@ -684,6 +687,7 @@ class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
         return RegisterPriority.MustHaveRegister;
     }
 
+    @SuppressWarnings("try")
     protected void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {

@@ -156,6 +156,7 @@ public abstract class Stub {
     /**
      * Gets the code for this stub, compiling it first if necessary.
      */
+    @SuppressWarnings("try")
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {

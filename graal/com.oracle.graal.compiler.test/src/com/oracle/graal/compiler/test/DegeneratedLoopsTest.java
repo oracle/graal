@@ -79,6 +79,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
 
     }
 
+    @SuppressWarnings("try")
     private void test(final String snippet) {
         try (Scope s = Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);

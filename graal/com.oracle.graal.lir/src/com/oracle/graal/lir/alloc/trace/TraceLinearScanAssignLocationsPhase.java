@@ -134,7 +134,7 @@ final class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
              * is a branch, spill moves are inserted before this branch and so the wrong operand
              * would be returned (spill moves at block boundaries are not considered in the live
              * ranges of intervals).
-             * 
+             *
              * Solution: use the first opId of the branch target block instead.
              */
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
@@ -227,6 +227,7 @@ final class TraceLinearScanAssignLocationsPhase extends AllocationPhase {
         return false;
     }
 
+    @SuppressWarnings("try")
     private void assignLocations() {
         try (Indent indent = Debug.logAndIndent("assign locations")) {
             for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {

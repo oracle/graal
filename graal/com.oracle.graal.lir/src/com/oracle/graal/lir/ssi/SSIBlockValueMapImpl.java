@@ -165,6 +165,7 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
         }
     }
 
+    @SuppressWarnings("try")
     private void accessRecursive(Value operand, AbstractBlockBase<?> defBlock, AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
         try (Indent indent = Debug.logAndIndent("get operand %s in block %s", operand, block)) {
             if (block.equals(defBlock)) {
@@ -195,6 +196,7 @@ public final class SSIBlockValueMapImpl implements BlockValueMap {
         }
     }
 
+    @SuppressWarnings("try")
     private int addLiveValueToBlock(Value operand, AbstractBlockBase<?> block) {
         try (Indent indent = Debug.logAndIndent("add incoming value!")) {
             int index = -1;

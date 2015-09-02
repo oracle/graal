@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.common;
 
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
@@ -161,6 +162,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             processWorkSet(graph);
         }
 
+        @SuppressWarnings("try")
         private void processWorkSet(StructuredGraph graph) {
             NodeEventListener listener = new NodeEventListener() {
 
@@ -243,6 +245,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
 
+        @SuppressWarnings("try")
         public boolean tryCanonicalize(final Node node, NodeClass<?> nodeClass) {
             if (customCanonicalizer != null) {
                 Node canonical = customCanonicalizer.canonicalize(node);

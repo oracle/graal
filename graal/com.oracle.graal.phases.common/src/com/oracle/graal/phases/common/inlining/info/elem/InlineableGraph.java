@@ -28,6 +28,7 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.compiler.common.type.*;
@@ -83,6 +84,7 @@ public class InlineableGraph implements Inlineable {
      * @return true iff one or more parameters <code>newGraph</code> were specialized to account for
      *         a constant argument, or an argument with a more specific stamp.
      */
+    @SuppressWarnings("try")
     private boolean specializeGraphToArguments(final Invoke invoke, final HighTierContext context, CanonicalizerPhase canonicalizer) {
         try (Debug.Scope s = Debug.scope("InlineGraph", graph)) {
 
@@ -181,6 +183,7 @@ public class InlineableGraph implements Inlineable {
      * Provided profiling info is mature, the resulting graph is cached. The caller is responsible
      * for cloning before modification. </p>
      */
+    @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
         StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null));
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {

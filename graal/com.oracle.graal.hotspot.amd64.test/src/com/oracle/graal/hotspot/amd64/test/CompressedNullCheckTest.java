@@ -48,6 +48,7 @@ public class CompressedNullCheckTest extends GraalCompilerTest {
         c.i.intValue();
     }
 
+    @SuppressWarnings("try")
     private void testImplicit(Integer i) {
         Assume.assumeTrue(HotSpotGraalRuntime.runtime().getConfig().useCompressedOops);
 
@@ -66,6 +67,7 @@ public class CompressedNullCheckTest extends GraalCompilerTest {
         }
     }
 
+    @SuppressWarnings("try")
     private void testExplicit(Integer i) {
         Assume.assumeTrue(HotSpotGraalRuntime.runtime().getConfig().useCompressedOops);
 

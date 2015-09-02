@@ -268,6 +268,7 @@ public final class CompileTheWorld {
      * @param fileList {@link File#pathSeparator} separated list of Zip/Jar files to compile
      * @throws IOException
      */
+    @SuppressWarnings("try")
     private void compile(String fileList) throws IOException {
         final String[] entries = fileList.split(File.pathSeparator);
         long start = System.currentTimeMillis();
@@ -447,6 +448,7 @@ public final class CompileTheWorld {
         }
     }
 
+    @SuppressWarnings("try")
     private void compileMethod(HotSpotResolvedJavaMethod method) throws InterruptedException, ExecutionException {
         if (methodFilters != null && !MethodFilter.matches(methodFilters, method)) {
             return;

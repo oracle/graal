@@ -92,6 +92,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
         return false;
     }
 
+    @SuppressWarnings("try")
     private void processBlock(AbstractBlockBase<T> block, UniqueWorkList<T> worklist) {
         if (updateOutBlock(block)) {
             try (Indent indent = Debug.logAndIndent("handle block %s", block)) {
@@ -117,6 +118,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
      * Process all values of an instruction bottom-up, i.e. definitions before usages. Values that
      * start or end at the current operation are not included.
      */
+    @SuppressWarnings("try")
     private void processInstructionBottomUp(LIRInstruction op) {
         try (Indent indent = Debug.logAndIndent("handle op %d, %s", op.id(), op)) {
             // kills

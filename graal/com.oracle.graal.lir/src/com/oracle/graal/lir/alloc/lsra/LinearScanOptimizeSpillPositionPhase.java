@@ -58,6 +58,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
         allocator.printIntervals("After optimize spill position");
     }
 
+    @SuppressWarnings("try")
     private void optimizeSpillPosition() {
         try (Indent indent0 = Debug.logAndIndent("OptimizeSpillPositions")) {
             LIRInsertionBuffer[] insertionBuffers = new LIRInsertionBuffer[allocator.getLIR().linearScanOrder().size()];
@@ -73,6 +74,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
         }
     }
 
+    @SuppressWarnings("try")
     private void optimizeInterval(LIRInsertionBuffer[] insertionBuffers, Interval interval) {
         if (interval == null || !interval.isSplitParent() || interval.spillState() != SpillState.SpillInDominator) {
             return;
@@ -118,7 +120,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends AllocationPhase 
             /*
              * The spill block is the begin of the first split child (aka the value is on the
              * stack).
-             *
+             * 
              * The problem is that if spill block has more than one predecessor, the values at the
              * end of the predecessors might differ. Therefore, we would need a spill move in all
              * predecessors. To avoid this we spill in the dominator.

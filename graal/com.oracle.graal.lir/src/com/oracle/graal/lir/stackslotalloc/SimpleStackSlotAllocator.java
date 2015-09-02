@@ -71,6 +71,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase implements StackSl
         }
     }
 
+    @SuppressWarnings("try")
     protected void updateLIR(LIRGenerationResult res, StackSlot[] mapping) {
         try (Scope scope = Debug.scope("StackSlotMappingLIR")) {
             ValueProcedure updateProc = (value, mode, flags) -> {

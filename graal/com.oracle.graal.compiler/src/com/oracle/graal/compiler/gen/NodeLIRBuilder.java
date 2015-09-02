@@ -33,6 +33,7 @@ import java.util.Map.Entry;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
 
@@ -261,6 +262,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
+    @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         try (BlockScope blockScope = gen.getBlockScope(block)) {
 
@@ -342,6 +344,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
+    @SuppressWarnings("try")
     protected void matchComplexExpressions(List<Node> nodes) {
         if (matchRules != null) {
             try (Scope s = Debug.scope("MatchComplexExpressions")) {

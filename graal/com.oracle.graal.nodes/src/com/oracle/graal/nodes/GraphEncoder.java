@@ -384,6 +384,7 @@ public class GraphEncoder {
      * Verification code that checks that the decoding of an encode graph is the same as the
      * original graph.
      */
+    @SuppressWarnings("try")
     public static boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph, Architecture architecture) {
         StructuredGraph decodedGraph = new StructuredGraph(originalGraph.method(), AllowAssumptions.YES);
         GraphDecoder decoder = new GraphDecoder(architecture);

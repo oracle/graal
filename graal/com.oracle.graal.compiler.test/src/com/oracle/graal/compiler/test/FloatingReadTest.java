@@ -57,6 +57,7 @@ public class FloatingReadTest extends GraphScheduleTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("try")
     private void test(final String snippet) {
         try (Scope s = Debug.scope("FloatingReadTest", new DebugDumpScope(snippet))) {
 

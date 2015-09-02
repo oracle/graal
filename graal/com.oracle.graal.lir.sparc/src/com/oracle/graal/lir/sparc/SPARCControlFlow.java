@@ -226,9 +226,7 @@ public class SPARCControlFlow {
                 actualY = tmpValue;
                 actualConditionFlag = actualConditionFlag.mirror();
             }
-            try (ScratchRegister scratch = masm.getScratchRegister()) {
-                emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
-            }
+            emitCBCond(masm, actualX, actualY, actualTrueTarget, actualConditionFlag);
             if (needJump) {
                 masm.jmp(actualFalseTarget);
                 masm.nop();

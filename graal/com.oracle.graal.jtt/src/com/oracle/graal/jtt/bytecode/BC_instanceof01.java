@@ -89,6 +89,7 @@ public class BC_instanceof01 extends JTTTest {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected Suites getSuites() {
         try (OverrideScope scope = OptionValue.override(HighTier.Options.Inline, false)) {
             return super.getSuites();

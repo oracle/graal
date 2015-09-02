@@ -57,6 +57,7 @@ public class PoorMansEATest extends GraalCompilerTest {
         test("test1Snippet");
     }
 
+    @SuppressWarnings("try")
     private void test(final String snippet) {
         try (Scope s = Debug.scope("PoorMansEATest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);

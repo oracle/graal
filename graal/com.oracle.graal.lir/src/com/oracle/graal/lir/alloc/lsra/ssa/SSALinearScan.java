@@ -65,6 +65,7 @@ public final class SSALinearScan extends LinearScan {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void beforeSpillMoveElimination() {
         /*
          * PHI Ins are needed for the RegisterVerifier, otherwise PHIs where the Out and In value

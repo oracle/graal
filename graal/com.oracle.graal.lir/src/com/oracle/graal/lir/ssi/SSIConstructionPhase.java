@@ -55,6 +55,7 @@ public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
             processed = new BitSet(lir.getControlFlowGraph().getBlocks().size());
         }
 
+        @SuppressWarnings("try")
         private void build(LIRGeneratorTool lirGen) {
             Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>(lir.getControlFlowGraph().getBlocks());
             while (!worklist.isEmpty()) {
@@ -82,6 +83,7 @@ public final class SSIConstructionPhase extends PreAllocationOptimizationPhase {
             valueMap.finish(lirGen);
         }
 
+        @SuppressWarnings("try")
         public void processBlock(AbstractBlockBase<?> block) {
             assert !processed.get(block.getId()) : "Block already processed " + block;
             try (Indent indent = Debug.logAndIndent("Process Block %s", block)) {

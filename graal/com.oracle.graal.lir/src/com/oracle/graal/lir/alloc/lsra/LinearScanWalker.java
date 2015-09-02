@@ -424,6 +424,7 @@ class LinearScanWalker extends IntervalWalker {
     // maxSplitPos in two parts:
     // 1) the left part has already a location assigned
     // 2) the right part is sorted into to the unhandled-list
+    @SuppressWarnings("try")
     void splitBeforeUsage(Interval interval, int minSplitPos, int maxSplitPos) {
 
         try (Indent indent = Debug.logAndIndent("splitting interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
@@ -482,7 +483,7 @@ class LinearScanWalker extends IntervalWalker {
     // maxSplitPos in two parts:
     // 1) the left part has already a location assigned
     // 2) the right part is always on the stack and therefore ignored in further processing
-
+    @SuppressWarnings("try")
     void splitForSpilling(Interval interval) {
         // calculate allowed range of splitting position
         int maxSplitPos = currentPosition;
@@ -682,6 +683,7 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
+    @SuppressWarnings("try")
     boolean allocFreeRegister(Interval interval) {
         try (Indent indent = Debug.logAndIndent("trying to find free register for %s", interval)) {
 
@@ -779,6 +781,7 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     // Split an Interval and spill it to memory so that cur can be placed in a register
+    @SuppressWarnings("try")
     void allocLockedRegister(Interval interval) {
         try (Indent indent = Debug.logAndIndent("alloc locked register: need to split and spill to get register for %s", interval)) {
 
@@ -880,6 +883,7 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
+    @SuppressWarnings("try")
     void printRegisterState() {
         try (Indent indent2 = Debug.logAndIndent("state of registers:")) {
             for (Register reg : availableRegs) {
@@ -996,6 +1000,7 @@ class LinearScanWalker extends IntervalWalker {
 
     // allocate a physical register or memory location to an interval
     @Override
+    @SuppressWarnings("try")
     protected boolean activateCurrent(Interval interval) {
         boolean result = true;
 

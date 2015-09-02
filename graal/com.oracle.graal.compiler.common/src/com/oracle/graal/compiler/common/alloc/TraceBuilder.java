@@ -82,6 +82,7 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
         return processed.get(b.getId());
     }
 
+    @SuppressWarnings("try")
     private TraceBuilderResult<T> build(T startBlock) {
         try (Scope s = Debug.scope("TraceBuilder"); Indent i = Debug.logAndIndent("start trace building: " + startBlock)) {
             ArrayList<List<T>> traces = buildTraces(startBlock);
@@ -121,6 +122,7 @@ public final class TraceBuilder<T extends AbstractBlockBase<T>> {
     /**
      * Build a new trace starting at {@code block}.
      */
+    @SuppressWarnings("try")
     private List<T> startTrace(T block, int traceNumber) {
         assert block.getPredecessors().stream().allMatch(this::processed) : "Predecessor unscheduled: " + block.getPredecessors().stream().filter(this::processed).findFirst().get();
         ArrayList<T> trace = new ArrayList<>();

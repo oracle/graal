@@ -24,8 +24,10 @@ package com.oracle.graal.replacements.nodes;
 
 import static jdk.internal.jvmci.code.BytecodeFrame.*;
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.api.replacements.*;
@@ -132,6 +134,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
      *
      * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
      */
+    @SuppressWarnings("try")
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.getStampProvider());
         if (!graph().hasValueProxies()) {

@@ -26,7 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
-
 import com.oracle.graal.compiler.common.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.graph.*;
@@ -39,6 +38,7 @@ public class LoopsData {
     private Map<LoopBeginNode, LoopEx> loopBeginToEx = Node.newIdentityMap();
     private ControlFlowGraph cfg;
 
+    @SuppressWarnings("try")
     public LoopsData(final StructuredGraph graph) {
         try (Scope s = Debug.scope("ControlFlowGraph")) {
             cfg = ControlFlowGraph.compute(graph, true, true, true, true);

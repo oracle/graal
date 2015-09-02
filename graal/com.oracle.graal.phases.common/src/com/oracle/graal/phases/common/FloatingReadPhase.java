@@ -168,6 +168,7 @@ public class FloatingReadPhase extends Phase {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {

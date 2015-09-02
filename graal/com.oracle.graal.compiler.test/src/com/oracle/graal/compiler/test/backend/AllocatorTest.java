@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 public class AllocatorTest extends BackendTest {
 
+    @SuppressWarnings("try")
     protected void testAllocation(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         try (Scope s = Debug.scope("AllocatorTest", graph, graph.method(), getCodeCache())) {

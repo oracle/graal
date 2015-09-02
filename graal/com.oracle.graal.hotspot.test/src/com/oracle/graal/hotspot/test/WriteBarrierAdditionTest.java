@@ -28,6 +28,7 @@ import java.lang.ref.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.meta.*;
 
@@ -246,6 +247,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
         return installedCode;
     }
 
+    @SuppressWarnings("try")
     private void testHelper(final String snippetName, final int expectedBarriers) throws Exception, SecurityException {
         ResolvedJavaMethod snippet = getResolvedJavaMethod(snippetName);
         try (Scope s = Debug.scope("WriteBarrierAdditionTest", snippet)) {

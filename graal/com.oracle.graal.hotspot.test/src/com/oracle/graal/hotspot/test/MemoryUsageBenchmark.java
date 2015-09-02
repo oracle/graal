@@ -122,6 +122,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         new MemoryUsageBenchmark().run();
     }
 
+    @SuppressWarnings("try")
     private void doCompilation(String methodName, String label) {
         HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(methodName);
 
@@ -138,6 +139,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         }
     }
 
+    @SuppressWarnings("try")
     private void allocSpyCompilation(String methodName) {
         if (AllocSpy.isEnabled()) {
             HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) getResolvedJavaMethod(methodName);

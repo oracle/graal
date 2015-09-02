@@ -161,6 +161,7 @@ final class TraceSimpleLifetimeAnalysisPhase extends TraceLinearScanLifetimeAnal
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void buildIntervals() {
 
         try (Indent indent = Debug.logAndIndent("build intervals")) {

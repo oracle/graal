@@ -66,6 +66,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void completeInitialization() {
         final HotSpotProviders providers = getProviders();
         HotSpotVMConfig config = getRuntime().getConfig();

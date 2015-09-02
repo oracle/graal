@@ -425,6 +425,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     // maxSplitPos in two parts:
     // 1) the left part has already a location assigned
     // 2) the right part is sorted into to the unhandled-list
+    @SuppressWarnings("try")
     void splitBeforeUsage(TraceInterval interval, int minSplitPos, int maxSplitPos) {
 
         try (Indent indent = Debug.logAndIndent("splitting interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
@@ -483,7 +484,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     // maxSplitPos in two parts:
     // 1) the left part has already a location assigned
     // 2) the right part is always on the stack and therefore ignored in further processing
-
+    @SuppressWarnings("try")
     void splitForSpilling(TraceInterval interval) {
         // calculate allowed range of splitting position
         int maxSplitPos = currentPosition;
@@ -683,6 +684,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         }
     }
 
+    @SuppressWarnings("try")
     boolean allocFreeRegister(TraceInterval interval) {
         try (Indent indent = Debug.logAndIndent("trying to find free register for %s", interval)) {
 
@@ -780,6 +782,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     }
 
     // Split an Interval and spill it to memory so that cur can be placed in a register
+    @SuppressWarnings("try")
     void allocLockedRegister(TraceInterval interval) {
         try (Indent indent = Debug.logAndIndent("alloc locked register: need to split and spill to get register for %s", interval)) {
 
@@ -881,6 +884,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         }
     }
 
+    @SuppressWarnings("try")
     void printRegisterState() {
         try (Indent indent2 = Debug.logAndIndent("state of registers:")) {
             for (Register reg : availableRegs) {
@@ -997,6 +1001,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
 
     // allocate a physical register or memory location to an interval
     @Override
+    @SuppressWarnings("try")
     protected boolean activateCurrent(TraceInterval interval) {
         boolean result = true;
 

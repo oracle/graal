@@ -55,6 +55,7 @@ final class TraceGlobalMoveResolutionPhase extends AllocationPhase {
         resolveGlobalDataFlow(resultTraces, lirGenRes, spillMoveFactory, target.arch);
     }
 
+    @SuppressWarnings("try")
     private static <B extends AbstractBlockBase<B>> void resolveGlobalDataFlow(TraceBuilderResult<B> resultTraces, LIRGenerationResult lirGenRes, SpillMoveFactory spillMoveFactory, Architecture arch) {
         LIR lir = lirGenRes.getLIR();
         /* Resolve trace global data-flow mismatch. */

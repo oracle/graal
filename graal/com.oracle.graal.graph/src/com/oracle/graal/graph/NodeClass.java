@@ -65,6 +65,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static final DebugTimer Init_AllowedUsages = Debug.timer("NodeClass.Init.AllowedUsages");
     private static final DebugTimer Init_IterableIds = Debug.timer("NodeClass.Init.IterableIds");
 
+    @SuppressWarnings("try")
     private static <T extends Annotation> T getAnnotationTimed(AnnotatedElement e, Class<T> annotationClass) {
         try (DebugCloseable s = Init_AnnotationParsing.start()) {
             return e.getAnnotation(annotationClass);
@@ -135,6 +136,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
     }
 
+    @SuppressWarnings("try")
     public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         this.superNodeClass = superNodeClass;
@@ -354,6 +356,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             }
         }
 
+        @SuppressWarnings("try")
         @Override
         protected void scanField(Field field, long offset) {
             Input inputAnnotation = getAnnotationTimed(field, Node.Input.class);

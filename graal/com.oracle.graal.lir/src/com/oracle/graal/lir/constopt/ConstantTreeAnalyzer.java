@@ -38,6 +38,7 @@ public final class ConstantTreeAnalyzer {
     private final ConstantTree tree;
     private final BitSet visited;
 
+    @SuppressWarnings("try")
     public static NodeCost analyze(ConstantTree tree, AbstractBlockBase<?> startBlock) {
         try (Scope s = Debug.scope("ConstantTreeAnalyzer")) {
             ConstantTreeAnalyzer analyzer = new ConstantTreeAnalyzer(tree);
@@ -61,6 +62,7 @@ public final class ConstantTreeAnalyzer {
      *
      * @param startBlock The start block of the dominator subtree.
      */
+    @SuppressWarnings("try")
     private void analyzeBlocks(AbstractBlockBase<?> startBlock) {
         Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
         worklist.offerLast(startBlock);

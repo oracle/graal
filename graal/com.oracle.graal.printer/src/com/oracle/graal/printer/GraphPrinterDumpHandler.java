@@ -144,6 +144,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void dump(Object object, final String message) {
         if (object instanceof Graph && PrintIdealGraph.getValue()) {
             ensureInitialized();

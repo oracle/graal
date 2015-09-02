@@ -614,6 +614,7 @@ public class LinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
+    @SuppressWarnings("try")
     protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
 
@@ -680,6 +681,7 @@ public class LinearScan {
         return new LinearScanAssignLocationsPhase(this);
     }
 
+    @SuppressWarnings("try")
     public void printIntervals(String label) {
         if (Debug.isLogEnabled()) {
             try (Indent indent = Debug.logAndIndent("intervals %s", label)) {
@@ -715,6 +717,7 @@ public class LinearScan {
         return true;
     }
 
+    @SuppressWarnings("try")
     private void verifyRegisters() {
         // Enable this logging to get output for the verification process.
         try (Indent indent = Debug.logAndIndent("verifying register allocation")) {
@@ -723,6 +726,7 @@ public class LinearScan {
         }
     }
 
+    @SuppressWarnings("try")
     protected void verifyIntervals() {
         try (Indent indent = Debug.logAndIndent("verifying intervals")) {
             int len = intervalsSize;
@@ -811,6 +815,7 @@ public class LinearScan {
         }
     }
 
+    @SuppressWarnings("try")
     void verifyNoOopsInFixedIntervals() {
         try (Indent indent = Debug.logAndIndent("verifying that no oops are in fixed intervals *")) {
             CheckConsumer checkConsumer = new CheckConsumer();

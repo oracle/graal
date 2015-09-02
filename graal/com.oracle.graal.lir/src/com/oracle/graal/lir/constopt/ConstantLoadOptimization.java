@@ -88,6 +88,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             this.blockMap = new BlockMap<>(lir.getControlFlowGraph());
         }
 
+        @SuppressWarnings("try")
         private void apply() {
             try (Indent indent = Debug.logAndIndent("ConstantLoadOptimization")) {
                 try (Scope s = Debug.scope("BuildDefUseTree")) {
@@ -165,6 +166,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
         /**
          * Collects def-use information for a {@code block}.
          */
+        @SuppressWarnings("try")
         private void analyzeBlock(AbstractBlockBase<?> block) {
             try (Indent indent = Debug.logAndIndent("Block: %s", block)) {
 
@@ -224,6 +226,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
         /**
          * Creates the dominator tree and searches for an solution.
          */
+        @SuppressWarnings("try")
         private void createConstantTree(DefUseTree tree) {
             ConstantTree constTree = new ConstantTree(lir.getControlFlowGraph(), tree);
             constTree.set(Flags.SUBTREE, tree.getBlock());

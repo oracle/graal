@@ -25,8 +25,10 @@ package com.oracle.graal.compiler.test.tutorial;
 import java.util.*;
 
 import jdk.internal.jvmci.common.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import com.oracle.graal.graph.*;
@@ -204,6 +206,7 @@ public class StaticAnalysis {
         }
 
         @Override
+        @SuppressWarnings("try")
         protected void process() {
             if (!processed) {
                 /* We want to process a method only once. */

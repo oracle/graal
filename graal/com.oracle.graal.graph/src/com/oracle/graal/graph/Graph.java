@@ -980,7 +980,7 @@ public class Graph {
 
     private static final DebugTimer DuplicateGraph = Debug.timer("DuplicateGraph");
 
-    @SuppressWarnings("all")
+    @SuppressWarnings({"all", "try"})
     public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         try (DebugCloseable s = DuplicateGraph.start()) {
             return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);

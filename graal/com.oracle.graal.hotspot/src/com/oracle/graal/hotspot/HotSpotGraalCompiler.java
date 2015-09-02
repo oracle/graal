@@ -59,6 +59,7 @@ public class HotSpotGraalCompiler implements Compiler {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void compileMethod(ResolvedJavaMethod method, int entryBCI, long jvmciEnv, int id) {
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {

@@ -41,6 +41,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     public String[] stringArrayField;
 
+    @SuppressWarnings("try")
     protected StructuredGraph test(final String snippet) {
         try (Scope s = Debug.scope("ClassSubstitutionsTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);

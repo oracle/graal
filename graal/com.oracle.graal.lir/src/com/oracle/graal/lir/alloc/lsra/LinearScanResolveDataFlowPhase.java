@@ -122,6 +122,7 @@ public class LinearScanResolveDataFlowPhase extends AllocationPhase {
      * Inserts necessary moves (spilling or reloading) at edges between blocks for intervals that
      * have been split.
      */
+    @SuppressWarnings("try")
     protected void resolveDataFlow() {
         try (Indent indent = Debug.logAndIndent("resolve data flow")) {
 

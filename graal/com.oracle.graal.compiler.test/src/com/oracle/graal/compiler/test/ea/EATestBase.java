@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 
 import org.junit.*;
@@ -147,6 +148,7 @@ public class EATestBase extends GraalCompilerTest {
         Assert.assertEquals(0, newInstanceCount);
     }
 
+    @SuppressWarnings("try")
     protected void prepareGraph(String snippet, boolean iterativeEscapeAnalysis) {
         ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
         try (Scope s = Debug.scope(getClass(), method, getCodeCache())) {

@@ -538,6 +538,7 @@ public class SnippetTemplate {
         /**
          * Gets a template for a given key, creating it first if necessary.
          */
+        @SuppressWarnings("try")
         protected SnippetTemplate template(final Arguments args) {
             SnippetTemplate template = UseSnippetTemplateCache && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
@@ -576,6 +577,7 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
+    @SuppressWarnings("try")
     protected SnippetTemplate(final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
         this.snippetReflection = snippetReflection;
         this.info = args.info;
@@ -1198,6 +1200,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      * @return the map of duplicated nodes (original -&gt; duplicate)
      */
+    @SuppressWarnings("try")
     public Map<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(); DebugCloseable b = instantiationTimer.start()) {
@@ -1346,6 +1349,7 @@ public class SnippetTemplate {
      * @param replacer object that replaces the usages of {@code replacee}
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
+    @SuppressWarnings("try")
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start()) {

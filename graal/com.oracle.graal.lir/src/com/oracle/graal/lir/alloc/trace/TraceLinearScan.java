@@ -616,6 +616,7 @@ final class TraceLinearScan {
         return attributes(asRegister(operand)).isCallerSave();
     }
 
+    @SuppressWarnings("try")
     protected <B extends AbstractBlockBase<B>> void allocate(TargetDescription target, LIRGenerationResult lirGenRes, List<B> codeEmittingOrder, List<B> linearScanOrder,
                     SpillMoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
 
@@ -682,6 +683,7 @@ final class TraceLinearScan {
         return new TraceLinearScanOptimizeSpillPositionPhase(this);
     }
 
+    @SuppressWarnings("try")
     public void printIntervals(String label) {
         if (Debug.isDumpEnabled(TraceRegisterAllocationPhase.TRACE_DUMP_LEVEL)) {
             if (Debug.isLogEnabled()) {
@@ -721,6 +723,7 @@ final class TraceLinearScan {
         return true;
     }
 
+    @SuppressWarnings("try")
     private void verifyRegisters() {
         // Enable this logging to get output for the verification process.
         try (Indent indent = Debug.logAndIndent("verifying register allocation")) {
@@ -729,6 +732,7 @@ final class TraceLinearScan {
         }
     }
 
+    @SuppressWarnings("try")
     protected void verifyIntervals() {
         try (Indent indent = Debug.logAndIndent("verifying intervals")) {
             int len = intervalsSize;
@@ -817,6 +821,7 @@ final class TraceLinearScan {
         }
     }
 
+    @SuppressWarnings("try")
     void verifyNoOopsInFixedIntervals() {
         try (Indent indent = Debug.logAndIndent("verifying that no oops are in fixed intervals *")) {
             CheckConsumer checkConsumer = new CheckConsumer();

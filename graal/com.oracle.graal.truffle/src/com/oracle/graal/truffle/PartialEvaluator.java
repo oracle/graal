@@ -125,6 +125,7 @@ public class PartialEvaluator {
         return new ResolvedJavaMethod[]{callSiteProxyMethod, callDirectMethod};
     }
 
+    @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, AllowAssumptions allowAssumptions) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(callTarget, "truffle tree");
@@ -394,7 +395,7 @@ public class PartialEvaluator {
         return decodingInvocationPlugins;
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(OptimizedCallTarget callTarget, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         if (GraphPE.getValue()) {
             doGraphPE(callTarget, graph);
@@ -437,6 +438,7 @@ public class PartialEvaluator {
         }
     }
 
+    @SuppressWarnings("try")
     private static void reportPerformanceWarnings(OptimizedCallTarget target, StructuredGraph graph) {
         ArrayList<ValueNode> warnings = new ArrayList<>();
         for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {

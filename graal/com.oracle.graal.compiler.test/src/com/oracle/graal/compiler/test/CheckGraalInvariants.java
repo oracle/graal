@@ -83,6 +83,7 @@ public class CheckGraalInvariants extends GraalTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void test() {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();

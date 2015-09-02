@@ -46,6 +46,7 @@ public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends Phase
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, C context) {
         HashSetNodeEventListener listener = new HashSetNodeEventListener();
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {

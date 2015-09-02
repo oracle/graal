@@ -99,6 +99,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
         calls.add(cc);
     }
 
+    @SuppressWarnings("try")
     public FrameMap buildFrameMap(LIRGenerationResult res, StackSlotAllocator allocator) {
         try (Scope s = Debug.scope("StackSlotAllocation")) {
             allocator.allocateStackSlots(this, res);

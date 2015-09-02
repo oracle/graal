@@ -50,6 +50,7 @@ public final class SSIVerifier {
         this.lir = lir;
     }
 
+    @SuppressWarnings("try")
     private boolean verify() {
         try (Scope s = Debug.scope("SSIVerifier", lir)) {
             for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {

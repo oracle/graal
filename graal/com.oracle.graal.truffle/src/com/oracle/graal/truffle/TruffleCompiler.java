@@ -29,8 +29,10 @@ import java.util.*;
 
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.code.CallingConvention.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.*;
+
 import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.meta.Assumptions.Assumption;
 
@@ -121,6 +123,7 @@ public abstract class TruffleCompiler {
     public static final DebugMemUseTracker CompilationMemUse = Debug.memUseTracker("TruffleCompilationMemUse");
     public static final DebugMemUseTracker CodeInstallationMemUse = Debug.memUseTracker("TruffleCodeInstallationMemUse");
 
+    @SuppressWarnings("try")
     public void compileMethod(final OptimizedCallTarget compilable) {
         StructuredGraph graph = null;
 
@@ -147,6 +150,7 @@ public abstract class TruffleCompiler {
         }
     }
 
+    @SuppressWarnings("try")
     public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode) {
         try (Scope s = Debug.scope("TruffleFinal")) {
             Debug.dump(1, graph, "After TruffleTier");

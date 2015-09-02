@@ -204,6 +204,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Assert.assertTrue(c.isEqualTo(Boolean.TRUE));
     }
 
+    @SuppressWarnings("try")
     private StructuredGraph compile(String test, boolean compileAOT) {
         try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {
             StructuredGraph graph = parseEager(test, AllowAssumptions.YES);

@@ -256,6 +256,7 @@ public class GraphDecoder {
         this.architecture = architecture;
     }
 
+    @SuppressWarnings("try")
     public final void decode(StructuredGraph graph, EncodedGraph encodedGraph) {
         try (Debug.Scope scope = Debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(graph, encodedGraph, LoopExplosionKind.NONE);

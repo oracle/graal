@@ -79,6 +79,7 @@ public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
     }
 
     @Test(expected = JVMCIError.class)
+    @SuppressWarnings("try")
     public void testVerification() {
         try (DebugConfigScope scope = Debug.disableIntercept()) {
             compile(getResolvedJavaMethod("verificationSnippet"), null);

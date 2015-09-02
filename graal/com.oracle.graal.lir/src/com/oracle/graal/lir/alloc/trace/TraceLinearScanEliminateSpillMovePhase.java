@@ -75,6 +75,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
     }
 
     // called once before assignment of register numbers
+    @SuppressWarnings("try")
     void eliminateSpillMoves() {
         try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves")) {
 
@@ -185,9 +186,9 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
         /*
          * assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " +
          * move;
-         * 
+         *
          * Interval curInterval = allocator.intervalFor(move.getResult());
-         * 
+         *
          * if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) { assert
          * isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
          * return true; } return false;

@@ -122,6 +122,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         test("test2Snippet", "referenceSnippet2");
     }
 
+    @SuppressWarnings("try")
     private void test(String snippet, String referenceSnippet) {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
