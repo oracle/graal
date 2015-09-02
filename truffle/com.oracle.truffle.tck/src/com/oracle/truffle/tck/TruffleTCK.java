@@ -139,7 +139,7 @@ public abstract class TruffleTCK {
     public void testFortyTwo() throws Exception {
         TruffleVM.Symbol fourtyTwo = findGlobalSymbol(fourtyTwo());
 
-        Object res = fourtyTwo.invoke(null);
+        Object res = fourtyTwo.invoke(null).get();
 
         assert res instanceof Number : "should yield a number, but was: " + res;
 
@@ -155,7 +155,7 @@ public abstract class TruffleTCK {
         }
         TruffleVM.Symbol retNull = findGlobalSymbol(returnsNull());
 
-        Object res = retNull.invoke(null);
+        Object res = retNull.invoke(null).get();
 
         assertNull("Should yield real Java null", res);
     }
@@ -168,7 +168,7 @@ public abstract class TruffleTCK {
 
         TruffleVM.Symbol plus = findGlobalSymbol(plusInt());
 
-        Object res = plus.invoke(null, a, b);
+        Object res = plus.invoke(null, a, b).get();
 
         assert res instanceof Number : "+ on two ints should yield a number, but was: " + res;
 
@@ -181,7 +181,7 @@ public abstract class TruffleTCK {
     public void testInvalidTestMethod() throws Exception {
         String mime = mimeType();
         String code = invalidCode();
-        Object ret = vm().eval(Source.fromText(code, "Invalid code").withMimeType(mime));
+        Object ret = vm().eval(Source.fromText(code, "Invalid code").withMimeType(mime)).get();
         fail("Should yield IOException, but returned " + ret);
     }
 
@@ -189,7 +189,7 @@ public abstract class TruffleTCK {
     public void testMaxOrMinValue() throws Exception {
         TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
 
-        Object res = apply.invoke(null, new MaxMinObject(true));
+        Object res = apply.invoke(null, new MaxMinObject(true)).get();
 
         assert res instanceof Number : "result should be a number: " + res;
 
@@ -202,7 +202,7 @@ public abstract class TruffleTCK {
     public void testMaxOrMinValue2() throws Exception {
         TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
 
-        Object res = apply.invoke(null, new MaxMinObject(false));
+        Object res = apply.invoke(null, new MaxMinObject(false)).get();
 
         assert res instanceof Number : "result should be a number: " + res;
 
@@ -228,12 +228,12 @@ public abstract class TruffleTCK {
         for (int i = 0; i < 10; i++) {
             int quantum = r.nextInt(10);
             for (int j = 0; j < quantum; j++) {
-                Object res = count1.invoke(null);
+                Object res = count1.invoke(null).get();
                 assert res instanceof Number : "expecting number: " + res;
                 assert ((Number) res).intValue() == ++prev1 : "expecting " + prev1 + " but was " + res;
             }
             for (int j = 0; j < quantum; j++) {
-                Object res = count2.invoke(null);
+                Object res = count2.invoke(null).get();
                 assert res instanceof Number : "expecting number: " + res;
                 assert ((Number) res).intValue() == ++prev2 : "expecting " + prev2 + " but was " + res;
             }

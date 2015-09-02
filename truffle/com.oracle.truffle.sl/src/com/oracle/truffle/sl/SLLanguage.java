@@ -245,7 +245,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
         Source src = Source.fromFileName(path.toString());
         /* Parse the SL source file. */
-        Object result = context.eval(src.withMimeType("application/x-sl"));
+        Object result = context.eval(src.withMimeType("application/x-sl")).get();
         if (result != null) {
             out.println(result);
         }
@@ -270,7 +270,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 long start = System.nanoTime();
                 /* Call the main entry point, without any arguments. */
                 try {
-                    result = main.invoke(null);
+                    result = main.invoke(null).get();
                     if (result != null) {
                         out.println(result);
                     }

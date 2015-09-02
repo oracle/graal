@@ -31,6 +31,7 @@ import com.oracle.truffle.api.vm.TruffleVM;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.Executors;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -47,12 +48,12 @@ public class AccessorTest {
 
     @Test
     public void canGetAccessToOwnLanguageInstance() throws Exception {
-        TruffleVM vm = TruffleVM.newVM().build();
+        TruffleVM vm = TruffleVM.newVM().executor(Executors.newSingleThreadExecutor()).build();
         TruffleVM.Language language = vm.getLanguages().get(L1);
         assertNotNull("L1 language is defined", language);
 
         Source s = Source.fromText("return nothing", "nothing").withMimeType(L1);
-        Object ret = vm.eval(s);
+        Object ret = vm.eval(s).get();
         assertNull("nothing is returned", ret);
 
         Object afterInitialization = findLanguageByClass(vm);
