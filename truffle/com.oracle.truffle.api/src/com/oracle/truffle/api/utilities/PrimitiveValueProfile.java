@@ -50,47 +50,48 @@ public class PrimitiveValueProfile extends ValueProfile {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Object profile(Object value) {
+    public <T> T profile(T v) {
+        Object value = v;
         Object snapshot = this.cachedValue;
         if (snapshot != GENERIC) {
             if (snapshot instanceof Byte) {
                 if (value instanceof Byte && (byte) snapshot == (byte) value) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Short) {
                 if (value instanceof Short && (short) snapshot == (short) value) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Integer) {
                 if (value instanceof Integer && (int) snapshot == (int) value) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Long) {
                 if (value instanceof Long && (long) snapshot == (long) value) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Float) {
                 if (value instanceof Float && exactCompare((float) snapshot, (float) value)) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Double) {
                 if (value instanceof Double && exactCompare((double) snapshot, (double) value)) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Boolean) {
                 if (value instanceof Boolean && (boolean) snapshot == (boolean) value) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot instanceof Character) {
                 if (value instanceof Character && (char) snapshot == (char) value) {
-                    return snapshot;
+                    return (T) snapshot;
                 }
             } else if (snapshot == value) {
-                return snapshot;
+                return (T) snapshot;
             }
             cacheMiss(value);
         }
-        return value;
+        return (T) value;
     }
 
     public byte profile(byte value) {

@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -33,102 +31,4 @@ abstract class ObjectAccessNode extends Node {
 
     public abstract Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments);
 
-}
-
-class UnresolvedObjectAccessNode extends ObjectAccessNode {
-
-    private static final int CACHE_SIZE = 8;
-    private int cacheLength = 1;
-
-    @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ForeignObjectAccessHeadNode nthParent = (ForeignObjectAccessHeadNode) NodeUtil.getNthParent(this, cacheLength);
-        ObjectAccessNode first = nthParent.getFirst();
-        if (cacheLength < CACHE_SIZE) {
-            CachedObjectAccessNode createCachedAccess = createCachedAccess(receiver, nthParent.getAccessTree(), first);
-            cacheLength++;
-            return first.replace(createCachedAccess).executeWith(frame, receiver, arguments);
-        } else {
-            return first.replace(createGenericAccess(nthParent.getAccessTree())).executeWith(frame, receiver, arguments);
-        }
-    }
-
-    private static CachedObjectAccessNode createCachedAccess(TruffleObject receiver, Message accessTree, ObjectAccessNode next) {
-        ForeignAccess fa = receiver.getForeignAccess();
-        final CallTarget ct = fa.access(accessTree);
-        if (ct == null) {
-            throw new IllegalArgumentException("Message " + accessTree + " not recognized by " + fa);
-        }
-        return new CachedObjectAccessNode(Truffle.getRuntime().createDirectCallNode(ct), next, fa);
-    }
-
-    private static GenericObjectAccessNode createGenericAccess(Message access) {
-        return new GenericObjectAccessNode(access);
-    }
-}
-
-class GenericObjectAccessNode extends ObjectAccessNode {
-
-    private final Message access;
-    @Child private IndirectCallNode indirectCallNode;
-
-    public GenericObjectAccessNode(Message access) {
-        this.access = access;
-        indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
-    }
-
-    public GenericObjectAccessNode(GenericObjectAccessNode prev) {
-        this(prev.access);
-    }
-
-    @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject truffleObject, Object[] arguments) {
-        final ForeignAccess fa = truffleObject.getForeignAccess();
-        final CallTarget ct = fa.access(access);
-        if (ct == null) {
-            throw messageNotRecognizedException(fa);
-        }
-        return indirectCallNode.call(frame, ct, ForeignAccessArguments.create(truffleObject, arguments));
-    }
-
-    @TruffleBoundary
-    private RuntimeException messageNotRecognizedException(final ForeignAccess fa) {
-        throw new IllegalStateException("Message " + access + " not recognized by " + fa);
-    }
-}
-
-class CachedObjectAccessNode extends ObjectAccessNode {
-    @Child private DirectCallNode callTarget;
-    @Child private ObjectAccessNode next;
-
-    private final ForeignAccess languageCheck;
-
-    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, ForeignAccess languageCheck) {
-        this.callTarget = callTarget;
-        this.next = next;
-        this.languageCheck = languageCheck;
-        this.callTarget.forceInlining();
-    }
-
-    protected CachedObjectAccessNode(CachedObjectAccessNode prev) {
-        this(prev.callTarget, prev.next, prev.languageCheck);
-    }
-
-    @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        return doAccess(frame, receiver, arguments);
-    }
-
-    private Object doAccess(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        if (languageCheck.canHandle(receiver)) {
-            return callTarget.call(frame, ForeignAccessArguments.create(receiver, arguments));
-        } else {
-            return doNext(frame, receiver, arguments);
-        }
-    }
-
-    private Object doNext(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        return next.executeWith(frame, receiver, arguments);
-    }
 }

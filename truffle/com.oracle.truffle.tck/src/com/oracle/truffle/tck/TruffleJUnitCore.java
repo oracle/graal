@@ -136,7 +136,7 @@ final class TruffleJUnitCore {
         junitCore.addListener(TruffleTextListener.createRunListener(listener));
         Request request;
         if (methodName == null) {
-            request = Request.classes(classes.toArray(new Class[0]));
+            request = Request.classes(classes.toArray(new Class<?>[0]));
             if (failFast) {
                 Runner runner = request.getRunner();
                 if (runner instanceof ParentRunner) {

@@ -524,7 +524,7 @@ public final class TruffleVM {
         }
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings("unchecked")
     void dispatch(Object ev) {
         Class type = ev.getClass();
         if (type == SuspendedEvent.class) {
@@ -544,7 +544,7 @@ public final class TruffleVM {
     void dispatchExecutionEvent(ExecutionEvent event) {
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings("unchecked")
     <Event> void dispatch(Class<Event> type, Event event) {
         for (EventConsumer handler : handlers) {
             if (handler.type == type) {

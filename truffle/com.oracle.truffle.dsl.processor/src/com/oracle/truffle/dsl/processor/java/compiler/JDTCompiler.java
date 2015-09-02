@@ -156,7 +156,7 @@ public class JDTCompiler extends AbstractCompiler {
         if (sortedFields != null) {
             sortedElements.addAll(Arrays.asList(sortedFields));
         }
-        final Object[] sortedTypes = (Object[]) method(binaryType, "getMemberTypes", new Class[0]);
+        final Object[] sortedTypes = (Object[]) method(binaryType, "getMemberTypes", new Class<?>[0]);
         if (sortedTypes != null) {
             sortedElements.addAll(Arrays.asList(sortedTypes));
         }
@@ -182,7 +182,7 @@ public class JDTCompiler extends AbstractCompiler {
             Class<?> elementClass = sortedElement.getClass();
             if (binaryMethod.isAssignableFrom(elementClass)) {
                 char[] selector = (char[]) method(sortedElement, "getSelector");
-                Object[] foundBindings = (Object[]) method(binding, "getMethods", new Class[]{char[].class}, selector);
+                Object[] foundBindings = (Object[]) method(binding, "getMethods", new Class<?>[]{char[].class}, selector);
                 if (foundBindings == null || foundBindings.length == 0) {
                     continue;
                 } else if (foundBindings.length == 1) {
@@ -199,13 +199,13 @@ public class JDTCompiler extends AbstractCompiler {
                 }
             } else if (binaryField.isAssignableFrom(elementClass)) {
                 char[] selector = (char[]) method(sortedElement, "getName");
-                Object foundField = method(binding, "getField", new Class[]{char[].class, boolean.class}, selector, true);
+                Object foundField = method(binding, "getField", new Class<?>[]{char[].class, boolean.class}, selector, true);
                 if (foundField != null) {
                     bindings.add(foundField);
                 }
             } else if (nestedType.isAssignableFrom(elementClass)) {
                 char[] selector = (char[]) method(sortedElement, "getSourceName");
-                Object foundType = method(binding, "getMemberType", new Class[]{char[].class}, selector);
+                Object foundType = method(binding, "getMemberType", new Class<?>[]{char[].class}, selector);
                 if (foundType != null) {
                     bindings.add(foundType);
                 }
@@ -221,8 +221,8 @@ public class JDTCompiler extends AbstractCompiler {
         Object lookupEnvironment = field(binding, "environment");
         Object compoundClassName = field(binding, "compoundName");
         Object nameEnvironment = field(lookupEnvironment, "nameEnvironment");
-        Object nameEnvironmentAnswer = method(nameEnvironment, "findType", new Class[]{char[][].class}, compoundClassName);
-        Object binaryType = method(nameEnvironmentAnswer, "getBinaryType", new Class[0]);
+        Object nameEnvironmentAnswer = method(nameEnvironment, "findType", new Class<?>[]{char[][].class}, compoundClassName);
+        Object binaryType = method(nameEnvironmentAnswer, "getBinaryType", new Class<?>[0]);
         return binaryType;
     }
 
