@@ -181,9 +181,9 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     private static boolean coverage = false;
 
     /* Small tools that can be installed for demonstration */
-//    private static NodeExecCounter nodeExecCounter = null;
-//    private static NodeExecCounter statementExecCounter = null;
-//    private static CoverageTracker coverageTracker = null;
+    // private static NodeExecCounter nodeExecCounter = null;
+    // private static NodeExecCounter statementExecCounter = null;
+    // private static CoverageTracker coverageTracker = null;
 
     /**
      * The main entry point. Use the mx command "mx sl" to run it with the correct class path setup.
@@ -455,43 +455,43 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     // TODO (mlvdv) remove the static hack when we no longer have the static demo variables
     private static void setupToolDemos() {
-//        if (statementCounts || coverage) {
-//            if (registeredASTProber == null) {
-//                final ASTProber newProber = new SLStandardASTProber();
-//                // This should be registered on the TruffleVM
-//                Probe.registerASTProber(newProber);
-//                registeredASTProber = newProber;
-//            }
-//        }
-//        if (nodeExecCounts) {
-//            nodeExecCounter = new NodeExecCounter();
-//            nodeExecCounter.install();
-//        }
-//
-//        if (statementCounts) {
-//            statementExecCounter = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
-//            statementExecCounter.install();
-//        }
-//
-//        if (coverage) {
-//            coverageTracker = new CoverageTracker();
-//            coverageTracker.install();
-//        }
+        // if (statementCounts || coverage) {
+        // if (registeredASTProber == null) {
+        // final ASTProber newProber = new SLStandardASTProber();
+        // // This should be registered on the TruffleVM
+        // Probe.registerASTProber(newProber);
+        // registeredASTProber = newProber;
+        // }
+        // }
+        // if (nodeExecCounts) {
+        // nodeExecCounter = new NodeExecCounter();
+        // nodeExecCounter.install();
+        // }
+        //
+        // if (statementCounts) {
+        // statementExecCounter = new NodeExecCounter(StandardSyntaxTag.STATEMENT);
+        // statementExecCounter.install();
+        // }
+        //
+        // if (coverage) {
+        // coverageTracker = new CoverageTracker();
+        // coverageTracker.install();
+        // }
     }
 
     private static void reportToolDemos() {
-//        if (nodeExecCounter != null) {
-//            nodeExecCounter.print(System.out);
-//            nodeExecCounter.dispose();
-//        }
-//        if (statementExecCounter != null) {
-//            statementExecCounter.print(System.out);
-//            statementExecCounter.dispose();
-//        }
-//        if (coverageTracker != null) {
-//            coverageTracker.print(System.out);
-//            coverageTracker.dispose();
-//        }
+        // if (nodeExecCounter != null) {
+        // nodeExecCounter.print(System.out);
+        // nodeExecCounter.dispose();
+        // }
+        // if (statementExecCounter != null) {
+        // statementExecCounter.print(System.out);
+        // statementExecCounter.dispose();
+        // }
+        // if (coverageTracker != null) {
+        // coverageTracker.print(System.out);
+        // coverageTracker.dispose();
+        // }
     }
 
     public Node createFindContextNode0() {
