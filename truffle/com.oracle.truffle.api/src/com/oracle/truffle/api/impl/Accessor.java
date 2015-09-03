@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.*;
-import java.util.*;
-
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.debug.*;
@@ -34,6 +31,7 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.*;
+import java.io.*;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
@@ -152,22 +150,6 @@ public abstract class Accessor {
 
     protected DebugSupportProvider getDebugSupport(TruffleLanguage<?> l) {
         return API.getDebugSupport(l);
-    }
-
-    private static final SymbolInvoker INVOKER;
-
-    static {
-        SymbolInvoker singleton = null;
-        for (SymbolInvoker si : ServiceLoader.load(SymbolInvoker.class)) {
-            assert singleton == null : "More than one SymbolInvoker found: " + singleton + ", " + si;
-            singleton = si;
-        }
-        assert singleton != null : "No SymbolInvoker found";
-        INVOKER = singleton;
-    }
-
-    protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object obj, Object[] args) throws IOException {
-        return INVOKER.createCallTarget(lang, obj, args);
     }
 
     protected Class<? extends TruffleLanguage> findLanguage(RootNode n) {

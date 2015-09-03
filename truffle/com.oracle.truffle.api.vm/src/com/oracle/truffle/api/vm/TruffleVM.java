@@ -639,11 +639,11 @@ public final class TruffleVM {
                 for (;;) {
                     try {
                         if (target == null) {
-                            target = SPI.createCallTarget(language, result[0], arr.toArray());
+                            target = SymbolInvokerImpl.createCallTarget(language, result[0], arr.toArray());
                         }
                         res[0] = target.call(arr.toArray());
                         break;
-                    } catch (SymbolInvoker.ArgumentsMishmashException ex) {
+                    } catch (ArgumentsMishmashException ex) {
                         target = null;
                     }
                 }
@@ -840,11 +840,6 @@ public final class TruffleVM {
         @Override
         protected Object languageGlobal(TruffleLanguage.Env env) {
             return super.languageGlobal(env);
-        }
-
-        @Override
-        protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object obj, Object[] args) throws IOException {
-            return super.createCallTarget(lang, obj, args);
         }
 
         @Override

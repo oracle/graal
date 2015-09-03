@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
-import java.io.*;
+final class ArgumentsMishmashException extends IllegalArgumentException {
+    static final long serialVersionUID = 1L;
 
-/**
- * XXX: Temporary class to make unit tests pass without messing with Message implementations and
- * associated nodes too much.
- */
-public abstract class SymbolInvoker {
-    protected abstract CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... args) throws IOException;
-
-    public static final class ArgumentsMishmashException extends IllegalArgumentException {
-        static final long serialVersionUID = 1L;
-
-        public ArgumentsMishmashException() {
-        }
-
-        @Override
-        public synchronized Throwable fillInStackTrace() {
-            return this;
-        }
+    public ArgumentsMishmashException() {
     }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return this;
+    }
+
 }

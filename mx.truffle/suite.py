@@ -49,7 +49,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api",
+        "com.oracle.truffle.api.interop",
       ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",

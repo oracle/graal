@@ -22,22 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.impl;
-
-import java.io.*;
+package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.*;
+import java.io.*;
 
-public final class SymbolInvokerImpl extends SymbolInvoker {
+final class SymbolInvokerImpl {
     @SuppressWarnings({"unchecked", "rawtypes"})
-    @Override
-    protected CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
+    static CallTarget createCallTarget(TruffleLanguage<?> lang, Object symbol, Object... arr) throws IOException {
         Class<? extends TruffleLanguage<?>> type;
         if (lang != null) {
             type = (Class) lang.getClass();
@@ -54,7 +51,7 @@ public final class SymbolInvokerImpl extends SymbolInvoker {
         return Truffle.getRuntime().createCallTarget(symbolNode);
     }
 
-    private final class ConstantRootNode extends RootNode {
+    private static final class ConstantRootNode extends RootNode {
 
         private final Object value;
 
