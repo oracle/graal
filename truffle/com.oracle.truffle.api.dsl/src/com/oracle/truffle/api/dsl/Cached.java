@@ -71,7 +71,7 @@ import com.oracle.truffle.api.utilities.*;
  * </p>
  *
  * <pre>
- * @NodeChild("operand")
+ * {@link NodeChild @NodeChild}("operand")
  * abstract TestNode extends Node {
  *   abstract void execute(Object operandValue);
  *   // ... example here ...
@@ -86,7 +86,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  *  &#064;Specialization
- *  void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
+ *  void doCached(int operand, {@code @Cached}(&quot;operand&quot;) int cachedOperand) {
  *      CompilerAsserts.compilationConstant(cachedOperand);
  *      ...
  *  }
@@ -112,7 +112,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  * &#064;Specialization(guards = &quot;operand == cachedOperand&quot;)
- * void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
+ * void doCached(int operand, {@code @Cached}(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
@@ -140,7 +140,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <code>
  * &#064;Specialization(guards = &quot;operand == cachedOperand&quot;)
- * void doCached(int operand, @Cached(&quot;operand&quot;) int cachedOperand) {
+ * void doCached(int operand, {@code @Cached}(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
  *    ...
  * }
@@ -173,7 +173,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  * &#064;Specialization
- * void s(int operand, @Cached(&quot;transformLocal(operand)&quot;) int cachedOperand) {
+ * void s(int operand, {@code @Cached}(&quot;transformLocal(operand)&quot;) int cachedOperand) {
  * }
  *
  * int transformLocal(int operand) {
@@ -188,7 +188,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  * &#064;Specialization
- * void s(Object operand, @Cached(&quot;new()&quot;) OtherNode someNode) {
+ * void s(Object operand, {@code @Cached}(&quot;new()&quot;) OtherNode someNode) {
  *     someNode.execute(operand);
  * }
  *
@@ -209,7 +209,7 @@ import com.oracle.truffle.api.utilities.*;
  *
  * <pre>
  * &#064;Specialization
- * void s(int operand, @Cached(&quot;create()&quot;) BranchProfile profile) {
+ * void s(int operand, {@code @Cached}(&quot;create()&quot;) BranchProfile profile) {
  * }
  * </pre>
  *
