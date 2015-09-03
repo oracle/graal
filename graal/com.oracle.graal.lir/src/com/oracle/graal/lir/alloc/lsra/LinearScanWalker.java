@@ -80,12 +80,11 @@ class LinearScanWalker extends IntervalWalker {
         return allocator.blockForId(opId);
     }
 
-    @SuppressWarnings("rawtypes")
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();
-        spillIntervals = Util.uncheckedCast(new List[allocator.getRegisters().length]);
+        spillIntervals = Util.uncheckedCast(new List<?>[allocator.getRegisters().length]);
         for (int i = 0; i < allocator.getRegisters().length; i++) {
             spillIntervals[i] = EMPTY_LIST;
         }

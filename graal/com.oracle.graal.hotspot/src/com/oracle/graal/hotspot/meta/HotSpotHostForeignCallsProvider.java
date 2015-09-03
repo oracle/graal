@@ -89,7 +89,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         return arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"}) private static final EnumMap<Kind, ForeignCallDescriptor>[][] arraycopyDescriptors = new EnumMap[2][2];
+    @SuppressWarnings({"unchecked"}) private static final EnumMap<Kind, ForeignCallDescriptor>[][] arraycopyDescriptors = (EnumMap<Kind, ForeignCallDescriptor>[][]) new EnumMap<?, ?>[2][2];
 
     private static final ForeignCallDescriptor[][] uninitObjectArraycopyDescriptors = new ForeignCallDescriptor[2][2];
     private static final ForeignCallDescriptor[] checkcastArraycopyDescriptors = new ForeignCallDescriptor[2];

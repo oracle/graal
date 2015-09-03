@@ -81,12 +81,11 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
         return allocator.blockForId(opId);
     }
 
-    @SuppressWarnings("rawtypes")
     TraceLinearScanWalker(TraceLinearScan allocator, TraceInterval unhandledFixedFirst, TraceInterval unhandledAnyFirst) {
         super(allocator, unhandledFixedFirst, unhandledAnyFirst);
 
         moveResolver = allocator.createMoveResolver();
-        spillIntervals = Util.uncheckedCast(new List[allocator.getRegisters().length]);
+        spillIntervals = Util.uncheckedCast(new List<?>[allocator.getRegisters().length]);
         for (int i = 0; i < allocator.getRegisters().length; i++) {
             spillIntervals[i] = EMPTY_LIST;
         }
