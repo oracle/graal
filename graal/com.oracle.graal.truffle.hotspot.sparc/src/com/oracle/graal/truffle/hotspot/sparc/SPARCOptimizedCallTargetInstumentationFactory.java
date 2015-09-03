@@ -29,7 +29,6 @@ import static jdk.internal.jvmci.code.CallingConvention.Type.*;
 import static jdk.internal.jvmci.meta.Kind.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
 import jdk.internal.jvmci.service.*;
 
 import com.oracle.graal.asm.*;
@@ -68,11 +67,6 @@ public class SPARCOptimizedCallTargetInstumentationFactory implements OptimizedC
                 }
             }
         };
-    }
-
-    public void setInstrumentedMethod(ResolvedJavaMethod method) {
-        HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
-        hsMethod.setNotInlineable();
     }
 
     public String getArchitecture() {

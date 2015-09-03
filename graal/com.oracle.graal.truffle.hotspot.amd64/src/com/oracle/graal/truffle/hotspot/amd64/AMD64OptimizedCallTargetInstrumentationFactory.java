@@ -67,11 +67,6 @@ public class AMD64OptimizedCallTargetInstrumentationFactory implements Optimized
         };
     }
 
-    public void setInstrumentedMethod(ResolvedJavaMethod method) {
-        HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
-        hsMethod.setNotInlineable();
-    }
-
     public String getArchitecture() {
         return "AMD64";
     }

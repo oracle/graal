@@ -79,7 +79,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
 
     private HotSpotTruffleRuntime() {
-        installOptimizedCallTargetCallMethod();
+        setDontInlineCallBoundaryMethod();
         lookupCallMethods(getGraalProviders().getMetaAccess());
 
         installDefaultListeners();
@@ -147,6 +147,17 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return createCallTargetImpl(source, root);
     }
 
+    public static void setDontInlineCallBoundaryMethod() {
+        Providers providers = getGraalProviders();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+                ((HotSpotResolvedJavaMethod) method).setNotInlineable();
+            }
+        }
+    }
+
     @SuppressWarnings("try")
     public static void installOptimizedCallTargetCallMethod() {
         Providers providers = getGraalProviders();
@@ -165,10 +176,9 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         }
     }
 
-    private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch, ResolvedJavaMethod method) {
+    private static CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
         for (OptimizedCallTargetInstrumentationFactory factory : Services.load(OptimizedCallTargetInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
-                factory.setInstrumentedMethod(method);
                 return factory;
             }
         }
@@ -193,7 +203,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(suitesProvider);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
-        CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName(), javaMethod);
+        CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName());
         return compileGraph(graph, cc, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, getProfilingInfo(graph), suites, lirSuites, new CompilationResult(), factory);
     }
 
