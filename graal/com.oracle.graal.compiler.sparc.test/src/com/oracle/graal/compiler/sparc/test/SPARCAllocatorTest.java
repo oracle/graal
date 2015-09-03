@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.sparc.test;
 
+import static com.oracle.graal.compiler.common.BackendOptions.UserOptions.*;
 import static com.oracle.graal.compiler.common.GraalOptions.*;
 import static org.junit.Assume.*;
 import jdk.internal.jvmci.sparc.*;
@@ -36,6 +37,7 @@ public class SPARCAllocatorTest extends AllocatorTest {
     public void checkSPARC() {
         assumeTrue("skipping SPARC specific test", getTarget().arch instanceof SPARC);
         assumeTrue("RegisterPressure is set -> skip", RegisterPressure.getValue() == null);
+        assumeTrue("TraceRA is set -> skip", !TraceRA.getValue());
     }
 
     @Test
