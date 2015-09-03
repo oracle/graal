@@ -791,7 +791,8 @@ public final class TruffleVM {
 
     private static class SPIAccessor extends Accessor {
         @Override
-        public Object importSymbol(TruffleVM vm, TruffleLanguage<?> ownLang, String globalName) {
+        public Object importSymbol(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
+            TruffleVM vm = (TruffleVM) vmObj;
             Object g = vm.globals.get(globalName);
             if (g != null) {
                 return g;
@@ -821,7 +822,8 @@ public final class TruffleVM {
         }
 
         @Override
-        public Env attachEnv(TruffleVM vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+        public Env attachEnv(Object obj, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+            TruffleVM vm = (TruffleVM) obj;
             return super.attachEnv(vm, language, stdOut, stdErr, stdIn);
         }
 
@@ -861,17 +863,20 @@ public final class TruffleVM {
         }
 
         @Override
-        protected Env findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+        protected Env findLanguage(Object obj, Class<? extends TruffleLanguage> languageClass) {
+            TruffleVM vm = (TruffleVM) obj;
             return vm.findEnv(languageClass);
         }
 
         @Override
-        protected Closeable executionStart(TruffleVM aThis, Debugger[] fillIn, Source s) {
-            return super.executionStart(aThis, fillIn, s);
+        protected Closeable executionStart(Object obj, Debugger[] fillIn, Source s) {
+            TruffleVM vm = (TruffleVM) obj;
+            return super.executionStart(vm, fillIn, s);
         }
 
         @Override
-        protected void dispatchEvent(TruffleVM vm, Object event) {
+        protected void dispatchEvent(Object obj, Object event) {
+            TruffleVM vm = (TruffleVM) obj;
             vm.dispatch(event);
         }
     } // end of SPIAccessor

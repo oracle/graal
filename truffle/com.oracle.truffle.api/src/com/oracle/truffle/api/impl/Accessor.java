@@ -34,7 +34,6 @@ import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.api.vm.*;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
@@ -48,7 +47,7 @@ public abstract class Accessor {
     private static Accessor NODES;
     private static Accessor INSTRUMENT;
     private static Accessor DEBUG;
-    private static final ThreadLocal<TruffleVM> CURRENT_VM = new ThreadLocal<>();
+    private static final ThreadLocal<Object> CURRENT_VM = new ThreadLocal<>();
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -127,7 +126,7 @@ public abstract class Accessor {
         }
     }
 
-    protected Env attachEnv(TruffleVM vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
+    protected Env attachEnv(Object vm, TruffleLanguage<?> language, Writer stdOut, Writer stdErr, Reader stdIn) {
         return API.attachEnv(vm, language, stdOut, stdErr, stdIn);
     }
 
@@ -135,7 +134,7 @@ public abstract class Accessor {
         return API.eval(l, s);
     }
 
-    protected Object importSymbol(TruffleVM vm, TruffleLanguage<?> queryingLang, String globalName) {
+    protected Object importSymbol(Object vm, TruffleLanguage<?> queryingLang, String globalName) {
         return SPI.importSymbol(vm, queryingLang, globalName);
     }
 
@@ -179,8 +178,8 @@ public abstract class Accessor {
         return INSTRUMENT.findLanguage(probe);
     }
 
-    protected Env findLanguage(TruffleVM known, Class<? extends TruffleLanguage> languageClass) {
-        TruffleVM vm;
+    protected Env findLanguage(Object known, Class<? extends TruffleLanguage> languageClass) {
+        Object vm;
         if (known == null) {
             vm = CURRENT_VM.get();
             if (vm == null) {
@@ -192,12 +191,12 @@ public abstract class Accessor {
         return SPI.findLanguage(vm, languageClass);
     }
 
-    private static Reference<TruffleVM> previousVM = new WeakReference<>(null);
+    private static Reference<Object> previousVM = new WeakReference<>(null);
     private static Assumption oneVM = Truffle.getRuntime().createAssumption();
 
-    protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
+    protected Closeable executionStart(Object vm, Debugger[] fillIn, Source s) {
         final Closeable debugClose = DEBUG.executionStart(vm, fillIn, s);
-        final TruffleVM prev = CURRENT_VM.get();
+        final Object prev = CURRENT_VM.get();
         if (!(vm == previousVM.get())) {
             previousVM = new WeakReference<>(vm);
             oneVM.invalidate();
@@ -215,7 +214,7 @@ public abstract class Accessor {
         return new ContextCloseable();
     }
 
-    protected void dispatchEvent(TruffleVM vm, Object event) {
+    protected void dispatchEvent(Object vm, Object event) {
         SPI.dispatchEvent(vm, event);
     }
 

@@ -34,13 +34,14 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.api.vm.TruffleVM;
 
 /**
- * Represents debugging related state of a {@link TruffleVM}. Instance of this class is delivered
- * via {@link SuspendedEvent#getDebugger()} and {@link ExecutionEvent#getDebugger()} events, once
- * {@link com.oracle.truffle.api.debug debugging is turned on}.
+ * Represents debugging related state of a {@link com.oracle.truffle.api.vm.TruffleVM}. Instance of
+ * this class is delivered via {@link SuspendedEvent#getDebugger()} and
+ * {@link ExecutionEvent#getDebugger()} events, once {@link com.oracle.truffle.api.debug debugging
+ * is turned on}.
  */
+@SuppressWarnings("javadoc")
 public final class Debugger {
 
     private static final boolean TRACE = false;
@@ -57,7 +58,7 @@ public final class Debugger {
         }
     }
 
-    private final TruffleVM vm;
+    private final Object vm;
     private Source lastSource;
 
     interface BreakpointCallback {
@@ -91,7 +92,7 @@ public final class Debugger {
      */
     private DebugExecutionContext debugContext;
 
-    Debugger(TruffleVM vm) {
+    Debugger(Object vm) {
         this.vm = vm;
 
         Source.setFileCaching(true);
@@ -121,7 +122,7 @@ public final class Debugger {
         this.tagBreaks = new TagBreakpointFactory(this, breakpointCallback, warningLog);
     }
 
-    TruffleVM vm() {
+    Object vm() {
         return vm;
     }
 
@@ -794,7 +795,7 @@ public final class Debugger {
     @SuppressWarnings("rawtypes")
     private static final class AccessorDebug extends Accessor {
         @Override
-        protected Closeable executionStart(TruffleVM vm, Debugger[] fillIn, Source s) {
+        protected Closeable executionStart(Object vm, Debugger[] fillIn, Source s) {
             final Debugger d;
             if (fillIn[0] == null) {
                 d = fillIn[0] = new Debugger(vm);
@@ -816,7 +817,7 @@ public final class Debugger {
         }
 
         @Override
-        protected TruffleLanguage.Env findLanguage(TruffleVM vm, Class<? extends TruffleLanguage> languageClass) {
+        protected TruffleLanguage.Env findLanguage(Object vm, Class<? extends TruffleLanguage> languageClass) {
             return super.findLanguage(vm, languageClass);
         }
 
@@ -831,7 +832,7 @@ public final class Debugger {
         }
 
         @Override
-        protected void dispatchEvent(TruffleVM vm, Object event) {
+        protected void dispatchEvent(Object vm, Object event) {
             super.dispatchEvent(vm, event);
         }
     }

@@ -24,12 +24,9 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.instrument.*;
-import com.oracle.truffle.api.vm.TruffleVM;
-import com.oracle.truffle.api.vm.TruffleVM.Builder;
-
 /**
- * This event is delivered to all {@link Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
+ * This event is delivered to all
+ * {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
  * registered event handlers} when an execution is about to be started. The event is the intended
  * place to initialize debugger - e.g. set
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)
@@ -37,9 +34,10 @@ import com.oracle.truffle.api.vm.TruffleVM.Builder;
  * occurrence}. Methods in this event can only be used while the handlers process the event. Then
  * the state of the event becomes invalid and subsequent calls to the event methods yield
  * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
- * keep it to further manipulate with debugging capabilities of the {@link TruffleVM} when it is
- * running.
+ * keep it to further manipulate with debugging capabilities of the
+ * {@link com.oracle.truffle.api.vm.TruffleVM} when it is running.
  */
+@SuppressWarnings("javadoc")
 public final class ExecutionEvent {
     private final Debugger debugger;
 
@@ -50,10 +48,10 @@ public final class ExecutionEvent {
     /**
      * Debugger associated with the execution. This debugger remains valid after the event is
      * processed, it is possible and suggested to keep a reference to it and use it any time later
-     * when evaluating sources in the {@link TruffleVM}.
+     * when evaluating sources in the {@link com.oracle.truffle.api.vm.TruffleVM}.
      *
      * @return instance of debugger associated with the just starting execution and any subsequent
-     *         ones in the same {@link TruffleVM}.
+     *         ones in the same {@link com.oracle.truffle.api.vm.TruffleVM}.
      */
     public Debugger getDebugger() {
         return debugger;
@@ -82,8 +80,9 @@ public final class ExecutionEvent {
      * <li>User breakpoints are disabled.</li>
      * <li>Execution will continue until either:
      * <ol>
-     * <li>execution arrives at a node with the tag {@linkplain StandardSyntaxTag#STATEMENT
-     * STATMENT}, <strong>or:</strong></li>
+     * <li>execution arrives at a node with the tag
+     * {@linkplain com.oracle.truffle.api.instrument.StandardSyntaxTag#STATEMENT STATMENT},
+     * <strong>or:</strong></li>
      * <li>execution completes.</li>
      * </ol>
      * <li>StepInto mode persists only through one resumption (i.e. {@code stepIntoCount} steps),

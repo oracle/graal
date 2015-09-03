@@ -31,15 +31,14 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.TruffleVM;
-import com.oracle.truffle.api.vm.TruffleVM.Builder;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * This event is delivered to all {@link Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
+ * This event is delivered to all
+ * {@link com.oracle.truffle.api.vm.TruffleVM.Builder#onEvent(com.oracle.truffle.api.vm.EventConsumer)
  * registered event handlers} when an execution is suspended on a
  * {@link Debugger#setLineBreakpoint(int, com.oracle.truffle.api.source.LineLocation, boolean)
  * breakpoint} or during {@link #prepareStepInto(int) stepping}. Methods in this event can only be
@@ -47,6 +46,7 @@ import java.util.List;
  * subsequent calls to the event methods yield {@link IllegalStateException}. One can call
  * {@link #getDebugger()} and keep reference to it for as long as necessary.
  */
+@SuppressWarnings("javadoc")
 public final class SuspendedEvent {
     private final List<String> recentWarnings;
     private final MaterializedFrame mFrame;
@@ -83,10 +83,10 @@ public final class SuspendedEvent {
     /**
      * Debugger associated with the just suspended execution. This debugger remains valid after the
      * event is processed, it is possible and suggested to keep a reference to it and use it any
-     * time later when evaluating sources in the {@link TruffleVM}.
+     * time later when evaluating sources in the {@link com.oracle.truffle.api.vm.TruffleVM}.
      *
      * @return instance of debugger associated with the just suspended execution and any subsequent
-     *         ones in the same {@link TruffleVM}.
+     *         ones in the same {@link com.oracle.truffle.api.vm.TruffleVM}.
      */
     public Debugger getDebugger() {
         return debugger;
@@ -105,7 +105,8 @@ public final class SuspendedEvent {
     }
 
     /**
-     * Gets the stack frames from the currently halted {@link TruffleVM} execution.
+     * Gets the stack frames from the currently halted {@link com.oracle.truffle.api.vm.TruffleVM}
+     * execution.
      *
      * @return list of stack frames
      */

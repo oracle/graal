@@ -62,7 +62,7 @@ public class AccessorTest {
     }
 
     Object findLanguageByClass(TruffleVM vm) throws IllegalAccessException, NoSuchMethodException, SecurityException, IllegalArgumentException, InvocationTargetException, NoSuchFieldException {
-        Method find = Accessor.class.getDeclaredMethod("findLanguage", TruffleVM.class, Class.class);
+        Method find = Accessor.class.getDeclaredMethod("findLanguage", Object.class, Class.class);
         find.setAccessible(true);
         TruffleLanguage.Env env = (TruffleLanguage.Env) find.invoke(API, vm, ExportImportLanguage1.class);
         Field f = env.getClass().getDeclaredField("langCtx");

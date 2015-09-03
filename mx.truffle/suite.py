@@ -43,7 +43,16 @@ suite = {
       "sourceDirs" : ["src"],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
-      "netbeans.project.properties" : "main.class=com.oracle.truffle.api.impl.Accessor",
+    },
+
+    "com.oracle.truffle.api.vm" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api",
+      ],
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
     },
 
     "com.oracle.truffle.api.test" : {
@@ -51,6 +60,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.vm",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -132,8 +142,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.dsl",
-        "com.oracle.truffle.api.interop",
+        "TRUFFLE_API",
         "mx:JUNIT"
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -145,7 +154,7 @@ suite = {
     "com.oracle.truffle.tools" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api"],
+      "dependencies" : ["TRUFFLE_API"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "Truffle,Tools",
@@ -228,8 +237,8 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.api.dsl",
+        "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
-        "com.oracle.truffle.tools"
       ],
       "distDependencies" : [
       ],
@@ -286,6 +295,7 @@ suite = {
       "javaCompliance" : "1.7",
       "dependencies" : [
         "com.oracle.truffle.tools.debug.shell",
+        "com.oracle.truffle.tools"
       ],
       "exclude" : ["JLINE"],
       "distDependencies" : [
