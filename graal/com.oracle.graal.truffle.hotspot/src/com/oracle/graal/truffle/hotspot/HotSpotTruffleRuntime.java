@@ -77,7 +77,6 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private final ExecutorService compileQueue;
 
     private final Map<RootCallTarget, Void> callTargets = Collections.synchronizedMap(new WeakHashMap<RootCallTarget, Void>());
-    private static final long THREAD_EETOP_OFFSET = eetopOffset();
 
     private HotSpotTruffleRuntime() {
         installOptimizedCallTargetCallMethod();
@@ -315,30 +314,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
         if (TraceTruffleTransferToInterpreter.getValue()) {
-            long thread = UnsafeAccess.unsafe.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset;
-            boolean deoptimized = UnsafeAccess.unsafe.getByte(pendingTransferToInterpreterAddress) != 0;
-            if (deoptimized) {
-                UnsafeAccess.unsafe.putByte(pendingTransferToInterpreterAddress, (byte) 0);
-
-                logTransferToInterpreter();
-            }
-        }
-    }
-
-    private static void logTransferToInterpreter() {
-        final int skip = 2;
-        final int limit = TraceTruffleStackTraceLimit.getValue();
-        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-        String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
-        TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
-    }
-
-    private static long eetopOffset() {
-        try {
-            return UnsafeAccess.unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
-        } catch (Exception e) {
-            throw new JVMCIError(e);
+            TraceTraceTransferToInterpreterHelper.traceTransferToInterpreter();
         }
     }
 
@@ -360,5 +336,36 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
             return null;
         }
         return new HotSpotNativeFunctionInterface(HotSpotGraalRuntime.runtime().getHostProviders(), factory, backend, config.dllLoad, config.dllLookup, config.rtldDefault);
+    }
+
+    private static class TraceTraceTransferToInterpreterHelper {
+        private static final long THREAD_EETOP_OFFSET;
+
+        static {
+            try {
+                THREAD_EETOP_OFFSET = UnsafeAccess.unsafe.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            } catch (Exception e) {
+                throw new JVMCIError(e);
+            }
+        }
+
+        static void traceTransferToInterpreter() {
+            long thread = UnsafeAccess.unsafe.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
+            long pendingTransferToInterpreterAddress = thread + HotSpotGraalRuntime.runtime().getConfig().pendingTransferToInterpreterOffset;
+            boolean deoptimized = UnsafeAccess.unsafe.getByte(pendingTransferToInterpreterAddress) != 0;
+            if (deoptimized) {
+                UnsafeAccess.unsafe.putByte(pendingTransferToInterpreterAddress, (byte) 0);
+
+                logTransferToInterpreter();
+            }
+        }
+
+        private static void logTransferToInterpreter() {
+            final int skip = 3;
+            final int limit = TraceTruffleStackTraceLimit.getValue();
+            StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+            String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
+            TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
+        }
     }
 }
