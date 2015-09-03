@@ -40,11 +40,6 @@
  */
 package com.oracle.truffle.sl;
 
-import java.io.*;
-import java.math.*;
-import java.util.*;
-import java.util.Scanner;
-
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.dsl.*;
@@ -63,7 +58,14 @@ import com.oracle.truffle.sl.nodes.instrument.*;
 import com.oracle.truffle.sl.nodes.local.*;
 import com.oracle.truffle.sl.parser.*;
 import com.oracle.truffle.sl.runtime.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -137,19 +139,16 @@ import java.nio.file.Path;
  * argument and adds them to the function registry. Functions that are already defined are replaced
  * with the new version.
  * </ul>
- *
- * <p>
- * <b>Tools:</b><br>
- * The use of some of Truffle's support for developer tools (based on the Truffle Instrumentation
- * Framework) are demonstrated in this file, for example:
- * <ul>
- * <li>a {@linkplain NodeExecCounter counter for node executions}, tabulated by node type; and</li>
- * <li>a simple {@linkplain CoverageTracker code coverage engine}.</li>
- * </ul>
- * In each case, the tool is enabled if a corresponding local boolean variable in this file is set
- * to {@code true}. Results are printed at the end of the execution using each tool's
- * <em>default printer</em>.
- *
+ */
+
+/*
+ * 
+ * <p> <b>Tools:</b><br> The use of some of Truffle's support for developer tools (based on the
+ * Truffle Instrumentation Framework) are demonstrated in this file, for example: <ul> <li>a
+ * {@linkplain NodeExecCounter counter for node executions}, tabulated by node type; and</li> <li>a
+ * simple {@linkplain CoverageTracker code coverage engine}.</li> </ul> In each case, the tool is
+ * enabled if a corresponding local boolean variable in this file is set to {@code true}. Results
+ * are printed at the end of the execution using each tool's <em>default printer</em>.
  */
 @TruffleLanguage.Registration(name = "SL", version = "0.5", mimeType = "application/x-sl")
 public final class SLLanguage extends TruffleLanguage<SLContext> {
@@ -171,14 +170,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         }
         return context;
     }
-
-    // TODO (mlvdv) command line options
-    /* Enables demonstration of per-type tabulation of node execution counts */
-    private static boolean nodeExecCounts = false;
-    /* Enables demonstration of per-line tabulation of STATEMENT node execution counts */
-    private static boolean statementCounts = false;
-    /* Enables demonstration of per-line tabulation of STATEMENT coverage */
-    private static boolean coverage = false;
 
     /* Small tools that can be installed for demonstration */
     // private static NodeExecCounter nodeExecCounter = null;
