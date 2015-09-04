@@ -822,7 +822,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (alias instanceof VirtualObjectNode) {
                     VirtualObjectNode virtual = (VirtualObjectNode) alias;
                     virtualObjs[i] = virtual;
-                    if (states[i].getObjectState(virtual).isVirtual()) {
+                    ObjectState objectState = states[i].getObjectStateOptional(virtual);
+                    if (objectState == null) {
+                        assert getPhiValueAt(phi, i) instanceof PhiNode : "this should only happen for phi nodes";
+                        return false;
+                    }
+                    if (objectState.isVirtual()) {
                         if (virtualObjs[0] != alias) {
                             uniqueVirtualObject = false;
                         }
