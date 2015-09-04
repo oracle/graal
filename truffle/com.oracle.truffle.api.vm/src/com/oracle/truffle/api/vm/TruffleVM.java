@@ -441,6 +441,7 @@ public final class TruffleVM {
         return new Symbol(lang[0], result, ready);
     }
 
+    @SuppressWarnings("try")
     private void evalImpl(Debugger[] fillIn, Source s, Object[] result, TruffleLanguage<?> l, CountDownLatch ready) {
         try (Closeable d = SPI.executionStart(this, fillIn, s)) {
             if (debugger == null) {
@@ -621,6 +622,7 @@ public final class TruffleVM {
             return new Symbol(language, res, done);
         }
 
+        @SuppressWarnings("try")
         private void invokeImpl(Debugger[] fillIn, Object thiz, Object[] args, Object[] res, CountDownLatch done) {
             try (final Closeable c = SPI.executionStart(TruffleVM.this, fillIn, null)) {
                 if (debugger == null) {
