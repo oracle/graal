@@ -10,7 +10,7 @@ suite = {
   },
   "repositories" : {
     "lafo-snapshots" : {
-      "url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots",
+      "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "licenses" : ["GPLv2-CPE", "UPL"]
     },
   },
@@ -22,7 +22,7 @@ suite = {
     "JLINE" : {
       "path" : "lib/jline-2.11.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/jline-2.11.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline-2.11.jar",
         "https://search.maven.org/remotecontent?filepath=jline/jline/2.11/jline-2.11.jar",
       ],
       "sha1" : "9504d5e2da5d78237239c5226e8200ec21182040",
