@@ -24,14 +24,13 @@
  */
 package com.oracle.truffle.api;
 
-import java.io.*;
-import java.lang.annotation.*;
-
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.instrument.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.*;
+import java.io.*;
+import java.lang.annotation.*;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -217,6 +216,8 @@ public abstract class TruffleLanguage<C> {
 
         public LangCtx(TruffleLanguage<C> lang, Env env) {
             this.lang = lang;
+            // following call verifies that Accessor.CURRENT_VM is provided
+            assert API.findLanguage(null, null) == null;
             this.ctx = lang.createContext(env);
         }
 

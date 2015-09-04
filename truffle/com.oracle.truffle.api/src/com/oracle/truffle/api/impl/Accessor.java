@@ -167,6 +167,9 @@ public abstract class Accessor {
             if (vm == null) {
                 throw new IllegalStateException();
             }
+            if (languageClass == null) {
+                return null;
+            }
         } else {
             vm = known;
         }
