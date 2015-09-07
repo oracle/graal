@@ -22,18 +22,22 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.MetaAccessProvider;
+import jdk.internal.jvmci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.graphbuilderconf.*;
-import com.oracle.graal.hotspot.phases.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.replacements.StandardGraphBuilderPlugins.BoxPlugin;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.compiler.common.GraalOptions;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.graphbuilderconf.GraphBuilderContext;
+import com.oracle.graal.graphbuilderconf.InvocationPlugin;
+import com.oracle.graal.graphbuilderconf.InvocationPlugins;
+import com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase;
+import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FrameState;
+import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.replacements.nodes.MacroNode;
 
 /**
  * Extension of {@link InvocationPlugins} that disables plugins based on runtime configuration.
@@ -54,13 +58,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 return;
             }
         }
-        if (config.useHeapProfiler) {
-            if (plugin instanceof BoxPlugin) {
-                // The heap profiler wants to see all allocations related to boxing
-                return;
-            }
-        }
-
         super.register(plugin, declaringClass, name, argumentTypes);
     }
 

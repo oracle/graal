@@ -93,7 +93,7 @@ public class HotSpotGraphBuilderPlugins {
         registerStableOptionPlugins(invocationPlugins, snippetReflection);
         registerAESPlugins(invocationPlugins, config);
         registerCRC32Plugins(invocationPlugins, config);
-        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins, !config.useHeapProfiler);
+        StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, invocationPlugins);
 
         return plugins;
     }

@@ -62,7 +62,7 @@ public class StandardGraphBuilderPlugins {
     }
     // @formatter:on
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean useBoxingPlugins) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins);
@@ -79,9 +79,7 @@ public class StandardGraphBuilderPlugins {
         registerUnsafePlugins(plugins);
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
-        if (useBoxingPlugins) {
-            registerBoxingPlugins(plugins);
-        }
+        registerBoxingPlugins(plugins);
         if (Options.UseBlackholeSubstitution.getValue()) {
             registerJMHBlackholePlugins(plugins);
         }
