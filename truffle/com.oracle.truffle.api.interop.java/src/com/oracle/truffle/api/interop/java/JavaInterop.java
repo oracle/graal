@@ -290,7 +290,7 @@ public final class JavaInterop {
             String name = method.getName();
             Message message = findMessage(method.getAnnotation(MethodMessage.class));
             if (message == Message.WRITE) {
-                if (args == null || args.length != 1) {
+                if (args.length != 1) {
                     throw new IllegalStateException("Method needs to have a single argument to handle WRITE message " + method);
                 }
                 message(Message.WRITE, obj, name, args[0]);
