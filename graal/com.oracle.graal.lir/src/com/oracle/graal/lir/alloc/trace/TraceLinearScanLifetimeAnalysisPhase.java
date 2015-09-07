@@ -59,6 +59,7 @@ import com.oracle.graal.lir.ssi.*;
 
 final class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
+    private static final int DUMP_DURING_ANALYSIS_LEVEL = 4;
     protected final TraceLinearScan allocator;
     private final TraceBuilderResult<?> traceBuilderResult;
 
@@ -877,7 +878,9 @@ final class TraceLinearScanLifetimeAnalysisPhase extends AllocationPhase {
 
                     } // end of instruction iteration
                 }
-                allocator.printIntervals("After Block " + block);
+                if (Debug.isDumpEnabled(DUMP_DURING_ANALYSIS_LEVEL)) {
+                    allocator.printIntervals("After Block " + block);
+                }
             } // end of block iteration
 
             // fix spill state for phi/sigma intervals
