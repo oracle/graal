@@ -22,30 +22,34 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.*;
+import static com.oracle.graal.lir.LIRValueUtil.asVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isVariable;
+import static com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.isTrivialTrace;
 
-import java.util.*;
+import java.util.List;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.meta.*;
+import jdk.internal.jvmci.code.TargetDescription;
+import jdk.internal.jvmci.meta.Value;
 
-import com.oracle.graal.compiler.common.alloc.*;
+import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.TraceBuilder.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.gen.*;
+import com.oracle.graal.lir.ValueProcedure;
+import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.SpillMoveFactory;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.lir.ssi.*;
-import com.oracle.graal.lir.util.*;
+import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.lir.ssi.SSIUtil;
+import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
 
 /**
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
- * than the {@link LabelOp} and the {@link BlockEndOp}.
+ * than the {@link LabelOp} and the {@link JumpOp}.
  */
 final class TraceTrivialAllocator extends AllocationPhase {
 

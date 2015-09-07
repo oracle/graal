@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,11 +23,11 @@
 package com.oracle.graal.lir.alloc.trace;
 
 /**
- * Represents a range of integers from a start (inclusive) to an end (exclusive.
+ * Represents a range of integers from a start (inclusive) to an end (exclusive).
  */
-final class Range {
+public final class FixedRange {
 
-    public static final Range EndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
+    public static final FixedRange EndMarker = new FixedRange(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
 
     /**
      * The start of the range, inclusive.
@@ -42,10 +42,10 @@ final class Range {
     /**
      * A link to allow the range to be put into a singly linked list.
      */
-    public Range next;
+    public FixedRange next;
 
-    boolean intersects(Range r) {
-        return intersectsAt(r) != -1;
+    boolean intersects(TraceInterval i) {
+        return intersectsAt(i) != -1;
     }
 
     /**
@@ -55,54 +55,47 @@ final class Range {
      * @param to the end of the range, exclusive
      * @param next link to the next range in a linked list
      */
-    Range(int from, int to, Range next) {
+    FixedRange(int from, int to, FixedRange next) {
         this.from = from;
         this.to = to;
         this.next = next;
     }
 
-    int intersectsAt(Range other) {
-        Range r1 = this;
-        Range r2 = other;
-
-        assert r2 != null : "null ranges not allowed";
-        assert r1 != EndMarker && r2 != EndMarker : "empty ranges not allowed";
+    int intersectsAt(TraceInterval other) {
+        FixedRange range = this;
+        assert other != null : "null ranges not allowed";
+        assert range != EndMarker && other != TraceInterval.EndMarker : "empty ranges not allowed";
+        int intervalFrom = other.from();
+        int intervalTo = other.to();
 
         do {
-            if (r1.from < r2.from) {
-                if (r1.to <= r2.from) {
-                    r1 = r1.next;
-                    if (r1 == EndMarker) {
+            if (range.from < intervalFrom) {
+                if (range.to <= intervalFrom) {
+                    range = range.next;
+                    if (range == EndMarker) {
                         return -1;
                     }
                 } else {
-                    return r2.from;
+                    return intervalFrom;
                 }
             } else {
-                if (r2.from < r1.from) {
-                    if (r2.to <= r1.from) {
-                        r2 = r2.next;
-                        if (r2 == EndMarker) {
-                            return -1;
-                        }
-                    } else {
-                        return r1.from;
+                if (intervalFrom < range.from) {
+                    if (intervalTo <= range.from) {
+                        return -1;
                     }
-                } else { // r1.from() == r2.from()
-                    if (r1.from == r1.to) {
-                        r1 = r1.next;
-                        if (r1 == EndMarker) {
+                    return range.from;
+                } else {
+                    assert range.from == intervalFrom;
+                    if (range.from == range.to) {
+                        range = range.next;
+                        if (range == EndMarker) {
                             return -1;
                         }
                     } else {
-                        if (r2.from == r2.to) {
-                            r2 = r2.next;
-                            if (r2 == EndMarker) {
-                                return -1;
-                            }
-                        } else {
-                            return r1.from;
+                        if (intervalFrom == intervalTo) {
+                            return -1;
                         }
+                        return range.from;
                     }
                 }
             }

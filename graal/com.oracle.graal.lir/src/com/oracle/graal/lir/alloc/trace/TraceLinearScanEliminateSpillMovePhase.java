@@ -83,8 +83,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
              * collect all intervals that must be stored after their definition. The list is sorted
              * by Interval.spillDefinitionPos.
              */
-            TraceInterval interval;
-            interval = allocator.createUnhandledLists(mustStoreAtDefinition, null).first;
+            TraceInterval interval = allocator.createUnhandledList(mustStoreAtDefinition);
             if (DetailedAsserts.getValue()) {
                 checkIntervals(interval);
             }
@@ -183,16 +182,6 @@ final class TraceLinearScanEliminateSpillMovePhase extends AllocationPhase {
     protected static boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
         // TODO (je) do not eliminate spill moves yet!
         return false;
-        /*
-         * assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " +
-         * move;
-         *
-         * Interval curInterval = allocator.intervalFor(move.getResult());
-         *
-         * if (!isRegister(curInterval.location()) && curInterval.alwaysInMemory()) { assert
-         * isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
-         * return true; } return false;
-         */
     }
 
     private static void checkIntervals(TraceInterval interval) {

@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import com.oracle.graal.debug.*;
+import jdk.internal.jvmci.common.*;
 
+import com.oracle.graal.debug.*;
+import com.oracle.graal.lir.alloc.trace.FixedInterval.FixedList;
+import com.oracle.graal.lir.alloc.trace.TraceInterval.AnyList;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterBinding;
-import com.oracle.graal.lir.alloc.trace.TraceInterval.RegisterBindingLists;
 import com.oracle.graal.lir.alloc.trace.TraceInterval.State;
 
 /**
@@ -37,17 +39,18 @@ class TraceIntervalWalker {
     /**
      * Sorted list of intervals, not live before the current position.
      */
-    protected RegisterBindingLists unhandledLists;
+    protected AnyList unhandledAnyList;
 
     /**
      * Sorted list of intervals, live at the current position.
      */
-    protected RegisterBindingLists activeLists;
+    protected AnyList activeAnyList;
+    protected FixedList activeFixedList;
 
     /**
      * Sorted list of intervals in a life time hole at the current position.
      */
-    protected RegisterBindingLists inactiveLists;
+    protected FixedList inactiveFixedList;
 
     /**
      * The current position (intercept point through the intervals).
@@ -55,18 +58,41 @@ class TraceIntervalWalker {
     protected int currentPosition;
 
     /**
-     * The binding of the current interval being processed.
-     */
-    protected RegisterBinding currentBinding;
-
-    /**
      * Processes the {@code currentInterval} interval in an attempt to allocate a physical register
-     * to it and thus allow it to be moved to a list of {@linkplain #activeLists active} intervals.
+     * to it and thus allow it to be moved to a list of {@linkplain #activeAnyList active}
+     * intervals.
+     *
+     * @param currentInterval The interval to be activated.
      *
      * @return {@code true} if a register was allocated to the {@code currentInterval} interval
      */
-    protected boolean activateCurrent(@SuppressWarnings({"unused"}) TraceInterval currentInterval) {
+    protected boolean activateCurrent(TraceInterval currentInterval) {
+        if (Debug.isLogEnabled()) {
+            logCurrentStatus();
+        }
         return true;
+    }
+
+    protected void logCurrentStatus() {
+        try (Indent i = Debug.logAndIndent("active:")) {
+            logList(activeFixedList.getFixed());
+            logList(activeAnyList.getAny());
+        }
+        try (Indent i = Debug.logAndIndent("inactive(fixed):")) {
+            logList(inactiveFixedList.getFixed());
+        }
+    }
+
+    private void logList(FixedInterval i) {
+        for (FixedInterval interval = i; interval != FixedInterval.EndMarker; interval = interval.next) {
+            Debug.log("%s", interval.logString(allocator));
+        }
+    }
+
+    private void logList(TraceInterval i) {
+        for (TraceInterval interval = i; interval != TraceInterval.EndMarker; interval = interval.next) {
+            Debug.log("%s", interval.logString(allocator));
+        }
     }
 
     void walkBefore(int lirOpId) {
@@ -86,37 +112,46 @@ class TraceIntervalWalker {
      * @param unhandledAny the list of unhandled {@linkplain RegisterBinding#Any non-fixed}
      *            intervals
      */
-    TraceIntervalWalker(TraceLinearScan allocator, TraceInterval unhandledFixed, TraceInterval unhandledAny) {
+    TraceIntervalWalker(TraceLinearScan allocator, FixedInterval unhandledFixed, TraceInterval unhandledAny) {
         this.allocator = allocator;
 
-        unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny, TraceInterval.EndMarker);
-        activeLists = new RegisterBindingLists(TraceInterval.EndMarker, TraceInterval.EndMarker, TraceInterval.EndMarker);
-        inactiveLists = new RegisterBindingLists(TraceInterval.EndMarker, TraceInterval.EndMarker, TraceInterval.EndMarker);
+        unhandledAnyList = new AnyList(unhandledAny);
+        activeAnyList = new AnyList(TraceInterval.EndMarker);
+        activeFixedList = new FixedList(FixedInterval.EndMarker);
+        // we don't need a separate unhandled list for fixed.
+        inactiveFixedList = new FixedList(unhandledFixed);
         currentPosition = -1;
     }
 
     protected void removeFromList(TraceInterval interval) {
         if (interval.state == State.Active) {
-            activeLists.remove(RegisterBinding.Any, interval);
+            activeAnyList.removeAny(interval);
         } else {
             assert interval.state == State.Inactive : "invalid state";
-            inactiveLists.remove(RegisterBinding.Any, interval);
+            // inactiveAnyLists.removeAny(interval);
+            throw JVMCIError.shouldNotReachHere();
         }
     }
 
-    private void walkTo(State state, int from) {
+    /**
+     * Walks up to {@code from} and updates the state of {@link FixedInterval fixed intervals}.
+     *
+     * Fixed intervals can switch back and forth between the states {@link State#Active} and
+     * {@link State#Inactive} (and eventually to {@link State#Handled} but handled intervals are not
+     * managed).
+     */
+    private void walkToFixed(State state, int from) {
         assert state == State.Active || state == State.Inactive : "wrong state";
-        for (RegisterBinding binding : RegisterBinding.VALUES) {
-            walkTo(state, from, binding);
+        FixedInterval prevprev = null;
+        FixedInterval prev = (state == State.Active) ? activeFixedList.getFixed() : inactiveFixedList.getFixed();
+        FixedInterval next = prev;
+        if (Debug.isLogEnabled()) {
+            try (Indent i = Debug.logAndIndent("walkToFixed(%s, %d):", state, from)) {
+                logList(next);
+            }
         }
-    }
-
-    private void walkTo(State state, int from, RegisterBinding binding) {
-        TraceInterval prevprev = null;
-        TraceInterval prev = (state == State.Active) ? activeLists.get(binding) : inactiveLists.get(binding);
-        TraceInterval next = prev;
         while (next.currentFrom() <= from) {
-            TraceInterval cur = next;
+            FixedInterval cur = next;
             next = cur.next;
 
             boolean rangeHasChanged = false;
@@ -132,9 +167,9 @@ class TraceIntervalWalker {
                 // remove cur from list
                 if (prevprev == null) {
                     if (state == State.Active) {
-                        activeLists.set(binding, next);
+                        activeFixedList.setFixed(next);
                     } else {
-                        inactiveLists.set(binding, next);
+                        inactiveFixedList.setFixed(next);
                     }
                 } else {
                     prevprev.next = next;
@@ -144,18 +179,16 @@ class TraceIntervalWalker {
                 if (cur.currentAtEnd()) {
                     // move to handled state (not maintained as a list)
                     newState = State.Handled;
-                    cur.state = newState;
                 } else {
                     if (cur.currentFrom() <= from) {
                         // sort into active list
-                        activeLists.addToListSortedByCurrentFromPositions(binding, cur);
+                        activeFixedList.addToListSortedByCurrentFromPositions(cur);
                         newState = State.Active;
                     } else {
                         // sort into inactive list
-                        inactiveLists.addToListSortedByCurrentFromPositions(binding, cur);
+                        inactiveFixedList.addToListSortedByCurrentFromPositions(cur);
                         newState = State.Inactive;
                     }
-                    cur.state = newState;
                     if (prev == cur) {
                         assert state == newState;
                         prevprev = prev;
@@ -171,50 +204,71 @@ class TraceIntervalWalker {
     }
 
     /**
-     * Get the next interval from {@linkplain #unhandledLists} which starts before or at
-     * {@code toOpId}. The returned interval is removed and {@link #currentBinding} is set.
+     * Walks up to {@code from} and updates the state of {@link TraceInterval intervals}.
      *
-     * @postcondition all intervals in {@linkplain #unhandledLists} start after {@code toOpId}.
+     * Trace intervals can switch once from {@link State#Unhandled} to {@link State#Active} and then
+     * to {@link State#Handled} but handled intervals are not managed.
+     */
+    private void walkToAny(int from) {
+        TraceInterval prevprev = null;
+        TraceInterval prev = activeAnyList.getAny();
+        TraceInterval next = prev;
+        if (Debug.isLogEnabled()) {
+            try (Indent i = Debug.logAndIndent("walkToAny(%d):", from)) {
+                logList(next);
+            }
+        }
+        while (next.from() <= from) {
+            TraceInterval cur = next;
+            next = cur.next;
+
+            if (cur.to() <= from) {
+                // remove cur from list
+                if (prevprev == null) {
+                    activeAnyList.setAny(next);
+                } else {
+                    prevprev.next = next;
+                }
+                intervalMoved(cur, State.Active, State.Handled);
+            } else {
+                prevprev = prev;
+            }
+            prev = next;
+        }
+    }
+
+    /**
+     * Get the next interval from {@linkplain #unhandledAnyList} which starts before or at
+     * {@code toOpId}. The returned interval is removed.
      *
-     * @return The next interval or null if there is no {@linkplain #unhandledLists unhandled}
+     * @postcondition all intervals in {@linkplain #unhandledAnyList} start after {@code toOpId}.
+     *
+     * @return The next interval or null if there is no {@linkplain #unhandledAnyList unhandled}
      *         interval at position {@code toOpId}.
      */
     private TraceInterval nextInterval(int toOpId) {
-        RegisterBinding binding;
-        TraceInterval any = unhandledLists.any;
-        TraceInterval fixed = unhandledLists.fixed;
+        TraceInterval any = unhandledAnyList.getAny();
 
         if (any != TraceInterval.EndMarker) {
-            // intervals may start at same position . prefer fixed interval
-            binding = fixed != TraceInterval.EndMarker && fixed.from() <= any.from() ? RegisterBinding.Fixed : RegisterBinding.Any;
+            TraceInterval currentInterval = unhandledAnyList.getAny();
+            if (toOpId < currentInterval.from()) {
+                return null;
+            }
 
-            assert binding == RegisterBinding.Fixed && fixed.from() <= any.from() || binding == RegisterBinding.Any && any.from() <= fixed.from() : "wrong interval!!!";
-            assert any == TraceInterval.EndMarker || fixed == TraceInterval.EndMarker || any.from() != fixed.from() || binding == RegisterBinding.Fixed : "if fixed and any-Interval start at same position, fixed must be processed first";
-
-        } else if (fixed != TraceInterval.EndMarker) {
-            binding = RegisterBinding.Fixed;
-        } else {
-            return null;
+            unhandledAnyList.setAny(currentInterval.next);
+            currentInterval.next = TraceInterval.EndMarker;
+            return currentInterval;
         }
-        TraceInterval currentInterval = unhandledLists.get(binding);
+        return null;
 
-        if (toOpId < currentInterval.from()) {
-            return null;
-        }
-
-        currentBinding = binding;
-        unhandledLists.set(binding, currentInterval.next);
-        currentInterval.next = TraceInterval.EndMarker;
-        currentInterval.rewindRange();
-        return currentInterval;
     }
 
     /**
      * Walk up to {@code toOpId}.
      *
-     * @postcondition {@link #currentPosition} is set to {@code toOpId}, {@link #activeLists} and
-     *                {@link #inactiveLists} are populated and {@link TraceInterval#state}s are up
-     *                to date.
+     * @postcondition {@link #currentPosition} is set to {@code toOpId}, {@link #activeFixedList}
+     *                and {@link #inactiveFixedList} are populated and {@link TraceInterval#state}s
+     *                are up to date.
      */
     @SuppressWarnings("try")
     protected void walkTo(int toOpId) {
@@ -226,16 +280,17 @@ class TraceIntervalWalker {
             currentPosition = opId;
 
             // update unhandled stack intervals
-            updateUnhandledStackIntervals(opId);
+            // updateUnhandledStackIntervals(opId);
 
             // call walkTo even if currentPosition == id
-            walkTo(State.Active, opId);
-            walkTo(State.Inactive, opId);
+            walkToFixed(State.Active, opId);
+            walkToFixed(State.Inactive, opId);
+            walkToAny(opId);
 
             try (Indent indent = Debug.logAndIndent("walk to op %d", opId)) {
                 currentInterval.state = State.Active;
                 if (activateCurrent(currentInterval)) {
-                    activeLists.addToListSortedByCurrentFromPositions(currentBinding, currentInterval);
+                    activeAnyList.addToListSortedByFromPositions(currentInterval);
                     intervalMoved(currentInterval, State.Unhandled, State.Active);
                 }
             }
@@ -245,44 +300,20 @@ class TraceIntervalWalker {
 
         if (currentPosition <= allocator.maxOpId()) {
             // update unhandled stack intervals
-            updateUnhandledStackIntervals(toOpId);
+            // updateUnhandledStackIntervals(toOpId);
 
             // call walkTo if still in range
-            walkTo(State.Active, toOpId);
-            walkTo(State.Inactive, toOpId);
+            walkToFixed(State.Active, toOpId);
+            walkToFixed(State.Inactive, toOpId);
+            walkToAny(toOpId);
         }
     }
 
-    private void intervalMoved(TraceInterval interval, State from, State to) {
+    private void intervalMoved(IntervalHint interval, State from, State to) {
         // intervalMoved() is called whenever an interval moves from one interval list to another.
         // In the implementation of this method it is prohibited to move the interval to any list.
         if (Debug.isLogEnabled()) {
             Debug.log("interval moved from %s to %s: %s", from, to, interval.logString(allocator));
         }
     }
-
-    /**
-     * Move {@linkplain #unhandledLists unhandled} stack intervals to
-     * {@linkplain TraceIntervalWalker #activeLists active}.
-     *
-     * Note that for {@linkplain RegisterBinding#Fixed fixed} and {@linkplain RegisterBinding#Any
-     * any} intervals this is done in {@link #nextInterval(int)}.
-     */
-    private void updateUnhandledStackIntervals(int opId) {
-        TraceInterval currentInterval = unhandledLists.get(RegisterBinding.Stack);
-        while (currentInterval != TraceInterval.EndMarker && currentInterval.from() <= opId) {
-            TraceInterval next = currentInterval.next;
-            if (currentInterval.to() > opId) {
-                currentInterval.state = State.Active;
-                activeLists.addToListSortedByCurrentFromPositions(RegisterBinding.Stack, currentInterval);
-                intervalMoved(currentInterval, State.Unhandled, State.Active);
-            } else {
-                currentInterval.state = State.Handled;
-                intervalMoved(currentInterval, State.Unhandled, State.Handled);
-            }
-            currentInterval = next;
-        }
-        unhandledLists.set(RegisterBinding.Stack, currentInterval);
-    }
-
 }

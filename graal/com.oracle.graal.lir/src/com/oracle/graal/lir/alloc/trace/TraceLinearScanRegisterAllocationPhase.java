@@ -25,8 +25,8 @@ package com.oracle.graal.lir.alloc.trace;
 import java.util.*;
 
 import jdk.internal.jvmci.code.*;
-import com.oracle.graal.debug.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.compiler.common.alloc.*;
 import com.oracle.graal.compiler.common.cfg.*;
 import com.oracle.graal.lir.gen.*;
@@ -52,12 +52,8 @@ final class TraceLinearScanRegisterAllocationPhase extends AllocationPhase {
     @SuppressWarnings("try")
     void allocateRegisters() {
         try (Indent indent = Debug.logAndIndent("allocate registers")) {
-            TraceInterval precoloredIntervals;
-            TraceInterval notPrecoloredIntervals;
-
-            TraceInterval.Pair result = allocator.createUnhandledLists(TraceLinearScan.IS_PRECOLORED_INTERVAL, TraceLinearScan.IS_VARIABLE_INTERVAL);
-            precoloredIntervals = result.first;
-            notPrecoloredIntervals = result.second;
+            FixedInterval precoloredIntervals = allocator.createFixedUnhandledList();
+            TraceInterval notPrecoloredIntervals = allocator.createUnhandledList(TraceLinearScan.IS_VARIABLE_INTERVAL);
 
             // allocate cpu registers
             TraceLinearScanWalker lsw = new TraceLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
