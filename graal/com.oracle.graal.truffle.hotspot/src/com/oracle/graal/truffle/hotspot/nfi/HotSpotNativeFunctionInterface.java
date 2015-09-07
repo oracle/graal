@@ -22,27 +22,34 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
-import jdk.internal.jvmci.code.*;
-import jdk.internal.jvmci.code.CallingConvention.*;
+import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.getGraph;
+import static jdk.internal.jvmci.code.CodeUtil.getCallingConvention;
+import static jdk.internal.jvmci.common.UnsafeAccess.unsafe;
+import static jdk.internal.jvmci.common.UnsafeUtil.createCString;
+import static jdk.internal.jvmci.common.UnsafeUtil.writeCString;
+import jdk.internal.jvmci.code.CallingConvention;
+import jdk.internal.jvmci.code.CallingConvention.Type;
+import jdk.internal.jvmci.code.CompilationResult;
+import jdk.internal.jvmci.code.InstalledCode;
+import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
+import jdk.internal.jvmci.meta.DefaultProfilingInfo;
+import jdk.internal.jvmci.meta.TriState;
 
-import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.Debug.*;
-
-import jdk.internal.jvmci.hotspot.*;
-import jdk.internal.jvmci.meta.*;
-import static com.oracle.graal.truffle.hotspot.nfi.NativeCallStubGraphBuilder.*;
-import static jdk.internal.jvmci.code.CodeUtil.*;
-import static jdk.internal.jvmci.common.UnsafeAccess.*;
-
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.lir.phases.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.nfi.api.*;
+import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
+import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhaseSuite;
+import com.oracle.graal.phases.tiers.HighTierContext;
+import com.oracle.graal.phases.tiers.Suites;
+import com.oracle.nfi.api.NativeFunctionInterface;
+import com.oracle.nfi.api.NativeFunctionPointer;
+import com.oracle.nfi.api.NativeLibraryHandle;
 
 public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
 
@@ -77,7 +84,7 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         // file name simplifies deallocation below.
         long buffer = unsafe.allocateMemory(ebufLen + libPath.length() + 1);
         long ebuf = buffer;
-        long libPathCString = writeCString(libPath, buffer + ebufLen);
+        long libPathCString = writeCString(unsafe, libPath, buffer + ebufLen);
         try {
             long handle = (long) libraryLookupFunctionHandle.call(libPathCString, ebuf, ebufLen);
             if (handle == 0) {
@@ -124,7 +131,8 @@ public class HotSpotNativeFunctionInterface implements NativeFunctionInterface {
         if (dllLookupFunctionHandle == null) {
             dllLookupFunctionHandle = createHandle(functionLookupFunctionPointer, long.class, long.class, long.class);
         }
-        long nameCString = createCString(name);
+
+        long nameCString = createCString(unsafe, name);
         try {
             long functionPointer = (long) dllLookupFunctionHandle.call(((HotSpotNativeLibraryHandle) library).value, nameCString);
             if (functionPointer == 0L) {
