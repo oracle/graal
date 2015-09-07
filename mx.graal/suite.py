@@ -17,7 +17,7 @@ suite = {
                "version" : "025869c88840eeafb196982806ef1f74264b5743",
                "urls" : [
                     {"url" : "http://lafo.ssw.uni-linz.ac.at/hg/truffle", "kind" : "hg"},
-                    {"url" : "http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
     ]
@@ -30,7 +30,7 @@ suite = {
     "DACAPO" : {
       "path" : "lib/dacapo-9.12-bach.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/dacapo-9.12-bach.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach.jar",
         "http://softlayer.dl.sourceforge.net/project/dacapobench/9.12-bach/dacapo-9.12-bach.jar",
       ],
       "sha1" : "2626a9546df09009f6da0df854e6dc1113ef7dd4",
@@ -39,7 +39,7 @@ suite = {
     "DACAPO_SCALA" : {
       "path" : "lib/dacapo-scala-0.1.0-20120216.jar",
       "urls" : [
-        "http://lafo.ssw.uni-linz.ac.at/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
         "http://repo.scalabench.org/snapshots/org/scalabench/benchmarks/scala-benchmark-suite/0.1.0-SNAPSHOT/scala-benchmark-suite-0.1.0-20120216.103539-3.jar",
       ],
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
@@ -48,7 +48,7 @@ suite = {
     "JAVA_ALLOCATION_INSTRUMENTER" : {
       "path" : "lib/java-allocation-instrumenter.jar",
       "sourcePath" : "lib/java-allocation-instrumenter.jar",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/java-allocation-instrumenter/java-allocation-instrumenter-8f0db117e64e.jar"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/java-allocation-instrumenter/java-allocation-instrumenter-8f0db117e64e.jar"],
       "sha1" : "476d9a44cd19d6b55f81571077dfa972a4f8a083",
       "bootClassPathAgent" : "true",
     },
@@ -56,7 +56,7 @@ suite = {
     "JMH" : {
       "path" : "lib/jmh-runner-1.10.4.jar",
       "sha1" : "be2e08e6776191e9c559a65b7d34e92e86b4fa5c",
-      "urls" : ["http://lafo.ssw.uni-linz.ac.at/jmh/jmh-runner-1.10.4.jar"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/jmh/jmh-runner-1.10.4.jar"],
     },
   },
 
