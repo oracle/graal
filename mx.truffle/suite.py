@@ -49,7 +49,7 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.interop.java",
       ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
@@ -106,6 +106,30 @@ suite = {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.api"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.interop.java" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.dsl"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.7",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.interop.java.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.interop.java",
+        "mx:JUNIT"
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
@@ -236,6 +260,7 @@ suite = {
       "sourcesPath" : "build/truffle-api.src.zip",
       "javaCompliance" : "1.7",
       "dependencies" : [
+        "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",

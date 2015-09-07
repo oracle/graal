@@ -178,4 +178,68 @@ public abstract class Message {
         return new ForeignObjectAccessHeadNode(this);
     }
 
+    /**
+     * Converts the message into canonical string representation. The converted string can be
+     * stored, persisted, transfered and later passed to {@link #valueOf(java.lang.String)} to
+     * construct the message again.
+     * 
+     * @param message the message to convert
+     * @return canonical string representation
+     */
+    public static String toString(Message message) {
+        if (Message.READ == message) {
+            return "READ"; // NOI18N
+        }
+        if (Message.WRITE == message) {
+            return "WRITE"; // NOI18N
+        }
+        if (Message.UNBOX == message) {
+            return "UNBOX"; // NOI18N
+        }
+        if (Message.GET_SIZE == message) {
+            return "GET_SIZE"; // NOI18N
+        }
+        if (Message.HAS_SIZE == message) {
+            return "HAS_SIZE"; // NOI18N
+        }
+        if (Message.IS_NULL == message) {
+            return "IS_NULL"; // NOI18N
+        }
+        if (Message.IS_BOXED == message) {
+            return "IS_BOXED"; // NOI18N
+        }
+        if (Message.IS_EXECUTABLE == message) {
+            return "IS_EXECUTABLE"; // NOI18N
+        }
+        if (message instanceof Execute) {
+            return ((Execute) message).name();
+        }
+        return message.getClass().getName();
+    }
+
+    /**
+     * Converts string representation into real message. If the string was obtained by
+     * {@link #toString(com.oracle.truffle.api.interop.Message)} method, it is guaranteed to be
+     * successfully recognized (if the classpath of the system remains the same).
+     * 
+     * @param message canonical string representation of a message
+     * @return the message
+     * @throws IllegalArgumentException if the string does not represent known message
+     */
+    public static Message valueOf(String message) {
+        try {
+            return (Message) Message.class.getField(message).get(null);
+        } catch (Exception ex) {
+            try {
+                String factory = "create" + message.charAt(0) + message.substring(1).toLowerCase();
+                return (Message) Message.class.getMethod(factory, int.class).invoke(null, 0);
+            } catch (Exception ex2) {
+                try {
+                    return (Message) Class.forName(message).newInstance();
+                } catch (Exception ex1) {
+                    throw new IllegalArgumentException("Cannot find message for " + message, ex);
+                }
+            }
+        }
+    }
 }

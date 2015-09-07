@@ -60,15 +60,14 @@ final class Execute extends KnownMessage {
         return type;
     }
 
-    @Override
-    public String toString() {
+    String name() {
         switch (type) {
             case EXECUTE:
-                return "msgExecute";
+                return "EXECUTE";
             case INVOKE:
-                return "msgInvoke";
+                return "INVOKE";
             default:
-                return "msgNew";
+                return "NEW";
         }
     }
 }

@@ -24,10 +24,14 @@
  */
 package com.oracle.truffle.tck;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.TruffleVM;
 import java.io.IOException;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -37,6 +41,8 @@ import org.junit.Test;
  * include in your test suite.
  */
 public abstract class TruffleTCK {
+    private static final Logger LOG = Logger.getLogger(TruffleTCK.class.getName());
+    private static final Random RANDOM = new Random();
     private TruffleVM tckVM;
 
     protected TruffleTCK() {
@@ -56,7 +62,7 @@ public abstract class TruffleTCK {
     protected abstract TruffleVM prepareVM() throws Exception;
 
     /**
-     * Mimetype associated with your language. The mimetype will be passed to
+     * MIME type associated with your language. The MIME type will be passed to
      * {@link TruffleVM#eval(com.oracle.truffle.api.source.Source)} method of the
      * {@link #prepareVM() created TruffleVM}.
      *
@@ -124,6 +130,31 @@ public abstract class TruffleTCK {
      */
     protected abstract String invalidCode();
 
+    /**
+     * Name of a function that returns a compound object with members representing certain
+     * operations. In the JavaScript the object should look like:
+     * 
+     * <pre>
+     * <b>var</b> obj = {
+     *   'fourtyTwo': function {@link #fourtyTwo()},
+     *   'plus': function {@link #plusInt()},
+     *   'returnsNull': function {@link #returnsNull()},
+     *   'returnsThis': function() { return obj; }
+     * };
+     * <b>return</b> obj;
+     * </pre>
+     * 
+     * The returned object shall have three functions that will be obtained and used exactly as
+     * described in their Javadoc - e.g. {@link #fourtyTwo()}, {@link #plusInt()} and
+     * {@link #returnsNull()}. In addition to that there should be one more function
+     * <b>returnsThis</b> that will return the object itself again.
+     *
+     * @return name of a function that returns such compound object
+     */
+    protected String compoundObject() {
+        return null;
+    }
+
     private TruffleVM vm() throws Exception {
         if (tckVM == null) {
             tckVM = prepareVM();
@@ -149,10 +180,17 @@ public abstract class TruffleTCK {
     }
 
     @Test
-    public void testNull() throws Exception {
-        if (getClass() == TruffleTCK.class) {
+    public void testFortyTwoWithCompoundObject() throws Exception {
+        CompoundObject obj = findCompoundSymbol("testFortyTwoWithCompoundObject");
+        if (obj == null) {
             return;
         }
+        Number res = obj.fourtyTwo();
+        assertEquals("Should be 42", 42, res.intValue());
+    }
+
+    @Test
+    public void testNull() throws Exception {
         TruffleVM.Symbol retNull = findGlobalSymbol(returnsNull());
 
         Object res = retNull.invoke(null).get();
@@ -161,19 +199,37 @@ public abstract class TruffleTCK {
     }
 
     @Test
+    public void testNullInCompoundObject() throws Exception {
+        CompoundObject obj = findCompoundSymbol("testNullInCompoundObject");
+        if (obj == null) {
+            return;
+        }
+        Object res = obj.returnsNull();
+        assertNull("Should yield real Java null", res);
+    }
+
+    @Test
     public void testPlusWithInts() throws Exception {
-        Random r = new Random();
-        int a = r.nextInt(100);
-        int b = r.nextInt(100);
+        int a = RANDOM.nextInt(100);
+        int b = RANDOM.nextInt(100);
 
         TruffleVM.Symbol plus = findGlobalSymbol(plusInt());
 
-        Object res = plus.invoke(null, a, b).get();
+        Number n = plus.invoke(null, a, b).as(Number.class);
+        assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
+    }
 
-        assert res instanceof Number : "+ on two ints should yield a number, but was: " + res;
+    @Test
+    public void testPlusWithIntsOnCompoundObject() throws Exception {
+        int a = RANDOM.nextInt(100);
+        int b = RANDOM.nextInt(100);
 
-        Number n = (Number) res;
+        CompoundObject obj = findCompoundSymbol("testPlusWithIntsOnCompoundObject");
+        if (obj == null) {
+            return;
+        }
 
+        Number n = obj.plus(a, b);
         assert a + b == n.intValue() : "The value is correct: (" + a + " + " + b + ") =  " + n.intValue();
     }
 
@@ -189,7 +245,8 @@ public abstract class TruffleTCK {
     public void testMaxOrMinValue() throws Exception {
         TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
 
-        Object res = apply.invoke(null, new MaxMinObject(true)).get();
+        TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(true));
+        Object res = apply.invoke(null, fn).get();
 
         assert res instanceof Number : "result should be a number: " + res;
 
@@ -202,12 +259,17 @@ public abstract class TruffleTCK {
     public void testMaxOrMinValue2() throws Exception {
         TruffleVM.Symbol apply = findGlobalSymbol(applyNumbers());
 
-        Object res = apply.invoke(null, new MaxMinObject(false)).get();
+        TruffleObject fn = JavaInterop.asTruffleFunction(LongBinaryOperation.class, new MaxMinObject(false));
+        final TruffleVM.Symbol result = apply.invoke(null, fn);
 
-        assert res instanceof Number : "result should be a number: " + res;
+        try {
+            String res = result.as(String.class);
+            fail("Cannot be converted to String: " + res);
+        } catch (ClassCastException ex) {
+            // correct
+        }
 
-        Number n = (Number) res;
-
+        Number n = result.as(Number.class);
         assert 28 == n.intValue() : "18 < 32 and plus 10";
     }
 
@@ -224,18 +286,19 @@ public abstract class TruffleTCK {
 
         int prev1 = 0;
         int prev2 = 0;
-        Random r = new Random();
         for (int i = 0; i < 10; i++) {
-            int quantum = r.nextInt(10);
+            int quantum = RANDOM.nextInt(10);
             for (int j = 0; j < quantum; j++) {
                 Object res = count1.invoke(null).get();
                 assert res instanceof Number : "expecting number: " + res;
-                assert ((Number) res).intValue() == ++prev1 : "expecting " + prev1 + " but was " + res;
+                ++prev1;
+                assert ((Number) res).intValue() == prev1 : "expecting " + prev1 + " but was " + res;
             }
             for (int j = 0; j < quantum; j++) {
                 Object res = count2.invoke(null).get();
                 assert res instanceof Number : "expecting number: " + res;
-                assert ((Number) res).intValue() == ++prev2 : "expecting " + prev2 + " but was " + res;
+                ++prev2;
+                assert ((Number) res).intValue() == prev2 : "expecting " + prev2 + " but was " + res;
             }
             assert prev1 == prev2 : "At round " + i + " the same number of invocations " + prev1 + " vs. " + prev2;
         }
@@ -246,5 +309,37 @@ public abstract class TruffleTCK {
         TruffleVM.Symbol s = vm().findGlobalSymbol(name);
         assert s != null : "Symbol " + name + " is not found!";
         return s;
+    }
+
+    private CompoundObject findCompoundSymbol(String name) throws Exception {
+        final String compoundObjectName = compoundObject();
+        if (compoundObjectName == null) {
+            final long introduced = 1441616302340L;
+            long wait = (System.currentTimeMillis() - introduced) / 3600;
+            if (wait < 100) {
+                wait = 100;
+            }
+            LOG.log(Level.SEVERE, "compoundObject() method not overriden! Skipping {1} test for now. But sleeping for {0} ms.", new Object[]{wait, name});
+            Thread.sleep(wait);
+            return null;
+        }
+        TruffleVM.Symbol s = vm().findGlobalSymbol(compoundObjectName);
+        assert s != null : "Symbol " + compoundObjectName + " is not found!";
+        CompoundObject obj = s.invoke(null).as(CompoundObject.class);
+        int traverse = RANDOM.nextInt(10);
+        while (traverse-- >= 0) {
+            obj = obj.returnsThis();
+        }
+        return obj;
+    }
+
+    interface CompoundObject {
+        Number fourtyTwo();
+
+        Number plus(int x, int y);
+
+        Object returnsNull();
+
+        CompoundObject returnsThis();
     }
 }

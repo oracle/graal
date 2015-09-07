@@ -80,7 +80,15 @@ public class SLTckTest extends TruffleTCK {
                 "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
                 "  return n;\n" +
                 "}\n" +
-                "function null() {\n" +
+                "function returnsNull() {\n" +
+                "}\n" +
+                "function compoundObject() {\n" +
+                "  obj = new();\n" +
+                "  obj.fourtyTwo = fourtyTwo;\n" +
+                "  obj.plus = plus;\n" +
+                "  obj.returnsNull = returnsNull;\n" +
+                "  obj.returnsThis = obj;\n" +
+                "  return obj;\n" +
                 "}\n", "SL TCK"
             ).withMimeType("application/x-sl")
         );
@@ -105,12 +113,17 @@ public class SLTckTest extends TruffleTCK {
 
     @Override
     protected String returnsNull() {
-        return "null";
+        return "returnsNull";
     }
 
     @Override
     protected String applyNumbers() {
         return "apply";
+    }
+
+    @Override
+    protected String compoundObject() {
+        return "compoundObject";
     }
 
     @Override

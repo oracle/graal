@@ -74,6 +74,8 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
             return Truffle.getRuntime().createCallTarget(new SLForeignCallerRootNode());
         } else if (Message.IS_NULL.equals(tree)) {
             return Truffle.getRuntime().createCallTarget(new SLForeignNullCheckNode());
+        } else if (Message.IS_EXECUTABLE.equals(tree)) {
+            return Truffle.getRuntime().createCallTarget(new SLForeignExecutableCheckNode());
         } else {
             throw new IllegalArgumentException(tree.toString() + " not supported");
         }
@@ -93,7 +95,12 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
             // function call (the this object)
             // as an implicit 1st argument; we need to ignore this argument for SL
             List<Object> args = ForeignAccess.getArguments(frame);
-            Object[] arr = args.subList(1, args.size()).toArray();
+            Object[] arr;
+            if (args.size() > 0 && args.get(0) instanceof SLContext) {
+                arr = args.subList(1, args.size()).toArray();
+            } else {
+                arr = args.toArray();
+            }
             for (int i = 0; i < arr.length; i++) {
                 Object a = arr[i];
                 if (a instanceof Long) {
@@ -120,6 +127,18 @@ final class SLFunctionForeignAccess implements ForeignAccess.Factory {
         public Object execute(VirtualFrame frame) {
             Object receiver = ForeignAccess.getReceiver(frame);
             return SLNull.SINGLETON == receiver;
+        }
+    }
+
+    private static class SLForeignExecutableCheckNode extends RootNode {
+        public SLForeignExecutableCheckNode() {
+            super(SLLanguage.class, null, null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object receiver = ForeignAccess.getReceiver(frame);
+            return receiver instanceof SLFunction;
         }
     }
 }

@@ -38,10 +38,4 @@ final class Write extends KnownMessage {
     public int hashCode() {
         return HASH;
     }
-
-    @Override
-    public String toString() {
-        return "msgWrite";
-    }
-
 }

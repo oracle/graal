@@ -32,9 +32,4 @@ final class IsNull extends UnaryMessage {
     public int hashCode() {
         return HASH;
     }
-
-    @Override
-    public String toString() {
-        return "msgIsNull";
-    }
 }

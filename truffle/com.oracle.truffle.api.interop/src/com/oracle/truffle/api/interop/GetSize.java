@@ -30,11 +30,6 @@ final class GetSize extends UnaryMessage {
     static Message INSTANCE = new GetSize();
 
     @Override
-    public String toString() {
-        return "msgGetSize";
-    }
-
-    @Override
     public int hashCode() {
         return HASH;
     }

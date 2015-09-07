@@ -30,6 +30,8 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.debug.*;
 import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.instrument.*;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.*;
 import java.io.*;
 import java.net.*;
@@ -598,6 +600,26 @@ public final class TruffleVM {
             waitForSymbol();
             exceptionCheck(result);
             return result[0];
+        }
+
+        /**
+         * Obtains Java view of the object represented by this symbol. The method basically
+         * delegates to
+         * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
+         * just handles primitive types as well.
+         * 
+         * @param <T> the type of the view one wants to obtain
+         * @param representation the class of the view interface (it has to be an interface)
+         * @return instance of the view wrapping the object of this symbol
+         * @throws IOException in case it is not possible to obtain the value of the object
+         * @throws ClassCastException if the value cannot be converted to desired view
+         */
+        public <T> T as(Class<T> representation) throws IOException {
+            Object obj = get();
+            if (representation.isInstance(obj)) {
+                return representation.cast(obj);
+            }
+            return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
         }
 
         /**

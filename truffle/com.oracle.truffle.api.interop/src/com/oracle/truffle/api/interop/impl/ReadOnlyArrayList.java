@@ -40,6 +40,9 @@ public final class ReadOnlyArrayList<T> implements List<T> {
         this.arr = arr;
         this.first = first;
         this.last = last;
+        if (first > last) {
+            throw new IllegalArgumentException();
+        }
     }
 
     public static <T> List<T> asList(T[] arr, int first, int last) {

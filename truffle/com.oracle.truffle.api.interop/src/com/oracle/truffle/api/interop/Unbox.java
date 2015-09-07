@@ -32,9 +32,4 @@ final class Unbox extends UnaryMessage {
     public int hashCode() {
         return HASH;
     }
-
-    @Override
-    public String toString() {
-        return "msgUnbox";
-    }
 }

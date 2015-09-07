@@ -48,7 +48,25 @@ final class ForeignObjectAccessHeadNode extends Node {
     }
 
     public Object executeForeign(VirtualFrame frame, TruffleObject receiver, Object... arguments) {
-        return first.executeWith(frame, receiver, arguments);
+        Object ret = first.executeWith(frame, receiver, arguments);
+        assert assertReturnValue(ret) : "Only primitive values or TruffleObject expected: " + ret;
+        return ret;
+    }
+
+    private static boolean assertReturnValue(Object ret) {
+        if (ret instanceof Number) {
+            return true;
+        }
+        if (ret instanceof String) {
+            return true;
+        }
+        if (ret instanceof Character) {
+            return true;
+        }
+        if (ret instanceof Boolean) {
+            return true;
+        }
+        return ret instanceof TruffleObject;
     }
 
 }

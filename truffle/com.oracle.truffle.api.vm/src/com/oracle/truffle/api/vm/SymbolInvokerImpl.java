@@ -40,36 +40,27 @@ final class SymbolInvokerImpl {
         }
         RootNode symbolNode;
         if ((symbol instanceof String) || (symbol instanceof Number) || (symbol instanceof Boolean) || (symbol instanceof Character)) {
-            symbolNode = new ConstantRootNode(type, symbol);
+            symbolNode = RootNode.createConstantNode(symbol);
         } else {
             Node executeMain = Message.createExecute(arr.length).createNode();
-            symbolNode = new TemporaryRoot(type, executeMain, (TruffleObject) symbol, arr.length);
+            symbolNode = createTemporaryRoot(type, executeMain, (TruffleObject) symbol, arr.length);
         }
         return Truffle.getRuntime().createCallTarget(symbolNode);
     }
 
-    private static final class ConstantRootNode extends RootNode {
-
-        private final Object value;
-
-        public ConstantRootNode(Class<? extends TruffleLanguage<?>> lang, Object value) {
-            super(lang, null, null);
-            this.value = value;
-        }
-
-        @Override
-        public Object execute(VirtualFrame vf) {
-            return value;
-        }
+    @SuppressWarnings("rawtypes")
+    public static RootNode createTemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
+        return new TemporaryRoot(lang, foreignAccess, function, argumentLength);
     }
 
-    private static class TemporaryRoot extends RootNode {
+    static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
         private final int argumentLength;
         private final TruffleObject function;
 
-        public TemporaryRoot(Class<? extends TruffleLanguage<?>> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
+        @SuppressWarnings("rawtypes")
+        public TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, int argumentLength) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.convert = new ConvertNode();

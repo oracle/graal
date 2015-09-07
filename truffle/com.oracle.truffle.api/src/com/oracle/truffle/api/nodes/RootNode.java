@@ -154,7 +154,7 @@ public abstract class RootNode extends Node {
      * stack) without prior knowledge of the language it has come from.
      *
      * Used for instance to determine the language of a <code>RootNode<code>:
-     *
+     * 
      * <pre>
      * <code>
      * rootNode.getExecutionContext().getLanguageShortName();
@@ -194,4 +194,33 @@ public abstract class RootNode extends Node {
      */
     public void applyInstrumentation() {
     }
+
+    /**
+     * Helper method to create a root node that always returns the same value. Certain operations
+     * (expecially {@link com.oracle.api.truffle.api.interop inter-operability} API) require return
+     * of stable {@link RootNode root nodes}. To simplify creation of such nodes, here is a factory
+     * method that can create {@link RootNode} that returns always the same value.
+     *
+     * @param constant the constant to return
+     * @return root node returning the constant
+     */
+    public static RootNode createConstantNode(Object constant) {
+        return new Constant(constant);
+    }
+
+    private static final class Constant extends RootNode {
+
+        private final Object value;
+
+        public Constant(Object value) {
+            super(TruffleLanguage.class, null, null);
+            this.value = value;
+        }
+
+        @Override
+        public Object execute(VirtualFrame vf) {
+            return value;
+        }
+    }
+
 }

@@ -32,9 +32,4 @@ final class IsBoxed extends UnaryMessage {
     public int hashCode() {
         return HASH;
     }
-
-    @Override
-    public String toString() {
-        return "msgIsBoxed";
-    }
 }

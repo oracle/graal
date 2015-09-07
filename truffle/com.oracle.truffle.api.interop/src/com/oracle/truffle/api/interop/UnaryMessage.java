@@ -38,7 +38,4 @@ abstract class UnaryMessage extends KnownMessage {
 
     @Override
     public abstract int hashCode();
-
-    @Override
-    public abstract String toString();
 }

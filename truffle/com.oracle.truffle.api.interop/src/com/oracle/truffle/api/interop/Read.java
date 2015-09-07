@@ -40,9 +40,4 @@ final class Read extends KnownMessage {
     public int hashCode() {
         return HASH;
     }
-
-    @Override
-    public String toString() {
-        return "msgRead";
-    }
 }

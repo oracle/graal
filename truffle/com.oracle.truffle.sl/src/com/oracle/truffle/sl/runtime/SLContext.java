@@ -88,7 +88,7 @@ public final class SLContext extends ExecutionContext {
         this.functionRegistry = new SLFunctionRegistry();
         installBuiltins(installBuiltins);
 
-        this.emptyShape = LAYOUT.createShape(new ObjectType());
+        this.emptyShape = LAYOUT.createShape(new SLObjectType());
     }
 
     /**
