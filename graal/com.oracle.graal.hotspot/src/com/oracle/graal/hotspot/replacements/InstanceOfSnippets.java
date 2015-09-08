@@ -245,7 +245,7 @@ public class InstanceOfSnippets implements Snippets {
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
-                    args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
+                    args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
                     args = new Arguments(instanceofExact, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
@@ -261,7 +261,7 @@ public class InstanceOfSnippets implements Snippets {
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
-                    args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
+                    args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
                 }
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);

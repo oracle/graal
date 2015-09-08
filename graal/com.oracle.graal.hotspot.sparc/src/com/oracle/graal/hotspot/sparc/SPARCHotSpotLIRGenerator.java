@@ -140,7 +140,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         if (linkage.destroysRegisters() || hotspotLinkage.needsJavaFrameAnchor()) {
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
-            Value threadTemp = newVariable(LIRKind.value(Kind.Long));
+            Value threadTemp = newVariable(LIRKind.value(JavaKind.Long));
             Register stackPointer = registers.getStackPointerRegister();
             Variable spScratch = newVariable(LIRKind.value(target().wordKind));
             append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer, threadTemp, spScratch));
@@ -240,7 +240,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         LIRKind kind = newValue.getLIRKind();
         assert kind.equals(expectedValue.getLIRKind());
-        Kind memKind = (Kind) kind.getPlatformKind();
+        JavaKind memKind = (JavaKind) kind.getPlatformKind();
         Variable result = newVariable(newValue.getLIRKind());
         append(new CompareAndSwapOp(result, asAllocatable(address), asAllocatable(expectedValue), asAllocatable(newValue)));
         return emitConditionalMove(memKind, expectedValue, result, Condition.EQ, true, trueValue, falseValue);
@@ -287,7 +287,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         if (isConstantValue(a)) {
             Constant c = asConstant(a);
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                localA = SPARC.g0.asValue(LIRKind.value(Kind.Int));
+                localA = SPARC.g0.asValue(LIRKind.value(JavaKind.Int));
             } else if (c instanceof HotSpotObjectConstant) {
                 localA = load(localA);
             }
@@ -295,7 +295,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         if (isConstantValue(b)) {
             Constant c = asConstant(b);
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                localB = SPARC.g0.asValue(LIRKind.value(Kind.Int));
+                localB = SPARC.g0.asValue(LIRKind.value(JavaKind.Int));
             } else if (c instanceof HotSpotObjectConstant) {
                 localB = load(localB);
             }
@@ -306,18 +306,18 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
-        assert inputKind.getPlatformKind() == Kind.Long || inputKind.getPlatformKind() == Kind.Object;
+        assert inputKind.getPlatformKind() == JavaKind.Long || inputKind.getPlatformKind() == JavaKind.Object;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(Kind.Int));
+            Variable result = newVariable(LIRKind.reference(JavaKind.Int));
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
             // metaspace pointer
-            Variable result = newVariable(LIRKind.value(Kind.Int));
+            Variable result = newVariable(LIRKind.value(JavaKind.Int));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(JavaKind.Long), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.CompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -327,18 +327,18 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getLIRKind();
-        assert inputKind.getPlatformKind() == Kind.Int;
+        assert inputKind.getPlatformKind() == JavaKind.Int;
         if (inputKind.isReference(0)) {
             // oop
-            Variable result = newVariable(LIRKind.reference(Kind.Object));
+            Variable result = newVariable(LIRKind.reference(JavaKind.Object));
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), getProviders().getRegisters().getHeapBaseRegister().asValue(), encoding, nonNull));
             return result;
         } else {
             // metaspace pointer
-            Variable result = newVariable(LIRKind.value(Kind.Long));
+            Variable result = newVariable(LIRKind.value(JavaKind.Long));
             AllocatableValue base = Value.ILLEGAL;
             if (encoding.base != 0) {
-                base = emitLoadConstant(LIRKind.value(Kind.Long), JavaConstant.forLong(encoding.base));
+                base = emitLoadConstant(LIRKind.value(JavaKind.Long), JavaConstant.forLong(encoding.base));
             }
             append(new SPARCHotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
@@ -376,7 +376,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         StackSlotValue[] savedRegisterLocations = new StackSlotValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
             PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-            assert kind != Kind.Illegal;
+            assert kind != JavaKind.Illegal;
             VirtualStackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
             savedRegisterLocations[i] = spillSlot;
         }
@@ -455,7 +455,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         PlatformKind kind = address.getPlatformKind();
-        if (kind == Kind.Int) {
+        if (kind == JavaKind.Int) {
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed = emitUncompress(address, encoding, false);
             append(new NullCheckOp(asAddressValue(uncompressed), state));

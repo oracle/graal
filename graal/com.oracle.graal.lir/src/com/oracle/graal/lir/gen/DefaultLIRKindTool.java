@@ -41,23 +41,23 @@ public class DefaultLIRKindTool implements LIRKindTool {
 
     public LIRKind getIntegerKind(int bits) {
         if (bits <= 8) {
-            return LIRKind.value(Kind.Byte);
+            return LIRKind.value(JavaKind.Byte);
         } else if (bits <= 16) {
-            return LIRKind.value(Kind.Short);
+            return LIRKind.value(JavaKind.Short);
         } else if (bits <= 32) {
-            return LIRKind.value(Kind.Int);
+            return LIRKind.value(JavaKind.Int);
         } else {
             assert bits <= 64;
-            return LIRKind.value(Kind.Long);
+            return LIRKind.value(JavaKind.Long);
         }
     }
 
     public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
-                return LIRKind.value(Kind.Float);
+                return LIRKind.value(JavaKind.Float);
             case 64:
-                return LIRKind.value(Kind.Double);
+                return LIRKind.value(JavaKind.Double);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }

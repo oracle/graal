@@ -336,17 +336,17 @@ public class GraalCompiler {
 
             if (Debug.isMeterEnabled()) {
                 List<DataPatch> ldp = compilationResult.getDataPatches();
-                Kind[] kindValues = Kind.values();
+                JavaKind[] kindValues = JavaKind.values();
                 DebugMetric[] dms = new DebugMetric[kindValues.length];
                 for (int i = 0; i < dms.length; i++) {
                     dms[i] = Debug.metric("DataPatches-%s", kindValues[i]);
                 }
 
                 for (DataPatch dp : ldp) {
-                    Kind kind = Kind.Illegal;
+                    JavaKind kind = JavaKind.Illegal;
                     if (dp.reference instanceof ConstantReference) {
                         VMConstant constant = ((ConstantReference) dp.reference).getConstant();
-                        kind = ((JavaConstant) constant).getKind();
+                        kind = ((JavaConstant) constant).getJavaKind();
                     }
                     dms[kind.ordinal()].add(1);
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,9 +40,9 @@ public final class DirectReadNode extends FixedWithNextNode implements LIRLowera
 
     public static final NodeClass<DirectReadNode> TYPE = NodeClass.create(DirectReadNode.class);
     @Input protected ValueNode address;
-    protected final Kind readKind;
+    protected final JavaKind readKind;
 
-    public DirectReadNode(ValueNode address, Kind readKind) {
+    public DirectReadNode(ValueNode address, JavaKind readKind) {
         super(TYPE, StampFactory.forKind(readKind.getStackKind()));
         this.address = address;
         this.readKind = readKind;
@@ -64,7 +64,7 @@ public final class DirectReadNode extends FixedWithNextNode implements LIRLowera
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind kind = gen.getLIRGeneratorTool().target().getLIRKind(readKind);
         Value loaded = gen.getLIRGeneratorTool().emitLoad(kind, gen.operand(address), null);
-        switch ((Kind) kind.getPlatformKind()) {
+        switch ((JavaKind) kind.getPlatformKind()) {
             case Byte:
                 loaded = gen.getLIRGeneratorTool().emitSignExtend(loaded, 8, 32);
                 break;

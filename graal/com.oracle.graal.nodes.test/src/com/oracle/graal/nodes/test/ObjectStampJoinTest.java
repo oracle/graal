@@ -57,7 +57,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     public void testJoin2() {
         Stamp aExact = StampFactory.exactNonNull(getType(A.class));
         Stamp b = StampFactory.declared(getType(B.class));
-        Assert.assertEquals(StampFactory.empty(Kind.Object), join(aExact, b));
+        Assert.assertEquals(StampFactory.empty(JavaKind.Object), join(aExact, b));
     }
 
     @Test
@@ -71,7 +71,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     public void testJoin4() {
         Stamp dExactNonNull = StampFactory.exactNonNull(getType(D.class));
         Stamp c = StampFactory.declared(getType(C.class));
-        Assert.assertEquals(StampFactory.empty(Kind.Object), join(c, dExactNonNull));
+        Assert.assertEquals(StampFactory.empty(JavaKind.Object), join(c, dExactNonNull));
     }
 
     @Test
@@ -149,7 +149,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
     private void testJoinInterface0(Class<?> typeA, Class<?> typeI) {
         Stamp a = StampFactory.declared(getType(typeA));
         Stamp i = StampFactory.declaredTrusted(getType(typeI));
-        Assert.assertNotSame(StampFactory.empty(Kind.Object), join(a, i));
+        Assert.assertNotSame(StampFactory.empty(JavaKind.Object), join(a, i));
     }
 
     private void testJoinInterface1(Class<?> typeA, Class<?> typeI) {
@@ -164,7 +164,7 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp bExact = StampFactory.exactNonNull(getType(typeB));
         Stamp i = StampFactory.declaredTrusted(getType(typeI));
         Stamp join = join(i, bExact);
-        Assert.assertEquals(StampFactory.empty(Kind.Object), join);
+        Assert.assertEquals(StampFactory.empty(JavaKind.Object), join);
     }
 
     private void testJoinInterface3(Class<?> typeB, Class<?> typeI) {

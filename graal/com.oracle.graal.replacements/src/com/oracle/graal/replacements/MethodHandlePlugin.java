@@ -52,10 +52,10 @@ public class MethodHandlePlugin implements NodePlugin {
             InvokeNode invoke = MethodHandleNode.tryResolveTargetInvoke(b.getAssumptions(), b.getConstantReflection().getMethodHandleAccess(), intrinsicMethod, method, b.bci(), invokeReturnType, args);
             if (invoke == null) {
                 MethodHandleNode methodHandleNode = new MethodHandleNode(intrinsicMethod, invokeKind, method, b.bci(), invokeReturnType, args);
-                if (invokeReturnType.getKind() == Kind.Void) {
+                if (invokeReturnType.getJavaKind() == JavaKind.Void) {
                     b.add(methodHandleNode);
                 } else {
-                    b.addPush(invokeReturnType.getKind(), methodHandleNode);
+                    b.addPush(invokeReturnType.getJavaKind(), methodHandleNode);
                 }
             } else {
                 CallTargetNode callTarget = invoke.callTarget();

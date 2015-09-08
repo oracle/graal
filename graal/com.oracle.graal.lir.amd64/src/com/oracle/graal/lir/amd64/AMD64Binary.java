@@ -167,7 +167,7 @@ public class AMD64Binary {
         private final int alignment;
 
         public DataOp(AMD64RMOp opcode, OperandSize size, AllocatableValue result, AllocatableValue x, JavaConstant y) {
-            this(opcode, size, result, x, y, y.getKind().getByteCount());
+            this(opcode, size, result, x, y, y.getJavaKind().getByteCount());
         }
 
         public DataOp(AMD64RMOp opcode, OperandSize size, AllocatableValue result, AllocatableValue x, JavaConstant y, int alignment) {

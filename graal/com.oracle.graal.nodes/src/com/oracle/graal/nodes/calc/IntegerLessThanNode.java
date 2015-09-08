@@ -40,8 +40,8 @@ public final class IntegerLessThanNode extends CompareNode {
 
     public IntegerLessThanNode(ValueNode x, ValueNode y) {
         super(TYPE, Condition.LT, false, x, y);
-        assert !x.getStackKind().isNumericFloat() && x.getStackKind() != Kind.Object;
-        assert !y.getStackKind().isNumericFloat() && y.getStackKind() != Kind.Object;
+        assert !x.getStackKind().isNumericFloat() && x.getStackKind() != JavaKind.Object;
+        assert !y.getStackKind().isNumericFloat() && y.getStackKind() != JavaKind.Object;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection) {
@@ -61,11 +61,11 @@ public final class IntegerLessThanNode extends CompareNode {
     protected ValueNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         PrimitiveConstant primitive = (PrimitiveConstant) constant;
         assert condition() == Condition.LT;
-        if (primitive.getKind() == Kind.Int && primitive.asInt() == 0) {
+        if (primitive.getJavaKind() == JavaKind.Int && primitive.asInt() == 0) {
             ValueNode a = mirrored ? normalizeNode.getY() : normalizeNode.getX();
             ValueNode b = mirrored ? normalizeNode.getX() : normalizeNode.getY();
 
-            if (normalizeNode.getX().getStackKind() == Kind.Double || normalizeNode.getX().getStackKind() == Kind.Float) {
+            if (normalizeNode.getX().getStackKind() == JavaKind.Double || normalizeNode.getX().getStackKind() == JavaKind.Float) {
                 return new FloatLessThanNode(a, b, mirrored ^ normalizeNode.isUnorderedLess);
             } else {
                 return new IntegerLessThanNode(a, b);

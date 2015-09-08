@@ -77,9 +77,9 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
         NodeIntrinsic intrinsic = nodeIntrinsification.getIntrinsic(method);
         if (intrinsic != null) {
             Signature sig = method.getSignature();
-            Kind returnKind = sig.getReturnKind();
+            JavaKind returnKind = sig.getReturnKind();
             Stamp stamp = StampFactory.forKind(returnKind);
-            if (returnKind == Kind.Object) {
+            if (returnKind == JavaKind.Object) {
                 JavaType returnType = sig.getReturnType(method.getDeclaringClass());
                 if (returnType instanceof ResolvedJavaType) {
                     ResolvedJavaType resolvedReturnType = (ResolvedJavaType) returnType;
@@ -106,7 +106,7 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
                     b.push(method.getSignature().getReturnKind(), ConstantNode.forConstant(constant, b.getMetaAccess(), b.getGraph()));
                 } else {
                     // This must be a void invoke
-                    assert method.getSignature().getReturnKind() == Kind.Void;
+                    assert method.getSignature().getReturnKind() == JavaKind.Void;
                 }
                 return true;
             } else if (mustIntrinsify) {
@@ -115,7 +115,7 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
 
         } else if (MethodsElidedInSnippets != null) {
             if (MethodFilter.matches(MethodsElidedInSnippets, method)) {
-                if (method.getSignature().getReturnKind() != Kind.Void) {
+                if (method.getSignature().getReturnKind() != JavaKind.Void) {
                     throw new JVMCIError("Cannot elide non-void method " + method.format("%H.%n(%p)"));
                 }
                 return true;
@@ -150,7 +150,7 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
         }
     }
 
-    private boolean processNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, Kind returnKind, Stamp stamp) {
+    private boolean processNodeIntrinsic(GraphBuilderContext b, ResolvedJavaMethod method, NodeIntrinsic intrinsic, List<ValueNode> args, JavaKind returnKind, Stamp stamp) {
         ValueNode res = createNodeIntrinsic(b, method, intrinsic, args, stamp);
         if (res == null) {
             return false;
@@ -174,7 +174,7 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
         }
 
         boolean nonValueType = false;
-        if (returnKind == Kind.Object && stamp instanceof ObjectStamp) {
+        if (returnKind == JavaKind.Object && stamp instanceof ObjectStamp) {
             ResolvedJavaType type = ((ObjectStamp) stamp).type();
             if (type != null && structuralInputType.isAssignableFrom(type)) {
                 assert res.isAllowedUsageType(getInputType(type));
@@ -182,11 +182,11 @@ public class NodeIntrinsificationPlugin implements NodePlugin {
             }
         }
 
-        if (returnKind != Kind.Void) {
-            assert nonValueType || res.getStackKind() != Kind.Void;
+        if (returnKind != JavaKind.Void) {
+            assert nonValueType || res.getStackKind() != JavaKind.Void;
             res = b.addPush(returnKind, res);
         } else {
-            assert res.getStackKind() == Kind.Void;
+            assert res.getStackKind() == JavaKind.Void;
             res = b.add(res);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ public class AMD64OptimizedCallTargetInstrumentationFactory implements Optimized
             protected void injectTailCallCode(HotSpotVMConfig config, HotSpotRegistersProvider registers) {
                 @SuppressWarnings("hiding")
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) this.asm;
-                Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, Kind.Object)[0];
+                Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, JavaKind.Object)[0];
                 Register spillRegister = AMD64.r10; // TODO(mg): fix me
                 Label doProlog = new Label();
 

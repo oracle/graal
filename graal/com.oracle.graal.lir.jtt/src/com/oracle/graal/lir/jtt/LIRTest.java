@@ -55,7 +55,7 @@ public abstract class LIRTest extends JTTTest {
         @Input protected NodeInputList<ValueNode> values;
         public final SnippetReflectionProvider snippetReflection;
 
-        public LIRTestNode(SnippetReflectionProvider snippetReflection, Kind kind, ValueNode opsNode, ValueNode[] values) {
+        public LIRTestNode(SnippetReflectionProvider snippetReflection, JavaKind kind, ValueNode opsNode, ValueNode[] values) {
             super(TYPE, StampFactory.forKind(kind));
             this.opsNode = opsNode;
             this.values = new NodeInputList<>(this, values);
@@ -94,7 +94,7 @@ public abstract class LIRTest extends JTTTest {
         @Input protected ValueNode name;
         public final SnippetReflectionProvider snippetReflection;
 
-        public LIRValueNode(SnippetReflectionProvider snippetReflection, Kind kind, ValueNode opsNode, ValueNode name) {
+        public LIRValueNode(SnippetReflectionProvider snippetReflection, JavaKind kind, ValueNode opsNode, ValueNode name) {
             super(TYPE, StampFactory.forKind(kind));
             this.opsNode = opsNode;
             this.name = name;
@@ -126,31 +126,31 @@ public abstract class LIRTest extends JTTTest {
 
     private InvocationPlugin lirTestPlugin = new InvocationPlugin() {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec) {
-            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
             b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0) {
-            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
             b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1) {
-            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
             b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2) {
-            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
             b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2}));
             return true;
         }
 
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
-            Kind returnKind = targetMethod.getSignature().getReturnKind();
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
             b.addPush(returnKind, new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3}));
             return true;
         }
@@ -174,7 +174,7 @@ public abstract class LIRTest extends JTTTest {
         }
         InvocationPlugin outputPlugin = new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode name, ValueNode expected) {
-                Kind returnKind = targetMethod.getSignature().getReturnKind();
+                JavaKind returnKind = targetMethod.getSignature().getReturnKind();
                 b.addPush(returnKind, new LIRValueNode(getSnippetReflection(), returnKind, spec, name));
                 return true;
             }

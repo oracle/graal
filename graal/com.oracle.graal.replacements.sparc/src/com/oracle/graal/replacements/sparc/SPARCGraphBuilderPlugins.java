@@ -35,12 +35,12 @@ public class SPARCGraphBuilderPlugins {
 
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, Kind.Int);
-        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, Kind.Long);
+        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int);
+        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long);
         registerMathPlugins(invocationPlugins, foreignCalls);
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, Kind kind) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);

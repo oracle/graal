@@ -52,7 +52,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         TargetDescription target = providers.getCodeCache().getTarget();
-        Kind word = target.wordKind;
+        JavaKind word = target.wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()

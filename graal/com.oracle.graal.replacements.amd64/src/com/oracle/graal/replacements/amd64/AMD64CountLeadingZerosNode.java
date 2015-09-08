@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,13 +41,13 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLo
     public static final NodeClass<AMD64CountLeadingZerosNode> TYPE = NodeClass.create(AMD64CountLeadingZerosNode.class);
 
     public AMD64CountLeadingZerosNode(ValueNode value) {
-        super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
+        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
     }
 
     @Override
     public boolean inferStamp() {
-        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
+        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         long mask = CodeUtil.mask(valueStamp.getBits());
         // Don't count zeros from the mask in the result.
@@ -55,13 +55,13 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements LIRLo
         assert adjust == 0 || adjust == 32;
         int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask) - adjust;
         int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask) - adjust;
-        return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
+        return updateStamp(StampFactory.forInteger(JavaKind.Int, min, max));
     }
 
     public static ValueNode tryFold(ValueNode value) {
         if (value.isConstant()) {
             JavaConstant c = value.asJavaConstant();
-            if (value.getStackKind() == Kind.Int) {
+            if (value.getStackKind() == JavaKind.Int) {
                 return ConstantNode.forInt(Integer.numberOfLeadingZeros(c.asInt()));
             } else {
                 return ConstantNode.forInt(Long.numberOfLeadingZeros(c.asLong()));

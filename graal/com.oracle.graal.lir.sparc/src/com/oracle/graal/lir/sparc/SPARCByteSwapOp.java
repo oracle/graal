@@ -47,8 +47,8 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
         super(TYPE, SIZE);
         this.result = result;
         this.input = input;
-        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(Kind.Long));
-        this.tempIndex = tool.newVariable(LIRKind.value(Kind.Long));
+        this.tmpSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(JavaKind.Long));
+        this.tempIndex = tool.newVariable(LIRKind.value(JavaKind.Long));
     }
 
     @Override
@@ -56,17 +56,17 @@ public final class SPARCByteSwapOp extends SPARCLIRInstruction implements SPARCT
         SPARCAddress addr = (SPARCAddress) crb.asAddress(tmpSlot);
         SPARCMove.emitStore(input, addr, result.getPlatformKind(), SPARCDelayedControlTransfer.DUMMY, null, crb, masm);
         if (addr.getIndex().equals(Register.None)) {
-            Register tempReg = ValueUtil.asRegister(tempIndex, Kind.Long);
+            Register tempReg = ValueUtil.asRegister(tempIndex, JavaKind.Long);
             new SPARCMacroAssembler.Setx(addr.getDisplacement(), tempReg, false).emit(masm);
             addr = new SPARCAddress(addr.getBase(), tempReg);
         }
         getDelayedControlTransfer().emitControlTransfer(crb, masm);
-        switch ((Kind) input.getPlatformKind()) {
+        switch ((JavaKind) input.getPlatformKind()) {
             case Int:
-                masm.lduwa(addr.getBase(), addr.getIndex(), asRegister(result, Kind.Int), Asi.ASI_PRIMARY_LITTLE);
+                masm.lduwa(addr.getBase(), addr.getIndex(), asRegister(result, JavaKind.Int), Asi.ASI_PRIMARY_LITTLE);
                 break;
             case Long:
-                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, Kind.Long), Asi.ASI_PRIMARY_LITTLE);
+                masm.ldxa(addr.getBase(), addr.getIndex(), asRegister(result, JavaKind.Long), Asi.ASI_PRIMARY_LITTLE);
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

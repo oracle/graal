@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
     protected final JavaConstant functionPointer;
     @Input NodeInputList<ValueNode> args;
 
-    public AMD64RawNativeCallNode(Kind returnType, JavaConstant functionPointer, ValueNode[] args) {
+    public AMD64RawNativeCallNode(JavaKind returnType, JavaConstant functionPointer, ValueNode[] args) {
         super(TYPE, StampFactory.forKind(returnType));
         this.functionPointer = functionPointer;
         this.args = new NodeInputList<>(this, args);
@@ -59,7 +59,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
         CallingConvention cc = generator.getLIRGeneratorTool().getCodeCache().getRegisterConfig().getCallingConvention(Type.NativeCall, returnType, parameterTypes,
                         generator.getLIRGeneratorTool().target(), false);
         gen.getLIRGeneratorTool().emitCCall(functionPointer.asLong(), cc, parameter, countFloatingTypeArguments(args));
-        if (this.getStackKind() != Kind.Void) {
+        if (this.getStackKind() != JavaKind.Void) {
             generator.setResult(this, gen.getLIRGeneratorTool().emitMove(cc.getReturn()));
         }
     }
@@ -67,7 +67,7 @@ public final class AMD64RawNativeCallNode extends FixedWithNextNode implements L
     private static int countFloatingTypeArguments(NodeInputList<ValueNode> args) {
         int count = 0;
         for (ValueNode n : args) {
-            if (n.getStackKind() == Kind.Double || n.getStackKind() == Kind.Float) {
+            if (n.getStackKind() == JavaKind.Double || n.getStackKind() == JavaKind.Float) {
                 count++;
             }
         }

@@ -68,10 +68,10 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                         }
                         return new LeftShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
-                        if (getStackKind() == Kind.Long) {
+                        if (getStackKind() == JavaKind.Long) {
                             return new AndNode(other.getX(), ConstantNode.forLong(-1L << amount));
                         } else {
-                            assert getStackKind() == Kind.Int;
+                            assert getStackKind() == JavaKind.Int;
                             return new AndNode(other.getX(), ConstantNode.forInt(-1 << amount));
                         }
                     }

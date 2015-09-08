@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * Represents an address that is composed of a base and an offset. The base can be either a
- * {@link Kind#Object}, a word-sized integer or another pointer. The offset must be a word-sized
+ * {@link JavaKind#Object}, a word-sized integer or another pointer. The offset must be a word-sized
  * integer.
  */
 @NodeInfo(allowedUsageTypes = InputType.Association)
@@ -93,7 +93,7 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable, P
         if (receiverType == null) {
             return false;
         }
-        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(offset.asJavaConstant().asLong(), Kind.Void);
+        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(offset.asJavaConstant().asLong(), JavaKind.Void);
         if (field == null) {
             // field was not declared by receiverType
             return false;

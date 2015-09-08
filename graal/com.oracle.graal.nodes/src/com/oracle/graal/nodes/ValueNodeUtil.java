@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.memory.*;
 
 public class ValueNodeUtil {
 
-    public static ValueNode assertKind(Kind kind, ValueNode x) {
+    public static ValueNode assertKind(JavaKind kind, ValueNode x) {
         assert x != null && x.getStackKind() == kind : "kind=" + kind + ", value=" + x + ((x == null) ? "" : ", value.kind=" + x.getStackKind());
         return x;
     }
@@ -46,27 +46,27 @@ public class ValueNodeUtil {
     }
 
     public static ValueNode assertLong(ValueNode x) {
-        assert x != null && (x.getStackKind() == Kind.Long);
+        assert x != null && (x.getStackKind() == JavaKind.Long);
         return x;
     }
 
     public static ValueNode assertInt(ValueNode x) {
-        assert x != null && (x.getStackKind() == Kind.Int);
+        assert x != null && (x.getStackKind() == JavaKind.Int);
         return x;
     }
 
     public static ValueNode assertFloat(ValueNode x) {
-        assert x != null && (x.getStackKind() == Kind.Float);
+        assert x != null && (x.getStackKind() == JavaKind.Float);
         return x;
     }
 
     public static ValueNode assertObject(ValueNode x) {
-        assert x != null && (x.getStackKind() == Kind.Object);
+        assert x != null && (x.getStackKind() == JavaKind.Object);
         return x;
     }
 
     public static ValueNode assertDouble(ValueNode x) {
-        assert x != null && (x.getStackKind() == Kind.Double);
+        assert x != null && (x.getStackKind() == JavaKind.Double);
         return x;
     }
 
@@ -87,8 +87,9 @@ public class ValueNodeUtil {
 
     /**
      * Converts a given instruction to a value string. The representation of an node as a value is
-     * formed by concatenating the {@linkplain jdk.internal.jvmci.meta.Kind#getTypeChar character}
-     * denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example, {@code "i13"}.
+     * formed by concatenating the {@linkplain jdk.internal.jvmci.meta.JavaKind#getTypeChar
+     * character} denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example,
+     * {@code "i13"}.
      *
      * @param value the instruction to convert to a value string. If {@code value == null}, then "-"
      *            is returned.

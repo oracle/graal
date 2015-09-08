@@ -85,7 +85,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                      * Klass* so get them from Class.TYPE for the java box type.
                      */
                     HotSpotResolvedPrimitiveType primitive = (HotSpotResolvedPrimitiveType) type;
-                    ResolvedJavaType boxingClass = metaAccess.lookupJavaType(primitive.getKind().toBoxedJavaClass());
+                    ResolvedJavaType boxingClass = metaAccess.lookupJavaType(primitive.getJavaKind().toBoxedJavaClass());
                     ConstantNode clazz = ConstantNode.forConstant(boxingClass.getJavaClass(), metaAccess, graph);
                     HotSpotResolvedJavaField[] a = (HotSpotResolvedJavaField[]) boxingClass.getStaticFields();
                     HotSpotResolvedJavaField typeField = null;

@@ -39,10 +39,10 @@ import com.oracle.graal.nodes.spi.*;
 public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
 
     public static final NodeClass<JavaWriteNode> TYPE = NodeClass.create(JavaWriteNode.class);
-    protected final Kind writeKind;
+    protected final JavaKind writeKind;
     protected final boolean compressible;
 
-    public JavaWriteNode(Kind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible, boolean initialization) {
+    public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible, boolean initialization) {
         super(TYPE, address, location, value, barrierType, initialization);
         this.writeKind = writeKind;
         this.compressible = compressible;
@@ -56,7 +56,7 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
         return true;
     }
 
-    public Kind getWriteKind() {
+    public JavaKind getWriteKind() {
         return writeKind;
     }
 

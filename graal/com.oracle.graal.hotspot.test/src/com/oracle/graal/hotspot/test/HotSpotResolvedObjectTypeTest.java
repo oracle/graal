@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,9 +45,9 @@ public class HotSpotResolvedObjectTypeTest extends HotSpotGraalCompilerTest {
         JavaConstant klass = HotSpotResolvedObjectTypeImpl.fromObjectClass(this.getClass()).klass();
         MemoryAccessProvider memoryAccess = getProviders().getConstantReflection().getMemoryAccessProvider();
         HotSpotVMConfig config = runtime().getConfig();
-        Constant c = StampFactory.forKind(Kind.Int).readConstant(memoryAccess, klass, config.klassLayoutHelperOffset);
+        Constant c = StampFactory.forKind(JavaKind.Int).readConstant(memoryAccess, klass, config.klassLayoutHelperOffset);
         assertTrue(c.toString(), c.getClass() == PrimitiveConstant.class);
         PrimitiveConstant pc = (PrimitiveConstant) c;
-        assertTrue(pc.toString(), pc.getKind() == Kind.Int);
+        assertTrue(pc.toString(), pc.getJavaKind() == JavaKind.Int);
     }
 }

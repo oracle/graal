@@ -49,7 +49,7 @@ import com.oracle.graal.lir.gen.*;
 public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ArrayEqualsOp> TYPE = LIRInstructionClass.create(AMD64ArrayEqualsOp.class);
 
-    private final Kind kind;
+    private final JavaKind kind;
     private final int arrayBaseOffset;
     private final int arrayIndexScale;
 
@@ -64,7 +64,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
     @Temp({REG, ILLEGAL}) protected Value vectorTemp2;
 
-    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
+    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, Value result, Value array1, Value array2, Value length) {
         super(TYPE);
         this.kind = kind;
 
@@ -85,8 +85,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
         // We only need the vector temporaries if we generate SSE code.
         if (supportsSSE41(tool.target())) {
-            this.vectorTemp1 = tool.newVariable(LIRKind.value(Kind.Double));
-            this.vectorTemp2 = tool.newVariable(LIRKind.value(Kind.Double));
+            this.vectorTemp1 = tool.newVariable(LIRKind.value(JavaKind.Double));
+            this.vectorTemp2 = tool.newVariable(LIRKind.value(JavaKind.Double));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
             this.vectorTemp2 = Value.ILLEGAL;
@@ -154,8 +154,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     private void emitSSE41Compare(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
         assert supportsSSE41(crb.target);
 
-        Register vector1 = asRegister(vectorTemp1, Kind.Double);
-        Register vector2 = asRegister(vectorTemp2, Kind.Double);
+        Register vector1 = asRegister(vectorTemp1, JavaKind.Double);
+        Register vector2 = asRegister(vectorTemp2, JavaKind.Double);
 
         Label loop = new Label();
         Label compareTail = new Label();

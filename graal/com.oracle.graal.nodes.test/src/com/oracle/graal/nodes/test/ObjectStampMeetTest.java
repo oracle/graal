@@ -115,7 +115,7 @@ public class ObjectStampMeetTest extends AbstractObjectStampTest {
             ResolvedJavaType type = getType(clazz);
             for (Stamp test : new Stamp[]{StampFactory.declared(type), StampFactory.declaredNonNull(type), StampFactory.exact(type), StampFactory.exactNonNull(type)}) {
                 if (type.isConcrete() || !((ObjectStamp) test).isExactType()) {
-                    Assert.assertEquals("meeting empty and " + test, test, meet(StampFactory.empty(Kind.Object), test));
+                    Assert.assertEquals("meeting empty and " + test, test, meet(StampFactory.empty(JavaKind.Object), test));
                 }
             }
         }

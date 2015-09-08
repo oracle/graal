@@ -47,7 +47,7 @@ public final class AMD64HotSpotCardTableAddressOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
         int alignment = hostWordKind.getBitCount() / Byte.SIZE;
         JavaConstant address = JavaConstant.forIntegerKind(hostWordKind, 0);
         // recordDataReferenceInCode forces the mov to be rip-relative

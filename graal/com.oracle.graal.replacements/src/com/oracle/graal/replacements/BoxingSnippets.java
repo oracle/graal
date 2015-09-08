@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,7 +144,7 @@ public class BoxingSnippets implements Snippets {
         ValueNode value = box.getValue();
         if (value.isConstant()) {
             JavaConstant sourceConstant = value.asJavaConstant();
-            if (sourceConstant.getKind() != box.getBoxingKind() && sourceConstant.getKind().isNumericInteger()) {
+            if (sourceConstant.getJavaKind() != box.getBoxingKind() && sourceConstant.getJavaKind().isNumericInteger()) {
                 switch (box.getBoxingKind()) {
                     case Boolean:
                         sourceConstant = JavaConstant.forBoolean(sourceConstant.asLong() != 0L);
@@ -161,7 +161,7 @@ public class BoxingSnippets implements Snippets {
                 }
             }
             JavaConstant boxedConstant = constantReflection.boxPrimitive(sourceConstant);
-            if (boxedConstant != null && sourceConstant.getKind() == box.getBoxingKind()) {
+            if (boxedConstant != null && sourceConstant.getJavaKind() == box.getBoxingKind()) {
                 return ConstantNode.forConstant(boxedConstant, metaAccess, box.graph());
             }
         }
@@ -170,12 +170,12 @@ public class BoxingSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final EnumMap<Kind, SnippetInfo> boxSnippets = new EnumMap<>(Kind.class);
-        private final EnumMap<Kind, SnippetInfo> unboxSnippets = new EnumMap<>(Kind.class);
+        private final EnumMap<JavaKind, SnippetInfo> boxSnippets = new EnumMap<>(JavaKind.class);
+        private final EnumMap<JavaKind, SnippetInfo> unboxSnippets = new EnumMap<>(JavaKind.class);
 
         public Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             super(providers, snippetReflection, target);
-            for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Char, Kind.Double, Kind.Float, Kind.Int, Kind.Long, Kind.Short}) {
+            for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));
             }

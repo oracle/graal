@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ public class HotSpotWordTypes extends WordTypes {
      */
     private final ResolvedJavaType methodPointerType;
 
-    public HotSpotWordTypes(MetaAccessProvider metaAccess, Kind wordKind) {
+    public HotSpotWordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         super(metaAccess, wordKind);
         this.metaspacePointerType = metaAccess.lookupJavaType(MetaspacePointer.class);
         this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
@@ -64,7 +64,7 @@ public class HotSpotWordTypes extends WordTypes {
     }
 
     @Override
-    public Kind asKind(JavaType type) {
+    public JavaKind asKind(JavaType type) {
         if (klassPointerType.equals(type) || methodPointerType.equals(type)) {
             return getWordKind();
         }

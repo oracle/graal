@@ -125,7 +125,7 @@ public class SnippetTemplate {
                 for (int i = 0; i < names.length; i++) {
                     names[i] = method.getLocalVariableTable().getLocal(slotIdx, 0).getName();
 
-                    Kind kind = method.getSignature().getParameterKind(i);
+                    JavaKind kind = method.getSignature().getParameterKind(i);
                     slotIdx += kind.getSlotCount();
                 }
                 return true;
@@ -615,7 +615,7 @@ public class SnippetTemplate {
             for (int i = 0; i < parameterCount; i++) {
                 if (args.info.isConstantParameter(i)) {
                     Object arg = args.values[i];
-                    Kind kind = signature.getParameterKind(i);
+                    JavaKind kind = signature.getParameterKind(i);
                     ConstantNode constantNode;
                     if (arg instanceof Constant) {
                         Stamp stamp = args.constStamps[i];
@@ -833,13 +833,13 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkConstantArgument(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, Kind kind) {
+    private static boolean checkConstantArgument(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, JavaKind kind) {
         ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             assert arg instanceof JavaConstant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
         }
-        if (kind != Kind.Object) {
+        if (kind != JavaKind.Object) {
             assert arg != null && kind.toBoxedJavaClass() == arg.getClass() : method + ": wrong value kind for " + name + ": expected " + kind + ", got " +
                             (arg == null ? "null" : arg.getClass().getSimpleName());
         }
@@ -931,8 +931,8 @@ public class SnippetTemplate {
                 if (argument instanceof ValueNode) {
                     replacements.put((ParameterNode) parameter, (ValueNode) argument);
                 } else {
-                    Kind kind = ((ParameterNode) parameter).getStackKind();
-                    assert argument != null || kind == Kind.Object : this + " cannot accept null for non-object parameter named " + args.info.getParameterName(i);
+                    JavaKind kind = ((ParameterNode) parameter).getStackKind();
+                    assert argument != null || kind == JavaKind.Object : this + " cannot accept null for non-object parameter named " + args.info.getParameterName(i);
                     JavaConstant constant = forBoxed(argument, kind);
                     replacements.put((ParameterNode) parameter, ConstantNode.forConstant(constant, metaAccess, replaceeGraph));
                 }
@@ -972,15 +972,15 @@ public class SnippetTemplate {
 
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
-     * limitation that a {@link Local}'s kind is a {@linkplain Kind#getStackKind() stack kind} and
-     * so cannot be used for re-boxing primitives smaller than an int.
+     * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}
+     * and so cannot be used for re-boxing primitives smaller than an int.
      *
      * @param argument a Java boxed value
      * @param localKind the kind of the {@link Local} to which {@code argument} will be bound
      */
-    protected JavaConstant forBoxed(Object argument, Kind localKind) {
+    protected JavaConstant forBoxed(Object argument, JavaKind localKind) {
         assert localKind == localKind.getStackKind();
-        if (localKind == Kind.Int) {
+        if (localKind == JavaKind.Int) {
             return JavaConstant.forBoxedPrimitive(argument);
         }
         return snippetReflection.forBoxed(localKind, argument);
@@ -1429,7 +1429,7 @@ public class SnippetTemplate {
     private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method, Signature signature) {
         for (int i = 0; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
-                Kind kind = signature.getParameterKind(i);
+                JavaKind kind = signature.getParameterKind(i);
                 assert checkConstantArgument(metaAccess, method, signature, i, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {

@@ -55,7 +55,7 @@ public class InstanceOfDynamicNode extends LogicNode implements Canonicalizable.
         super(TYPE);
         this.mirror = mirror;
         this.object = object;
-        assert mirror.getStackKind() == Kind.Object : mirror.getStackKind();
+        assert mirror.getStackKind() == JavaKind.Object : mirror.getStackKind();
     }
 
     @Override

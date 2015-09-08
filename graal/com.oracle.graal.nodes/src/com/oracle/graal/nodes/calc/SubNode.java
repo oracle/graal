@@ -122,7 +122,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                     return reassociated;
                 }
             }
-            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long i = ((PrimitiveConstant) c).asLong();
                 if (i < 0 || ((IntegerStamp) StampFactory.forKind(forY.getStackKind())).contains(-i)) {
                     // Adding a negative is more friendly to the backend since adds are

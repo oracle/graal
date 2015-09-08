@@ -144,7 +144,7 @@ public class AMD64ControlFlow {
             this.scratch = scratch;
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
-            assert (scratch.getPlatformKind() == Kind.Illegal) == (key.getPlatformKind() == Kind.Int || key.getPlatformKind() == Kind.Long);
+            assert (scratch.getPlatformKind() == JavaKind.Illegal) == (key.getPlatformKind() == JavaKind.Int || key.getPlatformKind() == JavaKind.Long);
         }
 
         @Override
@@ -154,7 +154,7 @@ public class AMD64ControlFlow {
             BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
                 @Override
                 protected void conditionalJump(int index, Condition condition, Label target) {
-                    switch (keyConstants[index].getKind()) {
+                    switch (keyConstants[index].getJavaKind()) {
                         case Int:
                             if (crb.codeCache.needsDataPatch(keyConstants[index])) {
                                 crb.recordInlineDataInCode(keyConstants[index]);
@@ -202,9 +202,9 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            Register indexReg = asRegister(index, Kind.Int);
-            Register idxScratchReg = asRegister(idxScratch, Kind.Int);
-            Register scratchReg = asRegister(scratch, Kind.Long);
+            Register indexReg = asRegister(index, JavaKind.Int);
+            Register idxScratchReg = asRegister(idxScratch, JavaKind.Int);
+            Register scratchReg = asRegister(scratch, JavaKind.Long);
 
             if (!indexReg.equals(idxScratchReg)) {
                 masm.movl(idxScratchReg, indexReg);
@@ -342,7 +342,7 @@ public class AMD64ControlFlow {
     private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
             assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
-            switch ((Kind) other.getPlatformKind()) {
+            switch ((JavaKind) other.getPlatformKind()) {
                 case Boolean:
                 case Byte:
                 case Short:
@@ -358,7 +358,7 @@ public class AMD64ControlFlow {
             }
         } else {
             AMD64Address addr = (AMD64Address) crb.asAddress(other);
-            switch ((Kind) other.getPlatformKind()) {
+            switch ((JavaKind) other.getPlatformKind()) {
                 case Boolean:
                 case Byte:
                 case Short:

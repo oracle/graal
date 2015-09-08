@@ -135,7 +135,7 @@ public abstract class PhiNode extends FloatingNode implements Simplifiable {
 
     public void addInput(ValueNode x) {
         assert !(x instanceof ValuePhiNode) || ((ValuePhiNode) x).merge() instanceof LoopBeginNode || ((ValuePhiNode) x).merge() != this.merge();
-        assert !(this instanceof ValuePhiNode) || x.stamp().isCompatible(stamp()) || (stamp().getStackKind() == Kind.Int && x.stamp().getStackKind().getBitCount() >= Kind.Int.getBitCount());
+        assert !(this instanceof ValuePhiNode) || x.stamp().isCompatible(stamp()) || (stamp().getStackKind() == JavaKind.Int && x.stamp().getStackKind().getBitCount() >= JavaKind.Int.getBitCount());
         values().add(x);
     }
 

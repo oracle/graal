@@ -44,10 +44,10 @@ public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint imple
     @Input ValueNode offset;
     @Input ValueNode newValue;
 
-    protected final Kind valueKind;
+    protected final JavaKind valueKind;
     protected final LocationIdentity locationIdentity;
 
-    public AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
+    public AtomicReadAndWriteNode(ValueNode object, ValueNode offset, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
         super(TYPE, StampFactory.forKind(newValue.getStackKind()));
         this.object = object;
         this.offset = offset;
@@ -68,7 +68,7 @@ public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint imple
         return newValue;
     }
 
-    public Kind getValueKind() {
+    public JavaKind getValueKind() {
         return valueKind;
     }
 

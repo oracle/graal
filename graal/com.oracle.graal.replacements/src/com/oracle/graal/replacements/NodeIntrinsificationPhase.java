@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return true;
     }
 
-    public static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(Kind.Illegal, 100) {
+    public static final JavaConstant COULD_NOT_FOLD = new PrimitiveConstant(JavaKind.Illegal, 100) {
         @Override
         public boolean equals(Object o) {
             return this == o;
@@ -242,15 +242,15 @@ public class NodeIntrinsificationPhase extends Phase {
                         arg = javaConstant;
                     } else {
                         /* For intrinsification we want want corresponding objects */
-                        if (parameterTypes[i].getKind() == Kind.Boolean) {
+                        if (parameterTypes[i].getJavaKind() == JavaKind.Boolean) {
                             arg = Boolean.valueOf(javaConstant.asInt() != 0);
-                        } else if (parameterTypes[i].getKind() == Kind.Byte) {
+                        } else if (parameterTypes[i].getJavaKind() == JavaKind.Byte) {
                             arg = Byte.valueOf((byte) javaConstant.asInt());
-                        } else if (parameterTypes[i].getKind() == Kind.Short) {
+                        } else if (parameterTypes[i].getJavaKind() == JavaKind.Short) {
                             arg = Short.valueOf((short) javaConstant.asInt());
-                        } else if (parameterTypes[i].getKind() == Kind.Char) {
+                        } else if (parameterTypes[i].getJavaKind() == JavaKind.Char) {
                             arg = Character.valueOf((char) javaConstant.asInt());
-                        } else if (parameterTypes[i].getKind() == Kind.Object) {
+                        } else if (parameterTypes[i].getJavaKind() == JavaKind.Object) {
                             arg = snippetReflection.asObject(parameterTypes[i], javaConstant);
                         } else {
                             arg = javaConstant.asBoxedPrimitive();
@@ -432,7 +432,7 @@ public class NodeIntrinsificationPhase extends Phase {
     }
 
     public void cleanUpReturnCheckCast(Node newInstance) {
-        if (newInstance instanceof ValueNode && (((ValueNode) newInstance).getStackKind() != Kind.Object || ((ValueNode) newInstance).stamp() == StampFactory.forNodeIntrinsic())) {
+        if (newInstance instanceof ValueNode && (((ValueNode) newInstance).getStackKind() != JavaKind.Object || ((ValueNode) newInstance).stamp() == StampFactory.forNodeIntrinsic())) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
                 for (Node checkCastUsage : checkCastNode.usages().snapshot()) {

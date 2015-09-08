@@ -44,8 +44,8 @@ public interface NodePlugin extends GraphBuilderPlugin {
 
     /**
      * Handle the parsing of a GETFIELD bytecode. If the method returns true, it must
-     * {@link GraphBuilderContext#push push} a value using the {@link ResolvedJavaField#getKind()
-     * kind} of the field.
+     * {@link GraphBuilderContext#push push} a value using the
+     * {@link ResolvedJavaField#getJavaKind() kind} of the field.
      *
      * @param b the context
      * @param object the receiver object for the field access
@@ -58,8 +58,8 @@ public interface NodePlugin extends GraphBuilderPlugin {
 
     /**
      * Handle the parsing of a GETSTATIC bytecode. If the method returns true, it must
-     * {@link GraphBuilderContext#push push} a value using the {@link ResolvedJavaField#getKind()
-     * kind} of the field.
+     * {@link GraphBuilderContext#push push} a value using the
+     * {@link ResolvedJavaField#getJavaKind() kind} of the field.
      *
      * @param b the context
      * @param field the accessed field
@@ -104,7 +104,7 @@ public interface NodePlugin extends GraphBuilderPlugin {
      * @param elementKind the element kind of the accessed array
      * @return true if the plugin handles the array access, false otherwise.
      */
-    default boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind) {
+    default boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
         return false;
     }
 
@@ -118,14 +118,14 @@ public interface NodePlugin extends GraphBuilderPlugin {
      * @param value the value to be stored into the array
      * @return true if the plugin handles the array access, false otherwise.
      */
-    default boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    default boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind, ValueNode value) {
         return false;
     }
 
     /**
      * Handle the parsing of a CHECKCAST bytecode. If the method returns true, it must
      * {@link GraphBuilderContext#push push} a value with the result of the cast using
-     * {@link Kind#Object}.
+     * {@link JavaKind#Object}.
      *
      * @param b the context
      * @param object the object to be type checked
@@ -141,7 +141,7 @@ public interface NodePlugin extends GraphBuilderPlugin {
     /**
      * Handle the parsing of a INSTANCEOF bytecode. If the method returns true, it must
      * {@link GraphBuilderContext#push push} a value with the result of the instanceof using
-     * {@link Kind#Int}.
+     * {@link JavaKind#Int}.
      *
      * @param b the context
      * @param object the object to be type checked
@@ -157,7 +157,7 @@ public interface NodePlugin extends GraphBuilderPlugin {
     /**
      * Handle the parsing of a NEW bytecode. If the method returns true, it must
      * {@link GraphBuilderContext#push push} a value with the result of the allocation using
-     * {@link Kind#Object}.
+     * {@link JavaKind#Object}.
      *
      * @param b the context
      * @param type the type to be instantiated
@@ -170,7 +170,7 @@ public interface NodePlugin extends GraphBuilderPlugin {
     /**
      * Handle the parsing of a NEWARRAY and ANEWARRAY bytecode. If the method returns true, it must
      * {@link GraphBuilderContext#push push} a value with the result of the allocation using
-     * {@link Kind#Object}.
+     * {@link JavaKind#Object}.
      *
      * @param b the context
      * @param elementType the element type of the array to be instantiated
@@ -184,7 +184,7 @@ public interface NodePlugin extends GraphBuilderPlugin {
     /**
      * Handle the parsing of a MULTIANEWARRAY bytecode. If the method returns true, it must
      * {@link GraphBuilderContext#push push} a value with the result of the allocation using
-     * {@link Kind#Object}.
+     * {@link JavaKind#Object}.
      *
      * @param b the context
      * @param type the type of the outermost array to be instantiated
@@ -196,9 +196,9 @@ public interface NodePlugin extends GraphBuilderPlugin {
     }
 
     /**
-     * If the plugin {@link GraphBuilderContext#push pushes} a value with a different {@link Kind}
-     * than specified by the bytecode, it must override this method and return {@code true}. This
-     * disables assertion checking for value kinds.
+     * If the plugin {@link GraphBuilderContext#push pushes} a value with a different
+     * {@link JavaKind} than specified by the bytecode, it must override this method and return
+     * {@code true}. This disables assertion checking for value kinds.
      *
      * @param b the context
      */

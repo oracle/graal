@@ -90,10 +90,10 @@ final class AMD64HotSpotEnterUnpackFramesStackFrameOp extends AMD64LIRInstructio
 
         // Save return registers after moving the frame.
         final int stackSlotSize = frameMap.getTarget().wordSize;
-        Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
+        Register integerResultRegister = registerConfig.getReturnRegister(JavaKind.Long);
         masm.movptr(new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize), integerResultRegister);
 
-        Register floatResultRegister = registerConfig.getReturnRegister(Kind.Double);
+        Register floatResultRegister = registerConfig.getReturnRegister(JavaKind.Double);
         masm.movdbl(new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(floatResultRegister) * stackSlotSize), floatResultRegister);
 
         // Set up last Java values.

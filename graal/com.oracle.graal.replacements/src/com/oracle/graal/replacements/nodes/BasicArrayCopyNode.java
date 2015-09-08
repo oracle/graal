@@ -51,30 +51,30 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
 
     @OptionalInput(InputType.Memory) protected MemoryNode lastLocationAccess;
 
-    protected Kind elementKind;
+    protected JavaKind elementKind;
 
     protected int bci;
 
-    public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind, int bci) {
-        super(type, StampFactory.forKind(Kind.Void));
+    public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, int bci) {
+        super(type, StampFactory.forKind(JavaKind.Void));
         this.bci = bci;
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
         this.destPos = destPos;
         this.length = length;
-        this.elementKind = elementKind != Kind.Illegal ? elementKind : null;
+        this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
-    public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
-        super(type, StampFactory.forKind(Kind.Void));
+    public BasicArrayCopyNode(NodeClass<? extends AbstractMemoryCheckpoint> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind) {
+        super(type, StampFactory.forKind(JavaKind.Void));
         this.bci = -6;
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
         this.destPos = destPos;
         this.length = length;
-        this.elementKind = elementKind != Kind.Illegal ? elementKind : null;
+        this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
     public ValueNode getSource() {
@@ -101,7 +101,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         return bci;
     }
 
-    public Kind getElementKind() {
+    public JavaKind getElementKind() {
         return elementKind;
     }
 
@@ -132,7 +132,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
     }
 
     private static boolean checkEntryTypes(int srcPos, int length, VirtualObjectNode src, ResolvedJavaType destComponentType, VirtualizerTool tool) {
-        if (destComponentType.getKind() == Kind.Object) {
+        if (destComponentType.getJavaKind() == JavaKind.Object) {
             for (int i = 0; i < length; i++) {
                 ValueNode entry = tool.getEntry(src, srcPos + i);
                 ResolvedJavaType type = StampTool.typeOrNull(entry);
@@ -153,7 +153,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
         if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
             return false;
         }
-        if ((srcType.getComponentType().getKind().isPrimitive() && destType.getComponentType().equals(srcType.getComponentType())) || getSource() == getDestination()) {
+        if ((srcType.getComponentType().getJavaKind().isPrimitive() && destType.getComponentType().equals(srcType.getComponentType())) || getSource() == getDestination()) {
             return true;
         }
 
@@ -189,10 +189,10 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
                         return;
                     }
                     VirtualArrayNode srcVirtual = (VirtualArrayNode) srcAlias;
-                    if (destVirtual.componentType().getKind() != Kind.Object) {
+                    if (destVirtual.componentType().getJavaKind() != JavaKind.Object) {
                         return;
                     }
-                    if (srcVirtual.componentType().getKind() != Kind.Object) {
+                    if (srcVirtual.componentType().getJavaKind() != JavaKind.Object) {
                         return;
                     }
                     if (!checkBounds(srcPosInt, len, srcVirtual)) {
@@ -219,7 +219,7 @@ public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements Virt
                         return;
                     }
                     for (int i = 0; i < len; i++) {
-                        LoadIndexedNode load = new LoadIndexedNode(srcAlias, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getKind());
+                        LoadIndexedNode load = new LoadIndexedNode(srcAlias, ConstantNode.forInt(i + srcPosInt, graph()), destComponentType.getJavaKind());
                         tool.addNode(load);
                         tool.setVirtualEntry(destVirtual, destPosInt + i, load, false);
                     }

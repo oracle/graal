@@ -141,7 +141,7 @@ public class MoveProfiling extends PostAllocationOptimizationPhase {
                 int i = cnt[type.ordinal()];
                 if (i > 0) {
                     names.add(type.toString());
-                    increments.add(new ConstantValue(target.getLIRKind(Kind.Int), JavaConstant.forInt(i)));
+                    increments.add(new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.forInt(i)));
                 }
             }
             String[] groups = new String[names.size()];

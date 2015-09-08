@@ -81,7 +81,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
     }
 
     protected void processHotSpotWordOperation(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, HotSpotOperation operation) {
-        Kind returnKind = method.getSignature().getReturnKind();
+        JavaKind returnKind = method.getSignature().getReturnKind();
         switch (operation.opcode()) {
             case POINTER_EQ:
             case POINTER_NE:

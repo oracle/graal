@@ -54,7 +54,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
         ResolvedJavaType type = StampTool.typeOrNull(getObject());
         if (type != null) {
             if (type.isArray()) {
-                Method method = ObjectCloneSnippets.arrayCloneMethods.get(type.getComponentType().getKind());
+                Method method = ObjectCloneSnippets.arrayCloneMethods.get(type.getComponentType().getJavaKind());
                 if (method != null) {
                     final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(method);
                     final Replacements replacements = tool.getReplacements();
@@ -68,7 +68,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
                     return lowerReplacement((StructuredGraph) snippetGraph.copy(), tool);
                 }
-                assert false : "unhandled array type " + type.getComponentType().getKind();
+                assert false : "unhandled array type " + type.getComponentType().getJavaKind();
             } else {
                 Assumptions assumptions = graph().getAssumptions();
                 type = getConcreteType(getObject().stamp(), assumptions, tool.getMetaAccess());

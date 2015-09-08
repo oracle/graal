@@ -36,7 +36,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Virtualiz
 
     public static final NodeClass<ArrayCopyNode> TYPE = NodeClass.create(ArrayCopyNode.class);
 
-    private Kind elementKind;
+    private JavaKind elementKind;
 
     public ArrayCopyNode(int bci, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
         super(TYPE, src, srcPos, dst, dstPos, length, null, bci);

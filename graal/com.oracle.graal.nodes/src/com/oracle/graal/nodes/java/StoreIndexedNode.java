@@ -60,7 +60,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         return value;
     }
 
-    public StoreIndexedNode(ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    public StoreIndexedNode(ValueNode array, ValueNode index, JavaKind elementKind, ValueNode value) {
         super(TYPE, StampFactory.forVoid(), array, index, elementKind);
         this.value = value;
     }

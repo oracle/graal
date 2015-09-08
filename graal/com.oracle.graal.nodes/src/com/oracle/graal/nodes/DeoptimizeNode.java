@@ -52,7 +52,7 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
         super(TYPE, stateBefore);
         assert action != null;
         assert reason != null;
-        assert speculation.getKind() == Kind.Object;
+        assert speculation.getJavaKind() == JavaKind.Object;
         this.action = action;
         this.reason = reason;
         this.debugId = debugId;

@@ -74,10 +74,10 @@ final class AMD64HotSpotLeaveUnpackFramesStackFrameOp extends AMD64LIRInstructio
 
         // Restore return values.
         final int stackSlotSize = frameMap.getTarget().wordSize;
-        Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
+        Register integerResultRegister = registerConfig.getReturnRegister(JavaKind.Long);
         masm.movptr(integerResultRegister, new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize));
 
-        Register floatResultRegister = registerConfig.getReturnRegister(Kind.Double);
+        Register floatResultRegister = registerConfig.getReturnRegister(JavaKind.Double);
         masm.movdbl(floatResultRegister, new AMD64Address(stackPointerRegister, registerSaveLayout.registerToSlot(floatResultRegister) * stackSlotSize));
     }
 }

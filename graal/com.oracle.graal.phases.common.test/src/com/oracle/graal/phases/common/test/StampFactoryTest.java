@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,8 +43,8 @@ public class StampFactoryTest {
         Method method = StampFactoryTest.class.getMethod("test", Integer.TYPE, Object.class, Double.TYPE);
         MetaAccessProvider metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
         Stamp[] parameterStamps = StampFactory.createParameterStamps(metaAccess.lookupJavaMethod(method));
-        Stamp[] expected = {StampFactory.declaredNonNull(metaAccess.lookupJavaType(StampFactoryTest.class)), StampFactory.forKind(Kind.Int),
-                        StampFactory.declared(metaAccess.lookupJavaType(Object.class)), StampFactory.forKind(Kind.Double)};
+        Stamp[] expected = {StampFactory.declaredNonNull(metaAccess.lookupJavaType(StampFactoryTest.class)), StampFactory.forKind(JavaKind.Int),
+                        StampFactory.declared(metaAccess.lookupJavaType(Object.class)), StampFactory.forKind(JavaKind.Double)};
         Assert.assertArrayEquals(expected, parameterStamps);
     }
 }

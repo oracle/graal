@@ -55,15 +55,15 @@ public final class IntegerMulHighNode extends BinaryNode implements ArithmeticLI
         IntegerStamp xStamp = (IntegerStamp) forX.stamp();
         IntegerStamp yStamp = (IntegerStamp) forY.stamp();
 
-        Kind kind = getStackKind();
-        assert kind == Kind.Int || kind == Kind.Long;
+        JavaKind kind = getStackKind();
+        assert kind == JavaKind.Int || kind == JavaKind.Long;
         long[] xExtremes = {xStamp.lowerBound(), xStamp.upperBound()};
         long[] yExtremes = {yStamp.lowerBound(), yStamp.upperBound()};
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
         for (long a : xExtremes) {
             for (long b : yExtremes) {
-                long result = kind == Kind.Int ? multiplyHigh((int) a, (int) b) : multiplyHigh(a, b);
+                long result = kind == JavaKind.Int ? multiplyHigh((int) a, (int) b) : multiplyHigh(a, b);
                 min = Math.min(min, result);
                 max = Math.max(max, result);
             }

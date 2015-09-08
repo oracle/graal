@@ -110,7 +110,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
         for (int i = 0; i < max; i++) {
-            Kind kind = sig.getParameterKind(i);
+            JavaKind kind = sig.getParameterKind(i);
             locals[javaIndex] = arguments[index];
             javaIndex++;
             if (kind.needsTwoSlots()) {
@@ -150,9 +150,9 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (eagerResolve) {
                 type = type.resolve(accessingClass);
             }
-            Kind kind = type.getKind();
+            JavaKind kind = type.getJavaKind();
             Stamp stamp;
-            if (kind == Kind.Object && type instanceof ResolvedJavaType) {
+            if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.declared((ResolvedJavaType) type);
             } else {
                 stamp = StampFactory.forKind(kind);
@@ -240,15 +240,15 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     /**
-     * @param pushedValues if non-null, values to {@link #push(Kind, ValueNode)} to the stack before
-     *            creating the {@link FrameState}
+     * @param pushedValues if non-null, values to {@link #push(JavaKind, ValueNode)} to the stack
+     *            before creating the {@link FrameState}
      */
-    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, Kind[] pushedSlotKinds, ValueNode[] pushedValues) {
+    public FrameState create(int bci, BytecodeParser parent, boolean duringCall, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
         if (outerFrameState == null && parent != null) {
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, Kind.Void, new Kind[]{Kind.Object}, new ValueNode[]{stack[0]});
+            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
             return newFrameState;
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
@@ -522,7 +522,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param object the object whose monitor will be locked.
      */
     public void pushLock(ValueNode object, MonitorIdNode monitorId) {
-        assert object.isAlive() && object.getStackKind() == Kind.Object : "unexpected value: " + object;
+        assert object.isAlive() && object.getStackKind() == JavaKind.Object : "unexpected value: " + object;
         lockedObjects = Arrays.copyOf(lockedObjects, lockedObjects.length + 1);
         monitorIds = Arrays.copyOf(monitorIds, monitorIds.length + 1);
         lockedObjects[lockedObjects.length - 1] = object;
@@ -647,7 +647,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         return stackSize;
     }
 
-    private boolean verifyKind(Kind slotKind, ValueNode x) {
+    private boolean verifyKind(JavaKind slotKind, ValueNode x) {
         assert x != null;
         assert x != TWO_SLOT_MARKER;
         assert slotKind.getSlotCount() > 0;
@@ -666,7 +666,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param slotKind the kind of the local variable from the point of view of the bytecodes
      * @return the instruction that produced the specified local
      */
-    public ValueNode loadLocal(int i, Kind slotKind) {
+    public ValueNode loadLocal(int i, JavaKind slotKind) {
         ValueNode x = locals[i];
         assert verifyKind(slotKind, x);
         assert slotKind.needsTwoSlots() ? locals[i + 1] == TWO_SLOT_MARKER : (i == locals.length - 1 || locals[i + 1] != TWO_SLOT_MARKER);
@@ -681,7 +681,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param slotKind the kind of the local variable from the point of view of the bytecodes
      * @param x the instruction which produces the value for the local
      */
-    public void storeLocal(int i, Kind slotKind, ValueNode x) {
+    public void storeLocal(int i, JavaKind slotKind, ValueNode x) {
         assert verifyKind(slotKind, x);
 
         if (locals[i] == TWO_SLOT_MARKER) {
@@ -707,7 +707,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param slotKind the kind of the stack element from the point of view of the bytecodes
      * @param x the instruction to push onto the stack
      */
-    public void push(Kind slotKind, ValueNode x) {
+    public void push(JavaKind slotKind, ValueNode x) {
         assert verifyKind(slotKind, x);
 
         xpush(x);
@@ -716,8 +716,8 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void pushReturn(Kind slotKind, ValueNode x) {
-        if (slotKind != Kind.Void) {
+    public void pushReturn(JavaKind slotKind, ValueNode x) {
+        if (slotKind != JavaKind.Void) {
             push(slotKind, x);
         }
     }
@@ -728,7 +728,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param slotKind the kind of the stack element from the point of view of the bytecodes
      * @return the instruction on the top of the stack
      */
-    public ValueNode pop(Kind slotKind) {
+    public ValueNode pop(JavaKind slotKind) {
         if (slotKind.needsTwoSlots()) {
             ValueNode s = xpop();
             assert s == TWO_SLOT_MARKER;

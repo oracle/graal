@@ -58,15 +58,15 @@ public final class UnsignedMulHighNode extends BinaryNode implements ArithmeticL
         IntegerStamp xStamp = (IntegerStamp) forX.stamp();
         IntegerStamp yStamp = (IntegerStamp) forY.stamp();
 
-        Kind kind = getStackKind();
-        assert kind == Kind.Int || kind == Kind.Long;
+        JavaKind kind = getStackKind();
+        assert kind == JavaKind.Int || kind == JavaKind.Long;
         long[] xExtremes = {xStamp.lowerBound(), xStamp.upperBound()};
         long[] yExtremes = {yStamp.lowerBound(), yStamp.upperBound()};
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
         for (long a : xExtremes) {
             for (long b : yExtremes) {
-                long result = kind == Kind.Int ? multiplyHighUnsigned((int) a, (int) b) : multiplyHighUnsigned(a, b);
+                long result = kind == JavaKind.Int ? multiplyHighUnsigned((int) a, (int) b) : multiplyHighUnsigned(a, b);
                 min = Math.min(min, result);
                 max = Math.max(max, result);
             }

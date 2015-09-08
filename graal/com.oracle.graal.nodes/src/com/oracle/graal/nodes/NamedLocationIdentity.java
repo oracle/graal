@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import jdk.internal.jvmci.meta.*;
-import jdk.internal.jvmci.meta.Kind.FormatWithToString;
+import jdk.internal.jvmci.meta.JavaKind.FormatWithToString;
 
 /**
  * A {@link LocationIdentity} with a name.
@@ -115,15 +115,15 @@ public class NamedLocationIdentity extends LocationIdentity implements FormatWit
      * the same kind must have the same location identity unless an alias analysis guarantees that
      * two distinct arrays are accessed.
      */
-    public static LocationIdentity getArrayLocation(Kind elementKind) {
+    public static LocationIdentity getArrayLocation(JavaKind elementKind) {
         return ARRAY_LOCATIONS.get(elementKind);
     }
 
-    private static final EnumMap<Kind, LocationIdentity> ARRAY_LOCATIONS = initArrayLocations();
+    private static final EnumMap<JavaKind, LocationIdentity> ARRAY_LOCATIONS = initArrayLocations();
 
-    private static EnumMap<Kind, LocationIdentity> initArrayLocations() {
-        EnumMap<Kind, LocationIdentity> result = new EnumMap<>(Kind.class);
-        for (Kind kind : Kind.values()) {
+    private static EnumMap<JavaKind, LocationIdentity> initArrayLocations() {
+        EnumMap<JavaKind, LocationIdentity> result = new EnumMap<>(JavaKind.class);
+        for (JavaKind kind : JavaKind.values()) {
             result.put(kind, NamedLocationIdentity.mutable("Array: " + kind.getJavaName()));
         }
         return result;

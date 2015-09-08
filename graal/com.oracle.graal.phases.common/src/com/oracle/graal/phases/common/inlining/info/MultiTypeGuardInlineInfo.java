@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common.inlining.info;
 
 import com.oracle.graal.debug.*;
 import jdk.internal.jvmci.meta.ResolvedJavaType;
-import jdk.internal.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.DeoptimizationReason;
 import jdk.internal.jvmci.meta.DeoptimizationAction;
 import jdk.internal.jvmci.meta.ResolvedJavaMethod;
@@ -169,7 +169,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         returnMerge.setStateAfter(invoke.stateAfter());
 
         PhiNode returnValuePhi = null;
-        if (invoke.asNode().getStackKind() != Kind.Void) {
+        if (invoke.asNode().getStackKind() != JavaKind.Void) {
             returnValuePhi = graph.addWithoutUnique(new ValuePhiNode(invoke.asNode().stamp().unrestricted(), returnMerge));
         }
 
@@ -183,8 +183,9 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             FixedNode exceptionSux = exceptionEdge.next();
             graph.addBeforeFixed(exceptionSux, exceptionMerge);
-            exceptionObjectPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(Kind.Object), exceptionMerge));
-            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, new Kind[]{Kind.Object}, new ValueNode[]{exceptionObjectPhi}));
+            exceptionObjectPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(JavaKind.Object), exceptionMerge));
+            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, JavaKind.Object, new JavaKind[]{JavaKind.Object},
+                            new ValueNode[]{exceptionObjectPhi}));
         }
 
         // create one separate block for each invoked method
@@ -363,8 +364,8 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         result.asNode().replaceFirstInput(result.callTarget(), callTarget);
         result.setUseForInlining(useForInlining);
 
-        Kind kind = invoke.asNode().getStackKind();
-        if (kind != Kind.Void) {
+        JavaKind kind = invoke.asNode().getStackKind();
+        if (kind != JavaKind.Void) {
             FrameState stateAfter = invoke.stateAfter();
             stateAfter = stateAfter.duplicate(stateAfter.bci);
             stateAfter.replaceFirstInput(invoke.asNode(), result.asNode());
@@ -380,7 +381,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             ExceptionObjectNode newExceptionEdge = (ExceptionObjectNode) exceptionEdge.copyWithInputs();
             // set new state (pop old exception object, push new one)
-            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(Kind.Object, Kind.Object, newExceptionEdge));
+            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(JavaKind.Object, JavaKind.Object, newExceptionEdge));
 
             EndNode endNode = graph.add(new EndNode());
             newExceptionEdge.setNext(endNode);

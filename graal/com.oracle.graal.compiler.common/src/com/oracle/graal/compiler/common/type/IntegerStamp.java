@@ -124,11 +124,11 @@ public class IntegerStamp extends PrimitiveStamp {
     }
 
     @Override
-    public Kind getStackKind() {
+    public JavaKind getStackKind() {
         if (getBits() > 32) {
-            return Kind.Long;
+            return JavaKind.Long;
         } else {
-            return Kind.Int;
+            return JavaKind.Int;
         }
     }
 
@@ -390,7 +390,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            return JavaConstant.forIntegerKind(c.getKind(), -c.asLong());
+            return JavaConstant.forIntegerKind(c.getJavaKind(), -c.asLong());
         }
 
         @Override
@@ -412,8 +412,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() + b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() + b.asLong());
         }
 
         @Override
@@ -472,8 +472,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() - b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() - b.asLong());
         }
 
         @Override
@@ -500,8 +500,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() * b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() * b.asLong());
         }
 
         @Override
@@ -531,8 +531,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() / b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() / b.asLong());
         }
 
         @Override
@@ -562,8 +562,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() % b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() % b.asLong());
         }
 
         @Override
@@ -594,7 +594,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant c) {
             PrimitiveConstant value = (PrimitiveConstant) c;
-            return JavaConstant.forIntegerKind(value.getKind(), ~value.asLong());
+            return JavaConstant.forIntegerKind(value.getJavaKind(), ~value.asLong());
         }
 
         @Override
@@ -612,8 +612,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() & b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() & b.asLong());
         }
 
         @Override
@@ -627,7 +627,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public boolean isNeutral(Constant value) {
             PrimitiveConstant n = (PrimitiveConstant) value;
-            int bits = n.getKind().getBitCount();
+            int bits = n.getJavaKind().getBitCount();
             long mask = CodeUtil.mask(bits);
             return (n.asLong() & mask) == mask;
         }
@@ -639,8 +639,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() | b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() | b.asLong());
         }
 
         @Override
@@ -664,8 +664,8 @@ public class IntegerStamp extends PrimitiveStamp {
         public Constant foldConstant(Constant const1, Constant const2) {
             PrimitiveConstant a = (PrimitiveConstant) const1;
             PrimitiveConstant b = (PrimitiveConstant) const2;
-            assert a.getKind() == b.getKind();
-            return JavaConstant.forIntegerKind(a.getKind(), a.asLong() ^ b.asLong());
+            assert a.getJavaKind() == b.getJavaKind();
+            return JavaConstant.forIntegerKind(a.getJavaKind(), a.asLong() ^ b.asLong());
         }
 
         @Override
@@ -698,7 +698,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value, int amount) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            switch (c.getKind()) {
+            switch (c.getJavaKind()) {
                 case Int:
                     return JavaConstant.forInt(c.asInt() << amount);
                 case Long:
@@ -758,7 +758,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value, int amount) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            switch (c.getKind()) {
+            switch (c.getJavaKind()) {
                 case Int:
                     return JavaConstant.forInt(c.asInt() >> amount);
                 case Long:
@@ -802,7 +802,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value, int amount) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            switch (c.getKind()) {
+            switch (c.getJavaKind()) {
                 case Int:
                     return JavaConstant.forInt(c.asInt() >>> amount);
                 case Long:
@@ -847,7 +847,7 @@ public class IntegerStamp extends PrimitiveStamp {
         @Override
         public Constant foldConstant(Constant value) {
             PrimitiveConstant c = (PrimitiveConstant) value;
-            return JavaConstant.forIntegerKind(c.getKind(), Math.abs(c.asLong()));
+            return JavaConstant.forIntegerKind(c.getJavaKind(), Math.abs(c.asLong()));
         }
 
         @Override
@@ -970,7 +970,7 @@ public class IntegerStamp extends PrimitiveStamp {
             assert stamp.getBits() == 32;
             float lowerBound = stamp.lowerBound();
             float upperBound = stamp.upperBound();
-            return StampFactory.forFloat(Kind.Float, lowerBound, upperBound, true);
+            return StampFactory.forFloat(JavaKind.Float, lowerBound, upperBound, true);
         }
     },
 
@@ -988,7 +988,7 @@ public class IntegerStamp extends PrimitiveStamp {
             assert stamp.getBits() == 64;
             float lowerBound = stamp.lowerBound();
             float upperBound = stamp.upperBound();
-            return StampFactory.forFloat(Kind.Float, lowerBound, upperBound, true);
+            return StampFactory.forFloat(JavaKind.Float, lowerBound, upperBound, true);
         }
     },
 
@@ -1006,7 +1006,7 @@ public class IntegerStamp extends PrimitiveStamp {
             assert stamp.getBits() == 32;
             double lowerBound = stamp.lowerBound();
             double upperBound = stamp.upperBound();
-            return StampFactory.forFloat(Kind.Double, lowerBound, upperBound, true);
+            return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, true);
         }
     },
 
@@ -1024,7 +1024,7 @@ public class IntegerStamp extends PrimitiveStamp {
             assert stamp.getBits() == 64;
             double lowerBound = stamp.lowerBound();
             double upperBound = stamp.upperBound();
-            return StampFactory.forFloat(Kind.Double, lowerBound, upperBound, true);
+            return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, true);
         }
     });
 }

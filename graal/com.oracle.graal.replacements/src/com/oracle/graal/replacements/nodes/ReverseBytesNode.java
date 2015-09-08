@@ -40,17 +40,17 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
     public ReverseBytesNode(ValueNode value) {
         super(TYPE, StampFactory.forKind(value.getStackKind()), value);
-        assert getStackKind() == Kind.Int || getStackKind() == Kind.Long;
+        assert getStackKind() == JavaKind.Int || getStackKind() == JavaKind.Long;
     }
 
     @Override
     public boolean inferStamp() {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         Stamp newStamp;
-        if (getStackKind() == Kind.Int) {
-            long mask = CodeUtil.mask(Kind.Int.getBitCount());
+        if (getStackKind() == JavaKind.Int) {
+            long mask = CodeUtil.mask(JavaKind.Int.getBitCount());
             newStamp = IntegerStamp.stampForMask(valueStamp.getBits(), Integer.reverse((int) valueStamp.downMask()) & mask, Integer.reverse((int) valueStamp.upMask()) & mask);
-        } else if (getStackKind() == Kind.Long) {
+        } else if (getStackKind() == JavaKind.Long) {
             newStamp = IntegerStamp.stampForMask(valueStamp.getBits(), Long.reverse(valueStamp.downMask()), Long.reverse(valueStamp.upMask()));
         } else {
             return false;
@@ -62,7 +62,7 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
-            long reversed = getStackKind() == Kind.Int ? Integer.reverseBytes(c.asInt()) : Long.reverseBytes(c.asLong());
+            long reversed = getStackKind() == JavaKind.Int ? Integer.reverseBytes(c.asInt()) : Long.reverseBytes(c.asLong());
             return ConstantNode.forIntegerKind(getStackKind(), reversed);
         }
         return this;

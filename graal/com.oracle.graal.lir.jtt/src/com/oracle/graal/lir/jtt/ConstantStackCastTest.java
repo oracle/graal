@@ -66,7 +66,7 @@ public class ConstantStackCastTest extends LIRTest {
 
         private static ConstantValue getConstant(LIRKind srcKind, JavaConstant c) {
 
-            switch ((Kind) srcKind.getPlatformKind()) {
+            switch ((JavaKind) srcKind.getPlatformKind()) {
                 case Byte:
                     JavaConstant byteConst = JavaConstant.forByte((byte) c.asInt());
                     return new ConstantValue(srcKind, byteConst);
@@ -76,7 +76,7 @@ public class ConstantStackCastTest extends LIRTest {
         }
     }
 
-    private static final LoadConstantStackSpec stackCopyByte = new LoadConstantStackSpec(LIRKind.value(Kind.Int), LIRKind.value(Kind.Byte));
+    private static final LoadConstantStackSpec stackCopyByte = new LoadConstantStackSpec(LIRKind.value(JavaKind.Int), LIRKind.value(JavaKind.Byte));
 
     @LIRIntrinsic
     public static byte testCopyByte(@SuppressWarnings("unused") LoadConstantStackSpec spec, byte value) {

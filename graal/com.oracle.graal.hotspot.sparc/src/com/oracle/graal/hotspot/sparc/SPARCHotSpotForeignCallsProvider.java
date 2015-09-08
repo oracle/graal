@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,14 +50,14 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     @Override
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         TargetDescription target = providers.getCodeCache().getTarget();
-        Kind word = target.wordKind;
+        JavaKind word = target.wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
         // in templateInterpreter_sparc.cpp around line 1925
-        RegisterValue outgoingException = o0.asValue(target.getLIRKind(Kind.Object));
+        RegisterValue outgoingException = o0.asValue(target.getLIRKind(JavaKind.Object));
         RegisterValue outgoingExceptionPc = o1.asValue(target.getLIRKind(word));
-        RegisterValue incomingException = i0.asValue(target.getLIRKind(Kind.Object));
+        RegisterValue incomingException = i0.asValue(target.getLIRKind(JavaKind.Object));
         RegisterValue incomingExceptionPc = i1.asValue(LIRKind.value(word));
         CallingConvention outgoingExceptionCc = new CallingConvention(0, ILLEGAL, outgoingException, outgoingExceptionPc);
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);

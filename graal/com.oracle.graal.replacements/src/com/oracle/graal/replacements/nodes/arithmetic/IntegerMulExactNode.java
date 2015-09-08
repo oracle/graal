@@ -73,12 +73,12 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
     private ValueNode canonicalXconstant(ValueNode forX, ValueNode forY) {
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
-        assert xConst.getKind() == yConst.getKind();
+        assert xConst.getJavaKind() == yConst.getJavaKind();
         try {
-            if (xConst.getKind() == Kind.Int) {
+            if (xConst.getJavaKind() == JavaKind.Int) {
                 return ConstantNode.forInt(Math.multiplyExact(xConst.asInt(), yConst.asInt()));
             } else {
-                assert xConst.getKind() == Kind.Long;
+                assert xConst.getJavaKind() == JavaKind.Long;
                 return ConstantNode.forLong(Math.multiplyExact(xConst.asLong(), yConst.asLong()));
             }
         } catch (ArithmeticException ex) {

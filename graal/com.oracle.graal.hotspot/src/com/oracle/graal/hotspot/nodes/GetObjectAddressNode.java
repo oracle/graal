@@ -44,7 +44,7 @@ public final class GetObjectAddressNode extends FixedWithNextNode implements LIR
     @Input ValueNode object;
 
     public GetObjectAddressNode(ValueNode obj) {
-        super(TYPE, StampFactory.forKind(Kind.Long));
+        super(TYPE, StampFactory.forKind(JavaKind.Long));
         this.object = obj;
     }
 

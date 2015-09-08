@@ -43,7 +43,7 @@ public final class SaveAllRegistersNode extends FixedWithNextNode implements LIR
     protected SaveRegistersOp saveRegistersOp;
 
     public SaveAllRegistersNode() {
-        super(TYPE, StampFactory.forKind(Kind.Long));
+        super(TYPE, StampFactory.forKind(JavaKind.Long));
     }
 
     @Override

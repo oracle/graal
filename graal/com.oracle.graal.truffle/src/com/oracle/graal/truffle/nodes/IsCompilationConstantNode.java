@@ -41,7 +41,7 @@ public final class IsCompilationConstantNode extends FloatingNode implements Low
     @Input ValueNode value;
 
     public IsCompilationConstantNode(ValueNode value) {
-        super(TYPE, StampFactory.forKind(Kind.Boolean));
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.value = value;
     }
 

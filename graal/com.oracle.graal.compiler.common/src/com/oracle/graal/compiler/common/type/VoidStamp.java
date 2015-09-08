@@ -41,8 +41,8 @@ public final class VoidStamp extends Stamp {
     }
 
     @Override
-    public Kind getStackKind() {
-        return Kind.Void;
+    public JavaKind getStackKind() {
+        return JavaKind.Void;
     }
 
     @Override

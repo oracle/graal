@@ -39,9 +39,9 @@ public interface LoweringProvider {
      * Reconstructs the array index from an address node that was created as a lowering of an
      * indexed access to an array.
      *
-     * @param elementKind the {@link Kind} of the array elements
+     * @param elementKind the {@link JavaKind} of the array elements
      * @param address an {@link AddressNode} pointing to an element in an array
      * @return a node that gives the index of the element
      */
-    ValueNode reconstructArrayIndex(Kind elementKind, AddressNode address);
+    ValueNode reconstructArrayIndex(JavaKind elementKind, AddressNode address);
 }

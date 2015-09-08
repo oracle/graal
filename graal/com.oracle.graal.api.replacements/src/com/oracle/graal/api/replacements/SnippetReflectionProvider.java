@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import jdk.internal.jvmci.meta.*;
 public interface SnippetReflectionProvider {
 
     /**
-     * Creates a boxed {@link Kind#Object object} constant.
+     * Creates a boxed {@link JavaKind#Object object} constant.
      *
      * @param object the object value to box
      * @return a constant containing {@code object}
@@ -46,7 +46,7 @@ public interface SnippetReflectionProvider {
 
     /**
      * Gets the object reference a given constant represents if it is of a given type. The constant
-     * must have kind {@link Kind#Object}.
+     * must have kind {@link JavaKind#Object}.
      *
      * @param type the expected type of the object represented by {@code constant}. If the object is
      *            required to be of this type, then wrap the call to this method in
@@ -59,7 +59,7 @@ public interface SnippetReflectionProvider {
 
     /**
      * Gets the object reference a given constant represents if it is of a given type. The constant
-     * must have kind {@link Kind#Object}.
+     * must have kind {@link JavaKind#Object}.
      *
      * @param type the expected type of the object represented by {@code constant}. If the object is
      *            required to be of this type, then wrap the call to this method in
@@ -76,10 +76,10 @@ public interface SnippetReflectionProvider {
      * Java boxed type corresponding to the kind.
      *
      * @param kind the kind of the constant to create
-     * @param value the Java boxed value: a {@link Byte} instance for {@link Kind#Byte}, etc.
+     * @param value the Java boxed value: a {@link Byte} instance for {@link JavaKind#Byte}, etc.
      * @return the boxed copy of {@code value}
      */
-    JavaConstant forBoxed(Kind kind, Object value);
+    JavaConstant forBoxed(JavaKind kind, Object value);
 
     /**
      * Resolves a parameter or return type involved in snippet code to a {@link Class}.
@@ -102,8 +102,8 @@ public interface SnippetReflectionProvider {
             Class<?>[] parameterClasses = new Class<?>[parameterTypes.length];
             for (int i = 0; i < parameterClasses.length; ++i) {
                 JavaType type = parameterTypes[i];
-                if (type.getKind() != Kind.Object) {
-                    parameterClasses[i] = type.getKind().toJavaClass();
+                if (type.getJavaKind() != JavaKind.Object) {
+                    parameterClasses[i] = type.getJavaKind().toJavaClass();
                 } else {
                     parameterClasses[i] = resolveClassForSnippet(parameterTypes[i]);
                 }

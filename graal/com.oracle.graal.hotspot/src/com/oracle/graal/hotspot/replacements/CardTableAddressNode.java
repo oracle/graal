@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,7 @@ public final class CardTableAddressNode extends FloatingNode implements LIRLower
     public static final NodeClass<CardTableAddressNode> TYPE = NodeClass.create(CardTableAddressNode.class);
 
     public CardTableAddressNode() {
-        super(TYPE, StampFactory.forKind(Kind.Long));
+        super(TYPE, StampFactory.forKind(JavaKind.Long));
     }
 
     @Override

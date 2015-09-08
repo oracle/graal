@@ -68,7 +68,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
     }
 
     protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        super(c, StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+        super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;

@@ -102,7 +102,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode obj, ValueNode offset) {
                 AddressNode address = b.add(new OffsetAddressNode(obj, offset));
-                ReadNode read = b.addPush(Kind.Int, new ReadNode(address, LocationIdentity.any(), StampFactory.forKind(Kind.Int), BarrierType.NONE));
+                ReadNode read = b.addPush(JavaKind.Int, new ReadNode(address, LocationIdentity.any(), StampFactory.forKind(JavaKind.Int), BarrierType.NONE));
                 read.setGuard(AbstractBeginNode.prevBegin(read));
                 return true;
             }

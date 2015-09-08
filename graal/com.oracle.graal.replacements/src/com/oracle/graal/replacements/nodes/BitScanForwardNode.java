@@ -43,8 +43,8 @@ public final class BitScanForwardNode extends UnaryNode implements LIRLowerable 
     public static final NodeClass<BitScanForwardNode> TYPE = NodeClass.create(BitScanForwardNode.class);
 
     public BitScanForwardNode(ValueNode value) {
-        super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
+        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
     }
 
     @Override
@@ -63,7 +63,7 @@ public final class BitScanForwardNode extends UnaryNode implements LIRLowerable 
             min = firstMaybeSetBit;
             max = firstAlwaysSetBit;
         }
-        return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
+        return updateStamp(StampFactory.forInteger(JavaKind.Int, min, max));
     }
 
     @Override
@@ -71,7 +71,7 @@ public final class BitScanForwardNode extends UnaryNode implements LIRLowerable 
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
             if (c.asLong() != 0) {
-                return ConstantNode.forInt(forValue.getStackKind() == Kind.Int ? scan(c.asInt()) : scan(c.asLong()));
+                return ConstantNode.forInt(forValue.getStackKind() == JavaKind.Int ? scan(c.asInt()) : scan(c.asLong()));
             }
         }
         return this;

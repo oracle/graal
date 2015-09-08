@@ -47,8 +47,8 @@ public final class AMD64HotSpotCardTableShiftOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
-        int alignment = Kind.Int.getBitCount() / Byte.SIZE;
+        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+        int alignment = JavaKind.Int.getBitCount() / Byte.SIZE;
         JavaConstant shift = JavaConstant.forIntegerKind(hostWordKind, 0);
         // recordDataReferenceInCode forces the mov to be rip-relative
         asm.movq(ValueUtil.asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(shift, alignment));

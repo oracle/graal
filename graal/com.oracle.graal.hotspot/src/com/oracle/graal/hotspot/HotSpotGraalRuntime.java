@@ -105,21 +105,21 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider, H
     }
 
     private boolean checkArrayIndexScaleInvariants() {
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Byte) == 1;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Boolean) == 1;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Char) == 2;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Short) == 2;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Int) == 4;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Long) == 8;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Float) == 4;
-        assert getJVMCIRuntime().getArrayIndexScale(Kind.Double) == 8;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Byte) == 1;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Boolean) == 1;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Char) == 2;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Short) == 2;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Int) == 4;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Long) == 8;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Float) == 4;
+        assert getJVMCIRuntime().getArrayIndexScale(JavaKind.Double) == 8;
         return true;
     }
 
     /**
      * Gets the kind of a word value on the {@linkplain #getHostBackend() host} backend.
      */
-    public static Kind getHostWordKind() {
+    public static JavaKind getHostWordKind() {
         return runtime().getHostBackend().getTarget().wordKind;
     }
 

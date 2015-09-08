@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,8 @@ public final class BitCountNode extends UnaryNode implements LIRLowerable {
     public static final NodeClass<BitCountNode> TYPE = NodeClass.create(BitCountNode.class);
 
     public BitCountNode(ValueNode value) {
-        super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
+        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
     }
 
     @Override
@@ -48,14 +48,14 @@ public final class BitCountNode extends UnaryNode implements LIRLowerable {
         IntegerStamp valueStamp = (IntegerStamp) getValue().stamp();
         assert (valueStamp.downMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.downMask();
         assert (valueStamp.upMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.upMask();
-        return updateStamp(StampFactory.forInteger(Kind.Int, Long.bitCount(valueStamp.downMask()), Long.bitCount(valueStamp.upMask())));
+        return updateStamp(StampFactory.forInteger(JavaKind.Int, Long.bitCount(valueStamp.downMask()), Long.bitCount(valueStamp.upMask())));
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
             JavaConstant c = forValue.asJavaConstant();
-            return ConstantNode.forInt(forValue.getStackKind() == Kind.Int ? Integer.bitCount(c.asInt()) : Long.bitCount(c.asLong()));
+            return ConstantNode.forInt(forValue.getStackKind() == JavaKind.Int ? Integer.bitCount(c.asInt()) : Long.bitCount(c.asLong()));
         }
         return this;
     }

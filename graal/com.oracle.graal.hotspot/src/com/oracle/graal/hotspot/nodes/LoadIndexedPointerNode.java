@@ -36,7 +36,7 @@ public final class LoadIndexedPointerNode extends LoadIndexedNode {
     public static final NodeClass<LoadIndexedPointerNode> TYPE = NodeClass.create(LoadIndexedPointerNode.class);
 
     public LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
-        super(TYPE, stamp, array, index, Kind.Illegal);
+        super(TYPE, stamp, array, index, JavaKind.Illegal);
     }
 
     @Override

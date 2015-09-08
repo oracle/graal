@@ -129,7 +129,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value emitJavaConstant(JavaConstant constant) {
-        return emitConstant(target().getLIRKind(constant.getKind()), constant);
+        return emitConstant(target().getLIRKind(constant.getJavaKind()), constant);
     }
 
     @Override
@@ -188,7 +188,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      *         {@code kind}
      */
     public AllocatableValue resultOperandFor(LIRKind kind) {
-        return res.getFrameMapBuilder().getRegisterConfig().getReturnRegister((Kind) kind.getPlatformKind()).asValue(kind);
+        return res.getFrameMapBuilder().getRegisterConfig().getReturnRegister((JavaKind) kind.getPlatformKind()).asValue(kind);
     }
 
     public <I extends LIRInstruction> I append(I op) {
@@ -360,7 +360,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     protected JavaConstant zapValueForKind(PlatformKind kind) {
         long dead = 0xDEADDEADDEADDEADL;
-        switch ((Kind) kind) {
+        switch ((JavaKind) kind) {
             case Boolean:
                 return JavaConstant.FALSE;
             case Byte:
@@ -421,7 +421,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     // automatic derived reference handling
 
     protected boolean isNumericInteger(PlatformKind kind) {
-        return ((Kind) kind).isNumericInteger();
+        return ((JavaKind) kind).isNumericInteger();
     }
 
     protected abstract Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);

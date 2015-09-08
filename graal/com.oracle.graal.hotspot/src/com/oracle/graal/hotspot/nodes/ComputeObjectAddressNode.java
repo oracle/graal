@@ -42,7 +42,7 @@ public final class ComputeObjectAddressNode extends FixedWithNextNode implements
     @Input ValueNode offset;
 
     public ComputeObjectAddressNode(ValueNode obj, ValueNode offset) {
-        super(TYPE, StampFactory.forKind(Kind.Long));
+        super(TYPE, StampFactory.forKind(JavaKind.Long));
         this.object = obj;
         this.offset = offset;
     }

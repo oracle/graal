@@ -47,7 +47,7 @@ public final class DeoptimizationFetchUnrollInfoCallNode extends FixedWithNextNo
     protected final ForeignCallsProvider foreignCalls;
 
     public DeoptimizationFetchUnrollInfoCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver) {
-        super(TYPE, StampFactory.forKind(Kind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
+        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(FETCH_UNROLL_INFO.getResultType())));
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
         this.foreignCalls = foreignCalls;
     }

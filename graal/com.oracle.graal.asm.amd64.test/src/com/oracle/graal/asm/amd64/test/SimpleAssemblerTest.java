@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
             @Override
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                Register ret = registerConfig.getReturnRegister(Kind.Int);
+                Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                 asm.movl(ret, 8472);
                 asm.ret(0);
                 return asm.close(true);
@@ -67,7 +67,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
             @Override
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
-                Register ret = registerConfig.getReturnRegister(Kind.Double);
+                Register ret = registerConfig.getReturnRegister(JavaKind.Double);
                 Data data = new Data(8, 8, DataBuilder.serializable(JavaConstant.forDouble(84.72)));
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
                 compResult.recordDataPatch(asm.position(), ref);
@@ -86,7 +86,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
             @Override
             public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
-                Register ret = registerConfig.getReturnRegister(Kind.Double);
+                Register ret = registerConfig.getReturnRegister(JavaKind.Double);
 
                 byte[] rawBytes = new byte[8];
                 ByteBuffer.wrap(rawBytes).order(ByteOrder.nativeOrder()).putDouble(84.72);

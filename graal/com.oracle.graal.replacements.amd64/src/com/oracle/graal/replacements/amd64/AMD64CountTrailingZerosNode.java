@@ -41,8 +41,8 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements LIRL
     public static final NodeClass<AMD64CountTrailingZerosNode> TYPE = NodeClass.create(AMD64CountTrailingZerosNode.class);
 
     public AMD64CountTrailingZerosNode(ValueNode value) {
-        super(TYPE, StampFactory.forInteger(Kind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
-        assert value.getStackKind() == Kind.Int || value.getStackKind() == Kind.Long;
+        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
     }
 
     @Override
@@ -51,13 +51,13 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements LIRL
         long mask = CodeUtil.mask(valueStamp.getBits());
         int min = Long.numberOfTrailingZeros(valueStamp.upMask() & mask);
         int max = Long.numberOfTrailingZeros(valueStamp.downMask() & mask);
-        return updateStamp(StampFactory.forInteger(Kind.Int, min, max));
+        return updateStamp(StampFactory.forInteger(JavaKind.Int, min, max));
     }
 
     public static ValueNode tryFold(ValueNode value) {
         if (value.isConstant()) {
             JavaConstant c = value.asJavaConstant();
-            if (value.getStackKind() == Kind.Int) {
+            if (value.getStackKind() == JavaKind.Int) {
                 return ConstantNode.forInt(Integer.numberOfTrailingZeros(c.asInt()));
             } else {
                 return ConstantNode.forInt(Long.numberOfTrailingZeros(c.asLong()));

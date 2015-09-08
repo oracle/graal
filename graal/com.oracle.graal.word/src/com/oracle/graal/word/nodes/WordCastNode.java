@@ -46,22 +46,22 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     @Input ValueNode input;
     public final boolean trackedPointer;
 
-    public static WordCastNode wordToObject(ValueNode input, Kind wordKind) {
+    public static WordCastNode wordToObject(ValueNode input, JavaKind wordKind) {
         assert input.getStackKind() == wordKind;
         return new WordCastNode(StampFactory.object(), input);
     }
 
-    public static WordCastNode addressToWord(ValueNode input, Kind wordKind) {
+    public static WordCastNode addressToWord(ValueNode input, JavaKind wordKind) {
         assert input.stamp() instanceof AbstractPointerStamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input);
     }
 
-    public static WordCastNode objectToTrackedPointer(ValueNode input, Kind wordKind) {
+    public static WordCastNode objectToTrackedPointer(ValueNode input, JavaKind wordKind) {
         assert input.stamp() instanceof ObjectStamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input, true);
     }
 
-    public static WordCastNode objectToUntrackedPointer(ValueNode input, Kind wordKind) {
+    public static WordCastNode objectToUntrackedPointer(ValueNode input, JavaKind wordKind) {
         assert input.stamp() instanceof ObjectStamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input, false);
     }
@@ -92,7 +92,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             /* Null pointers are uncritical for GC, so they can be constant folded. */
             if (input.asJavaConstant().isNull()) {
                 return ConstantNode.forIntegerStamp(stamp(), 0);
-            } else if (input.asJavaConstant().getKind().isNumericInteger() && input.asJavaConstant().asLong() == 0) {
+            } else if (input.asJavaConstant().getJavaKind().isNumericInteger() && input.asJavaConstant().asLong() == 0) {
                 return ConstantNode.forConstant(stamp(), JavaConstant.NULL_POINTER, tool.getMetaAccess());
             }
         }

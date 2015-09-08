@@ -51,8 +51,8 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     private static Stamp createStamp(ResolvedJavaField field) {
-        Kind kind = field.getKind();
-        if (kind == Kind.Object && field.getType() instanceof ResolvedJavaType) {
+        JavaKind kind = field.getJavaKind();
+        if (kind == JavaKind.Object && field.getType() instanceof ResolvedJavaType) {
             return StampFactory.declared((ResolvedJavaType) field.getType());
         } else {
             return StampFactory.forKind(kind);

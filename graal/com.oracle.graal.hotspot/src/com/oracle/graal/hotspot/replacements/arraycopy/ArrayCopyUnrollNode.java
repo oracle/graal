@@ -44,21 +44,21 @@ public class ArrayCopyUnrollNode extends ArrayRangeWriteNode implements MemoryCh
     @Input protected ValueNode destPos;
     @Input protected ValueNode length;
 
-    private Kind elementKind;
+    private JavaKind elementKind;
 
     private int unrolledLength;
 
     @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
 
-    public ArrayCopyUnrollNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, int unrolledLength, Kind elementKind) {
-        super(TYPE, StampFactory.forKind(Kind.Void));
+    public ArrayCopyUnrollNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, int unrolledLength, JavaKind elementKind) {
+        super(TYPE, StampFactory.forKind(JavaKind.Void));
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
         this.destPos = destPos;
         this.length = length;
         this.unrolledLength = unrolledLength;
-        assert elementKind != null && elementKind != Kind.Illegal;
+        assert elementKind != null && elementKind != JavaKind.Illegal;
         this.elementKind = elementKind;
     }
 
@@ -95,7 +95,7 @@ public class ArrayCopyUnrollNode extends ArrayRangeWriteNode implements MemoryCh
 
     @Override
     public boolean isObjectArray() {
-        return elementKind == Kind.Object;
+        return elementKind == JavaKind.Object;
     }
 
     @Override
@@ -104,13 +104,14 @@ public class ArrayCopyUnrollNode extends ArrayRangeWriteNode implements MemoryCh
     }
 
     @NodeIntrinsic
-    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter int unrolledLength, @ConstantNodeParameter Kind elementKind);
+    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter int unrolledLength,
+                    @ConstantNodeParameter JavaKind elementKind);
 
     public int getUnrollLength() {
         return unrolledLength;
     }
 
-    public Kind getElementKind() {
+    public JavaKind getElementKind() {
         return elementKind;
     }
 

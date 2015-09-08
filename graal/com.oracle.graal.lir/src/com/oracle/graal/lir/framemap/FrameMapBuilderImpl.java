@@ -74,7 +74,7 @@ public class FrameMapBuilderImpl implements FrameMapBuilderTool {
         if (outObjectStackSlots != null) {
             throw JVMCIError.unimplemented();
         }
-        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects, frameMap.getTarget().getLIRKind(Kind.Object));
+        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, objects, frameMap.getTarget().getLIRKind(JavaKind.Object));
         stackSlots.add(slot);
         return slot;
     }

@@ -64,7 +64,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     }
 
     protected static int getDisplacementForLongIndex(TargetDescription target, long index) {
-        long finalDisp = index * target.getSizeInBytes(Kind.Long);
+        long finalDisp = index * target.getSizeInBytes(JavaKind.Long);
         if (!NumUtil.isInt(finalDisp)) {
             throw JVMCIError.unimplemented("cannot deal with indices that big: " + index);
         }
@@ -133,7 +133,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     }
 
     private static long asLong(JavaConstant value) {
-        Kind kind = value.getKind();
+        JavaKind kind = value.getJavaKind();
         switch (kind) {
             case Byte:
             case Short:

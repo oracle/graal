@@ -295,7 +295,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         Assert.assertEquals("unexpected number of ReturnNodes: " + graphString, graph.getNodes(ReturnNode.TYPE).count(), 1);
         ValueNode result = graph.getNodes(ReturnNode.TYPE).first().result();
         Assert.assertTrue("unexpected ReturnNode result node: " + graphString, result.isConstant());
-        Assert.assertEquals("unexpected ReturnNode result kind: " + graphString, result.asJavaConstant().getKind(), Kind.Int);
+        Assert.assertEquals("unexpected ReturnNode result kind: " + graphString, result.asJavaConstant().getJavaKind(), JavaKind.Int);
         Assert.assertEquals("unexpected ReturnNode result: " + graphString, result.asJavaConstant().asInt(), value);
     }
 
@@ -502,9 +502,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         Assert.assertEquals(sig.length, args.length);
         for (int i = 0; i < args.length; i++) {
             JavaType javaType = sig[i];
-            Kind kind = javaType.getKind();
+            JavaKind kind = javaType.getJavaKind();
             Object arg = args[i];
-            if (kind == Kind.Object) {
+            if (kind == JavaKind.Object) {
                 if (arg != null && javaType instanceof ResolvedJavaType) {
                     ResolvedJavaType resolvedJavaType = (ResolvedJavaType) javaType;
                     Assert.assertTrue(resolvedJavaType + " from " + getMetaAccess().lookupJavaType(arg.getClass()), resolvedJavaType.isAssignableFrom(getMetaAccess().lookupJavaType(arg.getClass())));

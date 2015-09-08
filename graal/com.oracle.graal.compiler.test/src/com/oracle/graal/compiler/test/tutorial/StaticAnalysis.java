@@ -55,7 +55,7 @@ import com.oracle.graal.phases.graph.*;
  * types need to be added to any type state.
  * <p>
  * The type flows are constructed from a high-level Graal graph by the {@link TypeFlowBuilder}. All
- * nodes that operate on {@link Kind#Object object} values are converted to the appropriate type
+ * nodes that operate on {@link JavaKind#Object object} values are converted to the appropriate type
  * flows. The analysis is context insensitive: every Java field has {@link Results#lookupField one
  * list} of types assigned to the field; every Java method has {@link Results#lookupMethod one
  * state} for each {@link MethodState#formalParameters parameter} as well as the
@@ -445,7 +445,7 @@ public class StaticAnalysis {
         }
 
         private boolean isObject(ValueNode node) {
-            return node.getStackKind() == Kind.Object;
+            return node.getStackKind() == JavaKind.Object;
         }
 
         @Override

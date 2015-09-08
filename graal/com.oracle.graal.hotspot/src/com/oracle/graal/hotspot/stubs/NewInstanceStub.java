@@ -183,7 +183,7 @@ public class NewInstanceStub extends SnippetStub {
             // if TLAB is currently allocated (top or end != null) then
             // fill [top, end + alignment_reserve) with array object
             if (top.notEqual(0)) {
-                int headerSize = arrayBaseOffset(Kind.Int);
+                int headerSize = arrayBaseOffset(JavaKind.Int);
                 // just like the HotSpot assembler stubs, assumes that tlabFreeSpaceInInts fits in
                 // an int
                 int tlabFreeSpaceInInts = (int) tlabFreeSpaceInBytes >>> 2;

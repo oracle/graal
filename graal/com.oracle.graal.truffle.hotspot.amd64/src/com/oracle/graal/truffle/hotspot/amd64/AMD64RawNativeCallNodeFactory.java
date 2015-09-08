@@ -31,7 +31,7 @@ import com.oracle.graal.truffle.hotspot.nfi.*;
 
 @ServiceProvider(RawNativeCallNodeFactory.class)
 public class AMD64RawNativeCallNodeFactory implements RawNativeCallNodeFactory {
-    public FixedWithNextNode createRawCallNode(Kind returnType, JavaConstant functionPointer, ValueNode... args) {
+    public FixedWithNextNode createRawCallNode(JavaKind returnType, JavaConstant functionPointer, ValueNode... args) {
         return new AMD64RawNativeCallNode(returnType, functionPointer, args);
     }
 

@@ -45,11 +45,11 @@ public abstract class Stamp {
     }
 
     /**
-     * Gets a Java {@link Kind} that can be used to store a value of this stamp on the Java bytecode
-     * stack. Returns {@link Kind#Illegal} if a value of this stamp can not be stored on the
-     * bytecode stack.
+     * Gets a Java {@link JavaKind} that can be used to store a value of this stamp on the Java
+     * bytecode stack. Returns {@link JavaKind#Illegal} if a value of this stamp can not be stored
+     * on the bytecode stack.
      */
-    public abstract Kind getStackKind();
+    public abstract JavaKind getStackKind();
 
     /**
      * Gets a platform dependent {@link LIRKind} that can be used to store a value of this stamp.

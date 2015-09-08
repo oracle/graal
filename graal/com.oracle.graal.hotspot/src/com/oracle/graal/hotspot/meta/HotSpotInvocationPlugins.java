@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import jdk.internal.jvmci.hotspot.HotSpotVMConfig;
-import jdk.internal.jvmci.meta.Kind;
+import jdk.internal.jvmci.meta.JavaKind;
 import jdk.internal.jvmci.meta.MetaAccessProvider;
 import jdk.internal.jvmci.meta.ResolvedJavaType;
 
@@ -75,7 +75,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             for (Node node : newNodes) {
                 if (node.hasUsages() && node instanceof ConstantNode) {
                     ConstantNode c = (ConstantNode) node;
-                    if (c.getStackKind() == Kind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
+                    if (c.getStackKind() == JavaKind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
                         if (isClass(c)) {
                             // This will be handled later by LoadJavaMirrorWithKlassPhase
                         } else {

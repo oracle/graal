@@ -81,8 +81,8 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
     }
 
     private static Stamp returnStamp(JavaType returnType) {
-        Kind kind = returnType.getKind();
-        if (kind == Kind.Object) {
+        JavaKind kind = returnType.getJavaKind();
+        if (kind == JavaKind.Object) {
             return StampFactory.declared((ResolvedJavaType) returnType);
         } else {
             return StampFactory.forKind(kind);
@@ -208,7 +208,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
-            if (getStackKind() != Kind.Void) {
+            if (getStackKind() != JavaKind.Void) {
                 invoke.stateAfter().replaceFirstInput(this, invoke);
             }
         }

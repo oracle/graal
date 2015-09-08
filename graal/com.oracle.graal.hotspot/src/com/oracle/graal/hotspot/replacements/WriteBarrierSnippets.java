@@ -103,14 +103,14 @@ public class WriteBarrierSnippets implements Snippets {
         Object dest = FixedValueAnchorNode.getObject(object);
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
-        final int scale = arrayIndexScale(Kind.Object);
-        int header = arrayBaseOffset(Kind.Object);
+        final int scale = arrayIndexScale(JavaKind.Object);
+        int header = arrayBaseOffset(JavaKind.Object);
         long dstAddr = GetObjectAddressNode.get(dest);
         long start = (dstAddr + header + (long) startIndex * scale) >>> cardShift;
         long end = (dstAddr + header + ((long) startIndex + length - 1) * scale) >>> cardShift;
         long count = end - start + 1;
         while (count-- > 0) {
-            DirectStoreNode.storeBoolean((start + cardStart) + count, false, Kind.Boolean);
+            DirectStoreNode.storeBoolean((start + cardStart) + count, false, JavaKind.Boolean);
         }
     }
 
@@ -258,8 +258,8 @@ public class WriteBarrierSnippets implements Snippets {
         Word indexAddress = thread.add(g1SATBQueueIndexOffset());
         long dstAddr = GetObjectAddressNode.get(dest);
         long indexValue = indexAddress.readWord(0).rawValue();
-        final int scale = arrayIndexScale(Kind.Object);
-        int header = arrayBaseOffset(Kind.Object);
+        final int scale = arrayIndexScale(JavaKind.Object);
+        int header = arrayBaseOffset(JavaKind.Object);
 
         for (int i = startIndex; i < length; i++) {
             long address = dstAddr + header + (i * scale);
@@ -292,8 +292,8 @@ public class WriteBarrierSnippets implements Snippets {
 
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
-        final int scale = arrayIndexScale(Kind.Object);
-        int header = arrayBaseOffset(Kind.Object);
+        final int scale = arrayIndexScale(JavaKind.Object);
+        int header = arrayBaseOffset(JavaKind.Object);
         long dstAddr = GetObjectAddressNode.get(dest);
         long start = (dstAddr + header + (long) startIndex * scale) >>> cardShift;
         long end = (dstAddr + header + ((long) startIndex + length - 1) * scale) >>> cardShift;
@@ -504,7 +504,7 @@ public class WriteBarrierSnippets implements Snippets {
     public static void validateObject(Object parent, Object child) {
         if (verifyOops() && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
             log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.objectToTrackedPointer(parent).rawValue(), Word.objectToTrackedPointer(child).rawValue());
-            DirectObjectStoreNode.storeObject(null, 0, 0, null, LocationIdentity.any(), Kind.Object);
+            DirectObjectStoreNode.storeObject(null, 0, 0, null, LocationIdentity.any(), JavaKind.Object);
         }
     }
 

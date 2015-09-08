@@ -67,7 +67,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(Kind.Long));
+        HotSpotLockStack lockStack = new HotSpotLockStack(gen.getResult().getFrameMapBuilder(), LIRKind.value(JavaKind.Long));
         return new HotSpotDebugInfoBuilder(nodeValueMap, lockStack);
     }
 
@@ -86,7 +86,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
                 }
             }
         }
-        params[params.length - 1] = rbp.asValue(LIRKind.value(Kind.Long));
+        params[params.length - 1] = rbp.asValue(LIRKind.value(JavaKind.Long));
 
         gen.emitIncomingValues(params);
 
@@ -173,7 +173,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         RegisterValue raxLocal = AMD64.rax.asValue(expected.getLIRKind());
         gen.emitMove(raxLocal, expected);
-        append(new CompareAndSwapOp((Kind) expected.getPlatformKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
+        append(new CompareAndSwapOp((JavaKind) expected.getPlatformKind(), raxLocal, getGen().asAddressValue(operand(x.getAddress())), raxLocal, newVal));
 
         setResult(x, gen.emitMove(raxLocal));
     }

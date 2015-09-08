@@ -70,7 +70,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         return invokeKind() == InvokeKind.Static;
     }
 
-    public Kind returnKind() {
+    public JavaKind returnKind() {
         return targetMethod().getSignature().getReturnKind();
     }
 
@@ -235,8 +235,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     @Override
     public Stamp returnStamp() {
-        Kind returnKind = targetMethod().getSignature().getReturnKind();
-        if (returnKind == Kind.Object && returnType instanceof ResolvedJavaType) {
+        JavaKind returnKind = targetMethod().getSignature().getReturnKind();
+        if (returnKind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
             return StampFactory.declared((ResolvedJavaType) returnType);
         } else {
             return StampFactory.forKind(returnKind);

@@ -133,7 +133,7 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
         JavaConstant result = b.getConstantReflection().readConstantFieldValue(field, object);
         if (result != null) {
             ConstantNode constantNode = ConstantNode.forConstant(result, b.getMetaAccess(), b.getGraph());
-            b.push(field.getKind(), constantNode);
+            b.push(field.getJavaKind(), constantNode);
             return true;
         }
         return false;
@@ -156,7 +156,7 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     }
 
     @Override
-    public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind) {
+    public boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
         if (b.parsingIntrinsic() && wordOperationPlugin.handleLoadIndexed(b, array, index, elementKind)) {
             return true;
         }
@@ -164,7 +164,7 @@ public final class HotSpotNodePlugin implements NodePlugin, ParameterPlugin {
     }
 
     @Override
-    public boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, Kind elementKind, ValueNode value) {
+    public boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind, ValueNode value) {
         if (b.parsingIntrinsic() && wordOperationPlugin.handleStoreIndexed(b, array, index, elementKind, value)) {
             return true;
         }

@@ -84,19 +84,19 @@ public class DebugInfoBuilder {
                 assert vobjValue.getValues() == null;
 
                 JavaValue[] values = new JavaValue[vobjNode.entryCount()];
-                Kind[] slotKinds = new Kind[vobjNode.entryCount()];
+                JavaKind[] slotKinds = new JavaKind[vobjNode.entryCount()];
                 if (values.length > 0) {
                     VirtualObjectState currentField = (VirtualObjectState) objectStates.get(vobjNode);
                     assert currentField != null;
                     int pos = 0;
                     for (int i = 0; i < vobjNode.entryCount(); i++) {
-                        if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getKind() != Kind.Illegal) {
+                        if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getJavaKind() != JavaKind.Illegal) {
                             ValueNode value = currentField.values().get(i);
                             values[pos] = toJavaValue(value);
                             slotKinds[pos] = toSlotKind(value);
                             pos++;
                         } else {
-                            assert currentField.values().get(i - 1).getStackKind() == Kind.Double || currentField.values().get(i - 1).getStackKind() == Kind.Long : vobjNode + " " + i + " " +
+                            assert currentField.values().get(i - 1).getStackKind() == JavaKind.Double || currentField.values().get(i - 1).getStackKind() == JavaKind.Long : vobjNode + " " + i + " " +
                                             currentField.values().get(i - 1);
                         }
                     }
@@ -136,7 +136,7 @@ public class DebugInfoBuilder {
             int numLocks = state.locksSize();
 
             JavaValue[] values = new JavaValue[numLocals + numStack + numLocks];
-            Kind[] slotKinds = new Kind[numLocals + numStack];
+            JavaKind[] slotKinds = new JavaKind[numLocals + numStack];
             computeLocals(state, numLocals, values, slotKinds);
             computeStack(state, numLocals, numStack, values, slotKinds);
             computeLocks(state, values);
@@ -151,7 +151,7 @@ public class DebugInfoBuilder {
         }
     }
 
-    protected void computeLocals(FrameState state, int numLocals, JavaValue[] values, Kind[] slotKinds) {
+    protected void computeLocals(FrameState state, int numLocals, JavaValue[] values, JavaKind[] slotKinds) {
         for (int i = 0; i < numLocals; i++) {
             ValueNode local = state.localAt(i);
             values[i] = toJavaValue(local);
@@ -159,7 +159,7 @@ public class DebugInfoBuilder {
         }
     }
 
-    protected void computeStack(FrameState state, int numLocals, int numStack, JavaValue[] values, Kind[] slotKinds) {
+    protected void computeStack(FrameState state, int numLocals, int numStack, JavaValue[] values, JavaKind[] slotKinds) {
         for (int i = 0; i < numStack; i++) {
             ValueNode stack = state.stackAt(i);
             values[numLocals + i] = toJavaValue(stack);
@@ -182,9 +182,9 @@ public class DebugInfoBuilder {
     private static final DebugMetric STATE_VARIABLES = Debug.metric("StateVariables");
     private static final DebugMetric STATE_CONSTANTS = Debug.metric("StateConstants");
 
-    private static Kind toSlotKind(ValueNode value) {
+    private static JavaKind toSlotKind(ValueNode value) {
         if (value == null) {
-            return Kind.Illegal;
+            return JavaKind.Illegal;
         } else {
             return value.getStackKind();
         }

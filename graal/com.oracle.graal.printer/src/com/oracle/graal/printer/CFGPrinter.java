@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -480,7 +480,7 @@ class CFGPrinter extends CompilationPrinter {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;
-            if (value.getStackKind() == Kind.Illegal) {
+            if (value.getStackKind() == JavaKind.Illegal) {
                 prefix = "v";
             } else {
                 prefix = String.valueOf(value.getStackKind().getTypeChar());

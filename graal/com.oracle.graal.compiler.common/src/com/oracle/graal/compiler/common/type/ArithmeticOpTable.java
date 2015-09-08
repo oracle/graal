@@ -630,7 +630,7 @@ public final class ArithmeticOpTable {
 
     /**
      * Describes a shift operation. The right argument of a shift operation always has kind
-     * {@link Kind#Int}.
+     * {@link JavaKind#Int}.
      */
     public abstract static class ShiftOp<OP> extends Op {
 

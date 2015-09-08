@@ -262,7 +262,7 @@ public final class MethodHandleNode extends MacroStateSplitNode implements Simpl
         // we need to use the stamp of the invoker. Note: always using the
         // invoker's stamp would be wrong because it's a less concrete type
         // (usually java.lang.Object).
-        if (returnType.getKind() == Kind.Void) {
+        if (returnType.getJavaKind() == JavaKind.Void) {
             return new InvokeNode(callTarget, bci, StampFactory.forVoid());
         } else {
             return new InvokeNode(callTarget, bci);

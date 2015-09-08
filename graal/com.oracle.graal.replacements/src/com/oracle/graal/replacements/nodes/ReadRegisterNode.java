@@ -56,7 +56,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRLowe
      */
     protected final boolean incoming;
 
-    public ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
+    public ReadRegisterNode(Register register, JavaKind kind, boolean directUse, boolean incoming) {
         super(TYPE, StampFactory.forKind(kind));
         assert register != null;
         this.register = register;

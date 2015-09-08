@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
 
     public static final NodeClass<AccessIndexedNode> TYPE = NodeClass.create(AccessIndexedNode.class);
     @Input protected ValueNode index;
-    protected final Kind elementKind;
+    protected final JavaKind elementKind;
 
     public ValueNode index() {
         return index;
@@ -53,7 +53,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
      * @param index the instruction producing the index
      * @param elementKind the kind of the elements of the array
      */
-    protected AccessIndexedNode(NodeClass<? extends AccessIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+    protected AccessIndexedNode(NodeClass<? extends AccessIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, JavaKind elementKind) {
         super(c, stamp, array);
         this.index = index;
         this.elementKind = elementKind;
@@ -64,7 +64,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
      *
      * @return the element type
      */
-    public Kind elementKind() {
+    public JavaKind elementKind() {
         return elementKind;
     }
 

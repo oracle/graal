@@ -251,7 +251,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 }
             }
             for (PhiNode phi : getPhis()) {
-                if (phi.getStackKind() == Kind.Object) {
+                if (phi.getStackKind() == JavaKind.Object) {
                     for (Map.Entry<CacheEntry<?>, ValueNode> entry : states.get(0).readCache.entrySet()) {
                         if (entry.getKey().object == getPhiValueAt(phi, 0)) {
                             mergeReadCachePhi(phi, entry.getKey(), states);

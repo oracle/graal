@@ -84,7 +84,7 @@ public class SPARCAddressLowering extends AddressLowering {
 
     private JavaConstant asImmediate(ValueNode value) {
         JavaConstant c = value.asJavaConstant();
-        if (c != null && c.getKind().isNumericInteger() && !codeCache.needsDataPatch(c)) {
+        if (c != null && c.getJavaKind().isNumericInteger() && !codeCache.needsDataPatch(c)) {
             return c;
         } else {
             return null;

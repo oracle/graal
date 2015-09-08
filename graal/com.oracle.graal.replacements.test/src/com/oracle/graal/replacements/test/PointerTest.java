@@ -46,7 +46,7 @@ import com.oracle.graal.word.nodes.*;
 public class PointerTest extends GraalCompilerTest implements Snippets {
 
     private static final LocationIdentity ID = NamedLocationIdentity.mutable("ID");
-    private static final Kind[] KINDS = new Kind[]{Kind.Byte, Kind.Char, Kind.Short, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object};
+    private static final JavaKind[] KINDS = new JavaKind[]{JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
     private final TargetDescription target;
     private final ReplacementsImpl installer;
 
@@ -62,47 +62,47 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     @Test
     public void testRead1() {
-        for (Kind kind : KINDS) {
+        for (JavaKind kind : KINDS) {
             assertRead(parseEager("read" + kind.name() + "1", AllowAssumptions.YES), kind, true, ID);
         }
     }
 
     @Test
     public void testRead2() {
-        for (Kind kind : KINDS) {
+        for (JavaKind kind : KINDS) {
             assertRead(parseEager("read" + kind.name() + "2", AllowAssumptions.YES), kind, true, ID);
         }
     }
 
     @Test
     public void testRead3() {
-        for (Kind kind : KINDS) {
+        for (JavaKind kind : KINDS) {
             assertRead(parseEager("read" + kind.name() + "3", AllowAssumptions.YES), kind, true, LocationIdentity.any());
         }
     }
 
     @Test
     public void testWrite1() {
-        for (Kind kind : KINDS) {
+        for (JavaKind kind : KINDS) {
             assertWrite(parseEager("write" + kind.name() + "1", AllowAssumptions.YES), true, ID);
         }
     }
 
     @Test
     public void testWrite2() {
-        for (Kind kind : KINDS) {
+        for (JavaKind kind : KINDS) {
             assertWrite(parseEager("write" + kind.name() + "2", AllowAssumptions.YES), true, ID);
         }
     }
 
     @Test
     public void testWrite3() {
-        for (Kind kind : KINDS) {
+        for (JavaKind kind : KINDS) {
             assertWrite(parseEager("write" + kind.name() + "3", AllowAssumptions.YES), true, LocationIdentity.any());
         }
     }
 
-    private void assertRead(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
+    private void assertRead(StructuredGraph graph, JavaKind kind, boolean indexConvert, LocationIdentity locationIdentity) {
         WordCastNode cast = (WordCastNode) graph.start().next();
 
         JavaReadNode read = (JavaReadNode) cast.next();

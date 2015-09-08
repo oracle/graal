@@ -62,7 +62,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     Register arg = asRegister(cc.getArgument(0));
                     LZCNT.emit(asm, DWORD, ret, arg);
                     asm.ret(0);
@@ -81,7 +81,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = IntField.class.getDeclaredField("x");
                         AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) unsafe.objectFieldOffset(f));
@@ -105,7 +105,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     Register arg = asRegister(cc.getArgument(0));
                     LZCNT.emit(asm, QWORD, ret, arg);
                     asm.ret(0);
@@ -124,7 +124,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = LongField.class.getDeclaredField("x");
                         AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) unsafe.objectFieldOffset(f));
@@ -148,7 +148,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     Register arg = asRegister(cc.getArgument(0));
                     TZCNT.emit(asm, DWORD, ret, arg);
                     asm.ret(0);
@@ -167,7 +167,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = IntField.class.getDeclaredField("x");
                         AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) unsafe.objectFieldOffset(f));
@@ -191,7 +191,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     Register arg = asRegister(cc.getArgument(0));
                     TZCNT.emit(asm, QWORD, ret, arg);
                     asm.ret(0);
@@ -210,7 +210,7 @@ public class BitOpsTest extends AssemblerTest {
                 @Override
                 public byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
                     AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
-                    Register ret = registerConfig.getReturnRegister(Kind.Int);
+                    Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = LongField.class.getDeclaredField("x");
                         AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) unsafe.objectFieldOffset(f));

@@ -38,19 +38,19 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
 
     public static final NodeClass<UnboxNode> TYPE = NodeClass.create(UnboxNode.class);
     @Input protected ValueNode value;
-    protected final Kind boxingKind;
+    protected final JavaKind boxingKind;
 
     public ValueNode getValue() {
         return value;
     }
 
-    public UnboxNode(ValueNode value, Kind boxingKind) {
+    public UnboxNode(ValueNode value, JavaKind boxingKind) {
         super(TYPE, StampFactory.forKind(boxingKind.getStackKind()));
         this.value = value;
         this.boxingKind = boxingKind;
     }
 
-    public static ValueNode create(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode value, Kind boxingKind) {
+    public static ValueNode create(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode value, JavaKind boxingKind) {
         ValueNode synonym = findSynonym(metaAccess, constantReflection, value, boxingKind);
         if (synonym != null) {
             return synonym;
@@ -58,7 +58,7 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
         return new UnboxNode(value, boxingKind);
     }
 
-    public Kind getBoxingKind() {
+    public JavaKind getBoxingKind() {
         return boxingKind;
     }
 
@@ -92,11 +92,11 @@ public final class UnboxNode extends FixedWithNextNode implements Virtualizable,
         return this;
     }
 
-    private static ValueNode findSynonym(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode forValue, Kind boxingKind) {
+    private static ValueNode findSynonym(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ValueNode forValue, JavaKind boxingKind) {
         if (forValue.isConstant()) {
             JavaConstant constant = forValue.asJavaConstant();
             JavaConstant unboxed = constantReflection.unboxPrimitive(constant);
-            if (unboxed != null && unboxed.getKind() == boxingKind) {
+            if (unboxed != null && unboxed.getJavaKind() == boxingKind) {
                 return ConstantNode.forConstant(unboxed, metaAccess);
             }
         } else if (forValue instanceof BoxNode) {

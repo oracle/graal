@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public boolean isSorted() {
-        Kind kind = value().getStackKind();
+        JavaKind kind = value().getStackKind();
         if (kind.isNumericInteger()) {
             JavaConstant lastKey = null;
             for (int i = 0; i < keyCount(); i++) {
@@ -123,7 +123,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             int survivingEdge = keySuccessorIndex(keyCount());
             for (int i = 0; i < keyCount(); i++) {
                 JavaConstant typeHub = keyAt(i);
-                assert constant.getKind() == typeHub.getKind();
+                assert constant.getJavaKind() == typeHub.getJavaKind();
                 Boolean equal = tool.getConstantReflection().constantEquals(constant, typeHub);
                 if (equal == null) {
                     /* We don't know if this key is a match or not, so we cannot simplify. */

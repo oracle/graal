@@ -118,7 +118,7 @@ public class AMD64HotSpotMove {
             if (isRegister(result)) {
                 if (compressed) {
                     if (isImmutable && generatePIC) {
-                        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+                        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
                         int alignment = hostWordKind.getBitCount() / Byte.SIZE;
                         // recordDataReferenceInCode forces the mov to be rip-relative
                         masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
@@ -128,7 +128,7 @@ public class AMD64HotSpotMove {
                     }
                 } else {
                     if (isImmutable && generatePIC) {
-                        Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+                        JavaKind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
                         int alignment = hostWordKind.getBitCount() / Byte.SIZE;
                         // recordDataReferenceInCode forces the mov to be rip-relative
                         masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(JavaConstant.INT_0, alignment));
@@ -181,7 +181,7 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(Kind.Long, crb, masm, result, input);
+            AMD64Move.move(JavaKind.Long, crb, masm, result, input);
 
             Register resReg = asRegister(result);
             if (encoding.base != 0) {
@@ -229,8 +229,8 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            assert result.getPlatformKind() instanceof Kind : "Can only deal with Kind: " + result.getLIRKind();
-            Kind kind = (Kind) result.getPlatformKind();
+            assert result.getPlatformKind() instanceof JavaKind : "Can only deal with Kind: " + result.getLIRKind();
+            JavaKind kind = (JavaKind) result.getPlatformKind();
             AMD64Move.move(kind, crb, masm, result, input);
             AMD64Move.move(kind, crb, masm, stackSlot, input);
         }
@@ -257,7 +257,7 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Move.move(Kind.Int, crb, masm, result, input);
+            AMD64Move.move(JavaKind.Int, crb, masm, result, input);
 
             Register resReg = asRegister(result);
             if (encoding.shift != 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -641,7 +641,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             dimensions++;
         }
 
-        Class<?> baseClass = base.getKind() != Kind.Object ? base.getKind().toJavaClass() : resolveClass(base.toJavaName(), false);
+        Class<?> baseClass = base.getJavaKind() != JavaKind.Object ? base.getJavaKind().toJavaClass() : resolveClass(base.toJavaName(), false);
         return dimensions == 0 ? baseClass : Array.newInstance(baseClass, new int[dimensions]).getClass();
     }
 

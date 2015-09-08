@@ -62,7 +62,7 @@ public class CRC32Substitutions {
     }
 
     static int updateBytes(int crc, byte[] buf, int off, int len) {
-        Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(Kind.Byte) + off));
+        Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, arrayBaseOffset(JavaKind.Byte) + off));
         return updateBytes(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 

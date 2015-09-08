@@ -128,6 +128,6 @@ public final class SPARCFrameMap extends FrameMap {
 
     public StackSlot allocateDeoptimizationRescueSlot() {
         assert spillSize == initialSpillSize : "Deoptimization rescue slot must be the first stack slot";
-        return allocateSpillSlot(LIRKind.value(Kind.Long));
+        return allocateSpillSlot(LIRKind.value(JavaKind.Long));
     }
 }

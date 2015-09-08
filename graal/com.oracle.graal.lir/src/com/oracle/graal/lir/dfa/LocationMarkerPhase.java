@@ -65,7 +65,7 @@ public final class LocationMarkerPhase extends AllocationPhase {
 
         @Override
         protected boolean shouldProcessValue(Value operand) {
-            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getPlatformKind() != Kind.Illegal;
+            return (isRegister(operand) && attributes(asRegister(operand)).isAllocatable() || isStackSlot(operand)) && operand.getPlatformKind() != JavaKind.Illegal;
         }
 
         /**

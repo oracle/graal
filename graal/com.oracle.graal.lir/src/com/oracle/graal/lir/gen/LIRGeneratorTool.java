@@ -209,7 +209,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator, BenchmarkCount
 
     Variable emitByteSwap(Value operand);
 
-    Variable emitArrayEquals(Kind kind, Value array1, Value array2, Value length);
+    Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length);
 
     void emitBlackhole(Value operand);
 

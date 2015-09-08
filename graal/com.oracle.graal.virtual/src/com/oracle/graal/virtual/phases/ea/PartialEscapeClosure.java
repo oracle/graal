@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -576,7 +576,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             if (uniqueMaterializedValue != null) {
                                 newState.addObject(object, new ObjectState(uniqueMaterializedValue, null, ensureVirtual));
                             } else {
-                                PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(Kind.Object));
+                                PhiNode materializedValuePhi = getPhi(object, StampFactory.forKind(JavaKind.Object));
                                 mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
                                 for (int i = 0; i < states.length; i++) {
                                     ObjectState obj = states[i].getObjectState(object);
@@ -656,18 +656,18 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             int entryCount = virtual.entryCount();
 
             // determine all entries that have a two-slot value
-            Kind[] twoSlotKinds = null;
+            JavaKind[] twoSlotKinds = null;
             outer: for (int i = 0; i < states.length; i++) {
                 ObjectState objectState = states[i].getObjectState(getObject.apply(i));
                 ValueNode[] entries = objectState.getEntries();
                 int valueIndex = 0;
                 ensureVirtual &= objectState.getEnsureVirtualized();
                 while (valueIndex < entryCount) {
-                    Kind otherKind = entries[valueIndex].getStackKind();
-                    Kind entryKind = virtual.entryKind(valueIndex);
-                    if (entryKind == Kind.Int && otherKind.needsTwoSlots()) {
+                    JavaKind otherKind = entries[valueIndex].getStackKind();
+                    JavaKind entryKind = virtual.entryKind(valueIndex);
+                    if (entryKind == JavaKind.Int && otherKind.needsTwoSlots()) {
                         if (twoSlotKinds == null) {
-                            twoSlotKinds = new Kind[entryCount];
+                            twoSlotKinds = new JavaKind[entryCount];
                         }
                         if (twoSlotKinds[valueIndex] != null && twoSlotKinds[valueIndex] != otherKind) {
                             compatible = false;
@@ -677,8 +677,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         // skip the next entry
                         valueIndex++;
                     } else {
-                        assert entryKind.getStackKind() == otherKind.getStackKind() || (entryKind == Kind.Int && otherKind == Kind.Illegal) || entryKind.getBitCount() >= otherKind.getBitCount() : entryKind +
-                                        " vs " + otherKind;
+                        assert entryKind.getStackKind() == otherKind.getStackKind() || (entryKind == JavaKind.Int && otherKind == JavaKind.Illegal) ||
+                                        entryKind.getBitCount() >= otherKind.getBitCount() : entryKind + " vs " + otherKind;
                     }
                     valueIndex++;
                 }
@@ -687,12 +687,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 // if there are two-slot values then make sure the incoming states can be merged
                 outer: for (int valueIndex = 0; valueIndex < entryCount; valueIndex++) {
                     if (twoSlotKinds[valueIndex] != null) {
-                        assert valueIndex < virtual.entryCount() - 1 && virtual.entryKind(valueIndex) == Kind.Int && virtual.entryKind(valueIndex + 1) == Kind.Int;
+                        assert valueIndex < virtual.entryCount() - 1 && virtual.entryKind(valueIndex) == JavaKind.Int && virtual.entryKind(valueIndex + 1) == JavaKind.Int;
                         for (int i = 0; i < states.length; i++) {
                             int object = getObject.apply(i);
                             ObjectState objectState = states[i].getObjectState(object);
                             ValueNode value = objectState.getEntry(valueIndex);
-                            Kind valueKind = value.getStackKind();
+                            JavaKind valueKind = value.getStackKind();
                             if (valueKind != twoSlotKinds[valueIndex]) {
                                 ValueNode nextValue = objectState.getEntry(valueIndex + 1);
                                 if (value.isConstant() && value.asConstant().equals(JavaConstant.INT_0) && nextValue.isConstant() && nextValue.asConstant().equals(JavaConstant.INT_0)) {
@@ -740,7 +740,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     PhiNode phi = phis[i];
                     if (phi != null) {
                         mergeEffects.addFloatingNode(phi, "virtualMergePhi");
-                        if (virtual.entryKind(i) == Kind.Object) {
+                        if (virtual.entryKind(i) == JavaKind.Object) {
                             materialized |= mergeObjectEntry(getObject, states, phi, i);
                         } else {
                             for (int i2 = 0; i2 < states.length; i2++) {
@@ -758,7 +758,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return materialized;
             } else {
                 // not compatible: materialize in all predecessors
-                PhiNode materializedValuePhi = getPhi(resultObject, StampFactory.forKind(Kind.Object));
+                PhiNode materializedValuePhi = getPhi(resultObject, StampFactory.forKind(JavaKind.Object));
                 for (int i = 0; i < states.length; i++) {
                     Block predecessor = getPredecessor(i);
                     ensureMaterialized(states[i], getObject.apply(i), predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
@@ -770,7 +770,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
 
         /**
-         * Fill the inputs of the PhiNode corresponding to one {@link Kind#Object} entry in the
+         * Fill the inputs of the PhiNode corresponding to one {@link JavaKind#Object} entry in the
          * virtual object.
          *
          * @return true if materialization happened during the merge, false otherwise

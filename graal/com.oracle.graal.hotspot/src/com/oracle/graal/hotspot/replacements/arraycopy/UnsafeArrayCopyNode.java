@@ -47,9 +47,9 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
 
     @OptionalInput(InputType.Memory) MemoryNode lastLocationAccess;
 
-    protected Kind elementKind;
+    protected JavaKind elementKind;
 
-    public UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, Kind elementKind) {
+    public UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper, JavaKind elementKind) {
         super(TYPE, StampFactory.forVoid());
         assert layoutHelper == null || elementKind == null;
         this.src = src;
@@ -61,7 +61,7 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
         this.elementKind = elementKind;
     }
 
-    public UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, Kind elementKind) {
+    public UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind) {
         this(src, srcPos, dest, destPos, length, null, elementKind);
     }
 
@@ -86,7 +86,7 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
 
     @Override
     public boolean isObjectArray() {
-        return elementKind == Kind.Object;
+        return elementKind == JavaKind.Object;
     }
 
     @Override
@@ -94,7 +94,7 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
         return false;
     }
 
-    public Kind getElementKind() {
+    public JavaKind getElementKind() {
         return elementKind;
     }
 
@@ -135,7 +135,7 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
     }
 
     @NodeIntrinsic
-    public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter Kind elementKind);
+    public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind);
 
     @NodeIntrinsic
     public static native void arraycopyPrimitive(Object src, int srcPos, Object dest, int destPos, int length, int layoutHelper);

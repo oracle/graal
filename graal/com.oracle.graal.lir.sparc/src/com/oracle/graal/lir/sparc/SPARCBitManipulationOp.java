@@ -68,7 +68,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register dst = asRegister(result, Kind.Int);
+        Register dst = asRegister(result, JavaKind.Int);
         if (isRegister(input)) {
             Register src = asRegister(input);
             switch (opcode) {
@@ -82,12 +82,12 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     break;
                 case BSF:
                     PlatformKind tkind = input.getPlatformKind();
-                    if (tkind == Kind.Int) {
+                    if (tkind == JavaKind.Int) {
                         masm.sub(src, 1, dst);
                         masm.andn(dst, src, dst);
                         masm.srl(dst, g0, dst);
                         masm.popc(dst, dst);
-                    } else if (tkind == Kind.Long) {
+                    } else if (tkind == JavaKind.Long) {
                         masm.sub(src, 1, dst);
                         masm.andn(dst, src, dst);
                         masm.popc(dst, dst);
@@ -97,7 +97,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     break;
                 case IBSR: {
                     PlatformKind ikind = input.getPlatformKind();
-                    assert ikind == Kind.Int;
+                    assert ikind == JavaKind.Int;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
                     masm.srl(src, 1, tmp);
@@ -117,7 +117,7 @@ public final class SPARCBitManipulationOp extends SPARCLIRInstruction {
                 }
                 case LBSR: {
                     PlatformKind lkind = input.getPlatformKind();
-                    assert lkind == Kind.Long;
+                    assert lkind == JavaKind.Long;
                     Register tmp = asRegister(scratch);
                     assert !tmp.equals(dst);
                     masm.srlx(src, 1, tmp);

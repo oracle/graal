@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -196,7 +196,7 @@ public class ConditionalEliminationPhase extends Phase {
             // this piece of code handles phis
             if (!(merge instanceof LoopBeginNode)) {
                 for (PhiNode phi : merge.phis()) {
-                    if (phi instanceof ValuePhiNode && phi.getStackKind() == Kind.Object) {
+                    if (phi instanceof ValuePhiNode && phi.getStackKind() == JavaKind.Object) {
                         ValueNode firstValue = phi.valueAt(0);
                         ResolvedJavaType type = getNodeType(firstValue);
                         boolean nonNull = knownNonNull.contains(firstValue);
@@ -454,13 +454,13 @@ public class ConditionalEliminationPhase extends Phase {
                     return null;
                 }
                 IntegerBelowNode below = (IntegerBelowNode) guard.condition();
-                if (below.getX().getStackKind() == Kind.Int && below.getX().isConstant() && !below.getY().isConstant()) {
+                if (below.getX().getStackKind() == JavaKind.Int && below.getX().isConstant() && !below.getY().isConstant()) {
                     Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
                         return new GuardedStamp(below.getY(), stamp, guard);
                     }
                 }
-                if (below.getY().getStackKind() == Kind.Int && below.getY().isConstant() && !below.getX().isConstant()) {
+                if (below.getY().getStackKind() == JavaKind.Int && below.getY().isConstant() && !below.getX().isConstant()) {
                     Stamp stamp = StampTool.unsignedCompare(below.getX().stamp(), below.getY().stamp());
                     if (stamp != null) {
                         return new GuardedStamp(below.getX(), stamp, guard);
@@ -793,7 +793,7 @@ public class ConditionalEliminationPhase extends Phase {
                 assert !(replacementAnchor instanceof FloatingNode) : "unsafe to mix unlowered Checkcast with floating guards";
                 PiNode piNode;
                 if (isNull) {
-                    ConstantNode nullObject = ConstantNode.defaultForKind(Kind.Object, graph);
+                    ConstantNode nullObject = ConstantNode.defaultForKind(JavaKind.Object, graph);
                     piNode = graph.unique(new PiNode(nullObject, nullObject.stamp(), replacementAnchor.asNode()));
                 } else {
                     piNode = graph.unique(new PiNode(object, StampFactory.declaredTrusted(type, nonNull), replacementAnchor.asNode()));

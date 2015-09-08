@@ -77,10 +77,10 @@ public class AESCryptSubstitutions {
     private static void crypt(Object rcvr, byte[] in, int inOffset, byte[] out, int outOffset, boolean encrypt) {
         checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = PiNode.piCastNonNull(rcvr, AESCryptClass);
-        Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, Kind.Object, LocationIdentity.any());
-        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(arrayBaseOffset(Kind.Byte));
-        Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, arrayBaseOffset(Kind.Byte) + inOffset));
-        Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, arrayBaseOffset(Kind.Byte) + outOffset));
+        Object kObject = UnsafeLoadNode.load(realReceiver, kOffset, JavaKind.Object, LocationIdentity.any());
+        Pointer kAddr = Word.objectToTrackedPointer(kObject).add(arrayBaseOffset(JavaKind.Byte));
+        Word inAddr = Word.unsigned(ComputeObjectAddressNode.get(in, arrayBaseOffset(JavaKind.Byte) + inOffset));
+        Word outAddr = Word.unsigned(ComputeObjectAddressNode.get(out, arrayBaseOffset(JavaKind.Byte) + outOffset));
         if (encrypt) {
             encryptBlockStub(ENCRYPT_BLOCK, inAddr, outAddr, kAddr);
         } else {

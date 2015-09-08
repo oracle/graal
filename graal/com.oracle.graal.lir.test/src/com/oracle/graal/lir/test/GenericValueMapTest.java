@@ -39,7 +39,7 @@ public class GenericValueMapTest {
         RegisterCategory cat = new RegisterCategory("regs");
 
         RegisterValue reg = new Register(0, 0, "reg0", cat).asValue();
-        Variable var = new Variable(LIRKind.value(Kind.Long), 0);
+        Variable var = new Variable(LIRKind.value(JavaKind.Long), 0);
         Object obj0 = new Object();
         Object obj1 = new Object();
 

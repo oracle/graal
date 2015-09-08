@@ -85,7 +85,7 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
             for (int i = 0; i < instructionsToProfile.length; i++) {
                 names[i] = compilationUnitName;
                 groups[i] = COUNTER_GROUP + " " + instructionsToProfile[i];
-                increments[i] = new ConstantValue(target.getLIRKind(Kind.Int), JavaConstant.INT_0);
+                increments[i] = new ConstantValue(target.getLIRKind(JavaKind.Int), JavaConstant.INT_0);
             }
             HotSpotCounterOp op = (HotSpotCounterOp) counterFactory.createMultiBenchmarkCounter(names, groups, increments);
             LIRInstruction inst = new InstructionCounterOp(op, instructionsToProfile);

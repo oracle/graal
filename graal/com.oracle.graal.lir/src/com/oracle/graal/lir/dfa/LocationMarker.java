@@ -167,7 +167,7 @@ public abstract class LocationMarker<T extends AbstractBlockBase<T>, S extends V
                 }
                 currentSet.remove(operand);
             } else {
-                assert isIllegal(operand) || operand.getPlatformKind() != Kind.Illegal || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
+                assert isIllegal(operand) || operand.getPlatformKind() != JavaKind.Illegal || mode == OperandMode.TEMP : String.format("Illegal PlatformKind is only allowed for TEMP mode: %s, %s",
                                 operand, mode);
             }
         }

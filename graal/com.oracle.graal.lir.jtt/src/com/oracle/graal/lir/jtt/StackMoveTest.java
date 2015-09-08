@@ -182,7 +182,7 @@ public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification shortStackCopy = new StackCopySpec() {
         @Override
         protected LIRKind getLIRKind(Value value) {
-            return LIRKind.value(Kind.Short);
+            return LIRKind.value(JavaKind.Short);
         }
     };
 
@@ -216,7 +216,7 @@ public class StackMoveTest extends LIRTest {
     private static final LIRTestSpecification byteStackCopy = new StackCopySpec() {
         @Override
         protected LIRKind getLIRKind(Value value) {
-            return LIRKind.value(Kind.Byte);
+            return LIRKind.value(JavaKind.Byte);
         }
     };
 

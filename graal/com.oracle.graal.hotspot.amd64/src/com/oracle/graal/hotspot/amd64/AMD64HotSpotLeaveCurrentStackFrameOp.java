@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,12 +57,12 @@ final class AMD64HotSpotLeaveCurrentStackFrameOp extends AMD64HotSpotEpilogueOp 
 
         // Restore integer result register.
         final int stackSlotSize = frameMap.getTarget().wordSize;
-        Register integerResultRegister = registerConfig.getReturnRegister(Kind.Long);
+        Register integerResultRegister = registerConfig.getReturnRegister(JavaKind.Long);
         masm.movptr(integerResultRegister, new AMD64Address(stackPointer, registerSaveLayout.registerToSlot(integerResultRegister) * stackSlotSize));
         masm.movptr(rdx, new AMD64Address(stackPointer, registerSaveLayout.registerToSlot(rdx) * stackSlotSize));
 
         // Restore float result register.
-        Register floatResultRegister = registerConfig.getReturnRegister(Kind.Double);
+        Register floatResultRegister = registerConfig.getReturnRegister(JavaKind.Double);
         masm.movdbl(floatResultRegister, new AMD64Address(stackPointer, registerSaveLayout.registerToSlot(floatResultRegister) * stackSlotSize));
 
         /*

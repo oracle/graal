@@ -74,8 +74,8 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
     }
 
     @Override
-    public Kind getStackKind() {
-        return Kind.Object;
+    public JavaKind getStackKind() {
+        return JavaKind.Object;
     }
 
     @Override

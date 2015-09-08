@@ -78,33 +78,33 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
     private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits) {
         assert fromBits <= toBits && toBits <= 64;
-        Kind toKind = null;
-        Kind fromKind = null;
+        JavaKind toKind = null;
+        JavaKind fromKind = null;
         if (fromBits == toBits) {
             return null;
         } else if (toBits > 32) {
-            toKind = Kind.Long;
+            toKind = JavaKind.Long;
         } else if (toBits > 16) {
-            toKind = Kind.Int;
+            toKind = JavaKind.Int;
         } else {
-            toKind = Kind.Short;
+            toKind = JavaKind.Short;
         }
         switch (fromBits) {
             case 8:
-                fromKind = Kind.Byte;
+                fromKind = JavaKind.Byte;
                 break;
             case 16:
-                fromKind = Kind.Short;
+                fromKind = JavaKind.Short;
                 break;
             case 32:
-                fromKind = Kind.Int;
+                fromKind = JavaKind.Int;
                 break;
             default:
                 throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
 
-        Kind localFromKind = fromKind;
-        Kind localToKind = toKind;
+        JavaKind localFromKind = fromKind;
+        JavaKind localToKind = toKind;
         return builder -> {
             Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
             return getLIRGeneratorTool().emitReinterpret(LIRKind.value(localToKind), v);
@@ -113,33 +113,33 @@ public abstract class SPARCNodeLIRBuilder extends NodeLIRBuilder {
 
     private ComplexMatchResult emitZeroExtendMemory(Access access, int fromBits, int toBits) {
         assert fromBits <= toBits && toBits <= 64;
-        Kind toKind = null;
-        Kind fromKind = null;
+        JavaKind toKind = null;
+        JavaKind fromKind = null;
         if (fromBits == toBits) {
             return null;
         } else if (toBits > 32) {
-            toKind = Kind.Long;
+            toKind = JavaKind.Long;
         } else if (toBits > 16) {
-            toKind = Kind.Int;
+            toKind = JavaKind.Int;
         } else {
-            toKind = Kind.Short;
+            toKind = JavaKind.Short;
         }
         switch (fromBits) {
             case 8:
-                fromKind = Kind.Byte;
+                fromKind = JavaKind.Byte;
                 break;
             case 16:
-                fromKind = Kind.Short;
+                fromKind = JavaKind.Short;
                 break;
             case 32:
-                fromKind = Kind.Int;
+                fromKind = JavaKind.Int;
                 break;
             default:
                 throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
         }
 
-        Kind localFromKind = fromKind;
-        Kind localToKind = toKind;
+        JavaKind localFromKind = fromKind;
+        JavaKind localToKind = toKind;
         return builder -> {
             // Loads are always zero extending load
             Value v = getLIRGeneratorTool().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));

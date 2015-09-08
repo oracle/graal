@@ -85,7 +85,7 @@ public class SPARCControlFlow {
     public static final class CompareBranchOp extends SPARCBlockEndOp implements SPARCDelayedControlTransfer {
         public static final LIRInstructionClass<CompareBranchOp> TYPE = LIRInstructionClass.create(CompareBranchOp.class);
         public static final SizeEstimate SIZE = SizeEstimate.create(3);
-        static final EnumSet<Kind> SUPPORTED_KINDS = EnumSet.of(Kind.Long, Kind.Int, Kind.Object, Kind.Float, Kind.Double);
+        static final EnumSet<JavaKind> SUPPORTED_KINDS = EnumSet.of(JavaKind.Long, JavaKind.Int, JavaKind.Object, JavaKind.Float, JavaKind.Double);
 
         private final SPARCCompare opcode;
         @Use({REG}) protected Value x;
@@ -95,13 +95,13 @@ public class SPARCControlFlow {
         protected LabelHint trueDestinationHint;
         protected final LabelRef falseDestination;
         protected LabelHint falseDestinationHint;
-        protected final Kind kind;
+        protected final JavaKind kind;
         protected final boolean unorderedIsTrue;
         private boolean emitted = false;
         private int delaySlotPosition = -1;
         private double trueDestinationProbability;
 
-        public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind, boolean unorderedIsTrue,
+        public CompareBranchOp(SPARCCompare opcode, Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, JavaKind kind, boolean unorderedIsTrue,
                         double trueDestinationProbability) {
             super(TYPE, SIZE);
             this.opcode = opcode;
@@ -235,21 +235,21 @@ public class SPARCControlFlow {
         }
 
         private static void emitCBCond(SPARCMacroAssembler masm, Value actualX, Value actualY, Label actualTrueTarget, ConditionFlag conditionFlag) {
-            switch ((Kind) actualX.getLIRKind().getPlatformKind()) {
+            switch ((JavaKind) actualX.getLIRKind().getPlatformKind()) {
                 case Int:
                     if (isJavaConstant(actualY)) {
                         int constantY = asJavaConstant(actualY).asInt();
-                        CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, Kind.Int), constantY, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, JavaKind.Int), constantY, actualTrueTarget);
                     } else {
-                        CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, Kind.Int), asRegister(actualY, Kind.Int), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, false, asRegister(actualX, JavaKind.Int), asRegister(actualY, JavaKind.Int), actualTrueTarget);
                     }
                     break;
                 case Long:
                     if (isJavaConstant(actualY)) {
                         int constantY = (int) asJavaConstant(actualY).asLong();
-                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, Kind.Long), constantY, actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, JavaKind.Long), constantY, actualTrueTarget);
                     } else {
-                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, Kind.Long), asRegister(actualY, Kind.Long), actualTrueTarget);
+                        CBCOND.emit(masm, conditionFlag, true, asRegister(actualX, JavaKind.Long), asRegister(actualY, JavaKind.Long), actualTrueTarget);
                     }
                     break;
                 case Object:
@@ -270,7 +270,7 @@ public class SPARCControlFlow {
             if (!asm.hasFeature(CPUFeature.CBCOND)) {
                 return false;
             }
-            switch ((Kind) x.getPlatformKind()) {
+            switch ((JavaKind) x.getPlatformKind()) {
                 case Int:
                 case Long:
                 case Object:
@@ -336,10 +336,10 @@ public class SPARCControlFlow {
         protected final ConditionFlag conditionFlag;
         protected final LabelRef trueDestination;
         protected final LabelRef falseDestination;
-        protected final Kind kind;
+        protected final JavaKind kind;
         protected final double trueDestinationProbability;
 
-        public BranchOp(ConditionFlag conditionFlag, LabelRef trueDestination, LabelRef falseDestination, Kind kind, double trueDestinationProbability) {
+        public BranchOp(ConditionFlag conditionFlag, LabelRef trueDestination, LabelRef falseDestination, JavaKind kind, double trueDestinationProbability) {
             super(TYPE, SIZE);
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
@@ -359,7 +359,7 @@ public class SPARCControlFlow {
         }
     }
 
-    private static boolean emitBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind kind, ConditionFlag conditionFlag, LabelRef trueDestination, LabelRef falseDestination,
+    private static boolean emitBranch(CompilationResultBuilder crb, SPARCMacroAssembler masm, JavaKind kind, ConditionFlag conditionFlag, LabelRef trueDestination, LabelRef falseDestination,
                     boolean withDelayedNop, double trueDestinationProbability) {
         Label actualTarget;
         ConditionFlag actualConditionFlag;
@@ -380,10 +380,10 @@ public class SPARCControlFlow {
             // We cannot make use of the delay slot when we jump in true-case and false-case
             return false;
         }
-        if (kind == Kind.Double || kind == Kind.Float) {
+        if (kind == JavaKind.Double || kind == JavaKind.Float) {
             masm.fbpcc(actualConditionFlag, NOT_ANNUL, actualTarget, CC.Fcc0, predictTaken);
         } else {
-            CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
+            CC cc = kind == JavaKind.Int ? CC.Icc : CC.Xcc;
             masm.bpcc(actualConditionFlag, NOT_ANNUL, actualTarget, cc, predictTaken);
         }
         if (withDelayedNop) {
@@ -454,7 +454,7 @@ public class SPARCControlFlow {
                     JavaConstant constant = keyConstants[index];
                     CC conditionCode;
                     Long bits;
-                    switch (constant.getKind()) {
+                    switch (constant.getJavaKind()) {
                         case Char:
                         case Byte:
                         case Short:
@@ -468,7 +468,7 @@ public class SPARCControlFlow {
                             break;
                         }
                         case Object: {
-                            conditionCode = crb.codeCache.getTarget().wordKind == Kind.Long ? CC.Xcc : CC.Icc;
+                            conditionCode = crb.codeCache.getTarget().wordKind == JavaKind.Long ? CC.Xcc : CC.Icc;
                             bits = constant.isDefaultForKind() ? 0L : null;
                             break;
                         }
@@ -521,7 +521,7 @@ public class SPARCControlFlow {
             int constantBytes = 0;
             for (JavaConstant v : keyConstants) {
                 if (!SPARCAssembler.isSimm13(v)) {
-                    constantBytes += v.getKind().getByteCount();
+                    constantBytes += v.getJavaKind().getByteCount();
                 }
             }
             return new SizeEstimate(4 * keyTargets.length, constantBytes);
@@ -548,8 +548,8 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            Register value = asRegister(index, Kind.Int);
-            Register scratchReg = asRegister(scratch, Kind.Long);
+            Register value = asRegister(index, JavaKind.Int);
+            Register scratchReg = asRegister(scratch, JavaKind.Long);
 
             // Compare index against jump table bounds
             int highKey = lowKey + targets.length - 1;
@@ -659,7 +659,7 @@ public class SPARCControlFlow {
     }
 
     private static void cmove(SPARCMacroAssembler masm, CC cc, Value result, ConditionFlag cond, Value other) {
-        switch ((Kind) other.getPlatformKind()) {
+        switch ((JavaKind) other.getPlatformKind()) {
             case Boolean:
             case Byte:
             case Short:
@@ -692,10 +692,10 @@ public class SPARCControlFlow {
                 }
                 break;
             case Float:
-                masm.fmovscc(cond, cc, asRegister(other, Kind.Float), asRegister(result, Kind.Float));
+                masm.fmovscc(cond, cc, asRegister(other, JavaKind.Float), asRegister(result, JavaKind.Float));
                 break;
             case Double:
-                masm.fmovdcc(cond, cc, asRegister(other, Kind.Double), asRegister(result, Kind.Double));
+                masm.fmovdcc(cond, cc, asRegister(other, JavaKind.Double), asRegister(result, JavaKind.Double));
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();

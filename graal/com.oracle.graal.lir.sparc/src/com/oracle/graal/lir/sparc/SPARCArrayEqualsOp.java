@@ -52,7 +52,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     public static final LIRInstructionClass<SPARCArrayEqualsOp> TYPE = LIRInstructionClass.create(SPARCArrayEqualsOp.class);
     public static final SizeEstimate SIZE = SizeEstimate.create(32);
 
-    private final Kind kind;
+    private final JavaKind kind;
     private final int arrayBaseOffset;
     private final int arrayIndexScale;
 
@@ -66,7 +66,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
     @Temp({REG}) protected Value temp4;
     @Temp({REG}) protected Value temp5;
 
-    public SPARCArrayEqualsOp(LIRGeneratorTool tool, Kind kind, Value result, Value array1, Value array2, Value length) {
+    public SPARCArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, Value result, Value array1, Value array2, Value length) {
         super(TYPE, SIZE);
         this.kind = kind;
 
@@ -103,7 +103,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         masm.add(asRegister(array2Value), arrayBaseOffset, array2);
 
         // Get array length in bytes.
-        masm.mulx(asRegister(lengthValue, Kind.Int), arrayIndexScale, length);
+        masm.mulx(asRegister(lengthValue, JavaKind.Int), arrayIndexScale, length);
         masm.mov(length, result); // copy
 
         emit8ByteCompare(masm, result, array1, array2, length, trueLabel, falseLabel);
@@ -132,7 +132,7 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
      * Emits code that uses 8-byte vector compares.
      */
     private void emit8ByteCompare(SPARCMacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
-        assert lengthValue.getPlatformKind().equals(Kind.Int);
+        assert lengthValue.getPlatformKind().equals(JavaKind.Int);
         Label loop = new Label();
         Label compareTail = new Label();
         Label compareTailCorrectVectorEnd = new Label();

@@ -571,10 +571,10 @@ public abstract class SPARCAssembler extends Assembler {
             return operator;
         }
 
-        public static CC forKind(Kind kind) {
-            boolean isInt = kind == Kind.Boolean || kind == Kind.Byte || kind == Kind.Char || kind == Kind.Short || kind == Kind.Int;
-            boolean isFloat = kind == Kind.Float || kind == Kind.Double;
-            boolean isLong = kind == Kind.Long || kind == Kind.Object;
+        public static CC forKind(JavaKind kind) {
+            boolean isInt = kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Char || kind == JavaKind.Short || kind == JavaKind.Int;
+            boolean isFloat = kind == JavaKind.Float || kind == JavaKind.Double;
+            boolean isLong = kind == JavaKind.Long || kind == JavaKind.Object;
             assert isInt || isFloat || isLong;
             if (isLong) {
                 return Xcc;
@@ -1443,7 +1443,7 @@ public abstract class SPARCAssembler extends Assembler {
 
     public static boolean isSimm13(JavaConstant constant) {
         long bits;
-        switch (constant.getKind()) {
+        switch (constant.getJavaKind()) {
             case Double:
                 bits = Double.doubleToRawLongBits(constant.asDouble());
                 break;

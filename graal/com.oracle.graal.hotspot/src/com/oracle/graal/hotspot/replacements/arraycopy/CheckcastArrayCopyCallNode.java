@@ -60,7 +60,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
 
     protected CheckcastArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
                     ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit) {
-        super(TYPE, StampFactory.forKind(Kind.Int));
+        super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
@@ -101,9 +101,9 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         graph().addBeforeFixed(this, basePtr);
 
         HotSpotJVMCIRuntimeProvider jvmciRuntime = runtime.getJVMCIRuntime();
-        int shift = CodeUtil.log2(jvmciRuntime.getArrayIndexScale(Kind.Object));
+        int shift = CodeUtil.log2(jvmciRuntime.getArrayIndexScale(JavaKind.Object));
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(pos, ConstantNode.forInt(shift, graph())));
-        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(jvmciRuntime.getArrayBaseOffset(Kind.Object), graph())));
+        ValueNode offset = graph().unique(new AddNode(scaledIndex, ConstantNode.forInt(jvmciRuntime.getArrayBaseOffset(JavaKind.Object), graph())));
         return graph().unique(new OffsetAddressNode(basePtr, offset));
     }
 

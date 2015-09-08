@@ -52,16 +52,16 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Kind inputKind = (Kind) input.getLIRKind().getPlatformKind();
+        JavaKind inputKind = (JavaKind) input.getLIRKind().getPlatformKind();
         getDelayedControlTransfer().emitControlTransfer(crb, masm);
         switch (opcode) {
             case SQRT:
                 switch (inputKind) {
                     case Float:
-                        masm.fsqrts(asRegister(input, Kind.Float), asRegister(result, Kind.Float));
+                        masm.fsqrts(asRegister(input, JavaKind.Float), asRegister(result, JavaKind.Float));
                         break;
                     case Double:
-                        masm.fsqrtd(asRegister(input, Kind.Double), asRegister(result, Kind.Double));
+                        masm.fsqrtd(asRegister(input, JavaKind.Double), asRegister(result, JavaKind.Double));
                         break;
                     default:
                         JVMCIError.shouldNotReachHere();
@@ -70,10 +70,10 @@ public final class SPARCMathIntrinsicOp extends SPARCLIRInstruction implements S
             case ABS:
                 switch (inputKind) {
                     case Float:
-                        masm.fabss(asRegister(input, Kind.Float), asRegister(result, Kind.Float));
+                        masm.fabss(asRegister(input, JavaKind.Float), asRegister(result, JavaKind.Float));
                         break;
                     case Double:
-                        masm.fabsd(asRegister(input, Kind.Double), asRegister(result, Kind.Double));
+                        masm.fabsd(asRegister(input, JavaKind.Double), asRegister(result, JavaKind.Double));
                         break;
                     default:
                         JVMCIError.shouldNotReachHere();

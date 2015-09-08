@@ -222,9 +222,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     private static boolean verifyPHIKind(LIRKind derivedKind, LIRKind phiKind) {
-        assert derivedKind.getPlatformKind() != Kind.Object || !derivedKind.isUnknownReference();
+        assert derivedKind.getPlatformKind() != JavaKind.Object || !derivedKind.isUnknownReference();
         PlatformKind phiPlatformKind = phiKind.getPlatformKind();
-        assert derivedKind.equals(phiKind) || derivedKind.getPlatformKind().equals(phiPlatformKind instanceof Kind ? ((Kind) phiPlatformKind).getStackKind() : phiPlatformKind);
+        assert derivedKind.equals(phiKind) || derivedKind.getPlatformKind().equals(phiPlatformKind instanceof JavaKind ? ((JavaKind) phiPlatformKind).getStackKind() : phiPlatformKind);
         return true;
     }
 
@@ -630,14 +630,14 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 LabelRef[] keyTargets = new LabelRef[keyCount];
                 JavaConstant[] keyConstants = new JavaConstant[keyCount];
                 double[] keyProbabilities = new double[keyCount];
-                Kind keyKind = x.keyAt(0).getKind();
+                JavaKind keyKind = x.keyAt(0).getJavaKind();
                 for (int i = 0; i < keyCount; i++) {
                     keyTargets[i] = getLIRBlock(x.keySuccessor(i));
                     keyConstants[i] = x.keyAt(i);
                     keyProbabilities[i] = x.keyProbability(i);
-                    assert keyConstants[i].getKind() == keyKind;
+                    assert keyConstants[i].getJavaKind() == keyKind;
                 }
-                if (keyKind != Kind.Int || !x.isSorted()) {
+                if (keyKind != JavaKind.Int || !x.isSorted()) {
                     // hopefully only a few entries
                     gen.emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
                 } else {

@@ -56,7 +56,8 @@ public final class UnsafeCastNode extends FloatingGuardedNode implements LIRLowe
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || StampTool.isPointerNonNull(object.stamp()), true) : StampFactory.forKind(toType.getKind()));
+        this(object, toType.getJavaKind() == JavaKind.Object ? StampFactory.object(toType, exactType, nonNull || StampTool.isPointerNonNull(object.stamp()), true)
+                        : StampFactory.forKind(toType.getJavaKind()));
     }
 
     @Override
@@ -66,7 +67,7 @@ public final class UnsafeCastNode extends FloatingGuardedNode implements LIRLowe
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        assert getStackKind() == Kind.Object && object.getStackKind() == Kind.Object;
+        assert getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object;
 
         ObjectStamp my = (ObjectStamp) stamp();
         ObjectStamp other = (ObjectStamp) object.stamp();
@@ -104,7 +105,7 @@ public final class UnsafeCastNode extends FloatingGuardedNode implements LIRLowe
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        assert getStackKind() == Kind.Object && object.getStackKind() == Kind.Object;
+        assert getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object;
         /*
          * The LIR only cares about the kind of an operand, not the actual type of an object. So we
          * do not have to introduce a new operand.

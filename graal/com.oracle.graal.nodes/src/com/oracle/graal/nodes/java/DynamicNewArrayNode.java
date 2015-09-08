@@ -45,37 +45,37 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
      * A non-null value indicating the worst case element type. Mainly useful for distinguishing
      * Object arrays from primitive arrays.
      */
-    protected final Kind knownElementKind;
+    protected final JavaKind knownElementKind;
 
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
         this(TYPE, elementType, length, fillContents, null, null, null);
     }
 
-    public DynamicNewArrayNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind) {
+    public DynamicNewArrayNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ValueNode elementType, ValueNode length, boolean fillContents, JavaKind knownElementKind) {
         this(TYPE, elementType, length, fillContents, knownElementKind, null, metaAccess);
     }
 
-    private static Stamp computeStamp(Kind knownElementKind, MetaAccessProvider metaAccess) {
+    private static Stamp computeStamp(JavaKind knownElementKind, MetaAccessProvider metaAccess) {
         if (knownElementKind != null && metaAccess != null) {
-            ResolvedJavaType arrayType = metaAccess.lookupJavaType(knownElementKind == Kind.Object ? Object.class : knownElementKind.toJavaClass()).getArrayClass();
+            ResolvedJavaType arrayType = metaAccess.lookupJavaType(knownElementKind == JavaKind.Object ? Object.class : knownElementKind.toJavaClass()).getArrayClass();
             return StampFactory.declaredNonNull(arrayType);
         }
         return StampFactory.objectNonNull();
     }
 
-    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, Kind knownElementKind, FrameState stateBefore,
+    protected DynamicNewArrayNode(NodeClass<? extends DynamicNewArrayNode> c, ValueNode elementType, ValueNode length, boolean fillContents, JavaKind knownElementKind, FrameState stateBefore,
                     MetaAccessProvider metaAccess) {
         super(c, computeStamp(knownElementKind, metaAccess), length, fillContents, stateBefore);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
-        assert knownElementKind != Kind.Void && knownElementKind != Kind.Illegal;
+        assert knownElementKind != JavaKind.Void && knownElementKind != JavaKind.Illegal;
     }
 
     public ValueNode getElementType() {
         return elementType;
     }
 
-    public Kind getKnownElementKind() {
+    public JavaKind getKnownElementKind() {
         return knownElementKind;
     }
 
@@ -109,17 +109,17 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     }
 
     public static boolean throwsIllegalArgumentException(ResolvedJavaType elementType) {
-        return elementType.getKind() == Kind.Void;
+        return elementType.getJavaKind() == JavaKind.Void;
     }
 
     @NodeIntrinsic
-    private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter Kind knownElementKind);
+    private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents, @ConstantNodeParameter JavaKind knownElementKind);
 
-    public static Object newArray(Class<?> componentType, int length, Kind knownElementKind) {
+    public static Object newArray(Class<?> componentType, int length, JavaKind knownElementKind) {
         return newArray(componentType, length, true, knownElementKind);
     }
 
-    public static Object newUninitializedArray(Class<?> componentType, int length, Kind knownElementKind) {
+    public static Object newUninitializedArray(Class<?> componentType, int length, JavaKind knownElementKind) {
         return newArray(componentType, length, false, knownElementKind);
     }
 

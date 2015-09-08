@@ -45,15 +45,15 @@ public final class BoxNode extends FixedWithNextNode implements VirtualizableAll
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
     @Input private ValueNode value;
-    private final Kind boxingKind;
+    private final JavaKind boxingKind;
 
-    public BoxNode(ValueNode value, ResolvedJavaType resultType, Kind boxingKind) {
+    public BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         super(TYPE, StampFactory.exactNonNull(resultType));
         this.value = value;
         this.boxingKind = boxingKind;
     }
 
-    public Kind getBoxingKind() {
+    public JavaKind getBoxingKind() {
         return boxingKind;
     }
 

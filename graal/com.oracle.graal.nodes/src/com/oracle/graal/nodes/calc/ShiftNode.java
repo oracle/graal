@@ -74,7 +74,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticLIRL
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && forY.isConstant()) {
             JavaConstant amount = forY.asJavaConstant();
-            assert amount.getKind() == Kind.Int;
+            assert amount.getJavaKind() == JavaKind.Int;
             return ConstantNode.forPrimitive(stamp(), getOp(forX).foldConstant(forX.asConstant(), amount.asInt()));
         }
         return this;

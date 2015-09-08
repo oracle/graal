@@ -141,7 +141,7 @@ public class AMD64AddressLowering extends AddressLowering {
     }
 
     private ValueNode improveConstDisp(AMD64AddressNode address, ValueNode original, JavaConstant c, ValueNode other, int shift) {
-        if (c.getKind().isNumericInteger() && !codeCache.needsDataPatch(c)) {
+        if (c.getJavaKind().isNumericInteger() && !codeCache.needsDataPatch(c)) {
             long disp = address.getDisplacement();
             disp += c.asLong() << shift;
             if (NumUtil.isInt(disp)) {

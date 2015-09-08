@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public final class AllocaNode extends FixedWithNextNode implements LIRLowerable 
      */
     protected final BitSet objects;
 
-    public AllocaNode(int slots, Kind wordKind, BitSet objects) {
+    public AllocaNode(int slots, JavaKind wordKind, BitSet objects) {
         super(TYPE, StampFactory.forKind(wordKind));
         this.slots = slots;
         this.objects = objects;

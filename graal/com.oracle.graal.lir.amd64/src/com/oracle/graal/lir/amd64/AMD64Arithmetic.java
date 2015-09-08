@@ -49,7 +49,7 @@ public enum AMD64Arithmetic {
             super(TYPE);
             this.opcode = opcode;
             this.result = result;
-            this.raxTemp = AMD64.rax.asValue(LIRKind.value(Kind.Int));
+            this.raxTemp = AMD64.rax.asValue(LIRKind.value(JavaKind.Int));
             this.x = x;
             this.y = y;
         }
@@ -94,8 +94,8 @@ public enum AMD64Arithmetic {
         @Override
         public void verify() {
             super.verify();
-            assert (opcode.name().startsWith("F") && result.getPlatformKind() == Kind.Float && x.getPlatformKind() == Kind.Float && y.getPlatformKind() == Kind.Float) ||
-                            (opcode.name().startsWith("D") && result.getPlatformKind() == Kind.Double && x.getPlatformKind() == Kind.Double && y.getPlatformKind() == Kind.Double);
+            assert (opcode.name().startsWith("F") && result.getPlatformKind() == JavaKind.Float && x.getPlatformKind() == JavaKind.Float && y.getPlatformKind() == JavaKind.Float) ||
+                            (opcode.name().startsWith("D") && result.getPlatformKind() == JavaKind.Double && x.getPlatformKind() == JavaKind.Double && y.getPlatformKind() == JavaKind.Double);
         }
     }
 }

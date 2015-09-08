@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -315,7 +315,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static Kind getWordKind() {
+    public static JavaKind getWordKind() {
         return runtime().getTarget().wordKind;
     }
 
@@ -520,12 +520,12 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int arrayBaseOffset(Kind elementKind) {
+    public static int arrayBaseOffset(JavaKind elementKind) {
         return runtime().getJVMCIRuntime().getArrayBaseOffset(elementKind);
     }
 
     @Fold
-    public static int arrayIndexScale(Kind elementKind) {
+    public static int arrayIndexScale(JavaKind elementKind) {
         return runtime().getJVMCIRuntime().getArrayIndexScale(elementKind);
     }
 
@@ -691,10 +691,10 @@ public class HotSpotReplacementsUtil {
     public static native void writeRegisterAsWord(@ConstantNodeParameter Register register, Word value);
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
+    private static native Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter JavaKind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static native KlassPointer loadKlassFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
+    private static native KlassPointer loadKlassFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter JavaKind wordKind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic(value = LoadHubNode.class)
     public static native KlassPointer loadHubIntrinsic(Object object, GuardingNode anchor);

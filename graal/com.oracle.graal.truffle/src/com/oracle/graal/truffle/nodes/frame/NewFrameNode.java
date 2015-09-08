@@ -207,26 +207,26 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     }
 
     private ValueNode initialPrimitiveValue(FrameSlotKind kind) {
-        Kind graalKind = null;
+        JavaKind graalKind = null;
         switch (kind) {
             case Boolean:
             case Byte:
             case Int:
-                graalKind = Kind.Int;
+                graalKind = JavaKind.Int;
                 break;
             case Double:
-                graalKind = Kind.Double;
+                graalKind = JavaKind.Double;
                 break;
             case Float:
-                graalKind = Kind.Float;
+                graalKind = JavaKind.Float;
                 break;
             case Long:
-                graalKind = Kind.Long;
+                graalKind = JavaKind.Long;
                 break;
             case Object:
             case Illegal:
                 // won't be stored in the primitive array, so default to long
-                graalKind = Kind.Long;
+                graalKind = JavaKind.Long;
                 break;
             default:
                 throw new IllegalStateException("Unexpected frame slot kind: " + kind);

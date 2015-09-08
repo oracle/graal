@@ -234,10 +234,10 @@ public class ForeignCallStub extends Stub {
         for (int i = 0; i < args.length; i++) {
             ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(args[i]).resolve(accessingClass);
             Stamp stamp;
-            if (type.getKind().getStackKind() == Kind.Object) {
+            if (type.getJavaKind().getStackKind() == JavaKind.Object) {
                 stamp = StampFactory.declared(type);
             } else {
-                stamp = StampFactory.forKind(type.getKind());
+                stamp = StampFactory.forKind(type.getJavaKind());
             }
             ParameterNode param = kit.unique(new ParameterNode(i, stamp));
             params[i] = param;

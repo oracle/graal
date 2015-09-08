@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
  * Factory for creating a node that makes a direct call to a native function pointer.
  */
 public interface RawNativeCallNodeFactory {
-    FixedWithNextNode createRawCallNode(Kind returnType, JavaConstant functionPointer, ValueNode... args);
+    FixedWithNextNode createRawCallNode(JavaKind returnType, JavaConstant functionPointer, ValueNode... args);
 
     String getArchitecture();
 }

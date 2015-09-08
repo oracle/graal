@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -446,7 +446,7 @@ public class InliningUtil {
     protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge, boolean alwaysDuplicateStateAfter) {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
-        Kind invokeReturnKind = invoke.asNode().getStackKind();
+        JavaKind invokeReturnKind = invoke.asNode().getStackKind();
         for (FrameState original : inlineGraph.getNodes(FrameState.TYPE)) {
             FrameState frameState = (FrameState) duplicates.get(original);
             if (frameState != null && frameState.isAlive()) {
@@ -462,7 +462,7 @@ public class InliningUtil {
                     boolean alwaysDuplicateStateAfter) {
 
         FrameState stateAtReturn = invoke.stateAfter();
-        Kind invokeReturnKind = invoke.asNode().getStackKind();
+        JavaKind invokeReturnKind = invoke.asNode().getStackKind();
 
         if (frameState.bci == BytecodeFrame.AFTER_BCI) {
             FrameState stateAfterReturn = stateAtReturn;
@@ -496,7 +496,7 @@ public class InliningUtil {
              */
             FrameState stateAfterException = stateAtExceptionEdge;
             if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
-                stateAfterException = stateAtExceptionEdge.duplicateModified(Kind.Object, Kind.Object, frameState.stackAt(0));
+                stateAfterException = stateAtExceptionEdge.duplicateModified(JavaKind.Object, JavaKind.Object, frameState.stackAt(0));
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
@@ -653,7 +653,7 @@ public class InliningUtil {
         assert !callTarget.isStatic() : callTarget.targetMethod();
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
-        if (firstParam.getStackKind() == Kind.Object) {
+        if (firstParam.getStackKind() == JavaKind.Object) {
             Stamp paramStamp = firstParam.stamp();
             Stamp stamp = paramStamp.join(StampFactory.declaredNonNull(callTarget.targetMethod().getDeclaringClass()));
             if (!StampTool.isPointerNonNull(firstParam)) {

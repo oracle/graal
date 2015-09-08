@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,9 +54,9 @@ public class WordTypes {
      */
     private final ResolvedJavaType barrieredAccessType;
 
-    private final Kind wordKind;
+    private final JavaKind wordKind;
 
-    public WordTypes(MetaAccessProvider metaAccess, Kind wordKind) {
+    public WordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
@@ -115,15 +115,15 @@ public class WordTypes {
      * Gets the kind for a given type, returning the {@linkplain #getWordKind() word kind} if
      * {@code type} is a {@linkplain #isWord(ResolvedJavaType) word type}.
      */
-    public Kind asKind(JavaType type) {
+    public JavaKind asKind(JavaType type) {
         if (type instanceof ResolvedJavaType && isWord((ResolvedJavaType) type)) {
             return wordKind;
         } else {
-            return type.getKind();
+            return type.getJavaKind();
         }
     }
 
-    public Kind getWordKind() {
+    public JavaKind getWordKind() {
         return wordKind;
     }
 

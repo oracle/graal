@@ -48,7 +48,7 @@ public final class UncommonTrapCallNode extends FixedWithNextNode implements LIR
     protected final ForeignCallsProvider foreignCalls;
 
     public UncommonTrapCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode registerSaver, ValueNode trapRequest) {
-        super(TYPE, StampFactory.forKind(Kind.fromJavaClass(UNCOMMON_TRAP.getResultType())));
+        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(UNCOMMON_TRAP.getResultType())));
         this.trapRequest = trapRequest;
         this.registerSaver = (SaveAllRegistersNode) registerSaver;
         this.foreignCalls = foreignCalls;

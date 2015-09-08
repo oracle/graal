@@ -109,7 +109,7 @@ public abstract class AbstractPointerStamp extends Stamp {
     }
 
     @Override
-    public Kind getStackKind() {
-        return Kind.Illegal;
+    public JavaKind getStackKind() {
+        return JavaKind.Illegal;
     }
 }

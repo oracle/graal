@@ -44,11 +44,11 @@ public final class CompareAndSwapNode extends AbstractMemoryCheckpoint implement
     @Input ValueNode expected;
     @Input ValueNode newValue;
 
-    protected final Kind valueKind;
+    protected final JavaKind valueKind;
     protected final LocationIdentity locationIdentity;
 
-    public CompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, Kind valueKind, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forKind(Kind.Boolean.getStackKind()));
+    public CompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean.getStackKind()));
         assert expected.stamp().isCompatible(newValue.stamp());
         this.object = object;
         this.offset = offset;
@@ -74,7 +74,7 @@ public final class CompareAndSwapNode extends AbstractMemoryCheckpoint implement
         return newValue;
     }
 
-    public Kind getValueKind() {
+    public JavaKind getValueKind() {
         return valueKind;
     }
 

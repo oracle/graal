@@ -37,13 +37,13 @@ public interface HotSpotLoweringProvider extends LoweringProvider {
 
     void initialize(HotSpotProviders providers, HotSpotVMConfig config);
 
-    int arrayScalingFactor(Kind kind);
+    int arrayScalingFactor(JavaKind kind);
 
-    AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, Kind elementKind, ValueNode index);
+    AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index);
 
-    Stamp loadStamp(Stamp stamp, Kind kind);
+    Stamp loadStamp(Stamp stamp, JavaKind kind);
 
-    ValueNode implicitLoadConvert(StructuredGraph graph, Kind kind, ValueNode value);
+    ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value);
 
-    ValueNode implicitStoreConvert(StructuredGraph graph, Kind kind, ValueNode value);
+    ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value);
 }

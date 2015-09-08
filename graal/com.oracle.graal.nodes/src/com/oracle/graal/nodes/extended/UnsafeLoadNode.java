@@ -41,11 +41,11 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
     public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.create(UnsafeLoadNode.class);
     @OptionalInput(InputType.Condition) LogicNode guardingCondition;
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+    public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, accessKind, locationIdentity, null);
     }
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
+    public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
         super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
         this.guardingCondition = condition;
     }
@@ -71,7 +71,7 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
 
                 if (entryIndex != -1) {
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
-                    Kind entryKind = virtual.entryKind(entryIndex);
+                    JavaKind entryKind = virtual.entryKind(entryIndex);
                     if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
                         tool.replaceWith(entry);
                     }
@@ -91,5 +91,5 @@ public final class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable,
     }
 
     @NodeIntrinsic
-    public static native Object load(Object object, long offset, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+    public static native Object load(Object object, long offset, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 }

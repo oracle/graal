@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,7 +72,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
-                Register arg = getArgumentRegister(0, Kind.Int);
+                Register arg = getArgumentRegister(0, JavaKind.Int);
                 asm.nop(5); // padding for mt-safe patching
                 asm.addl(arg, 5);
                 asm.movl(rax, arg);
@@ -92,7 +92,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
-                Register arg = getArgumentRegister(0, Kind.Long);
+                Register arg = getArgumentRegister(0, JavaKind.Long);
                 asm.nop(5); // padding for mt-safe patching
                 asm.addq(arg, 1);
                 asm.movq(rax, arg);
@@ -119,7 +119,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         Assert.assertArrayEquals(expectedCode, actualCode);
     }
 
-    private Register getArgumentRegister(int index, Kind kind) {
+    private Register getArgumentRegister(int index, JavaKind kind) {
         Register[] regs = getCodeCache().getRegisterConfig().getCallingConventionRegisters(CallingConvention.Type.JavaCall, kind);
         return regs[index];
     }

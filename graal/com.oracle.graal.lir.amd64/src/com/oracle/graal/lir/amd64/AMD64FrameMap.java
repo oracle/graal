@@ -118,19 +118,19 @@ public class AMD64FrameMap extends FrameMap {
      */
     StackSlot allocateRBPSpillSlot() {
         assert spillSize == initialSpillSize : "RBP spill slot must be the first allocated stack slots";
-        rbpSpillSlot = allocateSpillSlot(LIRKind.value(Kind.Long));
+        rbpSpillSlot = allocateSpillSlot(LIRKind.value(JavaKind.Long));
         assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
         return rbpSpillSlot;
     }
 
     void freeRBPSpillSlot() {
-        int size = spillSlotSize(LIRKind.value(Kind.Long));
+        int size = spillSlotSize(LIRKind.value(JavaKind.Long));
         assert spillSize == NumUtil.roundUp(initialSpillSize + size, size) : "RBP spill slot can not be freed after allocation other stack slots";
         spillSize = initialSpillSize;
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
-        assert spillSize == initialSpillSize || spillSize == initialSpillSize + spillSlotSize(LIRKind.value(Kind.Long)) : "Deoptimization rescue slot must be the first or second (if there is an RBP spill slot) stack slot";
-        return allocateSpillSlot(LIRKind.value(Kind.Long));
+        assert spillSize == initialSpillSize || spillSize == initialSpillSize + spillSlotSize(LIRKind.value(JavaKind.Long)) : "Deoptimization rescue slot must be the first or second (if there is an RBP spill slot) stack slot";
+        return allocateSpillSlot(LIRKind.value(JavaKind.Long));
     }
 }

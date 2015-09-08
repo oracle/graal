@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,27 +57,27 @@ public final class Log {
     private static native void printf(@ConstantNodeParameter ForeignCallDescriptor logPrintf, String format, long v1, long v2, long v3);
 
     public static void print(boolean value) {
-        log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, false);
+        log(LOG_PRIMITIVE, JavaKind.Boolean.getTypeChar(), value ? 1L : 0L, false);
     }
 
     public static void print(byte value) {
-        log(LOG_PRIMITIVE, Kind.Byte.getTypeChar(), value, false);
+        log(LOG_PRIMITIVE, JavaKind.Byte.getTypeChar(), value, false);
     }
 
     public static void print(char value) {
-        log(LOG_PRIMITIVE, Kind.Char.getTypeChar(), value, false);
+        log(LOG_PRIMITIVE, JavaKind.Char.getTypeChar(), value, false);
     }
 
     public static void print(short value) {
-        log(LOG_PRIMITIVE, Kind.Short.getTypeChar(), value, false);
+        log(LOG_PRIMITIVE, JavaKind.Short.getTypeChar(), value, false);
     }
 
     public static void print(int value) {
-        log(LOG_PRIMITIVE, Kind.Int.getTypeChar(), value, false);
+        log(LOG_PRIMITIVE, JavaKind.Int.getTypeChar(), value, false);
     }
 
     public static void print(long value) {
-        log(LOG_PRIMITIVE, Kind.Long.getTypeChar(), value, false);
+        log(LOG_PRIMITIVE, JavaKind.Long.getTypeChar(), value, false);
     }
 
     /**
@@ -107,7 +107,7 @@ public final class Log {
         } else if (value == Float.NEGATIVE_INFINITY) {
             print("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Float.getTypeChar(), Float.floatToRawIntBits(value), false);
+            log(LOG_PRIMITIVE, JavaKind.Float.getTypeChar(), Float.floatToRawIntBits(value), false);
         }
     }
 
@@ -119,7 +119,7 @@ public final class Log {
         } else if (value == Double.NEGATIVE_INFINITY) {
             print("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Double.getTypeChar(), Double.doubleToRawLongBits(value), false);
+            log(LOG_PRIMITIVE, JavaKind.Double.getTypeChar(), Double.doubleToRawLongBits(value), false);
         }
     }
 
@@ -136,27 +136,27 @@ public final class Log {
     }
 
     public static void println(boolean value) {
-        log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, true);
+        log(LOG_PRIMITIVE, JavaKind.Boolean.getTypeChar(), value ? 1L : 0L, true);
     }
 
     public static void println(byte value) {
-        log(LOG_PRIMITIVE, Kind.Byte.getTypeChar(), value, true);
+        log(LOG_PRIMITIVE, JavaKind.Byte.getTypeChar(), value, true);
     }
 
     public static void println(char value) {
-        log(LOG_PRIMITIVE, Kind.Char.getTypeChar(), value, true);
+        log(LOG_PRIMITIVE, JavaKind.Char.getTypeChar(), value, true);
     }
 
     public static void println(short value) {
-        log(LOG_PRIMITIVE, Kind.Short.getTypeChar(), value, true);
+        log(LOG_PRIMITIVE, JavaKind.Short.getTypeChar(), value, true);
     }
 
     public static void println(int value) {
-        log(LOG_PRIMITIVE, Kind.Int.getTypeChar(), value, true);
+        log(LOG_PRIMITIVE, JavaKind.Int.getTypeChar(), value, true);
     }
 
     public static void println(long value) {
-        log(LOG_PRIMITIVE, Kind.Long.getTypeChar(), value, true);
+        log(LOG_PRIMITIVE, JavaKind.Long.getTypeChar(), value, true);
     }
 
     public static void println(float value) {
@@ -167,7 +167,7 @@ public final class Log {
         } else if (value == Float.NEGATIVE_INFINITY) {
             println("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Float.getTypeChar(), Float.floatToRawIntBits(value), true);
+            log(LOG_PRIMITIVE, JavaKind.Float.getTypeChar(), Float.floatToRawIntBits(value), true);
         }
     }
 
@@ -179,7 +179,7 @@ public final class Log {
         } else if (value == Double.NEGATIVE_INFINITY) {
             println("-Infinity");
         } else {
-            log(LOG_PRIMITIVE, Kind.Double.getTypeChar(), Double.doubleToRawLongBits(value), true);
+            log(LOG_PRIMITIVE, JavaKind.Double.getTypeChar(), Double.doubleToRawLongBits(value), true);
         }
     }
 

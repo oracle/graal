@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,9 +62,9 @@ public class TruffleConstantReflectionProvider implements ConstantReflectionProv
         if (!field.isStatic() && receiver.isNonNull()) {
             JavaType fieldType = field.getType();
             if (field.isFinal() || field.getAnnotation(CompilationFinal.class) != null ||
-                            (fieldType.getKind() == Kind.Object && (field.getAnnotation(Child.class) != null || field.getAnnotation(Children.class) != null))) {
+                            (fieldType.getJavaKind() == JavaKind.Object && (field.getAnnotation(Child.class) != null || field.getAnnotation(Children.class) != null))) {
                 final JavaConstant constant;
-                if (fieldType.getKind() == Kind.Object && fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray() &&
+                if (fieldType.getJavaKind() == JavaKind.Object && fieldType instanceof ResolvedJavaType && ((ResolvedJavaType) fieldType).isArray() &&
                                 (field.getAnnotation(CompilationFinal.class) != null || field.getAnnotation(Children.class) != null)) {
                     constant = graalConstantReflection.readStableFieldValue(field, receiver, true);
                 } else {

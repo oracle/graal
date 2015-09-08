@@ -50,7 +50,7 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        Register addrRegister = asRegister(address, Kind.Long);
+        Register addrRegister = asRegister(address, JavaKind.Long);
         masm.sub(addrRegister, SPARCAssembler.PC_RETURN_OFFSET, i7);
     }
 }

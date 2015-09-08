@@ -291,7 +291,7 @@ public abstract class FrameMap {
             for (int slotIndex = 0; slotIndex < slots; slotIndex++) {
                 StackSlot objectSlot = null;
                 if (objects.get(slotIndex)) {
-                    objectSlot = allocateNewSpillSlot(LIRKind.reference(Kind.Object), slotIndex * getTarget().wordSize);
+                    objectSlot = allocateNewSpillSlot(LIRKind.reference(JavaKind.Object), slotIndex * getTarget().wordSize);
                     addObjectStackSlot(objectSlot);
                 }
                 if (slotIndex == 0) {

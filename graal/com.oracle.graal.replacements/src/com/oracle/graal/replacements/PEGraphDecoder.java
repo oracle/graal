@@ -173,7 +173,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public void push(Kind kind, ValueNode value) {
+        public void push(JavaKind kind, ValueNode value) {
             throw unimplemented();
         }
 
@@ -228,7 +228,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public void push(Kind kind, ValueNode value) {
+        public void push(JavaKind kind, ValueNode value) {
             if (pushedNode != null) {
                 throw unimplemented("Only one push is supported");
             }
@@ -619,7 +619,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 stateAtReturn = (FrameState) decodeFloatingNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.stateAfterOrderId);
             }
 
-            Kind invokeReturnKind = methodScope.invokeData.invoke.asNode().getStackKind();
+            JavaKind invokeReturnKind = methodScope.invokeData.invoke.asNode().getStackKind();
             FrameState outerState = stateAtReturn.duplicateModified(methodScope.graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null);
 
             /*

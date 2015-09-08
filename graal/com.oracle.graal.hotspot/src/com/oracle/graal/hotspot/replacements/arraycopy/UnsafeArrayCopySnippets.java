@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,10 +50,10 @@ import com.oracle.graal.word.*;
 public class UnsafeArrayCopySnippets implements Snippets {
     private static final boolean supportsUnalignedMemoryAccess = runtime().getTarget().arch.supportsUnalignedMemoryAccess();
 
-    private static final Kind VECTOR_KIND = Kind.Long;
+    private static final JavaKind VECTOR_KIND = JavaKind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(VECTOR_KIND);
 
-    private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind, LocationIdentity locationIdentity) {
+    private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, JavaKind baseKind, LocationIdentity locationIdentity) {
         int arrayBaseOffset = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);
         long byteLength = (long) length * elementSize;
@@ -129,55 +129,55 @@ public class UnsafeArrayCopySnippets implements Snippets {
     }
 
     @Fold
-    private static LocationIdentity getArrayLocation(Kind kind) {
+    private static LocationIdentity getArrayLocation(JavaKind kind) {
         return NamedLocationIdentity.getArrayLocation(kind);
     }
 
     @Snippet
     public static void arraycopyByte(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
-        Kind kind = Kind.Byte;
+        JavaKind kind = JavaKind.Byte;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyBoolean(boolean[] src, int srcPos, boolean[] dest, int destPos, int length) {
-        Kind kind = Kind.Boolean;
+        JavaKind kind = JavaKind.Boolean;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyChar(char[] src, int srcPos, char[] dest, int destPos, int length) {
-        Kind kind = Kind.Char;
+        JavaKind kind = JavaKind.Char;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyShort(short[] src, int srcPos, short[] dest, int destPos, int length) {
-        Kind kind = Kind.Short;
+        JavaKind kind = JavaKind.Short;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyInt(int[] src, int srcPos, int[] dest, int destPos, int length) {
-        Kind kind = Kind.Int;
+        JavaKind kind = JavaKind.Int;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyFloat(float[] src, int srcPos, float[] dest, int destPos, int length) {
-        Kind kind = Kind.Float;
+        JavaKind kind = JavaKind.Float;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyLong(long[] src, int srcPos, long[] dest, int destPos, int length) {
-        Kind kind = Kind.Long;
+        JavaKind kind = JavaKind.Long;
         vectorizedCopy(src, srcPos, dest, destPos, length, kind, getArrayLocation(kind));
     }
 
     @Snippet
     public static void arraycopyDouble(double[] src, int srcPos, double[] dest, int destPos, int length) {
-        Kind kind = Kind.Double;
+        JavaKind kind = JavaKind.Double;
         /*
          * TODO atomicity problem on 32-bit architectures: The JVM spec requires double values to be
          * copied atomically, but not long values. For example, on Intel 32-bit this code is not
@@ -194,7 +194,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
      */
     @Snippet
     public static void arraycopyObject(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
-        Kind kind = Kind.Object;
+        JavaKind kind = JavaKind.Object;
         final int scale = arrayIndexScale(kind);
         int arrayBaseOffset = arrayBaseOffset(kind);
         LocationIdentity arrayLocation = getArrayLocation(kind);
@@ -270,22 +270,22 @@ public class UnsafeArrayCopySnippets implements Snippets {
         public Templates(HotSpotProviders providers, TargetDescription target) {
             super(providers, providers.getSnippetReflection(), target);
 
-            arraycopySnippets = new SnippetInfo[Kind.values().length];
-            arraycopySnippets[Kind.Boolean.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyBoolean");
-            arraycopySnippets[Kind.Byte.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyByte");
-            arraycopySnippets[Kind.Short.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyShort");
-            arraycopySnippets[Kind.Char.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyChar");
-            arraycopySnippets[Kind.Int.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyInt");
-            arraycopySnippets[Kind.Long.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyLong");
-            arraycopySnippets[Kind.Float.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyFloat");
-            arraycopySnippets[Kind.Double.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyDouble");
-            arraycopySnippets[Kind.Object.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyObject");
+            arraycopySnippets = new SnippetInfo[JavaKind.values().length];
+            arraycopySnippets[JavaKind.Boolean.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyBoolean");
+            arraycopySnippets[JavaKind.Byte.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyByte");
+            arraycopySnippets[JavaKind.Short.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyShort");
+            arraycopySnippets[JavaKind.Char.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyChar");
+            arraycopySnippets[JavaKind.Int.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyInt");
+            arraycopySnippets[JavaKind.Long.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyLong");
+            arraycopySnippets[JavaKind.Float.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyFloat");
+            arraycopySnippets[JavaKind.Double.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyDouble");
+            arraycopySnippets[JavaKind.Object.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyObject");
 
             genericPrimitiveSnippet = snippet(UnsafeArrayCopySnippets.class, "arraycopyPrimitive");
         }
 
         public void lower(UnsafeArrayCopyNode node, LoweringTool tool) {
-            Kind elementKind = node.getElementKind();
+            JavaKind elementKind = node.getElementKind();
             SnippetInfo snippet;
             if (elementKind == null) {
                 // primitive array of unknown kind

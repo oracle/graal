@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,10 +37,10 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
     public static final NodeClass<UnsafeAccessNode> TYPE = NodeClass.create(UnsafeAccessNode.class);
     @Input ValueNode object;
     @Input ValueNode offset;
-    protected final Kind accessKind;
+    protected final JavaKind accessKind;
     protected final LocationIdentity locationIdentity;
 
-    protected UnsafeAccessNode(NodeClass<? extends UnsafeAccessNode> c, Stamp stamp, ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+    protected UnsafeAccessNode(NodeClass<? extends UnsafeAccessNode> c, Stamp stamp, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
         super(c, stamp);
         assert accessKind != null;
         this.object = object;
@@ -61,7 +61,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return offset;
     }
 
-    public Kind accessKind() {
+    public JavaKind accessKind() {
         return accessKind;
     }
 
@@ -77,7 +77,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 // No need for checking that the receiver is non-null. The field access includes
                 // the null check and if a field is found, the offset is so small that this is
                 // never a valid access of an arbitrary address.
-                if (field != null && field.getKind() == this.accessKind()) {
+                if (field != null && field.getJavaKind() == this.accessKind()) {
                     assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
                     return cloneAsFieldAccess(field);
                 }
@@ -87,7 +87,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
             ResolvedJavaType receiverType = StampTool.typeOrNull(object());
             // Try to build a better location identity.
             if (receiverType != null && receiverType.isArray()) {
-                LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getKind());
+                LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getJavaKind());
                 assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
                 return cloneAsArrayAccess(offset(), identity);
             }

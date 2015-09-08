@@ -99,7 +99,7 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     @Snippet
-    public static void arraycopyExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter,
+    public static void arraycopyExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind, @ConstantParameter SnippetCounter counter,
                     @ConstantParameter SnippetCounter copiedCounter) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
@@ -120,8 +120,8 @@ public class ArrayCopySnippets implements Snippets {
      * inputs but not the other.
      */
     @Snippet
-    public static void arraycopyPredictedExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetCounter counter,
-                    @ConstantParameter SnippetCounter copiedCounter) {
+    public static void arraycopyPredictedExactIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+                    @ConstantParameter SnippetCounter counter, @ConstantParameter SnippetCounter copiedCounter) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
@@ -166,7 +166,7 @@ public class ArrayCopySnippets implements Snippets {
      * underlying type is really an array type.
      */
     @Snippet
-    public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Kind elementKind, @ConstantParameter SnippetInfo slowPath,
+    public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind, @ConstantParameter SnippetInfo slowPath,
                     @ConstantParameter Object slowPathArgument) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
@@ -188,7 +188,7 @@ public class ArrayCopySnippets implements Snippets {
      * Snippet for unrolled arraycopy.
      */
     @Snippet
-    public static void arraycopyUnrolledIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter int unrolledLength, @ConstantParameter Kind elementKind) {
+    public static void arraycopyUnrolledIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter int unrolledLength, @ConstantParameter JavaKind elementKind) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
@@ -242,7 +242,7 @@ public class ArrayCopySnippets implements Snippets {
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
                 genericObjectExactCallCopiedCounter.add(length);
-                ArrayCopyCallNode.disjointArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, Kind.Object);
+                ArrayCopyCallNode.disjointArraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, JavaKind.Object);
             } else {
                 genericPrimitiveCallCounter.inc();
                 genericPrimitiveCallCopiedCounter.add(length);
@@ -256,12 +256,12 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     @Fold
-    private static LocationIdentity getArrayLocation(Kind kind) {
+    private static LocationIdentity getArrayLocation(JavaKind kind) {
         return NamedLocationIdentity.getArrayLocation(kind);
     }
 
     @Snippet
-    public static void arraycopyUnrolledWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, @ConstantParameter int length, @ConstantParameter Kind elementKind) {
+    public static void arraycopyUnrolledWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, @ConstantParameter int length, @ConstantParameter JavaKind elementKind) {
         final int scale = arrayIndexScale(elementKind);
         int arrayBaseOffset = arrayBaseOffset(elementKind);
         LocationIdentity arrayLocation = getArrayLocation(elementKind);
@@ -301,13 +301,13 @@ public class ArrayCopySnippets implements Snippets {
     private static final SnippetCounter predictedObjectArrayCopySlowPathCounter = new SnippetCounter(counters, "Object[]{slow-path}", "used System.arraycopy slow path for predicted Object[] arrays");
     private static final SnippetCounter predictedObjectArrayCopyFastPathCounter = new SnippetCounter(counters, "Object[]{fast-path}", "used oop_arraycopy for predicted Object[] arrays");
 
-    private static final EnumMap<Kind, SnippetCounter> arraycopyCallCounters = new EnumMap<>(Kind.class);
-    private static final EnumMap<Kind, SnippetCounter> arraycopyCounters = new EnumMap<>(Kind.class);
+    private static final EnumMap<JavaKind, SnippetCounter> arraycopyCallCounters = new EnumMap<>(JavaKind.class);
+    private static final EnumMap<JavaKind, SnippetCounter> arraycopyCounters = new EnumMap<>(JavaKind.class);
 
-    private static final EnumMap<Kind, SnippetCounter> arraycopyCallCopiedCounters = new EnumMap<>(Kind.class);
-    private static final EnumMap<Kind, SnippetCounter> arraycopyCopiedCounters = new EnumMap<>(Kind.class);
+    private static final EnumMap<JavaKind, SnippetCounter> arraycopyCallCopiedCounters = new EnumMap<>(JavaKind.class);
+    private static final EnumMap<JavaKind, SnippetCounter> arraycopyCopiedCounters = new EnumMap<>(JavaKind.class);
 
-    static void createArraycopyCounter(Kind kind) {
+    static void createArraycopyCounter(JavaKind kind) {
         arraycopyCallCounters.put(kind, new SnippetCounter(counters, kind + "[]{stub}", "arraycopy call for " + kind + "[] arrays"));
         arraycopyCounters.put(kind, new SnippetCounter(counters, kind + "[]{inline}", "inline arraycopy for " + kind + "[] arrays"));
 
@@ -316,15 +316,15 @@ public class ArrayCopySnippets implements Snippets {
     }
 
     static {
-        createArraycopyCounter(Kind.Byte);
-        createArraycopyCounter(Kind.Boolean);
-        createArraycopyCounter(Kind.Char);
-        createArraycopyCounter(Kind.Short);
-        createArraycopyCounter(Kind.Int);
-        createArraycopyCounter(Kind.Long);
-        createArraycopyCounter(Kind.Float);
-        createArraycopyCounter(Kind.Double);
-        createArraycopyCounter(Kind.Object);
+        createArraycopyCounter(JavaKind.Byte);
+        createArraycopyCounter(JavaKind.Boolean);
+        createArraycopyCounter(JavaKind.Char);
+        createArraycopyCounter(JavaKind.Short);
+        createArraycopyCounter(JavaKind.Int);
+        createArraycopyCounter(JavaKind.Long);
+        createArraycopyCounter(JavaKind.Float);
+        createArraycopyCounter(JavaKind.Double);
+        createArraycopyCounter(JavaKind.Object);
     }
 
     private static final SnippetCounter genericPrimitiveCallCounter = new SnippetCounter(counters, "genericPrimitive", "generic arraycopy snippet for primitive arrays");
@@ -389,17 +389,17 @@ public class ArrayCopySnippets implements Snippets {
             return info;
         }
 
-        public static Kind selectComponentKind(BasicArrayCopyNode arraycopy) {
+        public static JavaKind selectComponentKind(BasicArrayCopyNode arraycopy) {
             return selectComponentKind(arraycopy, true);
         }
 
-        public static Kind selectComponentKind(BasicArrayCopyNode arraycopy, boolean exact) {
+        public static JavaKind selectComponentKind(BasicArrayCopyNode arraycopy, boolean exact) {
             ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp());
             ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp());
 
             if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
                 if (!exact) {
-                    Kind component = getComponentKind(srcType);
+                    JavaKind component = getComponentKind(srcType);
                     if (component != null) {
                         return component;
                     }
@@ -415,12 +415,12 @@ public class ArrayCopySnippets implements Snippets {
                     return null;
                 }
             }
-            return srcType.getComponentType().getKind();
+            return srcType.getComponentType().getJavaKind();
         }
 
-        private static Kind getComponentKind(ResolvedJavaType type) {
+        private static JavaKind getComponentKind(ResolvedJavaType type) {
             if (type != null && type.isArray()) {
-                return type.getComponentType().getKind();
+                return type.getComponentType().getJavaKind();
             }
             return null;
         }
@@ -430,7 +430,7 @@ public class ArrayCopySnippets implements Snippets {
         }
 
         public void lower(ArrayCopyNode arraycopy, LoweringTool tool) {
-            Kind componentKind = selectComponentKind(arraycopy);
+            JavaKind componentKind = selectComponentKind(arraycopy);
             SnippetInfo snippetInfo = null;
             SnippetInfo slowPathSnippetInfo = null;
             Object slowPathArgument = null;
@@ -443,7 +443,7 @@ public class ArrayCopySnippets implements Snippets {
                     snippetInfo = arraycopyUnrolledIntrinsicSnippet;
                 }
             } else {
-                if (componentKind == Kind.Object) {
+                if (componentKind == JavaKind.Object) {
                     ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp());
                     ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp());
                     ResolvedJavaType srcComponentType = srcType == null ? null : srcType.getComponentType();
@@ -460,7 +460,7 @@ public class ArrayCopySnippets implements Snippets {
                     }
                 }
                 if (componentKind == null && snippetInfo == null) {
-                    Kind predictedKind = selectComponentKind(arraycopy, false);
+                    JavaKind predictedKind = selectComponentKind(arraycopy, false);
                     if (predictedKind != null) {
                         /*
                          * At least one array is of a known type requiring no store checks, so
@@ -468,7 +468,7 @@ public class ArrayCopySnippets implements Snippets {
                          * deficiencies in our propagation of type information.
                          */
                         componentKind = predictedKind;
-                        if (predictedKind == Kind.Object) {
+                        if (predictedKind == JavaKind.Object) {
                             snippetInfo = arraycopySlowPathIntrinsicSnippet;
                             slowPathSnippetInfo = arraycopyPredictedObjectWorkSnippet;
                             slowPathArgument = predictedKind;
@@ -490,9 +490,9 @@ public class ArrayCopySnippets implements Snippets {
             args.add("length", arraycopy.getLength());
             if (snippetInfo == arraycopyUnrolledIntrinsicSnippet) {
                 args.addConst("unrolledLength", arraycopy.getLength().asJavaConstant().asInt());
-                args.addConst("elementKind", componentKind != null ? componentKind : Kind.Illegal);
+                args.addConst("elementKind", componentKind != null ? componentKind : JavaKind.Illegal);
             } else if (snippetInfo == arraycopySlowPathIntrinsicSnippet) {
-                args.addConst("elementKind", componentKind != null ? componentKind : Kind.Illegal);
+                args.addConst("elementKind", componentKind != null ? componentKind : JavaKind.Illegal);
                 args.addConst("slowPath", slowPathSnippetInfo);
                 assert slowPathArgument != null;
                 args.addConst("slowPathArgument", slowPathArgument);
@@ -527,8 +527,8 @@ public class ArrayCopySnippets implements Snippets {
                 HotSpotResolvedObjectType arrayKlass = (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(Object[].class);
                 ValueNode objectArrayKlass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayKlass.klass(), tool.getMetaAccess(), arraycopy.graph());
                 args.add("objectArrayKlass", objectArrayKlass);
-                args.addConst("counter", arraycopyCallCounters.get(Kind.Object));
-                args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(Kind.Object));
+                args.addConst("counter", arraycopyCallCounters.get(JavaKind.Object));
+                args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(JavaKind.Object));
             }
             instantiate(args, arraycopy);
         }

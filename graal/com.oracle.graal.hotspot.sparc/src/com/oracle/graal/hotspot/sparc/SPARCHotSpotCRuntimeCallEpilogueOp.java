@@ -56,7 +56,7 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
 
         // Restore the thread register when coming back from the runtime.
-        SPARCMove.move(crb, masm, thread.asValue(LIRKind.value(Kind.Long)), threadTemp, SPARCDelayedControlTransfer.DUMMY);
+        SPARCMove.move(crb, masm, thread.asValue(LIRKind.value(JavaKind.Long)), threadTemp, SPARCDelayedControlTransfer.DUMMY);
 
         // Reset last Java frame, last Java PC and flags.
         masm.stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset));

@@ -108,8 +108,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         return null;
     }
 
-    protected Kind getMemoryKind(Access access) {
-        return (Kind) gen.getLIRKind(access.asNode().stamp()).getPlatformKind();
+    protected JavaKind getMemoryKind(Access access) {
+        return (JavaKind) gen.getLIRKind(access.asNode().stamp()).getPlatformKind();
     }
 
     protected OperandSize getMemorySize(Access access) {
@@ -143,11 +143,11 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     protected ComplexMatchResult emitCompareBranchMemory(IfNode ifNode, CompareNode compare, ValueNode value, Access access) {
         Condition cond = compare.condition();
-        Kind kind = getMemoryKind(access);
+        JavaKind kind = getMemoryKind(access);
 
         if (value.isConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (kind == Kind.Long && !NumUtil.isInt(constant.asLong())) {
+            if (kind == JavaKind.Long && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
             }
@@ -155,14 +155,14 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 Debug.log("Skipping constant compares for float kinds");
                 return null;
             }
-            if (kind == Kind.Object) {
+            if (kind == JavaKind.Object) {
                 if (!constant.isNull()) {
                     Debug.log("Skipping constant compares for Object kinds");
                     return null;
                 }
             }
         } else {
-            if (kind == Kind.Object) {
+            if (kind == JavaKind.Object) {
                 // Can't compare against objects since they require encode/decode
                 Debug.log("Skipping compares for Object kinds");
                 return null;
@@ -197,14 +197,14 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
         LabelRef trueLabel = getLIRBlock(x.trueSuccessor());
         LabelRef falseLabel = getLIRBlock(x.falseSuccessor());
         double trueLabelProbability = x.probability(x.trueSuccessor());
-        Kind kind = getMemoryKind(access);
-        OperandSize size = kind == Kind.Long ? QWORD : DWORD;
+        JavaKind kind = getMemoryKind(access);
+        OperandSize size = kind == JavaKind.Long ? QWORD : DWORD;
         if (value.isConstant()) {
             if (kind != kind.getStackKind()) {
                 return null;
             }
             JavaConstant constant = value.asJavaConstant();
-            if (kind == Kind.Long && !NumUtil.isInt(constant.asLong())) {
+            if (kind == JavaKind.Long && !NumUtil.isInt(constant.asLong())) {
                 // Only imm32 as long
                 return null;
             }
@@ -234,13 +234,13 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
 
     private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits) {
         assert fromBits <= toBits && toBits <= 64;
-        Kind kind = null;
+        JavaKind kind = null;
         AMD64RMOp op;
         OperandSize size;
         if (fromBits == toBits) {
             return null;
         } else if (toBits > 32) {
-            kind = Kind.Long;
+            kind = JavaKind.Long;
             size = QWORD;
             // sign extend to 64 bits
             switch (fromBits) {
@@ -257,7 +257,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     throw JVMCIError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
             }
         } else {
-            kind = Kind.Int;
+            kind = JavaKind.Int;
             size = DWORD;
             // sign extend to 32 bits (smaller values are internally represented as 32 bit values)
             switch (fromBits) {
@@ -417,7 +417,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     @MatchRule("(ZeroExtend Read=access)")
     @MatchRule("(ZeroExtend FloatingRead=access)")
     public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
-        Kind memoryKind = getMemoryKind(access);
+        JavaKind memoryKind = getMemoryKind(access);
         if (memoryKind.getBitCount() != root.getInputBits() && !memoryKind.isUnsigned()) {
             /*
              * The memory being read from is signed and smaller than the result size so this is a
@@ -426,7 +426,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
              */
             return null;
         }
-        return builder -> getLIRGeneratorTool().emitZeroExtendMemory(memoryKind == Kind.Short ? Kind.Char : memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()),
+        return builder -> getLIRGeneratorTool().emitZeroExtendMemory(memoryKind == JavaKind.Short ? JavaKind.Char : memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()),
                         getState(access));
     }
 
@@ -435,25 +435,25 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     public ComplexMatchResult floatConvert(FloatConvertNode root, Access access) {
         switch (root.getFloatConvert()) {
             case D2F:
-                return emitConvertMemoryOp(Kind.Float, SSEOp.CVTSD2SS, SD, access);
+                return emitConvertMemoryOp(JavaKind.Float, SSEOp.CVTSD2SS, SD, access);
             case D2I:
-                return emitConvertMemoryOp(Kind.Int, SSEOp.CVTTSD2SI, DWORD, access);
+                return emitConvertMemoryOp(JavaKind.Int, SSEOp.CVTTSD2SI, DWORD, access);
             case D2L:
-                return emitConvertMemoryOp(Kind.Long, SSEOp.CVTTSD2SI, QWORD, access);
+                return emitConvertMemoryOp(JavaKind.Long, SSEOp.CVTTSD2SI, QWORD, access);
             case F2D:
-                return emitConvertMemoryOp(Kind.Double, SSEOp.CVTSS2SD, SS, access);
+                return emitConvertMemoryOp(JavaKind.Double, SSEOp.CVTSS2SD, SS, access);
             case F2I:
-                return emitConvertMemoryOp(Kind.Int, SSEOp.CVTTSS2SI, DWORD, access);
+                return emitConvertMemoryOp(JavaKind.Int, SSEOp.CVTTSS2SI, DWORD, access);
             case F2L:
-                return emitConvertMemoryOp(Kind.Long, SSEOp.CVTTSS2SI, QWORD, access);
+                return emitConvertMemoryOp(JavaKind.Long, SSEOp.CVTTSS2SI, QWORD, access);
             case I2D:
-                return emitConvertMemoryOp(Kind.Double, SSEOp.CVTSI2SD, DWORD, access);
+                return emitConvertMemoryOp(JavaKind.Double, SSEOp.CVTSI2SD, DWORD, access);
             case I2F:
-                return emitConvertMemoryOp(Kind.Float, SSEOp.CVTSI2SS, DWORD, access);
+                return emitConvertMemoryOp(JavaKind.Float, SSEOp.CVTSI2SS, DWORD, access);
             case L2D:
-                return emitConvertMemoryOp(Kind.Double, SSEOp.CVTSI2SD, QWORD, access);
+                return emitConvertMemoryOp(JavaKind.Double, SSEOp.CVTSI2SD, QWORD, access);
             case L2F:
-                return emitConvertMemoryOp(Kind.Float, SSEOp.CVTSI2SS, QWORD, access);
+                return emitConvertMemoryOp(JavaKind.Float, SSEOp.CVTSI2SS, QWORD, access);
             default:
                 throw JVMCIError.shouldNotReachHere();
         }

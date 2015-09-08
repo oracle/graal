@@ -83,14 +83,14 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     }
 
     @Override
-    public int entryIndexForOffset(long constantOffset, Kind expectedEntryKind) {
+    public int entryIndexForOffset(long constantOffset, JavaKind expectedEntryKind) {
         return entryIndexForOffset(constantOffset, expectedEntryKind, componentType, length);
     }
 
-    public static int entryIndexForOffset(long constantOffset, Kind expectedEntryKind, ResolvedJavaType componentType, int length) {
+    public static int entryIndexForOffset(long constantOffset, JavaKind expectedEntryKind, ResolvedJavaType componentType, int length) {
         int baseOffset;
         int indexScale;
-        switch (componentType.getKind()) {
+        switch (componentType.getJavaKind()) {
             case Boolean:
                 baseOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
                 indexScale = Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
@@ -133,7 +133,7 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
         long offset;
         if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN && componentType.isPrimitive()) {
             // On big endian, we do just get expect the type be right aligned in this memory slot
-            offset = constantOffset - (componentType.getKind().getByteCount() - Math.min(componentType.getKind().getByteCount(), 4 + expectedEntryKind.getByteCount()));
+            offset = constantOffset - (componentType.getJavaKind().getByteCount() - Math.min(componentType.getJavaKind().getByteCount(), 4 + expectedEntryKind.getByteCount()));
         } else {
             offset = constantOffset;
         }
@@ -149,9 +149,9 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     }
 
     @Override
-    public Kind entryKind(int index) {
+    public JavaKind entryKind(int index) {
         assert index >= 0 && index < length;
-        return componentType.getKind();
+        return componentType.getJavaKind();
     }
 
     @Override

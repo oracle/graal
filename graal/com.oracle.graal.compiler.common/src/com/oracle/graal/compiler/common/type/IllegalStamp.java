@@ -28,9 +28,9 @@ import jdk.internal.jvmci.meta.*;
 import com.oracle.graal.compiler.common.spi.*;
 
 /**
- * This stamp represents the type of the {@link Kind#Illegal} value in the second slot of
- * {@link Kind#Long} and {@link Kind#Double} values. It can only appear in framestates or virtual
- * objects.
+ * This stamp represents the type of the {@link JavaKind#Illegal} value in the second slot of
+ * {@link JavaKind#Long} and {@link JavaKind#Double} values. It can only appear in framestates or
+ * virtual objects.
  */
 public final class IllegalStamp extends Stamp {
 
@@ -38,8 +38,8 @@ public final class IllegalStamp extends Stamp {
     }
 
     @Override
-    public Kind getStackKind() {
-        return Kind.Illegal;
+    public JavaKind getStackKind() {
+        return JavaKind.Illegal;
     }
 
     @Override
@@ -59,7 +59,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
-        assert ((PrimitiveConstant) c).getKind() == Kind.Illegal;
+        assert ((PrimitiveConstant) c).getJavaKind() == JavaKind.Illegal;
         return this;
     }
 

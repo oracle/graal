@@ -43,7 +43,7 @@ public interface GraphBuilderContext {
 
     /**
      * Raw operation for adding a node to the graph when neither {@link #add} nor
-     * {@link #addPush(Kind, ValueNode)} can be used.
+     * {@link #addPush(JavaKind, ValueNode)} can be used.
      *
      * @return either the node added or an equivalent node
      */
@@ -59,21 +59,21 @@ public interface GraphBuilderContext {
 
     /**
      * Pushes a given value to the frame state stack using an explicit kind. This should be used
-     * when {@code value.getKind()} is different from the kind that the bytecode instruction
+     * when {@code value.getJavaKind()} is different from the kind that the bytecode instruction
      * currently being parsed pushes to the stack.
      *
      * @param kind the kind to use when type checking this operation
      * @param value the value to push to the stack. The value must already have been
      *            {@linkplain #append(ValueNode) appended}.
      */
-    void push(Kind kind, ValueNode value);
+    void push(JavaKind kind, ValueNode value);
 
     /**
      * Adds a node to the graph. If the returned node is a {@link StateSplit} with a null
      * {@linkplain StateSplit#stateAfter() frame state}, the frame state is initialized.
      *
-     * @param value the value to add to the graph and push to the stack. The {@code value.getKind()}
-     *            kind is used when type checking this operation.
+     * @param value the value to add to the graph and push to the stack. The
+     *            {@code value.getJavaKind()} kind is used when type checking this operation.
      * @return a node equivalent to {@code value} in the graph
      */
     default <T extends ValueNode> T add(T value) {
@@ -100,7 +100,7 @@ public interface GraphBuilderContext {
      * @param value the value to add to the graph and push to the stack
      * @return a node equivalent to {@code value} in the graph
      */
-    default <T extends ValueNode> T addPush(Kind kind, T value) {
+    default <T extends ValueNode> T addPush(JavaKind kind, T value) {
         T equivalentValue = value.graph() != null ? value : append(value);
         push(kind, equivalentValue);
         if (equivalentValue instanceof StateSplit) {
@@ -198,10 +198,10 @@ public interface GraphBuilderContext {
 
     default Stamp getInvokeReturnStamp() {
         JavaType returnType = getInvokeReturnType();
-        if (returnType.getKind() == Kind.Object && returnType instanceof ResolvedJavaType) {
+        if (returnType.getJavaKind() == JavaKind.Object && returnType instanceof ResolvedJavaType) {
             return StampFactory.declared((ResolvedJavaType) returnType);
         } else {
-            return StampFactory.forKind(returnType.getKind());
+            return StampFactory.forKind(returnType.getJavaKind());
         }
     }
 

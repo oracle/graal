@@ -43,10 +43,10 @@ import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheE
 
 public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadEliminationBlockState> {
 
-    private static final EnumMap<Kind, LocationIdentity> UNBOX_LOCATIONS;
+    private static final EnumMap<JavaKind, LocationIdentity> UNBOX_LOCATIONS;
     static {
-        UNBOX_LOCATIONS = new EnumMap<>(Kind.class);
-        for (Kind kind : Kind.values()) {
+        UNBOX_LOCATIONS = new EnumMap<>(JavaKind.class);
+        for (JavaKind kind : JavaKind.values()) {
             UNBOX_LOCATIONS.put(kind, NamedLocationIdentity.immutable("PEA unbox " + kind.getJavaName()));
         }
     }
@@ -131,7 +131,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 long offset = load.offset().asJavaConstant().asLong();
                 int index = VirtualArrayNode.entryIndexForOffset(offset, load.accessKind(), type.getComponentType(), Integer.MAX_VALUE);
                 ValueNode object = GraphUtil.unproxify(load.object());
-                LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getKind());
+                LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getJavaKind());
                 ValueNode cachedValue = state.getReadCache(object, location, index, this);
                 if (cachedValue != null && load.stamp().isCompatible(cachedValue.stamp())) {
                     effects.replaceAtUsages(load, cachedValue);
@@ -148,7 +148,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
     private boolean processUnsafeStore(UnsafeStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
         ResolvedJavaType type = StampTool.typeOrNull(store.object());
         if (type != null && type.isArray()) {
-            LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getKind());
+            LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getJavaKind());
             if (store.offset().isConstant()) {
                 long offset = store.offset().asJavaConstant().asLong();
                 int index = VirtualArrayNode.entryIndexForOffset(offset, store.accessKind(), type.getComponentType(), Integer.MAX_VALUE);
@@ -301,7 +301,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 }
             }
             for (PhiNode phi : getPhis()) {
-                if (phi.getStackKind() == Kind.Object) {
+                if (phi.getStackKind() == JavaKind.Object) {
                     for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
                         if (entry.getKey().object == getPhiValueAt(phi, 0)) {
                             mergeReadCachePhi(phi, entry.getKey().identity, entry.getKey().index, states);

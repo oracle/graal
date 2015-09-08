@@ -77,7 +77,7 @@ public class SubstitutionsTest extends GraalCompilerTest {
         @Input(Guard) GuardingNode guard;
 
         public TestValue(ValueNode guard) {
-            super(TYPE, StampFactory.forKind(Kind.Int));
+            super(TYPE, StampFactory.forKind(JavaKind.Int));
             this.guard = (GuardingNode) guard;
         }
 

@@ -76,20 +76,20 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         return checkcastArraycopyDescriptors[uninit ? 1 : 0];
     }
 
-    public static ForeignCallDescriptor lookupArraycopyDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
+    public static ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
         if (uninit) {
-            assert kind == Kind.Object;
+            assert kind == JavaKind.Object;
             assert !killAny : "unsupported";
             return uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0];
         }
         if (killAny) {
-            assert kind == Kind.Object;
+            assert kind == JavaKind.Object;
             return objectArraycopyDescriptorsKillAny[aligned ? 1 : 0][disjoint ? 1 : 0];
         }
         return arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
     }
 
-    @SuppressWarnings({"unchecked"}) private static final EnumMap<Kind, ForeignCallDescriptor>[][] arraycopyDescriptors = (EnumMap<Kind, ForeignCallDescriptor>[][]) new EnumMap<?, ?>[2][2];
+    @SuppressWarnings({"unchecked"}) private static final EnumMap<JavaKind, ForeignCallDescriptor>[][] arraycopyDescriptors = (EnumMap<JavaKind, ForeignCallDescriptor>[][]) new EnumMap<?, ?>[2][2];
 
     private static final ForeignCallDescriptor[][] uninitObjectArraycopyDescriptors = new ForeignCallDescriptor[2][2];
     private static final ForeignCallDescriptor[] checkcastArraycopyDescriptors = new ForeignCallDescriptor[2];
@@ -99,27 +99,27 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         // Populate the EnumMap instances
         for (int i = 0; i < arraycopyDescriptors.length; i++) {
             for (int j = 0; j < arraycopyDescriptors[i].length; j++) {
-                arraycopyDescriptors[i][j] = new EnumMap<>(Kind.class);
+                arraycopyDescriptors[i][j] = new EnumMap<>(JavaKind.class);
             }
         }
     }
 
-    private void registerArraycopyDescriptor(Map<Long, ForeignCallDescriptor> descMap, Kind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
+    private void registerArraycopyDescriptor(Map<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
         ForeignCallDescriptor desc = descMap.get(routine);
         if (desc == null) {
             desc = buildDescriptor(kind, aligned, disjoint, uninit, killAny, routine);
             descMap.put(routine, desc);
         }
         if (uninit) {
-            assert kind == Kind.Object;
+            assert kind == JavaKind.Object;
             uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0] = desc;
         } else {
             arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
         }
     }
 
-    private ForeignCallDescriptor buildDescriptor(Kind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
-        assert !killAny || kind == Kind.Object;
+    private ForeignCallDescriptor buildDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
+        assert !killAny || kind == JavaKind.Object;
         String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killAny ? "KillAny" : "");
         ForeignCallDescriptor desc = new ForeignCallDescriptor(name, void.class, Word.class, Word.class, Word.class);
         LocationIdentity killed = killAny ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(kind);
@@ -137,16 +137,16 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         // c_rarg4 - oop ckval (super_klass)
         // return: 0 = success, n = number of copied elements xor'd with -1.
         ForeignCallDescriptor desc = new ForeignCallDescriptor(name, int.class, Word.class, Word.class, Word.class, Word.class, Word.class);
-        LocationIdentity killed = NamedLocationIdentity.getArrayLocation(Kind.Object);
+        LocationIdentity killed = NamedLocationIdentity.getArrayLocation(JavaKind.Object);
         registerForeignCall(desc, routine, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, killed);
         checkcastArraycopyDescriptors[uninit ? 1 : 0] = desc;
     }
 
-    private void registerArrayCopy(Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
+    private void registerArrayCopy(JavaKind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
         registerArrayCopy(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, false);
     }
 
-    private void registerArrayCopy(Kind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine, boolean uninit) {
+    private void registerArrayCopy(JavaKind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine, boolean uninit) {
         /*
          * Sometimes the same function is used for multiple cases so share them when that's the case
          * but only within the same Kind. For instance short and char are the same copy routines but
@@ -158,7 +158,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArraycopyDescriptor(descMap, kind, false, true, uninit, false, disjointRoutine);
         registerArraycopyDescriptor(descMap, kind, true, true, uninit, false, alignedDisjointRoutine);
 
-        if (kind == Kind.Object && !uninit) {
+        if (kind == JavaKind.Object && !uninit) {
             objectArraycopyDescriptorsKillAny[0][0] = buildDescriptor(kind, false, false, uninit, true, routine);
             objectArraycopyDescriptorsKillAny[1][0] = buildDescriptor(kind, true, false, uninit, true, alignedRoutine);
             objectArraycopyDescriptorsKillAny[0][1] = buildDescriptor(kind, false, true, uninit, true, disjointRoutine);
@@ -235,16 +235,16 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         linkForeignCall(providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, any());
 
-        registerArrayCopy(Kind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Char, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Short, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Int, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Float, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Long, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
-        registerArrayCopy(Kind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
+        registerArrayCopy(JavaKind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Char, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Short, c.jshortArraycopy, c.jshortAlignedArraycopy, c.jshortDisjointArraycopy, c.jshortAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Int, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Float, c.jintArraycopy, c.jintAlignedArraycopy, c.jintDisjointArraycopy, c.jintAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Long, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Double, c.jlongArraycopy, c.jlongAlignedArraycopy, c.jlongDisjointArraycopy, c.jlongAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Object, c.oopArraycopy, c.oopAlignedArraycopy, c.oopDisjointArraycopy, c.oopAlignedDisjointArraycopy);
+        registerArrayCopy(JavaKind.Object, c.oopArraycopyUninit, c.oopAlignedArraycopyUninit, c.oopDisjointArraycopyUninit, c.oopAlignedDisjointArraycopyUninit, true);
 
         registerCheckcastArraycopyDescriptor(true, c.checkcastArraycopyUninit);
         registerCheckcastArraycopyDescriptor(false, c.checkcastArraycopy);
@@ -257,8 +257,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
              */
             try {
                 // These stubs do callee saving
-                registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-                registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+                registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+                registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
             } catch (JVMCIError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;
@@ -266,8 +266,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             }
             try {
                 // These stubs do callee saving
-                registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
-                registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(Kind.Byte));
+                registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE,
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
+                registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE,
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
             } catch (JVMCIError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;

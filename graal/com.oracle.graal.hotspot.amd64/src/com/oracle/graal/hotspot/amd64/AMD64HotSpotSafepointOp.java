@@ -76,7 +76,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         assert !atReturn || state == null : "state is unneeded at return";
         if (ImmutableCode.getValue()) {
-            Kind hostWordKind = Kind.Long;
+            JavaKind hostWordKind = JavaKind.Long;
             int alignment = hostWordKind.getBitCount() / Byte.SIZE;
             JavaConstant pollingPageAddress = JavaConstant.forIntegerKind(hostWordKind, config.safepointPollingAddress);
             // This move will be patched to load the safepoint page from a data segment

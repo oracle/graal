@@ -73,10 +73,10 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     }
 
     private void virtualizeNonVirtualComparison(VirtualObjectNode virtual, ValueNode other, VirtualizerTool tool) {
-        if (!virtual.hasIdentity() && virtual.entryKind(0) == Kind.Boolean) {
+        if (!virtual.hasIdentity() && virtual.entryKind(0) == JavaKind.Boolean) {
             if (other.isConstant()) {
                 JavaConstant otherUnboxed = tool.getConstantReflectionProvider().unboxPrimitive(other.asJavaConstant());
-                if (otherUnboxed != null && otherUnboxed.getKind() == Kind.Boolean) {
+                if (otherUnboxed != null && otherUnboxed.getJavaKind() == JavaKind.Boolean) {
                     int expectedValue = otherUnboxed.asBoolean() ? 1 : 0;
                     IntegerEqualsNode equals = new IntegerEqualsNode(tool.getEntry(virtual, 0), ConstantNode.forInt(expectedValue, graph()));
                     tool.addNode(equals);
@@ -120,7 +120,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                     if (type.equals(metaAccess.lookupJavaType(Integer.class)) || type.equals(metaAccess.lookupJavaType(Long.class))) {
                         // both are virtual without identity: check contents
                         assert xVirtual.entryCount() == 1 && yVirtual.entryCount() == 1;
-                        assert xVirtual.entryKind(0).getStackKind() == Kind.Int || xVirtual.entryKind(0) == Kind.Long;
+                        assert xVirtual.entryKind(0).getStackKind() == JavaKind.Int || xVirtual.entryKind(0) == JavaKind.Long;
                         IntegerEqualsNode equals = new IntegerEqualsNode(tool.getEntry(xVirtual, 0), tool.getEntry(yVirtual, 0));
                         tool.addNode(equals);
                         tool.replaceWithValue(equals);

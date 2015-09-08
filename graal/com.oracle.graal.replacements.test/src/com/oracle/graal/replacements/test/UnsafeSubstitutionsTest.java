@@ -110,7 +110,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
         testGraph("unsafeDirectMemoryRead");
         testGraph("unsafeDirectMemoryWrite");
 
-        long address = unsafe.allocateMemory(8 * Kind.values().length);
+        long address = unsafe.allocateMemory(8 * JavaKind.values().length);
         for (Unsafe unsafeArg : new Unsafe[]{unsafe, null}) {
             test("unsafeCompareAndSwapInt", unsafeArg, supply(() -> new Foo()), fooOffset("i"));
             test("unsafeCompareAndSwapLong", unsafeArg, supply(() -> new Foo()), fooOffset("l"));

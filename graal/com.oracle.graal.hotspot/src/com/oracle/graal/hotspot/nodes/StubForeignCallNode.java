@@ -48,7 +48,7 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
     protected final ForeignCallDescriptor descriptor;
 
     public StubForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        super(TYPE, StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.foreignCalls = foreignCalls;

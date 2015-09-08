@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -306,7 +306,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                          * appear to be interesting.
                          */
                         JavaConstant positive = lessThan2.getX().asJavaConstant();
-                        if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getKind().getMaxValue()) {
+                        if (positive != null && positive.asLong() > 0 && positive.asLong() < positive.getJavaKind().getMaxValue()) {
                             ConstantNode newLimit = ConstantNode.forIntegerStamp(lessThan2.getX().stamp(), positive.asLong() + 1, graph());
                             below = graph().unique(new IntegerBelowNode(lessThan.getX(), newLimit));
                         }
@@ -661,7 +661,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (trueValue.getStackKind() != falseValue.getStackKind()) {
             return null;
         }
-        if (trueValue.getStackKind() != Kind.Int && trueValue.getStackKind() != Kind.Long) {
+        if (trueValue.getStackKind() != JavaKind.Int && trueValue.getStackKind() != JavaKind.Long) {
             return null;
         }
         if (trueValue.isConstant() && falseValue.isConstant()) {

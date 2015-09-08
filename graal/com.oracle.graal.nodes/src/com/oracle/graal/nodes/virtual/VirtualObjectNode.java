@@ -86,12 +86,12 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
      * @param expectedEntryKind Specifies which type is expected at this offset (Is important when
      *            doing implicit casts, especially on big endian systems.
      */
-    public abstract int entryIndexForOffset(long constantOffset, Kind expectedEntryKind);
+    public abstract int entryIndexForOffset(long constantOffset, JavaKind expectedEntryKind);
 
     /**
-     * Returns the {@link Kind} of the entry at the given index.
+     * Returns the {@link JavaKind} of the entry at the given index.
      */
-    public abstract Kind entryKind(int index);
+    public abstract JavaKind entryKind(int index);
 
     /**
      * Returns an exact duplicate of this virtual object node, which has not been added to the graph

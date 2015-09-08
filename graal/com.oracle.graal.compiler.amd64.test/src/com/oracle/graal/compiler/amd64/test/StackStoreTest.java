@@ -45,7 +45,7 @@ public class StackStoreTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(Kind.Short));
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(JavaKind.Short));
             // move stuff around
             gen.emitMove(s1, a);
             gen.emitMoveConstant(s2, JavaConstant.forShort(Short.MIN_VALUE));
@@ -61,10 +61,10 @@ public class StackStoreTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(Kind.Short));
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(JavaKind.Short));
             // move stuff around
             gen.emitMove(s1, a);
-            Value v = gen.emitLoadConstant(LIRKind.value(Kind.Short), JavaConstant.forShort(Short.MIN_VALUE));
+            Value v = gen.emitLoadConstant(LIRKind.value(JavaKind.Short), JavaConstant.forShort(Short.MIN_VALUE));
             gen.emitMove(s2, v);
             setResult(gen.emitMove(s1));
             gen.emitBlackhole(s1);
@@ -78,7 +78,7 @@ public class StackStoreTest extends LIRTest {
             FrameMapBuilder frameMapBuilder = gen.getResult().getFrameMapBuilder();
             // create slots
             StackSlotValue s1 = frameMapBuilder.allocateSpillSlot(a.getLIRKind());
-            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(Kind.Short));
+            StackSlotValue s2 = frameMapBuilder.allocateSpillSlot(LIRKind.value(JavaKind.Short));
             // move stuff around
             gen.emitMoveConstant(s2, JavaConstant.forShort(Short.MIN_VALUE));
             gen.emitMove(s1, a);

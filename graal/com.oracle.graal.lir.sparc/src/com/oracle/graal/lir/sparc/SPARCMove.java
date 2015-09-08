@@ -27,7 +27,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static jdk.internal.jvmci.code.MemoryBarriers.*;
 import static jdk.internal.jvmci.code.ValueUtil.*;
-import static jdk.internal.jvmci.meta.Kind.*;
+import static jdk.internal.jvmci.meta.JavaKind.*;
 import static jdk.internal.jvmci.sparc.SPARC.*;
 
 import java.util.*;
@@ -176,8 +176,8 @@ public class SPARCMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            Kind inputKind = (Kind) input.getPlatformKind();
-            Kind resultKind = (Kind) result.getPlatformKind();
+            JavaKind inputKind = (JavaKind) input.getPlatformKind();
+            JavaKind resultKind = (JavaKind) result.getPlatformKind();
             if (AllocatableValue.ILLEGAL.equals(temp)) {
                 moveDirect(crb, masm, inputKind, resultKind);
             } else {
@@ -185,36 +185,36 @@ public class SPARCMove {
             }
         }
 
-        private void moveDirect(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind inputKind, Kind resultKind) {
+        private void moveDirect(CompilationResultBuilder crb, SPARCMacroAssembler masm, JavaKind inputKind, JavaKind resultKind) {
             getDelayedControlTransfer().emitControlTransfer(crb, masm);
             if (resultKind == Float) {
                 if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
-                    masm.movwtos(asRegister(input, Kind.Int), asRegister(result, Kind.Float));
+                    masm.movwtos(asRegister(input, JavaKind.Int), asRegister(result, JavaKind.Float));
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
             } else if (resultKind == Double) {
                 if (inputKind == Int || inputKind == Short || inputKind == Char || inputKind == Byte) {
-                    masm.movxtod(asRegister(input, Kind.Int), asRegister(result, Kind.Double));
+                    masm.movxtod(asRegister(input, JavaKind.Int), asRegister(result, JavaKind.Double));
                 } else {
-                    masm.movxtod(asRegister(input, Kind.Long), asRegister(result, Kind.Double));
+                    masm.movxtod(asRegister(input, JavaKind.Long), asRegister(result, JavaKind.Double));
                 }
             } else if (inputKind == Float) {
                 if (resultKind == Int || resultKind == Short || resultKind == Byte) {
-                    masm.movstosw(asRegister(input, Kind.Float), asRegister(result, Kind.Int));
+                    masm.movstosw(asRegister(input, JavaKind.Float), asRegister(result, JavaKind.Int));
                 } else {
-                    masm.movstouw(asRegister(input, Kind.Float), asRegister(result, Kind.Int));
+                    masm.movstouw(asRegister(input, JavaKind.Float), asRegister(result, JavaKind.Int));
                 }
             } else if (inputKind == Double) {
                 if (resultKind == Long) {
-                    masm.movdtox(asRegister(input, Kind.Double), asRegister(result, Kind.Long));
+                    masm.movdtox(asRegister(input, JavaKind.Double), asRegister(result, JavaKind.Long));
                 } else {
                     throw JVMCIError.shouldNotReachHere();
                 }
             }
         }
 
-        private void moveViaStack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Kind inputKind, Kind resultKind) {
+        private void moveViaStack(CompilationResultBuilder crb, SPARCMacroAssembler masm, JavaKind inputKind, JavaKind resultKind) {
             int inputKindSize = crb.target.getSizeInBytes(inputKind);
             int resultKindSize = crb.target.getSizeInBytes(resultKind);
             assert inputKindSize == resultKindSize;
@@ -297,7 +297,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = addressValue.toAddress();
-            loadEffectiveAddress(crb, masm, address, asRegister(result, Kind.Long), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, JavaKind.Long), getDelayedControlTransfer());
         }
     }
 
@@ -424,7 +424,7 @@ public class SPARCMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress address = (SPARCAddress) crb.asAddress(slot);
-            loadEffectiveAddress(crb, masm, address, asRegister(result, Kind.Long), getDelayedControlTransfer());
+            loadEffectiveAddress(crb, masm, address, asRegister(result, JavaKind.Long), getDelayedControlTransfer());
         }
     }
 
@@ -609,7 +609,7 @@ public class SPARCMove {
             Register resultRegister = asRegister(result);
             int byteCount = crb.target.getSizeInBytes(result.getPlatformKind());
             Runnable recordReference = () -> crb.recordDataReferenceInCode(input, byteCount);
-            switch (input.getKind().getStackKind()) {
+            switch (input.getJavaKind().getStackKind()) {
                 case Int:
                     if (input.isDefaultForKind()) {
                         delaySlotLir.emitControlTransfer(crb, masm);
@@ -680,7 +680,7 @@ public class SPARCMove {
                     }
                     break;
                 default:
-                    throw JVMCIError.shouldNotReachHere("missing: " + input.getKind());
+                    throw JVMCIError.shouldNotReachHere("missing: " + input.getJavaKind());
             }
         }
     }
@@ -688,7 +688,7 @@ public class SPARCMove {
     protected static void compareAndSwap(CompilationResultBuilder crb, SPARCMacroAssembler masm, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue,
                     SPARCDelayedControlTransfer delay) {
         delay.emitControlTransfer(crb, masm);
-        switch ((Kind) cmpValue.getPlatformKind()) {
+        switch ((JavaKind) cmpValue.getPlatformKind()) {
             case Int:
                 masm.cas(asRegister(address), asRegister(cmpValue), asRegister(newValue));
                 break;

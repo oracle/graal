@@ -38,8 +38,8 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node {
 
     public static final NodeClass<ValueNode> TYPE = NodeClass.create(ValueNode.class);
     /**
-     * The kind of this value. This is {@link Kind#Void} for instructions that produce no value.
-     * This kind is guaranteed to be a {@linkplain Kind#getStackKind() stack kind}.
+     * The kind of this value. This is {@link JavaKind#Void} for instructions that produce no value.
+     * This kind is guaranteed to be a {@linkplain JavaKind#getStackKind() stack kind}.
      */
     protected Stamp stamp;
 
@@ -89,7 +89,7 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node {
         return false;
     }
 
-    public final Kind getStackKind() {
+    public final JavaKind getStackKind() {
         return stamp().getStackKind();
     }
 
@@ -151,7 +151,7 @@ public abstract class ValueNode extends com.oracle.graal.graph.Node {
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        if (getStackKind() != Kind.Void && type == InputType.Value) {
+        if (getStackKind() != JavaKind.Void && type == InputType.Value) {
             return true;
         } else {
             return super.isAllowedUsageType(type);

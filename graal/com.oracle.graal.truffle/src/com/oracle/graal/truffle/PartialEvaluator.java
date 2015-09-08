@@ -246,7 +246,7 @@ public class PartialEvaluator {
             for (ValueNode argument : arguments) {
                 if (argument.isConstant()) {
                     JavaConstant constant = argument.asJavaConstant();
-                    if (constant.getKind() == Kind.Object && snippetReflection.asObject(MethodHandle.class, constant) != null) {
+                    if (constant.getJavaKind() == JavaKind.Object && snippetReflection.asObject(MethodHandle.class, constant) != null) {
                         return true;
                     }
                 }

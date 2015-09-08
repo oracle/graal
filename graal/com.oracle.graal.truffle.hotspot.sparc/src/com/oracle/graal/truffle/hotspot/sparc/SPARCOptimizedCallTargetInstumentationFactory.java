@@ -26,7 +26,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.*;
 import static jdk.internal.jvmci.code.CallingConvention.Type.*;
-import static jdk.internal.jvmci.meta.Kind.*;
+import static jdk.internal.jvmci.meta.JavaKind.*;
 import jdk.internal.jvmci.code.*;
 import jdk.internal.jvmci.hotspot.*;
 import jdk.internal.jvmci.service.*;

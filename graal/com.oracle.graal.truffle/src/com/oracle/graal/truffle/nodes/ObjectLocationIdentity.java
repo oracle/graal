@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ public final class ObjectLocationIdentity extends LocationIdentity {
     private JavaConstant object;
 
     public static LocationIdentity create(JavaConstant object) {
-        assert object.getKind() == Kind.Object && object.isNonNull();
+        assert object.getJavaKind() == JavaKind.Object && object.isNonNull();
         return new ObjectLocationIdentity(object);
     }
 

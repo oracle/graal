@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,7 +72,7 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
     private static boolean isEqualsMethod(ResolvedJavaMethod method) {
         if (method.getName().equals("equals")) {
             Signature sig = method.getSignature();
-            if (sig.getReturnKind() == Kind.Boolean) {
+            if (sig.getReturnKind() == JavaKind.Boolean) {
                 if (sig.getParameterCount(false) == 1) {
                     ResolvedJavaType ptype = (ResolvedJavaType) sig.getParameterType(0, method.getDeclaringClass());
                     if (ptype.isJavaLangObject()) {

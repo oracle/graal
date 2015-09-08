@@ -244,18 +244,19 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
-                    @ConstantParameter Kind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord) {
+                    @ConstantParameter JavaKind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord) {
         Object result = allocateArrayDynamicImpl(elementType, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord);
         return result;
     }
 
-    private static Object allocateArrayDynamicImpl(Class<?> elementType, int length, boolean fillContents, Register threadRegister, Kind knownElementKind, int knownLayoutHelper, Word prototypeMarkWord) {
+    private static Object allocateArrayDynamicImpl(Class<?> elementType, int length, boolean fillContents, Register threadRegister, JavaKind knownElementKind, int knownLayoutHelper,
+                    Word prototypeMarkWord) {
         /*
          * We only need the dynamic check for void when we have no static information from
          * knownElementKind.
          */
-        staticAssert(knownElementKind != Kind.Void, "unsupported knownElementKind");
-        if (knownElementKind == Kind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType))) {
+        staticAssert(knownElementKind != JavaKind.Void, "unsupported knownElementKind");
+        if (knownElementKind == JavaKind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType))) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
@@ -263,7 +264,7 @@ public class NewObjectSnippets implements Snippets {
         if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, klass.isNull() || length < 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        int layoutHelper = knownElementKind != Kind.Illegal ? knownLayoutHelper : readLayoutHelper(klass);
+        int layoutHelper = knownElementKind != JavaKind.Illegal ? knownLayoutHelper : readLayoutHelper(klass);
         //@formatter:off
         // from src/share/vm/oops/klass.hpp:
         //
@@ -475,7 +476,7 @@ public class NewObjectSnippets implements Snippets {
             StructuredGraph graph = newArrayNode.graph();
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
-            Kind elementKind = elementType.getKind();
+            JavaKind elementKind = elementType.getJavaKind();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = runtime.getJVMCIRuntime().getArrayBaseOffset(elementKind);
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
@@ -485,7 +486,7 @@ public class NewObjectSnippets implements Snippets {
             args.add("hub", hub);
             ValueNode length = newArrayNode.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-            assert arrayType.prototypeMarkWord() == lookupArrayClass(tool, Kind.Object).prototypeMarkWord() : "all array types are assumed to have the same prototypeMarkWord";
+            assert arrayType.prototypeMarkWord() == lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord() : "all array types are assumed to have the same prototypeMarkWord";
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
@@ -521,19 +522,19 @@ public class NewObjectSnippets implements Snippets {
              * We use Kind.Illegal as a marker value instead of null because constant snippet
              * parameters cannot be null.
              */
-            args.addConst("knownElementKind", newArrayNode.getKnownElementKind() == null ? Kind.Illegal : newArrayNode.getKnownElementKind());
+            args.addConst("knownElementKind", newArrayNode.getKnownElementKind() == null ? JavaKind.Illegal : newArrayNode.getKnownElementKind());
             if (newArrayNode.getKnownElementKind() != null) {
                 args.addConst("knownLayoutHelper", lookupArrayClass(tool, newArrayNode.getKnownElementKind()).layoutHelper());
             } else {
                 args.addConst("knownLayoutHelper", 0);
             }
-            args.add("prototypeMarkWord", lookupArrayClass(tool, Kind.Object).prototypeMarkWord());
+            args.add("prototypeMarkWord", lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord());
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
 
-        private static HotSpotResolvedObjectType lookupArrayClass(LoweringTool tool, Kind kind) {
-            return (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(kind == Kind.Object ? Object.class : kind.toJavaClass()).getArrayClass();
+        private static HotSpotResolvedObjectType lookupArrayClass(LoweringTool tool, JavaKind kind) {
+            return (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(kind == JavaKind.Object ? Object.class : kind.toJavaClass()).getArrayClass();
         }
 
         public void lower(NewMultiArrayNode newmultiarrayNode, LoweringTool tool) {
@@ -549,7 +550,7 @@ public class NewObjectSnippets implements Snippets {
             Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             args.addConst("rank", rank);
-            args.addVarargs("dimensions", int.class, StampFactory.forKind(Kind.Int), dims);
+            args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
             template(args).instantiate(providers.getMetaAccess(), newmultiarrayNode, DEFAULT_REPLACER, args);
         }
 

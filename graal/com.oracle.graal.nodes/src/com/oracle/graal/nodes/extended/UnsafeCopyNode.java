@@ -44,15 +44,15 @@ public final class UnsafeCopyNode extends FixedWithNextNode implements StateSpli
     @Input ValueNode destinationObject;
     @Input ValueNode sourceOffset;
     @Input ValueNode destinationOffset;
-    protected final Kind accessKind;
+    protected final JavaKind accessKind;
     protected final LocationIdentity locationIdentity;
     @OptionalInput(InputType.State) FrameState stateAfter;
 
-    public UnsafeCopyNode(ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject, ValueNode destinationOffset, Kind accessKind, LocationIdentity locationIdentity) {
+    public UnsafeCopyNode(ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject, ValueNode destinationOffset, JavaKind accessKind, LocationIdentity locationIdentity) {
         this(sourceObject, sourceOffset, destinationObject, destinationOffset, accessKind, locationIdentity, null);
     }
 
-    public UnsafeCopyNode(ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject, ValueNode destinationOffset, Kind accessKind, LocationIdentity locationIdentity,
+    public UnsafeCopyNode(ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject, ValueNode destinationOffset, JavaKind accessKind, LocationIdentity locationIdentity,
                     FrameState stateAfter) {
         super(TYPE, StampFactory.forVoid());
         this.sourceObject = sourceObject;
@@ -62,7 +62,7 @@ public final class UnsafeCopyNode extends FixedWithNextNode implements StateSpli
         this.accessKind = accessKind;
         this.locationIdentity = locationIdentity;
         this.stateAfter = stateAfter;
-        assert accessKind != Kind.Void && accessKind != Kind.Illegal;
+        assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
     }
 
     public ValueNode sourceObject() {
@@ -85,7 +85,7 @@ public final class UnsafeCopyNode extends FixedWithNextNode implements StateSpli
         return destinationOffset;
     }
 
-    public Kind accessKind() {
+    public JavaKind accessKind() {
         return accessKind;
     }
 
@@ -108,5 +108,5 @@ public final class UnsafeCopyNode extends FixedWithNextNode implements StateSpli
     }
 
     @NodeIntrinsic
-    public static native void copy(Object srcObject, long srcOffset, Object destObject, long destOffset, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+    public static native void copy(Object srcObject, long srcOffset, Object destObject, long destOffset, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 }

@@ -70,7 +70,7 @@ public final class AMD64MathIntrinsicNode extends UnaryNode implements Arithmeti
     }
 
     protected AMD64MathIntrinsicNode(ValueNode value, Operation op) {
-        super(TYPE, StampFactory.forKind(Kind.Double), value);
+        super(TYPE, StampFactory.forKind(JavaKind.Double), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;
     }

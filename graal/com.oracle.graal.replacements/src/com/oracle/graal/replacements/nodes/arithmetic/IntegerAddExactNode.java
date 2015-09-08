@@ -132,12 +132,12 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
         if (xConst != null && yConst != null) {
-            assert xConst.getKind() == yConst.getKind();
+            assert xConst.getJavaKind() == yConst.getJavaKind();
             try {
-                if (xConst.getKind() == Kind.Int) {
+                if (xConst.getJavaKind() == JavaKind.Int) {
                     return ConstantNode.forInt(Math.addExact(xConst.asInt(), yConst.asInt()));
                 } else {
-                    assert xConst.getKind() == Kind.Long;
+                    assert xConst.getJavaKind() == JavaKind.Long;
                     return ConstantNode.forLong(Math.addExact(xConst.asLong(), yConst.asLong()));
                 }
             } catch (ArithmeticException ex) {

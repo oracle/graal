@@ -43,13 +43,13 @@ public class AMD64GraphBuilderPlugins {
 
     public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, AMD64 arch) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, Kind.Int, arch);
-        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, Kind.Long, arch);
+        registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
+        registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
         registerUnsafePlugins(invocationPlugins);
         registerMathPlugins(invocationPlugins, foreignCalls);
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, Kind kind, AMD64 arch) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, AMD64 arch) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
@@ -58,9 +58,9 @@ public class AMD64GraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountLeadingZerosNode.tryFold(value);
                     if (folded != null) {
-                        b.addPush(Kind.Int, folded);
+                        b.addPush(JavaKind.Int, folded);
                     } else {
-                        b.addPush(Kind.Int, new AMD64CountLeadingZerosNode(value));
+                        b.addPush(JavaKind.Int, new AMD64CountLeadingZerosNode(value));
                     }
                     return true;
                 }
@@ -73,9 +73,9 @@ public class AMD64GraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountTrailingZerosNode.tryFold(value);
                     if (folded != null) {
-                        b.addPush(Kind.Int, folded);
+                        b.addPush(JavaKind.Int, folded);
                     } else {
-                        b.addPush(Kind.Int, new AMD64CountTrailingZerosNode(value));
+                        b.addPush(JavaKind.Int, new AMD64CountTrailingZerosNode(value));
                     }
                     return true;
                 }
@@ -89,13 +89,13 @@ public class AMD64GraphBuilderPlugins {
         Registration r = new Registration(plugins, Math.class);
         r.register1("log", Double.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(Kind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG)));
+                b.push(JavaKind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG)));
                 return true;
             }
         });
         r.register1("log10", Double.TYPE, new InvocationPlugin() {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(Kind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG10)));
+                b.push(JavaKind.Double, b.recursiveAppend(AMD64MathIntrinsicNode.create(value, LOG10)));
                 return true;
             }
         });
@@ -109,8 +109,8 @@ public class AMD64GraphBuilderPlugins {
     private static void registerUnsafePlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Unsafe.class);
 
-        for (Kind kind : new Kind[]{Kind.Int, Kind.Long, Kind.Object}) {
-            Class<?> javaClass = kind == Kind.Object ? Object.class : kind.toJavaClass();
+        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}) {
+            Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
 
             r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
@@ -121,7 +121,7 @@ public class AMD64GraphBuilderPlugins {
                     return true;
                 }
             });
-            if (kind != Kind.Object) {
+            if (kind != JavaKind.Object) {
                 r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
@@ -135,7 +135,7 @@ public class AMD64GraphBuilderPlugins {
             }
         }
 
-        for (Kind kind : new Kind[]{Kind.Char, Kind.Short, Kind.Int, Kind.Long}) {
+        for (JavaKind kind : new JavaKind[]{JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long}) {
             Class<?> javaClass = kind.toJavaClass();
             r.registerOptional3("get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, false));
             r.registerOptional4("put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, false));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,9 +82,9 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         ResolvedJavaType accessingClass = method.getDeclaringClass();
         for (int i = 0; i < max; i++) {
             JavaType type = sig.getParameterType(i, accessingClass).resolve(accessingClass);
-            Kind kind = type.getKind();
+            JavaKind kind = type.getJavaKind();
             Stamp stamp;
-            if (kind == Kind.Object && type instanceof ResolvedJavaType) {
+            if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.declared((ResolvedJavaType) type);
             } else {
                 stamp = StampFactory.forKind(kind);
@@ -132,8 +132,8 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         return added;
     }
 
-    public void push(Kind kind, ValueNode value) {
-        assert kind != Kind.Void;
+    public void push(JavaKind kind, ValueNode value) {
+        assert kind != JavaKind.Void;
         assert returnValue == null;
         returnValue = value;
     }
@@ -207,7 +207,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     public StructuredGraph buildGraph(InvocationPlugin plugin) {
         Receiver receiver = method.isStatic() ? null : this;
         if (plugin.execute(this, method, receiver, arguments)) {
-            assert (returnValue != null) == (method.getSignature().getReturnKind() != Kind.Void) : method;
+            assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
             append(new ReturnNode(returnValue));
             return graph;
         }

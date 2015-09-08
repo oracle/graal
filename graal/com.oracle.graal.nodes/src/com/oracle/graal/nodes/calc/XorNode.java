@@ -77,7 +77,7 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
                 return forX;
             }
 
-            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getKind().isNumericInteger()) {
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long rawY = ((PrimitiveConstant) c).asLong();
                 long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp()));
                 if ((rawY & mask) == mask) {

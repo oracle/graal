@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -322,7 +322,7 @@ public enum Condition {
      *         the comparison is known to be false
      */
     public boolean foldCondition(JavaConstant lt, JavaConstant rt, ConstantReflectionProvider constantReflection) {
-        assert !lt.getKind().isNumericFloat() && !rt.getKind().isNumericFloat();
+        assert !lt.getJavaKind().isNumericFloat() && !rt.getJavaKind().isNumericFloat();
         return foldCondition(lt, rt, constantReflection, false);
     }
 
@@ -340,7 +340,7 @@ public enum Condition {
         if (lt instanceof PrimitiveConstant) {
             PrimitiveConstant lp = (PrimitiveConstant) lt;
             PrimitiveConstant rp = (PrimitiveConstant) rt;
-            switch (lp.getKind()) {
+            switch (lp.getJavaKind()) {
                 case Boolean:
                 case Byte:
                 case Char:
@@ -448,7 +448,7 @@ public enum Condition {
                     }
                 }
                 default:
-                    throw new JVMCIError("expected value kind %s while folding condition: %s", lp.getKind(), this);
+                    throw new JVMCIError("expected value kind %s while folding condition: %s", lp.getJavaKind(), this);
             }
         } else {
             Boolean equal = constantReflection.constantEquals(lt, rt);

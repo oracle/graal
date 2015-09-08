@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,9 +41,9 @@ public final class DirectStoreNode extends FixedWithNextNode implements LIRLower
     public static final NodeClass<DirectStoreNode> TYPE = NodeClass.create(DirectStoreNode.class);
     @Input protected ValueNode address;
     @Input protected ValueNode value;
-    protected final Kind kind;
+    protected final JavaKind kind;
 
-    public DirectStoreNode(ValueNode address, ValueNode value, Kind kind) {
+    public DirectStoreNode(ValueNode address, ValueNode value, JavaKind kind) {
         super(TYPE, StampFactory.forVoid());
         this.address = address;
         this.value = value;
@@ -66,5 +66,5 @@ public final class DirectStoreNode extends FixedWithNextNode implements LIRLower
     }
 
     @NodeIntrinsic
-    public static native void storeBoolean(long address, boolean value, @ConstantNodeParameter Kind kind);
+    public static native void storeBoolean(long address, boolean value, @ConstantNodeParameter JavaKind kind);
 }

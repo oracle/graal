@@ -48,11 +48,11 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
      * @param index the instruction producing the index
      * @param elementKind the element type
      */
-    public LoadIndexedNode(ValueNode array, ValueNode index, Kind elementKind) {
+    public LoadIndexedNode(ValueNode array, ValueNode index, JavaKind elementKind) {
         this(TYPE, createStamp(array, elementKind), array, index, elementKind);
     }
 
-    public static ValueNode create(ValueNode array, ValueNode index, Kind elementKind, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    public static ValueNode create(ValueNode array, ValueNode index, JavaKind elementKind, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         ValueNode constant = tryConstantFold(array, index, metaAccess, constantReflection);
         if (constant != null) {
             return constant;
@@ -60,13 +60,13 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         return new LoadIndexedNode(array, index, elementKind);
     }
 
-    protected LoadIndexedNode(NodeClass<? extends LoadIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, Kind elementKind) {
+    protected LoadIndexedNode(NodeClass<? extends LoadIndexedNode> c, Stamp stamp, ValueNode array, ValueNode index, JavaKind elementKind) {
         super(c, stamp, array, index, elementKind);
     }
 
-    private static Stamp createStamp(ValueNode array, Kind kind) {
+    private static Stamp createStamp(ValueNode array, JavaKind kind) {
         ResolvedJavaType type = StampTool.typeOrNull(array);
-        if (kind == Kind.Object && type != null) {
+        if (kind == JavaKind.Object && type != null) {
             return StampFactory.declaredTrusted(type.getComponentType());
         } else {
             return StampFactory.forKind(kind);

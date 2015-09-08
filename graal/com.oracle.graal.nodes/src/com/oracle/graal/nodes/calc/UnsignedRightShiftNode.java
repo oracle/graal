@@ -68,10 +68,10 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
                         }
                         return new UnsignedRightShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {
-                        if (getStackKind() == Kind.Long) {
+                        if (getStackKind() == JavaKind.Long) {
                             return new AndNode(other.getX(), ConstantNode.forLong(-1L >>> amount));
                         } else {
-                            assert getStackKind() == Kind.Int;
+                            assert getStackKind() == JavaKind.Int;
                             return new AndNode(other.getX(), ConstantNode.forInt(-1 >>> amount));
                         }
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
             assert parameterTypes.length == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 ParameterNode param = graph.getParameter(i);
-                JavaConstant c = HotSpotObjectConstantImpl.forBoxedValue(parameterTypes[i].getKind(), argsToBind[i]);
+                JavaConstant c = HotSpotObjectConstantImpl.forBoxedValue(parameterTypes[i].getJavaKind(), argsToBind[i]);
                 ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 param.replaceAtUsages(replacement);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
         this(wordTypes.getWordKind());
     }
 
-    public CurrentJavaThreadNode(Kind wordKind) {
+    public CurrentJavaThreadNode(JavaKind wordKind) {
         super(TYPE, StampFactory.forKind(wordKind));
         this.wordKind = LIRKind.value(wordKind);
     }

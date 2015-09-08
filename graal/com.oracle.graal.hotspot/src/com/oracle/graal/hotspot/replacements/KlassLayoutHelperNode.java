@@ -49,7 +49,7 @@ public final class KlassLayoutHelperNode extends FloatingGuardedNode implements 
     }
 
     public KlassLayoutHelperNode(@InjectedNodeParameter HotSpotVMConfig config, ValueNode klass, ValueNode guard) {
-        super(TYPE, StampFactory.forKind(Kind.Int), (GuardingNode) guard);
+        super(TYPE, StampFactory.forKind(JavaKind.Int), (GuardingNode) guard);
         this.klass = klass;
         this.config = config;
     }
@@ -67,10 +67,10 @@ public final class KlassLayoutHelperNode extends FloatingGuardedNode implements 
                         /*
                          * Definitely some form of instance type.
                          */
-                        return updateStamp(StampFactory.forInteger(Kind.Int, config.klassLayoutHelperNeutralValue, Integer.MAX_VALUE));
+                        return updateStamp(StampFactory.forInteger(JavaKind.Int, config.klassLayoutHelperNeutralValue, Integer.MAX_VALUE));
                     }
                     if (type.isArray()) {
-                        return updateStamp(StampFactory.forInteger(Kind.Int, Integer.MIN_VALUE, config.klassLayoutHelperNeutralValue - 1));
+                        return updateStamp(StampFactory.forInteger(JavaKind.Int, Integer.MIN_VALUE, config.klassLayoutHelperNeutralValue - 1));
                     }
                 }
             }

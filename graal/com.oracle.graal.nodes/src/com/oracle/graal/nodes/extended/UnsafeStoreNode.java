@@ -44,15 +44,15 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
     @Input ValueNode value;
     @OptionalInput(InputType.State) FrameState stateAfter;
 
-    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
+    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity) {
         this(object, offset, value, accessKind, locationIdentity, null);
     }
 
-    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
+    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
         super(TYPE, StampFactory.forVoid(), object, offset, accessKind, locationIdentity);
         this.value = value;
         this.stateAfter = stateAfter;
-        assert accessKind != Kind.Void && accessKind != Kind.Illegal;
+        assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
     }
 
     public FrameState stateAfter() {
@@ -88,17 +88,17 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
                 long off = indexValue.asJavaConstant().asLong();
                 int entryIndex = virtual.entryIndexForOffset(off, accessKind());
                 if (entryIndex != -1) {
-                    Kind entryKind = virtual.entryKind(entryIndex);
+                    JavaKind entryKind = virtual.entryKind(entryIndex);
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
                     if (entry.getStackKind() == value.getStackKind() || entryKind == accessKind()) {
                         tool.setVirtualEntry(virtual, entryIndex, value(), true);
                         tool.delete();
                     } else {
-                        if ((accessKind() == Kind.Long || accessKind() == Kind.Double) && entryKind == Kind.Int) {
+                        if ((accessKind() == JavaKind.Long || accessKind() == JavaKind.Double) && entryKind == JavaKind.Int) {
                             int nextIndex = virtual.entryIndexForOffset(off + 4, entryKind);
                             if (nextIndex != -1) {
-                                Kind nextKind = virtual.entryKind(nextIndex);
-                                if (nextKind == Kind.Int) {
+                                JavaKind nextKind = virtual.entryKind(nextIndex);
+                                if (nextKind == JavaKind.Int) {
                                     tool.setVirtualEntry(virtual, entryIndex, value(), true);
                                     tool.setVirtualEntry(virtual, nextIndex, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
                                     tool.delete();

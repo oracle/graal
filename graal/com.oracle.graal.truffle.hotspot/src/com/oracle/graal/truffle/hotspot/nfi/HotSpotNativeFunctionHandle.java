@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,7 @@ public class HotSpotNativeFunctionHandle implements NativeFunctionHandle {
             assert arg != null;
             Class<?> expectedType = argumentTypes[i];
             if (expectedType.isPrimitive()) {
-                Kind kind = Kind.fromJavaClass(expectedType);
+                JavaKind kind = JavaKind.fromJavaClass(expectedType);
                 expectedType = kind.toBoxedJavaClass();
             }
             assert expectedType == arg.getClass() : this + " expected arg " + i + " to be " + expectedType.getName() + ", not " + arg.getClass().getName();
